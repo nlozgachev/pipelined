@@ -73,6 +73,7 @@ export default defineConfig({
         {
           label: "Guides",
           items: [
+                        { label: "Composition utilities", slug: "guides/composition" },
             { label: "Option — absent values", slug: "guides/option" },
             { label: "Result — handling failures", slug: "guides/result" },
             {
@@ -92,6 +93,7 @@ export default defineConfig({
             { label: "Brand — distinguishing values", slug: "guides/brand" },
             { label: "Arr — array utilities", slug: "guides/arr" },
             { label: "Rec — record utilities", slug: "guides/rec" },
+
           ],
         },
         {

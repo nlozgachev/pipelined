@@ -1,0 +1,400 @@
+---
+title: Composition utilities
+description: >
+  A reference for every function in the Composition module — pipelines, currying, predicates,
+  caching, and parallel application.
+---
+
+The Composition module is the backbone of every pipeline in pipekit. It provides `pipe` and `flow`
+for sequencing steps, and a set of surrounding utilities for shaping functions before they enter a
+pipeline: currying, flipping argument order, memoizing expensive steps, applying a value to several
+functions at once, and more.
+
+This guide covers all of them. If you are new to `pipe` and `flow`, start with
+[Thinking in pipelines](/getting-started/pipelines) first — it covers pipeline fundamentals in
+depth.
+
+## `pipe`, `flow`, and `compose`
+
+These three functions express the same idea — sequencing transformations — in different ways.
+
+`pipe(value, f, g, h)` applies the value immediately and returns a result. `flow(f, g, h)` defers
+execution, returning a new function you can call or pass around:
+
+```ts
+import { flow, pipe } from "@nlozgachev/pipekit/Composition";
+
+// pipe: immediate result
+const slug = pipe(
+  "  Hello World  ",
+  (s) => s.trim(),
+  (s) => s.toLowerCase(),
+  (s) => s.replace(/\s+/g, "-"),
+); // "hello-world"
+
+// flow: reusable function
+const toSlug = flow(
+  (s: string) => s.trim(),
+  (s) => s.toLowerCase(),
+  (s) => s.replace(/\s+/g, "-"),
+);
+["  Alice  ", "  Bob  "].map(toSlug); // ["alice", "bob"]
+```
+
+`compose` is the right-to-left counterpart to `flow`. Where `flow(f, g, h)` applies `f` first and
+`h` last, `compose(h, g, f)` runs in the reverse order — matching the traditional mathematical `f ∘ g`
+notation:
+
+```ts
+import { compose } from "@nlozgachev/pipekit/Composition";
+
+const double = (n: number) => n * 2;
+const addOne = (n: number) => n + 1;
+
+// flow: addOne(5) = 6, then double(6) = 12
+flow(addOne, double)(5); // 12
+
+// compose: double(5) = 10, then addOne(10) = 11
+compose(addOne, double)(5); // 11
+```
+
+Use `compose` when adapting code from libraries or codebases that use right-to-left composition
+convention.
+
+## Currying: `curry`, `curry3`, `curry4`
+
+A curried function takes its arguments one at a time. `curry` converts a two-argument function into
+a curried form — call it with the first argument and get a new function waiting for the second:
+
+```ts
+import { curry } from "@nlozgachev/pipekit/Composition";
+
+const clamp = curry((min: number, n: number) => Math.max(min, n));
+const atLeastZero = clamp(0);
+
+atLeastZero(-5); // 0
+atLeastZero(3);  // 3
+```
+
+This is especially useful for creating partially-applied steps for `pipe` and `flow`. `curry3` and
+`curry4` handle three- and four-argument functions:
+
+```ts
+import { curry3 } from "@nlozgachev/pipekit/Composition";
+
+const between = curry3(
+  (min: number, max: number, n: number) => Math.min(max, Math.max(min, n)),
+);
+const clamp0to100 = between(0)(100);
+
+clamp0to100(150); // 100
+clamp0to100(-10); // 0
+clamp0to100(42);  // 42
+```
+
+## Reversing currying: `uncurry`, `uncurry3`, `uncurry4`
+
+`uncurry` is the inverse of `curry`. It converts a curried function back to a multi-argument form —
+useful when you need to call a curried function all at once, or when passing it to an API that
+expects a plain binary function:
+
+```ts
+import { curry, uncurry } from "@nlozgachev/pipekit/Composition";
+
+const curriedAdd = curry((a: number, b: number) => a + b);
+const add = uncurry(curriedAdd);
+
+add(3, 4); // 7
+[[1, 2], [3, 4], [5, 6]].map(([a, b]) => add(a, b)); // [3, 7, 11]
+```
+
+`uncurry3` and `uncurry4` mirror `curry3` and `curry4` for three- and four-argument functions.
+
+## Flipping argument order: `flip`
+
+`flip` reverses the argument order of a curried binary function. Its primary use is adapting
+data-last functions to a data-first form when calling them outside of a pipeline:
+
+```ts
+import { flip } from "@nlozgachev/pipekit/Composition";
+
+const prepend = (prefix: string) => (str: string) => prefix + str;
+const append = flip(prepend);
+
+prepend("Hello, ")("World"); // "Hello, World"
+append("World")("Hello, ");  // "Hello, World"
+```
+
+A common pattern is using `flip` to adapt a data-last library function for a context where
+data-first is needed — for example, applying a partially-applied transform to a specific value
+rather than wrapping it in an arrow function:
+
+```ts
+import { flip } from "@nlozgachev/pipekit/Composition";
+import { Option } from "@nlozgachev/pipekit/Core";
+
+// Option.map is data-last: map(fn)(option)
+// flip makes it data-first: mapFirst(option)(fn)
+const mapFirst = flip(Option.map);
+mapFirst(Option.some(5))((n: number) => n * 2); // Some(10)
+```
+
+## Side effects without breaking the chain: `tap`
+
+`tap` runs a function for its side effect and returns the original value unchanged. It is the
+standard way to log, audit, or inspect a value mid-pipeline:
+
+```ts
+import { pipe, tap } from "@nlozgachev/pipekit/Composition";
+
+const result = pipe(
+  rawInput,
+  parse,
+  tap((v) => console.log("parsed:", v)),
+  validate,
+  format,
+);
+```
+
+Removing `tap` lines leaves the pipeline's behavior identical.
+[Thinking in pipelines](/getting-started/pipelines) covers `tap` in more detail.
+
+## Function primitives: `identity`, `constant`, and friends
+
+`identity` returns its argument unchanged. It is useful wherever a no-op callback is required —
+most often in `fold` or `match` when one branch should return the value as-is:
+
+```ts
+import { identity } from "@nlozgachev/pipekit/Composition";
+import { Option } from "@nlozgachev/pipekit/Core";
+import { pipe } from "@nlozgachev/pipekit/Composition";
+
+pipe(Option.some(42), Option.fold(() => 0, identity)); // 42
+```
+
+`constant` creates a function that always returns the same value, ignoring its argument. It is
+useful for replacing values in `map`, or for providing fixed fallback functions:
+
+```ts
+import { constant } from "@nlozgachev/pipekit/Composition";
+
+const always42 = constant(42);
+always42(); // 42
+
+[1, 2, 3].map(constant("placeholder")); // ["placeholder", "placeholder", "placeholder"]
+```
+
+`constTrue`, `constFalse`, `constNull`, `constUndefined`, and `constVoid` are zero-argument
+shortcuts for the most common constant values.
+
+`once` wraps a function so it runs at most once. Every subsequent call returns the cached result
+from the first invocation without calling the original function again:
+
+```ts
+import { once } from "@nlozgachev/pipekit/Composition";
+
+const initDb = once(() => {
+  console.log("Connecting...");
+  return createConnection();
+});
+
+initDb(); // logs "Connecting...", connects
+initDb(); // returns same connection — no log, no second call
+```
+
+## Predicate combinators: `not`, `and`, `or`
+
+`not` inverts a predicate. Instead of writing `(n) => !isEven(n)` at every call site, you compose a
+named predicate:
+
+```ts
+import { not } from "@nlozgachev/pipekit/Composition";
+
+const isEven = (n: number) => n % 2 === 0;
+const isOdd = not(isEven);
+
+[1, 2, 3, 4, 5].filter(isOdd); // [1, 3, 5]
+```
+
+`and` and `or` combine two predicates with short-circuit evaluation:
+
+```ts
+import { and, or } from "@nlozgachev/pipekit/Composition";
+
+const isPositive = (n: number) => n > 0;
+const isInteger = (n: number) => Number.isInteger(n);
+
+const isPositiveInteger = and(isPositive, isInteger);
+isPositiveInteger(3);   // true
+isPositiveInteger(3.5); // false
+isPositiveInteger(-2);  // false
+
+const isNonZero = or(isPositive, (n: number) => n < 0);
+isNonZero(5);  // true
+isNonZero(-1); // true
+isNonZero(0);  // false
+```
+
+These compose with each other and with `not` to build arbitrarily complex predicates without writing
+wrapper functions.
+
+## Caching results: `memoize` and `memoizeWeak`
+
+`memoize` wraps a function so that repeated calls with the same argument return the cached result
+instead of recomputing:
+
+```ts
+import { memoize } from "@nlozgachev/pipekit/Composition";
+
+const fibonacci = memoize((n: number): number =>
+  n <= 1 ? n : fibonacci(n - 1) + fibonacci(n - 2)
+);
+
+fibonacci(40); // computed
+fibonacci(40); // returned from cache
+```
+
+By default, the argument itself is used as the cache key. For object arguments, provide a custom
+`keyFn` so that structurally equivalent objects hit the same cache entry:
+
+```ts
+const loadProfile = memoize(
+  (opts: { userId: string }) => fetchProfile(opts.userId),
+  (opts) => opts.userId,
+);
+```
+
+`memoizeWeak` works the same way but uses a `WeakMap` as the cache, so cached values are
+garbage-collected when the key object is no longer referenced. This is useful for memoizing over
+large objects:
+
+```ts
+import { memoizeWeak } from "@nlozgachev/pipekit/Composition";
+
+declare const computeLayout: (node: Element) => Layout;
+const cachedLayout = memoizeWeak(computeLayout);
+```
+
+`memoizeWeak` only accepts object keys — primitives are not valid `WeakMap` keys. Use `memoize` for
+numbers, strings, and other primitives.
+
+## Fan out and combine: `converge`
+
+`converge(combiner, [fn1, fn2, ...])` returns a function that applies its single input to every
+transformer independently, then passes all results to the combiner:
+
+```ts
+import { converge } from "@nlozgachev/pipekit/Composition";
+
+type Item = { name: string; price: number };
+
+const summarise = converge(
+  (subtotal: number, count: number, topPrice: number) => ({ subtotal, count, topPrice }),
+  [
+    (items: Item[]) => items.reduce((acc, i) => acc + i.price, 0),
+    (items: Item[]) => items.length,
+    (items: Item[]) => Math.max(...items.map((i) => i.price)),
+  ],
+);
+
+summarise([
+  { name: "Pen",      price: 2  },
+  { name: "Notebook", price: 8  },
+  { name: "Lamp",     price: 35 },
+]);
+// { subtotal: 45, count: 3, topPrice: 35 }
+```
+
+Because all transformers receive the same original input, `converge` is well-suited for building
+annotated records where each field is a different view of the same source value. The returned
+function is a plain unary function that slots directly into a pipeline.
+
+## Collect parallel results: `juxt`
+
+`juxt([fn1, fn2, ...])` is the simpler sibling of `converge`. Rather than passing results to a
+combiner, it collects them into a typed tuple in the same order as the function array:
+
+```ts
+import { juxt } from "@nlozgachev/pipekit/Composition";
+
+const parseName = juxt([
+  (name: string) => name.split(" ")[0],
+  (name: string) => name.split(" ").slice(1).join(" "),
+]);
+
+const [first, last] = parseName("Alice Van Der Berg");
+// first = "Alice", last = "Van Der Berg"
+```
+
+When all functions return the same type, TypeScript infers a homogeneous array instead of a tuple,
+making `juxt` a convenient fan-out for same-typed transformers:
+
+```ts
+const stats = juxt([
+  (ns: number[]) => Math.min(...ns),
+  (ns: number[]) => Math.max(...ns),
+  (ns: number[]) => ns.reduce((a, b) => a + b, 0) / ns.length,
+]);
+
+const [min, max, mean] = stats([4, 8, 15, 16, 23, 42]);
+// min = 4, max = 42, mean = 18
+```
+
+Use `juxt` when you want the results as a tuple. Use `converge` when you need to merge them into a
+different shape.
+
+## Compare by projection: `on`
+
+`on(binaryFn, projection)` returns a binary function that applies `projection` to both of its
+arguments before passing them to `binaryFn`. The primary use is building sort comparators without
+repeating the field access:
+
+```ts
+import { on } from "@nlozgachev/pipekit/Composition";
+
+const byLength = on((a: number, b: number) => a - b, (s: string) => s.length);
+["cherry", "fig", "blueberry", "plum"].sort(byLength);
+// ["fig", "plum", "cherry", "blueberry"]
+```
+
+The same pattern works for record fields — name the comparator once, use it everywhere:
+
+```ts
+type Track = { title: string; duration: number };
+
+const byDuration = on((a: number, b: number) => a - b, (t: Track) => t.duration);
+[...tracks].sort(byDuration).map((t) => t.title);
+```
+
+`on` is not limited to sort comparators. Any binary function works, including equality predicates:
+
+```ts
+const sameInitial = on(
+  (a: string, b: string) => a === b,
+  (word: string) => word[0].toLowerCase(),
+);
+
+sameInitial("Alice", "Arnold"); // true
+sameInitial("Alice", "Bob");    // false
+```
+
+## When to use each utility
+
+- **`pipe`** — transform a value now, reading steps top-to-bottom
+- **`flow`** — name and reuse a transformation; compose library functions point-free
+- **`compose`** — right-to-left ordering matching traditional `f ∘ g` notation
+- **`curry` / `curry3` / `curry4`** — create partially-applied pipeline steps from multi-argument
+  functions
+- **`uncurry` / `uncurry3` / `uncurry4`** — call curried functions all at once, or adapt them for
+  callback APIs that expect plain multi-argument functions
+- **`flip`** — switch a function from data-last to data-first, or vice versa
+- **`identity`** — no-op callback that returns its argument unchanged
+- **`constant`** — produce a fixed value regardless of input
+- **`once`** — lazy one-time initialization; singleton computation
+- **`not` / `and` / `or`** — compose predicates without writing wrapper functions
+- **`memoize`** — skip recomputation for repeated calls with the same primitive key
+- **`memoizeWeak`** — same, for object keys; cache entries are garbage-collected with the key
+- **`tap`** — observe a pipeline value for logging or side effects without changing it
+- **`converge`** — compute several independent derived values from one input and combine them
+- **`juxt`** — apply one input to several functions and collect all results as a typed tuple
+- **`on`** — build sort comparators or equality checks over a projected property
