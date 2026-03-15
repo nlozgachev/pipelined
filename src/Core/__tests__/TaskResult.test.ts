@@ -253,6 +253,25 @@ Deno.test("TaskResult.recover provides fallback for Err", async () => {
 });
 
 Deno.test(
+  "TaskResult.recover widens to TaskResult<E, A | B> when fallback returns a different type",
+  async () => {
+    const result = await pipe(
+      TaskResult.err("error"),
+      TaskResult.recover((_e) => TaskResult.ok("recovered")),
+    )();
+    assertEquals(result, { kind: "Ok", value: "recovered" });
+  },
+);
+
+Deno.test("TaskResult.recover preserves Ok typed as TaskResult<E, A | B>", async () => {
+  const result = await pipe(
+    TaskResult.ok(5),
+    TaskResult.recover((_e) => TaskResult.ok("recovered")),
+  )();
+  assertEquals(result, { kind: "Ok", value: 5 });
+});
+
+Deno.test(
   "TaskResult.recover passes the error to the fallback function",
   async () => {
     let receivedError = "";
@@ -285,6 +304,22 @@ Deno.test("TaskResult.getOrElse returns default for Err", async () => {
     TaskResult.getOrElse(0),
   )();
   assertStrictEquals(result, 0);
+});
+
+Deno.test("TaskResult.getOrElse widens return type to A | B when default is a different type", async () => {
+  const result = await pipe(
+    TaskResult.err("error"),
+    TaskResult.getOrElse(null),
+  )();
+  assertStrictEquals(result, null);
+});
+
+Deno.test("TaskResult.getOrElse returns Ok value typed as A | B when Ok", async () => {
+  const result = await pipe(
+    TaskResult.ok(5),
+    TaskResult.getOrElse(null),
+  )();
+  assertStrictEquals(result, 5);
 });
 
 // ---------------------------------------------------------------------------

@@ -7,7 +7,7 @@ import { pipe } from "../../Composition/pipe.ts";
 // ---------------------------------------------------------------------------
 
 Deno.test("Result.ok wraps a value in Ok", () => {
-  const result = Result.ok<number>(42);
+  const result = Result.ok(42);
   assertEquals(result, { kind: "Ok", value: 42 });
 });
 
@@ -16,7 +16,7 @@ Deno.test("Result.ok creates an Ok with the given value", () => {
 });
 
 Deno.test("Result.ok and Result.ok produce equivalent results", () => {
-  assertEquals(Result.ok<number>(10), Result.ok(10));
+  assertEquals(Result.ok(10), Result.ok(10));
 });
 
 // ---------------------------------------------------------------------------
@@ -94,7 +94,7 @@ Deno.test("Result.tryCatch passes the thrown error to onError", () => {
 
 Deno.test("Result.map transforms Ok value", () => {
   const result = pipe(
-    Result.ok(5) as Result<string, number>,
+    Result.ok(5),
     Result.map((n: number) => n * 2),
   );
   assertEquals(result, { kind: "Ok", value: 10 });
@@ -102,7 +102,7 @@ Deno.test("Result.map transforms Ok value", () => {
 
 Deno.test("Result.map passes through Err unchanged", () => {
   const result = pipe(
-    Result.err("error") as Result<string, number>,
+    Result.err("error"),
     Result.map((n: number) => n * 2),
   );
   assertEquals(result, { kind: "Error", error: "error" });
@@ -110,7 +110,7 @@ Deno.test("Result.map passes through Err unchanged", () => {
 
 Deno.test("Result.map can change the value type", () => {
   const result = pipe(
-    Result.ok(42) as Result<string, number>,
+    Result.ok(42),
     Result.map((n: number) => `num: ${n}`),
   );
   assertEquals(result, { kind: "Ok", value: "num: 42" });
@@ -122,7 +122,7 @@ Deno.test("Result.map can change the value type", () => {
 
 Deno.test("Result.mapError transforms Err value", () => {
   const result = pipe(
-    Result.err("oops") as Result<string, number>,
+    Result.err("oops"),
     Result.mapError((e: string) => e.toUpperCase()),
   );
   assertEquals(result, { kind: "Error", error: "OOPS" });
@@ -130,7 +130,7 @@ Deno.test("Result.mapError transforms Err value", () => {
 
 Deno.test("Result.mapError passes through Ok unchanged", () => {
   const result = pipe(
-    Result.ok(5) as Result<string, number>,
+    Result.ok(5),
     Result.mapError((e: string) => e.toUpperCase()),
   );
   assertEquals(result, { kind: "Ok", value: 5 });
@@ -141,22 +141,20 @@ Deno.test("Result.mapError passes through Ok unchanged", () => {
 // ---------------------------------------------------------------------------
 
 Deno.test("Result.chain applies function when Ok", () => {
-  const validatePositive = (n: number): Result<string, number> =>
-    n > 0 ? Result.ok(n) : Result.err("Must be positive");
+  const validatePositive = (n: number) => n > 0 ? Result.ok(n) : Result.err("Must be positive");
 
   const result = pipe(
-    Result.ok(5) as Result<string, number>,
+    Result.ok(5),
     Result.chain(validatePositive),
   );
   assertEquals(result, { kind: "Ok", value: 5 });
 });
 
 Deno.test("Result.chain returns Err when function returns Err", () => {
-  const validatePositive = (n: number): Result<string, number> =>
-    n > 0 ? Result.ok(n) : Result.err("Must be positive");
+  const validatePositive = (n: number) => n > 0 ? Result.ok(n) : Result.err("Must be positive");
 
   const result = pipe(
-    Result.ok(-1) as Result<string, number>,
+    Result.ok(-1),
     Result.chain(validatePositive),
   );
   assertEquals(result, { kind: "Error", error: "Must be positive" });
@@ -165,10 +163,10 @@ Deno.test("Result.chain returns Err when function returns Err", () => {
 Deno.test("Result.chain propagates Err without calling function", () => {
   let called = false;
   pipe(
-    Result.err("error") as Result<string, number>,
+    Result.err("error"),
     Result.chain((_n: number) => {
       called = true;
-      return Result.ok(_n) as Result<string, number>;
+      return Result.ok(_n);
     }),
   );
   assertStrictEquals(called, false);
@@ -180,7 +178,7 @@ Deno.test("Result.chain propagates Err without calling function", () => {
 
 Deno.test("Result.fold calls onOk for Ok", () => {
   const result = pipe(
-    Result.ok(5) as Result<string, number>,
+    Result.ok(5),
     Result.fold(
       (e: string) => `Error: ${e}`,
       (n: number) => `Value: ${n}`,
@@ -191,7 +189,7 @@ Deno.test("Result.fold calls onOk for Ok", () => {
 
 Deno.test("Result.fold calls onErr for Err", () => {
   const result = pipe(
-    Result.err("bad") as Result<string, number>,
+    Result.err("bad"),
     Result.fold(
       (e: string) => `Error: ${e}`,
       (n: number) => `Value: ${n}`,
@@ -206,7 +204,7 @@ Deno.test("Result.fold calls onErr for Err", () => {
 
 Deno.test("Result.match calls ok handler for Ok", () => {
   const result = pipe(
-    Result.ok(5) as Result<string, number>,
+    Result.ok(5),
     Result.match({
       ok: (n: number) => `got ${n}`,
       err: (e: string) => `failed: ${e}`,
@@ -217,7 +215,7 @@ Deno.test("Result.match calls ok handler for Ok", () => {
 
 Deno.test("Result.match calls err handler for Err", () => {
   const result = pipe(
-    Result.err("bad") as Result<string, number>,
+    Result.err("bad"),
     Result.match({
       ok: (n: number) => `got ${n}`,
       err: (e: string) => `failed: ${e}`,
@@ -227,7 +225,7 @@ Deno.test("Result.match calls err handler for Err", () => {
 });
 
 Deno.test("Result.match is data-last (returns a function first)", () => {
-  const handler = Result.match<string, number, string>({
+  const handler = Result.match({
     ok: (n) => `val: ${n}`,
     err: (e) => `err: ${e}`,
   });
@@ -241,7 +239,7 @@ Deno.test("Result.match is data-last (returns a function first)", () => {
 
 Deno.test("Result.getOrElse returns value for Ok", () => {
   const result = pipe(
-    Result.ok(5) as Result<string, number>,
+    Result.ok(5),
     Result.getOrElse(0),
   );
   assertStrictEquals(result, 5);
@@ -249,10 +247,26 @@ Deno.test("Result.getOrElse returns value for Ok", () => {
 
 Deno.test("Result.getOrElse returns default for Err", () => {
   const result = pipe(
-    Result.err("error") as Result<string, number>,
+    Result.err("error"),
     Result.getOrElse(0),
   );
   assertStrictEquals(result, 0);
+});
+
+Deno.test("Result.getOrElse widens return type to A | B when default is a different type", () => {
+  const result = pipe(
+    Result.err("error"),
+    Result.getOrElse(null),
+  );
+  assertStrictEquals(result, null);
+});
+
+Deno.test("Result.getOrElse returns Ok value typed as A | B when Ok", () => {
+  const result = pipe(
+    Result.ok(5),
+    Result.getOrElse(null),
+  );
+  assertStrictEquals(result, 5);
 });
 
 // ---------------------------------------------------------------------------
@@ -262,7 +276,7 @@ Deno.test("Result.getOrElse returns default for Err", () => {
 Deno.test("Result.tap executes side effect on Ok and returns original", () => {
   let sideEffect = 0;
   const result = pipe(
-    Result.ok(5) as Result<string, number>,
+    Result.ok(5),
     Result.tap((n: number) => {
       sideEffect = n;
     }),
@@ -274,7 +288,7 @@ Deno.test("Result.tap executes side effect on Ok and returns original", () => {
 Deno.test("Result.tap does not execute side effect on Err", () => {
   let called = false;
   const result = pipe(
-    Result.err("error") as Result<string, number>,
+    Result.err("error"),
     Result.tap((_n: number) => {
       called = true;
     }),
@@ -290,10 +304,10 @@ Deno.test("Result.tap does not execute side effect on Err", () => {
 Deno.test("Result.recover returns original Ok without calling fallback", () => {
   let called = false;
   const result = pipe(
-    Result.ok(5) as Result<string, number>,
+    Result.ok(5),
     Result.recover(() => {
       called = true;
-      return Result.ok(99) as Result<string, number>;
+      return Result.ok(99);
     }),
   );
   assertStrictEquals(called, false);
@@ -302,10 +316,26 @@ Deno.test("Result.recover returns original Ok without calling fallback", () => {
 
 Deno.test("Result.recover provides fallback for Err", () => {
   const result = pipe(
-    Result.err("error") as Result<string, number>,
-    Result.recover(() => Result.ok(99) as Result<string, number>),
+    Result.err("error"),
+    Result.recover(() => Result.ok(99)),
   );
   assertEquals(result, { kind: "Ok", value: 99 });
+});
+
+Deno.test("Result.recover widens to Result<E, A | B> when fallback returns a different type", () => {
+  const result = pipe(
+    Result.err("error"),
+    Result.recover(() => Result.ok("recovered")),
+  );
+  assertEquals(result, { kind: "Ok", value: "recovered" });
+});
+
+Deno.test("Result.recover preserves Ok typed as Result<E, A | B>", () => {
+  const result = pipe(
+    Result.ok(5),
+    Result.recover(() => Result.ok("recovered")),
+  );
+  assertEquals(result, { kind: "Ok", value: 5 });
 });
 
 // ---------------------------------------------------------------------------
@@ -316,10 +346,10 @@ Deno.test(
   "Result.recoverUnless recovers when error does not match blockedErr",
   () => {
     const result = pipe(
-      Result.err("recoverable") as Result<string, number>,
+      Result.err("recoverable"),
       Result.recoverUnless(
         "fatal",
-        () => Result.ok(42) as Result<string, number>,
+        () => Result.ok(42),
       ),
     );
     assertEquals(result, { kind: "Ok", value: 42 });
@@ -330,10 +360,10 @@ Deno.test(
   "Result.recoverUnless does NOT recover when error matches blockedErr",
   () => {
     const result = pipe(
-      Result.err("fatal") as Result<string, number>,
+      Result.err("fatal"),
       Result.recoverUnless(
         "fatal",
-        () => Result.ok(42) as Result<string, number>,
+        () => Result.ok(42),
       ),
     );
     assertEquals(result, { kind: "Error", error: "fatal" });
@@ -342,14 +372,25 @@ Deno.test(
 
 Deno.test("Result.recoverUnless passes through Ok unchanged", () => {
   const result = pipe(
-    Result.ok(10) as Result<string, number>,
+    Result.ok(10),
     Result.recoverUnless(
       "fatal",
-      () => Result.ok(42) as Result<string, number>,
+      () => Result.ok(42),
     ),
   );
   assertEquals(result, { kind: "Ok", value: 10 });
 });
+
+Deno.test(
+  "Result.recoverUnless widens to Result<E, A | B> when fallback returns a different type",
+  () => {
+    const result = pipe(
+      Result.err("recoverable"),
+      Result.recoverUnless("fatal", () => Result.ok("recovered")),
+    );
+    assertEquals(result, { kind: "Ok", value: "recovered" });
+  },
+);
 
 // ---------------------------------------------------------------------------
 // ap
@@ -358,17 +399,17 @@ Deno.test("Result.recoverUnless passes through Ok unchanged", () => {
 Deno.test("Result.ap applies Ok function to Ok value", () => {
   const add = (a: number) => (b: number) => a + b;
   const result = pipe(
-    Result.ok<typeof add>(add),
-    Result.ap(Result.ok(5) as Result<string, number>),
-    Result.ap(Result.ok(3) as Result<string, number>),
+    Result.ok(add),
+    Result.ap(Result.ok(5)),
+    Result.ap(Result.ok(3)),
   );
   assertEquals(result, { kind: "Ok", value: 8 });
 });
 
 Deno.test("Result.ap returns Err when function is Err", () => {
   const result = pipe(
-    Result.err("fn error") as Result<string, (a: number) => number>,
-    Result.ap(Result.ok(5) as Result<string, number>),
+    Result.err("fn error"),
+    Result.ap(Result.ok(5)),
   );
   assertEquals(result, { kind: "Error", error: "fn error" });
 });
@@ -376,15 +417,15 @@ Deno.test("Result.ap returns Err when function is Err", () => {
 Deno.test("Result.ap returns Err when value is Err", () => {
   const result = pipe(
     Result.ok<(n: number) => number>((n) => n * 2),
-    Result.ap(Result.err("val error") as Result<string, number>),
+    Result.ap(Result.err("val error")),
   );
   assertEquals(result, { kind: "Error", error: "val error" });
 });
 
 Deno.test("Result.ap returns first Err when both are Err", () => {
   const result = pipe(
-    Result.err("fn error") as Result<string, (a: number) => number>,
-    Result.ap(Result.err("val error") as Result<string, number>),
+    Result.err("fn error"),
+    Result.ap(Result.err("val error")),
   );
   assertEquals(result, { kind: "Error", error: "fn error" });
 });
@@ -408,22 +449,20 @@ Deno.test("Result.toOption converts Err to None", () => {
 // ---------------------------------------------------------------------------
 
 Deno.test("Result composes well in a pipe chain", () => {
-  const divide = (a: number, b: number): Result<string, number> =>
+  const divide = (a: number, b: number) =>
     b === 0 ? Result.err("Division by zero") : Result.ok(a / b);
 
   const result = pipe(
     divide(10, 2),
     Result.map((n: number) => n * 3),
-    Result.chain((n: number) =>
-      n > 10 ? Result.ok(n) : (Result.err("Too small") as Result<string, number>)
-    ),
+    Result.chain((n: number) => n > 10 ? Result.ok(n) : (Result.err("Too small"))),
     Result.getOrElse(0),
   );
   assertStrictEquals(result, 15);
 });
 
 Deno.test("Result pipe short-circuits on Err", () => {
-  const divide = (a: number, b: number): Result<string, number> =>
+  const divide = (a: number, b: number) =>
     b === 0 ? Result.err("Division by zero") : Result.ok(a / b);
 
   const result = pipe(

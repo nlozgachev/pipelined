@@ -149,11 +149,13 @@ If any step returns `Err`, subsequent steps are skipped and the error propagates
 
 ## Extracting the value
 
-**`getOrElse`** — provide a fallback for the error case:
+**`getOrElse`** — provide a fallback for the error case. The fallback can be a different type,
+widening the result to the union of both:
 
 ```ts
 pipe(Result.ok(5), Result.getOrElse(0)); // 5
 pipe(Result.err("oops"), Result.getOrElse(0)); // 0
+pipe(Result.err<string, number>("oops"), Result.getOrElse(null)); // null — typed as number | null
 ```
 
 **`match`** — handle each case explicitly:
@@ -184,7 +186,8 @@ pipe(
 ## Recovering from errors
 
 `recover` provides a fallback `Result` when the current one is `Err`. Unlike `getOrElse`, the
-fallback is itself a `Result` — useful when the recovery operation might also fail:
+fallback is itself a `Result` — useful when the recovery operation might also fail. The fallback
+can produce a different success type, widening the result to `Result<E, A | B>`:
 
 ```ts
 pipe(

@@ -213,14 +213,16 @@ export namespace RemoteData {
 
   /**
    * Returns the success value or a default value if the RemoteData is not Success.
+   * The default can be a different type, widening the result to `A | B`.
    *
    * @example
    * ```ts
    * pipe(RemoteData.success(5), RemoteData.getOrElse(0)); // 5
    * pipe(RemoteData.loading(), RemoteData.getOrElse(0)); // 0
+   * pipe(RemoteData.loading<string, number>(), RemoteData.getOrElse(null)); // null — typed as number | null
    * ```
    */
-  export const getOrElse = <E, A>(defaultValue: A) => (data: RemoteData<E, A>): A =>
+  export const getOrElse = <E, A, B>(defaultValue: B) => (data: RemoteData<E, A>): A | B =>
     isSuccess(data) ? data.value : defaultValue;
 
   /**
@@ -242,10 +244,11 @@ export namespace RemoteData {
 
   /**
    * Recovers from a Failure state by providing a fallback RemoteData.
+   * The fallback can produce a different success type, widening the result to `RemoteData<E, A | B>`.
    */
   export const recover =
-    <E, A>(fallback: (e: E) => RemoteData<E, A>) => (data: RemoteData<E, A>): RemoteData<E, A> =>
-      isFailure(data) ? fallback(data.error) : data;
+    <E, A, B>(fallback: (e: E) => RemoteData<E, B>) =>
+    (data: RemoteData<E, A>): RemoteData<E, A | B> => isFailure(data) ? fallback(data.error) : data;
 
   /**
    * Converts a RemoteData to an Option.

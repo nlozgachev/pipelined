@@ -380,6 +380,16 @@ Deno.test("These.getFirstOrElse returns default for Second", () => {
   assertStrictEquals(pipe(These.second<string>("warn"), These.getFirstOrElse(0)), 0);
 });
 
+Deno.test("These.getFirstOrElse widens return type to A | C when default is a different type", () => {
+  const result = pipe(These.second("warn"), These.getFirstOrElse(null));
+  assertStrictEquals(result, null);
+});
+
+Deno.test("These.getFirstOrElse returns first value typed as A | C when present", () => {
+  const result = pipe(These.first(5), These.getFirstOrElse(null));
+  assertStrictEquals(result, 5);
+});
+
 Deno.test("These.getSecondOrElse returns second value for Second", () => {
   assertStrictEquals(pipe(These.second("warn"), These.getSecondOrElse("none")), "warn");
 });
@@ -390,6 +400,16 @@ Deno.test("These.getSecondOrElse returns second value for Both", () => {
 
 Deno.test("These.getSecondOrElse returns default for First", () => {
   assertStrictEquals(pipe(These.first<number>(5), These.getSecondOrElse("none")), "none");
+});
+
+Deno.test("These.getSecondOrElse widens return type to B | D when default is a different type", () => {
+  const result = pipe(These.first(5), These.getSecondOrElse(null));
+  assertStrictEquals(result, null);
+});
+
+Deno.test("These.getSecondOrElse returns second value typed as B | D when present", () => {
+  const result = pipe(These.second("warn"), These.getSecondOrElse(null));
+  assertStrictEquals(result, "warn");
 });
 
 // ---------------------------------------------------------------------------

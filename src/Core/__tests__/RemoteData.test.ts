@@ -280,6 +280,22 @@ Deno.test("RemoteData.getOrElse returns default for non-Success", () => {
   assertStrictEquals(pipe(RemoteData.failure<string, number>("e"), RemoteData.getOrElse(0)), 0);
 });
 
+Deno.test("RemoteData.getOrElse widens return type to A | B when default is a different type", () => {
+  const result = pipe(
+    RemoteData.loading(),
+    RemoteData.getOrElse(null),
+  );
+  assertStrictEquals(result, null);
+});
+
+Deno.test("RemoteData.getOrElse returns Success value typed as A | B when Success", () => {
+  const result = pipe(
+    RemoteData.success(5),
+    RemoteData.getOrElse(null),
+  );
+  assertStrictEquals(result, 5);
+});
+
 // ---------------------------------------------------------------------------
 // tap
 // ---------------------------------------------------------------------------
@@ -358,6 +374,25 @@ Deno.test("RemoteData.recover passes through NotAsked", () => {
     RemoteData.recover((_e: string) => RemoteData.success<string, number>(99)),
   );
   assertEquals(result, { kind: "NotAsked" });
+});
+
+Deno.test(
+  "RemoteData.recover widens to RemoteData<E, A | B> when fallback returns a different type",
+  () => {
+    const result = pipe(
+      RemoteData.failure("err"),
+      RemoteData.recover((_e) => RemoteData.success("recovered")),
+    );
+    assertEquals(result, { kind: "Success", value: "recovered" });
+  },
+);
+
+Deno.test("RemoteData.recover preserves Success typed as RemoteData<E, A | B>", () => {
+  const result = pipe(
+    RemoteData.success(5),
+    RemoteData.recover((_e) => RemoteData.success("recovered")),
+  );
+  assertEquals(result, { kind: "Success", value: 5 });
 });
 
 // ---------------------------------------------------------------------------

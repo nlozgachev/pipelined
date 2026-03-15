@@ -306,6 +306,22 @@ Deno.test("Validation.getOrElse returns default for Invalid", () => {
   assertStrictEquals(result, 0);
 });
 
+Deno.test("Validation.getOrElse widens return type to A | B when default is a different type", () => {
+  const result = pipe(
+    Validation.invalid("error"),
+    Validation.getOrElse(null),
+  );
+  assertStrictEquals(result, null);
+});
+
+Deno.test("Validation.getOrElse returns Valid value typed as A | B when Valid", () => {
+  const result = pipe(
+    Validation.valid(5),
+    Validation.getOrElse(null),
+  );
+  assertStrictEquals(result, 5);
+});
+
 // ---------------------------------------------------------------------------
 // tap
 // ---------------------------------------------------------------------------
@@ -373,6 +389,25 @@ Deno.test("Validation.recover can return Invalid as fallback", () => {
   assertEquals(result, { kind: "Invalid", errors: ["second"] });
 });
 
+Deno.test(
+  "Validation.recover widens to Validation<E, A | B> when fallback returns a different type",
+  () => {
+    const result = pipe(
+      Validation.invalid("error"),
+      Validation.recover(() => Validation.valid("recovered")),
+    );
+    assertEquals(result, { kind: "Valid", value: "recovered" });
+  },
+);
+
+Deno.test("Validation.recover preserves Valid typed as Validation<E, A | B>", () => {
+  const result = pipe(
+    Validation.valid(5),
+    Validation.recover(() => Validation.valid("recovered")),
+  );
+  assertEquals(result, { kind: "Valid", value: 5 });
+});
+
 // ---------------------------------------------------------------------------
 // recoverUnless
 // ---------------------------------------------------------------------------
@@ -415,6 +450,17 @@ Deno.test(
       Validation.recoverUnless(["fatal"], () => Validation.valid<string, number>(42)),
     );
     assertEquals(result, { kind: "Invalid", errors: ["minor", "fatal"] });
+  },
+);
+
+Deno.test(
+  "Validation.recoverUnless widens to Validation<E, A | B> when fallback returns a different type",
+  () => {
+    const result = pipe(
+      Validation.invalid("recoverable"),
+      Validation.recoverUnless(["fatal"], () => Validation.valid("recovered")),
+    );
+    assertEquals(result, { kind: "Valid", value: "recovered" });
   },
 );
 

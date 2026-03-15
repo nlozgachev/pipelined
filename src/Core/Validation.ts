@@ -186,14 +186,16 @@ export namespace Validation {
 
   /**
    * Returns the success value or a default value if the Validation is invalid.
+   * The default can be a different type, widening the result to `A | B`.
    *
    * @example
    * ```ts
    * pipe(Validation.valid(5), Validation.getOrElse(0)); // 5
    * pipe(Validation.invalid("oops"), Validation.getOrElse(0)); // 0
+   * pipe(Validation.invalid("oops"), Validation.getOrElse(null)); // null — typed as number | null
    * ```
    */
-  export const getOrElse = <E, A>(defaultValue: A) => (data: Validation<E, A>): A =>
+  export const getOrElse = <E, A, B>(defaultValue: B) => (data: Validation<E, A>): A | B =>
     isValid(data) ? data.value : defaultValue;
 
   /**
@@ -215,17 +217,19 @@ export namespace Validation {
 
   /**
    * Recovers from an Invalid state by providing a fallback Validation.
+   * The fallback can produce a different success type, widening the result to `Validation<E, A | B>`.
    */
   export const recover =
-    <E, A>(fallback: () => Validation<E, A>) => (data: Validation<E, A>): Validation<E, A> =>
+    <E, A, B>(fallback: () => Validation<E, B>) => (data: Validation<E, A>): Validation<E, A | B> =>
       isValid(data) ? data : fallback();
 
   /**
    * Recovers from an Invalid state unless the errors contain any of the blocked errors.
+   * The fallback can produce a different success type, widening the result to `Validation<E, A | B>`.
    */
   export const recoverUnless =
-    <E, A>(blockedErrors: readonly E[], fallback: () => Validation<E, A>) =>
-    (data: Validation<E, A>): Validation<E, A> =>
+    <E, A, B>(blockedErrors: readonly E[], fallback: () => Validation<E, B>) =>
+    (data: Validation<E, A>): Validation<E, A | B> =>
       isInvalid(data) &&
         !data.errors.some((err: E) => blockedErrors.includes(err))
         ? fallback()

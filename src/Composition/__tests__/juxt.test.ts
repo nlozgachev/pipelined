@@ -35,8 +35,14 @@ Deno.test("juxt - applies input to four functions", () => {
 Deno.test("juxt - each function receives the same input value", () => {
   const inputs: number[] = [];
   const track = juxt([
-    (n: number) => { inputs.push(n); return n + 1; },
-    (n: number) => { inputs.push(n); return n + 2; },
+    (n: number) => {
+      inputs.push(n);
+      return n + 1;
+    },
+    (n: number) => {
+      inputs.push(n);
+      return n + 2;
+    },
   ]);
 
   track(10);

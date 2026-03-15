@@ -173,15 +173,17 @@ export namespace Option {
       isSome(data) ? cases.some(data.value) : cases.none();
 
   /**
-   * Returns the value inside a Option, or a default value if None.
+   * Returns the value inside an Option, or a default value if None.
+   * The default can be a different type, widening the result to `A | B`.
    *
    * @example
    * ```ts
    * pipe(Option.some(5), Option.getOrElse(0)); // 5
    * pipe(Option.none(), Option.getOrElse(0)); // 0
+   * pipe(Option.none<string>(), Option.getOrElse(null)); // null — typed as string | null
    * ```
    */
-  export const getOrElse = <A>(defaultValue: A) => (data: Option<A>): A =>
+  export const getOrElse = <A, B>(defaultValue: B) => (data: Option<A>): A | B =>
     isSome(data) ? data.value : defaultValue;
 
   /**
@@ -217,8 +219,9 @@ export namespace Option {
 
   /**
    * Recovers from a None by providing a fallback Option.
+   * The fallback can produce a different type, widening the result to `Option<A | B>`.
    */
-  export const recover = <A>(fallback: () => Option<A>) => (data: Option<A>): Option<A> =>
+  export const recover = <A, B>(fallback: () => Option<B>) => (data: Option<A>): Option<A | B> =>
     isSome(data) ? data : fallback();
 
   /**

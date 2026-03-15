@@ -142,14 +142,16 @@ export namespace Result {
 
   /**
    * Returns the success value or a default value if the Result is an error.
+   * The default can be a different type, widening the result to `A | B`.
    *
    * @example
    * ```ts
    * pipe(Result.ok(5), Result.getOrElse(0)); // 5
    * pipe(Result.err("error"), Result.getOrElse(0)); // 0
+   * pipe(Result.err("error"), Result.getOrElse(null)); // null — typed as number | null
    * ```
    */
-  export const getOrElse = <E, A>(defaultValue: A) => (data: Result<E, A>): A =>
+  export const getOrElse = <E, A, B>(defaultValue: B) => (data: Result<E, A>): A | B =>
     isOk(data) ? data.value : defaultValue;
 
   /**
@@ -172,16 +174,19 @@ export namespace Result {
 
   /**
    * Recovers from an error by providing a fallback Result.
+   * The fallback can produce a different success type, widening the result to `Result<E, A | B>`.
    */
   export const recover =
-    <E, A>(fallback: () => Result<E, A>) => (data: Result<E, A>): Result<E, A> =>
+    <E, A, B>(fallback: () => Result<E, B>) => (data: Result<E, A>): Result<E, A | B> =>
       isOk(data) ? data : fallback();
 
   /**
    * Recovers from an error unless it matches the blocked error.
+   * The fallback can produce a different success type, widening the result to `Result<E, A | B>`.
    */
   export const recoverUnless =
-    <E, A>(blockedErr: E, fallback: () => Result<E, A>) => (data: Result<E, A>): Result<E, A> =>
+    <E, A, B>(blockedErr: E, fallback: () => Result<E, B>) =>
+    (data: Result<E, A>): Result<E, A | B> =>
       isErr(data) && data.error !== blockedErr ? fallback() : data;
 
   /**

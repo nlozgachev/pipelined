@@ -132,20 +132,24 @@ pipe(
 );
 ```
 
-**`getFirstOrElse`** — returns the first value from `First` or `Both`, or a fallback for `Second`:
+**`getFirstOrElse`** — returns the first value from `First` or `Both`, or a fallback for `Second`.
+The fallback can be a different type, widening the result to `A | C`:
 
 ```ts
 pipe(These.first(5), These.getFirstOrElse(0));            // 5
 pipe(These.both(5, "warn"), These.getFirstOrElse(0));     // 5
 pipe(These.second("warn"), These.getFirstOrElse(0));      // 0
+pipe(These.second("warn"), These.getFirstOrElse(null));   // null — typed as number | null
 ```
 
-**`getSecondOrElse`** — symmetric: returns the second value or a fallback for `First`:
+**`getSecondOrElse`** — symmetric: returns the second value or a fallback for `First`. The fallback
+can be a different type, widening the result to `B | D`:
 
 ```ts
 pipe(These.second("warn"), These.getSecondOrElse("none")); // "warn"
 pipe(These.both(5, "warn"), These.getSecondOrElse("none")); // "warn"
 pipe(These.first(5), These.getSecondOrElse("none"));       // "none"
+pipe(These.first(5), These.getSecondOrElse(null));         // null — typed as string | null
 ```
 
 ## Type guards

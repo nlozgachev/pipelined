@@ -9,7 +9,5 @@
  * ["banana", "fig", "apple"].sort(byLength); // ["fig", "apple", "banana"]
  * ```
  */
-export const on =
-  <A, B, C>(f: (b1: B, b2: B) => C, g: (a: A) => B) =>
-  (a: A, b: A): C =>
-    f(g(a), g(b));
+export const on = <A, B, C>(f: (b1: B, b2: B) => C, g: (a: A) => B) => (a: A, b: A): C =>
+  f(g(a), g(b));

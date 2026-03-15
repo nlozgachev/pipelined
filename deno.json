@@ -1,6 +1,6 @@
 {
   "name": "@nlozgachev/pipelined",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "exports": {
     "./composition": "./src/Composition/index.ts",
     "./core": "./src/Core/index.ts",

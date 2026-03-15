@@ -122,9 +122,10 @@ export namespace TaskOption {
 
   /**
    * Returns the value or a default if the TaskOption resolves to None.
+   * The default can be a different type, widening the result to `Task<A | B>`.
    */
-  export const getOrElse = <A>(defaultValue: A) => (data: TaskOption<A>): Task<A> =>
-    Task.map(Option.getOrElse(defaultValue))(data);
+  export const getOrElse = <A, B>(defaultValue: B) => (data: TaskOption<A>): Task<A | B> =>
+    Task.map(Option.getOrElse<A, B>(defaultValue))(data);
 
   /**
    * Executes a side effect on the value without changing the TaskOption.

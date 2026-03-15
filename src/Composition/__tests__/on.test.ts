@@ -42,7 +42,10 @@ Deno.test("on - projection is applied to both arguments independently", () => {
   const seen: string[] = [];
   const track = on(
     (a: number, b: number) => a - b,
-    (s: string) => { seen.push(s); return s.length; },
+    (s: string) => {
+      seen.push(s);
+      return s.length;
+    },
   );
 
   track("hi", "hello");

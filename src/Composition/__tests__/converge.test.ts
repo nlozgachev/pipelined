@@ -16,8 +16,14 @@ Deno.test("converge - both transformers receive the same input value", () => {
   const track = converge(
     (a: number, b: number) => a + b,
     [
-      (n: number) => { inputs.push(n); return n * 2; },
-      (n: number) => { inputs.push(n); return n * 3; },
+      (n: number) => {
+        inputs.push(n);
+        return n * 2;
+      },
+      (n: number) => {
+        inputs.push(n);
+        return n * 3;
+      },
     ],
   );
 

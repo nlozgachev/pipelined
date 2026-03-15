@@ -89,18 +89,21 @@ export namespace TaskResult {
 
   /**
    * Recovers from an error by providing a fallback TaskResult.
+   * The fallback can produce a different success type, widening the result to `TaskResult<E, A | B>`.
    */
   export const recover =
-    <E, A>(fallback: (e: E) => TaskResult<E, A>) => (data: TaskResult<E, A>): TaskResult<E, A> =>
+    <E, A, B>(fallback: (e: E) => TaskResult<E, B>) =>
+    (data: TaskResult<E, A>): TaskResult<E, A | B> =>
       Task.chain((result: Result<E, A>) =>
-        Result.isErr(result) ? fallback(result.error) : Task.resolve(result)
+        Result.isErr(result) ? fallback(result.error) : Task.resolve(result as Result<E, A | B>)
       )(data);
 
   /**
    * Returns the success value or a default value if the TaskResult is an error.
+   * The default can be a different type, widening the result to `Task<A | B>`.
    */
-  export const getOrElse = <E, A>(defaultValue: A) => (data: TaskResult<E, A>): Task<A> =>
-    Task.map(Result.getOrElse<E, A>(defaultValue))(data);
+  export const getOrElse = <E, A, B>(defaultValue: B) => (data: TaskResult<E, A>): Task<A | B> =>
+    Task.map(Result.getOrElse<E, A, B>(defaultValue))(data);
 
   /**
    * Executes a side effect on the success value without changing the TaskResult.

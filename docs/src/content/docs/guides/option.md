@@ -131,11 +131,13 @@ This is useful for narrowing values within a pipeline without breaking out of th
 
 At the edge of your pipeline, you need to get a plain value back. There are a few ways:
 
-**`getOrElse`** — provide a fallback value:
+**`getOrElse`** — provide a fallback value. The fallback can be a different type, which widens the
+result to the union of both:
 
 ```ts
 pipe(Option.some(5), Option.getOrElse(0)); // 5
 pipe(Option.none(), Option.getOrElse(0)); // 0
+pipe(Option.none<string>(), Option.getOrElse(null)); // null — typed as string | null
 ```
 
 **`match`** — handle each case explicitly, producing a value from either branch:
@@ -173,7 +175,8 @@ const value: string | null = pipe(opt, Option.toNullable);
 ## Recovering from None
 
 `recover` provides a fallback `Option` when the current one is `None`. Unlike `getOrElse`, the
-fallback is itself an `Option` — useful when the fallback operation might also fail:
+fallback is itself an `Option` — useful when the fallback operation might also fail. The fallback
+can produce a different type, widening the result to `Option<A | B>`:
 
 ```ts
 pipe(

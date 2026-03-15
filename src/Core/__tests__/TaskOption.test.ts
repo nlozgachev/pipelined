@@ -258,6 +258,16 @@ Deno.test("TaskOption.getOrElse returns default for None", async () => {
   );
 });
 
+Deno.test("TaskOption.getOrElse widens return type to A | B when default is a different type", async () => {
+  const result = await pipe(TaskOption.none(), TaskOption.getOrElse(null))();
+  assertStrictEquals(result, null);
+});
+
+Deno.test("TaskOption.getOrElse returns Some value typed as A | B when Some", async () => {
+  const result = await pipe(TaskOption.some(5), TaskOption.getOrElse(null))();
+  assertStrictEquals(result, 5);
+});
+
 // ---------------------------------------------------------------------------
 // tap
 // ---------------------------------------------------------------------------

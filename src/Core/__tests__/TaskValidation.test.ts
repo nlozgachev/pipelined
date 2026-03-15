@@ -204,7 +204,7 @@ Deno.test("TaskValidation.ap collects errors from both sides simultaneously", as
 Deno.test("TaskValidation.fold calls onValid for Valid", async () => {
   assertStrictEquals(
     await pipe(
-      TaskValidation.valid<string, number>(5),
+      TaskValidation.valid(5),
       TaskValidation.fold((errs) => `invalid:${errs}`, (n: number) => `valid:${n}`),
     )(),
     "valid:5",
@@ -269,6 +269,25 @@ Deno.test("TaskValidation.getOrElse returns default for Invalid", async () => {
   );
 });
 
+Deno.test(
+  "TaskValidation.getOrElse widens return type to A | B when default is a different type",
+  async () => {
+    const result = await pipe(
+      TaskValidation.invalid("e"),
+      TaskValidation.getOrElse(null),
+    )();
+    assertStrictEquals(result, null);
+  },
+);
+
+Deno.test("TaskValidation.getOrElse returns Valid value typed as A | B when Valid", async () => {
+  const result = await pipe(
+    TaskValidation.valid(5),
+    TaskValidation.getOrElse(null),
+  )();
+  assertStrictEquals(result, 5);
+});
+
 // ---------------------------------------------------------------------------
 // tap
 // ---------------------------------------------------------------------------
@@ -319,6 +338,25 @@ Deno.test("TaskValidation.recover provides fallback for Invalid", async () => {
     TaskValidation.recover(() => TaskValidation.valid<string, number>(99)),
   )();
   assertEquals(result, { kind: "Valid", value: 99 });
+});
+
+Deno.test(
+  "TaskValidation.recover widens to TaskValidation<E, A | B> when fallback returns a different type",
+  async () => {
+    const result = await pipe(
+      TaskValidation.invalid("err"),
+      TaskValidation.recover(() => TaskValidation.valid("recovered")),
+    )();
+    assertEquals(result, { kind: "Valid", value: "recovered" });
+  },
+);
+
+Deno.test("TaskValidation.recover preserves Valid typed as TaskValidation<E, A | B>", async () => {
+  const result = await pipe(
+    TaskValidation.valid(5),
+    TaskValidation.recover(() => TaskValidation.valid("recovered")),
+  )();
+  assertEquals(result, { kind: "Valid", value: 5 });
 });
 
 // ---------------------------------------------------------------------------

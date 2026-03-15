@@ -153,7 +153,8 @@ propagates.
 ## Recovering from failures
 
 `recover` provides a fallback `RemoteData` when the current state is `Failure`. Unlike
-`Result.recover`, it receives the error value so you can use it in the recovery logic:
+`Result.recover`, it receives the error value so you can use it in the recovery logic. The fallback
+can produce a different success type, widening the result to `RemoteData<E, A | B>`:
 
 ```ts
 pipe(
@@ -167,12 +168,14 @@ pipe(
 
 ## Extracting the value
 
-**`getOrElse`** — returns the success value or a default for any other state:
+**`getOrElse`** — returns the success value or a default for any other state. The default can be a
+different type, widening the result to the union of both:
 
 ```ts
 pipe(RemoteData.success(5), RemoteData.getOrElse(0)); // 5
 pipe(RemoteData.loading(), RemoteData.getOrElse(0)); // 0
 pipe(RemoteData.failure("!"), RemoteData.getOrElse(0)); // 0
+pipe(RemoteData.loading<string, number>(), RemoteData.getOrElse(null)); // null — typed as number | null
 ```
 
 ## Converting to other types

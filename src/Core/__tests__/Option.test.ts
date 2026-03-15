@@ -197,7 +197,7 @@ Deno.test("Option.map transforms the value inside Some", () => {
 
 Deno.test("Option.map passes through None unchanged", () => {
   const result = pipe(
-    Option.none() as Option<number>,
+    Option.none(),
     Option.map((n: number) => n * 2),
   );
   assertEquals(result, { kind: "None" });
@@ -216,7 +216,7 @@ Deno.test("Option.map can change the type", () => {
 // ---------------------------------------------------------------------------
 
 Deno.test("Option.chain applies function when Some", () => {
-  const parseNumber = (s: string): Option<number> => {
+  const parseNumber = (s: string) => {
     const n = parseInt(s, 10);
     return isNaN(n) ? Option.none() : Option.some(n);
   };
@@ -225,7 +225,7 @@ Deno.test("Option.chain applies function when Some", () => {
 });
 
 Deno.test("Option.chain returns None when function returns None", () => {
-  const parseNumber = (s: string): Option<number> => {
+  const parseNumber = (s: string) => {
     const n = parseInt(s, 10);
     return isNaN(n) ? Option.none() : Option.some(n);
   };
@@ -236,7 +236,7 @@ Deno.test("Option.chain returns None when function returns None", () => {
 Deno.test("Option.chain propagates None without calling function", () => {
   let called = false;
   pipe(
-    Option.none() as Option<string>,
+    Option.none(),
     Option.chain((_s: string) => {
       called = true;
       return Option.some(1);
@@ -262,7 +262,7 @@ Deno.test("Option.fold calls onSome for Some", () => {
 
 Deno.test("Option.fold calls onNone for None", () => {
   const result = pipe(
-    Option.none() as Option<number>,
+    Option.none(),
     Option.fold(
       () => "none",
       (n: number) => `value: ${n}`,
@@ -288,7 +288,7 @@ Deno.test("Option.match calls some handler for Some", () => {
 
 Deno.test("Option.match calls none handler for None", () => {
   const result = pipe(
-    Option.none() as Option<number>,
+    Option.none(),
     Option.match({
       some: (n: number) => `got ${n}`,
       none: () => "nothing",
@@ -298,7 +298,7 @@ Deno.test("Option.match calls none handler for None", () => {
 });
 
 Deno.test("Option.match is data-last (returns a function first)", () => {
-  const handler = Option.match<number, string>({
+  const handler = Option.match({
     some: (n) => `val: ${n}`,
     none: () => "empty",
   });
@@ -316,8 +316,18 @@ Deno.test("Option.getOrElse returns value for Some", () => {
 });
 
 Deno.test("Option.getOrElse returns default for None", () => {
-  const result = pipe(Option.none() as Option<number>, Option.getOrElse(0));
+  const result = pipe(Option.none(), Option.getOrElse(0));
   assertStrictEquals(result, 0);
+});
+
+Deno.test("Option.getOrElse widens return type to A | B when default is a different type", () => {
+  const result = pipe(Option.none(), Option.getOrElse(null));
+  assertStrictEquals(result, null);
+});
+
+Deno.test("Option.getOrElse returns Some value typed as A | B when Some", () => {
+  const result = pipe(Option.some("hello"), Option.getOrElse(null));
+  assertStrictEquals(result, "hello");
 });
 
 // ---------------------------------------------------------------------------
@@ -342,7 +352,7 @@ Deno.test(
 Deno.test("Option.tap does not execute side effect on None", () => {
   let called = false;
   const result = pipe(
-    Option.none() as Option<number>,
+    Option.none(),
     Option.tap((_n: number) => {
       called = true;
     }),
@@ -373,7 +383,7 @@ Deno.test("Option.filter returns None when predicate is false", () => {
 
 Deno.test("Option.filter returns None when input is None", () => {
   const result = pipe(
-    Option.none() as Option<number>,
+    Option.none(),
     Option.filter((n: number) => n > 3),
   );
   assertEquals(result, { kind: "None" });
@@ -401,7 +411,7 @@ Deno.test(
 
 Deno.test("Option.recover provides fallback for None", () => {
   const result = pipe(
-    Option.none() as Option<number>,
+    Option.none(),
     Option.recover(() => Option.some(99)),
   );
   assertEquals(result, { kind: "Some", value: 99 });
@@ -409,10 +419,26 @@ Deno.test("Option.recover provides fallback for None", () => {
 
 Deno.test("Option.recover can return None as fallback", () => {
   const result = pipe(
-    Option.none() as Option<number>,
+    Option.none(),
     Option.recover(() => Option.none()),
   );
   assertEquals(result, { kind: "None" });
+});
+
+Deno.test("Option.recover widens to Option<A | B> when fallback returns a different type", () => {
+  const result = pipe(
+    Option.none(),
+    Option.recover(() => Option.some("fallback")),
+  );
+  assertEquals(result, { kind: "Some", value: "fallback" });
+});
+
+Deno.test("Option.recover preserves Some typed as Option<A | B>", () => {
+  const result = pipe(
+    Option.some(42),
+    Option.recover(() => Option.some("fallback")),
+  );
+  assertEquals(result, { kind: "Some", value: 42 });
 });
 
 // ---------------------------------------------------------------------------
@@ -431,7 +457,7 @@ Deno.test("Option.ap applies Some function to Some value", () => {
 
 Deno.test("Option.ap returns None when function is None", () => {
   const result = pipe(
-    Option.none() as Option<(a: number) => number>,
+    Option.none(),
     Option.ap(Option.some(5)),
   );
   assertEquals(result, { kind: "None" });
@@ -440,15 +466,15 @@ Deno.test("Option.ap returns None when function is None", () => {
 Deno.test("Option.ap returns None when value is None", () => {
   const result = pipe(
     Option.some((n: number) => n * 2),
-    Option.ap(Option.none() as Option<number>),
+    Option.ap(Option.none()),
   );
   assertEquals(result, { kind: "None" });
 });
 
 Deno.test("Option.ap returns None when both are None", () => {
   const result = pipe(
-    Option.none() as Option<(a: number) => number>,
-    Option.ap(Option.none() as Option<number>),
+    Option.none(),
+    Option.ap(Option.none()),
   );
   assertEquals(result, { kind: "None" });
 });
