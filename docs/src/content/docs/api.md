@@ -7,7 +7,7 @@ The library is split into three entry points. Each is independently importable.
 
 ## Core
 
-import from `pipelined/core`
+import from `@nlozgachev/pipelined/core`
 
 | Type                                                    | Description                                                                        |
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -25,7 +25,7 @@ import from `pipelined/core`
 
 ## Types
 
-import from `pipelined/types`
+import from `@nlozgachev/pipelined/types`
 
 | Type                                                 | Description                                                                  |
 | ---------------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -34,7 +34,7 @@ import from `pipelined/types`
 
 ## Composition
 
-import from `pipelined/composition`
+import from `@nlozgachev/pipelined/composition`
 
 | Function                                        | Description                                                                  |
 | ----------------------------------------------- | ---------------------------------------------------------------------------- |

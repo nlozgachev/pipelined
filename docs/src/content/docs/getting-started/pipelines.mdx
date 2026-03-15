@@ -30,7 +30,7 @@ Fine for method chains on strings and arrays, but method chaining only works whe
 `pipe` takes a starting value and any number of functions. Each function receives the output of the previous one:
 
 ```ts
-import { pipe } from "pipelined/composition";
+import { pipe } from "@nlozgachev/pipelined/composition";
 
 const slug = pipe(
   raw,
@@ -49,8 +49,8 @@ TypeScript infers the type at each step from the return type of the previous fun
 Any function that takes one argument and returns a value can be a step. That includes inline lambdas, named functions defined elsewhere, or partially-applied library functions:
 
 ```ts
-import { pipe } from "pipelined/composition";
-import { Option } from "pipelined/core";
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Option } from "@nlozgachev/pipelined/core";
 
 const displayName = pipe(
   users.get(userId),              // User | undefined
@@ -67,7 +67,7 @@ const displayName = pipe(
 `pipe` applies its steps to a value immediately. `flow` does the same thing but defers execution — it returns a function instead of a result:
 
 ```ts
-import { flow } from "pipelined/composition";
+import { flow } from "@nlozgachev/pipelined/composition";
 
 const toSlug = flow(
   (s: string) => s.trim(),
@@ -125,7 +125,7 @@ users.map(formatUser); // works — no wrapper needed
 `tap` runs a function for its side effect and passes the original value through unchanged. It's the standard way to inspect a value mid-pipeline without breaking the chain:
 
 ```ts
-import { pipe, tap } from "pipelined/composition";
+import { pipe, tap } from "@nlozgachev/pipelined/composition";
 
 const result = pipe(
   input,

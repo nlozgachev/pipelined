@@ -32,7 +32,7 @@ await build({
     target: "ES2022",
   },
   package: {
-    name: "pipelined",
+    name: "@nlozgachev/pipelined",
     version: denoJson.version,
     homepage: "https://pipelined.lozgachev.dev",
     description: "Simple functional programming toolkit for TypeScript",

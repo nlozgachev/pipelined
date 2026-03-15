@@ -23,7 +23,7 @@ export default defineConfig({
         {
           icon: "npm",
           label: "npm",
-          href: "https://www.npmjs.com/package/pipelined",
+          href: "https://www.npmjs.com/package/@nlozgachev/pipelined",
         },
       ],
       plugins: [

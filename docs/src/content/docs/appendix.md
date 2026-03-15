@@ -155,7 +155,7 @@ export namespace Option {
 A single import gives you both:
 
 ```ts
-import { Option } from "pipelined/core";
+import { Option } from "@nlozgachev/pipelined/core";
 
 const x: Option<number> = Option.some(42); // type and constructor from the same import
 ```

@@ -27,7 +27,7 @@ In these cases, discarding either piece loses information. `Both` holds them tog
 ## Creating These values
 
 ```ts
-import { These } from "pipelined/core";
+import { These } from "@nlozgachev/pipelined/core";
 
 These.first(42);            // First — only a first value
 These.second("bad input");  // Second — only a second value
@@ -37,7 +37,7 @@ These.both(42, "trimmed");  // Both — first and second simultaneously
 A typical use: a parser that's lenient but records what it fixed:
 
 ```ts
-import { pipe } from "pipelined/composition";
+import { pipe } from "@nlozgachev/pipelined/composition";
 
 const parseNumber = (s: string): These<number, string> => {
   const trimmed = s.trim();

@@ -32,8 +32,8 @@ no-ops when the path finds nothing — no conditional required.
 ## The Optional approach
 
 ```ts
-import { Optional } from "pipelined/core";
-import { pipe } from "pipelined/composition";
+import { Optional } from "@nlozgachev/pipelined/core";
+import { pipe } from "@nlozgachev/pipelined/composition";
 
 type User = { name: string; address?: { city: string; zip: string } };
 

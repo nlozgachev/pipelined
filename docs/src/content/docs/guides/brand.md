@@ -33,7 +33,7 @@ overhead. The underlying value is still a plain `string`, but TypeScript now tre
 `CustomerId` as distinct:
 
 ```ts
-import { Brand } from "pipelined/types";
+import { Brand } from "@nlozgachev/pipelined/types";
 
 type UserId     = Brand<"UserId",     string>;
 type CustomerId = Brand<"CustomerId", string>;

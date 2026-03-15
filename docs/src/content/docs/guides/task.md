@@ -43,8 +43,8 @@ you call it. And by treating Tasks as always-succeeding computations, failure is
 type: `TaskResult<E, A>` is `Task<Result<E, A>>`, so it's impossible to overlook.
 
 ```ts
-import { Task } from "pipelined/core";
-import { pipe } from "pipelined/composition";
+import { Task } from "@nlozgachev/pipelined/core";
+import { pipe } from "@nlozgachev/pipelined/composition";
 
 const getTimestamp: Task<number> = Task.resolve(Date.now());
 
@@ -170,7 +170,7 @@ variants:
 `Task<Result<E, A>>` under the hood:
 
 ```ts
-import { TaskResult } from "pipelined/core";
+import { TaskResult } from "@nlozgachev/pipelined/core";
 
 const fetchUser = (id: string): TaskResult<string, User> =>
   TaskResult.tryCatch(
@@ -190,7 +190,7 @@ await name(); // "Alice" or "Unknown"
 **`TaskOption<A>`** — an async operation that may return nothing. It's `Task<Option<A>>`:
 
 ```ts
-import { TaskOption } from "pipelined/core";
+import { TaskOption } from "@nlozgachev/pipelined/core";
 
 const findUser = (id: string): TaskOption<User> =>
   TaskOption.tryCatch(() => db.users.findById(id));
@@ -238,7 +238,7 @@ When you need an explicit `Promise<A>` — for example, to pass to a third-party
 one — convert the `Deferred` with `Deferred.toPromise`:
 
 ```ts
-import { Deferred, Task } from "pipelined/core";
+import { Deferred, Task } from "@nlozgachev/pipelined/core";
 
 const p: Promise<number> = Deferred.toPromise(task());
 ```

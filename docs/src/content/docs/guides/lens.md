@@ -89,8 +89,8 @@ a value at that path (`get`) and how to produce an updated copy with a new value
 (`set`). You define the path once; the spread chain is generated for you:
 
 ```ts
-import { Lens } from "pipelined/core";
-import { pipe } from "pipelined/composition";
+import { Lens } from "@nlozgachev/pipelined/core";
+import { pipe } from "@nlozgachev/pipelined/composition";
 
 const cityLens = pipe(
   Lens.prop<User>()("address"),
@@ -169,7 +169,7 @@ same idea, but the path might not reach anything.
 You can cross over with `Lens.andThenOptional`:
 
 ```ts
-import { Optional } from "pipelined/core";
+import { Optional } from "@nlozgachev/pipelined/core";
 
 const userBioOpt = pipe(
   Lens.prop<User>()("profile"),

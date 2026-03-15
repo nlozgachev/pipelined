@@ -8,11 +8,11 @@ import { Tabs, TabItem } from "@astrojs/starlight/components";
 ## Package managers
 
 <Tabs>
-  <TabItem label="npm">```sh npm add pipelined ```</TabItem>
-  <TabItem label="pnpm">```sh pnpm add pipelined ```</TabItem>
-  <TabItem label="yarn">```sh yarn add pipelined ```</TabItem>
-  <TabItem label="bun">```sh bun add pipelined ```</TabItem>
-  <TabItem label="Deno">```sh deno add npm:pipelined ```</TabItem>
+  <TabItem label="npm">```sh npm add @nlozgachev/pipelined ```</TabItem>
+  <TabItem label="pnpm">```sh pnpm add @nlozgachev/pipelined ```</TabItem>
+  <TabItem label="yarn">```sh yarn add @nlozgachev/pipelined ```</TabItem>
+  <TabItem label="bun">```sh bun add @nlozgachev/pipelined ```</TabItem>
+  <TabItem label="Deno">```sh deno add npm:@nlozgachev/pipelined ```</TabItem>
 </Tabs>
 
 ## Imports
@@ -20,16 +20,16 @@ import { Tabs, TabItem } from "@astrojs/starlight/components";
 The library is split into three entry points. Import only what you need:
 
 ```ts
-import { Option, Result, Task } from "pipelined/core";
-import { pipe, flow } from "pipelined/composition";
-import { Brand } from "pipelined/types";
+import { Option, Result, Task } from "@nlozgachev/pipelined/core";
+import { pipe, flow } from "@nlozgachev/pipelined/composition";
+import { Brand } from "@nlozgachev/pipelined/types";
 ```
 
 | Entry point             | Contains                                                                                                                                                  |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pipelined/core`        | `Option`, `Result`, `Validation`, `Task`, `TaskResult`, `TaskOption`, `TaskValidation`, `These`, `RemoteData`, `Lens`, `Optional`, `Reader`, `Arr`, `Rec` |
-| `pipelined/composition` | `pipe`, `flow`, `compose`, `curry`, `tap`, `memoize`, and other function utilities                                                                        |
-| `pipelined/types`       | `Brand`, `NonEmptyList`                                                                                                                                   |
+| `@nlozgachev/pipelined/core`        | `Option`, `Result`, `Validation`, `Task`, `TaskResult`, `TaskOption`, `TaskValidation`, `These`, `RemoteData`, `Lens`, `Optional`, `Reader`, `Arr`, `Rec` |
+| `@nlozgachev/pipelined/composition` | `pipe`, `flow`, `compose`, `curry`, `tap`, `memoize`, and other function utilities                                                                        |
+| `@nlozgachev/pipelined/types`       | `Brand`, `NonEmptyList`                                                                                                                                   |
 
 ## Requirements
 

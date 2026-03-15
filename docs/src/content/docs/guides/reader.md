@@ -39,8 +39,8 @@ than accepting the dependency as an argument. The pipeline is built first, and t
 through automatically when it is supplied once at the end:
 
 ```ts
-import { Reader } from "pipelined/core";
-import { pipe } from "pipelined/composition";
+import { Reader } from "@nlozgachev/pipelined/core";
+import { pipe } from "@nlozgachev/pipelined/composition";
 
 type ApiConfig = { baseUrl: string; apiKey: string };
 

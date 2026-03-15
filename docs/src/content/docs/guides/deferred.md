@@ -39,7 +39,7 @@ excluded by construction. The type says exactly what is true: this will resolve,
 wraps it into a `Deferred`:
 
 ```ts
-import { Deferred } from "pipelined/core";
+import { Deferred } from "@nlozgachev/pipelined/core";
 
 const d: Deferred<number> = Deferred.fromPromise(Promise.resolve(42));
 ```

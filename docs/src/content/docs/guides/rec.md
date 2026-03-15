@@ -12,8 +12,8 @@ them in pipelines: data-last, curried, and returning `Option` wherever a key mig
 `Rec.lookup` retrieves a value by key and returns `Option` to make the absence explicit:
 
 ```ts
-import { Option, Rec } from "pipelined/core";
-import { pipe } from "pipelined/composition";
+import { Option, Rec } from "@nlozgachev/pipelined/core";
+import { pipe } from "@nlozgachev/pipelined/composition";
 
 const settings = { theme: "dark", lang: "en" };
 
