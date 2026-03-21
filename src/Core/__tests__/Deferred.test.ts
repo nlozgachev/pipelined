@@ -57,3 +57,14 @@ Deno.test("Deferred.toPromise roundtrips with fromPromise", async () => {
   const result = await Deferred.toPromise(Deferred.fromPromise(original));
   assertStrictEquals(result, "roundtrip");
 });
+
+Deno.test("Deferred.toPromise rejects when the underlying Promise rejects", async () => {
+  const d = Deferred.fromPromise(Promise.reject(new Error("boom")));
+  let threw = false;
+  try {
+    await Deferred.toPromise(d);
+  } catch {
+    threw = true;
+  }
+  assertStrictEquals(threw, true);
+});

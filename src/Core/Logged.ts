@@ -55,7 +55,7 @@ export namespace Logged {
    * @example
    * ```ts
    * pipe(
-   *   Logged.of<string, number>(5),
+   *   Logged.make<string, number>(5),
    *   Logged.map(n => n * 2),
    * ); // { value: 10, log: [] }
    * ```
@@ -75,7 +75,7 @@ export namespace Logged {
    * @example
    * ```ts
    * const result = pipe(
-   *   Logged.of<string, number>(1),
+   *   Logged.make<string, number>(1),
    *   Logged.chain(n => pipe(Logged.tell("step"), Logged.map(() => n + 1))),
    *   Logged.chain(n => pipe(Logged.tell("done"), Logged.map(() => n * 10))),
    * );
@@ -118,7 +118,7 @@ export namespace Logged {
    * @example
    * ```ts
    * pipe(
-   *   Logged.of<string, number>(42),
+   *   Logged.make<string, number>(42),
    *   Logged.tap(n => console.log("value:", n)),
    * );
    * ```
@@ -135,7 +135,7 @@ export namespace Logged {
    * @example
    * ```ts
    * const result = pipe(
-   *   Logged.of<string, number>(1),
+   *   Logged.make<string, number>(1),
    *   Logged.chain(n => pipe(Logged.tell("incremented"), Logged.map(() => n + 1))),
    * );
    *

@@ -246,25 +246,25 @@ Deno.test("TaskOption.match calls none handler for None", async () => {
 
 Deno.test("TaskOption.getOrElse returns value for Some", async () => {
   assertStrictEquals(
-    await pipe(TaskOption.some(5), TaskOption.getOrElse(0))(),
+    await pipe(TaskOption.some(5), TaskOption.getOrElse(() => 0))(),
     5,
   );
 });
 
 Deno.test("TaskOption.getOrElse returns default for None", async () => {
   assertStrictEquals(
-    await pipe(TaskOption.none<number>(), TaskOption.getOrElse(0))(),
+    await pipe(TaskOption.none<number>(), TaskOption.getOrElse(() => 0))(),
     0,
   );
 });
 
 Deno.test("TaskOption.getOrElse widens return type to A | B when default is a different type", async () => {
-  const result = await pipe(TaskOption.none(), TaskOption.getOrElse(null))();
+  const result = await pipe(TaskOption.none(), TaskOption.getOrElse(() => null))();
   assertStrictEquals(result, null);
 });
 
 Deno.test("TaskOption.getOrElse returns Some value typed as A | B when Some", async () => {
-  const result = await pipe(TaskOption.some(5), TaskOption.getOrElse(null))();
+  const result = await pipe(TaskOption.some(5), TaskOption.getOrElse(() => null))();
   assertStrictEquals(result, 5);
 });
 
@@ -369,7 +369,7 @@ Deno.test("TaskOption composes well in a pipe chain", async () => {
     TaskOption.map((n: number) => n * 2),
     TaskOption.filter((n: number) => n > 5),
     TaskOption.chain((n: number) => TaskOption.some(n + 1)),
-    TaskOption.getOrElse(0),
+    TaskOption.getOrElse(() => 0),
   )();
   assertStrictEquals(result, 11);
 });
@@ -379,7 +379,7 @@ Deno.test("TaskOption pipe short-circuits on None", async () => {
     TaskOption.some(2),
     TaskOption.filter((n: number) => n > 5),
     TaskOption.map((n: number) => n * 10),
-    TaskOption.getOrElse(0),
+    TaskOption.getOrElse(() => 0),
   )();
   assertStrictEquals(result, 0);
 });

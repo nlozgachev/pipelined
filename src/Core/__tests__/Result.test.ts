@@ -240,7 +240,7 @@ Deno.test("Result.match is data-last (returns a function first)", () => {
 Deno.test("Result.getOrElse returns value for Ok", () => {
   const result = pipe(
     Result.ok(5),
-    Result.getOrElse(0),
+    Result.getOrElse(() => 0),
   );
   assertStrictEquals(result, 5);
 });
@@ -248,7 +248,7 @@ Deno.test("Result.getOrElse returns value for Ok", () => {
 Deno.test("Result.getOrElse returns default for Err", () => {
   const result = pipe(
     Result.err("error"),
-    Result.getOrElse(0),
+    Result.getOrElse(() => 0),
   );
   assertStrictEquals(result, 0);
 });
@@ -256,7 +256,7 @@ Deno.test("Result.getOrElse returns default for Err", () => {
 Deno.test("Result.getOrElse widens return type to A | B when default is a different type", () => {
   const result = pipe(
     Result.err("error"),
-    Result.getOrElse(null),
+    Result.getOrElse(() => null),
   );
   assertStrictEquals(result, null);
 });
@@ -264,7 +264,7 @@ Deno.test("Result.getOrElse widens return type to A | B when default is a differ
 Deno.test("Result.getOrElse returns Ok value typed as A | B when Ok", () => {
   const result = pipe(
     Result.ok(5),
-    Result.getOrElse(null),
+    Result.getOrElse(() => null),
   );
   assertStrictEquals(result, 5);
 });
@@ -305,7 +305,7 @@ Deno.test("Result.recover returns original Ok without calling fallback", () => {
   let called = false;
   const result = pipe(
     Result.ok(5),
-    Result.recover(() => {
+    Result.recover((_e) => {
       called = true;
       return Result.ok(99);
     }),
@@ -317,7 +317,7 @@ Deno.test("Result.recover returns original Ok without calling fallback", () => {
 Deno.test("Result.recover provides fallback for Err", () => {
   const result = pipe(
     Result.err("error"),
-    Result.recover(() => Result.ok(99)),
+    Result.recover((_e) => Result.ok(99)),
   );
   assertEquals(result, { kind: "Ok", value: 99 });
 });
@@ -325,7 +325,7 @@ Deno.test("Result.recover provides fallback for Err", () => {
 Deno.test("Result.recover widens to Result<E, A | B> when fallback returns a different type", () => {
   const result = pipe(
     Result.err("error"),
-    Result.recover(() => Result.ok("recovered")),
+    Result.recover((_e) => Result.ok("recovered")),
   );
   assertEquals(result, { kind: "Ok", value: "recovered" });
 });
@@ -333,9 +333,17 @@ Deno.test("Result.recover widens to Result<E, A | B> when fallback returns a dif
 Deno.test("Result.recover preserves Ok typed as Result<E, A | B>", () => {
   const result = pipe(
     Result.ok(5),
-    Result.recover(() => Result.ok("recovered")),
+    Result.recover((_e) => Result.ok("recovered")),
   );
   assertEquals(result, { kind: "Ok", value: 5 });
+});
+
+Deno.test("Result.recover passes the error to the fallback", () => {
+  const result = pipe(
+    Result.err("original error"),
+    Result.recover((e) => Result.ok(`handled: ${e}`)),
+  );
+  assertEquals(result, { kind: "Ok", value: "handled: original error" });
 });
 
 // ---------------------------------------------------------------------------
@@ -456,7 +464,7 @@ Deno.test("Result composes well in a pipe chain", () => {
     divide(10, 2),
     Result.map((n: number) => n * 3),
     Result.chain((n: number) => n > 10 ? Result.ok(n) : (Result.err("Too small"))),
-    Result.getOrElse(0),
+    Result.getOrElse(() => 0),
   );
   assertStrictEquals(result, 15);
 });
@@ -468,7 +476,7 @@ Deno.test("Result pipe short-circuits on Err", () => {
   const result = pipe(
     divide(10, 0),
     Result.map((n: number) => n * 3),
-    Result.getOrElse(-1),
+    Result.getOrElse(() => -1),
   );
   assertStrictEquals(result, -1);
 });

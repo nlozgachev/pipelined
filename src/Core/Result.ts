@@ -1,4 +1,5 @@
 import { WithError, WithKind, WithValue } from "./InternalTypes.ts";
+import { Option } from "./Option.ts";
 
 /**
  * Result represents a value that can be one of two types: a success (Ok) or a failure (Err).
@@ -142,17 +143,18 @@ export namespace Result {
 
   /**
    * Returns the success value or a default value if the Result is an error.
+   * The default is a thunk `() => B` — evaluated only when the Result is Err.
    * The default can be a different type, widening the result to `A | B`.
    *
    * @example
    * ```ts
-   * pipe(Result.ok(5), Result.getOrElse(0)); // 5
-   * pipe(Result.err("error"), Result.getOrElse(0)); // 0
-   * pipe(Result.err("error"), Result.getOrElse(null)); // null — typed as number | null
+   * pipe(Result.ok(5), Result.getOrElse(() => 0)); // 5
+   * pipe(Result.err("error"), Result.getOrElse(() => 0)); // 0
+   * pipe(Result.err("error"), Result.getOrElse(() => null)); // null — typed as number | null
    * ```
    */
-  export const getOrElse = <E, A, B>(defaultValue: B) => (data: Result<E, A>): A | B =>
-    isOk(data) ? data.value : defaultValue;
+  export const getOrElse = <E, A, B>(defaultValue: () => B) => (data: Result<E, A>): A | B =>
+    isOk(data) ? data.value : defaultValue();
 
   /**
    * Executes a side effect on the success value without changing the Result.
@@ -177,8 +179,8 @@ export namespace Result {
    * The fallback can produce a different success type, widening the result to `Result<E, A | B>`.
    */
   export const recover =
-    <E, A, B>(fallback: () => Result<E, B>) => (data: Result<E, A>): Result<E, A | B> =>
-      isOk(data) ? data : fallback();
+    <E, A, B>(fallback: (e: E) => Result<E, B>) => (data: Result<E, A>): Result<E, A | B> =>
+      isOk(data) ? data : fallback(data.error);
 
   /**
    * Recovers from an error unless it matches the blocked error.
@@ -199,10 +201,8 @@ export namespace Result {
    * Result.toOption(Result.err("oops")); // None
    * ```
    */
-  export const toOption = <E, A>(
-    data: Result<E, A>,
-  ): import("./Option.ts").Option<A> =>
-    isOk(data) ? { kind: "Some", value: data.value } : { kind: "None" };
+  export const toOption = <E, A>(data: Result<E, A>): Option<A> =>
+    isOk(data) ? Option.some(data.value) : Option.none();
 
   /**
    * Applies a function wrapped in an Result to a value wrapped in an Result.

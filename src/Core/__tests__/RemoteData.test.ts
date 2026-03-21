@@ -270,20 +270,20 @@ Deno.test("RemoteData.match works in pipe", () => {
 // ---------------------------------------------------------------------------
 
 Deno.test("RemoteData.getOrElse returns value for Success", () => {
-  const result = pipe(RemoteData.success<string, number>(5), RemoteData.getOrElse(0));
+  const result = pipe(RemoteData.success<string, number>(5), RemoteData.getOrElse(() => 0));
   assertStrictEquals(result, 5);
 });
 
 Deno.test("RemoteData.getOrElse returns default for non-Success", () => {
-  assertStrictEquals(pipe(RemoteData.notAsked<string, number>(), RemoteData.getOrElse(0)), 0);
-  assertStrictEquals(pipe(RemoteData.loading<string, number>(), RemoteData.getOrElse(0)), 0);
-  assertStrictEquals(pipe(RemoteData.failure<string, number>("e"), RemoteData.getOrElse(0)), 0);
+  assertStrictEquals(pipe(RemoteData.notAsked<string, number>(), RemoteData.getOrElse(() => 0)), 0);
+  assertStrictEquals(pipe(RemoteData.loading<string, number>(), RemoteData.getOrElse(() => 0)), 0);
+  assertStrictEquals(pipe(RemoteData.failure<string, number>("e"), RemoteData.getOrElse(() => 0)), 0);
 });
 
 Deno.test("RemoteData.getOrElse widens return type to A | B when default is a different type", () => {
   const result = pipe(
     RemoteData.loading(),
-    RemoteData.getOrElse(null),
+    RemoteData.getOrElse(() => null),
   );
   assertStrictEquals(result, null);
 });
@@ -291,7 +291,7 @@ Deno.test("RemoteData.getOrElse widens return type to A | B when default is a di
 Deno.test("RemoteData.getOrElse returns Success value typed as A | B when Success", () => {
   const result = pipe(
     RemoteData.success(5),
-    RemoteData.getOrElse(null),
+    RemoteData.getOrElse(() => null),
   );
   assertStrictEquals(result, 5);
 });
@@ -448,7 +448,7 @@ Deno.test("RemoteData composes well in a pipe chain", () => {
         ? RemoteData.success<string, number>(n)
         : RemoteData.failure<string, number>("too small")
     ),
-    RemoteData.getOrElse(0),
+    RemoteData.getOrElse(() => 0),
   );
   assertStrictEquals(result, 10);
 });

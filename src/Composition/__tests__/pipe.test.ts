@@ -59,7 +59,7 @@ Deno.test("pipe - integration with Option.map", () => {
     Option.some(5),
     Option.map((n: number) => n * 2),
     Option.map((n: number) => n + 1),
-    Option.getOrElse(0),
+    Option.getOrElse(() => 0),
   );
   assertStrictEquals(result, 11);
 });
@@ -68,7 +68,7 @@ Deno.test("pipe - integration with Option.map on None", () => {
   const result = pipe(
     Option.none() as Option<number>,
     Option.map((n: number) => n * 2),
-    Option.getOrElse(0),
+    Option.getOrElse(() => 0),
   );
   assertStrictEquals(result, 0);
 });
@@ -77,7 +77,7 @@ Deno.test("pipe - integration with Result.map on Ok", () => {
   const result = pipe(
     Result.ok<number>(10),
     Result.map((n: number) => n * 3),
-    Result.getOrElse(0),
+    Result.getOrElse(() => 0),
   );
   assertStrictEquals(result, 30);
 });
@@ -86,7 +86,7 @@ Deno.test("pipe - integration with Result.map on Err", () => {
   const result = pipe(
     Result.err("oops") as Result<string, number>,
     Result.map((n: number) => n * 3),
-    Result.getOrElse(0),
+    Result.getOrElse(() => 0),
   );
   assertStrictEquals(result, 0);
 });

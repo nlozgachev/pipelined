@@ -157,7 +157,7 @@ export namespace TaskValidation {
    * The default can be a different type, widening the result to `Task<A | B>`.
    */
   export const getOrElse =
-    <E, A, B>(defaultValue: B) => (data: TaskValidation<E, A>): Task<A | B> =>
+    <E, A, B>(defaultValue: () => B) => (data: TaskValidation<E, A>): Task<A | B> =>
       Task.map(Validation.getOrElse<E, A, B>(defaultValue))(data);
 
   /**

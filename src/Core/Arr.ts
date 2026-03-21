@@ -257,7 +257,7 @@ export namespace Arr {
    * ```
    */
   export const zipWith =
-    <A, B, C>(f: (a: A, b: B) => C, other: readonly B[]) => (data: readonly A[]): readonly C[] => {
+    <A, B, C>(f: (a: A, b: B) => C) => (other: readonly B[]) => (data: readonly A[]): readonly C[] => {
       const len = Math.min(data.length, other.length);
       const result: C[] = [];
       for (let i = 0; i < len; i++) {
@@ -427,6 +427,48 @@ export namespace Arr {
   export const sequenceTask = <A>(
     data: readonly Task<A>[],
   ): Task<readonly A[]> => traverseTask<Task<A>, A>((a) => a)(data);
+
+  /**
+   * Maps each element to a TaskResult and runs them sequentially.
+   * Returns the first Err encountered, or Ok of all results if all succeed.
+   *
+   * @example
+   * ```ts
+   * const validate = (n: number): TaskResult<string, number> =>
+   *   n > 0 ? TaskResult.ok(n) : TaskResult.err("non-positive");
+   *
+   * pipe(
+   *   [1, 2, 3],
+   *   Arr.traverseTaskResult(validate)
+   * )(); // Deferred<Ok([1, 2, 3])>
+   *
+   * pipe(
+   *   [1, -1, 3],
+   *   Arr.traverseTaskResult(validate)
+   * )(); // Deferred<Err("non-positive")>
+   * ```
+   */
+  export const traverseTaskResult =
+    <E, A, B>(f: (a: A) => Task<Result<E, B>>) =>
+    (data: readonly A[]): Task<Result<E, readonly B[]>> =>
+      Task.from(async () => {
+        const result: B[] = [];
+        for (const a of data) {
+          const r = await Deferred.toPromise(f(a)());
+          if (Result.isErr(r)) return r;
+          result.push(r.value);
+        }
+        return Result.ok(result);
+      });
+
+  /**
+   * Collects an array of TaskResults into a TaskResult of array.
+   * Returns the first Err if any element is Err, runs sequentially.
+   */
+  export const sequenceTaskResult = <E, A>(
+    data: readonly Task<Result<E, A>>[],
+  ): Task<Result<E, readonly A[]>> =>
+    traverseTaskResult<E, Task<Result<E, A>>, A>((a) => a)(data);
 
   /**
    * Returns true if the array is non-empty (type guard).

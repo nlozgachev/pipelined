@@ -61,7 +61,7 @@ Deno.test("compose - type transformation across functions", () => {
 });
 
 Deno.test("compose - integration with Option", () => {
-  const getOrDefault = Option.getOrElse("none");
+  const getOrDefault = Option.getOrElse(() => "none");
   const toUpper = Option.map((s: string) => s.toUpperCase());
 
   const fn = compose(getOrDefault, toUpper);
@@ -71,7 +71,7 @@ Deno.test("compose - integration with Option", () => {
 });
 
 Deno.test("compose - integration with Result", () => {
-  const getOrDefault = Result.getOrElse(0);
+  const getOrDefault = Result.getOrElse(() => 0);
   const doubleResult = Result.map((n: number) => n * 2);
 
   const fn = compose(getOrDefault, doubleResult);

@@ -311,22 +311,22 @@ Deno.test("Option.match is data-last (returns a function first)", () => {
 // ---------------------------------------------------------------------------
 
 Deno.test("Option.getOrElse returns value for Some", () => {
-  const result = pipe(Option.some(5), Option.getOrElse(0));
+  const result = pipe(Option.some(5), Option.getOrElse(() => 0));
   assertStrictEquals(result, 5);
 });
 
 Deno.test("Option.getOrElse returns default for None", () => {
-  const result = pipe(Option.none(), Option.getOrElse(0));
+  const result = pipe(Option.none(), Option.getOrElse(() => 0));
   assertStrictEquals(result, 0);
 });
 
 Deno.test("Option.getOrElse widens return type to A | B when default is a different type", () => {
-  const result = pipe(Option.none(), Option.getOrElse(null));
+  const result = pipe(Option.none(), Option.getOrElse(() => null));
   assertStrictEquals(result, null);
 });
 
 Deno.test("Option.getOrElse returns Some value typed as A | B when Some", () => {
-  const result = pipe(Option.some("hello"), Option.getOrElse(null));
+  const result = pipe(Option.some("hello"), Option.getOrElse(() => null));
   assertStrictEquals(result, "hello");
 });
 
@@ -387,6 +387,12 @@ Deno.test("Option.filter returns None when input is None", () => {
     Option.filter((n: number) => n > 3),
   );
   assertEquals(result, { kind: "None" });
+});
+
+Deno.test("Option.filter on None returns the same None reference", () => {
+  const none = Option.none();
+  const result = pipe(none as Option<number>, Option.filter((n) => n > 3));
+  assertStrictEquals(result, none);
 });
 
 // ---------------------------------------------------------------------------
@@ -489,7 +495,7 @@ Deno.test("Option composes well in a pipe chain", () => {
     Option.map((s) => parseInt(s, 10)),
     Option.filter((n) => n > 0),
     Option.map((n) => n * 2),
-    Option.getOrElse(0),
+    Option.getOrElse(() => 0),
   );
   assertStrictEquals(result, 84);
 });
@@ -500,7 +506,7 @@ Deno.test("Option pipe short-circuits on None", () => {
     Option.map((s) => parseInt(s, 10)),
     Option.filter((n) => n > 0),
     Option.map((n) => n * 2),
-    Option.getOrElse(0),
+    Option.getOrElse(() => 0),
   );
   assertStrictEquals(result, 0);
 });

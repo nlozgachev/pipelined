@@ -1,5 +1,7 @@
 declare const _deferred: unique symbol;
 
+const _store = new WeakMap<object, Promise<unknown>>();
+
 /**
  * A nominally typed, one-shot async value that supports `await` but enforces infallibility.
  *
@@ -35,10 +37,11 @@ export namespace Deferred {
    * const value = await d; // "hello"
    * ```
    */
-  export const fromPromise = <A>(p: Promise<A>): Deferred<A> =>
-    ({
-      then: ((f) => p.then(f)) as Deferred<A>["then"],
-    }) as Deferred<A>;
+  export const fromPromise = <A>(p: Promise<A>): Deferred<A> => {
+    const d = ({ then: ((f) => p.then(f)) as Deferred<A>["then"] }) as Deferred<A>;
+    _store.set(d as object, p);
+    return d;
+  };
 
   /**
    * Converts a `Deferred` back into a `Promise`.
@@ -50,5 +53,6 @@ export namespace Deferred {
    * ```
    */
   export const toPromise = <A>(d: Deferred<A>): Promise<A> =>
+    (_store.get(d as object) as Promise<A> | undefined) ??
     new Promise((resolve) => d.then(resolve));
 }

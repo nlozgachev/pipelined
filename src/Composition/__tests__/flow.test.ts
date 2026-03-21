@@ -79,7 +79,7 @@ Deno.test("flow - integration with Option", () => {
       return isNaN(n) ? (Option.none() as Option<number>) : Option.some(n);
     },
     Option.map((n: number) => n * 2),
-    Option.getOrElse(0),
+    Option.getOrElse(() => 0),
   );
 
   assertStrictEquals(safeParseAndDouble("21"), 42);

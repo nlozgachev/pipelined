@@ -293,7 +293,7 @@ Deno.test(
 Deno.test("TaskResult.getOrElse returns value for Ok", async () => {
   const result = await pipe(
     TaskResult.ok<string, number>(5),
-    TaskResult.getOrElse(0),
+    TaskResult.getOrElse(() => 0),
   )();
   assertStrictEquals(result, 5);
 });
@@ -301,7 +301,7 @@ Deno.test("TaskResult.getOrElse returns value for Ok", async () => {
 Deno.test("TaskResult.getOrElse returns default for Err", async () => {
   const result = await pipe(
     TaskResult.err<string, number>("error"),
-    TaskResult.getOrElse(0),
+    TaskResult.getOrElse(() => 0),
   )();
   assertStrictEquals(result, 0);
 });
@@ -309,7 +309,7 @@ Deno.test("TaskResult.getOrElse returns default for Err", async () => {
 Deno.test("TaskResult.getOrElse widens return type to A | B when default is a different type", async () => {
   const result = await pipe(
     TaskResult.err("error"),
-    TaskResult.getOrElse(null),
+    TaskResult.getOrElse(() => null),
   )();
   assertStrictEquals(result, null);
 });
@@ -317,7 +317,7 @@ Deno.test("TaskResult.getOrElse widens return type to A | B when default is a di
 Deno.test("TaskResult.getOrElse returns Ok value typed as A | B when Ok", async () => {
   const result = await pipe(
     TaskResult.ok(5),
-    TaskResult.getOrElse(null),
+    TaskResult.getOrElse(() => null),
   )();
   assertStrictEquals(result, 5);
 });
@@ -364,7 +364,7 @@ Deno.test("TaskResult composes well in a pipe chain", async () => {
     TaskResult.chain((n: number) =>
       n > 5 ? TaskResult.ok<string, number>(n) : TaskResult.err<string, number>("Too small")
     ),
-    TaskResult.getOrElse(0),
+    TaskResult.getOrElse(() => 0),
   )();
   assertStrictEquals(result, 10);
 });
@@ -376,7 +376,7 @@ Deno.test("TaskResult pipe short-circuits on Err", async () => {
     TaskResult.chain((n: number) =>
       n > 5 ? TaskResult.ok<string, number>(n) : TaskResult.err<string, number>("Too small")
     ),
-    TaskResult.getOrElse(0),
+    TaskResult.getOrElse(() => 0),
   )();
   assertStrictEquals(result, 0);
 });
@@ -388,7 +388,7 @@ Deno.test("TaskResult tryCatch integrates with pipe chain", async () => {
       (e) => `Error: ${e}`,
     ),
     TaskResult.map((n: number) => n + 8),
-    TaskResult.getOrElse(0),
+    TaskResult.getOrElse(() => 0),
   )();
   assertStrictEquals(result, 50);
 });

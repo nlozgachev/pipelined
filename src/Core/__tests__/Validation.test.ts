@@ -293,7 +293,7 @@ Deno.test("Validation.match is data-last (returns a function first)", () => {
 Deno.test("Validation.getOrElse returns value for Valid", () => {
   const result = pipe(
     Validation.valid<string, number>(5),
-    Validation.getOrElse(0),
+    Validation.getOrElse(() => 0),
   );
   assertStrictEquals(result, 5);
 });
@@ -301,7 +301,7 @@ Deno.test("Validation.getOrElse returns value for Valid", () => {
 Deno.test("Validation.getOrElse returns default for Invalid", () => {
   const result = pipe(
     Validation.invalid("error"),
-    Validation.getOrElse(0),
+    Validation.getOrElse(() => 0),
   );
   assertStrictEquals(result, 0);
 });
@@ -309,7 +309,7 @@ Deno.test("Validation.getOrElse returns default for Invalid", () => {
 Deno.test("Validation.getOrElse widens return type to A | B when default is a different type", () => {
   const result = pipe(
     Validation.invalid("error"),
-    Validation.getOrElse(null),
+    Validation.getOrElse(() => null),
   );
   assertStrictEquals(result, null);
 });
@@ -317,7 +317,7 @@ Deno.test("Validation.getOrElse widens return type to A | B when default is a di
 Deno.test("Validation.getOrElse returns Valid value typed as A | B when Valid", () => {
   const result = pipe(
     Validation.valid(5),
-    Validation.getOrElse(null),
+    Validation.getOrElse(() => null),
   );
   assertStrictEquals(result, 5);
 });
@@ -569,7 +569,7 @@ Deno.test("Validation composes well in a pipe chain", () => {
     Validation.chain((n: number) =>
       n > 5 ? Validation.valid<string, number>(n) : Validation.invalidAll(["Too small"])
     ),
-    Validation.getOrElse(0),
+    Validation.getOrElse(() => 0),
   );
   assertStrictEquals(result, 10);
 });
@@ -581,7 +581,7 @@ Deno.test("Validation pipe chain with Invalid short-circuits in chain", () => {
     Validation.chain((n: number) =>
       n > 5 ? Validation.valid<string, number>(n) : Validation.invalid("Too small")
     ),
-    Validation.getOrElse(0),
+    Validation.getOrElse(() => 0),
   );
   assertStrictEquals(result, 0);
 });

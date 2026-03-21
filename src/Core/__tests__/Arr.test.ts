@@ -392,7 +392,7 @@ Deno.test("zip - returns empty when second array is empty", () => {
 Deno.test("zipWith - combines elements using a function", () => {
   const result = pipe(
     [1, 2, 3],
-    Arr.zipWith((a, b) => `${a}${b}`, ["a", "b", "c"]),
+    Arr.zipWith((a, b) => `${a}${b}`)(["a", "b", "c"]),
   );
   assertEquals(result, ["1a", "2b", "3c"]);
 });
@@ -400,7 +400,7 @@ Deno.test("zipWith - combines elements using a function", () => {
 Deno.test("zipWith - stops at the shorter array", () => {
   const result = pipe(
     [1, 2, 3],
-    Arr.zipWith((a, b) => a + b, [10, 20]),
+    Arr.zipWith((a: number, b: number) => a + b)([10, 20]),
   );
   assertEquals(result, [11, 22]);
 });
@@ -408,7 +408,7 @@ Deno.test("zipWith - stops at the shorter array", () => {
 Deno.test("zipWith - returns empty for empty input", () => {
   const result = pipe(
     [] as number[],
-    Arr.zipWith((a, b) => a + b, [10, 20]),
+    Arr.zipWith((a: number, b: number) => a + b)([10, 20]),
   );
   assertEquals(result, []);
 });
@@ -733,6 +733,53 @@ Deno.test(
     assertEquals(result, ["slow", "fast", "medium"]);
   },
 );
+
+// =============================================================================
+// traverseTaskResult / sequenceTaskResult
+// =============================================================================
+
+Deno.test("traverseTaskResult - all succeed returns Ok of results", async () => {
+  const validate = (n: number): Task<Result<string, number>> =>
+    n > 0 ? Task.resolve(Result.ok(n)) : Task.resolve(Result.err("non-positive"));
+  const result = await pipe([1, 2, 3], Arr.traverseTaskResult(validate))();
+  assertEquals(result, Result.ok([1, 2, 3]));
+});
+
+Deno.test("traverseTaskResult - first error short-circuits", async () => {
+  const order: number[] = [];
+  const validate = (n: number): Task<Result<string, number>> =>
+    Task.from(async () => {
+      order.push(n);
+      return n > 0 ? Result.ok(n) : Result.err("non-positive");
+    });
+  const result = await pipe([1, -1, 3], Arr.traverseTaskResult(validate))();
+  assertEquals(result, Result.err("non-positive"));
+  assertEquals(order, [1, -1]); // 3 was not processed
+});
+
+Deno.test("traverseTaskResult - empty array returns Ok of empty array", async () => {
+  const result = await Arr.traverseTaskResult((n: number) => Task.resolve(Result.ok(n)))([])();
+  assertEquals(result, Result.ok([]));
+});
+
+Deno.test("sequenceTaskResult - collects Ok results", async () => {
+  const tasks: Task<Result<string, number>>[] = [
+    Task.resolve(Result.ok(10)),
+    Task.resolve(Result.ok(20)),
+  ];
+  const result = await Arr.sequenceTaskResult(tasks)();
+  assertEquals(result, Result.ok([10, 20]));
+});
+
+Deno.test("sequenceTaskResult - returns first Err", async () => {
+  const tasks: Task<Result<string, number>>[] = [
+    Task.resolve(Result.ok(10)),
+    Task.resolve(Result.err("oops")),
+    Task.resolve(Result.ok(30)),
+  ];
+  const result = await Arr.sequenceTaskResult(tasks)();
+  assertEquals(result, Result.err("oops"));
+});
 
 // =============================================================================
 // Predicates: isNonEmpty, some, every

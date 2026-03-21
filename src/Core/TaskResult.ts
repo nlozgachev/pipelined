@@ -102,7 +102,7 @@ export namespace TaskResult {
    * Returns the success value or a default value if the TaskResult is an error.
    * The default can be a different type, widening the result to `Task<A | B>`.
    */
-  export const getOrElse = <E, A, B>(defaultValue: B) => (data: TaskResult<E, A>): Task<A | B> =>
+  export const getOrElse = <E, A, B>(defaultValue: () => B) => (data: TaskResult<E, A>): Task<A | B> =>
     Task.map(Result.getOrElse<E, A, B>(defaultValue))(data);
 
   /**

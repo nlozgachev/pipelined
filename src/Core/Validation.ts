@@ -195,8 +195,8 @@ export namespace Validation {
    * pipe(Validation.invalid("oops"), Validation.getOrElse(null)); // null — typed as number | null
    * ```
    */
-  export const getOrElse = <E, A, B>(defaultValue: B) => (data: Validation<E, A>): A | B =>
-    isValid(data) ? data.value : defaultValue;
+  export const getOrElse = <E, A, B>(defaultValue: () => B) => (data: Validation<E, A>): A | B =>
+    isValid(data) ? data.value : defaultValue();
 
   /**
    * Executes a side effect on the success value without changing the Validation.

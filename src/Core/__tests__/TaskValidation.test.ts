@@ -257,14 +257,14 @@ Deno.test("TaskValidation.match calls invalid handler for Invalid", async () => 
 
 Deno.test("TaskValidation.getOrElse returns value for Valid", async () => {
   assertStrictEquals(
-    await pipe(TaskValidation.valid<string, number>(5), TaskValidation.getOrElse(0))(),
+    await pipe(TaskValidation.valid<string, number>(5), TaskValidation.getOrElse(() => 0))(),
     5,
   );
 });
 
 Deno.test("TaskValidation.getOrElse returns default for Invalid", async () => {
   assertStrictEquals(
-    await pipe(TaskValidation.invalid<string, number>("e"), TaskValidation.getOrElse(0))(),
+    await pipe(TaskValidation.invalid<string, number>("e"), TaskValidation.getOrElse(() => 0))(),
     0,
   );
 });
@@ -274,7 +274,7 @@ Deno.test(
   async () => {
     const result = await pipe(
       TaskValidation.invalid("e"),
-      TaskValidation.getOrElse(null),
+      TaskValidation.getOrElse(() => null),
     )();
     assertStrictEquals(result, null);
   },
@@ -283,7 +283,7 @@ Deno.test(
 Deno.test("TaskValidation.getOrElse returns Valid value typed as A | B when Valid", async () => {
   const result = await pipe(
     TaskValidation.valid(5),
-    TaskValidation.getOrElse(null),
+    TaskValidation.getOrElse(() => null),
   )();
   assertStrictEquals(result, 5);
 });
@@ -372,7 +372,7 @@ Deno.test("TaskValidation composes well in a pipe chain", async () => {
         ? TaskValidation.valid<string, number>(n)
         : TaskValidation.invalid<string, number>("Too small")
     ),
-    TaskValidation.getOrElse(0),
+    TaskValidation.getOrElse(() => 0),
   )();
   assertStrictEquals(result, 10);
 });

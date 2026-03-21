@@ -174,17 +174,18 @@ export namespace Option {
 
   /**
    * Returns the value inside an Option, or a default value if None.
+   * The default is a thunk `() => B` — evaluated only when the Option is None.
    * The default can be a different type, widening the result to `A | B`.
    *
    * @example
    * ```ts
-   * pipe(Option.some(5), Option.getOrElse(0)); // 5
-   * pipe(Option.none(), Option.getOrElse(0)); // 0
-   * pipe(Option.none<string>(), Option.getOrElse(null)); // null — typed as string | null
+   * pipe(Option.some(5), Option.getOrElse(() => 0)); // 5
+   * pipe(Option.none(), Option.getOrElse(() => 0)); // 0
+   * pipe(Option.none<string>(), Option.getOrElse(() => null)); // null — typed as string | null
    * ```
    */
-  export const getOrElse = <A, B>(defaultValue: B) => (data: Option<A>): A | B =>
-    isSome(data) ? data.value : defaultValue;
+  export const getOrElse = <A, B>(defaultValue: () => B) => (data: Option<A>): A | B =>
+    isSome(data) ? data.value : defaultValue();
 
   /**
    * Executes a side effect on the value without changing the Option.
@@ -215,7 +216,7 @@ export namespace Option {
    * ```
    */
   export const filter = <A>(predicate: (a: A) => boolean) => (data: Option<A>): Option<A> =>
-    isSome(data) && predicate(data.value) ? data : none();
+    isSome(data) ? (predicate(data.value) ? data : none()) : data;
 
   /**
    * Recovers from a None by providing a fallback Option.

@@ -222,8 +222,8 @@ export namespace RemoteData {
    * pipe(RemoteData.loading<string, number>(), RemoteData.getOrElse(null)); // null — typed as number | null
    * ```
    */
-  export const getOrElse = <E, A, B>(defaultValue: B) => (data: RemoteData<E, A>): A | B =>
-    isSuccess(data) ? data.value : defaultValue;
+  export const getOrElse = <E, A, B>(defaultValue: () => B) => (data: RemoteData<E, A>): A | B =>
+    isSuccess(data) ? data.value : defaultValue();
 
   /**
    * Executes a side effect on the success value without changing the RemoteData.
