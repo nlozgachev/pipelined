@@ -84,21 +84,6 @@ export namespace TaskValidation {
       Task.map(Validation.map<A, B>(f))(data);
 
   /**
-   * Chains TaskValidation computations. If the first is Valid, passes the value
-   * to f. If the first is Invalid, propagates the errors.
-   *
-   * Note: chain short-circuits on first error. Use ap to accumulate errors.
-   */
-  export const chain =
-    <E, A, B>(f: (a: A) => TaskValidation<E, B>) =>
-    (data: TaskValidation<E, A>): TaskValidation<E, B> =>
-      Task.chain((validation: Validation<E, A>) =>
-        Validation.isValid(validation)
-          ? f(validation.value)
-          : Task.resolve(Validation.invalidAll(validation.errors))
-      )(data);
-
-  /**
    * Applies a function wrapped in a TaskValidation to a value wrapped in a
    * TaskValidation. Both Tasks run in parallel and errors from both sides
    * are accumulated.
@@ -170,14 +155,63 @@ export namespace TaskValidation {
 
   /**
    * Recovers from an Invalid state by providing a fallback TaskValidation.
+   * The fallback receives the accumulated error list so callers can inspect which errors occurred.
    * The fallback can produce a different success type, widening the result to `TaskValidation<E, A | B>`.
    */
   export const recover =
-    <E, A, B>(fallback: () => TaskValidation<E, B>) =>
+    <E, A, B>(fallback: (errors: NonEmptyList<E>) => TaskValidation<E, B>) =>
     (data: TaskValidation<E, A>): TaskValidation<E, A | B> =>
       Task.chain((validation: Validation<E, A>) =>
         Validation.isValid(validation)
           ? Task.resolve(validation as Validation<E, A | B>)
-          : fallback()
+          : fallback(validation.errors)
       )(data);
+
+  /**
+   * Runs two TaskValidations concurrently and combines their results into a tuple.
+   * If both are Valid, returns Valid with both values. If either fails, accumulates
+   * errors from both sides.
+   *
+   * @example
+   * ```ts
+   * await TaskValidation.product(
+   *   validateName(form.name),
+   *   validateAge(form.age),
+   * )(); // Valid(["Alice", 30]) or Invalid([...errors])
+   * ```
+   */
+  export const product = <E, A, B>(
+    first: TaskValidation<E, A>,
+    second: TaskValidation<E, B>,
+  ): TaskValidation<E, readonly [A, B]> =>
+    Task.from(() =>
+      Promise.all([
+        Deferred.toPromise(first()),
+        Deferred.toPromise(second()),
+      ]).then(([va, vb]) => Validation.product(va, vb))
+    );
+
+  /**
+   * Runs all TaskValidations concurrently and collects results.
+   * If all are Valid, returns Valid with all values as an array.
+   * If any fail, returns Invalid with all accumulated errors.
+   *
+   * @example
+   * ```ts
+   * await TaskValidation.productAll([
+   *   validateName(form.name),
+   *   validateEmail(form.email),
+   *   validateAge(form.age),
+   * ])(); // Valid([name, email, age]) or Invalid([...all errors])
+   * ```
+   */
+  export const productAll = <E, A>(
+    data: NonEmptyList<TaskValidation<E, A>>,
+  ): TaskValidation<E, readonly A[]> =>
+    Task.from(() =>
+      Promise.all(data.map((t) => Deferred.toPromise(t())))
+        .then((results) =>
+          Validation.productAll(results as unknown as NonEmptyList<Validation<E, A>>)
+        )
+    );
 }

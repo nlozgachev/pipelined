@@ -130,12 +130,12 @@ export namespace Optional {
    *
    * @example
    * ```ts
-   * pipe(profile, Optional.getOrElse(bioOpt)("no bio"));
+   * pipe(profile, Optional.getOrElse(bioOpt)(() => "no bio"));
    * ```
    */
-  export const getOrElse = <S, A>(opt: Optional<S, A>) => (defaultValue: A) => (s: S): A => {
+  export const getOrElse = <S, A>(opt: Optional<S, A>) => (defaultValue: () => A) => (s: S): A => {
     const val = opt.get(s);
-    return val.kind === "Some" ? val.value : defaultValue;
+    return val.kind === "Some" ? val.value : defaultValue();
   };
 
   /**

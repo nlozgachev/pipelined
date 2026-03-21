@@ -193,6 +193,30 @@ pipe(
 );
 ```
 
+## Recovering from Invalid
+
+`recover` provides a fallback `Validation` when the result is `Invalid`. The fallback receives the
+accumulated error list, so you can inspect which errors occurred and decide how to recover:
+
+```ts
+pipe(
+  validateConfig(input),
+  Validation.recover((errors) => {
+    console.warn("Validation failed:", errors);
+    return Validation.valid(defaultConfig);
+  }),
+);
+```
+
+When the input is already `Valid`, the fallback is never called:
+
+```ts
+pipe(
+  Validation.valid(42),
+  Validation.recover((_errors) => Validation.valid(0)),
+); // Valid(42) — fallback skipped
+```
+
 ## When to use Validation vs Result
 
 Use `Validation` when:

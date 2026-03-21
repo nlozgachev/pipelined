@@ -13,7 +13,7 @@ import { Result } from "./Result.ts";
  * pipe(
  *   findUser("123"),
  *   Option.map(user => user.name),
- *   Option.getOrElse("Unknown")
+ *   Option.getOrElse(() => "Unknown")
  * );
  * ```
  */

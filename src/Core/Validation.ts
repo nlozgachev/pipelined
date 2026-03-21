@@ -1,4 +1,4 @@
-import { isNonEmptyList, NonEmptyList } from "../Types/NonEmptyList.ts";
+import { NonEmptyList } from "../Types/NonEmptyList.ts";
 import { WithErrors, WithKind, WithValue } from "./InternalTypes.ts";
 
 /**
@@ -171,9 +171,9 @@ export namespace Validation {
    *
    * @example
    * ```ts
-   * pipe(Validation.valid(5), Validation.getOrElse(0)); // 5
-   * pipe(Validation.invalid("oops"), Validation.getOrElse(0)); // 0
-   * pipe(Validation.invalid("oops"), Validation.getOrElse(null)); // null — typed as number | null
+   * pipe(Validation.valid(5), Validation.getOrElse(() => 0)); // 5
+   * pipe(Validation.invalid("oops"), Validation.getOrElse(() => 0)); // 0
+   * pipe(Validation.invalid("oops"), Validation.getOrElse(() => null)); // null — typed as number | null
    * ```
    */
   export const getOrElse = <E, A, B>(defaultValue: () => B) => (data: Validation<E, A>): A | B =>

@@ -245,9 +245,10 @@ failed lookup the same as a missing value.
 **`TaskValidation<E, A>`** — an async operation that accumulates errors. Used for async validation
 where all checks should run regardless of individual failures.
 
-All three follow the same API conventions as their synchronous counterparts (`map`, `chain`,
-`match`, `getOrElse`, `recover`). If you've used `Result`, `TaskResult` will be immediately
-familiar.
+`TaskResult` and `TaskOption` follow the same API conventions as their synchronous counterparts
+(`map`, `chain`, `match`, `getOrElse`, `recover`). `TaskValidation` mirrors `Validation` —
+`ap` instead of `chain` for error accumulation, plus `product` and `productAll` for combining
+independent async validations. If you've used `Result`, `TaskResult` will be immediately familiar.
 
 ## Running a Task
 

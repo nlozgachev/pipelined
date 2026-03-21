@@ -219,9 +219,9 @@ export namespace RemoteData {
    *
    * @example
    * ```ts
-   * pipe(RemoteData.success(5), RemoteData.getOrElse(0)); // 5
-   * pipe(RemoteData.loading(), RemoteData.getOrElse(0)); // 0
-   * pipe(RemoteData.loading<string, number>(), RemoteData.getOrElse(null)); // null — typed as number | null
+   * pipe(RemoteData.success(5), RemoteData.getOrElse(() => 0)); // 5
+   * pipe(RemoteData.loading(), RemoteData.getOrElse(() => 0)); // 0
+   * pipe(RemoteData.loading<string, number>(), RemoteData.getOrElse(() => null)); // null — typed as number | null
    * ```
    */
   export const getOrElse = <E, A, B>(defaultValue: () => B) => (data: RemoteData<E, A>): A | B =>

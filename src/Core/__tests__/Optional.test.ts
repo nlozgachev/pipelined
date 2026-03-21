@@ -154,7 +154,7 @@ Deno.test("Optional.modify is a no-op when focus is absent", () => {
 Deno.test("Optional.getOrElse returns focused value when present", () => {
   const bioOpt = Optional.prop<Profile>()("bio");
   assertStrictEquals(
-    pipe({ username: "alice", bio: "hi" }, Optional.getOrElse(bioOpt)("none")),
+    pipe({ username: "alice", bio: "hi" }, Optional.getOrElse(bioOpt)(() => "none")),
     "hi",
   );
 });
@@ -162,7 +162,7 @@ Deno.test("Optional.getOrElse returns focused value when present", () => {
 Deno.test("Optional.getOrElse returns default when focus is absent", () => {
   const bioOpt = Optional.prop<Profile>()("bio");
   assertStrictEquals(
-    pipe({ username: "alice" }, Optional.getOrElse(bioOpt)("none")),
+    pipe({ username: "alice" }, Optional.getOrElse(bioOpt)(() => "none")),
     "none",
   );
 });

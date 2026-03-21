@@ -117,49 +117,6 @@ Deno.test("TaskValidation.map can change the value type", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// chain
-// ---------------------------------------------------------------------------
-
-Deno.test("TaskValidation.chain applies function when Valid", async () => {
-  const result = await pipe(
-    TaskValidation.valid<string, number>(5),
-    TaskValidation.chain((n: number) => TaskValidation.valid(n * 2)),
-  )();
-  assertEquals(result, { kind: "Valid", value: 10 });
-});
-
-Deno.test("TaskValidation.chain propagates Invalid without calling function", async () => {
-  let called = false;
-  await pipe(
-    TaskValidation.invalid<string, number>("err"),
-    TaskValidation.chain((_n: number) => {
-      called = true;
-      return TaskValidation.valid(_n);
-    }),
-  )();
-  assertStrictEquals(called, false);
-});
-
-Deno.test("TaskValidation.chain returns Invalid when function returns Invalid", async () => {
-  assertEquals(
-    await pipe(
-      TaskValidation.valid<string, number>(5),
-      TaskValidation.chain((_n: number) => TaskValidation.invalid<string, number>("bad")),
-    )(),
-    { kind: "Invalid", errors: ["bad"] },
-  );
-});
-
-Deno.test("TaskValidation.chain composes multiple async steps", async () => {
-  const result = await pipe(
-    TaskValidation.valid<string, number>(1),
-    TaskValidation.chain((n: number) => TaskValidation.valid<string, number>(n + 1)),
-    TaskValidation.chain((n: number) => TaskValidation.valid<string, number>(n * 10)),
-  )();
-  assertEquals(result, { kind: "Valid", value: 20 });
-});
-
-// ---------------------------------------------------------------------------
 // ap (error accumulation)
 // ---------------------------------------------------------------------------
 
@@ -323,7 +280,7 @@ Deno.test("TaskValidation.recover returns original Valid without calling fallbac
   let called = false;
   const result = await pipe(
     TaskValidation.valid<string, number>(5),
-    TaskValidation.recover(() => {
+    TaskValidation.recover((_errors) => {
       called = true;
       return TaskValidation.valid<string, number>(99);
     }),
@@ -335,9 +292,21 @@ Deno.test("TaskValidation.recover returns original Valid without calling fallbac
 Deno.test("TaskValidation.recover provides fallback for Invalid", async () => {
   const result = await pipe(
     TaskValidation.invalid<string, number>("err"),
-    TaskValidation.recover(() => TaskValidation.valid<string, number>(99)),
+    TaskValidation.recover((_errors) => TaskValidation.valid<string, number>(99)),
   )();
   assertEquals(result, { kind: "Valid", value: 99 });
+});
+
+Deno.test("TaskValidation.recover exposes the error list to the fallback", async () => {
+  let received: string[] = [];
+  await pipe(
+    TaskValidation.invalidAll<string, number>(["first", "second"]),
+    TaskValidation.recover((errors) => {
+      received = [...errors];
+      return TaskValidation.valid<string, number>(0);
+    }),
+  )();
+  assertEquals(received, ["first", "second"]);
 });
 
 Deno.test(
@@ -345,7 +314,7 @@ Deno.test(
   async () => {
     const result = await pipe(
       TaskValidation.invalid("err"),
-      TaskValidation.recover(() => TaskValidation.valid("recovered")),
+      TaskValidation.recover((_errors) => TaskValidation.valid("recovered")),
     )();
     assertEquals(result, { kind: "Valid", value: "recovered" });
   },
@@ -354,7 +323,7 @@ Deno.test(
 Deno.test("TaskValidation.recover preserves Valid typed as TaskValidation<E, A | B>", async () => {
   const result = await pipe(
     TaskValidation.valid(5),
-    TaskValidation.recover(() => TaskValidation.valid("recovered")),
+    TaskValidation.recover((_errors) => TaskValidation.valid("recovered")),
   )();
   assertEquals(result, { kind: "Valid", value: 5 });
 });
@@ -364,17 +333,19 @@ Deno.test("TaskValidation.recover preserves Valid typed as TaskValidation<E, A |
 // ---------------------------------------------------------------------------
 
 Deno.test("TaskValidation composes well in a pipe chain", async () => {
+  const validateName = (name: string): TaskValidation<string, string> =>
+    name.length > 0 ? TaskValidation.valid(name) : TaskValidation.invalid("Name required");
+  const validateAge = (age: number): TaskValidation<string, number> =>
+    age >= 0 ? TaskValidation.valid(age) : TaskValidation.invalid("Age must be >= 0");
+  const build = (name: string) => (age: number) => ({ name, age });
   const result = await pipe(
-    TaskValidation.valid<string, number>(5),
-    TaskValidation.map((n: number) => n * 2),
-    TaskValidation.chain((n: number) =>
-      n > 5
-        ? TaskValidation.valid<string, number>(n)
-        : TaskValidation.invalid<string, number>("Too small")
-    ),
-    TaskValidation.getOrElse(() => 0),
+    TaskValidation.valid<string, typeof build>(build),
+    TaskValidation.ap(validateName("Alice")),
+    TaskValidation.ap(validateAge(30)),
+    TaskValidation.map((user) => user.name),
+    TaskValidation.getOrElse(() => "unknown"),
   )();
-  assertStrictEquals(result, 10);
+  assertStrictEquals(result, "Alice");
 });
 
 Deno.test("TaskValidation ap accumulates all errors across multiple validations", async () => {
@@ -385,4 +356,61 @@ Deno.test("TaskValidation ap accumulates all errors across multiple validations"
     TaskValidation.ap(TaskValidation.invalid<string, number>("Age required")),
   )();
   assertEquals(result, { kind: "Invalid", errors: ["Name required", "Age required"] });
+});
+
+// ---------------------------------------------------------------------------
+// product
+// ---------------------------------------------------------------------------
+
+Deno.test("TaskValidation.product returns tuple when both are Valid", async () => {
+  const result = await TaskValidation.product(
+    TaskValidation.valid<string, string>("alice"),
+    TaskValidation.valid<string, number>(30),
+  )();
+  assertEquals(result, { kind: "Valid", value: ["alice", 30] });
+});
+
+Deno.test("TaskValidation.product accumulates errors when first is Invalid", async () => {
+  const result = await TaskValidation.product(
+    TaskValidation.invalid<string, string>("Name required"),
+    TaskValidation.valid<string, number>(30),
+  )();
+  assertEquals(result, { kind: "Invalid", errors: ["Name required"] });
+});
+
+Deno.test("TaskValidation.product accumulates errors from both sides", async () => {
+  const result = await TaskValidation.product(
+    TaskValidation.invalid<string, string>("Name required"),
+    TaskValidation.invalid<string, number>("Age required"),
+  )();
+  assertEquals(result, { kind: "Invalid", errors: ["Name required", "Age required"] });
+});
+
+// ---------------------------------------------------------------------------
+// productAll
+// ---------------------------------------------------------------------------
+
+Deno.test("TaskValidation.productAll returns all values when all are Valid", async () => {
+  const result = await TaskValidation.productAll([
+    TaskValidation.valid<string, number>(1),
+    TaskValidation.valid<string, number>(2),
+    TaskValidation.valid<string, number>(3),
+  ])();
+  assertEquals(result, { kind: "Valid", value: [1, 2, 3] });
+});
+
+Deno.test("TaskValidation.productAll accumulates all errors", async () => {
+  const result = await TaskValidation.productAll([
+    TaskValidation.invalid<string, number>("err1"),
+    TaskValidation.valid<string, number>(2),
+    TaskValidation.invalid<string, number>("err2"),
+  ])();
+  assertEquals(result, { kind: "Invalid", errors: ["err1", "err2"] });
+});
+
+Deno.test("TaskValidation.productAll with single element returns singleton array", async () => {
+  const result = await TaskValidation.productAll([
+    TaskValidation.valid<string, number>(42),
+  ])();
+  assertEquals(result, { kind: "Valid", value: [42] });
 });

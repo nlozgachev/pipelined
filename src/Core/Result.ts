@@ -13,7 +13,7 @@ import { Option } from "./Option.ts";
  * pipe(
  *   divide(10, 2),
  *   Result.map(n => n * 2),
- *   Result.getOrElse(0)
+ *   Result.getOrElse(() => 0)
  * ); // 10
  * ```
  */

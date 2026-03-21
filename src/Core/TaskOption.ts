@@ -15,7 +15,7 @@ import { TaskResult } from "./TaskResult.ts";
  * pipe(
  *   findUser("123"),
  *   TaskOption.map(user => user.name),
- *   TaskOption.getOrElse("Unknown")
+ *   TaskOption.getOrElse(() => "Unknown")
  * )();
  * ```
  */

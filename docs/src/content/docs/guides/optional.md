@@ -88,7 +88,7 @@ Extracting a plain value from the result:
 
 ```ts
 // Provide a fallback:
-pipe(profile, Optional.getOrElse(bioOpt)("no bio"));
+pipe(profile, Optional.getOrElse(bioOpt)(() => "no bio"));
 
 // Handle both cases by name:
 pipe(
