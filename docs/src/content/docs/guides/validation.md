@@ -105,56 +105,43 @@ Each `ap` step:
 The key property: all `ap` steps run regardless of prior failures. This is what allows all errors to
 be collected.
 
-## `chain` vs `ap` — dependent vs independent
+## Combining two validations with `product`
 
-`chain` in `Validation` still short-circuits on the first error, just like `Result.chain`. Use it
-when later checks depend on earlier ones succeeding:
+`product` takes two independent validations and combines them into a single `Validation` holding a
+tuple of both values. If either fails, errors from both sides are merged:
 
 ```ts
-// Can only validate the format if the field is non-empty
-pipe(
-  validateNonEmpty(form.email), // must pass first
-  Validation.chain(validateFormat), // only runs if above passed
-);
+Validation.product(
+  Validation.valid("alice"),
+  Validation.valid(30),
+); // Valid(["alice", 30])
+
+Validation.product(
+  Validation.invalid("Name required"),
+  Validation.invalid("Age must be >= 0"),
+); // Invalid(["Name required", "Age must be >= 0"])
 ```
 
-Use `ap` for independent checks that can all run in parallel:
+This is the binary building block for combining two independent checks when you want both values
+afterwards.
+
+## Combining many validations with `productAll`
+
+`productAll` takes a non-empty list of validations, runs all of them, and either collects all values
+or accumulates all errors:
 
 ```ts
-// Email and password checks are independent — run both
-pipe(
-  Validation.valid(build),
-  Validation.ap(validateEmail(form.email)),
-  Validation.ap(validatePassword(form.password)),
-);
-```
-
-## Combining validations
-
-`combine` merges two validations, accumulating errors if either is invalid:
-
-```ts
-Validation.combine(
-  Validation.invalid("Error A"),
-  Validation.invalid("Error B"),
-); // Invalid(["Error A", "Error B"])
-
-Validation.combine(Validation.valid("a"), Validation.valid("b")); // Valid("b") — returns the second value when both pass
-```
-
-For three or more validations, `combineAll` folds over an array:
-
-```ts
-Validation.combineAll([
+Validation.productAll([
   validateName(form.name),
   validateEmail(form.email),
   validateAge(form.age),
 ]);
-// Invalid([...all errors]) or Valid(last value)
+// Valid([name, email, age]) — if all pass
+// Invalid([...all errors]) — if any fail
 ```
 
-`combineAll` is most useful when you only need to know whether the whole set passes — the individual
-values are less important than the error list.
+Because the input is a `NonEmptyList`, the empty-array case is a compile-time error — the return
+type is always `Validation<E, readonly A[]>` with no `undefined`.
 
 ## Transforming values with `map`
 
@@ -215,7 +202,8 @@ Use `Validation` when:
 
 Use `Result` when:
 
-- Each step depends on the previous one succeeding
+- Each step depends on the previous one succeeding — convert to `Result` and use `Result.chain`
+  for dependent validation, then convert back
 - You want to fail fast and stop processing as soon as something goes wrong
 - The operation isn't about validation — it's about control flow
 

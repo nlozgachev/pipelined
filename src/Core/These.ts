@@ -241,14 +241,14 @@ export namespace These {
    *
    * @example
    * ```ts
-   * pipe(These.first(5), These.getFirstOrElse(0));            // 5
-   * pipe(These.both(5, "warn"), These.getFirstOrElse(0));     // 5
-   * pipe(These.second("warn"), These.getFirstOrElse(0));      // 0
-   * pipe(These.second("warn"), These.getFirstOrElse(null));   // null — typed as number | null
+   * pipe(These.first(5), These.getFirstOrElse(() => 0));            // 5
+   * pipe(These.both(5, "warn"), These.getFirstOrElse(() => 0));     // 5
+   * pipe(These.second("warn"), These.getFirstOrElse(() => 0));      // 0
+   * pipe(These.second("warn"), These.getFirstOrElse(() => null));   // null — typed as number | null
    * ```
    */
-  export const getFirstOrElse = <A, C>(defaultValue: C) => <B>(data: These<A, B>): A | C =>
-    hasFirst(data) ? data.first : defaultValue;
+  export const getFirstOrElse = <A, C>(defaultValue: () => C) => <B>(data: These<A, B>): A | C =>
+    hasFirst(data) ? data.first : defaultValue();
 
   /**
    * Returns the second value, or a default if the These has no second value.
@@ -256,14 +256,14 @@ export namespace These {
    *
    * @example
    * ```ts
-   * pipe(These.second("warn"), These.getSecondOrElse("none")); // "warn"
-   * pipe(These.both(5, "warn"), These.getSecondOrElse("none")); // "warn"
-   * pipe(These.first(5), These.getSecondOrElse("none"));       // "none"
-   * pipe(These.first(5), These.getSecondOrElse(null));         // null — typed as string | null
+   * pipe(These.second("warn"), These.getSecondOrElse(() => "none")); // "warn"
+   * pipe(These.both(5, "warn"), These.getSecondOrElse(() => "none")); // "warn"
+   * pipe(These.first(5), These.getSecondOrElse(() => "none"));       // "none"
+   * pipe(These.first(5), These.getSecondOrElse(() => null));         // null — typed as string | null
    * ```
    */
-  export const getSecondOrElse = <B, D>(defaultValue: D) => <A>(data: These<A, B>): B | D =>
-    hasSecond(data) ? data.second : defaultValue;
+  export const getSecondOrElse = <B, D>(defaultValue: () => D) => <A>(data: These<A, B>): B | D =>
+    hasSecond(data) ? data.second : defaultValue();
 
   /**
    * Executes a side effect on the first value without changing the These.

@@ -95,25 +95,6 @@ export namespace Validation {
     isValid(data) ? valid(f(data.value)) : data;
 
   /**
-   * Chains Validation computations. If the first is Valid, passes the value to f.
-   * If the first is Invalid, propagates the errors.
-   *
-   * Note: chain short-circuits on first error. Use `ap` to accumulate errors.
-   *
-   * @example
-   * ```ts
-   * const validatePositive = (n: number): Validation<string, number> =>
-   *   n > 0 ? Validation.valid(n) : Validation.invalid("Must be positive");
-   *
-   * pipe(Validation.valid(5), Validation.chain(validatePositive)); // Valid(5)
-   * pipe(Validation.valid(-1), Validation.chain(validatePositive)); // Invalid(["Must be positive"])
-   * ```
-   */
-  export const chain =
-    <E, A, B>(f: (a: A) => Validation<E, B>) => (data: Validation<E, A>): Validation<E, B> =>
-      isValid(data) ? f(data.value) : data;
-
-  /**
    * Applies a function wrapped in a Validation to a value wrapped in a Validation.
    * Accumulates errors from both sides.
    *
@@ -139,8 +120,8 @@ export namespace Validation {
       const errors = [
         ...(isInvalid(data) ? data.errors : []),
         ...(isInvalid(arg) ? arg.errors : []),
-      ];
-      return isNonEmptyList(errors) ? invalidAll(errors) : valid(data as never);
+      ] as NonEmptyList<E>;
+      return invalidAll(errors);
     };
 
   /**
@@ -217,11 +198,13 @@ export namespace Validation {
 
   /**
    * Recovers from an Invalid state by providing a fallback Validation.
+   * The fallback receives the accumulated error list so callers can inspect which errors occurred.
    * The fallback can produce a different success type, widening the result to `Validation<E, A | B>`.
    */
   export const recover =
-    <E, A, B>(fallback: () => Validation<E, B>) => (data: Validation<E, A>): Validation<E, A | B> =>
-      isValid(data) ? data : fallback();
+    <E, A, B>(fallback: (errors: NonEmptyList<E>) => Validation<E, B>) =>
+    (data: Validation<E, A>): Validation<E, A | B> =>
+      isValid(data) ? data : fallback(data.errors);
 
   /**
    * Recovers from an Invalid state unless the errors contain any of the blocked errors.
@@ -236,53 +219,59 @@ export namespace Validation {
         : data;
 
   /**
-   * Combines two Validation instances, accumulating errors from both.
-   * If both are Valid, returns the second valid value.
-   * If either is Invalid, combines their errors into a single Invalid.
+   * Combines two independent Validation instances into a tuple.
+   * If both are Valid, returns Valid with both values as a tuple.
+   * If either is Invalid, accumulates errors from both sides.
    *
    * @example
    * ```ts
-   * Validation.combine(
-   *   Validation.invalid("Error 1"),
-   *   Validation.invalid("Error 2")
-   * ); // Invalid(["Error 1", "Error 2"])
+   * Validation.product(
+   *   Validation.valid("alice"),
+   *   Validation.valid(30)
+   * ); // Valid(["alice", 30])
    *
-   * Validation.combine(
-   *   Validation.valid("a"),
-   *   Validation.valid("b")
-   * ); // Valid("b")
+   * Validation.product(
+   *   Validation.invalid("Name required"),
+   *   Validation.invalid("Age must be >= 0")
+   * ); // Invalid(["Name required", "Age must be >= 0"])
    * ```
    */
-  export const combine = <E, A>(
+  export const product = <E, A, B>(
     first: Validation<E, A>,
-    second: Validation<E, A>,
-  ): Validation<E, A> => {
-    if (isValid(first) && isValid(second)) {
-      return second;
-    }
+    second: Validation<E, B>,
+  ): Validation<E, readonly [A, B]> => {
+    if (isValid(first) && isValid(second)) return valid([first.value, second.value]);
     const errors = [
       ...(isInvalid(first) ? first.errors : []),
       ...(isInvalid(second) ? second.errors : []),
-    ];
-    return isNonEmptyList(errors) ? invalidAll(errors) : second;
+    ] as NonEmptyList<E>;
+    return invalidAll(errors);
   };
 
   /**
-   * Combines multiple Validation instances, accumulating all errors.
-   * If all are Valid, returns the last valid value.
-   * Returns undefined for an empty array.
+   * Combines a non-empty list of Validation instances, accumulating all errors.
+   * If all are Valid, returns Valid with all values collected into an array.
+   * If any are Invalid, returns Invalid with all accumulated errors.
    *
    * @example
    * ```ts
-   * Validation.combineAll([
+   * Validation.productAll([
    *   validateName(name),
    *   validateEmail(email),
    *   validateAge(age)
    * ]);
+   * // Valid([name, email, age]) or Invalid([...all errors])
    * ```
    */
-  export const combineAll = <E, A>(
-    data: Validation<E, A>[],
-  ): Validation<E, A> | undefined =>
-    data.length === 0 ? undefined : data.reduce((acc, v) => combine(acc, v));
+  export const productAll = <E, A>(
+    data: NonEmptyList<Validation<E, A>>,
+  ): Validation<E, readonly A[]> => {
+    const values: A[] = [];
+    const errors: E[] = [];
+    for (const v of data) {
+      if (isValid(v)) values.push(v.value);
+      else errors.push(...v.errors);
+    }
+    return errors.length > 0 ? invalidAll(errors as unknown as NonEmptyList<E>) : valid(values);
+  };
 }

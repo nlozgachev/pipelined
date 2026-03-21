@@ -1,4 +1,6 @@
 import { WithError, WithKind, WithValue } from "./InternalTypes.ts";
+import { Option } from "./Option.ts";
+import { Result } from "./Result.ts";
 
 /**
  * RemoteData represents the state of an async data fetch.
@@ -254,10 +256,8 @@ export namespace RemoteData {
    * Converts a RemoteData to an Option.
    * Success becomes Some, all other states become None.
    */
-  export const toOption = <E, A>(
-    data: RemoteData<E, A>,
-  ): import("./Option.ts").Option<A> =>
-    isSuccess(data) ? { kind: "Some", value: data.value } : { kind: "None" };
+  export const toOption = <E, A>(data: RemoteData<E, A>): Option<A> =>
+    isSuccess(data) ? Option.some(data.value) : Option.none();
 
   /**
    * Converts a RemoteData to a Result.
@@ -273,8 +273,8 @@ export namespace RemoteData {
    * ```
    */
   export const toResult =
-    <E>(onNotReady: () => E) => <A>(data: RemoteData<E, A>): import("./Result.ts").Result<E, A> =>
+    <E>(onNotReady: () => E) => <A>(data: RemoteData<E, A>): Result<E, A> =>
       isSuccess(data)
-        ? { kind: "Ok", value: data.value }
-        : { kind: "Error", error: isFailure(data) ? data.error : onNotReady() };
+        ? Result.ok(data.value)
+        : Result.err(isFailure(data) ? data.error : onNotReady());
 }

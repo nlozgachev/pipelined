@@ -369,47 +369,59 @@ Deno.test("These.match calls both handler for Both", () => {
 // ---------------------------------------------------------------------------
 
 Deno.test("These.getFirstOrElse returns first value for First", () => {
-  assertStrictEquals(pipe(These.first(5), These.getFirstOrElse(0)), 5);
+  assertStrictEquals(pipe(These.first(5), These.getFirstOrElse(() => 0)), 5);
 });
 
 Deno.test("These.getFirstOrElse returns first value for Both", () => {
-  assertStrictEquals(pipe(These.both(5, "w"), These.getFirstOrElse(0)), 5);
+  assertStrictEquals(pipe(These.both(5, "w"), These.getFirstOrElse(() => 0)), 5);
 });
 
 Deno.test("These.getFirstOrElse returns default for Second", () => {
-  assertStrictEquals(pipe(These.second<string>("warn"), These.getFirstOrElse(0)), 0);
+  assertStrictEquals(pipe(These.second<string>("warn"), These.getFirstOrElse(() => 0)), 0);
 });
 
 Deno.test("These.getFirstOrElse widens return type to A | C when default is a different type", () => {
-  const result = pipe(These.second("warn"), These.getFirstOrElse(null));
+  const result = pipe(These.second("warn"), These.getFirstOrElse(() => null));
   assertStrictEquals(result, null);
 });
 
 Deno.test("These.getFirstOrElse returns first value typed as A | C when present", () => {
-  const result = pipe(These.first(5), These.getFirstOrElse(null));
+  const result = pipe(These.first(5), These.getFirstOrElse(() => null));
   assertStrictEquals(result, 5);
 });
 
+Deno.test("These.getFirstOrElse does not call thunk when value is present", () => {
+  let called = false;
+  pipe(These.first(5), These.getFirstOrElse(() => { called = true; return 0; }));
+  assertStrictEquals(called, false);
+});
+
 Deno.test("These.getSecondOrElse returns second value for Second", () => {
-  assertStrictEquals(pipe(These.second("warn"), These.getSecondOrElse("none")), "warn");
+  assertStrictEquals(pipe(These.second("warn"), These.getSecondOrElse(() => "none")), "warn");
 });
 
 Deno.test("These.getSecondOrElse returns second value for Both", () => {
-  assertStrictEquals(pipe(These.both(5, "warn"), These.getSecondOrElse("none")), "warn");
+  assertStrictEquals(pipe(These.both(5, "warn"), These.getSecondOrElse(() => "none")), "warn");
 });
 
 Deno.test("These.getSecondOrElse returns default for First", () => {
-  assertStrictEquals(pipe(These.first<number>(5), These.getSecondOrElse("none")), "none");
+  assertStrictEquals(pipe(These.first<number>(5), These.getSecondOrElse(() => "none")), "none");
 });
 
 Deno.test("These.getSecondOrElse widens return type to B | D when default is a different type", () => {
-  const result = pipe(These.first(5), These.getSecondOrElse(null));
+  const result = pipe(These.first(5), These.getSecondOrElse(() => null));
   assertStrictEquals(result, null);
 });
 
 Deno.test("These.getSecondOrElse returns second value typed as B | D when present", () => {
-  const result = pipe(These.second("warn"), These.getSecondOrElse(null));
+  const result = pipe(These.second("warn"), These.getSecondOrElse(() => null));
   assertStrictEquals(result, "warn");
+});
+
+Deno.test("These.getSecondOrElse does not call thunk when value is present", () => {
+  let called = false;
+  pipe(These.second("warn"), These.getSecondOrElse(() => { called = true; return "none"; }));
+  assertStrictEquals(called, false);
 });
 
 // ---------------------------------------------------------------------------
@@ -480,7 +492,7 @@ Deno.test("These composes well in a pipe chain", () => {
     These.first(5),
     These.mapFirst((n: number) => n * 2),
     These.chainFirst((n: number) => n > 5 ? These.first(n) : These.second<string>("Too small")),
-    These.getFirstOrElse(0),
+    These.getFirstOrElse(() => 0),
   );
   assertStrictEquals(result, 10);
 });

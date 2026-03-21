@@ -91,47 +91,6 @@ Deno.test("Validation.map can change the value type", () => {
 });
 
 // ---------------------------------------------------------------------------
-// chain
-// ---------------------------------------------------------------------------
-
-Deno.test("Validation.chain applies function when Valid", () => {
-  const validatePositive = (n: number): Validation<string, number> =>
-    n > 0 ? Validation.valid(n) : Validation.invalid("Must be positive");
-
-  const result = pipe(
-    Validation.valid<string, number>(5),
-    Validation.chain(validatePositive),
-  );
-  assertEquals(result, { kind: "Valid", value: 5 });
-});
-
-Deno.test("Validation.chain returns Invalid when function fails", () => {
-  const validatePositive = (n: number): Validation<string, number> =>
-    n > 0 ? Validation.valid(n) : Validation.invalid("Must be positive");
-
-  const result = pipe(
-    Validation.valid<string, number>(-1),
-    Validation.chain(validatePositive),
-  );
-  assertEquals(result, { kind: "Invalid", errors: ["Must be positive"] });
-});
-
-Deno.test(
-  "Validation.chain short-circuits on Invalid (does not call function)",
-  () => {
-    let called = false;
-    pipe(
-      Validation.invalid("existing error"),
-      Validation.chain((_n: number) => {
-        called = true;
-        return Validation.valid<string, number>(_n);
-      }),
-    );
-    assertStrictEquals(called, false);
-  },
-);
-
-// ---------------------------------------------------------------------------
 // ap (error accumulation)
 // ---------------------------------------------------------------------------
 
@@ -363,7 +322,7 @@ Deno.test(
     let called = false;
     const result = pipe(
       Validation.valid<string, number>(5),
-      Validation.recover(() => {
+      Validation.recover((_errors) => {
         called = true;
         return Validation.valid<string, number>(99);
       }),
@@ -376,15 +335,27 @@ Deno.test(
 Deno.test("Validation.recover provides fallback for Invalid", () => {
   const result = pipe(
     Validation.invalid("error"),
-    Validation.recover(() => Validation.valid<string, number>(99)),
+    Validation.recover((_errors) => Validation.valid<string, number>(99)),
   );
   assertEquals(result, { kind: "Valid", value: 99 });
+});
+
+Deno.test("Validation.recover exposes the error list to the fallback", () => {
+  let received: string[] = [];
+  pipe(
+    Validation.invalidAll(["first", "second"] as [string, ...string[]]),
+    Validation.recover((errors) => {
+      received = [...errors];
+      return Validation.valid<string, number>(0);
+    }),
+  );
+  assertEquals(received, ["first", "second"]);
 });
 
 Deno.test("Validation.recover can return Invalid as fallback", () => {
   const result = pipe(
     Validation.invalid("first"),
-    Validation.recover(() => Validation.invalid("second")),
+    Validation.recover((_errors) => Validation.invalid("second")),
   );
   assertEquals(result, { kind: "Invalid", errors: ["second"] });
 });
@@ -394,7 +365,7 @@ Deno.test(
   () => {
     const result = pipe(
       Validation.invalid("error"),
-      Validation.recover(() => Validation.valid("recovered")),
+      Validation.recover((_errors) => Validation.valid("recovered")),
     );
     assertEquals(result, { kind: "Valid", value: "recovered" });
   },
@@ -403,7 +374,7 @@ Deno.test(
 Deno.test("Validation.recover preserves Valid typed as Validation<E, A | B>", () => {
   const result = pipe(
     Validation.valid(5),
-    Validation.recover(() => Validation.valid("recovered")),
+    Validation.recover((_errors) => Validation.valid("recovered")),
   );
   assertEquals(result, { kind: "Valid", value: 5 });
 });
@@ -465,67 +436,72 @@ Deno.test(
 );
 
 // ---------------------------------------------------------------------------
-// combine
+// product
 // ---------------------------------------------------------------------------
 
-Deno.test("Validation.combine returns second Valid when both are Valid", () => {
-  const result = Validation.combine(
-    Validation.valid<string, string>("a"),
-    Validation.valid<string, string>("b"),
+Deno.test("Validation.product returns tuple when both are Valid", () => {
+  const result = Validation.product(
+    Validation.valid<string, string>("alice"),
+    Validation.valid<string, number>(30),
   );
-  assertEquals(result, { kind: "Valid", value: "b" });
+  assertEquals(result, { kind: "Valid", value: ["alice", 30] });
 });
 
-Deno.test("Validation.combine returns Invalid when first is Invalid", () => {
-  const result = Validation.combine(
+Deno.test("Validation.product returns Invalid when first is Invalid", () => {
+  const result = Validation.product(
     Validation.invalid("err1"),
-    Validation.valid<string, string>("b"),
+    Validation.valid<string, number>(30),
   );
   assertEquals(result, { kind: "Invalid", errors: ["err1"] });
 });
 
-Deno.test("Validation.combine returns Invalid when second is Invalid", () => {
-  const result = Validation.combine(
-    Validation.valid<string, string>("a"),
+Deno.test("Validation.product returns Invalid when second is Invalid", () => {
+  const result = Validation.product(
+    Validation.valid<string, string>("alice"),
     Validation.invalid("err2"),
   );
   assertEquals(result, { kind: "Invalid", errors: ["err2"] });
 });
 
-Deno.test("Validation.combine accumulates errors when both are Invalid", () => {
-  const result = Validation.combine(
+Deno.test("Validation.product accumulates errors when both are Invalid", () => {
+  const result = Validation.product(
     Validation.invalid("err1"),
     Validation.invalid("err2"),
   );
   assertEquals(result, { kind: "Invalid", errors: ["err1", "err2"] });
 });
 
-Deno.test(
-  "Validation.combine accumulates multiple errors from both sides",
-  () => {
-    const result = Validation.combine(
-      Validation.invalidAll(["a", "b"]),
-      Validation.invalidAll(["c"]),
-    );
-    assertEquals(result, { kind: "Invalid", errors: ["a", "b", "c"] });
-  },
-);
+Deno.test("Validation.product accumulates multiple errors from both sides", () => {
+  const result = Validation.product(
+    Validation.invalidAll(["a", "b"]),
+    Validation.invalidAll(["c"]),
+  );
+  assertEquals(result, { kind: "Invalid", errors: ["a", "b", "c"] });
+});
+
+Deno.test("Validation.product can combine different value types", () => {
+  const result = Validation.product(
+    Validation.valid<string, string>("hello"),
+    Validation.valid<string, boolean>(true),
+  );
+  assertEquals(result, { kind: "Valid", value: ["hello", true] });
+});
 
 // ---------------------------------------------------------------------------
-// combineAll
+// productAll
 // ---------------------------------------------------------------------------
 
-Deno.test("Validation.combineAll returns last Valid when all are Valid", () => {
-  const result = Validation.combineAll([
+Deno.test("Validation.productAll returns all values when all are Valid", () => {
+  const result = Validation.productAll([
     Validation.valid<string, number>(1),
     Validation.valid<string, number>(2),
     Validation.valid<string, number>(3),
   ]);
-  assertEquals(result, { kind: "Valid", value: 3 });
+  assertEquals(result, { kind: "Valid", value: [1, 2, 3] });
 });
 
-Deno.test("Validation.combineAll accumulates all errors", () => {
-  const result = Validation.combineAll([
+Deno.test("Validation.productAll accumulates all errors", () => {
+  const result = Validation.productAll([
     Validation.invalid("err1"),
     Validation.valid<string, number>(2),
     Validation.invalid("err2"),
@@ -533,29 +509,18 @@ Deno.test("Validation.combineAll accumulates all errors", () => {
   assertEquals(result, { kind: "Invalid", errors: ["err1", "err2"] });
 });
 
-Deno.test(
-  "Validation.combineAll with all Invalid accumulates all errors",
-  () => {
-    const result = Validation.combineAll([
-      Validation.invalid("a"),
-      Validation.invalid("b"),
-      Validation.invalid("c"),
-    ]);
-    assertEquals(result, { kind: "Invalid", errors: ["a", "b", "c"] });
-  },
-);
+Deno.test("Validation.productAll with all Invalid accumulates all errors", () => {
+  const result = Validation.productAll([
+    Validation.invalid("a"),
+    Validation.invalid("b"),
+    Validation.invalid("c"),
+  ]);
+  assertEquals(result, { kind: "Invalid", errors: ["a", "b", "c"] });
+});
 
-Deno.test(
-  "Validation.combineAll with single element returns that element",
-  () => {
-    const result = Validation.combineAll([Validation.valid<string, number>(42)]);
-    assertEquals(result, { kind: "Valid", value: 42 });
-  },
-);
-
-Deno.test("Validation.combineAll returns undefined for empty array", () => {
-  const result = Validation.combineAll<string, number>([]);
-  assertStrictEquals(result, undefined);
+Deno.test("Validation.productAll with single element returns singleton array", () => {
+  const result = Validation.productAll([Validation.valid<string, number>(42)]);
+  assertEquals(result, { kind: "Valid", value: [42] });
 });
 
 // ---------------------------------------------------------------------------
@@ -563,55 +528,18 @@ Deno.test("Validation.combineAll returns undefined for empty array", () => {
 // ---------------------------------------------------------------------------
 
 Deno.test("Validation composes well in a pipe chain", () => {
+  const validateName = (name: string): Validation<string, string> =>
+    name.length > 0 ? Validation.valid(name) : Validation.invalid("Name required");
+  const validateAge = (age: number): Validation<string, number> =>
+    age >= 0 ? Validation.valid(age) : Validation.invalid("Age must be >= 0");
+  const build = (name: string) => (age: number) => ({ name, age });
   const result = pipe(
-    Validation.valid<string, number>(5),
-    Validation.map((n: number) => n * 2),
-    Validation.chain((n: number) =>
-      n > 5 ? Validation.valid<string, number>(n) : Validation.invalidAll(["Too small"])
-    ),
-    Validation.getOrElse(() => 0),
+    Validation.valid<string, typeof build>(build),
+    Validation.ap(validateName("Alice")),
+    Validation.ap(validateAge(30)),
+    Validation.map((user) => user.name),
+    Validation.getOrElse(() => "unknown"),
   );
-  assertStrictEquals(result, 10);
+  assertStrictEquals(result, "Alice");
 });
 
-Deno.test("Validation pipe chain with Invalid short-circuits in chain", () => {
-  const result = pipe(
-    Validation.valid<string, number>(2),
-    Validation.map((n: number) => n * 2),
-    Validation.chain((n: number) =>
-      n > 5 ? Validation.valid<string, number>(n) : Validation.invalid("Too small")
-    ),
-    Validation.getOrElse(() => 0),
-  );
-  assertStrictEquals(result, 0);
-});
-
-// ---------------------------------------------------------------------------
-// defensive fallbacks for impossible states (exercises uncovered else-branches)
-// ---------------------------------------------------------------------------
-
-// Both `ap` and `combine` build an errors array then guard it with
-// isNonEmptyList. Under normal usage the array is always non-empty (because
-// NonEmptyList<E> guarantees at least one error). The else-branch is a
-// defensive fallback that is unreachable through the public API, but we cover
-// it here by forcing an Invalid with an empty errors array via a type cast.
-
-Deno.test("Validation.ap defensive branch: Invalid with empty errors falls back to Valid", () => {
-  // Impossible in real code — an Invalid always has at least one error.
-  const badFn = { kind: "Invalid", errors: [] } as unknown as Validation<
-    string,
-    (n: number) => number
-  >;
-  const result = Validation.ap(Validation.valid<string, number>(5))(badFn);
-  // errors = [], isNonEmptyList([]) === false → falls back to of(data as never)
-  assertEquals(result as unknown, { kind: "Valid", value: badFn });
-});
-
-Deno.test("Validation.combine defensive branch: two Invalids with empty errors falls back to second", () => {
-  // Impossible in real code — an Invalid always has at least one error.
-  const empty1 = { kind: "Invalid", errors: [] } as unknown as Validation<string, number>;
-  const empty2 = { kind: "Invalid", errors: [] } as unknown as Validation<string, number>;
-  const result = Validation.combine(empty1, empty2);
-  // errors = [], isNonEmptyList([]) === false → falls back to returning second
-  assertStrictEquals(result, empty2);
-});
