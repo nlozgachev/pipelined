@@ -281,6 +281,112 @@ Deno.test("Task is lazy and only executes when invoked", () => {
 });
 
 // ---------------------------------------------------------------------------
+// race
+// ---------------------------------------------------------------------------
+
+Deno.test({
+  name: "Task.race resolves with the fastest Task",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const fast = Task.from<string>(
+      () => new Promise((r) => setTimeout(() => r("fast"), 10)),
+    );
+    const slow = Task.from<string>(
+      () => new Promise((r) => setTimeout(() => r("slow"), 100)),
+    );
+    const result = await Task.race([fast, slow])();
+    assertStrictEquals(result, "fast");
+  },
+});
+
+Deno.test({
+  name: "Task.race resolves immediately when a resolved Task is included",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const immediate = Task.resolve("immediate");
+    const slow = Task.from<string>(
+      () => new Promise((r) => setTimeout(() => r("slow"), 100)),
+    );
+    const result = await Task.race([slow, immediate])();
+    assertStrictEquals(result, "immediate");
+  },
+});
+
+Deno.test("Task.race with a single Task resolves to its value", async () => {
+  const result = await Task.race([Task.resolve(42)])();
+  assertStrictEquals(result, 42);
+});
+
+Deno.test({
+  name: "Task.race starts all Tasks immediately (parallel, not sequential)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const start = Date.now();
+    const t1 = Task.from<number>(
+      () => new Promise((r) => setTimeout(() => r(1), 50)),
+    );
+    const t2 = Task.from<number>(
+      () => new Promise((r) => setTimeout(() => r(2), 10)),
+    );
+    const result = await Task.race([t1, t2])();
+    const elapsed = Date.now() - start;
+    assertStrictEquals(result, 2);
+    assertStrictEquals(elapsed < 45, true); // would be ~50ms if sequential
+  },
+});
+
+// ---------------------------------------------------------------------------
+// sequential
+// ---------------------------------------------------------------------------
+
+Deno.test("Task.sequential runs Tasks in order and collects results", async () => {
+  const result = await Task.sequential([
+    Task.resolve(1),
+    Task.resolve(2),
+    Task.resolve(3),
+  ])();
+  assertEquals(result, [1, 2, 3]);
+});
+
+Deno.test("Task.sequential with empty array returns empty array", async () => {
+  const result = await Task.sequential([])();
+  assertEquals(result, []);
+});
+
+Deno.test({
+  name: "Task.sequential executes each Task only after the previous resolves",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const order: number[] = [];
+    const makeTask = (n: number, ms: number) =>
+      Task.from<number>(() =>
+        new Promise((r) =>
+          setTimeout(() => {
+            order.push(n);
+            r(n);
+          }, ms)
+        )
+      );
+
+    await Task.sequential([
+      makeTask(1, 30),
+      makeTask(2, 10),
+      makeTask(3, 20),
+    ])();
+    assertEquals(order, [1, 2, 3]);
+  },
+});
+
+Deno.test("Task.sequential with a single Task returns single-element array", async () => {
+  const result = await Task.sequential([Task.resolve(99)])();
+  assertEquals(result, [99]);
+});
+
+// ---------------------------------------------------------------------------
 // timeout
 // ---------------------------------------------------------------------------
 

@@ -11,3 +11,5 @@ export type WithErrors<T> = { readonly errors: NonEmptyList<T> };
 export type WithFirst<T> = { readonly first: T };
 
 export type WithSecond<T> = { readonly second: T };
+
+export type WithLog<T> = { readonly log: ReadonlyArray<T> };

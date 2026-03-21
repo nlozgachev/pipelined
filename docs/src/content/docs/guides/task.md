@@ -127,6 +127,41 @@ const [config, locale, theme] = await Task.all([
 The return type is inferred from the input tuple — if you pass `[Task<Config>, Task<string>]`, you
 get back `Task<[Config, string]>`.
 
+## Racing Tasks with `race`
+
+`Task.race` starts all Tasks simultaneously and resolves as soon as the first one completes. The
+others are abandoned — their results are ignored.
+
+```ts
+const primary  = Task.from(() => fetchFromPrimaryRegion(id));
+const fallback = Task.from(() => fetchFromFallbackRegion(id));
+
+const fastest = Task.race([primary, fallback]);
+const data = await fastest(); // whichever responds first
+```
+
+This is useful for hedged requests: fire the same request at multiple endpoints and accept the first
+response, reducing tail latency.
+
+## Running Tasks one at a time with `sequential`
+
+When order matters or tasks must not overlap, `Task.sequential` runs each Task only after the
+previous one resolves, collecting all results in an array:
+
+```ts
+const steps = [
+  Task.from(() => acquireLock(resourceId)),
+  Task.from(() => processResource(resourceId)),
+  Task.from(() => releaseLock(resourceId)),
+];
+
+const results = await Task.sequential(steps)();
+// results[0] = lock handle, results[1] = processed value, results[2] = release confirmation
+```
+
+`Task.sequential` is the counterpart to `Task.all`: use `all` when tasks are independent and can
+overlap, and `sequential` when each step must complete before the next begins.
+
 ## Delaying execution
 
 `Task.delay` adds a pause before the Task runs:
@@ -252,7 +287,7 @@ Use `Task` when:
 
 - You want to build a pipeline of async steps that you can compose, pass around, or delay before
   executing
-- You need parallel execution via `Task.all` within a pipeline
+- You need parallel execution via `Task.all`, first-wins via `Task.race`, or ordered execution via `Task.sequential`
 - You want typed error handling with `TaskResult` instead of try/catch around async functions
 
 Keep using `async/await` directly when:

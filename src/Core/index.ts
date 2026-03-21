@@ -1,4 +1,5 @@
 export * from "./Arr.ts";
+export * from "./Logged.ts";
 export * from "./Deferred.ts";
 export * from "./Lens.ts";
 export * from "./Option.ts";
@@ -8,6 +9,7 @@ export * from "./Rec.ts";
 export * from "./Predicate.ts";
 export * from "./Refinement.ts";
 export * from "./RemoteData.ts";
+export * from "./State.ts";
 export * from "./Result.ts";
 export * from "./Task.ts";
 export * from "./TaskOption.ts";

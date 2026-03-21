@@ -244,6 +244,46 @@ export namespace Task {
       });
 
   /**
+   * Resolves with the value of the first Task to complete. All Tasks start
+   * immediately; the rest are abandoned once one resolves.
+   *
+   * @example
+   * ```ts
+   * const fast = Task.from(() => new Promise<string>(r => setTimeout(() => r("fast"), 10)));
+   * const slow = Task.from(() => new Promise<string>(r => setTimeout(() => r("slow"), 200)));
+   *
+   * await Task.race([fast, slow])(); // "fast"
+   * ```
+   */
+  export const race = <A>(tasks: ReadonlyArray<Task<A>>): Task<A> =>
+    from(() => Promise.race(tasks.map(toPromise)));
+
+  /**
+   * Runs an array of Tasks one at a time in order, collecting all results.
+   * Each Task starts only after the previous one resolves.
+   *
+   * @example
+   * ```ts
+   * let log: number[] = [];
+   * const makeTask = (n: number) => Task.from(() => {
+   *   log.push(n);
+   *   return Promise.resolve(n);
+   * });
+   *
+   * await Task.sequential([makeTask(1), makeTask(2), makeTask(3)])();
+   * // log = [1, 2, 3] — tasks ran in order
+   * ```
+   */
+  export const sequential = <A>(tasks: ReadonlyArray<Task<A>>): Task<ReadonlyArray<A>> =>
+    from(async () => {
+      const results: A[] = [];
+      for (const task of tasks) {
+        results.push(await toPromise(task));
+      }
+      return results;
+    });
+
+  /**
    * Converts a `Task<A>` into a `Task<Result<E, A>>`, resolving to `Err` if the
    * Task does not complete within the given time.
    *

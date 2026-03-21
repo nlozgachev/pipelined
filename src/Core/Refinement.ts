@@ -70,8 +70,7 @@ export namespace Refinement {
   export const compose =
     <A, B extends A, C extends B>(bc: Refinement<B, C>) =>
     (ab: Refinement<A, B>): Refinement<A, C> =>
-      (a): a is C =>
-        ab(a) && bc(a);
+    (a): a is C => ab(a) && bc(a);
 
   /**
    * Intersects two refinements: the result narrows `A` to `B & C`, passing only
@@ -93,8 +92,7 @@ export namespace Refinement {
   export const and =
     <A, C extends A>(second: Refinement<A, C>) =>
     <B extends A>(first: Refinement<A, B>): Refinement<A, B & C> =>
-      (a): a is B & C =>
-        first(a) && second(a);
+    (a): a is B & C => first(a) && second(a);
 
   /**
    * Unions two refinements: the result narrows `A` to `B | C`, passing when either
@@ -116,8 +114,7 @@ export namespace Refinement {
   export const or =
     <A, C extends A>(second: Refinement<A, C>) =>
     <B extends A>(first: Refinement<A, B>): Refinement<A, B | C> =>
-      (a): a is B | C =>
-        first(a) || second(a);
+    (a): a is B | C => first(a) || second(a);
 
   /**
    * Converts a `Refinement<A, B>` into a function `(a: A) => Option<B>`.
@@ -135,10 +132,8 @@ export namespace Refinement {
    * pipe(42, Refinement.toFilter(isPositive)); // Some(42)
    * ```
    */
-  export const toFilter =
-    <A, B extends A>(r: Refinement<A, B>) =>
-    (a: A): Option<B> =>
-      r(a) ? Option.some(a) : Option.none();
+  export const toFilter = <A, B extends A>(r: Refinement<A, B>) => (a: A): Option<B> =>
+    r(a) ? Option.some(a) : Option.none();
 
   /**
    * Converts a `Refinement<A, B>` into a function `(a: A) => Result<E, B>`.
@@ -157,7 +152,6 @@ export namespace Refinement {
    * ```
    */
   export const toResult =
-    <A, B extends A, E>(r: Refinement<A, B>, onFail: (a: A) => E) =>
-    (a: A): Result<E, B> =>
+    <A, B extends A, E>(r: Refinement<A, B>, onFail: (a: A) => E) => (a: A): Result<E, B> =>
       r(a) ? Result.ok(a) : Result.err(onFail(a));
 }

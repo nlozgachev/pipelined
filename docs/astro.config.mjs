@@ -88,6 +88,8 @@ export default defineConfig({
             { label: "Brand — distinguishing values", slug: "guides/brand" },
             { label: "Refinement — type predicates", slug: "guides/refinement" },
             { label: "Predicate — boolean checks", slug: "guides/predicate" },
+            { label: "State — threading state", slug: "guides/state" },
+            { label: "Logged — values with logs", slug: "guides/logged" },
             { label: "Arr — array utilities", slug: "guides/arr" },
             { label: "Rec — record utilities", slug: "guides/rec" },
 

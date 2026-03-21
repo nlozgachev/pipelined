@@ -60,9 +60,8 @@ export namespace Predicate {
    * isPositiveEven(-2);  // false — even but not positive
    * ```
    */
-  export const and =
-    <A>(second: Predicate<A>) => (first: Predicate<A>): Predicate<A> =>
-      (a) => first(a) && second(a);
+  export const and = <A>(second: Predicate<A>) => (first: Predicate<A>): Predicate<A> => (a) =>
+    first(a) && second(a);
 
   /**
    * Combines two predicates with logical OR: passes when either holds.
@@ -81,9 +80,8 @@ export namespace Predicate {
    * getsDiscount(30);  // false
    * ```
    */
-  export const or =
-    <A>(second: Predicate<A>) => (first: Predicate<A>): Predicate<A> =>
-      (a) => first(a) || second(a);
+  export const or = <A>(second: Predicate<A>) => (first: Predicate<A>): Predicate<A> => (a) =>
+    first(a) || second(a);
 
   /**
    * Adapts a `Predicate<A>` to work on a different input type `B` by applying `f`
@@ -107,9 +105,7 @@ export namespace Predicate {
    * isAdultUser({ name: "Bob",   age: 15 });  // false
    * ```
    */
-  export const using =
-    <A, B>(f: (b: B) => A) => (p: Predicate<A>): Predicate<B> =>
-      (b) => p(f(b));
+  export const using = <A, B>(f: (b: B) => A) => (p: Predicate<A>): Predicate<B> => (b) => p(f(b));
 
   /**
    * Combines an array of predicates with AND: passes only when every predicate holds.
@@ -129,8 +125,8 @@ export namespace Predicate {
    * Predicate.all([])("anything");   // true
    * ```
    */
-  export const all = <A>(predicates: ReadonlyArray<Predicate<A>>): Predicate<A> =>
-    (a) => predicates.every((p) => p(a));
+  export const all = <A>(predicates: ReadonlyArray<Predicate<A>>): Predicate<A> => (a) =>
+    predicates.every((p) => p(a));
 
   /**
    * Combines an array of predicates with OR: passes when at least one holds.
@@ -149,8 +145,8 @@ export namespace Predicate {
    * Predicate.any([])("anything");                 // false
    * ```
    */
-  export const any = <A>(predicates: ReadonlyArray<Predicate<A>>): Predicate<A> =>
-    (a) => predicates.some((p) => p(a));
+  export const any = <A>(predicates: ReadonlyArray<Predicate<A>>): Predicate<A> => (a) =>
+    predicates.some((p) => p(a));
 
   /**
    * Converts a `Refinement<A, B>` into a `Predicate<A>`, discarding the compile-time
