@@ -33,7 +33,7 @@ await build({
 	test: false,
 	typeCheck: "both",
 	compilerOptions: {
-		lib: ["ES2022", "DOM"],
+		lib: ["ESNext", "DOM"],
 		target: "ES2022",
 	},
 	package: {
