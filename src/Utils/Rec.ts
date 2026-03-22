@@ -62,11 +62,9 @@ export namespace Rec {
 	 */
 	export const filter =
 		<A>(predicate: (a: A) => boolean) => (data: Readonly<Record<string, A>>): Readonly<Record<string, A>> => {
-			const keys = Object.keys(data);
-			const vals = Object.values(data);
 			const result: Record<string, A> = {};
-			for (let i = 0; i < keys.length; i++) {
-				if (predicate(vals[i])) result[keys[i]] = vals[i];
+			for (const [k, v] of Object.entries(data)) {
+				if (predicate(v)) result[k] = v;
 			}
 			return result;
 		};
@@ -83,11 +81,9 @@ export namespace Rec {
 	export const filterWithKey =
 		<A>(predicate: (key: string, a: A) => boolean) =>
 		(data: Readonly<Record<string, A>>): Readonly<Record<string, A>> => {
-			const keys = Object.keys(data);
-			const vals = Object.values(data);
 			const result: Record<string, A> = {};
-			for (let i = 0; i < keys.length; i++) {
-				if (predicate(keys[i], vals[i])) result[keys[i]] = vals[i];
+			for (const [k, v] of Object.entries(data)) {
+				if (predicate(k, v)) result[k] = v;
 			}
 			return result;
 		};
@@ -236,11 +232,9 @@ export namespace Rec {
 	 */
 	export const mapKeys =
 		(f: (key: string) => string) => <A>(data: Readonly<Record<string, A>>): Readonly<Record<string, A>> => {
-			const keys = Object.keys(data);
-			const vals = Object.values(data);
 			const result: Record<string, A> = {};
-			for (let i = 0; i < keys.length; i++) {
-				result[f(keys[i])] = vals[i];
+			for (const [k, v] of Object.entries(data)) {
+				result[f(k)] = v;
 			}
 			return result;
 		};
@@ -258,12 +252,9 @@ export namespace Rec {
 	export const compact = <A>(
 		data: Readonly<Record<string, Option<A>>>,
 	): Readonly<Record<string, A>> => {
-		const keys = Object.keys(data);
-		const vals = Object.values(data);
 		const result: Record<string, A> = {};
-		for (let i = 0; i < keys.length; i++) {
-			const v = vals[i];
-			if (v.kind === "Some") result[keys[i]] = v.value;
+		for (const [k, v] of Object.entries(data)) {
+			if (v.kind === "Some") result[k] = v.value;
 		}
 		return result;
 	};

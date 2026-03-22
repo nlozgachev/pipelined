@@ -8,7 +8,7 @@ don't have a built-in equivalent in JavaScript. There is no native "absent value
 through transformations" or "typed failure channel". The overhead of introducing them is the cost
 of abstraction over nothing.
 
-The utilities in `pipelined/utils` are different. `Arr`, `Rec`, `Num`, and `Str` wrap things
+The utilities in `pipelined/utils` are different. `Arr`, `Rec`, `Num`, `Str`, `Dict`, and `Uniq` wrap things
 JavaScript already does — iterating arrays, looking up keys, parsing numbers, splitting strings.
 Every method has a native counterpart one call away. The gap between the pipelined version and the
 plain JavaScript version is visible and measurable.
@@ -56,9 +56,9 @@ a reasonable developer reach back for the native equivalent — is a bug.
 ## What "acceptable" looks like
 
 The practical threshold is: pipelined should not be measurably slower than an idiomatic native
-implementation on real-world input sizes. For array and record operations, that means measuring at
-around 1 000 elements — large enough that per-element overhead adds up, small enough to represent
-typical application data rather than a stress test.
+implementation on real-world input sizes. Each operation is measured at 100 and 10 000 elements —
+the smaller size represents typical application data; the larger exposes per-element overhead that
+only compounds at scale.
 
 Operations that stay within roughly 10–15% of the native baseline at that scale are considered
 within noise. The cost is the cost of composability, and composability is the point.
@@ -90,10 +90,13 @@ all carry callback-dispatch overhead that cannot be avoided through the native A
 with `for (let i = 0; i < n; i++)` loops and inlining the check eliminates that overhead entirely.
 `Arr.every` dropped from 51 µs to 5.7 µs. `Arr.filter` dropped from 75 µs to 17 µs.
 
-**Keys + values + index for records.** `Object.entries` allocates a `[key, value]` pair for every
-entry — 1 000 entries means 1 000 small arrays. Calling `Object.keys` and `Object.values`
-separately produces two flat arrays, then index access replaces the pair lookup. At 1 000 keys,
-`Rec.filter` went from 128 µs to 19 µs — faster than the idiomatic native `for...of` loop.
+**Choosing the right record iteration strategy.** `Object.entries` allocates a `[key, value]` pair
+per entry, which adds up across many keys. For operations that unconditionally read both key and
+value — like `Rec.map` — calling `Object.keys` and `Object.values` separately produces two flat
+arrays and avoids the pair allocation, which is measurably faster at small sizes. For conditional
+operations like `Rec.filter` and `Rec.compact`, the pair allocation is dominated by the branching
+cost at 10 000 keys, and a plain `for...of Object.entries` loop performs at parity or better.
+The right approach depends on the access pattern, not a single rule.
 
 **Knowing when not to replace native.** `.slice()` — used in `take`, `drop`, and `splitAt` — is
 a contiguous memory copy implemented in V8's C++ layer. A JavaScript loop writing element by
