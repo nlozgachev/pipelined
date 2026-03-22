@@ -342,8 +342,7 @@ export namespace Arr {
 	 * pipe([1, 2, 3], Arr.reduce(0, (acc, n) => acc + n)); // 6
 	 * ```
 	 */
-	export const reduce = <A, B>(initial: B, f: (acc: B, a: A) => B) => (data: readonly A[]): B =>
-		data.reduce(f, initial);
+	export const reduce = <A, B>(initial: B, f: (acc: B, a: A) => B) => (data: readonly A[]): B => data.reduce(f, initial);
 
 	// --- Traverse / Sequence ---
 
@@ -465,6 +464,7 @@ export namespace Arr {
 			Task.from(async () => {
 				const result: B[] = [];
 				for (const a of data) {
+					// eslint-disable-next-line no-await-in-loop
 					const r = await Deferred.toPromise(f(a)());
 					if (Result.isErr(r)) return r;
 					result.push(r.value);

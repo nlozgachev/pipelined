@@ -1,290 +1,272 @@
-import { assertEquals, assertStrictEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { Uniq } from "../Uniq.ts";
 import { pipe } from "#composition/pipe.ts";
+import { expect, test } from "vitest";
+import { Uniq } from "../Uniq.ts";
 
 // ---------------------------------------------------------------------------
 // empty
 // ---------------------------------------------------------------------------
 
-Deno.test("Uniq.empty returns a ReadonlySet with size 0", () => {
-	assertStrictEquals(Uniq.empty<number>().size, 0);
+test("Uniq.empty returns a ReadonlySet with size 0", () => {
+	expect(Uniq.empty<number>().size).toBe(0);
 });
 
 // ---------------------------------------------------------------------------
 // singleton
 // ---------------------------------------------------------------------------
 
-Deno.test("Uniq.singleton returns a ReadonlySet with one item", () => {
+test("Uniq.singleton returns a ReadonlySet with one item", () => {
 	const s = Uniq.singleton(42);
-	assertStrictEquals(s.size, 1);
-	assertStrictEquals(s.has(42), true);
+	expect(s.size).toBe(1);
+	expect(s.has(42)).toBe(true);
 });
 
 // ---------------------------------------------------------------------------
 // fromArray
 // ---------------------------------------------------------------------------
 
-Deno.test("Uniq.fromArray deduplicates items", () => {
+test("Uniq.fromArray deduplicates items", () => {
 	const s = Uniq.fromArray([1, 2, 2, 3, 3, 3]);
-	assertStrictEquals(s.size, 3);
+	expect(s.size).toBe(3);
 });
 
-Deno.test("Uniq.fromArray returns empty set for empty array", () => {
-	assertStrictEquals(Uniq.fromArray([]).size, 0);
+test("Uniq.fromArray returns empty set for empty array", () => {
+	expect(Uniq.fromArray([]).size).toBe(0);
 });
 
-Deno.test("Uniq.fromArray preserves all unique items", () => {
+test("Uniq.fromArray preserves all unique items", () => {
 	const s = Uniq.fromArray([10, 20, 30]);
-	assertStrictEquals(s.has(10), true);
-	assertStrictEquals(s.has(20), true);
-	assertStrictEquals(s.has(30), true);
+	expect(s.has(10)).toBe(true);
+	expect(s.has(20)).toBe(true);
+	expect(s.has(30)).toBe(true);
 });
 
 // ---------------------------------------------------------------------------
 // has
 // ---------------------------------------------------------------------------
 
-Deno.test("Uniq.has returns true when item is in the set", () => {
-	assertStrictEquals(pipe(Uniq.fromArray([1, 2, 3]), Uniq.has(2)), true);
+test("Uniq.has returns true when item is in the set", () => {
+	expect(pipe(Uniq.fromArray([1, 2, 3]), Uniq.has(2))).toBe(true);
 });
 
-Deno.test("Uniq.has returns false when item is not in the set", () => {
-	assertStrictEquals(pipe(Uniq.fromArray([1, 2, 3]), Uniq.has(4)), false);
+test("Uniq.has returns false when item is not in the set", () => {
+	expect(pipe(Uniq.fromArray([1, 2, 3]), Uniq.has(4))).toBe(false);
 });
 
-Deno.test("Uniq.has returns false on empty set", () => {
-	assertStrictEquals(pipe(Uniq.empty<number>(), Uniq.has(1)), false);
+test("Uniq.has returns false on empty set", () => {
+	expect(pipe(Uniq.empty<number>(), Uniq.has(1))).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
 // size
 // ---------------------------------------------------------------------------
 
-Deno.test("Uniq.size returns the number of items", () => {
-	assertStrictEquals(Uniq.size(Uniq.fromArray([1, 2, 3])), 3);
-	assertStrictEquals(Uniq.size(Uniq.empty()), 0);
+test("Uniq.size returns the number of items", () => {
+	expect(Uniq.size(Uniq.fromArray([1, 2, 3]))).toBe(3);
+	expect(Uniq.size(Uniq.empty())).toBe(0);
 });
 
 // ---------------------------------------------------------------------------
 // isEmpty
 // ---------------------------------------------------------------------------
 
-Deno.test("Uniq.isEmpty returns true for empty set", () => {
-	assertStrictEquals(Uniq.isEmpty(Uniq.empty()), true);
+test("Uniq.isEmpty returns true for empty set", () => {
+	expect(Uniq.isEmpty(Uniq.empty())).toBe(true);
 });
 
-Deno.test("Uniq.isEmpty returns false for non-empty set", () => {
-	assertStrictEquals(Uniq.isEmpty(Uniq.singleton(1)), false);
+test("Uniq.isEmpty returns false for non-empty set", () => {
+	expect(Uniq.isEmpty(Uniq.singleton(1))).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
 // isSubsetOf
 // ---------------------------------------------------------------------------
 
-Deno.test("Uniq.isSubsetOf returns true when all items are in other", () => {
-	assertStrictEquals(
-		pipe(Uniq.fromArray([1, 2]), Uniq.isSubsetOf(Uniq.fromArray([1, 2, 3]))),
-		true,
-	);
+test("Uniq.isSubsetOf returns true when all items are in other", () => {
+	expect(pipe(Uniq.fromArray([1, 2]), Uniq.isSubsetOf(Uniq.fromArray([1, 2, 3])))).toBe(true);
 });
 
-Deno.test("Uniq.isSubsetOf returns false when some items are missing from other", () => {
-	assertStrictEquals(
-		pipe(Uniq.fromArray([1, 4]), Uniq.isSubsetOf(Uniq.fromArray([1, 2, 3]))),
-		false,
-	);
+test("Uniq.isSubsetOf returns false when some items are missing from other", () => {
+	expect(pipe(Uniq.fromArray([1, 4]), Uniq.isSubsetOf(Uniq.fromArray([1, 2, 3])))).toBe(false);
 });
 
-Deno.test("Uniq.isSubsetOf empty set is subset of any set", () => {
-	assertStrictEquals(
-		pipe(Uniq.empty<number>(), Uniq.isSubsetOf(Uniq.fromArray([1, 2, 3]))),
-		true,
-	);
+test("Uniq.isSubsetOf empty set is subset of any set", () => {
+	expect(pipe(Uniq.empty<number>(), Uniq.isSubsetOf(Uniq.fromArray([1, 2, 3])))).toBe(true);
 });
 
-Deno.test("Uniq.isSubsetOf returns true when set equals other", () => {
-	assertStrictEquals(
-		pipe(Uniq.fromArray([1, 2]), Uniq.isSubsetOf(Uniq.fromArray([1, 2]))),
-		true,
-	);
+test("Uniq.isSubsetOf returns true when set equals other", () => {
+	expect(pipe(Uniq.fromArray([1, 2]), Uniq.isSubsetOf(Uniq.fromArray([1, 2])))).toBe(true);
 });
 
 // ---------------------------------------------------------------------------
 // insert
 // ---------------------------------------------------------------------------
 
-Deno.test("Uniq.insert adds a new item", () => {
+test("Uniq.insert adds a new item", () => {
 	const s = pipe(Uniq.fromArray([1, 2]), Uniq.insert(3));
-	assertStrictEquals(s.size, 3);
-	assertStrictEquals(s.has(3), true);
+	expect(s.size).toBe(3);
+	expect(s.has(3)).toBe(true);
 });
 
-Deno.test("Uniq.insert returns original reference when item already present", () => {
+test("Uniq.insert returns original reference when item already present", () => {
 	const original = Uniq.fromArray([1, 2, 3]);
 	const result = pipe(original, Uniq.insert(2));
-	assertStrictEquals(result, original);
+	expect(result).toBe(original);
 });
 
-Deno.test("Uniq.insert does not mutate the original", () => {
+test("Uniq.insert does not mutate the original", () => {
 	const original = Uniq.fromArray([1, 2]);
 	pipe(original, Uniq.insert(3));
-	assertStrictEquals(original.size, 2);
+	expect(original.size).toBe(2);
 });
 
 // ---------------------------------------------------------------------------
 // remove
 // ---------------------------------------------------------------------------
 
-Deno.test("Uniq.remove removes an existing item", () => {
+test("Uniq.remove removes an existing item", () => {
 	const s = pipe(Uniq.fromArray([1, 2, 3]), Uniq.remove(2));
-	assertStrictEquals(s.size, 2);
-	assertStrictEquals(s.has(2), false);
+	expect(s.size).toBe(2);
+	expect(s.has(2)).toBe(false);
 });
 
-Deno.test("Uniq.remove returns original reference when item not present", () => {
+test("Uniq.remove returns original reference when item not present", () => {
 	const original = Uniq.fromArray([1, 2, 3]);
 	const result = pipe(original, Uniq.remove(4));
-	assertStrictEquals(result, original);
+	expect(result).toBe(original);
 });
 
-Deno.test("Uniq.remove does not mutate the original", () => {
+test("Uniq.remove does not mutate the original", () => {
 	const original = Uniq.fromArray([1, 2, 3]);
 	pipe(original, Uniq.remove(1));
-	assertStrictEquals(original.size, 3);
+	expect(original.size).toBe(3);
 });
 
 // ---------------------------------------------------------------------------
 // map
 // ---------------------------------------------------------------------------
 
-Deno.test("Uniq.map transforms all items", () => {
+test("Uniq.map transforms all items", () => {
 	const s = pipe(Uniq.fromArray([1, 2, 3]), Uniq.map((n) => n * 2));
-	assertEquals([...Uniq.toArray(s)].sort((a, b) => a - b), [2, 4, 6]);
+	expect([...Uniq.toArray(s)].sort((a, b) => a - b)).toEqual([2, 4, 6]);
 });
 
-Deno.test("Uniq.map merges duplicate results", () => {
+test("Uniq.map merges duplicate results", () => {
 	const s = pipe(Uniq.fromArray([1, 2, 3, 4]), Uniq.map((n) => n % 3));
-	assertStrictEquals(s.size, 3); // 1%3=1, 2%3=2, 3%3=0, 4%3=1 — three unique values
+	expect(s.size).toBe(3); // 1%3=1, 2%3=2, 3%3=0, 4%3=1 — three unique values
 });
 
-Deno.test("Uniq.map on empty set returns empty set", () => {
-	assertStrictEquals(pipe(Uniq.empty<number>(), Uniq.map((n) => n * 2)).size, 0);
+test("Uniq.map on empty set returns empty set", () => {
+	expect(pipe(Uniq.empty<number>(), Uniq.map((n) => n * 2)).size).toBe(0);
 });
 
 // ---------------------------------------------------------------------------
 // filter
 // ---------------------------------------------------------------------------
 
-Deno.test("Uniq.filter keeps items matching predicate", () => {
+test("Uniq.filter keeps items matching predicate", () => {
 	const s = pipe(Uniq.fromArray([1, 2, 3, 4, 5]), Uniq.filter((n) => n % 2 === 0));
-	assertEquals([...Uniq.toArray(s)].sort((a, b) => a - b), [2, 4]);
+	expect([...Uniq.toArray(s)].sort((a, b) => a - b)).toEqual([2, 4]);
 });
 
-Deno.test("Uniq.filter returns empty set when nothing matches", () => {
-	assertStrictEquals(
-		pipe(Uniq.fromArray([1, 3, 5]), Uniq.filter((n) => n % 2 === 0)).size,
-		0,
-	);
+test("Uniq.filter returns empty set when nothing matches", () => {
+	expect(pipe(Uniq.fromArray([1, 3, 5]), Uniq.filter((n) => n % 2 === 0)).size).toBe(0);
 });
 
 // ---------------------------------------------------------------------------
 // union
 // ---------------------------------------------------------------------------
 
-Deno.test("Uniq.union combines items from both sets", () => {
+test("Uniq.union combines items from both sets", () => {
 	const s = pipe(Uniq.fromArray([1, 2, 3]), Uniq.union(Uniq.fromArray([2, 3, 4])));
-	assertStrictEquals(s.size, 4);
-	assertStrictEquals(s.has(1), true);
-	assertStrictEquals(s.has(4), true);
+	expect(s.size).toBe(4);
+	expect(s.has(1)).toBe(true);
+	expect(s.has(4)).toBe(true);
 });
 
-Deno.test("Uniq.union with empty set returns equivalent set", () => {
+test("Uniq.union with empty set returns equivalent set", () => {
 	const base = Uniq.fromArray([1, 2]);
 	const result = pipe(base, Uniq.union(Uniq.empty<number>()));
-	assertStrictEquals(result.size, 2);
+	expect(result.size).toBe(2);
 });
 
 // ---------------------------------------------------------------------------
 // intersection
 // ---------------------------------------------------------------------------
 
-Deno.test("Uniq.intersection keeps only items in both sets", () => {
+test("Uniq.intersection keeps only items in both sets", () => {
 	const s = pipe(Uniq.fromArray([1, 2, 3]), Uniq.intersection(Uniq.fromArray([2, 3, 4])));
-	assertStrictEquals(s.size, 2);
-	assertStrictEquals(s.has(2), true);
-	assertStrictEquals(s.has(3), true);
-	assertStrictEquals(s.has(1), false);
-	assertStrictEquals(s.has(4), false);
+	expect(s.size).toBe(2);
+	expect(s.has(2)).toBe(true);
+	expect(s.has(3)).toBe(true);
+	expect(s.has(1)).toBe(false);
+	expect(s.has(4)).toBe(false);
 });
 
-Deno.test("Uniq.intersection returns empty set when no common items", () => {
+test("Uniq.intersection returns empty set when no common items", () => {
 	const s = pipe(Uniq.fromArray([1, 2]), Uniq.intersection(Uniq.fromArray([3, 4])));
-	assertStrictEquals(s.size, 0);
+	expect(s.size).toBe(0);
 });
 
 // ---------------------------------------------------------------------------
 // difference
 // ---------------------------------------------------------------------------
 
-Deno.test("Uniq.difference keeps items from set that are not in other", () => {
+test("Uniq.difference keeps items from set that are not in other", () => {
 	const s = pipe(Uniq.fromArray([1, 2, 3, 4]), Uniq.difference(Uniq.fromArray([2, 4])));
-	assertStrictEquals(s.size, 2);
-	assertStrictEquals(s.has(1), true);
-	assertStrictEquals(s.has(3), true);
+	expect(s.size).toBe(2);
+	expect(s.has(1)).toBe(true);
+	expect(s.has(3)).toBe(true);
 });
 
-Deno.test("Uniq.difference returns empty set when all items are in other", () => {
+test("Uniq.difference returns empty set when all items are in other", () => {
 	const s = pipe(Uniq.fromArray([1, 2]), Uniq.difference(Uniq.fromArray([1, 2, 3])));
-	assertStrictEquals(s.size, 0);
+	expect(s.size).toBe(0);
 });
 
-Deno.test("Uniq.difference with empty other returns equivalent set", () => {
+test("Uniq.difference with empty other returns equivalent set", () => {
 	const s = pipe(Uniq.fromArray([1, 2, 3]), Uniq.difference(Uniq.empty<number>()));
-	assertStrictEquals(s.size, 3);
+	expect(s.size).toBe(3);
 });
 
 // ---------------------------------------------------------------------------
 // reduce
 // ---------------------------------------------------------------------------
 
-Deno.test("Uniq.reduce folds all items", () => {
-	assertStrictEquals(
-		Uniq.reduce(0, (acc, n: number) => acc + n)(Uniq.fromArray([1, 2, 3, 4])),
-		10,
-	);
+test("Uniq.reduce folds all items", () => {
+	expect(Uniq.reduce(0, (acc, n: number) => acc + n)(Uniq.fromArray([1, 2, 3, 4]))).toBe(10);
 });
 
-Deno.test("Uniq.reduce returns init for empty set", () => {
-	assertStrictEquals(Uniq.reduce(42, (acc, n: number) => acc + n)(Uniq.empty()), 42);
+test("Uniq.reduce returns init for empty set", () => {
+	expect(Uniq.reduce(42, (acc, n: number) => acc + n)(Uniq.empty())).toBe(42);
 });
 
 // ---------------------------------------------------------------------------
 // toArray
 // ---------------------------------------------------------------------------
 
-Deno.test("Uniq.toArray returns items in insertion order", () => {
-	assertEquals(Uniq.toArray(Uniq.fromArray([3, 1, 2])), [3, 1, 2]);
+test("Uniq.toArray returns items in insertion order", () => {
+	expect(Uniq.toArray(Uniq.fromArray([3, 1, 2]))).toEqual([3, 1, 2]);
 });
 
-Deno.test("Uniq.toArray returns empty array for empty set", () => {
-	assertEquals(Uniq.toArray(Uniq.empty()), []);
+test("Uniq.toArray returns empty array for empty set", () => {
+	expect(Uniq.toArray(Uniq.empty())).toEqual([]);
 });
 
 // ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 
-Deno.test("Uniq pipe composition — fromArray, filter, map, reduce", () => {
+test("Uniq pipe composition — fromArray, filter, map, reduce", () => {
 	const result = pipe(
 		Uniq.fromArray([1, 2, 3, 4, 5, 6, 1, 2]), // dedup → {1,2,3,4,5,6}
 		Uniq.filter((n) => n % 2 === 0), // {2,4,6}
 		Uniq.map((n) => n * 10), // {20,40,60}
 		Uniq.reduce(0, (acc, n) => acc + n), // 120
 	);
-	assertStrictEquals(result, 120);
+	expect(result).toBe(120);
 });
 
-Deno.test("Uniq pipe composition — set operations", () => {
+test("Uniq pipe composition — set operations", () => {
 	const admins = Uniq.fromArray(["alice", "carol"]);
 	const editors = Uniq.fromArray(["bob", "carol", "dave"]);
 	const privileged = pipe(
@@ -294,8 +276,8 @@ Deno.test("Uniq pipe composition — set operations", () => {
 			pipe(editors, Uniq.difference(admins)),
 		),
 	);
-	assertStrictEquals(privileged.has("alice"), true);
-	assertStrictEquals(privileged.has("carol"), true);
-	assertStrictEquals(privileged.has("bob"), false);
-	assertStrictEquals(privileged.has("dave"), false);
+	expect(privileged.has("alice")).toBe(true);
+	expect(privileged.has("carol")).toBe(true);
+	expect(privileged.has("bob")).toBe(false);
+	expect(privileged.has("dave")).toBe(false);
 });

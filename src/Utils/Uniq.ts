@@ -101,7 +101,9 @@ export namespace Uniq {
 	export const isSubsetOf = <A>(other: ReadonlySet<A>) => (s: ReadonlySet<A>): boolean => {
 		const set = s as Set<A>;
 		if (typeof set.isSubsetOf === "function") return set.isSubsetOf(other as Set<A>);
-		for (const item of s) if (!other.has(item)) return false;
+		for (const item of s) {
+			if (!other.has(item)) return false;
+		}
 		return true;
 	};
 

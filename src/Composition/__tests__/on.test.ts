@@ -1,23 +1,23 @@
-import { assertEquals, assertStrictEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { expect, test } from "vitest";
 import { on } from "../on.ts";
 import { pipe } from "../pipe.ts";
 
-Deno.test("on - projects both arguments before calling the binary function", () => {
+test("on - projects both arguments before calling the binary function", () => {
 	const compareByLength = on((a: number, b: number) => a - b, (s: string) => s.length);
 
-	assertStrictEquals(compareByLength("hi", "hello"), -3);
+	expect(compareByLength("hi", "hello")).toBe(-3);
 });
 
-Deno.test("on - sorts strings by length", () => {
+test("on - sorts strings by length", () => {
 	const byLength = on((a: number, b: number) => a - b, (s: string) => s.length);
 
 	const result = ["banana", "fig", "apple"].sort(byLength);
 
-	assertEquals(result, ["fig", "apple", "banana"]);
+	expect(result).toEqual(["fig", "apple", "banana"]);
 });
 
-Deno.test("on - sorts objects by a numeric field", () => {
-	type Product = { name: string; price: number };
+test("on - sorts objects by a numeric field", () => {
+	type Product = { name: string; price: number; };
 	const byPrice = on((a: number, b: number) => a - b, (p: Product) => p.price);
 
 	const products: Product[] = [
@@ -28,17 +28,17 @@ Deno.test("on - sorts objects by a numeric field", () => {
 
 	const result = [...products].sort(byPrice).map((p) => p.name);
 
-	assertEquals(result, ["Lamp", "Chair", "Desk"]);
+	expect(result).toEqual(["Lamp", "Chair", "Desk"]);
 });
 
-Deno.test("on - checks equality after projection", () => {
+test("on - checks equality after projection", () => {
 	const sameLength = on((a: number, b: number) => a === b, (s: string) => s.length);
 
-	assertStrictEquals(sameLength("cat", "dog"), true);
-	assertStrictEquals(sameLength("cat", "elephant"), false);
+	expect(sameLength("cat", "dog")).toBe(true);
+	expect(sameLength("cat", "elephant")).toBe(false);
 });
 
-Deno.test("on - projection is applied to both arguments independently", () => {
+test("on - projection is applied to both arguments independently", () => {
 	const seen: string[] = [];
 	const track = on(
 		(a: number, b: number) => a - b,
@@ -50,10 +50,10 @@ Deno.test("on - projection is applied to both arguments independently", () => {
 
 	track("hi", "hello");
 
-	assertEquals(seen, ["hi", "hello"]);
+	expect(seen).toEqual(["hi", "hello"]);
 });
 
-Deno.test("on - works in a pipe chain", () => {
+test("on - works in a pipe chain", () => {
 	const byLength = on((a: number, b: number) => a - b, (s: string) => s.length);
 
 	const result = pipe(
@@ -61,5 +61,5 @@ Deno.test("on - works in a pipe chain", () => {
 		(arr) => [...arr].sort(byLength),
 	);
 
-	assertEquals(result, ["fig", "apple", "banana"]);
+	expect(result).toEqual(["fig", "apple", "banana"]);
 });

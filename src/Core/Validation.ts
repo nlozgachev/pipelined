@@ -209,8 +209,8 @@ export namespace Validation {
 	export const recoverUnless =
 		<E, A, B>(blockedErrors: readonly E[], fallback: () => Validation<E, B>) =>
 		(data: Validation<E, A>): Validation<E, A | B> =>
-			isInvalid(data) &&
-				!data.errors.some((err: E) => blockedErrors.includes(err))
+			isInvalid(data)
+				&& !data.errors.some((err: E) => blockedErrors.includes(err))
 				? fallback()
 				: data;
 

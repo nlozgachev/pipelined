@@ -1,226 +1,226 @@
-import { assertEquals, assertStrictEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { RemoteData } from "../RemoteData.ts";
+import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import { RemoteData } from "../RemoteData.ts";
 
 // ---------------------------------------------------------------------------
 // Constructors
 // ---------------------------------------------------------------------------
 
-Deno.test("RemoteData.notAsked creates NotAsked", () => {
-	assertEquals(RemoteData.notAsked(), { kind: "NotAsked" });
+test("RemoteData.notAsked creates NotAsked", () => {
+	expect(RemoteData.notAsked()).toEqual({ kind: "NotAsked" });
 });
 
-Deno.test("RemoteData.loading creates Loading", () => {
-	assertEquals(RemoteData.loading(), { kind: "Loading" });
+test("RemoteData.loading creates Loading", () => {
+	expect(RemoteData.loading()).toEqual({ kind: "Loading" });
 });
 
-Deno.test("RemoteData.failure creates Failure", () => {
-	assertEquals(RemoteData.failure("err"), { kind: "Failure", error: "err" });
+test("RemoteData.failure creates Failure", () => {
+	expect(RemoteData.failure("err")).toEqual({ kind: "Failure", error: "err" });
 });
 
-Deno.test("RemoteData.success creates Success", () => {
-	assertEquals(RemoteData.success(42), { kind: "Success", value: 42 });
+test("RemoteData.success creates Success", () => {
+	expect(RemoteData.success(42)).toEqual({ kind: "Success", value: 42 });
 });
 
-Deno.test("RemoteData.success is alias for success", () => {
-	assertEquals(RemoteData.success(42), RemoteData.success(42));
+test("RemoteData.success is alias for success", () => {
+	expect(RemoteData.success(42)).toEqual(RemoteData.success(42));
 });
 
 // ---------------------------------------------------------------------------
 // Type guards
 // ---------------------------------------------------------------------------
 
-Deno.test("RemoteData.isNotAsked", () => {
-	assertStrictEquals(RemoteData.isNotAsked(RemoteData.notAsked()), true);
-	assertStrictEquals(RemoteData.isNotAsked(RemoteData.loading()), false);
-	assertStrictEquals(RemoteData.isNotAsked(RemoteData.failure("e")), false);
-	assertStrictEquals(RemoteData.isNotAsked(RemoteData.success(1)), false);
+test("RemoteData.isNotAsked", () => {
+	expect(RemoteData.isNotAsked(RemoteData.notAsked())).toBe(true);
+	expect(RemoteData.isNotAsked(RemoteData.loading())).toBe(false);
+	expect(RemoteData.isNotAsked(RemoteData.failure("e"))).toBe(false);
+	expect(RemoteData.isNotAsked(RemoteData.success(1))).toBe(false);
 });
 
-Deno.test("RemoteData.isLoading", () => {
-	assertStrictEquals(RemoteData.isLoading(RemoteData.loading()), true);
-	assertStrictEquals(RemoteData.isLoading(RemoteData.notAsked()), false);
+test("RemoteData.isLoading", () => {
+	expect(RemoteData.isLoading(RemoteData.loading())).toBe(true);
+	expect(RemoteData.isLoading(RemoteData.notAsked())).toBe(false);
 });
 
-Deno.test("RemoteData.isFailure", () => {
-	assertStrictEquals(RemoteData.isFailure(RemoteData.failure("e")), true);
-	assertStrictEquals(RemoteData.isFailure(RemoteData.success(1)), false);
+test("RemoteData.isFailure", () => {
+	expect(RemoteData.isFailure(RemoteData.failure("e"))).toBe(true);
+	expect(RemoteData.isFailure(RemoteData.success(1))).toBe(false);
 });
 
-Deno.test("RemoteData.isSuccess", () => {
-	assertStrictEquals(RemoteData.isSuccess(RemoteData.success(1)), true);
-	assertStrictEquals(RemoteData.isSuccess(RemoteData.failure("e")), false);
+test("RemoteData.isSuccess", () => {
+	expect(RemoteData.isSuccess(RemoteData.success(1))).toBe(true);
+	expect(RemoteData.isSuccess(RemoteData.failure("e"))).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
 // map
 // ---------------------------------------------------------------------------
 
-Deno.test("RemoteData.map transforms Success value", () => {
+test("RemoteData.map transforms Success value", () => {
 	const result = pipe(
 		RemoteData.success<string, number>(5),
 		RemoteData.map((n: number) => n * 2),
 	);
-	assertEquals(result, { kind: "Success", value: 10 });
+	expect(result).toEqual({ kind: "Success", value: 10 });
 });
 
-Deno.test("RemoteData.map passes through NotAsked", () => {
+test("RemoteData.map passes through NotAsked", () => {
 	const result = pipe(
 		RemoteData.notAsked<string, number>(),
 		RemoteData.map((n: number) => n * 2),
 	);
-	assertEquals(result, { kind: "NotAsked" });
+	expect(result).toEqual({ kind: "NotAsked" });
 });
 
-Deno.test("RemoteData.map passes through Loading", () => {
+test("RemoteData.map passes through Loading", () => {
 	const result = pipe(
 		RemoteData.loading<string, number>(),
 		RemoteData.map((n: number) => n * 2),
 	);
-	assertEquals(result, { kind: "Loading" });
+	expect(result).toEqual({ kind: "Loading" });
 });
 
-Deno.test("RemoteData.map passes through Failure", () => {
+test("RemoteData.map passes through Failure", () => {
 	const result = pipe(
 		RemoteData.failure<string, number>("err"),
 		RemoteData.map((n: number) => n * 2),
 	);
-	assertEquals(result, { kind: "Failure", error: "err" });
+	expect(result).toEqual({ kind: "Failure", error: "err" });
 });
 
 // ---------------------------------------------------------------------------
 // mapError
 // ---------------------------------------------------------------------------
 
-Deno.test("RemoteData.mapError transforms Failure error", () => {
+test("RemoteData.mapError transforms Failure error", () => {
 	const result = pipe(
 		RemoteData.failure<string, number>("oops"),
 		RemoteData.mapError((e: string) => e.toUpperCase()),
 	);
-	assertEquals(result, { kind: "Failure", error: "OOPS" });
+	expect(result).toEqual({ kind: "Failure", error: "OOPS" });
 });
 
-Deno.test("RemoteData.mapError passes through Success", () => {
+test("RemoteData.mapError passes through Success", () => {
 	const result = pipe(
 		RemoteData.success<string, number>(5),
 		RemoteData.mapError((e: string) => e.toUpperCase()),
 	);
-	assertEquals(result, { kind: "Success", value: 5 });
+	expect(result).toEqual({ kind: "Success", value: 5 });
 });
 
-Deno.test("RemoteData.mapError passes through NotAsked and Loading", () => {
+test("RemoteData.mapError passes through NotAsked and Loading", () => {
 	const f = RemoteData.mapError((e: string) => e.toUpperCase());
-	assertEquals(f(RemoteData.notAsked()), { kind: "NotAsked" });
-	assertEquals(f(RemoteData.loading()), { kind: "Loading" });
+	expect(f(RemoteData.notAsked())).toEqual({ kind: "NotAsked" });
+	expect(f(RemoteData.loading())).toEqual({ kind: "Loading" });
 });
 
 // ---------------------------------------------------------------------------
 // chain
 // ---------------------------------------------------------------------------
 
-Deno.test("RemoteData.chain applies function on Success", () => {
+test("RemoteData.chain applies function on Success", () => {
 	const result = pipe(
 		RemoteData.success<string, number>(5),
 		RemoteData.chain((n: number) =>
 			n > 0 ? RemoteData.success<string, number>(n * 2) : RemoteData.failure<string, number>("neg")
 		),
 	);
-	assertEquals(result, { kind: "Success", value: 10 });
+	expect(result).toEqual({ kind: "Success", value: 10 });
 });
 
-Deno.test("RemoteData.chain propagates Failure", () => {
+test("RemoteData.chain propagates Failure", () => {
 	const result = pipe(
 		RemoteData.failure<string, number>("err"),
 		RemoteData.chain((n: number) => RemoteData.success<string, number>(n * 2)),
 	);
-	assertEquals(result, { kind: "Failure", error: "err" });
+	expect(result).toEqual({ kind: "Failure", error: "err" });
 });
 
-Deno.test("RemoteData.chain propagates Loading", () => {
+test("RemoteData.chain propagates Loading", () => {
 	const result = pipe(
 		RemoteData.loading<string, number>(),
 		RemoteData.chain((n: number) => RemoteData.success<string, number>(n * 2)),
 	);
-	assertEquals(result, { kind: "Loading" });
+	expect(result).toEqual({ kind: "Loading" });
 });
 
-Deno.test("RemoteData.chain propagates NotAsked", () => {
+test("RemoteData.chain propagates NotAsked", () => {
 	const result = pipe(
 		RemoteData.notAsked<string, number>(),
 		RemoteData.chain((n: number) => RemoteData.success<string, number>(n * 2)),
 	);
-	assertEquals(result, { kind: "NotAsked" });
+	expect(result).toEqual({ kind: "NotAsked" });
 });
 
 // ---------------------------------------------------------------------------
 // ap
 // ---------------------------------------------------------------------------
 
-Deno.test("RemoteData.ap applies function to value when both Success", () => {
+test("RemoteData.ap applies function to value when both Success", () => {
 	const add = (a: number) => (b: number) => a + b;
 	const result = pipe(
 		RemoteData.success<string, typeof add>(add),
 		RemoteData.ap(RemoteData.success<string, number>(5)),
 		RemoteData.ap(RemoteData.success<string, number>(3)),
 	);
-	assertEquals(result, { kind: "Success", value: 8 });
+	expect(result).toEqual({ kind: "Success", value: 8 });
 });
 
-Deno.test("RemoteData.ap returns Failure when function is Failure", () => {
+test("RemoteData.ap returns Failure when function is Failure", () => {
 	const result = pipe(
 		RemoteData.failure<string, (n: number) => number>("err"),
 		RemoteData.ap(RemoteData.success<string, number>(5)),
 	);
-	assertEquals(result, { kind: "Failure", error: "err" });
+	expect(result).toEqual({ kind: "Failure", error: "err" });
 });
 
-Deno.test("RemoteData.ap returns Failure when value is Failure", () => {
+test("RemoteData.ap returns Failure when value is Failure", () => {
 	const double = (n: number) => n * 2;
 	const result = pipe(
 		RemoteData.success<string, typeof double>(double),
 		RemoteData.ap(RemoteData.failure<string, number>("err")),
 	);
-	assertEquals(result, { kind: "Failure", error: "err" });
+	expect(result).toEqual({ kind: "Failure", error: "err" });
 });
 
-Deno.test("RemoteData.ap returns Loading when either is Loading", () => {
+test("RemoteData.ap returns Loading when either is Loading", () => {
 	const double = (n: number) => n * 2;
 	const result = pipe(
 		RemoteData.success<string, typeof double>(double),
 		RemoteData.ap(RemoteData.loading<string, number>()),
 	);
-	assertEquals(result, { kind: "Loading" });
+	expect(result).toEqual({ kind: "Loading" });
 });
 
-Deno.test("RemoteData.ap returns Failure of function when both are Failure", () => {
+test("RemoteData.ap returns Failure of function when both are Failure", () => {
 	const result = pipe(
 		RemoteData.failure<string, (n: number) => number>("fn error"),
 		RemoteData.ap(RemoteData.failure<string, number>("arg error")),
 	);
-	assertEquals(result, { kind: "Failure", error: "fn error" });
+	expect(result).toEqual({ kind: "Failure", error: "fn error" });
 });
 
-Deno.test("RemoteData.ap returns NotAsked when function is NotAsked and arg is Success", () => {
+test("RemoteData.ap returns NotAsked when function is NotAsked and arg is Success", () => {
 	const result = pipe(
 		RemoteData.notAsked<string, (n: number) => number>(),
 		RemoteData.ap(RemoteData.success<string, number>(5)),
 	);
-	assertEquals(result, { kind: "NotAsked" });
+	expect(result).toEqual({ kind: "NotAsked" });
 });
 
-Deno.test("RemoteData.ap returns Loading when function is Loading and arg is Success", () => {
+test("RemoteData.ap returns Loading when function is Loading and arg is Success", () => {
 	const result = pipe(
 		RemoteData.loading<string, (n: number) => number>(),
 		RemoteData.ap(RemoteData.success<string, number>(5)),
 	);
-	assertEquals(result, { kind: "Loading" });
+	expect(result).toEqual({ kind: "Loading" });
 });
 
 // ---------------------------------------------------------------------------
 // fold
 // ---------------------------------------------------------------------------
 
-Deno.test("RemoteData.fold handles all four cases", () => {
+test("RemoteData.fold handles all four cases", () => {
 	const handler = RemoteData.fold<string, number, string>(
 		() => "not asked",
 		() => "loading",
@@ -228,17 +228,17 @@ Deno.test("RemoteData.fold handles all four cases", () => {
 		(v) => `value: ${v}`,
 	);
 
-	assertStrictEquals(handler(RemoteData.notAsked()), "not asked");
-	assertStrictEquals(handler(RemoteData.loading()), "loading");
-	assertStrictEquals(handler(RemoteData.failure("bad")), "error: bad");
-	assertStrictEquals(handler(RemoteData.success(42)), "value: 42");
+	expect(handler(RemoteData.notAsked())).toBe("not asked");
+	expect(handler(RemoteData.loading())).toBe("loading");
+	expect(handler(RemoteData.failure("bad"))).toBe("error: bad");
+	expect(handler(RemoteData.success(42))).toBe("value: 42");
 });
 
 // ---------------------------------------------------------------------------
 // match
 // ---------------------------------------------------------------------------
 
-Deno.test("RemoteData.match handles all four cases", () => {
+test("RemoteData.match handles all four cases", () => {
 	const handler = RemoteData.match<string, number, string>({
 		notAsked: () => "na",
 		loading: () => "ld",
@@ -246,13 +246,13 @@ Deno.test("RemoteData.match handles all four cases", () => {
 		success: (v) => `s:${v}`,
 	});
 
-	assertStrictEquals(handler(RemoteData.notAsked()), "na");
-	assertStrictEquals(handler(RemoteData.loading()), "ld");
-	assertStrictEquals(handler(RemoteData.failure("x")), "f:x");
-	assertStrictEquals(handler(RemoteData.success(1)), "s:1");
+	expect(handler(RemoteData.notAsked())).toBe("na");
+	expect(handler(RemoteData.loading())).toBe("ld");
+	expect(handler(RemoteData.failure("x"))).toBe("f:x");
+	expect(handler(RemoteData.success(1))).toBe("s:1");
 });
 
-Deno.test("RemoteData.match works in pipe", () => {
+test("RemoteData.match works in pipe", () => {
 	const result = pipe(
 		RemoteData.success<string, number>(42),
 		RemoteData.match({
@@ -262,48 +262,45 @@ Deno.test("RemoteData.match works in pipe", () => {
 			success: (v: number) => `s:${v}`,
 		}),
 	);
-	assertStrictEquals(result, "s:42");
+	expect(result).toBe("s:42");
 });
 
 // ---------------------------------------------------------------------------
 // getOrElse
 // ---------------------------------------------------------------------------
 
-Deno.test("RemoteData.getOrElse returns value for Success", () => {
+test("RemoteData.getOrElse returns value for Success", () => {
 	const result = pipe(RemoteData.success<string, number>(5), RemoteData.getOrElse(() => 0));
-	assertStrictEquals(result, 5);
+	expect(result).toBe(5);
 });
 
-Deno.test("RemoteData.getOrElse returns default for non-Success", () => {
-	assertStrictEquals(pipe(RemoteData.notAsked<string, number>(), RemoteData.getOrElse(() => 0)), 0);
-	assertStrictEquals(pipe(RemoteData.loading<string, number>(), RemoteData.getOrElse(() => 0)), 0);
-	assertStrictEquals(
-		pipe(RemoteData.failure<string, number>("e"), RemoteData.getOrElse(() => 0)),
-		0,
-	);
+test("RemoteData.getOrElse returns default for non-Success", () => {
+	expect(pipe(RemoteData.notAsked<string, number>(), RemoteData.getOrElse(() => 0))).toBe(0);
+	expect(pipe(RemoteData.loading<string, number>(), RemoteData.getOrElse(() => 0))).toBe(0);
+	expect(pipe(RemoteData.failure<string, number>("e"), RemoteData.getOrElse(() => 0))).toBe(0);
 });
 
-Deno.test("RemoteData.getOrElse widens return type to A | B when default is a different type", () => {
+test("RemoteData.getOrElse widens return type to A | B when default is a different type", () => {
 	const result = pipe(
 		RemoteData.loading(),
 		RemoteData.getOrElse(() => null),
 	);
-	assertStrictEquals(result, null);
+	expect(result).toBeNull();
 });
 
-Deno.test("RemoteData.getOrElse returns Success value typed as A | B when Success", () => {
+test("RemoteData.getOrElse returns Success value typed as A | B when Success", () => {
 	const result = pipe(
 		RemoteData.success(5),
 		RemoteData.getOrElse(() => null),
 	);
-	assertStrictEquals(result, 5);
+	expect(result).toBe(5);
 });
 
 // ---------------------------------------------------------------------------
 // tap
 // ---------------------------------------------------------------------------
 
-Deno.test("RemoteData.tap executes side effect on Success", () => {
+test("RemoteData.tap executes side effect on Success", () => {
 	let captured = 0;
 	pipe(
 		RemoteData.success<string, number>(42),
@@ -311,10 +308,10 @@ Deno.test("RemoteData.tap executes side effect on Success", () => {
 			captured = n;
 		}),
 	);
-	assertStrictEquals(captured, 42);
+	expect(captured).toBe(42);
 });
 
-Deno.test("RemoteData.tap does not execute on Failure", () => {
+test("RemoteData.tap does not execute on Failure", () => {
 	let called = false;
 	pipe(
 		RemoteData.failure<string, number>("err"),
@@ -322,127 +319,127 @@ Deno.test("RemoteData.tap does not execute on Failure", () => {
 			called = true;
 		}),
 	);
-	assertStrictEquals(called, false);
+	expect(called).toBe(false);
 });
 
-Deno.test("RemoteData.tap does not execute on NotAsked or Loading", () => {
+test("RemoteData.tap does not execute on NotAsked or Loading", () => {
 	let called = false;
 	const f = RemoteData.tap((_: number) => {
 		called = true;
 	});
 	f(RemoteData.notAsked());
 	f(RemoteData.loading());
-	assertStrictEquals(called, false);
+	expect(called).toBe(false);
 });
 
-Deno.test("RemoteData.tap returns original value", () => {
+test("RemoteData.tap returns original value", () => {
 	const result = pipe(
 		RemoteData.success<string, number>(5),
 		RemoteData.tap(() => {}),
 	);
-	assertEquals(result, { kind: "Success", value: 5 });
+	expect(result).toEqual({ kind: "Success", value: 5 });
 });
 
 // ---------------------------------------------------------------------------
 // recover
 // ---------------------------------------------------------------------------
 
-Deno.test("RemoteData.recover provides fallback for Failure", () => {
+test("RemoteData.recover provides fallback for Failure", () => {
 	const result = pipe(
 		RemoteData.failure<string, number>("err"),
 		RemoteData.recover((_e: string) => RemoteData.success<string, number>(99)),
 	);
-	assertEquals(result, { kind: "Success", value: 99 });
+	expect(result).toEqual({ kind: "Success", value: 99 });
 });
 
-Deno.test("RemoteData.recover passes through Success", () => {
+test("RemoteData.recover passes through Success", () => {
 	const result = pipe(
 		RemoteData.success<string, number>(5),
 		RemoteData.recover((_e: string) => RemoteData.success<string, number>(99)),
 	);
-	assertEquals(result, { kind: "Success", value: 5 });
+	expect(result).toEqual({ kind: "Success", value: 5 });
 });
 
-Deno.test("RemoteData.recover passes through Loading", () => {
+test("RemoteData.recover passes through Loading", () => {
 	const result = pipe(
 		RemoteData.loading<string, number>(),
 		RemoteData.recover((_e: string) => RemoteData.success<string, number>(99)),
 	);
-	assertEquals(result, { kind: "Loading" });
+	expect(result).toEqual({ kind: "Loading" });
 });
 
-Deno.test("RemoteData.recover passes through NotAsked", () => {
+test("RemoteData.recover passes through NotAsked", () => {
 	const result = pipe(
 		RemoteData.notAsked<string, number>(),
 		RemoteData.recover((_e: string) => RemoteData.success<string, number>(99)),
 	);
-	assertEquals(result, { kind: "NotAsked" });
+	expect(result).toEqual({ kind: "NotAsked" });
 });
 
-Deno.test(
+test(
 	"RemoteData.recover widens to RemoteData<E, A | B> when fallback returns a different type",
 	() => {
 		const result = pipe(
 			RemoteData.failure("err"),
 			RemoteData.recover((_e) => RemoteData.success("recovered")),
 		);
-		assertEquals(result, { kind: "Success", value: "recovered" });
+		expect(result).toEqual({ kind: "Success", value: "recovered" });
 	},
 );
 
-Deno.test("RemoteData.recover preserves Success typed as RemoteData<E, A | B>", () => {
+test("RemoteData.recover preserves Success typed as RemoteData<E, A | B>", () => {
 	const result = pipe(
 		RemoteData.success(5),
 		RemoteData.recover((_e) => RemoteData.success("recovered")),
 	);
-	assertEquals(result, { kind: "Success", value: 5 });
+	expect(result).toEqual({ kind: "Success", value: 5 });
 });
 
 // ---------------------------------------------------------------------------
 // toOption
 // ---------------------------------------------------------------------------
 
-Deno.test("RemoteData.toOption returns Some for Success", () => {
-	assertEquals(RemoteData.toOption(RemoteData.success(42)), { kind: "Some", value: 42 });
+test("RemoteData.toOption returns Some for Success", () => {
+	expect(RemoteData.toOption(RemoteData.success(42))).toEqual({ kind: "Some", value: 42 });
 });
 
-Deno.test("RemoteData.toOption returns None for non-Success", () => {
-	assertEquals(RemoteData.toOption(RemoteData.notAsked()), { kind: "None" });
-	assertEquals(RemoteData.toOption(RemoteData.loading()), { kind: "None" });
-	assertEquals(RemoteData.toOption(RemoteData.failure("e")), { kind: "None" });
+test("RemoteData.toOption returns None for non-Success", () => {
+	expect(RemoteData.toOption(RemoteData.notAsked())).toEqual({ kind: "None" });
+	expect(RemoteData.toOption(RemoteData.loading())).toEqual({ kind: "None" });
+	expect(RemoteData.toOption(RemoteData.failure("e"))).toEqual({ kind: "None" });
 });
 
 // ---------------------------------------------------------------------------
 // toResult
 // ---------------------------------------------------------------------------
 
-Deno.test("RemoteData.toResult returns Ok for Success", () => {
+test("RemoteData.toResult returns Ok for Success", () => {
 	const result = pipe(
 		RemoteData.success<string, number>(42),
 		RemoteData.toResult(() => "not ready"),
 	);
-	assertEquals(result, { kind: "Ok", value: 42 });
+	expect(result).toEqual({ kind: "Ok", value: 42 });
 });
 
-Deno.test("RemoteData.toResult returns Err with original error for Failure", () => {
+test("RemoteData.toResult returns Err with original error for Failure", () => {
 	const result = pipe(
 		RemoteData.failure<string, number>("bad"),
 		RemoteData.toResult(() => "not ready"),
 	);
-	assertEquals(result, { kind: "Error", error: "bad" });
+	expect(result).toEqual({ kind: "Error", error: "bad" });
 });
 
-Deno.test("RemoteData.toResult returns Err with fallback for NotAsked/Loading", () => {
+test("RemoteData.toResult returns Err with fallback for NotAsked/Loading", () => {
 	const handler = RemoteData.toResult<string>(() => "not ready");
-	assertEquals(handler(RemoteData.notAsked()), { kind: "Error", error: "not ready" });
-	assertEquals(handler(RemoteData.loading()), { kind: "Error", error: "not ready" });
+	expect(handler(RemoteData.notAsked())).toEqual({ kind: "Error", error: "not ready" });
+	expect(handler(RemoteData.loading())).toEqual({ kind: "Error", error: "not ready" });
 });
 
 // ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 
-Deno.test("RemoteData composes well in a pipe chain", () => {
+test("RemoteData composes well in a pipe chain", () => {
 	const result = pipe(
 		RemoteData.success<string, number>(5),
 		RemoteData.map((n: number) => n * 2),
@@ -451,5 +448,5 @@ Deno.test("RemoteData composes well in a pipe chain", () => {
 		),
 		RemoteData.getOrElse(() => 0),
 	);
-	assertStrictEquals(result, 10);
+	expect(result).toBe(10);
 });

@@ -112,7 +112,7 @@ export namespace TaskOption {
 	 * )();
 	 * ```
 	 */
-	export const match = <A, B>(cases: { none: () => B; some: (a: A) => B }) => (data: TaskOption<A>): Task<B> =>
+	export const match = <A, B>(cases: { none: () => B; some: (a: A) => B; }) => (data: TaskOption<A>): Task<B> =>
 		Task.map(Option.match(cases))(data);
 
 	/**

@@ -114,13 +114,14 @@ identical input, measures the time per iteration, and reports the ratio.
 To run them:
 
 ```sh
-deno task bench
+pnpm bench
 ```
 
-Each benchmark group names its pipelined variant as the baseline so the native comparison shows
-whether pipelined is slower, faster, or at parity. Many operations now run faster than their
-native counterpart — not because the library is doing less, but because it can choose a better
-strategy for the specific operation.
+Each benchmark group compares the pipelined operation directly against its native equivalent.
+Vitest reports the ratio between the fastest variant and the others, so the summary reads as
+"X is Yx faster than Z". Many operations now run faster than their native counterpart — not
+because the library is doing less, but because it can choose a better strategy for the specific
+operation.
 
 ## Benchmark environment
 
@@ -130,9 +131,9 @@ The numbers in this documentation were collected on the following setup:
 | -------------- | ---------------------- |
 | **CPU**        | Apple M1 Pro (aarch64) |
 | **OS**         | macOS (darwin)         |
-| **Deno**       | 2.7.7 (stable)         |
-| **V8**         | 14.6.202.9             |
-| **TypeScript** | 5.9.2                  |
+| **Node.js**    | 22                     |
+| **V8**         | 12.4.254.21            |
+| **TypeScript** | 5.9.3                  |
 
 Results on other hardware or runtime versions will differ. x86 machines may show different ratios
 because V8's JIT strategies and memory layout characteristics vary by architecture. The relative
@@ -140,7 +141,7 @@ order of approaches tends to be stable; the exact multipliers do not.
 
 ## What the benchmarks are not
 
-They are not a performance contract. The numbers shift between Deno versions, V8 versions, and
+They are not a performance contract. The numbers shift between V8 versions, and
 machine architectures. What they measure is the *relationship* between pipelined and native —
 and that relationship is what matters.
 

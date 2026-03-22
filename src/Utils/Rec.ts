@@ -78,15 +78,16 @@ export namespace Rec {
 	 * // { b: 2 }
 	 * ```
 	 */
-	export const filterWithKey =
-		<A>(predicate: (key: string, a: A) => boolean) =>
-		(data: Readonly<Record<string, A>>): Readonly<Record<string, A>> => {
-			const result: Record<string, A> = {};
-			for (const [k, v] of Object.entries(data)) {
-				if (predicate(k, v)) result[k] = v;
-			}
-			return result;
-		};
+	export const filterWithKey = <A>(predicate: (key: string, a: A) => boolean) =>
+	(
+		data: Readonly<Record<string, A>>,
+	): Readonly<Record<string, A>> => {
+		const result: Record<string, A> = {};
+		for (const [k, v] of Object.entries(data)) {
+			if (predicate(k, v)) result[k] = v;
+		}
+		return result;
+	};
 
 	/**
 	 * Looks up a value by key, returning Option.
@@ -98,7 +99,7 @@ export namespace Rec {
 	 * ```
 	 */
 	export const lookup = (key: string) => <A>(data: Readonly<Record<string, A>>): Option<A> =>
-		Object.prototype.hasOwnProperty.call(data, key) ? Option.some(data[key]) : Option.none();
+		Object.hasOwn(data, key) ? Option.some(data[key]) : Option.none();
 
 	/**
 	 * Returns all keys of a record.
@@ -169,7 +170,7 @@ export namespace Rec {
 	): Pick<A, K> => {
 		const result = {} as Pick<A, K>;
 		for (const key of pickedKeys) {
-			if (Object.prototype.hasOwnProperty.call(data, key)) {
+			if (Object.hasOwn(data, key)) {
 				result[key] = data[key];
 			}
 		}
@@ -184,17 +185,16 @@ export namespace Rec {
 	 * pipe({ a: 1, b: 2, c: 3 }, Rec.omit("b")); // { a: 1, c: 3 }
 	 * ```
 	 */
-	export const omit =
-		<K extends string>(...omittedKeys: K[]) => <A extends Record<K, unknown>>(data: A): Omit<A, K> => {
-			const omitSet = new Set<string>(omittedKeys);
-			const result = {} as Record<string, unknown>;
-			for (const key of Object.keys(data)) {
-				if (!omitSet.has(key)) {
-					result[key] = (data as Record<string, unknown>)[key];
-				}
+	export const omit = <K extends string>(...omittedKeys: K[]) => <A extends Record<K, unknown>>(data: A): Omit<A, K> => {
+		const omitSet = new Set<string>(omittedKeys);
+		const result = {} as Record<string, unknown>;
+		for (const key of Object.keys(data)) {
+			if (!omitSet.has(key)) {
+				result[key] = (data as Record<string, unknown>)[key];
 			}
-			return result as Omit<A, K>;
-		};
+		}
+		return result as Omit<A, K>;
+	};
 
 	/**
 	 * Merges two records. Values from the second record take precedence.

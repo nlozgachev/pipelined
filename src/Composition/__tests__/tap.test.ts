@@ -1,41 +1,41 @@
-import { assertEquals, assertStrictEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { tap } from "../tap.ts";
+import { expect, test } from "vitest";
 import { pipe } from "../pipe.ts";
+import { tap } from "../tap.ts";
 
-Deno.test("tap - side effect executes", () => {
+test("tap - side effect executes", () => {
 	let sideEffect = 0;
 	const fn = tap((n: number) => {
 		sideEffect = n;
 	});
 	fn(42);
-	assertStrictEquals(sideEffect, 42);
+	expect(sideEffect).toBe(42);
 });
 
-Deno.test("tap - returns original value unchanged", () => {
+test("tap - returns original value unchanged", () => {
 	const fn = tap((_n: number) => {
 		// side effect
 	});
-	assertStrictEquals(fn(42), 42);
+	expect(fn(42)).toBe(42);
 });
 
-Deno.test("tap - returns the exact same reference for objects", () => {
+test("tap - returns the exact same reference for objects", () => {
 	const obj = { name: "Alice" };
 	const fn = tap((_o: typeof obj) => {
 		// side effect
 	});
-	assertStrictEquals(fn(obj), obj);
+	expect(fn(obj)).toBe(obj);
 });
 
-Deno.test("tap - works with string values", () => {
+test("tap - works with string values", () => {
 	let captured = "";
 	const fn = tap((s: string) => {
 		captured = s;
 	});
-	assertStrictEquals(fn("hello"), "hello");
-	assertStrictEquals(captured, "hello");
+	expect(fn("hello")).toBe("hello");
+	expect(captured).toBe("hello");
 });
 
-Deno.test("tap - works in pipe", () => {
+test("tap - works in pipe", () => {
 	const log: number[] = [];
 
 	const result = pipe(
@@ -46,18 +46,16 @@ Deno.test("tap - works in pipe", () => {
 		tap((n: number) => log.push(n)),
 	);
 
-	assertStrictEquals(result, 11);
-	assertEquals(log, [10, 11]);
+	expect(result).toBe(11);
+	expect(log).toEqual([10, 11]);
 });
 
-Deno.test("tap - side effect does not influence the return value", () => {
-	const fn = tap((_n: number) => {
-		return 999; // return value is ignored
-	});
-	assertStrictEquals(fn(42), 42);
+test("tap - side effect does not influence the return value", () => {
+	const fn = tap((_n: number) => 999); // return value is ignored
+	expect(fn(42)).toBe(42);
 });
 
-Deno.test("tap - multiple taps in sequence", () => {
+test("tap - multiple taps in sequence", () => {
 	const effects: string[] = [];
 
 	const result = pipe(
@@ -65,25 +63,25 @@ Deno.test("tap - multiple taps in sequence", () => {
 		tap((s: string) => effects.push(`first: ${s}`)),
 		(s: string) => s.toUpperCase(),
 		tap((s: string) => effects.push(`second: ${s}`)),
-		(s: string) => s + "!",
+		(s: string) => `${s}!`,
 		tap((s: string) => effects.push(`third: ${s}`)),
 	);
 
-	assertStrictEquals(result, "HELLO!");
-	assertEquals(effects, ["first: hello", "second: HELLO", "third: HELLO!"]);
+	expect(result).toBe("HELLO!");
+	expect(effects).toEqual(["first: hello", "second: HELLO", "third: HELLO!"]);
 });
 
-Deno.test("tap - works with arrays", () => {
+test("tap - works with arrays", () => {
 	let length = 0;
 	const arr = [1, 2, 3];
 
 	const result = pipe(
 		arr,
 		tap((a: number[]) => {
-			length = a.length;
+			({ length } = a);
 		}),
 	);
 
-	assertStrictEquals(result, arr);
-	assertStrictEquals(length, 3);
+	expect(result).toBe(arr);
+	expect(length).toBe(3);
 });

@@ -115,8 +115,7 @@ export namespace Option {
 	 * pipe(Option.none(), Option.map(n => n * 2)); // None
 	 * ```
 	 */
-	export const map = <A, B>(f: (a: A) => B) => (data: Option<A>): Option<B> =>
-		isSome(data) ? some(f(data.value)) : data;
+	export const map = <A, B>(f: (a: A) => B) => (data: Option<A>): Option<B> => isSome(data) ? some(f(data.value)) : data;
 
 	/**
 	 * Chains Option computations. If the first is Some, passes the value to f.
@@ -167,7 +166,7 @@ export namespace Option {
 	 * );
 	 * ```
 	 */
-	export const match = <A, B>(cases: { none: () => B; some: (a: A) => B }) => (data: Option<A>): B =>
+	export const match = <A, B>(cases: { none: () => B; some: (a: A) => B; }) => (data: Option<A>): B =>
 		isSome(data) ? cases.some(data.value) : cases.none();
 
 	/**

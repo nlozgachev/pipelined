@@ -1,23 +1,22 @@
-import { assertEquals, assertStrictEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { Validation } from "../Validation.ts";
-import { TaskValidation } from "../TaskValidation.ts";
+import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import { TaskValidation } from "../TaskValidation.ts";
+import { Validation } from "../Validation.ts";
 
 // ---------------------------------------------------------------------------
 // valid
 // ---------------------------------------------------------------------------
 
-Deno.test("TaskValidation.valid creates a Task that resolves to Valid", async () => {
-	assertEquals(await TaskValidation.valid<string, number>(42)(), { kind: "Valid", value: 42 });
+test("TaskValidation.valid creates a Task that resolves to Valid", async () => {
+	expect(await TaskValidation.valid<string, number>(42)()).toEqual({ kind: "Valid", value: 42 });
 });
 
 // ---------------------------------------------------------------------------
 // invalid
 // ---------------------------------------------------------------------------
 
-Deno.test("TaskValidation.invalid creates a Task that resolves to Invalid with one error", async () => {
-	assertEquals(
-		await TaskValidation.invalid<string, number>("bad")(),
+test("TaskValidation.invalid creates a Task that resolves to Invalid with one error", async () => {
+	expect(await TaskValidation.invalid<string, number>("bad")()).toEqual(
 		{ kind: "Invalid", errors: ["bad"] },
 	);
 });
@@ -26,9 +25,8 @@ Deno.test("TaskValidation.invalid creates a Task that resolves to Invalid with o
 // invalidAll
 // ---------------------------------------------------------------------------
 
-Deno.test("TaskValidation.invalidAll creates a Task that resolves to Invalid with multiple errors", async () => {
-	assertEquals(
-		await TaskValidation.invalidAll<string, number>(["err1", "err2"])(),
+test("TaskValidation.invalidAll creates a Task that resolves to Invalid with multiple errors", async () => {
+	expect(await TaskValidation.invalidAll<string, number>(["err1", "err2"])()).toEqual(
 		{ kind: "Invalid", errors: ["err1", "err2"] },
 	);
 });
@@ -37,153 +35,144 @@ Deno.test("TaskValidation.invalidAll creates a Task that resolves to Invalid wit
 // fromValidation
 // ---------------------------------------------------------------------------
 
-Deno.test("TaskValidation.fromValidation lifts a Valid into a Task", async () => {
-	assertEquals(
-		await TaskValidation.fromValidation(Validation.valid<string, number>(5))(),
-		{ kind: "Valid", value: 5 },
-	);
+test("TaskValidation.fromValidation lifts a Valid into a Task", async () => {
+	expect(await TaskValidation.fromValidation(Validation.valid<string, number>(5))()).toEqual({
+		kind: "Valid",
+		value: 5,
+	});
 });
 
-Deno.test("TaskValidation.fromValidation lifts an Invalid into a Task", async () => {
-	assertEquals(
-		await TaskValidation.fromValidation(Validation.invalid("e"))(),
-		{ kind: "Invalid", errors: ["e"] },
-	);
+test("TaskValidation.fromValidation lifts an Invalid into a Task", async () => {
+	expect(await TaskValidation.fromValidation(Validation.invalid("e"))()).toEqual({ kind: "Invalid", errors: ["e"] });
 });
 
 // ---------------------------------------------------------------------------
 // tryCatch
 // ---------------------------------------------------------------------------
 
-Deno.test("TaskValidation.tryCatch returns Valid when Promise resolves", async () => {
-	assertEquals(
-		await TaskValidation.tryCatch(() => Promise.resolve(42), (e) => String(e))(),
-		{ kind: "Valid", value: 42 },
-	);
+test("TaskValidation.tryCatch returns Valid when Promise resolves", async () => {
+	expect(await TaskValidation.tryCatch(() => Promise.resolve(42), (e) => String(e))()).toEqual({
+		kind: "Valid",
+		value: 42,
+	});
 });
 
-Deno.test("TaskValidation.tryCatch returns Invalid when Promise rejects", async () => {
-	assertEquals(
+test("TaskValidation.tryCatch returns Invalid when Promise rejects", async () => {
+	expect(
 		await TaskValidation.tryCatch(
 			() => Promise.reject(new Error("boom")),
 			(e) => (e as Error).message,
 		)(),
-		{ kind: "Invalid", errors: ["boom"] },
-	);
+	).toEqual({ kind: "Invalid", errors: ["boom"] });
 });
 
-Deno.test("TaskValidation.tryCatch catches async throws", async () => {
-	assertEquals(
+test("TaskValidation.tryCatch catches async throws", async () => {
+	expect(
 		await TaskValidation.tryCatch(
-			// deno-lint-ignore require-await
+			// eslint-disable-next-line require-await
 			async () => {
 				throw new Error("bang");
 			},
 			(e) => (e as Error).message,
 		)(),
-		{ kind: "Invalid", errors: ["bang"] },
-	);
+	).toEqual({ kind: "Invalid", errors: ["bang"] });
 });
 
 // ---------------------------------------------------------------------------
 // map
 // ---------------------------------------------------------------------------
 
-Deno.test("TaskValidation.map transforms Valid value", async () => {
-	assertEquals(
-		await pipe(TaskValidation.valid<string, number>(5), TaskValidation.map((n: number) => n * 2))(),
-		{ kind: "Valid", value: 10 },
-	);
+test("TaskValidation.map transforms Valid value", async () => {
+	expect(await pipe(TaskValidation.valid<string, number>(5), TaskValidation.map((n: number) => n * 2))()).toEqual({
+		kind: "Valid",
+		value: 10,
+	});
 });
 
-Deno.test("TaskValidation.map passes through Invalid unchanged", async () => {
-	assertEquals(
+test("TaskValidation.map passes through Invalid unchanged", async () => {
+	expect(
 		await pipe(
 			TaskValidation.invalid<string, number>("err"),
 			TaskValidation.map((n: number) => n * 2),
 		)(),
-		{ kind: "Invalid", errors: ["err"] },
-	);
+	).toEqual({ kind: "Invalid", errors: ["err"] });
 });
 
-Deno.test("TaskValidation.map can change the value type", async () => {
-	assertEquals(
+test("TaskValidation.map can change the value type", async () => {
+	expect(
 		await pipe(
 			TaskValidation.valid<string, number>(3),
 			TaskValidation.map((n: number) => `n:${n}`),
 		)(),
-		{ kind: "Valid", value: "n:3" },
-	);
+	).toEqual({ kind: "Valid", value: "n:3" });
 });
 
 // ---------------------------------------------------------------------------
 // ap (error accumulation)
 // ---------------------------------------------------------------------------
 
-Deno.test("TaskValidation.ap applies Valid function to Valid value", async () => {
+test("TaskValidation.ap applies Valid function to Valid value", async () => {
 	const result = await pipe(
 		TaskValidation.valid<string, (n: number) => number>((n) => n * 3),
 		TaskValidation.ap(TaskValidation.valid<string, number>(4)),
 	)();
-	assertEquals(result, { kind: "Valid", value: 12 });
+	expect(result).toEqual({ kind: "Valid", value: 12 });
 });
 
-Deno.test("TaskValidation.ap accumulates errors from both Invalid sides", async () => {
+test("TaskValidation.ap accumulates errors from both Invalid sides", async () => {
 	const add = (a: number) => (b: number) => a + b;
 	const result = await pipe(
 		TaskValidation.valid<string, (a: number) => (b: number) => number>(add),
 		TaskValidation.ap(TaskValidation.invalid<string, number>("bad a")),
 		TaskValidation.ap(TaskValidation.invalid<string, number>("bad b")),
 	)();
-	assertEquals(result, { kind: "Invalid", errors: ["bad a", "bad b"] });
+	expect(result).toEqual({ kind: "Invalid", errors: ["bad a", "bad b"] });
 });
 
-Deno.test("TaskValidation.ap returns Invalid when function side is Invalid", async () => {
+test("TaskValidation.ap returns Invalid when function side is Invalid", async () => {
 	const result = await pipe(
 		TaskValidation.invalid<string, (n: number) => number>("bad fn"),
 		TaskValidation.ap(TaskValidation.valid<string, number>(4)),
 	)();
-	assertEquals(result, { kind: "Invalid", errors: ["bad fn"] });
+	expect(result).toEqual({ kind: "Invalid", errors: ["bad fn"] });
 });
 
-Deno.test("TaskValidation.ap collects errors from both sides simultaneously", async () => {
+test("TaskValidation.ap collects errors from both sides simultaneously", async () => {
 	const result = await pipe(
 		TaskValidation.invalid<string, (n: number) => number>("bad fn"),
 		TaskValidation.ap(TaskValidation.invalid<string, number>("bad arg")),
 	)();
-	assertEquals(result, { kind: "Invalid", errors: ["bad fn", "bad arg"] });
+	expect(result).toEqual({ kind: "Invalid", errors: ["bad fn", "bad arg"] });
 });
 
 // ---------------------------------------------------------------------------
 // fold
 // ---------------------------------------------------------------------------
 
-Deno.test("TaskValidation.fold calls onValid for Valid", async () => {
-	assertStrictEquals(
+test("TaskValidation.fold calls onValid for Valid", async () => {
+	expect(
 		await pipe(
 			TaskValidation.valid(5),
 			TaskValidation.fold((errs) => `invalid:${errs}`, (n: number) => `valid:${n}`),
 		)(),
-		"valid:5",
-	);
+	).toBe("valid:5");
 });
 
-Deno.test("TaskValidation.fold calls onInvalid for Invalid", async () => {
-	assertStrictEquals(
+test("TaskValidation.fold calls onInvalid for Invalid", async () => {
+	expect(
 		await pipe(
 			TaskValidation.invalid<string, number>("e"),
 			TaskValidation.fold((errs) => `invalid:${errs.join(",")}`, (n: number) => `valid:${n}`),
 		)(),
-		"invalid:e",
-	);
+	).toBe("invalid:e");
 });
 
 // ---------------------------------------------------------------------------
 // match
 // ---------------------------------------------------------------------------
 
-Deno.test("TaskValidation.match calls valid handler for Valid", async () => {
-	assertStrictEquals(
+test("TaskValidation.match calls valid handler for Valid", async () => {
+	expect(
 		await pipe(
 			TaskValidation.valid<string, number>(5),
 			TaskValidation.match({
@@ -191,12 +180,11 @@ Deno.test("TaskValidation.match calls valid handler for Valid", async () => {
 				invalid: (errs) => `errs:${errs.join(",")}`,
 			}),
 		)(),
-		"got:5",
-	);
+	).toBe("got:5");
 });
 
-Deno.test("TaskValidation.match calls invalid handler for Invalid", async () => {
-	assertStrictEquals(
+test("TaskValidation.match calls invalid handler for Invalid", async () => {
+	expect(
 		await pipe(
 			TaskValidation.invalid<string, number>("oops"),
 			TaskValidation.match({
@@ -204,52 +192,45 @@ Deno.test("TaskValidation.match calls invalid handler for Invalid", async () => 
 				invalid: (errs) => `errs:${errs.join(",")}`,
 			}),
 		)(),
-		"errs:oops",
-	);
+	).toBe("errs:oops");
 });
 
 // ---------------------------------------------------------------------------
 // getOrElse
 // ---------------------------------------------------------------------------
 
-Deno.test("TaskValidation.getOrElse returns value for Valid", async () => {
-	assertStrictEquals(
-		await pipe(TaskValidation.valid<string, number>(5), TaskValidation.getOrElse(() => 0))(),
-		5,
-	);
+test("TaskValidation.getOrElse returns value for Valid", async () => {
+	expect(await pipe(TaskValidation.valid<string, number>(5), TaskValidation.getOrElse(() => 0))()).toBe(5);
 });
 
-Deno.test("TaskValidation.getOrElse returns default for Invalid", async () => {
-	assertStrictEquals(
-		await pipe(TaskValidation.invalid<string, number>("e"), TaskValidation.getOrElse(() => 0))(),
-		0,
-	);
+test("TaskValidation.getOrElse returns default for Invalid", async () => {
+	expect(await pipe(TaskValidation.invalid<string, number>("e"), TaskValidation.getOrElse(() => 0))()).toBe(0);
 });
 
-Deno.test(
+test(
 	"TaskValidation.getOrElse widens return type to A | B when default is a different type",
 	async () => {
 		const result = await pipe(
 			TaskValidation.invalid("e"),
 			TaskValidation.getOrElse(() => null),
 		)();
-		assertStrictEquals(result, null);
+		expect(result).toBeNull();
 	},
 );
 
-Deno.test("TaskValidation.getOrElse returns Valid value typed as A | B when Valid", async () => {
+test("TaskValidation.getOrElse returns Valid value typed as A | B when Valid", async () => {
 	const result = await pipe(
 		TaskValidation.valid(5),
 		TaskValidation.getOrElse(() => null),
 	)();
-	assertStrictEquals(result, 5);
+	expect(result).toBe(5);
 });
 
 // ---------------------------------------------------------------------------
 // tap
 // ---------------------------------------------------------------------------
 
-Deno.test("TaskValidation.tap executes side effect on Valid and returns original", async () => {
+test("TaskValidation.tap executes side effect on Valid and returns original", async () => {
 	let seen = 0;
 	const result = await pipe(
 		TaskValidation.valid<string, number>(5),
@@ -257,11 +238,11 @@ Deno.test("TaskValidation.tap executes side effect on Valid and returns original
 			seen = n;
 		}),
 	)();
-	assertStrictEquals(seen, 5);
-	assertEquals(result, { kind: "Valid", value: 5 });
+	expect(seen).toBe(5);
+	expect(result).toEqual({ kind: "Valid", value: 5 });
 });
 
-Deno.test("TaskValidation.tap does not execute side effect on Invalid", async () => {
+test("TaskValidation.tap does not execute side effect on Invalid", async () => {
 	let called = false;
 	await pipe(
 		TaskValidation.invalid<string, number>("err"),
@@ -269,14 +250,14 @@ Deno.test("TaskValidation.tap does not execute side effect on Invalid", async ()
 			called = true;
 		}),
 	)();
-	assertStrictEquals(called, false);
+	expect(called).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
 // recover
 // ---------------------------------------------------------------------------
 
-Deno.test("TaskValidation.recover returns original Valid without calling fallback", async () => {
+test("TaskValidation.recover returns original Valid without calling fallback", async () => {
 	let called = false;
 	const result = await pipe(
 		TaskValidation.valid<string, number>(5),
@@ -285,19 +266,19 @@ Deno.test("TaskValidation.recover returns original Valid without calling fallbac
 			return TaskValidation.valid<string, number>(99);
 		}),
 	)();
-	assertStrictEquals(called, false);
-	assertEquals(result, { kind: "Valid", value: 5 });
+	expect(called).toBe(false);
+	expect(result).toEqual({ kind: "Valid", value: 5 });
 });
 
-Deno.test("TaskValidation.recover provides fallback for Invalid", async () => {
+test("TaskValidation.recover provides fallback for Invalid", async () => {
 	const result = await pipe(
 		TaskValidation.invalid<string, number>("err"),
 		TaskValidation.recover((_errors) => TaskValidation.valid<string, number>(99)),
 	)();
-	assertEquals(result, { kind: "Valid", value: 99 });
+	expect(result).toEqual({ kind: "Valid", value: 99 });
 });
 
-Deno.test("TaskValidation.recover exposes the error list to the fallback", async () => {
+test("TaskValidation.recover exposes the error list to the fallback", async () => {
 	let received: string[] = [];
 	await pipe(
 		TaskValidation.invalidAll<string, number>(["first", "second"]),
@@ -306,33 +287,33 @@ Deno.test("TaskValidation.recover exposes the error list to the fallback", async
 			return TaskValidation.valid<string, number>(0);
 		}),
 	)();
-	assertEquals(received, ["first", "second"]);
+	expect(received).toEqual(["first", "second"]);
 });
 
-Deno.test(
+test(
 	"TaskValidation.recover widens to TaskValidation<E, A | B> when fallback returns a different type",
 	async () => {
 		const result = await pipe(
 			TaskValidation.invalid("err"),
 			TaskValidation.recover((_errors) => TaskValidation.valid("recovered")),
 		)();
-		assertEquals(result, { kind: "Valid", value: "recovered" });
+		expect(result).toEqual({ kind: "Valid", value: "recovered" });
 	},
 );
 
-Deno.test("TaskValidation.recover preserves Valid typed as TaskValidation<E, A | B>", async () => {
+test("TaskValidation.recover preserves Valid typed as TaskValidation<E, A | B>", async () => {
 	const result = await pipe(
 		TaskValidation.valid(5),
 		TaskValidation.recover((_errors) => TaskValidation.valid("recovered")),
 	)();
-	assertEquals(result, { kind: "Valid", value: 5 });
+	expect(result).toEqual({ kind: "Valid", value: 5 });
 });
 
 // ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 
-Deno.test("TaskValidation composes well in a pipe chain", async () => {
+test("TaskValidation composes well in a pipe chain", async () => {
 	const validateName = (name: string): TaskValidation<string, string> =>
 		name.length > 0 ? TaskValidation.valid(name) : TaskValidation.invalid("Name required");
 	const validateAge = (age: number): TaskValidation<string, number> =>
@@ -345,72 +326,72 @@ Deno.test("TaskValidation composes well in a pipe chain", async () => {
 		TaskValidation.map((user) => user.name),
 		TaskValidation.getOrElse(() => "unknown"),
 	)();
-	assertStrictEquals(result, "Alice");
+	expect(result).toBe("Alice");
 });
 
-Deno.test("TaskValidation ap accumulates all errors across multiple validations", async () => {
+test("TaskValidation ap accumulates all errors across multiple validations", async () => {
 	const validate = (name: string) => (age: number) => ({ name, age });
 	const result = await pipe(
 		TaskValidation.valid<string, typeof validate>(validate),
 		TaskValidation.ap(TaskValidation.invalid<string, string>("Name required")),
 		TaskValidation.ap(TaskValidation.invalid<string, number>("Age required")),
 	)();
-	assertEquals(result, { kind: "Invalid", errors: ["Name required", "Age required"] });
+	expect(result).toEqual({ kind: "Invalid", errors: ["Name required", "Age required"] });
 });
 
 // ---------------------------------------------------------------------------
 // product
 // ---------------------------------------------------------------------------
 
-Deno.test("TaskValidation.product returns tuple when both are Valid", async () => {
+test("TaskValidation.product returns tuple when both are Valid", async () => {
 	const result = await TaskValidation.product(
 		TaskValidation.valid<string, string>("alice"),
 		TaskValidation.valid<string, number>(30),
 	)();
-	assertEquals(result, { kind: "Valid", value: ["alice", 30] });
+	expect(result).toEqual({ kind: "Valid", value: ["alice", 30] });
 });
 
-Deno.test("TaskValidation.product accumulates errors when first is Invalid", async () => {
+test("TaskValidation.product accumulates errors when first is Invalid", async () => {
 	const result = await TaskValidation.product(
 		TaskValidation.invalid<string, string>("Name required"),
 		TaskValidation.valid<string, number>(30),
 	)();
-	assertEquals(result, { kind: "Invalid", errors: ["Name required"] });
+	expect(result).toEqual({ kind: "Invalid", errors: ["Name required"] });
 });
 
-Deno.test("TaskValidation.product accumulates errors from both sides", async () => {
+test("TaskValidation.product accumulates errors from both sides", async () => {
 	const result = await TaskValidation.product(
 		TaskValidation.invalid<string, string>("Name required"),
 		TaskValidation.invalid<string, number>("Age required"),
 	)();
-	assertEquals(result, { kind: "Invalid", errors: ["Name required", "Age required"] });
+	expect(result).toEqual({ kind: "Invalid", errors: ["Name required", "Age required"] });
 });
 
 // ---------------------------------------------------------------------------
 // productAll
 // ---------------------------------------------------------------------------
 
-Deno.test("TaskValidation.productAll returns all values when all are Valid", async () => {
+test("TaskValidation.productAll returns all values when all are Valid", async () => {
 	const result = await TaskValidation.productAll([
 		TaskValidation.valid<string, number>(1),
 		TaskValidation.valid<string, number>(2),
 		TaskValidation.valid<string, number>(3),
 	])();
-	assertEquals(result, { kind: "Valid", value: [1, 2, 3] });
+	expect(result).toEqual({ kind: "Valid", value: [1, 2, 3] });
 });
 
-Deno.test("TaskValidation.productAll accumulates all errors", async () => {
+test("TaskValidation.productAll accumulates all errors", async () => {
 	const result = await TaskValidation.productAll([
 		TaskValidation.invalid<string, number>("err1"),
 		TaskValidation.valid<string, number>(2),
 		TaskValidation.invalid<string, number>("err2"),
 	])();
-	assertEquals(result, { kind: "Invalid", errors: ["err1", "err2"] });
+	expect(result).toEqual({ kind: "Invalid", errors: ["err1", "err2"] });
 });
 
-Deno.test("TaskValidation.productAll with single element returns singleton array", async () => {
+test("TaskValidation.productAll with single element returns singleton array", async () => {
 	const result = await TaskValidation.productAll([
 		TaskValidation.valid<string, number>(42),
 	])();
-	assertEquals(result, { kind: "Valid", value: [42] });
+	expect(result).toEqual({ kind: "Valid", value: [42] });
 });

@@ -1,0 +1,61 @@
+{
+	"name": "@nlozgachev/pipelined",
+	"version": "0.13.0",
+	"description": "Simple functional programming toolkit for TypeScript",
+	"license": "BSD-3-Clause",
+	"homepage": "https://pipelined.lozgachev.dev",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/nlozgachev/pipelined"
+	},
+	"keywords": [
+		"functional",
+		"fp",
+		"typescript",
+		"composition",
+		"pipe"
+	],
+	"sideEffects": false,
+	"engines": {
+		"node": ">=22"
+	},
+	"files": [
+		"dist"
+	],
+	"exports": {
+		"./composition": {
+			"import": "./dist/composition.mjs",
+			"require": "./dist/composition.cjs"
+		},
+		"./core": {
+			"import": "./dist/core.mjs",
+			"require": "./dist/core.cjs"
+		},
+		"./utils": {
+			"import": "./dist/utils.mjs",
+			"require": "./dist/utils.cjs"
+		},
+		"./types": {
+			"import": "./dist/types.mjs",
+			"require": "./dist/types.cjs"
+		}
+	},
+	"scripts": {
+		"test": "vitest run",
+		"bench": "vitest bench",
+		"build": "tsup",
+		"format": "dprint fmt",
+		"format:check": "dprint check",
+		"typecheck": "tsc --noEmit",
+		"lint": "oxlint src/",
+		"publish:npm": "pnpm build && npm publish --access public"
+	},
+	"devDependencies": {
+		"@types/node": "25.5.0",
+		"dprint": "0.53.0",
+		"oxlint": "1.56.0",
+		"tsup": "8.5.1",
+		"typescript": "5.9.3",
+		"vitest": "4.1.0"
+	}
+}

@@ -38,6 +38,7 @@ export namespace Deferred {
 	 * ```
 	 */
 	export const fromPromise = <A>(p: Promise<A>): Deferred<A> => {
+		// eslint-disable-next-line unicorn/no-thenable -- Deferred is intentionally thenable; it is the mechanism that makes Task awaitable
 		const d = ({ then: ((f) => p.then(f)) as Deferred<A>["then"] }) as Deferred<A>;
 		_store.set(d as object, p);
 		return d;
@@ -53,6 +54,6 @@ export namespace Deferred {
 	 * ```
 	 */
 	export const toPromise = <A>(d: Deferred<A>): Promise<A> =>
-		(_store.get(d as object) as Promise<A> | undefined) ??
-			new Promise((resolve) => d.then(resolve));
+		(_store.get(d as object) as Promise<A> | undefined)
+			?? new Promise((resolve) => d.then(resolve));
 }

@@ -153,7 +153,7 @@ export namespace Task {
 	 */
 	export const all = <T extends readonly Task<unknown>[]>(
 		tasks: T,
-	): Task<{ [K in keyof T]: T[K] extends Task<infer A> ? A : never }> =>
+	): Task<{ [K in keyof T]: T[K] extends Task<infer A> ? A : never; }> =>
 		from(
 			() =>
 				Promise.all(tasks.map((t) => toPromise(t))) as Promise<
@@ -198,7 +198,7 @@ export namespace Task {
 	 * )(); // Task<Reading[]> — 5 readings, one per second
 	 * ```
 	 */
-	export const repeat = (options: { times: number; delay?: number }) => <A>(task: Task<A>): Task<A[]> =>
+	export const repeat = (options: { times: number; delay?: number; }) => <A>(task: Task<A>): Task<A[]> =>
 		from(() => {
 			const { times, delay: ms } = options;
 			if (times <= 0) return Promise.resolve([]);
@@ -226,7 +226,7 @@ export namespace Task {
 	 * )(); // polls every 500ms until status is "ready"
 	 * ```
 	 */
-	export const repeatUntil = <A>(options: { when: (a: A) => boolean; delay?: number }) => (task: Task<A>): Task<A> =>
+	export const repeatUntil = <A>(options: { when: (a: A) => boolean; delay?: number; }) => (task: Task<A>): Task<A> =>
 		from(() => {
 			const { when: predicate, delay: ms } = options;
 			const wait = (): Promise<void> =>
@@ -273,6 +273,7 @@ export namespace Task {
 		from(async () => {
 			const results: A[] = [];
 			for (const task of tasks) {
+				// eslint-disable-next-line no-await-in-loop
 				results.push(await toPromise(task));
 			}
 			return results;

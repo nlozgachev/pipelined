@@ -1,62 +1,53 @@
-import { assertEquals, assertStrictEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { Validation } from "../Validation.ts";
+import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import { Validation } from "../Validation.ts";
 
 // ---------------------------------------------------------------------------
 // valid
 // ---------------------------------------------------------------------------
 
-Deno.test("Validation.valid wraps a value in Valid", () => {
+test("Validation.valid wraps a value in Valid", () => {
 	const result = Validation.valid<string, number>(42);
-	assertEquals(result, { kind: "Valid", value: 42 });
+	expect(result).toEqual({ kind: "Valid", value: 42 });
 });
 
 // ---------------------------------------------------------------------------
 // isValid
 // ---------------------------------------------------------------------------
 
-Deno.test("Validation.isValid returns true for Valid", () => {
-	assertStrictEquals(
-		Validation.isValid(Validation.valid<string, number>(1)),
-		true,
-	);
+test("Validation.isValid returns true for Valid", () => {
+	expect(Validation.isValid(Validation.valid<string, number>(1))).toBe(true);
 });
 
-Deno.test("Validation.isValid returns false for Invalid", () => {
-	assertStrictEquals(
-		Validation.isValid(Validation.invalid("err")),
-		false,
-	);
+test("Validation.isValid returns false for Invalid", () => {
+	expect(Validation.isValid(Validation.invalid("err"))).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
 // invalidAll / isInvalid
 // ---------------------------------------------------------------------------
 
-Deno.test("Validation.invalidAll creates an Invalid with errors array", () => {
-	assertEquals(Validation.invalidAll(["error1", "error2"]), {
+test("Validation.invalidAll creates an Invalid with errors array", () => {
+	expect(Validation.invalidAll(["error1", "error2"])).toEqual({
 		kind: "Invalid",
 		errors: ["error1", "error2"],
 	});
 });
 
-Deno.test("Validation.isInvalid returns true for Invalid", () => {
-	assertStrictEquals(Validation.isInvalid(Validation.invalid(["e"])), true);
+test("Validation.isInvalid returns true for Invalid", () => {
+	expect(Validation.isInvalid(Validation.invalid(["e"]))).toBe(true);
 });
 
-Deno.test("Validation.isInvalid returns false for Valid", () => {
-	assertStrictEquals(
-		Validation.isInvalid(Validation.valid<string, number>(1)),
-		false,
-	);
+test("Validation.isInvalid returns false for Valid", () => {
+	expect(Validation.isInvalid(Validation.valid<string, number>(1))).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
 // invalid
 // ---------------------------------------------------------------------------
 
-Deno.test("Validation.invalid creates an Invalid from a single error", () => {
-	assertEquals(Validation.invalid("oops"), {
+test("Validation.invalid creates an Invalid from a single error", () => {
+	expect(Validation.invalid("oops")).toEqual({
 		kind: "Invalid",
 		errors: ["oops"],
 	});
@@ -66,77 +57,77 @@ Deno.test("Validation.invalid creates an Invalid from a single error", () => {
 // map
 // ---------------------------------------------------------------------------
 
-Deno.test("Validation.map transforms the valid value", () => {
+test("Validation.map transforms the valid value", () => {
 	const result = pipe(
 		Validation.valid<string, number>(5),
 		Validation.map((n: number) => n * 2),
 	);
-	assertEquals(result, { kind: "Valid", value: 10 });
+	expect(result).toEqual({ kind: "Valid", value: 10 });
 });
 
-Deno.test("Validation.map passes through Invalid unchanged", () => {
+test("Validation.map passes through Invalid unchanged", () => {
 	const result = pipe(
 		Validation.invalid("error"),
 		Validation.map((n: number) => n * 2),
 	);
-	assertEquals(result, { kind: "Invalid", errors: ["error"] });
+	expect(result).toEqual({ kind: "Invalid", errors: ["error"] });
 });
 
-Deno.test("Validation.map can change the value type", () => {
+test("Validation.map can change the value type", () => {
 	const result = pipe(
 		Validation.valid<string, number>(42),
 		Validation.map((n: number) => `val: ${n}`),
 	);
-	assertEquals(result, { kind: "Valid", value: "val: 42" });
+	expect(result).toEqual({ kind: "Valid", value: "val: 42" });
 });
 
 // ---------------------------------------------------------------------------
 // ap (error accumulation)
 // ---------------------------------------------------------------------------
 
-Deno.test("Validation.ap applies Valid function to Valid value", () => {
+test("Validation.ap applies Valid function to Valid value", () => {
 	const add = (a: number) => (b: number) => a + b;
 	const result = pipe(
 		Validation.valid<string, typeof add>(add),
 		Validation.ap(Validation.valid<string, number>(5)),
 		Validation.ap(Validation.valid<string, number>(3)),
 	);
-	assertEquals(result, { kind: "Valid", value: 8 });
+	expect(result).toEqual({ kind: "Valid", value: 8 });
 });
 
-Deno.test("Validation.ap accumulates errors from both sides", () => {
+test("Validation.ap accumulates errors from both sides", () => {
 	const add = (a: number) => (b: number) => a + b;
 	const result = pipe(
 		Validation.valid<string, typeof add>(add),
 		Validation.ap(Validation.invalid("bad a")),
 		Validation.ap(Validation.invalid("bad b")),
 	);
-	assertEquals(result, { kind: "Invalid", errors: ["bad a", "bad b"] });
+	expect(result).toEqual({ kind: "Invalid", errors: ["bad a", "bad b"] });
 });
 
-Deno.test(
+test(
 	"Validation.ap returns errors from value when function is Valid",
 	() => {
 		const result = pipe(
 			Validation.valid<string, (n: number) => number>((n) => n * 2),
 			Validation.ap(Validation.invalid("bad value")),
 		);
-		assertEquals(result, { kind: "Invalid", errors: ["bad value"] });
+		expect(result).toEqual({ kind: "Invalid", errors: ["bad value"] });
 	},
 );
 
-Deno.test(
+test(
 	"Validation.ap returns errors from function when value is Valid",
 	() => {
 		const result = pipe(
 			Validation.invalid("bad fn"),
 			Validation.ap(Validation.valid<string, number>(5)),
 		);
-		assertEquals(result, { kind: "Invalid", errors: ["bad fn"] });
+		expect(result).toEqual({ kind: "Invalid", errors: ["bad fn"] });
 	},
 );
 
-Deno.test(
+test(
 	"Validation.ap accumulates all errors in a multi-field validation",
 	() => {
 		const createUser = (name: string) => (email: string) => (age: number) => ({
@@ -158,14 +149,14 @@ Deno.test(
 			Validation.ap(validateEmail("bad")),
 			Validation.ap(validateAge(-5)),
 		);
-		assertEquals(result, {
+		expect(result).toEqual({
 			kind: "Invalid",
 			errors: ["Name required", "Invalid email", "Age must be >= 0"],
 		});
 	},
 );
 
-Deno.test("Validation.ap succeeds when all validations pass", () => {
+test("Validation.ap succeeds when all validations pass", () => {
 	const createUser = (name: string) => (email: string) => (age: number) => ({
 		name,
 		email,
@@ -178,7 +169,7 @@ Deno.test("Validation.ap succeeds when all validations pass", () => {
 		Validation.ap(Validation.valid<string, string>("alice@example.com")),
 		Validation.ap(Validation.valid<string, number>(30)),
 	);
-	assertEquals(result, {
+	expect(result).toEqual({
 		kind: "Valid",
 		value: { name: "Alice", email: "alice@example.com", age: 30 },
 	});
@@ -188,7 +179,7 @@ Deno.test("Validation.ap succeeds when all validations pass", () => {
 // fold
 // ---------------------------------------------------------------------------
 
-Deno.test("Validation.fold calls onValid for Valid", () => {
+test("Validation.fold calls onValid for Valid", () => {
 	const result = pipe(
 		Validation.valid<string, number>(5),
 		Validation.fold(
@@ -196,10 +187,10 @@ Deno.test("Validation.fold calls onValid for Valid", () => {
 			(n: number) => `Value: ${n}`,
 		),
 	);
-	assertStrictEquals(result, "Value: 5");
+	expect(result).toBe("Value: 5");
 });
 
-Deno.test("Validation.fold calls onInvalid for Invalid", () => {
+test("Validation.fold calls onInvalid for Invalid", () => {
 	const result = pipe(
 		Validation.invalidAll(["a", "b"]),
 		Validation.fold(
@@ -207,14 +198,14 @@ Deno.test("Validation.fold calls onInvalid for Invalid", () => {
 			(n: number) => `Value: ${n}`,
 		),
 	);
-	assertStrictEquals(result, "Errors: a, b");
+	expect(result).toBe("Errors: a, b");
 });
 
 // ---------------------------------------------------------------------------
 // match (data-last)
 // ---------------------------------------------------------------------------
 
-Deno.test("Validation.match calls valid handler for Valid", () => {
+test("Validation.match calls valid handler for Valid", () => {
 	const result = pipe(
 		Validation.valid<string, number>(5),
 		Validation.match({
@@ -222,10 +213,10 @@ Deno.test("Validation.match calls valid handler for Valid", () => {
 			invalid: (errors) => `failed: ${errors.join(", ")}`,
 		}),
 	);
-	assertStrictEquals(result, "got 5");
+	expect(result).toBe("got 5");
 });
 
-Deno.test("Validation.match calls invalid handler for Invalid", () => {
+test("Validation.match calls invalid handler for Invalid", () => {
 	const result = pipe(
 		Validation.invalid("oops"),
 		Validation.match({
@@ -233,59 +224,59 @@ Deno.test("Validation.match calls invalid handler for Invalid", () => {
 			invalid: (errors) => `failed: ${errors.join(", ")}`,
 		}),
 	);
-	assertStrictEquals(result, "failed: oops");
+	expect(result).toBe("failed: oops");
 });
 
-Deno.test("Validation.match is data-last (returns a function first)", () => {
+test("Validation.match is data-last (returns a function first)", () => {
 	const handler = Validation.match<string, number, string>({
 		valid: (n) => `val: ${n}`,
 		invalid: (errors) => `err: ${errors.join(";")}`,
 	});
-	assertStrictEquals(handler(Validation.valid(3)), "val: 3");
-	assertStrictEquals(handler(Validation.invalid("x")), "err: x");
+	expect(handler(Validation.valid(3))).toBe("val: 3");
+	expect(handler(Validation.invalid("x"))).toBe("err: x");
 });
 
 // ---------------------------------------------------------------------------
 // getOrElse
 // ---------------------------------------------------------------------------
 
-Deno.test("Validation.getOrElse returns value for Valid", () => {
+test("Validation.getOrElse returns value for Valid", () => {
 	const result = pipe(
 		Validation.valid<string, number>(5),
 		Validation.getOrElse(() => 0),
 	);
-	assertStrictEquals(result, 5);
+	expect(result).toBe(5);
 });
 
-Deno.test("Validation.getOrElse returns default for Invalid", () => {
+test("Validation.getOrElse returns default for Invalid", () => {
 	const result = pipe(
 		Validation.invalid("error"),
 		Validation.getOrElse(() => 0),
 	);
-	assertStrictEquals(result, 0);
+	expect(result).toBe(0);
 });
 
-Deno.test("Validation.getOrElse widens return type to A | B when default is a different type", () => {
+test("Validation.getOrElse widens return type to A | B when default is a different type", () => {
 	const result = pipe(
 		Validation.invalid("error"),
 		Validation.getOrElse(() => null),
 	);
-	assertStrictEquals(result, null);
+	expect(result).toBeNull();
 });
 
-Deno.test("Validation.getOrElse returns Valid value typed as A | B when Valid", () => {
+test("Validation.getOrElse returns Valid value typed as A | B when Valid", () => {
 	const result = pipe(
 		Validation.valid(5),
 		Validation.getOrElse(() => null),
 	);
-	assertStrictEquals(result, 5);
+	expect(result).toBe(5);
 });
 
 // ---------------------------------------------------------------------------
 // tap
 // ---------------------------------------------------------------------------
 
-Deno.test(
+test(
 	"Validation.tap executes side effect on Valid and returns original",
 	() => {
 		let sideEffect = 0;
@@ -295,12 +286,12 @@ Deno.test(
 				sideEffect = n;
 			}),
 		);
-		assertStrictEquals(sideEffect, 5);
-		assertEquals(result, { kind: "Valid", value: 5 });
+		expect(sideEffect).toBe(5);
+		expect(result).toEqual({ kind: "Valid", value: 5 });
 	},
 );
 
-Deno.test("Validation.tap does not execute side effect on Invalid", () => {
+test("Validation.tap does not execute side effect on Invalid", () => {
 	let called = false;
 	const result = pipe(
 		Validation.invalid("error"),
@@ -308,15 +299,15 @@ Deno.test("Validation.tap does not execute side effect on Invalid", () => {
 			called = true;
 		}),
 	);
-	assertStrictEquals(called, false);
-	assertEquals(result, { kind: "Invalid", errors: ["error"] });
+	expect(called).toBe(false);
+	expect(result).toEqual({ kind: "Invalid", errors: ["error"] });
 });
 
 // ---------------------------------------------------------------------------
 // recover
 // ---------------------------------------------------------------------------
 
-Deno.test(
+test(
 	"Validation.recover returns original Valid without calling fallback",
 	() => {
 		let called = false;
@@ -327,20 +318,20 @@ Deno.test(
 				return Validation.valid<string, number>(99);
 			}),
 		);
-		assertStrictEquals(called, false);
-		assertEquals(result, { kind: "Valid", value: 5 });
+		expect(called).toBe(false);
+		expect(result).toEqual({ kind: "Valid", value: 5 });
 	},
 );
 
-Deno.test("Validation.recover provides fallback for Invalid", () => {
+test("Validation.recover provides fallback for Invalid", () => {
 	const result = pipe(
 		Validation.invalid("error"),
 		Validation.recover((_errors) => Validation.valid<string, number>(99)),
 	);
-	assertEquals(result, { kind: "Valid", value: 99 });
+	expect(result).toEqual({ kind: "Valid", value: 99 });
 });
 
-Deno.test("Validation.recover exposes the error list to the fallback", () => {
+test("Validation.recover exposes the error list to the fallback", () => {
 	let received: string[] = [];
 	pipe(
 		Validation.invalidAll(["first", "second"] as [string, ...string[]]),
@@ -349,89 +340,89 @@ Deno.test("Validation.recover exposes the error list to the fallback", () => {
 			return Validation.valid<string, number>(0);
 		}),
 	);
-	assertEquals(received, ["first", "second"]);
+	expect(received).toEqual(["first", "second"]);
 });
 
-Deno.test("Validation.recover can return Invalid as fallback", () => {
+test("Validation.recover can return Invalid as fallback", () => {
 	const result = pipe(
 		Validation.invalid("first"),
 		Validation.recover((_errors) => Validation.invalid("second")),
 	);
-	assertEquals(result, { kind: "Invalid", errors: ["second"] });
+	expect(result).toEqual({ kind: "Invalid", errors: ["second"] });
 });
 
-Deno.test(
+test(
 	"Validation.recover widens to Validation<E, A | B> when fallback returns a different type",
 	() => {
 		const result = pipe(
 			Validation.invalid("error"),
 			Validation.recover((_errors) => Validation.valid("recovered")),
 		);
-		assertEquals(result, { kind: "Valid", value: "recovered" });
+		expect(result).toEqual({ kind: "Valid", value: "recovered" });
 	},
 );
 
-Deno.test("Validation.recover preserves Valid typed as Validation<E, A | B>", () => {
+test("Validation.recover preserves Valid typed as Validation<E, A | B>", () => {
 	const result = pipe(
 		Validation.valid(5),
 		Validation.recover((_errors) => Validation.valid("recovered")),
 	);
-	assertEquals(result, { kind: "Valid", value: 5 });
+	expect(result).toEqual({ kind: "Valid", value: 5 });
 });
 
 // ---------------------------------------------------------------------------
 // recoverUnless
 // ---------------------------------------------------------------------------
 
-Deno.test(
+test(
 	"Validation.recoverUnless recovers when errors do not include blocked errors",
 	() => {
 		const result = pipe(
 			Validation.invalid("recoverable"),
 			Validation.recoverUnless(["fatal"], () => Validation.valid<string, number>(42)),
 		);
-		assertEquals(result, { kind: "Valid", value: 42 });
+		expect(result).toEqual({ kind: "Valid", value: 42 });
 	},
 );
 
-Deno.test(
+test(
 	"Validation.recoverUnless does NOT recover when errors include a blocked error",
 	() => {
 		const result = pipe(
 			Validation.invalid("fatal"),
 			Validation.recoverUnless(["fatal"], () => Validation.valid<string, number>(42)),
 		);
-		assertEquals(result, { kind: "Invalid", errors: ["fatal"] });
+		expect(result).toEqual({ kind: "Invalid", errors: ["fatal"] });
 	},
 );
 
-Deno.test("Validation.recoverUnless passes through Valid unchanged", () => {
+test("Validation.recoverUnless passes through Valid unchanged", () => {
 	const result = pipe(
 		Validation.valid<string, number>(10),
 		Validation.recoverUnless(["fatal"], () => Validation.valid<string, number>(42)),
 	);
-	assertEquals(result, { kind: "Valid", value: 10 });
+	expect(result).toEqual({ kind: "Valid", value: 10 });
 });
 
-Deno.test(
+test(
 	"Validation.recoverUnless does NOT recover when any error matches blocked list",
 	() => {
 		const result = pipe(
 			Validation.invalidAll(["minor", "fatal"]),
 			Validation.recoverUnless(["fatal"], () => Validation.valid<string, number>(42)),
 		);
-		assertEquals(result, { kind: "Invalid", errors: ["minor", "fatal"] });
+		expect(result).toEqual({ kind: "Invalid", errors: ["minor", "fatal"] });
 	},
 );
 
-Deno.test(
+test(
 	"Validation.recoverUnless widens to Validation<E, A | B> when fallback returns a different type",
 	() => {
 		const result = pipe(
 			Validation.invalid("recoverable"),
 			Validation.recoverUnless(["fatal"], () => Validation.valid("recovered")),
 		);
-		assertEquals(result, { kind: "Valid", value: "recovered" });
+		expect(result).toEqual({ kind: "Valid", value: "recovered" });
 	},
 );
 
@@ -439,95 +430,95 @@ Deno.test(
 // product
 // ---------------------------------------------------------------------------
 
-Deno.test("Validation.product returns tuple when both are Valid", () => {
+test("Validation.product returns tuple when both are Valid", () => {
 	const result = Validation.product(
 		Validation.valid<string, string>("alice"),
 		Validation.valid<string, number>(30),
 	);
-	assertEquals(result, { kind: "Valid", value: ["alice", 30] });
+	expect(result).toEqual({ kind: "Valid", value: ["alice", 30] });
 });
 
-Deno.test("Validation.product returns Invalid when first is Invalid", () => {
+test("Validation.product returns Invalid when first is Invalid", () => {
 	const result = Validation.product(
 		Validation.invalid("err1"),
 		Validation.valid<string, number>(30),
 	);
-	assertEquals(result, { kind: "Invalid", errors: ["err1"] });
+	expect(result).toEqual({ kind: "Invalid", errors: ["err1"] });
 });
 
-Deno.test("Validation.product returns Invalid when second is Invalid", () => {
+test("Validation.product returns Invalid when second is Invalid", () => {
 	const result = Validation.product(
 		Validation.valid<string, string>("alice"),
 		Validation.invalid("err2"),
 	);
-	assertEquals(result, { kind: "Invalid", errors: ["err2"] });
+	expect(result).toEqual({ kind: "Invalid", errors: ["err2"] });
 });
 
-Deno.test("Validation.product accumulates errors when both are Invalid", () => {
+test("Validation.product accumulates errors when both are Invalid", () => {
 	const result = Validation.product(
 		Validation.invalid("err1"),
 		Validation.invalid("err2"),
 	);
-	assertEquals(result, { kind: "Invalid", errors: ["err1", "err2"] });
+	expect(result).toEqual({ kind: "Invalid", errors: ["err1", "err2"] });
 });
 
-Deno.test("Validation.product accumulates multiple errors from both sides", () => {
+test("Validation.product accumulates multiple errors from both sides", () => {
 	const result = Validation.product(
 		Validation.invalidAll(["a", "b"]),
 		Validation.invalidAll(["c"]),
 	);
-	assertEquals(result, { kind: "Invalid", errors: ["a", "b", "c"] });
+	expect(result).toEqual({ kind: "Invalid", errors: ["a", "b", "c"] });
 });
 
-Deno.test("Validation.product can combine different value types", () => {
+test("Validation.product can combine different value types", () => {
 	const result = Validation.product(
 		Validation.valid<string, string>("hello"),
 		Validation.valid<string, boolean>(true),
 	);
-	assertEquals(result, { kind: "Valid", value: ["hello", true] });
+	expect(result).toEqual({ kind: "Valid", value: ["hello", true] });
 });
 
 // ---------------------------------------------------------------------------
 // productAll
 // ---------------------------------------------------------------------------
 
-Deno.test("Validation.productAll returns all values when all are Valid", () => {
+test("Validation.productAll returns all values when all are Valid", () => {
 	const result = Validation.productAll([
 		Validation.valid<string, number>(1),
 		Validation.valid<string, number>(2),
 		Validation.valid<string, number>(3),
 	]);
-	assertEquals(result, { kind: "Valid", value: [1, 2, 3] });
+	expect(result).toEqual({ kind: "Valid", value: [1, 2, 3] });
 });
 
-Deno.test("Validation.productAll accumulates all errors", () => {
+test("Validation.productAll accumulates all errors", () => {
 	const result = Validation.productAll([
 		Validation.invalid("err1"),
 		Validation.valid<string, number>(2),
 		Validation.invalid("err2"),
 	]);
-	assertEquals(result, { kind: "Invalid", errors: ["err1", "err2"] });
+	expect(result).toEqual({ kind: "Invalid", errors: ["err1", "err2"] });
 });
 
-Deno.test("Validation.productAll with all Invalid accumulates all errors", () => {
+test("Validation.productAll with all Invalid accumulates all errors", () => {
 	const result = Validation.productAll([
 		Validation.invalid("a"),
 		Validation.invalid("b"),
 		Validation.invalid("c"),
 	]);
-	assertEquals(result, { kind: "Invalid", errors: ["a", "b", "c"] });
+	expect(result).toEqual({ kind: "Invalid", errors: ["a", "b", "c"] });
 });
 
-Deno.test("Validation.productAll with single element returns singleton array", () => {
+test("Validation.productAll with single element returns singleton array", () => {
 	const result = Validation.productAll([Validation.valid<string, number>(42)]);
-	assertEquals(result, { kind: "Valid", value: [42] });
+	expect(result).toEqual({ kind: "Valid", value: [42] });
 });
 
 // ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 
-Deno.test("Validation composes well in a pipe chain", () => {
+test("Validation composes well in a pipe chain", () => {
 	const validateName = (name: string): Validation<string, string> =>
 		name.length > 0 ? Validation.valid(name) : Validation.invalid("Name required");
 	const validateAge = (age: number): Validation<string, number> =>
@@ -540,5 +531,5 @@ Deno.test("Validation composes well in a pipe chain", () => {
 		Validation.map((user) => user.name),
 		Validation.getOrElse(() => "unknown"),
 	);
-	assertStrictEquals(result, "Alice");
+	expect(result).toBe("Alice");
 });

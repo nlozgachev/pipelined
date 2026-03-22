@@ -1,0 +1,46 @@
+{
+	"plugins": [
+		"vitest"
+	],
+	"categories": {
+		"correctness": "error",
+		"suspicious": "warn",
+		"pedantic": "warn",
+		"style": "warn",
+		"perf": "warn"
+	},
+	"rules": {
+		"no-namespace": "off",
+		"unicorn/no-new-array": "off",
+		"max-lines-per-function": "off",
+		"max-lines": "off",
+		"max-nested-callbacks": "off",
+		"max-depth": "off",
+		"max-params": "off",
+		"no-magic-numbers": "off",
+		"sort-imports": "off",
+		"sort-keys": "off",
+		"no-ternary": "off",
+		"no-negated-condition": "off",
+		"no-nested-ternary": "off",
+		"func-style": "off",
+		"init-declarations": "off",
+		"jest/require-top-level-describe": "off",
+		"jest/prefer-lowercase-title": "off",
+		"jest/max-expects": "off",
+		"jest/prefer-strict-equal": "off",
+		"jest/no-conditional-in-test": "off",
+		"yoda": "off",
+		"vitest/prefer-to-be-falsy": "off",
+		"vitest/prefer-to-be-truthy": "off",
+		"jest/prefer-expect-resolves": "off",
+		"curly": "off",
+		"id-length": "off",
+		"capitalized-comments": "off",
+		"no-inline-comments": "off",
+		"max-statements": "off",
+		"vitest/no-importing-vitest-globals": "off",
+		"no-promise-executor-return": "off",
+		"no-shadow": "off"
+	}
+}

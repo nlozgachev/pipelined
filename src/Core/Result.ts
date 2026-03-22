@@ -137,7 +137,7 @@ export namespace Result {
 	 * );
 	 * ```
 	 */
-	export const match = <E, A, B>(cases: { ok: (a: A) => B; err: (e: E) => B }) => (data: Result<E, A>): B =>
+	export const match = <E, A, B>(cases: { ok: (a: A) => B; err: (e: E) => B; }) => (data: Result<E, A>): B =>
 		isOk(data) ? cases.ok(data.value) : cases.err(data.error);
 
 	/**

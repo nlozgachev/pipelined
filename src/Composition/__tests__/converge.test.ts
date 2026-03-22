@@ -1,17 +1,17 @@
-import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { expect, test } from "vitest";
 import { converge } from "../converge.ts";
 import { pipe } from "../pipe.ts";
 
-Deno.test("converge - applies input to both transformers and combines results", () => {
+test("converge - applies input to both transformers and combines results", () => {
 	const toRecord = converge(
 		(lower: string, upper: string) => ({ lower, upper }),
 		[(s: string) => s.toLowerCase(), (s: string) => s.toUpperCase()],
 	);
 
-	assertEquals(toRecord("Hello"), { lower: "hello", upper: "HELLO" });
+	expect(toRecord("Hello")).toEqual({ lower: "hello", upper: "HELLO" });
 });
 
-Deno.test("converge - both transformers receive the same input value", () => {
+test("converge - both transformers receive the same input value", () => {
 	const inputs: number[] = [];
 	const track = converge(
 		(a: number, b: number) => a + b,
@@ -29,10 +29,10 @@ Deno.test("converge - both transformers receive the same input value", () => {
 
 	track(5);
 
-	assertEquals(inputs, [5, 5]);
+	expect(inputs).toEqual([5, 5]);
 });
 
-Deno.test("converge - three transformers", () => {
+test("converge - three transformers", () => {
 	const summarise = converge(
 		(min: number, max: number, sum: number) => ({ min, max, sum }),
 		[
@@ -42,10 +42,10 @@ Deno.test("converge - three transformers", () => {
 		],
 	);
 
-	assertEquals(summarise([1, 2, 3, 4]), { min: 1, max: 4, sum: 10 });
+	expect(summarise([1, 2, 3, 4])).toEqual({ min: 1, max: 4, sum: 10 });
 });
 
-Deno.test("converge - four transformers", () => {
+test("converge - four transformers", () => {
 	const describe = converge(
 		(len: number, first: string, last: string, upper: string) => ({ len, first, last, upper }),
 		[
@@ -56,10 +56,10 @@ Deno.test("converge - four transformers", () => {
 		],
 	);
 
-	assertEquals(describe("hello"), { len: 5, first: "h", last: "o", upper: "HELLO" });
+	expect(describe("hello")).toEqual({ len: 5, first: "h", last: "o", upper: "HELLO" });
 });
 
-Deno.test("converge - works in a pipe chain", () => {
+test("converge - works in a pipe chain", () => {
 	const toNameRecord = converge(
 		(trimmed: string, initials: string) => ({ trimmed, initials }),
 		[
@@ -70,5 +70,5 @@ Deno.test("converge - works in a pipe chain", () => {
 
 	const result = pipe("  Alice Bob  ", toNameRecord);
 
-	assertEquals(result, { trimmed: "Alice Bob", initials: "AB" });
+	expect(result).toEqual({ trimmed: "Alice Bob", initials: "AB" });
 });

@@ -29,11 +29,9 @@
 export function uncurry<C>(f: () => () => C): () => C;
 export function uncurry<A, C>(f: (a: A) => () => C): (a: A) => C;
 export function uncurry<A, B, C>(f: (a: A) => (b: B) => C): (a: A, b: B) => C;
-// deno-lint-ignore no-explicit-any
 export function uncurry(f: (...args: any[]) => (...args: any[]) => any) {
 	// f.length determines the outer arity; inner.length determines the inner arity.
 	// The typed overloads guarantee these are 0, 1, or 2 total args.
-	// deno-lint-ignore no-explicit-any
 	return (...args: any[]) => {
 		const inner = f(...args.slice(0, f.length));
 		return inner.length === 0 ? inner() : inner(...args.slice(f.length));

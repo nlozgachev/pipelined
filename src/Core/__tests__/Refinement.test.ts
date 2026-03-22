@@ -1,8 +1,8 @@
-import { assertEquals, assertStrictEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { Refinement } from "../Refinement.ts";
-import { Option } from "../Option.ts";
-import { Result } from "../Result.ts";
+import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import { Option } from "../Option.ts";
+import { Refinement } from "../Refinement.ts";
+import { Result } from "../Result.ts";
 
 // ---------------------------------------------------------------------------
 // Phantom brand types — each uses a unique symbol so intersections don't collapse
@@ -13,10 +13,10 @@ declare const _trimmed: unique symbol;
 declare const _positive: unique symbol;
 declare const _even: unique symbol;
 
-type NonEmptyString = string & { readonly [_nonEmpty]: true };
-type TrimmedString = NonEmptyString & { readonly [_trimmed]: true };
-type PositiveNumber = number & { readonly [_positive]: true };
-type EvenNumber = number & { readonly [_even]: true };
+type NonEmptyString = string & { readonly [_nonEmpty]: true; };
+type TrimmedString = NonEmptyString & { readonly [_trimmed]: true; };
+type PositiveNumber = number & { readonly [_positive]: true; };
+type EvenNumber = number & { readonly [_even]: true; };
 
 const isNonEmpty: Refinement<string, NonEmptyString> = Refinement.make((s) => s.length > 0);
 const isTrimmed: Refinement<NonEmptyString, TrimmedString> = Refinement.make(
@@ -29,19 +29,21 @@ const isEven: Refinement<number, EvenNumber> = Refinement.make((n) => n % 2 === 
 // make
 // ---------------------------------------------------------------------------
 
-Deno.test("Refinement.make returns true when predicate passes", () => {
-	assertStrictEquals(isNonEmpty("hello"), true);
+test("Refinement.make returns true when predicate passes", () => {
+	expect(isNonEmpty("hello")).toBe(true);
 });
 
-Deno.test("Refinement.make returns false when predicate fails", () => {
-	assertStrictEquals(isNonEmpty(""), false);
+test("Refinement.make returns false when predicate fails", () => {
+	expect(isNonEmpty("")).toBe(false);
 });
 
-Deno.test("Refinement.make works as a type guard in conditional branches", () => {
+test("Refinement.make works as a type guard in conditional branches", () => {
 	const value: string = "world";
+	expect(isNonEmpty(value)).toBe(true);
+	// TypeScript compile-time check: narrowed type must be assignable to NonEmptyString.
 	if (isNonEmpty(value)) {
 		const _typed: NonEmptyString = value;
-		assertStrictEquals(_typed as string, "world");
+		void _typed;
 	}
 });
 
@@ -49,144 +51,127 @@ Deno.test("Refinement.make works as a type guard in conditional branches", () =>
 // compose
 // ---------------------------------------------------------------------------
 
-Deno.test("Refinement.compose narrows A to C when both refinements pass", () => {
+test("Refinement.compose narrows A to C when both refinements pass", () => {
 	const isNonEmptyTrimmed: Refinement<string, TrimmedString> = pipe(
 		isNonEmpty,
 		Refinement.compose(isTrimmed),
 	);
-	assertStrictEquals(isNonEmptyTrimmed("hello"), true);
+	expect(isNonEmptyTrimmed("hello")).toBe(true);
 });
 
-Deno.test("Refinement.compose returns false when the first refinement fails", () => {
+test("Refinement.compose returns false when the first refinement fails", () => {
 	const isNonEmptyTrimmed: Refinement<string, TrimmedString> = pipe(
 		isNonEmpty,
 		Refinement.compose(isTrimmed),
 	);
-	assertStrictEquals(isNonEmptyTrimmed(""), false);
+	expect(isNonEmptyTrimmed("")).toBe(false);
 });
 
-Deno.test("Refinement.compose returns false when the second refinement fails", () => {
+test("Refinement.compose returns false when the second refinement fails", () => {
 	const isNonEmptyTrimmed: Refinement<string, TrimmedString> = pipe(
 		isNonEmpty,
 		Refinement.compose(isTrimmed),
 	);
-	assertStrictEquals(isNonEmptyTrimmed("  spaces  "), false);
+	expect(isNonEmptyTrimmed("  spaces  ")).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
 // and
 // ---------------------------------------------------------------------------
 
-Deno.test("Refinement.and returns true when both refinements pass", () => {
+test("Refinement.and returns true when both refinements pass", () => {
 	const isPositiveEven = pipe(isPositive, Refinement.and(isEven));
-	assertStrictEquals(isPositiveEven(4), true);
+	expect(isPositiveEven(4)).toBe(true);
 });
 
-Deno.test("Refinement.and returns false when the first refinement fails", () => {
+test("Refinement.and returns false when the first refinement fails", () => {
 	const isPositiveEven = pipe(isPositive, Refinement.and(isEven));
-	assertStrictEquals(isPositiveEven(-2), false);
+	expect(isPositiveEven(-2)).toBe(false);
 });
 
-Deno.test("Refinement.and returns false when the second refinement fails", () => {
+test("Refinement.and returns false when the second refinement fails", () => {
 	const isPositiveEven = pipe(isPositive, Refinement.and(isEven));
-	assertStrictEquals(isPositiveEven(3), false);
+	expect(isPositiveEven(3)).toBe(false);
 });
 
-Deno.test("Refinement.and returns false when both refinements fail", () => {
+test("Refinement.and returns false when both refinements fail", () => {
 	const isPositiveEven = pipe(isPositive, Refinement.and(isEven));
-	assertStrictEquals(isPositiveEven(-3), false);
+	expect(isPositiveEven(-3)).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
 // or
 // ---------------------------------------------------------------------------
 
-Deno.test("Refinement.or returns true when the first refinement passes", () => {
+test("Refinement.or returns true when the first refinement passes", () => {
 	const isPositiveOrEven = pipe(isPositive, Refinement.or(isEven));
-	assertStrictEquals(isPositiveOrEven(3), true); // positive, odd
+	expect(isPositiveOrEven(3)).toBe(true); // positive, odd
 });
 
-Deno.test("Refinement.or returns true when the second refinement passes", () => {
+test("Refinement.or returns true when the second refinement passes", () => {
 	const isPositiveOrEven = pipe(isPositive, Refinement.or(isEven));
-	assertStrictEquals(isPositiveOrEven(-2), true); // negative, even
+	expect(isPositiveOrEven(-2)).toBe(true); // negative, even
 });
 
-Deno.test("Refinement.or returns true when both refinements pass", () => {
+test("Refinement.or returns true when both refinements pass", () => {
 	const isPositiveOrEven = pipe(isPositive, Refinement.or(isEven));
-	assertStrictEquals(isPositiveOrEven(4), true); // positive and even
+	expect(isPositiveOrEven(4)).toBe(true); // positive and even
 });
 
-Deno.test("Refinement.or returns false when both refinements fail", () => {
+test("Refinement.or returns false when both refinements fail", () => {
 	const isPositiveOrEven = pipe(isPositive, Refinement.or(isEven));
-	assertStrictEquals(isPositiveOrEven(-3), false); // negative and odd
+	expect(isPositiveOrEven(-3)).toBe(false); // negative and odd
 });
 
 // ---------------------------------------------------------------------------
 // toFilter
 // ---------------------------------------------------------------------------
 
-Deno.test("Refinement.toFilter returns Some when refinement passes", () => {
+test("Refinement.toFilter returns Some when refinement passes", () => {
 	const result = pipe("hello", Refinement.toFilter(isNonEmpty));
-	assertStrictEquals(result.kind, "Some");
-	assertStrictEquals(result.kind === "Some" ? result.value as string : null, "hello");
+	expect(result.kind).toBe("Some");
+	expect(result.kind === "Some" ? result.value as string : null).toBe("hello");
 });
 
-Deno.test("Refinement.toFilter returns None when refinement fails", () => {
-	assertEquals(
-		pipe("", Refinement.toFilter(isNonEmpty)) as Option<string>,
-		{ kind: "None" },
-	);
+test("Refinement.toFilter returns None when refinement fails", () => {
+	expect(pipe("", Refinement.toFilter(isNonEmpty)) as Option<string>).toEqual({ kind: "None" });
 });
 
-Deno.test("Refinement.toFilter works in a pipe chain with composed refinements", () => {
+test("Refinement.toFilter works in a pipe chain with composed refinements", () => {
 	const isPositiveEven = pipe(isPositive, Refinement.and(isEven));
-	assertStrictEquals(
-		Option.isSome(pipe(4, Refinement.toFilter(isPositiveEven))),
-		true,
-	);
-	assertStrictEquals(
-		Option.isNone(pipe(3, Refinement.toFilter(isPositiveEven))),
-		true,
-	);
-	assertStrictEquals(
-		Option.isNone(pipe(-2, Refinement.toFilter(isPositiveEven))),
-		true,
-	);
+	expect(Option.isSome(pipe(4, Refinement.toFilter(isPositiveEven)))).toBe(true);
+	expect(Option.isNone(pipe(3, Refinement.toFilter(isPositiveEven)))).toBe(true);
+	expect(Option.isNone(pipe(-2, Refinement.toFilter(isPositiveEven)))).toBe(true);
 });
 
 // ---------------------------------------------------------------------------
 // toResult
 // ---------------------------------------------------------------------------
 
-Deno.test("Refinement.toResult returns Ok when refinement passes", () => {
+test("Refinement.toResult returns Ok when refinement passes", () => {
 	const result = pipe("hello", Refinement.toResult(isNonEmpty, (s) => `"${s}" is empty`));
-	assertStrictEquals(result.kind, "Ok");
-	assertStrictEquals(result.kind === "Ok" ? result.value as string : null, "hello");
+	expect(result.kind).toBe("Ok");
+	expect(result.kind === "Ok" ? result.value as string : null).toBe("hello");
 });
 
-Deno.test("Refinement.toResult returns Err with onFail value when refinement fails", () => {
-	assertEquals(
-		pipe("", Refinement.toResult(isNonEmpty, (s) => `"${s}" is empty`)) as Result<string, string>,
+test("Refinement.toResult returns Err with onFail value when refinement fails", () => {
+	expect(pipe("", Refinement.toResult(isNonEmpty, (s) => `"${s}" is empty`)) as Result<string, string>).toEqual(
 		{ kind: "Error", error: '"" is empty' },
 	);
 });
 
-Deno.test("Refinement.toResult passes the failing value to onFail", () => {
+test("Refinement.toResult passes the failing value to onFail", () => {
 	const result = pipe(
 		-5,
 		Refinement.toResult(isPositive, (n) => `${n} is not positive`),
 	) as Result<string, number>;
-	assertEquals(result, { kind: "Error", error: "-5 is not positive" });
+	expect(result).toEqual({ kind: "Error", error: "-5 is not positive" });
 });
 
-Deno.test("Refinement.toResult works in a pipe chain with composed refinements", () => {
+test("Refinement.toResult works in a pipe chain with composed refinements", () => {
 	const isPositiveEven = pipe(isPositive, Refinement.and(isEven));
-	assertStrictEquals(
-		Result.isOk(pipe(4, Refinement.toResult(isPositiveEven, (n) => `${n} failed`))),
-		true,
-	);
-	assertEquals(
-		pipe(3, Refinement.toResult(isPositiveEven, (n) => `${n} failed`)) as Result<string, number>,
+	expect(Result.isOk(pipe(4, Refinement.toResult(isPositiveEven, (n) => `${n} failed`)))).toBe(true);
+	expect(pipe(3, Refinement.toResult(isPositiveEven, (n) => `${n} failed`)) as Result<string, number>).toEqual(
 		{ kind: "Error", error: "3 failed" },
 	);
 });

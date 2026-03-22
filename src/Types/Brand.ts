@@ -19,7 +19,7 @@ declare const _brand: unique symbol;
  * // const wrong: UserId = productId;
  * ```
  */
-export type Brand<K extends string, T> = T & { readonly [_brand]: K };
+export type Brand<K extends string, T> = T & { readonly [_brand]: K; };
 
 export namespace Brand {
 	/**

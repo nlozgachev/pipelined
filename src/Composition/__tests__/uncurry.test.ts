@@ -1,91 +1,91 @@
-import { assertStrictEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { expect, test } from "vitest";
 import { uncurry, uncurry3, uncurry4 } from "../uncurry.ts";
 
 // --- uncurry: thunk () => () => C ---
 
-Deno.test("uncurry - thunk: () => () => 42", () => {
+test("uncurry - thunk: () => () => 42", () => {
 	const nested = () => () => 42;
 	const flat = uncurry(nested);
-	assertStrictEquals(flat(), 42);
+	expect(flat()).toBe(42);
 });
 
-Deno.test("uncurry - thunk: () => () => string", () => {
+test("uncurry - thunk: () => () => string", () => {
 	const nested = () => () => "hello";
 	const flat = uncurry(nested);
-	assertStrictEquals(flat(), "hello");
+	expect(flat()).toBe("hello");
 });
 
 // --- uncurry: partial (a) => () => C ---
 
-Deno.test("uncurry - partial: (a) => () => a", () => {
+test("uncurry - partial: (a) => () => a", () => {
 	const nested = (a: number) => () => a;
 	const flat = uncurry(nested);
-	assertStrictEquals(flat(42), 42);
+	expect(flat(42)).toBe(42);
 });
 
-Deno.test("uncurry - partial: (a) => () => a * 2", () => {
+test("uncurry - partial: (a) => () => a * 2", () => {
 	const nested = (a: number) => () => a * 2;
 	const flat = uncurry(nested);
-	assertStrictEquals(flat(5), 10);
+	expect(flat(5)).toBe(10);
 });
 
 // --- uncurry: full (a) => (b) => C ---
 
-Deno.test("uncurry - full: (a) => (b) => a + b", () => {
+test("uncurry - full: (a) => (b) => a + b", () => {
 	const curriedAdd = (a: number) => (b: number) => a + b;
 	const add = uncurry(curriedAdd);
-	assertStrictEquals(add(3, 4), 7);
+	expect(add(3, 4)).toBe(7);
 });
 
-Deno.test("uncurry - full: string concatenation", () => {
+test("uncurry - full: string concatenation", () => {
 	const curriedConcat = (a: string) => (b: string) => a + b;
 	const concat = uncurry(curriedConcat);
-	assertStrictEquals(concat("Hello, ", "World"), "Hello, World");
+	expect(concat("Hello, ", "World")).toBe("Hello, World");
 });
 
-Deno.test("uncurry - full: different argument types", () => {
+test("uncurry - full: different argument types", () => {
 	const curriedRepeat = (s: string) => (n: number) => s.repeat(n);
 	const repeat = uncurry(curriedRepeat);
-	assertStrictEquals(repeat("ab", 3), "ababab");
+	expect(repeat("ab", 3)).toBe("ababab");
 });
 
 // --- uncurry3 ---
 
-Deno.test("uncurry3 - basic usage", () => {
+test("uncurry3 - basic usage", () => {
 	const curried = (a: number) => (b: number) => (c: number) => a + b + c;
 	const flat = uncurry3(curried);
-	assertStrictEquals(flat(1, 2, 3), 6);
+	expect(flat(1, 2, 3)).toBe(6);
 });
 
-Deno.test("uncurry3 - string formatting", () => {
+test("uncurry3 - string formatting", () => {
 	const curried = (first: string) => (middle: string) => (last: string) => `${first} ${middle} ${last}`;
 	const format = uncurry3(curried);
-	assertStrictEquals(format("John", "Q", "Doe"), "John Q Doe");
+	expect(format("John", "Q", "Doe")).toBe("John Q Doe");
 });
 
-Deno.test("uncurry3 - mixed types", () => {
+test("uncurry3 - mixed types", () => {
 	const curried = (name: string) => (age: number) => (active: boolean) =>
 		`${name} is ${age} and ${active ? "active" : "inactive"}`;
 	const describe = uncurry3(curried);
-	assertStrictEquals(describe("Alice", 30, true), "Alice is 30 and active");
+	expect(describe("Alice", 30, true)).toBe("Alice is 30 and active");
 });
 
 // --- uncurry4 ---
 
-Deno.test("uncurry4 - basic usage", () => {
+test("uncurry4 - basic usage", () => {
 	const curried = (a: number) => (b: number) => (c: number) => (d: number) => a + b + c + d;
 	const flat = uncurry4(curried);
-	assertStrictEquals(flat(1, 2, 3, 4), 10);
+	expect(flat(1, 2, 3, 4)).toBe(10);
 });
 
-Deno.test("uncurry4 - string formatting", () => {
+test("uncurry4 - string formatting", () => {
 	const curried = (a: string) => (b: string) => (c: string) => (d: string) => `${a}-${b}-${c}-${d}`;
 	const format = uncurry4(curried);
-	assertStrictEquals(format("A", "B", "C", "D"), "A-B-C-D");
+	expect(format("A", "B", "C", "D")).toBe("A-B-C-D");
 });
 
-Deno.test("uncurry4 - multiplication", () => {
+test("uncurry4 - multiplication", () => {
 	const curried = (a: number) => (b: number) => (c: number) => (d: number) => a * b * c * d;
 	const multiply = uncurry4(curried);
-	assertStrictEquals(multiply(2, 3, 4, 5), 120);
+	expect(multiply(2, 3, 4, 5)).toBe(120);
 });

@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"allowImportingTsExtensions": true,
+		"noEmit": true,
+		"strict": true,
+		"lib": ["ESNext", "DOM"],
+		"paths": {
+			"#core/*": ["./src/Core/*"],
+			"#utils/*": ["./src/Utils/*"],
+			"#types/*": ["./src/Types/*"],
+			"#composition/*": ["./src/Composition/*"]
+		}
+	},
+	"include": ["src"],
+	"exclude": ["node_modules", "dist", "docs"]
+}

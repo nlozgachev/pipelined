@@ -1,38 +1,38 @@
-import { assertEquals, assertStrictEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { Result } from "../Result.ts";
+import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import { Result } from "../Result.ts";
 
 // ---------------------------------------------------------------------------
 // of / ok
 // ---------------------------------------------------------------------------
 
-Deno.test("Result.ok wraps a value in Ok", () => {
+test("Result.ok wraps a value in Ok", () => {
 	const result = Result.ok(42);
-	assertEquals(result, { kind: "Ok", value: 42 });
+	expect(result).toEqual({ kind: "Ok", value: 42 });
 });
 
-Deno.test("Result.ok creates an Ok with the given value", () => {
-	assertEquals(Result.ok("hello"), { kind: "Ok", value: "hello" });
+test("Result.ok creates an Ok with the given value", () => {
+	expect(Result.ok("hello")).toEqual({ kind: "Ok", value: "hello" });
 });
 
-Deno.test("Result.ok and Result.ok produce equivalent results", () => {
-	assertEquals(Result.ok(10), Result.ok(10));
+test("Result.ok and Result.ok produce equivalent results", () => {
+	expect(Result.ok(10)).toEqual(Result.ok(10));
 });
 
 // ---------------------------------------------------------------------------
 // err
 // ---------------------------------------------------------------------------
 
-Deno.test("Result.err creates an Err with the given error", () => {
-	assertEquals(Result.err("something went wrong"), {
+test("Result.err creates an Err with the given error", () => {
+	expect(Result.err("something went wrong")).toEqual({
 		kind: "Error",
 		error: "something went wrong",
 	});
 });
 
-Deno.test("Result.err works with complex error types", () => {
+test("Result.err works with complex error types", () => {
 	const err = Result.err({ code: 404, message: "Not Found" });
-	assertEquals(err, {
+	expect(err).toEqual({
 		kind: "Error",
 		error: { code: 404, message: "Not Found" },
 	});
@@ -42,125 +42,125 @@ Deno.test("Result.err works with complex error types", () => {
 // isOk / isErr
 // ---------------------------------------------------------------------------
 
-Deno.test("Result.isOk returns true for Ok", () => {
-	assertStrictEquals(Result.isOk(Result.ok(1)), true);
+test("Result.isOk returns true for Ok", () => {
+	expect(Result.isOk(Result.ok(1))).toBe(true);
 });
 
-Deno.test("Result.isOk returns false for Err", () => {
-	assertStrictEquals(Result.isOk(Result.err("e")), false);
+test("Result.isOk returns false for Err", () => {
+	expect(Result.isOk(Result.err("e"))).toBe(false);
 });
 
-Deno.test("Result.isErr returns true for Err", () => {
-	assertStrictEquals(Result.isErr(Result.err("e")), true);
+test("Result.isErr returns true for Err", () => {
+	expect(Result.isErr(Result.err("e"))).toBe(true);
 });
 
-Deno.test("Result.isErr returns false for Ok", () => {
-	assertStrictEquals(Result.isErr(Result.ok(1)), false);
+test("Result.isErr returns false for Ok", () => {
+	expect(Result.isErr(Result.ok(1))).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
 // tryCatch
 // ---------------------------------------------------------------------------
 
-Deno.test("Result.tryCatch returns Ok when function succeeds", () => {
+test("Result.tryCatch returns Ok when function succeeds", () => {
 	const result = Result.tryCatch(
 		() => JSON.parse('{"a":1}'),
 		(e) => `Parse error: ${e}`,
 	);
-	assertEquals(result, { kind: "Ok", value: { a: 1 } });
+	expect(result).toEqual({ kind: "Ok", value: { a: 1 } });
 });
 
-Deno.test("Result.tryCatch returns Err when function throws", () => {
+test("Result.tryCatch returns Err when function throws", () => {
 	const result = Result.tryCatch(
 		() => JSON.parse("invalid json!!!"),
 		() => "Parse error",
 	);
-	assertEquals(result, { kind: "Error", error: "Parse error" });
+	expect(result).toEqual({ kind: "Error", error: "Parse error" });
 });
 
-Deno.test("Result.tryCatch passes the thrown error to onError", () => {
+test("Result.tryCatch passes the thrown error to onError", () => {
 	const result = Result.tryCatch(
 		() => {
 			throw new Error("boom");
 		},
 		(e) => (e as Error).message,
 	);
-	assertEquals(result, { kind: "Error", error: "boom" });
+	expect(result).toEqual({ kind: "Error", error: "boom" });
 });
 
 // ---------------------------------------------------------------------------
 // map
 // ---------------------------------------------------------------------------
 
-Deno.test("Result.map transforms Ok value", () => {
+test("Result.map transforms Ok value", () => {
 	const result = pipe(
 		Result.ok(5),
 		Result.map((n: number) => n * 2),
 	);
-	assertEquals(result, { kind: "Ok", value: 10 });
+	expect(result).toEqual({ kind: "Ok", value: 10 });
 });
 
-Deno.test("Result.map passes through Err unchanged", () => {
+test("Result.map passes through Err unchanged", () => {
 	const result = pipe(
 		Result.err("error"),
 		Result.map((n: number) => n * 2),
 	);
-	assertEquals(result, { kind: "Error", error: "error" });
+	expect(result).toEqual({ kind: "Error", error: "error" });
 });
 
-Deno.test("Result.map can change the value type", () => {
+test("Result.map can change the value type", () => {
 	const result = pipe(
 		Result.ok(42),
 		Result.map((n: number) => `num: ${n}`),
 	);
-	assertEquals(result, { kind: "Ok", value: "num: 42" });
+	expect(result).toEqual({ kind: "Ok", value: "num: 42" });
 });
 
 // ---------------------------------------------------------------------------
 // mapError
 // ---------------------------------------------------------------------------
 
-Deno.test("Result.mapError transforms Err value", () => {
+test("Result.mapError transforms Err value", () => {
 	const result = pipe(
 		Result.err("oops"),
 		Result.mapError((e: string) => e.toUpperCase()),
 	);
-	assertEquals(result, { kind: "Error", error: "OOPS" });
+	expect(result).toEqual({ kind: "Error", error: "OOPS" });
 });
 
-Deno.test("Result.mapError passes through Ok unchanged", () => {
+test("Result.mapError passes through Ok unchanged", () => {
 	const result = pipe(
 		Result.ok(5),
 		Result.mapError((e: string) => e.toUpperCase()),
 	);
-	assertEquals(result, { kind: "Ok", value: 5 });
+	expect(result).toEqual({ kind: "Ok", value: 5 });
 });
 
 // ---------------------------------------------------------------------------
 // chain
 // ---------------------------------------------------------------------------
 
-Deno.test("Result.chain applies function when Ok", () => {
+test("Result.chain applies function when Ok", () => {
 	const validatePositive = (n: number) => n > 0 ? Result.ok(n) : Result.err("Must be positive");
 
 	const result = pipe(
 		Result.ok(5),
 		Result.chain(validatePositive),
 	);
-	assertEquals(result, { kind: "Ok", value: 5 });
+	expect(result).toEqual({ kind: "Ok", value: 5 });
 });
 
-Deno.test("Result.chain returns Err when function returns Err", () => {
+test("Result.chain returns Err when function returns Err", () => {
 	const validatePositive = (n: number) => n > 0 ? Result.ok(n) : Result.err("Must be positive");
 
 	const result = pipe(
 		Result.ok(-1),
 		Result.chain(validatePositive),
 	);
-	assertEquals(result, { kind: "Error", error: "Must be positive" });
+	expect(result).toEqual({ kind: "Error", error: "Must be positive" });
 });
 
-Deno.test("Result.chain propagates Err without calling function", () => {
+test("Result.chain propagates Err without calling function", () => {
 	let called = false;
 	pipe(
 		Result.err("error"),
@@ -169,14 +169,14 @@ Deno.test("Result.chain propagates Err without calling function", () => {
 			return Result.ok(_n);
 		}),
 	);
-	assertStrictEquals(called, false);
+	expect(called).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
 // fold
 // ---------------------------------------------------------------------------
 
-Deno.test("Result.fold calls onOk for Ok", () => {
+test("Result.fold calls onOk for Ok", () => {
 	const result = pipe(
 		Result.ok(5),
 		Result.fold(
@@ -184,10 +184,10 @@ Deno.test("Result.fold calls onOk for Ok", () => {
 			(n: number) => `Value: ${n}`,
 		),
 	);
-	assertStrictEquals(result, "Value: 5");
+	expect(result).toBe("Value: 5");
 });
 
-Deno.test("Result.fold calls onErr for Err", () => {
+test("Result.fold calls onErr for Err", () => {
 	const result = pipe(
 		Result.err("bad"),
 		Result.fold(
@@ -195,14 +195,14 @@ Deno.test("Result.fold calls onErr for Err", () => {
 			(n: number) => `Value: ${n}`,
 		),
 	);
-	assertStrictEquals(result, "Error: bad");
+	expect(result).toBe("Error: bad");
 });
 
 // ---------------------------------------------------------------------------
 // match (data-last)
 // ---------------------------------------------------------------------------
 
-Deno.test("Result.match calls ok handler for Ok", () => {
+test("Result.match calls ok handler for Ok", () => {
 	const result = pipe(
 		Result.ok(5),
 		Result.match({
@@ -210,10 +210,10 @@ Deno.test("Result.match calls ok handler for Ok", () => {
 			err: (e: string) => `failed: ${e}`,
 		}),
 	);
-	assertStrictEquals(result, "got 5");
+	expect(result).toBe("got 5");
 });
 
-Deno.test("Result.match calls err handler for Err", () => {
+test("Result.match calls err handler for Err", () => {
 	const result = pipe(
 		Result.err("bad"),
 		Result.match({
@@ -221,59 +221,59 @@ Deno.test("Result.match calls err handler for Err", () => {
 			err: (e: string) => `failed: ${e}`,
 		}),
 	);
-	assertStrictEquals(result, "failed: bad");
+	expect(result).toBe("failed: bad");
 });
 
-Deno.test("Result.match is data-last (returns a function first)", () => {
+test("Result.match is data-last (returns a function first)", () => {
 	const handler = Result.match({
 		ok: (n) => `val: ${n}`,
 		err: (e) => `err: ${e}`,
 	});
-	assertStrictEquals(handler(Result.ok(3)), "val: 3");
-	assertStrictEquals(handler(Result.err("x")), "err: x");
+	expect(handler(Result.ok(3))).toBe("val: 3");
+	expect(handler(Result.err("x"))).toBe("err: x");
 });
 
 // ---------------------------------------------------------------------------
 // getOrElse
 // ---------------------------------------------------------------------------
 
-Deno.test("Result.getOrElse returns value for Ok", () => {
+test("Result.getOrElse returns value for Ok", () => {
 	const result = pipe(
 		Result.ok(5),
 		Result.getOrElse(() => 0),
 	);
-	assertStrictEquals(result, 5);
+	expect(result).toBe(5);
 });
 
-Deno.test("Result.getOrElse returns default for Err", () => {
+test("Result.getOrElse returns default for Err", () => {
 	const result = pipe(
 		Result.err("error"),
 		Result.getOrElse(() => 0),
 	);
-	assertStrictEquals(result, 0);
+	expect(result).toBe(0);
 });
 
-Deno.test("Result.getOrElse widens return type to A | B when default is a different type", () => {
+test("Result.getOrElse widens return type to A | B when default is a different type", () => {
 	const result = pipe(
 		Result.err("error"),
 		Result.getOrElse(() => null),
 	);
-	assertStrictEquals(result, null);
+	expect(result).toBeNull();
 });
 
-Deno.test("Result.getOrElse returns Ok value typed as A | B when Ok", () => {
+test("Result.getOrElse returns Ok value typed as A | B when Ok", () => {
 	const result = pipe(
 		Result.ok(5),
 		Result.getOrElse(() => null),
 	);
-	assertStrictEquals(result, 5);
+	expect(result).toBe(5);
 });
 
 // ---------------------------------------------------------------------------
 // tap
 // ---------------------------------------------------------------------------
 
-Deno.test("Result.tap executes side effect on Ok and returns original", () => {
+test("Result.tap executes side effect on Ok and returns original", () => {
 	let sideEffect = 0;
 	const result = pipe(
 		Result.ok(5),
@@ -281,11 +281,11 @@ Deno.test("Result.tap executes side effect on Ok and returns original", () => {
 			sideEffect = n;
 		}),
 	);
-	assertStrictEquals(sideEffect, 5);
-	assertEquals(result, { kind: "Ok", value: 5 });
+	expect(sideEffect).toBe(5);
+	expect(result).toEqual({ kind: "Ok", value: 5 });
 });
 
-Deno.test("Result.tap does not execute side effect on Err", () => {
+test("Result.tap does not execute side effect on Err", () => {
 	let called = false;
 	const result = pipe(
 		Result.err("error"),
@@ -293,15 +293,15 @@ Deno.test("Result.tap does not execute side effect on Err", () => {
 			called = true;
 		}),
 	);
-	assertStrictEquals(called, false);
-	assertEquals(result, { kind: "Error", error: "error" });
+	expect(called).toBe(false);
+	expect(result).toEqual({ kind: "Error", error: "error" });
 });
 
 // ---------------------------------------------------------------------------
 // recover
 // ---------------------------------------------------------------------------
 
-Deno.test("Result.recover returns original Ok without calling fallback", () => {
+test("Result.recover returns original Ok without calling fallback", () => {
 	let called = false;
 	const result = pipe(
 		Result.ok(5),
@@ -310,47 +310,47 @@ Deno.test("Result.recover returns original Ok without calling fallback", () => {
 			return Result.ok(99);
 		}),
 	);
-	assertStrictEquals(called, false);
-	assertEquals(result, { kind: "Ok", value: 5 });
+	expect(called).toBe(false);
+	expect(result).toEqual({ kind: "Ok", value: 5 });
 });
 
-Deno.test("Result.recover provides fallback for Err", () => {
+test("Result.recover provides fallback for Err", () => {
 	const result = pipe(
 		Result.err("error"),
 		Result.recover((_e) => Result.ok(99)),
 	);
-	assertEquals(result, { kind: "Ok", value: 99 });
+	expect(result).toEqual({ kind: "Ok", value: 99 });
 });
 
-Deno.test("Result.recover widens to Result<E, A | B> when fallback returns a different type", () => {
+test("Result.recover widens to Result<E, A | B> when fallback returns a different type", () => {
 	const result = pipe(
 		Result.err("error"),
 		Result.recover((_e) => Result.ok("recovered")),
 	);
-	assertEquals(result, { kind: "Ok", value: "recovered" });
+	expect(result).toEqual({ kind: "Ok", value: "recovered" });
 });
 
-Deno.test("Result.recover preserves Ok typed as Result<E, A | B>", () => {
+test("Result.recover preserves Ok typed as Result<E, A | B>", () => {
 	const result = pipe(
 		Result.ok(5),
 		Result.recover((_e) => Result.ok("recovered")),
 	);
-	assertEquals(result, { kind: "Ok", value: 5 });
+	expect(result).toEqual({ kind: "Ok", value: 5 });
 });
 
-Deno.test("Result.recover passes the error to the fallback", () => {
+test("Result.recover passes the error to the fallback", () => {
 	const result = pipe(
 		Result.err("original error"),
 		Result.recover((e) => Result.ok(`handled: ${e}`)),
 	);
-	assertEquals(result, { kind: "Ok", value: "handled: original error" });
+	expect(result).toEqual({ kind: "Ok", value: "handled: original error" });
 });
 
 // ---------------------------------------------------------------------------
 // recoverUnless
 // ---------------------------------------------------------------------------
 
-Deno.test(
+test(
 	"Result.recoverUnless recovers when error does not match blockedErr",
 	() => {
 		const result = pipe(
@@ -360,11 +360,11 @@ Deno.test(
 				() => Result.ok(42),
 			),
 		);
-		assertEquals(result, { kind: "Ok", value: 42 });
+		expect(result).toEqual({ kind: "Ok", value: 42 });
 	},
 );
 
-Deno.test(
+test(
 	"Result.recoverUnless does NOT recover when error matches blockedErr",
 	() => {
 		const result = pipe(
@@ -374,11 +374,11 @@ Deno.test(
 				() => Result.ok(42),
 			),
 		);
-		assertEquals(result, { kind: "Error", error: "fatal" });
+		expect(result).toEqual({ kind: "Error", error: "fatal" });
 	},
 );
 
-Deno.test("Result.recoverUnless passes through Ok unchanged", () => {
+test("Result.recoverUnless passes through Ok unchanged", () => {
 	const result = pipe(
 		Result.ok(10),
 		Result.recoverUnless(
@@ -386,17 +386,17 @@ Deno.test("Result.recoverUnless passes through Ok unchanged", () => {
 			() => Result.ok(42),
 		),
 	);
-	assertEquals(result, { kind: "Ok", value: 10 });
+	expect(result).toEqual({ kind: "Ok", value: 10 });
 });
 
-Deno.test(
+test(
 	"Result.recoverUnless widens to Result<E, A | B> when fallback returns a different type",
 	() => {
 		const result = pipe(
 			Result.err("recoverable"),
 			Result.recoverUnless("fatal", () => Result.ok("recovered")),
 		);
-		assertEquals(result, { kind: "Ok", value: "recovered" });
+		expect(result).toEqual({ kind: "Ok", value: "recovered" });
 	},
 );
 
@@ -404,59 +404,59 @@ Deno.test(
 // ap
 // ---------------------------------------------------------------------------
 
-Deno.test("Result.ap applies Ok function to Ok value", () => {
+test("Result.ap applies Ok function to Ok value", () => {
 	const add = (a: number) => (b: number) => a + b;
 	const result = pipe(
 		Result.ok(add),
 		Result.ap(Result.ok(5)),
 		Result.ap(Result.ok(3)),
 	);
-	assertEquals(result, { kind: "Ok", value: 8 });
+	expect(result).toEqual({ kind: "Ok", value: 8 });
 });
 
-Deno.test("Result.ap returns Err when function is Err", () => {
+test("Result.ap returns Err when function is Err", () => {
 	const result = pipe(
 		Result.err("fn error"),
 		Result.ap(Result.ok(5)),
 	);
-	assertEquals(result, { kind: "Error", error: "fn error" });
+	expect(result).toEqual({ kind: "Error", error: "fn error" });
 });
 
-Deno.test("Result.ap returns Err when value is Err", () => {
+test("Result.ap returns Err when value is Err", () => {
 	const result = pipe(
 		Result.ok<(n: number) => number>((n) => n * 2),
 		Result.ap(Result.err("val error")),
 	);
-	assertEquals(result, { kind: "Error", error: "val error" });
+	expect(result).toEqual({ kind: "Error", error: "val error" });
 });
 
-Deno.test("Result.ap returns first Err when both are Err", () => {
+test("Result.ap returns first Err when both are Err", () => {
 	const result = pipe(
 		Result.err("fn error"),
 		Result.ap(Result.err("val error")),
 	);
-	assertEquals(result, { kind: "Error", error: "fn error" });
+	expect(result).toEqual({ kind: "Error", error: "fn error" });
 });
 
 // ---------------------------------------------------------------------------
 // toOption
 // ---------------------------------------------------------------------------
 
-Deno.test("Result.toOption converts Ok to Some", () => {
+test("Result.toOption converts Ok to Some", () => {
 	const result = Result.toOption(Result.ok(42));
-	assertEquals(result, { kind: "Some", value: 42 });
+	expect(result).toEqual({ kind: "Some", value: 42 });
 });
 
-Deno.test("Result.toOption converts Err to None", () => {
+test("Result.toOption converts Err to None", () => {
 	const result = Result.toOption(Result.err("oops"));
-	assertEquals(result, { kind: "None" });
+	expect(result).toEqual({ kind: "None" });
 });
 
 // ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 
-Deno.test("Result composes well in a pipe chain", () => {
+test("Result composes well in a pipe chain", () => {
 	const divide = (a: number, b: number) => b === 0 ? Result.err("Division by zero") : Result.ok(a / b);
 
 	const result = pipe(
@@ -465,10 +465,10 @@ Deno.test("Result composes well in a pipe chain", () => {
 		Result.chain((n: number) => n > 10 ? Result.ok(n) : (Result.err("Too small"))),
 		Result.getOrElse(() => 0),
 	);
-	assertStrictEquals(result, 15);
+	expect(result).toBe(15);
 });
 
-Deno.test("Result pipe short-circuits on Err", () => {
+test("Result pipe short-circuits on Err", () => {
 	const divide = (a: number, b: number) => b === 0 ? Result.err("Division by zero") : Result.ok(a / b);
 
 	const result = pipe(
@@ -476,5 +476,5 @@ Deno.test("Result pipe short-circuits on Err", () => {
 		Result.map((n: number) => n * 3),
 		Result.getOrElse(() => -1),
 	);
-	assertStrictEquals(result, -1);
+	expect(result).toBe(-1);
 });

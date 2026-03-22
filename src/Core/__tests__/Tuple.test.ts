@@ -1,107 +1,92 @@
-import { assertEquals, assertStrictEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { Tuple } from "../Tuple.ts";
+import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import { Tuple } from "../Tuple.ts";
 
 // ---------------------------------------------------------------------------
 // make
 // ---------------------------------------------------------------------------
 
-Deno.test("Tuple.make creates a pair with both values", () => {
-	assertEquals(Tuple.make("alice", 42), ["alice", 42]);
+test("Tuple.make creates a pair with both values", () => {
+	expect(Tuple.make("alice", 42)).toEqual(["alice", 42]);
 });
 
-Deno.test("Tuple.make values are accessible by index", () => {
+test("Tuple.make values are accessible by index", () => {
 	const t = Tuple.make("hello", true);
-	assertStrictEquals(t[0], "hello");
-	assertStrictEquals(t[1], true);
+	expect(t[0]).toBe("hello");
+	expect(t[1]).toBe(true);
 });
 
 // ---------------------------------------------------------------------------
 // first / second
 // ---------------------------------------------------------------------------
 
-Deno.test("Tuple.first returns the first value", () => {
-	assertStrictEquals(Tuple.first(Tuple.make("paris", 42)), "paris");
+test("Tuple.first returns the first value", () => {
+	expect(Tuple.first(Tuple.make("paris", 42))).toBe("paris");
 });
 
-Deno.test("Tuple.second returns the second value", () => {
-	assertStrictEquals(Tuple.second(Tuple.make("paris", 42)), 42);
+test("Tuple.second returns the second value", () => {
+	expect(Tuple.second(Tuple.make("paris", 42))).toBe(42);
 });
 
-Deno.test("Tuple.first works with pipe", () => {
-	assertStrictEquals(pipe(Tuple.make(99, "x"), Tuple.first), 99);
+test("Tuple.first works with pipe", () => {
+	expect(pipe(Tuple.make(99, "x"), Tuple.first)).toBe(99);
 });
 
-Deno.test("Tuple.second works with pipe", () => {
-	assertStrictEquals(pipe(Tuple.make(99, "x"), Tuple.second), "x");
+test("Tuple.second works with pipe", () => {
+	expect(pipe(Tuple.make(99, "x"), Tuple.second)).toBe("x");
 });
 
 // ---------------------------------------------------------------------------
 // mapFirst
 // ---------------------------------------------------------------------------
 
-Deno.test("Tuple.mapFirst transforms the first value", () => {
-	assertEquals(
-		pipe(Tuple.make("alice", 42), Tuple.mapFirst((s) => s.toUpperCase())),
-		["ALICE", 42],
-	);
+test("Tuple.mapFirst transforms the first value", () => {
+	expect(pipe(Tuple.make("alice", 42), Tuple.mapFirst((s) => s.toUpperCase()))).toEqual(["ALICE", 42]);
 });
 
-Deno.test("Tuple.mapFirst leaves the second value unchanged", () => {
+test("Tuple.mapFirst leaves the second value unchanged", () => {
 	const t = Tuple.make(5, "unchanged");
 	const result = pipe(t, Tuple.mapFirst((n: number) => n * 10));
-	assertStrictEquals(result[1], "unchanged");
+	expect(result[1]).toBe("unchanged");
 });
 
-Deno.test("Tuple.mapFirst can change the first value type", () => {
-	assertEquals(
-		pipe(Tuple.make(42, true), Tuple.mapFirst((n: number) => `num:${n}`)),
-		["num:42", true],
-	);
+test("Tuple.mapFirst can change the first value type", () => {
+	expect(pipe(Tuple.make(42, true), Tuple.mapFirst((n: number) => `num:${n}`))).toEqual(["num:42", true]);
 });
 
 // ---------------------------------------------------------------------------
 // mapSecond
 // ---------------------------------------------------------------------------
 
-Deno.test("Tuple.mapSecond transforms the second value", () => {
-	assertEquals(
-		pipe(Tuple.make("alice", 42), Tuple.mapSecond((n: number) => n * 2)),
-		["alice", 84],
-	);
+test("Tuple.mapSecond transforms the second value", () => {
+	expect(pipe(Tuple.make("alice", 42), Tuple.mapSecond((n: number) => n * 2))).toEqual(["alice", 84]);
 });
 
-Deno.test("Tuple.mapSecond leaves the first value unchanged", () => {
+test("Tuple.mapSecond leaves the first value unchanged", () => {
 	const t = Tuple.make("unchanged", 5);
 	const result = pipe(t, Tuple.mapSecond((n: number) => n * 10));
-	assertStrictEquals(result[0], "unchanged");
+	expect(result[0]).toBe("unchanged");
 });
 
-Deno.test("Tuple.mapSecond can change the second value type", () => {
-	assertEquals(
-		pipe(Tuple.make("key", 7), Tuple.mapSecond((n: number) => n > 5)),
-		["key", true],
-	);
+test("Tuple.mapSecond can change the second value type", () => {
+	expect(pipe(Tuple.make("key", 7), Tuple.mapSecond((n: number) => n > 5))).toEqual(["key", true]);
 });
 
 // ---------------------------------------------------------------------------
 // mapBoth
 // ---------------------------------------------------------------------------
 
-Deno.test("Tuple.mapBoth transforms both values independently", () => {
-	assertEquals(
-		pipe(
-			Tuple.make("alice", 42),
-			Tuple.mapBoth(
-				(s: string) => s.toUpperCase(),
-				(n: number) => n * 2,
-			),
+test("Tuple.mapBoth transforms both values independently", () => {
+	expect(pipe(
+		Tuple.make("alice", 42),
+		Tuple.mapBoth(
+			(s: string) => s.toUpperCase(),
+			(n: number) => n * 2,
 		),
-		["ALICE", 84],
-	);
+	)).toEqual(["ALICE", 84]);
 });
 
-Deno.test("Tuple.mapBoth calls both functions", () => {
+test("Tuple.mapBoth calls both functions", () => {
 	let firstCalled = false;
 	let secondCalled = false;
 	pipe(
@@ -117,29 +102,28 @@ Deno.test("Tuple.mapBoth calls both functions", () => {
 			},
 		),
 	);
-	assertStrictEquals(firstCalled, true);
-	assertStrictEquals(secondCalled, true);
+	expect(firstCalled).toBe(true);
+	expect(secondCalled).toBe(true);
 });
 
-Deno.test("Tuple.mapBoth can change both value types", () => {
-	assertEquals(
-		pipe(Tuple.make(42, true), Tuple.mapBoth((n: number) => String(n), (b: boolean) => (b ? 1 : 0))),
-		["42", 1],
-	);
+test("Tuple.mapBoth can change both value types", () => {
+	expect(pipe(Tuple.make(42, true), Tuple.mapBoth((n: number) => String(n), (b: boolean) => (b ? 1 : 0)))).toEqual([
+		"42",
+		1,
+	]);
 });
 
 // ---------------------------------------------------------------------------
 // fold
 // ---------------------------------------------------------------------------
 
-Deno.test("Tuple.fold applies the binary function to both values", () => {
-	assertStrictEquals(
-		pipe(Tuple.make("Alice", 100), Tuple.fold((name: string, score: number) => `${name}: ${score}`)),
+test("Tuple.fold applies the binary function to both values", () => {
+	expect(pipe(Tuple.make("Alice", 100), Tuple.fold((name: string, score: number) => `${name}: ${score}`))).toBe(
 		"Alice: 100",
 	);
 });
 
-Deno.test("Tuple.fold receives first value as first argument and second as second", () => {
+test("Tuple.fold receives first value as first argument and second as second", () => {
 	const args: [string, number][] = [];
 	pipe(
 		Tuple.make("x", 99),
@@ -148,45 +132,45 @@ Deno.test("Tuple.fold receives first value as first argument and second as secon
 			return 0;
 		}),
 	);
-	assertEquals(args, [["x", 99]]);
+	expect(args).toEqual([["x", 99]]);
 });
 
 // ---------------------------------------------------------------------------
 // swap
 // ---------------------------------------------------------------------------
 
-Deno.test("Tuple.swap reverses the pair", () => {
-	assertEquals(Tuple.swap(Tuple.make("key", 1)), [1, "key"]);
+test("Tuple.swap reverses the pair", () => {
+	expect(Tuple.swap(Tuple.make("key", 1))).toEqual([1, "key"]);
 });
 
-Deno.test("Tuple.swap is its own inverse", () => {
+test("Tuple.swap is its own inverse", () => {
 	const t = Tuple.make("a", 42);
-	assertEquals(Tuple.swap(Tuple.swap(t)), t);
+	expect(Tuple.swap(Tuple.swap(t))).toEqual(t);
 });
 
-Deno.test("Tuple.swap works with homogeneous pairs", () => {
-	assertEquals(Tuple.swap(Tuple.make(1, 2)), [2, 1]);
+test("Tuple.swap works with homogeneous pairs", () => {
+	expect(Tuple.swap(Tuple.make(1, 2))).toEqual([2, 1]);
 });
 
 // ---------------------------------------------------------------------------
 // toArray
 // ---------------------------------------------------------------------------
 
-Deno.test("Tuple.toArray returns both elements in order", () => {
-	assertEquals(Tuple.toArray(Tuple.make("hello", 42)), ["hello", 42]);
+test("Tuple.toArray returns both elements in order", () => {
+	expect(Tuple.toArray(Tuple.make("hello", 42))).toEqual(["hello", 42]);
 });
 
-Deno.test("Tuple.toArray returns a new array (not the original tuple)", () => {
+test("Tuple.toArray returns a new array (not the original tuple)", () => {
 	const t = Tuple.make(1, 2);
 	const arr = Tuple.toArray(t);
-	assertStrictEquals(arr === (t as unknown), false);
+	expect(arr).not.toBe(t as unknown);
 });
 
 // ---------------------------------------------------------------------------
 // tap
 // ---------------------------------------------------------------------------
 
-Deno.test("Tuple.tap executes side effect with both values", () => {
+test("Tuple.tap executes side effect with both values", () => {
 	let seenFirst = "";
 	let seenSecond = 0;
 	pipe(
@@ -196,37 +180,37 @@ Deno.test("Tuple.tap executes side effect with both values", () => {
 			seenSecond = pop;
 		}),
 	);
-	assertStrictEquals(seenFirst, "paris");
-	assertStrictEquals(seenSecond, 2_161_000);
+	expect(seenFirst).toBe("paris");
+	expect(seenSecond).toBe(2_161_000);
 });
 
-Deno.test("Tuple.tap returns the original tuple unchanged", () => {
+test("Tuple.tap returns the original tuple unchanged", () => {
 	const t = Tuple.make("alice", 42);
 	const result = pipe(t, Tuple.tap(() => {}));
-	assertEquals(result, t);
+	expect(result).toEqual(t);
 });
 
-Deno.test("Tuple.tap does not mutate the tuple", () => {
+test("Tuple.tap does not mutate the tuple", () => {
 	const t = Tuple.make(1, 2);
 	pipe(t, Tuple.tap((_a, _b) => {}));
-	assertEquals(t, [1, 2]);
+	expect(t).toEqual([1, 2]);
 });
 
 // ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 
-Deno.test("Tuple composes well in a pipe chain", () => {
+test("Tuple composes well in a pipe chain", () => {
 	const result = pipe(
 		Tuple.make("alice", 42),
 		Tuple.mapFirst((s: string) => s.toUpperCase()),
 		Tuple.mapSecond((n: number) => n * 2),
 		Tuple.fold((name: string, score: number) => `${name}: ${score}`),
 	);
-	assertStrictEquals(result, "ALICE: 84");
+	expect(result).toBe("ALICE: 84");
 });
 
-Deno.test("Tuple pipe chain with mapBoth and swap", () => {
+test("Tuple pipe chain with mapBoth and swap", () => {
 	const result = pipe(
 		Tuple.make(5, "hello"),
 		Tuple.mapBoth(
@@ -236,10 +220,10 @@ Deno.test("Tuple pipe chain with mapBoth and swap", () => {
 		Tuple.swap,
 		Tuple.fold((a: number, b: number) => a + b),
 	);
-	assertStrictEquals(result, 11); // swap([6, 5]) = [5, 6], fold = 11
+	expect(result).toBe(11); // swap([6, 5]) = [5, 6], fold = 11
 });
 
-Deno.test("Tuple tap does not interrupt pipeline", () => {
+test("Tuple tap does not interrupt pipeline", () => {
 	let logged = "";
 	const result = pipe(
 		Tuple.make("product", 9.99),
@@ -249,6 +233,6 @@ Deno.test("Tuple tap does not interrupt pipeline", () => {
 		Tuple.mapSecond((price: number) => price * 1.2),
 		Tuple.fold((name: string, price: number) => `${name}: ${price.toFixed(2)}`),
 	);
-	assertStrictEquals(logged, "product@9.99");
-	assertStrictEquals(result, "product: 11.99");
+	expect(logged).toBe("product@9.99");
+	expect(result).toBe("product: 11.99");
 });

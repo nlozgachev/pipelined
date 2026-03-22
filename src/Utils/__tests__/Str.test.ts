@@ -1,190 +1,190 @@
-import { assertEquals, assertStrictEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { Str } from "../Str.ts";
-import { Option } from "#core/Option.ts";
 import { pipe } from "#composition/pipe.ts";
+import { Option } from "#core/Option.ts";
+import { expect, test } from "vitest";
+import { Str } from "../Str.ts";
 
 // ---------------------------------------------------------------------------
 // split
 // ---------------------------------------------------------------------------
 
-Deno.test("Str.split splits a string by a separator", () => {
-	assertEquals(pipe("a,b,c", Str.split(",")), ["a", "b", "c"]);
+test("Str.split splits a string by a separator", () => {
+	expect(pipe("a,b,c", Str.split(","))).toEqual(["a", "b", "c"]);
 });
 
-Deno.test("Str.split splits by a regex", () => {
-	assertEquals(pipe("a1b2c", Str.split(/\d/)), ["a", "b", "c"]);
+test("Str.split splits by a regex", () => {
+	expect(pipe("a1b2c", Str.split(/\d/))).toEqual(["a", "b", "c"]);
 });
 
-Deno.test("Str.split on missing separator returns single-element array", () => {
-	assertEquals(pipe("hello", Str.split(",")), ["hello"]);
+test("Str.split on missing separator returns single-element array", () => {
+	expect(pipe("hello", Str.split(","))).toEqual(["hello"]);
 });
 
-Deno.test("Str.split returns empty strings for adjacent separators", () => {
-	assertEquals(pipe("a,,b", Str.split(",")), ["a", "", "b"]);
+test("Str.split returns empty strings for adjacent separators", () => {
+	expect(pipe("a,,b", Str.split(","))).toEqual(["a", "", "b"]);
 });
 
 // ---------------------------------------------------------------------------
 // trim
 // ---------------------------------------------------------------------------
 
-Deno.test("Str.trim removes leading and trailing whitespace", () => {
-	assertStrictEquals(pipe("  hello  ", Str.trim), "hello");
+test("Str.trim removes leading and trailing whitespace", () => {
+	expect(pipe("  hello  ", Str.trim)).toBe("hello");
 });
 
-Deno.test("Str.trim returns unchanged string when no whitespace", () => {
-	assertStrictEquals(pipe("hello", Str.trim), "hello");
+test("Str.trim returns unchanged string when no whitespace", () => {
+	expect(pipe("hello", Str.trim)).toBe("hello");
 });
 
-Deno.test("Str.trim returns empty string for whitespace-only input", () => {
-	assertStrictEquals(pipe("   ", Str.trim), "");
+test("Str.trim returns empty string for whitespace-only input", () => {
+	expect(pipe("   ", Str.trim)).toBe("");
 });
 
 // ---------------------------------------------------------------------------
 // includes
 // ---------------------------------------------------------------------------
 
-Deno.test("Str.includes returns true when substring is present", () => {
-	assertStrictEquals(pipe("hello world", Str.includes("world")), true);
+test("Str.includes returns true when substring is present", () => {
+	expect(pipe("hello world", Str.includes("world"))).toBe(true);
 });
 
-Deno.test("Str.includes returns false when substring is absent", () => {
-	assertStrictEquals(pipe("hello world", Str.includes("xyz")), false);
+test("Str.includes returns false when substring is absent", () => {
+	expect(pipe("hello world", Str.includes("xyz"))).toBe(false);
 });
 
-Deno.test("Str.includes matches at the start", () => {
-	assertStrictEquals(pipe("hello world", Str.includes("hello")), true);
+test("Str.includes matches at the start", () => {
+	expect(pipe("hello world", Str.includes("hello"))).toBe(true);
 });
 
 // ---------------------------------------------------------------------------
 // startsWith
 // ---------------------------------------------------------------------------
 
-Deno.test("Str.startsWith returns true when string starts with prefix", () => {
-	assertStrictEquals(pipe("hello world", Str.startsWith("hello")), true);
+test("Str.startsWith returns true when string starts with prefix", () => {
+	expect(pipe("hello world", Str.startsWith("hello"))).toBe(true);
 });
 
-Deno.test("Str.startsWith returns false when string does not start with prefix", () => {
-	assertStrictEquals(pipe("hello world", Str.startsWith("world")), false);
+test("Str.startsWith returns false when string does not start with prefix", () => {
+	expect(pipe("hello world", Str.startsWith("world"))).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
 // endsWith
 // ---------------------------------------------------------------------------
 
-Deno.test("Str.endsWith returns true when string ends with suffix", () => {
-	assertStrictEquals(pipe("hello world", Str.endsWith("world")), true);
+test("Str.endsWith returns true when string ends with suffix", () => {
+	expect(pipe("hello world", Str.endsWith("world"))).toBe(true);
 });
 
-Deno.test("Str.endsWith returns false when string does not end with suffix", () => {
-	assertStrictEquals(pipe("hello world", Str.endsWith("hello")), false);
+test("Str.endsWith returns false when string does not end with suffix", () => {
+	expect(pipe("hello world", Str.endsWith("hello"))).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
 // toUpperCase / toLowerCase
 // ---------------------------------------------------------------------------
 
-Deno.test("Str.toUpperCase converts all characters to uppercase", () => {
-	assertStrictEquals(pipe("hello", Str.toUpperCase), "HELLO");
+test("Str.toUpperCase converts all characters to uppercase", () => {
+	expect(pipe("hello", Str.toUpperCase)).toBe("HELLO");
 });
 
-Deno.test("Str.toLowerCase converts all characters to lowercase", () => {
-	assertStrictEquals(pipe("HELLO", Str.toLowerCase), "hello");
+test("Str.toLowerCase converts all characters to lowercase", () => {
+	expect(pipe("HELLO", Str.toLowerCase)).toBe("hello");
 });
 
 // ---------------------------------------------------------------------------
 // lines
 // ---------------------------------------------------------------------------
 
-Deno.test("Str.lines splits on LF line endings", () => {
-	assertEquals(Str.lines("one\ntwo\nthree"), ["one", "two", "three"]);
+test("Str.lines splits on LF line endings", () => {
+	expect(Str.lines("one\ntwo\nthree")).toEqual(["one", "two", "three"]);
 });
 
-Deno.test("Str.lines splits on CRLF line endings", () => {
-	assertEquals(Str.lines("one\r\ntwo\r\nthree"), ["one", "two", "three"]);
+test("Str.lines splits on CRLF line endings", () => {
+	expect(Str.lines("one\r\ntwo\r\nthree")).toEqual(["one", "two", "three"]);
 });
 
-Deno.test("Str.lines splits on CR line endings", () => {
-	assertEquals(Str.lines("one\rtwo"), ["one", "two"]);
+test("Str.lines splits on CR line endings", () => {
+	expect(Str.lines("one\rtwo")).toEqual(["one", "two"]);
 });
 
-Deno.test("Str.lines returns single-element array for string with no newlines", () => {
-	assertEquals(Str.lines("hello"), ["hello"]);
+test("Str.lines returns single-element array for string with no newlines", () => {
+	expect(Str.lines("hello")).toEqual(["hello"]);
 });
 
-Deno.test("Str.lines returns two elements when string ends with newline", () => {
-	assertEquals(Str.lines("one\n"), ["one", ""]);
+test("Str.lines returns two elements when string ends with newline", () => {
+	expect(Str.lines("one\n")).toEqual(["one", ""]);
 });
 
 // ---------------------------------------------------------------------------
 // words
 // ---------------------------------------------------------------------------
 
-Deno.test("Str.words splits on whitespace and trims", () => {
-	assertEquals(Str.words("  hello   world  "), ["hello", "world"]);
+test("Str.words splits on whitespace and trims", () => {
+	expect(Str.words("  hello   world  ")).toEqual(["hello", "world"]);
 });
 
-Deno.test("Str.words returns empty array for whitespace-only string", () => {
-	assertEquals(Str.words("   "), []);
+test("Str.words returns empty array for whitespace-only string", () => {
+	expect(Str.words("   ")).toEqual([]);
 });
 
-Deno.test("Str.words returns single word for single-word string", () => {
-	assertEquals(Str.words("hello"), ["hello"]);
+test("Str.words returns single word for single-word string", () => {
+	expect(Str.words("hello")).toEqual(["hello"]);
 });
 
-Deno.test("Str.words splits on mixed whitespace characters", () => {
-	assertEquals(Str.words("a\tb\nc"), ["a", "b", "c"]);
+test("Str.words splits on mixed whitespace characters", () => {
+	expect(Str.words("a\tb\nc")).toEqual(["a", "b", "c"]);
 });
 
 // ---------------------------------------------------------------------------
 // parse.int
 // ---------------------------------------------------------------------------
 
-Deno.test("Str.parse.int returns Some for a valid integer string", () => {
-	assertEquals(Str.parse.int("42"), Option.some(42));
+test("Str.parse.int returns Some for a valid integer string", () => {
+	expect(Str.parse.int("42")).toEqual(Option.some(42));
 });
 
-Deno.test("Str.parse.int truncates floats", () => {
-	assertEquals(Str.parse.int("3.7"), Option.some(3));
+test("Str.parse.int truncates floats", () => {
+	expect(Str.parse.int("3.7")).toEqual(Option.some(3));
 });
 
-Deno.test("Str.parse.int returns None for a non-numeric string", () => {
-	assertEquals(Str.parse.int("abc"), Option.none());
+test("Str.parse.int returns None for a non-numeric string", () => {
+	expect(Str.parse.int("abc")).toEqual(Option.none());
 });
 
-Deno.test("Str.parse.int returns None for empty string", () => {
-	assertEquals(Str.parse.int(""), Option.none());
+test("Str.parse.int returns None for empty string", () => {
+	expect(Str.parse.int("")).toEqual(Option.none());
 });
 
 // ---------------------------------------------------------------------------
 // parse.float
 // ---------------------------------------------------------------------------
 
-Deno.test("Str.parse.float returns Some for a valid float string", () => {
-	assertEquals(Str.parse.float("3.14"), Option.some(3.14));
+test("Str.parse.float returns Some for a valid float string", () => {
+	expect(Str.parse.float("3.14")).toEqual(Option.some(3.14));
 });
 
-Deno.test("Str.parse.float returns Some for an integer string", () => {
-	assertEquals(Str.parse.float("42"), Option.some(42));
+test("Str.parse.float returns Some for an integer string", () => {
+	expect(Str.parse.float("42")).toEqual(Option.some(42));
 });
 
-Deno.test("Str.parse.float returns None for a non-numeric string", () => {
-	assertEquals(Str.parse.float("abc"), Option.none());
+test("Str.parse.float returns None for a non-numeric string", () => {
+	expect(Str.parse.float("abc")).toEqual(Option.none());
 });
 
-Deno.test("Str.parse.float returns None for empty string", () => {
-	assertEquals(Str.parse.float(""), Option.none());
+test("Str.parse.float returns None for empty string", () => {
+	expect(Str.parse.float("")).toEqual(Option.none());
 });
 
 // ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 
-Deno.test("Str pipe composition - trim then split then toUpperCase each word", () => {
+test("Str pipe composition - trim then split then toUpperCase each word", () => {
 	const result = pipe(
 		"  hello world  ",
 		Str.trim,
 		Str.split(" "),
 		(words) => words.map(Str.toUpperCase),
 	);
-	assertEquals(result, ["HELLO", "WORLD"]);
+	expect(result).toEqual(["HELLO", "WORLD"]);
 });

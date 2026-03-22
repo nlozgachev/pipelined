@@ -1,0 +1,15 @@
+{
+	"$schema": "https://dprint.dev/schemas/v0.json",
+	"lineWidth": 120,
+	"useTabs": true,
+	"indentWidth": 1,
+	"typescript": {
+		"semiColons": "always",
+		"quoteStyle": "preferDouble",
+		"trailingCommas": "onlyMultiLine"
+	},
+	"excludes": ["**/*.md", "dist/", "node_modules/", "docs/"],
+	"plugins": [
+		"https://plugins.dprint.dev/typescript-0.93.3.wasm"
+	]
+}

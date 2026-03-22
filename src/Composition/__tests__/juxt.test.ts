@@ -1,27 +1,27 @@
-import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { expect, test } from "vitest";
 import { juxt } from "../juxt.ts";
 import { pipe } from "../pipe.ts";
 
-Deno.test("juxt - applies input to two functions and returns a tuple", () => {
+test("juxt - applies input to two functions and returns a tuple", () => {
 	const nameParts = juxt([
 		(name: string) => name.split(" ")[0],
 		(name: string) => name.split(" ").slice(1).join(" "),
 	]);
 
-	assertEquals(nameParts("Alice Smith"), ["Alice", "Smith"]);
+	expect(nameParts("Alice Smith")).toEqual(["Alice", "Smith"]);
 });
 
-Deno.test("juxt - applies input to three functions", () => {
+test("juxt - applies input to three functions", () => {
 	const numberInfo = juxt([
 		(n: number) => n * 2,
 		(n: number) => n * n,
 		(n: number) => -n,
 	]);
 
-	assertEquals(numberInfo(4), [8, 16, -4]);
+	expect(numberInfo(4)).toEqual([8, 16, -4]);
 });
 
-Deno.test("juxt - applies input to four functions", () => {
+test("juxt - applies input to four functions", () => {
 	const stringInfo = juxt([
 		(s: string) => s.length,
 		(s: string) => s.toUpperCase(),
@@ -29,10 +29,10 @@ Deno.test("juxt - applies input to four functions", () => {
 		(s: string) => s.split("").reverse().join(""),
 	]);
 
-	assertEquals(stringInfo("Hello"), [5, "HELLO", "hello", "olleH"]);
+	expect(stringInfo("Hello")).toEqual([5, "HELLO", "hello", "olleH"]);
 });
 
-Deno.test("juxt - each function receives the same input value", () => {
+test("juxt - each function receives the same input value", () => {
 	const inputs: number[] = [];
 	const track = juxt([
 		(n: number) => {
@@ -47,10 +47,10 @@ Deno.test("juxt - each function receives the same input value", () => {
 
 	track(10);
 
-	assertEquals(inputs, [10, 10]);
+	expect(inputs).toEqual([10, 10]);
 });
 
-Deno.test("juxt - works in a pipe chain", () => {
+test("juxt - works in a pipe chain", () => {
 	const result = pipe(
 		"pipelined",
 		juxt([
@@ -59,10 +59,10 @@ Deno.test("juxt - works in a pipe chain", () => {
 		]),
 	);
 
-	assertEquals(result, [9, "PIPELINED"]);
+	expect(result).toEqual([9, "PIPELINED"]);
 });
 
-Deno.test("juxt - homogeneous array overload returns typed array", () => {
+test("juxt - homogeneous array overload returns typed array", () => {
 	const transforms: ((n: number) => number)[] = [
 		(n) => n + 1,
 		(n) => n + 2,
@@ -70,5 +70,5 @@ Deno.test("juxt - homogeneous array overload returns typed array", () => {
 	];
 	const addAll = juxt(transforms);
 
-	assertEquals(addAll(0), [1, 2, 3]);
+	expect(addAll(0)).toEqual([1, 2, 3]);
 });

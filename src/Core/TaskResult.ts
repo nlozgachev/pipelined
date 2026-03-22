@@ -68,9 +68,9 @@ export namespace TaskResult {
 	 * If the first fails, propagates the error.
 	 */
 	export const chain = <E, A, B>(f: (a: A) => TaskResult<E, B>) => (data: TaskResult<E, A>): TaskResult<E, B> =>
-		Task.chain((result: Result<E, A>) =>
-			Result.isOk(result) ? f(result.value) : Task.resolve(Result.err(result.error))
-		)(data);
+		Task.chain((result: Result<E, A>) => Result.isOk(result) ? f(result.value) : Task.resolve(Result.err(result.error)))(
+			data,
+		);
 
 	/**
 	 * Extracts the value from a TaskResult by providing handlers for both cases.
@@ -81,7 +81,7 @@ export namespace TaskResult {
 	/**
 	 * Pattern matches on a TaskResult, returning a Task of the result.
 	 */
-	export const match = <E, A, B>(cases: { err: (e: E) => B; ok: (a: A) => B }) => (data: TaskResult<E, A>): Task<B> =>
+	export const match = <E, A, B>(cases: { err: (e: E) => B; ok: (a: A) => B; }) => (data: TaskResult<E, A>): Task<B> =>
 		Task.map(Result.match<E, A, B>(cases))(data);
 
 	/**

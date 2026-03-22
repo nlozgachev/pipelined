@@ -1,5 +1,5 @@
-import { Option } from "./Option.ts";
 import type { Lens } from "./Lens.ts";
+import { Option } from "./Option.ts";
 
 /** Keys of T for which undefined is assignable (i.e. optional fields). */
 type OptionalKeys<T> = {
@@ -61,7 +61,7 @@ export namespace Optional {
 		make(
 			(s) => {
 				const val = s[key];
-				return val != null ? Option.some(val as NonNullable<S[K]>) : Option.none();
+				return val !== null && val !== undefined ? Option.some(val as NonNullable<S[K]>) : Option.none();
 			},
 			(a) => (s) => ({ ...s, [key]: a } as S),
 		);
@@ -163,7 +163,7 @@ export namespace Optional {
 	 * ```
 	 */
 	export const match = <S, A>(opt: Optional<S, A>) =>
-	<B>(cases: { none: () => B; some: (a: A) => B }) =>
+	<B>(cases: { none: () => B; some: (a: A) => B; }) =>
 	(
 		s: S,
 	): B => {
