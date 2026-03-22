@@ -5,15 +5,14 @@ import starlightTypeDoc, { typeDocSidebarGroup } from "starlight-typedoc";
 import starlightThemeNova from "starlight-theme-nova";
 
 export default defineConfig({
-  redirects: {
-    "/api/core/namespaces/arr": "/api/core/namespaces/arr/functions/chunksof",
-    "/api/core/namespaces/rec": "/api/core/namespaces/rec/functions/entries",
-  },
   integrations: [
     starlight({
       title: "pipelined",
       favicon: "favicon.svg",
       customCss: ["./src/styles/custom.css"],
+      components: {
+        Footer: "./src/components/Footer.astro"
+      },
       social: [
         {
           icon: "github",
@@ -69,7 +68,7 @@ export default defineConfig({
         {
           label: "Guides",
           items: [
-                        { label: "Composition utilities", slug: "guides/composition" },
+            { label: "Composition utilities", slug: "guides/composition" },
             { label: "Option — absent values", slug: "guides/option" },
             { label: "Result — handling failures", slug: "guides/result" },
             {

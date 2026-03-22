@@ -5,4 +5,8 @@
     list-style-type: square;
     list-style-position: inside;
   }
+
+  .hero {
+    padding-bottom: clamp(2rem, calc(1rem + 10vmin), 5rem);
+  }
 }
