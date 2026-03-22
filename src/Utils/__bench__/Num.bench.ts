@@ -30,14 +30,14 @@ Deno.bench("native range loop 10k step 2", { group: "range-10k-step2" }, () => {
 	}
 });
 
-Deno.bench("range push step 2 10k", { group: "range-step2-approaches", baseline: true }, () => {
+Deno.bench("range push step 2 10k", { group: "range-step2-approaches" }, () => {
 	const result: number[] = [];
 	for (let i = 0; i < 10_000; i += 2) {
 		result.push(i);
 	}
 });
 
-Deno.bench("range pre-alloc step 2 10k", { group: "range-step2-approaches" }, () => {
+Deno.bench("[impl] range pre-alloc step 2 10k", { group: "range-step2-approaches", baseline: true }, () => {
 	const count = Math.ceil(10_000 / 2);
 	const result = new Array<number>(count);
 	for (let i = 0; i < count; i++) {

@@ -67,7 +67,7 @@ Deno.bench("Map filter 1k (pre-built)", { group: "rec-filter-approaches-1k" }, (
 });
 
 // Object.entries loop — current Rec.filter implementation baseline
-Deno.bench("Object.entries filter 1k", { group: "rec-filter-approaches-1k", baseline: true }, () => {
+Deno.bench("Object.entries filter 1k", { group: "rec-filter-approaches-1k" }, () => {
 	const result: Record<string, number> = {};
 	for (const [k, v] of Object.entries(rec1k)) {
 		if (v % 2 === 0) result[k] = v;
@@ -83,7 +83,7 @@ Deno.bench("Object.entries filter 1k (bitwise)", { group: "rec-filter-approaches
 });
 
 // Object.keys + Object.values + index — 2 flat arrays instead of 1001 pair arrays
-Deno.bench("keys+values index filter 1k", { group: "rec-filter-approaches-1k" }, () => {
+Deno.bench("[impl] keys+values index filter 1k", { group: "rec-filter-approaches-1k", baseline: true }, () => {
 	const result: Record<string, number> = {};
 	const keys = Object.keys(rec1k);
 	const vals = Object.values(rec1k);

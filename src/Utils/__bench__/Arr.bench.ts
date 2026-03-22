@@ -193,7 +193,7 @@ Deno.bench("native zip loop 10k", { group: "zip-10k" }, () => {
 
 // --- scan ---
 
-Deno.bench("scan push 10k", { group: "scan-approaches-10k", baseline: true }, () => {
+Deno.bench("scan push 10k", { group: "scan-approaches-10k" }, () => {
 	const result: number[] = [];
 	let acc = 0;
 	for (let i = 0; i < data10k.length; i++) {
@@ -202,7 +202,7 @@ Deno.bench("scan push 10k", { group: "scan-approaches-10k", baseline: true }, ()
 	}
 });
 
-Deno.bench("scan pre-alloc 10k", { group: "scan-approaches-10k" }, () => {
+Deno.bench("[impl] scan pre-alloc 10k", { group: "scan-approaches-10k", baseline: true }, () => {
 	const n = data10k.length;
 	const result = new Array<number>(n);
 	let acc = 0;
@@ -214,7 +214,7 @@ Deno.bench("scan pre-alloc 10k", { group: "scan-approaches-10k" }, () => {
 
 // --- zip ---
 
-Deno.bench("zip push 10k", { group: "zip-approaches-10k", baseline: true }, () => {
+Deno.bench("zip push 10k", { group: "zip-approaches-10k" }, () => {
 	const len = Math.min(data10k.length, otherArr.length);
 	const result: [number, number][] = [];
 	for (let i = 0; i < len; i++) {
@@ -222,7 +222,7 @@ Deno.bench("zip push 10k", { group: "zip-approaches-10k", baseline: true }, () =
 	}
 });
 
-Deno.bench("zip pre-alloc 10k", { group: "zip-approaches-10k" }, () => {
+Deno.bench("[impl] zip pre-alloc 10k", { group: "zip-approaches-10k", baseline: true }, () => {
 	const len = Math.min(data10k.length, otherArr.length);
 	const result = new Array<[number, number]>(len);
 	for (let i = 0; i < len; i++) {
@@ -234,7 +234,7 @@ Deno.bench("zip pre-alloc 10k", { group: "zip-approaches-10k" }, () => {
 
 const toSome2 = (n: number): Option<number> => Option.some(n * 2);
 
-Deno.bench("traverse push 10k", { group: "traverse-approaches-10k", baseline: true }, () => {
+Deno.bench("traverse push 10k", { group: "traverse-approaches-10k" }, () => {
 	const result: number[] = [];
 	for (let i = 0; i < data10k.length; i++) {
 		const mapped = toSome2(data10k[i]);
@@ -243,7 +243,7 @@ Deno.bench("traverse push 10k", { group: "traverse-approaches-10k", baseline: tr
 	}
 });
 
-Deno.bench("traverse pre-alloc 10k", { group: "traverse-approaches-10k" }, () => {
+Deno.bench("[impl] traverse pre-alloc 10k", { group: "traverse-approaches-10k", baseline: true }, () => {
 	const n = data10k.length;
 	const result = new Array<number>(n);
 	for (let i = 0; i < n; i++) {
@@ -257,7 +257,7 @@ Deno.bench("traverse pre-alloc 10k", { group: "traverse-approaches-10k" }, () =>
 
 const toOk2 = (n: number): Result<never, number> => Result.ok(n * 2);
 
-Deno.bench("traverseResult push 10k", { group: "traverseResult-approaches-10k", baseline: true }, () => {
+Deno.bench("traverseResult push 10k", { group: "traverseResult-approaches-10k" }, () => {
 	const result: number[] = [];
 	for (let i = 0; i < data10k.length; i++) {
 		const mapped = toOk2(data10k[i]);
@@ -266,7 +266,7 @@ Deno.bench("traverseResult push 10k", { group: "traverseResult-approaches-10k", 
 	}
 });
 
-Deno.bench("traverseResult pre-alloc 10k", { group: "traverseResult-approaches-10k" }, () => {
+Deno.bench("[impl] traverseResult pre-alloc 10k", { group: "traverseResult-approaches-10k", baseline: true }, () => {
 	const n = data10k.length;
 	const result = new Array<number>(n);
 	for (let i = 0; i < n; i++) {
@@ -278,7 +278,7 @@ Deno.bench("traverseResult pre-alloc 10k", { group: "traverseResult-approaches-1
 
 // --- for...of vs index loop (unknown output size) ---
 
-Deno.bench("partition for-of 10k", { group: "partition-approaches-10k", baseline: true }, () => {
+Deno.bench("[impl] partition for-of 10k", { group: "partition-approaches-10k", baseline: true }, () => {
 	const pass: number[] = [];
 	const fail: number[] = [];
 	for (const a of data10k) {
@@ -295,7 +295,7 @@ Deno.bench("partition index 10k", { group: "partition-approaches-10k" }, () => {
 	}
 });
 
-Deno.bench("uniqBy for-of 10k", { group: "uniqby-approaches-10k", baseline: true }, () => {
+Deno.bench("[impl] uniqBy for-of 10k", { group: "uniqby-approaches-10k", baseline: true }, () => {
 	const seen = new Set<number>();
 	const result: number[] = [];
 	for (const a of data10k) {
@@ -323,11 +323,11 @@ Deno.bench("uniqBy index 10k", { group: "uniqby-approaches-10k" }, () => {
 // map — native delegation vs custom pre-alloc loop
 // =============================================================================
 
-Deno.bench("map native .map 10k", { group: "map-approaches-10k", baseline: true }, () => {
+Deno.bench("map native .map 10k", { group: "map-approaches-10k" }, () => {
 	data10k.map((n) => n * 2);
 });
 
-Deno.bench("map pre-alloc loop 10k", { group: "map-approaches-10k" }, () => {
+Deno.bench("[impl] map pre-alloc loop 10k", { group: "map-approaches-10k", baseline: true }, () => {
 	const n = data10k.length;
 	const result = new Array<number>(n);
 	for (let i = 0; i < n; i++) result[i] = data10k[i] * 2;
@@ -337,11 +337,11 @@ Deno.bench("map pre-alloc loop 10k", { group: "map-approaches-10k" }, () => {
 // filter — native delegation vs custom push loop
 // =============================================================================
 
-Deno.bench("filter native .filter 10k", { group: "filter-approaches-10k", baseline: true }, () => {
+Deno.bench("filter native .filter 10k", { group: "filter-approaches-10k" }, () => {
 	data10k.filter((n) => n % 2 === 0);
 });
 
-Deno.bench("filter push loop 10k", { group: "filter-approaches-10k" }, () => {
+Deno.bench("[impl] filter push loop 10k", { group: "filter-approaches-10k", baseline: true }, () => {
 	const result: number[] = [];
 	for (let i = 0; i < data10k.length; i++) {
 		if (data10k[i] % 2 === 0) result.push(data10k[i]);
@@ -352,11 +352,11 @@ Deno.bench("filter push loop 10k", { group: "filter-approaches-10k" }, () => {
 // flatMap — concat+spread vs custom push loop
 // =============================================================================
 
-Deno.bench("flatMap concat+spread 10k", { group: "flatMap-approaches-10k", baseline: true }, () => {
+Deno.bench("flatMap concat+spread 10k", { group: "flatMap-approaches-10k" }, () => {
 	([] as number[]).concat(...data10k.map((n) => [n, n + 1]));
 });
 
-Deno.bench("flatMap push loop 10k", { group: "flatMap-approaches-10k" }, () => {
+Deno.bench("[impl] flatMap push loop 10k", { group: "flatMap-approaches-10k", baseline: true }, () => {
 	const result: number[] = [];
 	for (let i = 0; i < data10k.length; i++) {
 		result.push(data10k[i], data10k[i] + 1);
@@ -371,22 +371,22 @@ Deno.bench("flatMap native .flatMap 10k", { group: "flatMap-approaches-10k" }, (
 // every — native delegation vs custom loop (all-pass and early-exit)
 // =============================================================================
 
-Deno.bench("every native .every all-pass 10k", { group: "every-approaches-10k", baseline: true }, () => {
+Deno.bench("every native .every all-pass 10k", { group: "every-approaches-10k" }, () => {
 	data10k.every((n) => n >= 0);
 });
 
-Deno.bench("every loop all-pass 10k", { group: "every-approaches-10k" }, () => {
+Deno.bench("[impl] every loop all-pass 10k", { group: "every-approaches-10k", baseline: true }, () => {
 	const n = data10k.length;
 	for (let i = 0; i < n; i++) {
 		if (!(data10k[i] >= 0)) return;
 	}
 });
 
-Deno.bench("every native .every early-exit 10k", { group: "every-earlyexit-10k", baseline: true }, () => {
+Deno.bench("every native .every early-exit 10k", { group: "every-earlyexit-10k" }, () => {
 	data10k.every((n) => n < 5_000);
 });
 
-Deno.bench("every loop early-exit 10k", { group: "every-earlyexit-10k" }, () => {
+Deno.bench("[impl] every loop early-exit 10k", { group: "every-earlyexit-10k", baseline: true }, () => {
 	const n = data10k.length;
 	for (let i = 0; i < n; i++) {
 		if (!(data10k[i] < 5_000)) return;
@@ -397,22 +397,22 @@ Deno.bench("every loop early-exit 10k", { group: "every-earlyexit-10k" }, () => 
 // some — native delegation vs custom loop
 // =============================================================================
 
-Deno.bench("some native .some all-false 10k", { group: "some-approaches-10k", baseline: true }, () => {
+Deno.bench("some native .some all-false 10k", { group: "some-approaches-10k" }, () => {
 	data10k.some((n) => n < 0);
 });
 
-Deno.bench("some loop all-false 10k", { group: "some-approaches-10k" }, () => {
+Deno.bench("[impl] some loop all-false 10k", { group: "some-approaches-10k", baseline: true }, () => {
 	const n = data10k.length;
 	for (let i = 0; i < n; i++) {
 		if (data10k[i] < 0) return;
 	}
 });
 
-Deno.bench("some native .some early-exit 10k", { group: "some-earlyexit-10k", baseline: true }, () => {
+Deno.bench("some native .some early-exit 10k", { group: "some-earlyexit-10k" }, () => {
 	data10k.some((n) => n > 5_000);
 });
 
-Deno.bench("some loop early-exit 10k", { group: "some-earlyexit-10k" }, () => {
+Deno.bench("[impl] some loop early-exit 10k", { group: "some-earlyexit-10k", baseline: true }, () => {
 	const n = data10k.length;
 	for (let i = 0; i < n; i++) {
 		if (data10k[i] > 5_000) return;
@@ -423,7 +423,7 @@ Deno.bench("some loop early-exit 10k", { group: "some-earlyexit-10k" }, () => {
 // take — native .slice vs pre-alloc loop
 // =============================================================================
 
-Deno.bench("take native .slice 10k", { group: "take-approaches-10k", baseline: true }, () => {
+Deno.bench("[impl] take native .slice 10k", { group: "take-approaches-10k", baseline: true }, () => {
 	data10k.slice(0, 5_000);
 });
 
@@ -437,7 +437,7 @@ Deno.bench("take pre-alloc loop 10k", { group: "take-approaches-10k" }, () => {
 // drop — native .slice vs pre-alloc loop
 // =============================================================================
 
-Deno.bench("drop native .slice 10k", { group: "drop-approaches-10k", baseline: true }, () => {
+Deno.bench("[impl] drop native .slice 10k", { group: "drop-approaches-10k", baseline: true }, () => {
 	data10k.slice(5_000);
 });
 
@@ -452,7 +452,7 @@ Deno.bench("drop pre-alloc loop 10k", { group: "drop-approaches-10k" }, () => {
 // splitAt — two .slice calls vs two pre-alloc loops
 // =============================================================================
 
-Deno.bench("splitAt two .slice 10k", { group: "splitAt-approaches-10k", baseline: true }, () => {
+Deno.bench("[impl] splitAt two .slice 10k", { group: "splitAt-approaches-10k", baseline: true }, () => {
 	[data10k.slice(0, 5_000), data10k.slice(5_000)];
 });
 
