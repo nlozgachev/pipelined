@@ -6,7 +6,7 @@
 	"homepage": "https://pipelined.lozgachev.dev",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/nlozgachev/pipelined"
+		"url": "git+https://github.com/nlozgachev/pipelined.git"
 	},
 	"keywords": [
 		"functional",
@@ -24,18 +24,22 @@
 	],
 	"exports": {
 		"./composition": {
+			"types": "./dist/composition.d.ts",
 			"import": "./dist/composition.mjs",
 			"require": "./dist/composition.cjs"
 		},
 		"./core": {
+			"types": "./dist/core.d.ts",
 			"import": "./dist/core.mjs",
 			"require": "./dist/core.cjs"
 		},
 		"./utils": {
+			"types": "./dist/utils.d.ts",
 			"import": "./dist/utils.mjs",
 			"require": "./dist/utils.cjs"
 		},
 		"./types": {
+			"types": "./dist/types.d.ts",
 			"import": "./dist/types.mjs",
 			"require": "./dist/types.cjs"
 		}
