@@ -100,7 +100,7 @@ a contiguous memory copy implemented in V8's C++ layer. A JavaScript loop writin
 element is 5–7× slower. When the native method has a structural advantage that no JS loop can
 match, the implementation keeps it.
 
-Ans yes, the difference is invisible to callers, visible only in the numbers.
+And yes, the difference is invisible to callers, visible only in the numbers.
 
 ## The benchmarks
 
@@ -123,13 +123,13 @@ strategy for the specific operation.
 
 The numbers in this documentation were collected on the following setup:
 
-| | |
-|---|---|
-| **CPU** | Apple M1 Pro (aarch64) |
-| **OS** | macOS (darwin) |
-| **Deno** | 2.7.7 (stable) |
-| **V8** | 14.6.202.9 |
-| **TypeScript** | 5.9.2 |
+|                |                        |
+| -------------- | ---------------------- |
+| **CPU**        | Apple M1 Pro (aarch64) |
+| **OS**         | macOS (darwin)         |
+| **Deno**       | 2.7.7 (stable)         |
+| **V8**         | 14.6.202.9             |
+| **TypeScript** | 5.9.2                  |
 
 Results on other hardware or runtime versions will differ. x86 machines may show different ratios
 because V8's JIT strategies and memory layout characteristics vary by architecture. The relative

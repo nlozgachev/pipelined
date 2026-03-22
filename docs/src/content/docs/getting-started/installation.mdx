@@ -3,53 +3,29 @@ title: Installation
 description: Add pipelined to your TypeScript project via npm.
 ---
 
-import { Tabs, TabItem } from "@astrojs/starlight/components";
+import { CodePackageManagers } from 'starlight-theme-nova/components'
 
 ## Package managers
 
-<Tabs>
-  <TabItem label="npm">
-    ```sh
-    npm add @nlozgachev/pipelined
-    ```
-  </TabItem>
-  <TabItem label="pnpm">
-    ```sh
-    pnpm add @nlozgachev/pipelined
-    ```
-  </TabItem>
-  <TabItem label="yarn">
-    ```sh
-    yarn add @nlozgachev/pipelined
-    ```
-  </TabItem>
-  <TabItem label="bun">
-    ```sh
-    bun add @nlozgachev/pipelined
-    ```
-  </TabItem>
-  <TabItem label="Deno">
-    ```sh
-    deno add npm:@nlozgachev/pipelined
-    ```
-  </TabItem>
-</Tabs>
+<CodePackageManagers packages="@nlozgachev/pipelined"/>
 
 ## Imports
 
-The library is split into three entry points. Import only what you need:
+The library is split into four entry points. Import only what you need:
 
 ```ts
 import { Option, Result, Task } from "@nlozgachev/pipelined/core";
+import { Arr, Str } from "@nlozgachev/pipelined/utils";
 import { pipe, flow } from "@nlozgachev/pipelined/composition";
 import { Brand } from "@nlozgachev/pipelined/types";
 ```
 
-| Entry point             | Contains                                                                                                                                                  |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@nlozgachev/pipelined/core`        | `Option`, `Result`, `Validation`, `Task`, `TaskResult`, `TaskOption`, `TaskValidation`, `These`, `RemoteData`, `Lens`, `Optional`, `Reader`, `Arr`, `Rec` |
-| `@nlozgachev/pipelined/composition` | `pipe`, `flow`, `compose`, `curry`, `tap`, `memoize`, and other function utilities                                                                        |
-| `@nlozgachev/pipelined/types`       | `Brand`, `NonEmptyList`                                                                                                                                   |
+| Entry point             | Contains                                                                                                                                                                                                                         |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@nlozgachev/pipelined/core`        | `Option`, `Result`, `Validation`, `Task`, `TaskResult`, `TaskOption`, `TaskValidation`, `These`, `Tuple`, `RemoteData`, `Deferred`, `Lens`, `Optional`, `Reader`, `State`, `Logged`, `Predicate`, `Refinement` |
+| `@nlozgachev/pipelined/utils`       | `Arr`, `Rec`, `Num`, `Str`, `Dict`, `Uniq`                                                                                                                                                                                       |
+| `@nlozgachev/pipelined/composition` | `pipe`, `flow`, `compose`, `curry`, `tap`, `memoize`, and other function utilities                                                                                                                                               |
+| `@nlozgachev/pipelined/types`       | `Brand`, `NonEmptyList`                                                                                                                                                                                                          |
 
 ## Requirements
 
