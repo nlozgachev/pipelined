@@ -81,17 +81,16 @@ export namespace Dict {
 	 * // ReadonlyMap { "admin" => [alice, carol], "viewer" => [bob] }
 	 * ```
 	 */
-	export const groupBy = <K, A>(keyFn: (a: A) => K) =>
-		(items: readonly A[]): ReadonlyMap<K, readonly A[]> => {
-			const result = new globalThis.Map<K, A[]>();
-			for (const item of items) {
-				const key = keyFn(item);
-				const arr = result.get(key);
-				if (arr !== undefined) arr.push(item);
-				else result.set(key, [item]);
-			}
-			return result;
-		};
+	export const groupBy = <K, A>(keyFn: (a: A) => K) => (items: readonly A[]): ReadonlyMap<K, readonly A[]> => {
+		const result = new globalThis.Map<K, A[]>();
+		for (const item of items) {
+			const key = keyFn(item);
+			const arr = result.get(key);
+			if (arr !== undefined) arr.push(item);
+			else result.set(key, [item]);
+		}
+		return result;
+	};
 
 	// ---------------------------------------------------------------------------
 	// Query

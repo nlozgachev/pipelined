@@ -11,7 +11,7 @@ export default defineConfig({
       favicon: "favicon.svg",
       customCss: ["./src/styles/custom.css"],
       components: {
-        Footer: "./src/components/Footer.astro"
+        Footer: "./src/components/Footer.astro",
       },
       social: [
         {
@@ -75,7 +75,10 @@ export default defineConfig({
               label: "Validation — collecting errors",
               slug: "guides/validation",
             },
-            { label: "Deferred — infallible async values", slug: "guides/deferred" },
+            {
+              label: "Deferred — infallible async values",
+              slug: "guides/deferred",
+            },
             { label: "Task — lazy async", slug: "guides/task" },
             {
               label: "RemoteData — loading states",
@@ -86,7 +89,10 @@ export default defineConfig({
             { label: "Optional — nullable paths", slug: "guides/optional" },
             { label: "Reader — deferred dependencies", slug: "guides/reader" },
             { label: "Brand — distinguishing values", slug: "guides/brand" },
-            { label: "Refinement — type predicates", slug: "guides/refinement" },
+            {
+              label: "Refinement — type predicates",
+              slug: "guides/refinement",
+            },
             { label: "Predicate — boolean checks", slug: "guides/predicate" },
             { label: "State — threading state", slug: "guides/state" },
             { label: "Logged — values with logs", slug: "guides/logged" },
@@ -95,8 +101,10 @@ export default defineConfig({
             { label: "Num — number utilities", slug: "guides/num" },
             { label: "Str — string utilities", slug: "guides/str" },
             { label: "Dict — dictionary utilities", slug: "guides/dict" },
-            { label: "Uniq — unique collection utilities", slug: "guides/uniq" },
-
+            {
+              label: "Uniq — unique collection utilities",
+              slug: "guides/uniq",
+            },
           ],
         },
         {

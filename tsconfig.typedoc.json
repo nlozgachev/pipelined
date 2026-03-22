@@ -7,14 +7,22 @@
 		"noEmit": true,
 		"strict": true,
 		"lib": [
-			"ES2022",
+			"esnext",
 			"DOM"
 		],
 		"paths": {
-			"#core/*": ["./src/Core/*"],
-			"#utils/*": ["./src/Utils/*"],
-			"#types/*": ["./src/Types/*"],
-			"#composition/*": ["./src/Composition/*"]
+			"#core/*": [
+				"./src/Core/*"
+			],
+			"#utils/*": [
+				"./src/Utils/*"
+			],
+			"#types/*": [
+				"./src/Types/*"
+			],
+			"#composition/*": [
+				"./src/Composition/*"
+			]
 		}
 	},
 	"include": [

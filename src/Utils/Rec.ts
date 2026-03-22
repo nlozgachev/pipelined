@@ -148,8 +148,8 @@ export namespace Rec {
 	 * ); // { a: ["apple", "avocado"], b: ["banana", "blueberry"] }
 	 * ```
 	 */
-	export const groupBy = <A>(keyFn: (a: A) => string) =>
-		(items: readonly A[]): Readonly<Record<string, readonly A[]>> => {
+	export const groupBy =
+		<A>(keyFn: (a: A) => string) => (items: readonly A[]): Readonly<Record<string, readonly A[]>> => {
 			const result: Record<string, A[]> = {};
 			for (const item of items) {
 				const key = keyFn(item);
