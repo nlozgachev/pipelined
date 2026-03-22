@@ -85,6 +85,7 @@ export default defineConfig({
               slug: "guides/remote-data",
             },
             { label: "These — inclusive OR", slug: "guides/these" },
+            { label: "Tuple — typed pairs", slug: "guides/tuple" },
             { label: "Lens — nested updates", slug: "guides/lens" },
             { label: "Optional — nullable paths", slug: "guides/optional" },
             { label: "Reader — deferred dependencies", slug: "guides/reader" },
