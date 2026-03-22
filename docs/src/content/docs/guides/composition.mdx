@@ -5,6 +5,8 @@ description: >
   caching, and parallel application.
 ---
 
+import { Aside } from '@astrojs/starlight/components'
+
 The Composition module is the backbone of every pipeline in pipelined. It provides `pipe` and `flow`
 for sequencing steps, and a set of surrounding utilities for shaping functions before they enter a
 pipeline: currying, flipping argument order, memoizing expensive steps, applying a value to several
@@ -275,8 +277,10 @@ declare const computeLayout: (node: Element) => Layout;
 const cachedLayout = memoizeWeak(computeLayout);
 ```
 
+<Aside type="caution">
 `memoizeWeak` only accepts object keys — primitives are not valid `WeakMap` keys. Use `memoize` for
 numbers, strings, and other primitives.
+</Aside>
 
 ## Fan out and combine: `converge`
 

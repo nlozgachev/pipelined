@@ -450,3 +450,35 @@ Deno.test("pipe composition - pick then merge", () => {
 	);
 	assertEquals(result, { a: 1, b: 2, d: 4 });
 });
+
+// =============================================================================
+// groupBy
+// =============================================================================
+
+Deno.test("Rec.groupBy groups items by key function", () => {
+	const result = pipe([1, 2, 3, 4, 5], Rec.groupBy((n) => n % 2 === 0 ? "even" : "odd"));
+	assertEquals([...result["odd"]], [1, 3, 5]);
+	assertEquals([...result["even"]], [2, 4]);
+});
+
+Deno.test("Rec.groupBy returns empty record for empty array", () => {
+	assertStrictEquals(Object.keys(pipe([], Rec.groupBy((n: number) => String(n % 2)))).length, 0);
+});
+
+Deno.test("Rec.groupBy all elements map to same key", () => {
+	const result = pipe([1, 2, 3], Rec.groupBy(() => "all"));
+	assertEquals([...result["all"]], [1, 2, 3]);
+});
+
+Deno.test("Rec.groupBy each element maps to a unique key", () => {
+	const result = pipe([1, 2, 3], Rec.groupBy((n) => String(n)));
+	assertStrictEquals(Object.keys(result).length, 3);
+	assertEquals([...result["1"]], [1]);
+});
+
+Deno.test("Rec.groupBy preserves insertion order within each group", () => {
+	const items = ["banana", "avocado", "blueberry", "apricot"];
+	const result = pipe(items, Rec.groupBy((s) => s[0]));
+	assertEquals([...result["b"]], ["banana", "blueberry"]);
+	assertEquals([...result["a"]], ["avocado", "apricot"]);
+});

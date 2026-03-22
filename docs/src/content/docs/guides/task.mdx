@@ -3,6 +3,8 @@ title: Task — lazy async
 description: Model lazy async computations that are guaranteed to succeed — nothing runs until called.
 ---
 
+import { Aside } from '@astrojs/starlight/components'
+
 Promises are JavaScript's built-in tool for async work, but they have two quirks that make them
 hard to compose. They start immediately when created, so you can't build a pipeline and hand it
 around before any work begins. And they can reject, leaking failure as an untyped exception that
@@ -41,6 +43,12 @@ no way to register a rejection handler on a `Deferred`.
 This addresses both problems with Promises. The function wrapper makes it lazy — nothing runs until
 you call it. And by treating Tasks as always-succeeding computations, failure is pushed into the
 type: `TaskResult<E, A>` is `Task<Result<E, A>>`, so it's impossible to overlook.
+
+<Aside type="note" title="Task is always infallible">
+A `Task<A>` always resolves — it never rejects. There is no `.catch()`, no rejection handler, and
+no `fail` constructor. If an operation can fail, use `TaskResult<E, A>` instead, which keeps the
+failure as a typed value rather than an unhandled exception.
+</Aside>
 
 ```ts
 import { Task } from "@nlozgachev/pipelined/core";

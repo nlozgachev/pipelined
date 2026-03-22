@@ -94,6 +94,8 @@ export default defineConfig({
             { label: "Rec — record utilities", slug: "guides/rec" },
             { label: "Num — number utilities", slug: "guides/num" },
             { label: "Str — string utilities", slug: "guides/str" },
+            { label: "Dict — dictionary utilities", slug: "guides/dict" },
+            { label: "Uniq — unique collection utilities", slug: "guides/uniq" },
 
           ],
         },

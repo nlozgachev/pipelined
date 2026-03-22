@@ -157,3 +157,34 @@ Deno.bench("native lookup 100 (hit)", { group: "rec-lookup-100-hit" }, () => {
 	const result = v !== undefined ? { kind: "Some" as const, value: v } : { kind: "None" as const };
 	result;
 });
+
+// =============================================================================
+// groupBy
+// =============================================================================
+
+const data1k = Array.from({ length: 1_000 }, (_, i) => i);
+
+Deno.bench("Rec.groupBy 1k", { group: "rec-groupBy-1k", baseline: true }, () => {
+	pipe(data1k, Rec.groupBy((n) => String(n % 10)));
+});
+
+Deno.bench("native Object.groupBy 1k", { group: "rec-groupBy-1k" }, () => {
+	Object.groupBy(data1k, (n) => String(n % 10));
+});
+
+// =============================================================================
+// groupBy — approaches
+// =============================================================================
+
+Deno.bench("[impl] manual loop groupBy 1k", { group: "rec-groupBy-approaches-1k", baseline: true }, () => {
+	const result: Record<string, number[]> = {};
+	for (const n of data1k) {
+		const key = String(n % 10);
+		if (key in result) result[key].push(n);
+		else result[key] = [n];
+	}
+});
+
+Deno.bench("native Object.groupBy 1k", { group: "rec-groupBy-approaches-1k" }, () => {
+	Object.groupBy(data1k, (n) => String(n % 10));
+});

@@ -134,6 +134,32 @@ export namespace Rec {
 	): Readonly<Record<string, A>> => Object.fromEntries(data);
 
 	/**
+	 * Groups elements of an array into a record keyed by the result of `keyFn`. Each key maps to
+	 * the array of elements that produced it, in insertion order.
+	 *
+	 * Unlike `Dict.groupBy`, keys are always strings. Use `Dict.groupBy` when you need non-string
+	 * keys or want to avoid the plain-object prototype chain.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   ["apple", "avocado", "banana", "blueberry"],
+	 *   Rec.groupBy(s => s[0]),
+	 * ); // { a: ["apple", "avocado"], b: ["banana", "blueberry"] }
+	 * ```
+	 */
+	export const groupBy = <A>(keyFn: (a: A) => string) =>
+		(items: readonly A[]): Readonly<Record<string, readonly A[]>> => {
+			const result: Record<string, A[]> = {};
+			for (const item of items) {
+				const key = keyFn(item);
+				if (key in result) result[key].push(item);
+				else result[key] = [item];
+			}
+			return result;
+		};
+
+	/**
 	 * Picks specific keys from a record.
 	 *
 	 * @example

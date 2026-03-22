@@ -3,6 +3,8 @@ title: "Refinement — type predicates"
 description: Composable runtime checks that carry compile-time type narrowing.
 ---
 
+import { Aside } from '@astrojs/starlight/components'
+
 When you write `typeof x === "string"` or `n > 0` you get a boolean back, but TypeScript also
 learns something: in the `true` branch `x` is a `string`, in the `false` branch it is not. A
 `Refinement<A, B>` packages that narrowing into a first-class, reusable value so you can compose,
@@ -41,9 +43,13 @@ type predicate: TypeScript narrows the argument to `B` in every branch where the
 
 ## Creating a Refinement with `make`
 
-`Refinement.make` turns any boolean predicate into a typed refinement. This is an **unsafe cast** —
-you are asserting to TypeScript that the predicate correctly characterises `B`. Use it only when
-bootstrapping a new named domain type; compose from there.
+`Refinement.make` turns any boolean predicate into a typed refinement.
+
+<Aside type="caution">
+`Refinement.make` is an unsafe cast — you are telling TypeScript that the predicate correctly
+characterises `B` with no compiler verification. Use it only when bootstrapping a new named type;
+build everything else by composing existing refinements from there.
+</Aside>
 
 ```ts
 import { Brand } from "@nlozgachev/pipelined/types";

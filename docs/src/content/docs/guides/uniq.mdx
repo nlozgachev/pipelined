@@ -1,0 +1,181 @@
+---
+title: Uniq — unique collection utilities
+description: Pure, composable operations for sets of unique values — insert, remove, union, intersection, difference.
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+A `Set` is the right structure when you care about membership rather than order — when the
+question is "is this value in the collection?" rather than "what is at index 5?". The native
+`Set` API does the job, but it's built around mutation. Adding or removing an item changes the
+set in place, which makes it awkward to use in a pipeline where the previous state still matters.
+
+`Uniq` wraps `ReadonlySet<A>` with pure, data-last functions that compose with `pipe`. Every
+operation that "changes" the collection returns a new one. The original is never touched.
+
+## Creating a collection
+
+The most common constructor is `Uniq.fromArray`, which accepts an array and automatically
+discards any duplicates:
+
+```ts
+import { Uniq } from "@nlozgachev/pipelined/utils";
+
+const tags = Uniq.fromArray(["typescript", "functional", "typescript", "pipe"]);
+// ReadonlySet { "typescript", "functional", "pipe" }
+
+const empty = Uniq.empty<string>();
+const single = Uniq.singleton("admin");
+```
+
+`fromArray` is safe to call on any array — if there are no duplicates, you get back a set
+representing exactly those values.
+
+## Checking membership
+
+`Uniq.has` is the primary membership test. It returns `true` if the item is in the collection
+and `false` if not:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+
+const permissions = Uniq.fromArray(["read", "write"]);
+
+pipe(permissions, Uniq.has("read"));    // true
+pipe(permissions, Uniq.has("delete")); // false
+```
+
+`Uniq.isSubsetOf` tests whether every item in one collection also appears in another:
+
+```ts
+const required = Uniq.fromArray(["read", "write"]);
+const granted  = Uniq.fromArray(["read", "write", "delete"]);
+
+pipe(required, Uniq.isSubsetOf(granted)); // true
+```
+
+## Adding and removing items
+
+`Uniq.insert` returns a new collection with the item added. If the item is already present,
+the original collection is returned unchanged — no copy is made. `Uniq.remove` works the same
+way in reverse:
+
+```ts
+const base = Uniq.fromArray(["read", "write"]);
+
+pipe(base, Uniq.insert("delete")); // ReadonlySet { "read", "write", "delete" }
+pipe(base, Uniq.insert("read"));   // ReadonlySet { "read", "write" } — same reference
+
+pipe(base, Uniq.remove("write"));  // ReadonlySet { "read" }
+pipe(base, Uniq.remove("admin"));  // ReadonlySet { "read", "write" } — same reference
+```
+
+## Transforming and filtering
+
+`Uniq.map` applies a function to every item and returns a new collection of the results.
+If the function produces duplicates, they are merged automatically:
+
+```ts
+// Normalise tags to lowercase
+pipe(
+  Uniq.fromArray(["TypeScript", "typescript", "FUNCTIONAL"]),
+  Uniq.map(tag => tag.toLowerCase()),
+);
+// ReadonlySet { "typescript", "functional" }
+```
+
+`Uniq.filter` keeps only the items for which the predicate returns `true`:
+
+```ts
+const scores = Uniq.fromArray([10, 20, 30, 40, 50]);
+
+pipe(scores, Uniq.filter(n => n >= 30));
+// ReadonlySet { 30, 40, 50 }
+```
+
+## Set operations
+
+<Aside title="Compatibility">
+In ES2024-capable environments (Chrome 122+, Firefox 127+, Safari 17+, Node 22+), `union`,
+`intersection`, `difference`, and `isSubsetOf` delegate to the native `Set` methods of the same
+name. In older environments they fall back to equivalent loops — behaviour is identical either way.
+</Aside>
+
+The three classic set operations — `union`, `intersection`, and `difference` — work as you
+would expect from a maths or database context:
+
+```ts
+const backend  = Uniq.fromArray(["alice", "bob", "carol"]);
+const frontend = Uniq.fromArray(["bob", "carol", "dave"]);
+
+// Everyone on at least one team
+pipe(backend, Uniq.union(frontend));
+// ReadonlySet { "alice", "bob", "carol", "dave" }
+
+// Everyone on both teams
+pipe(backend, Uniq.intersection(frontend));
+// ReadonlySet { "bob", "carol" }
+
+// Backend engineers who are not on the frontend team
+pipe(backend, Uniq.difference(frontend));
+// ReadonlySet { "alice" }
+```
+
+These compose naturally when the answer to a question is itself a set operation:
+
+```ts
+// Reviewers who have approved but not yet merged
+const approved = Uniq.fromArray(["alice", "bob", "carol"]);
+const merged   = Uniq.fromArray(["bob"]);
+
+const pendingMerge = pipe(approved, Uniq.difference(merged));
+// ReadonlySet { "alice", "carol" }
+```
+
+
+## Folding and converting
+
+`Uniq.reduce` collapses the collection into a single value. `Uniq.toArray` converts it back
+to an array when you need to pass the values to something that doesn't speak `Set`:
+
+```ts
+// Count total characters across all tags
+Uniq.reduce(0, (acc, tag: string) => acc + tag.length)(
+  Uniq.fromArray(["ts", "js", "py"]),
+); // 6
+
+// Serialise for an API
+Uniq.toArray(Uniq.fromArray(["read", "write"])); // ["read", "write"]
+```
+
+## Composing it all
+
+`Uniq` operations chain in `pipe` like any other utility:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+
+const activeRoles = pipe(
+  Uniq.fromArray(["admin", "editor", "viewer", "admin", "editor"]), // dedup
+  Uniq.filter(role => role !== "viewer"),                            // remove read-only
+  Uniq.map(role => role.toUpperCase()),                              // normalise
+);
+// ReadonlySet { "ADMIN", "EDITOR" }
+```
+
+## When to use Uniq
+
+Use `Uniq` when:
+
+- You need to track a collection of values where duplicates don't make sense — user IDs,
+  feature flags, active sessions, selected tags
+- You need fast membership checks (`has`) without scanning an array
+- You're combining, comparing, or subtracting groups of values with `union`, `intersection`,
+  or `difference`
+- You're deduplicating an array and want the result to stay as a set
+
+Keep using plain arrays when:
+
+- Order matters and you need index-based access
+- Duplicates are meaningful (e.g. a list of events where the same event can occur twice)
+- You need `Arr` operations like `zip`, `flatMap`, or `scan`
