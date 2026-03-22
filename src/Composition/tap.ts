@@ -28,6 +28,6 @@
  * @see {@link Option.tap} for Option-specific tap that only runs on Some
  */
 export const tap = <A>(f: (a: A) => void) => (a: A): A => {
-  f(a);
-  return a;
+	f(a);
+	return a;
 };

@@ -22,37 +22,37 @@ const _store = new WeakMap<object, Promise<unknown>>();
  * ```
  */
 export type Deferred<A> = {
-  readonly [_deferred]: A;
-  readonly then: (onfulfilled: (value: A) => void) => void;
+	readonly [_deferred]: A;
+	readonly then: (onfulfilled: (value: A) => void) => void;
 };
 
 export namespace Deferred {
-  /**
-   * Wraps a `Promise` into a `Deferred`, structurally excluding rejection handlers,
-   * `.catch()`, `.finally()`, and chainable `.then()`.
-   *
-   * @example
-   * ```ts
-   * const d = Deferred.fromPromise(Promise.resolve("hello"));
-   * const value = await d; // "hello"
-   * ```
-   */
-  export const fromPromise = <A>(p: Promise<A>): Deferred<A> => {
-    const d = ({ then: ((f) => p.then(f)) as Deferred<A>["then"] }) as Deferred<A>;
-    _store.set(d as object, p);
-    return d;
-  };
+	/**
+	 * Wraps a `Promise` into a `Deferred`, structurally excluding rejection handlers,
+	 * `.catch()`, `.finally()`, and chainable `.then()`.
+	 *
+	 * @example
+	 * ```ts
+	 * const d = Deferred.fromPromise(Promise.resolve("hello"));
+	 * const value = await d; // "hello"
+	 * ```
+	 */
+	export const fromPromise = <A>(p: Promise<A>): Deferred<A> => {
+		const d = ({ then: ((f) => p.then(f)) as Deferred<A>["then"] }) as Deferred<A>;
+		_store.set(d as object, p);
+		return d;
+	};
 
-  /**
-   * Converts a `Deferred` back into a `Promise`.
-   *
-   * @example
-   * ```ts
-   * const p = Deferred.toPromise(Deferred.fromPromise(Promise.resolve(42)));
-   * // p is Promise<42>
-   * ```
-   */
-  export const toPromise = <A>(d: Deferred<A>): Promise<A> =>
-    (_store.get(d as object) as Promise<A> | undefined) ??
-    new Promise((resolve) => d.then(resolve));
+	/**
+	 * Converts a `Deferred` back into a `Promise`.
+	 *
+	 * @example
+	 * ```ts
+	 * const p = Deferred.toPromise(Deferred.fromPromise(Promise.resolve(42)));
+	 * // p is Promise<42>
+	 * ```
+	 */
+	export const toPromise = <A>(d: Deferred<A>): Promise<A> =>
+		(_store.get(d as object) as Promise<A> | undefined) ??
+			new Promise((resolve) => d.then(resolve));
 }

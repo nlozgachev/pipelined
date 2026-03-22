@@ -1,4 +1,4 @@
-import { NonEmptyList } from "../Types/NonEmptyList.ts";
+import { NonEmptyList } from "#types/NonEmptyList.ts";
 
 export type WithKind<K extends string> = { readonly kind: K };
 

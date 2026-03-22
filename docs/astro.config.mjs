@@ -40,6 +40,7 @@ export default defineConfig({
             "../src/Core/index.ts",
             "../src/Types/index.ts",
             "../src/Composition/index.ts",
+            "../src/Utils/index.ts",
           ],
           tsconfig: "../tsconfig.typedoc.json",
           output: "api",
@@ -92,14 +93,17 @@ export default defineConfig({
             { label: "Logged — values with logs", slug: "guides/logged" },
             { label: "Arr — array utilities", slug: "guides/arr" },
             { label: "Rec — record utilities", slug: "guides/rec" },
+            { label: "Num — number utilities", slug: "guides/num" },
+            { label: "Str — string utilities", slug: "guides/str" },
 
           ],
         },
         {
           label: "Appendix",
           items: [
-            { label: "Why this exists", slug: "motivation" },
-            { label: "Design & influences", slug: "appendix" },
+            { label: "Why this exists", slug: "appendix/motivation" },
+            { label: "Design & influences", slug: "appendix/influences" },
+            { label: "Performance & benchmarks", slug: "appendix/benchmarks" },
           ],
         },
         typeDocSidebarGroup,

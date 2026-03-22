@@ -29,8 +29,7 @@ export const curry = <A, B, C>(f: (a: A, b: B) => C) => (a: A) => (b: B): C => f
  * curriedAdd3(1)(2)(3); // 6
  * ```
  */
-export const curry3 = <A, B, C, D>(f: (a: A, b: B, c: C) => D) => (a: A) => (b: B) => (c: C): D =>
-  f(a, b, c);
+export const curry3 = <A, B, C, D>(f: (a: A, b: B, c: C) => D) => (a: A) => (b: B) => (c: C): D => f(a, b, c);
 
 /**
  * Converts a 4-argument function into a curried function.
@@ -42,6 +41,5 @@ export const curry3 = <A, B, C, D>(f: (a: A, b: B, c: C) => D) => (a: A) => (b: 
  * curriedAdd4(1)(2)(3)(4); // 10
  * ```
  */
-export const curry4 =
-  <A, B, C, D, E>(f: (a: A, b: B, c: C, d: D) => E) => (a: A) => (b: B) => (c: C) => (d: D): E =>
-    f(a, b, c, d);
+export const curry4 = <A, B, C, D, E>(f: (a: A, b: B, c: C, d: D) => E) => (a: A) => (b: B) => (c: C) => (d: D): E =>
+	f(a, b, c, d);

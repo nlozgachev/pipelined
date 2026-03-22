@@ -31,13 +31,13 @@ export function uncurry<A, C>(f: (a: A) => () => C): (a: A) => C;
 export function uncurry<A, B, C>(f: (a: A) => (b: B) => C): (a: A, b: B) => C;
 // deno-lint-ignore no-explicit-any
 export function uncurry(f: (...args: any[]) => (...args: any[]) => any) {
-  // f.length determines the outer arity; inner.length determines the inner arity.
-  // The typed overloads guarantee these are 0, 1, or 2 total args.
-  // deno-lint-ignore no-explicit-any
-  return (...args: any[]) => {
-    const inner = f(...args.slice(0, f.length));
-    return inner.length === 0 ? inner() : inner(...args.slice(f.length));
-  };
+	// f.length determines the outer arity; inner.length determines the inner arity.
+	// The typed overloads guarantee these are 0, 1, or 2 total args.
+	// deno-lint-ignore no-explicit-any
+	return (...args: any[]) => {
+		const inner = f(...args.slice(0, f.length));
+		return inner.length === 0 ? inner() : inner(...args.slice(f.length));
+	};
 }
 
 /**
@@ -50,8 +50,7 @@ export function uncurry(f: (...args: any[]) => (...args: any[]) => any) {
  * add3(1, 2, 3); // 6
  * ```
  */
-export const uncurry3 = <A, B, C, D>(f: (a: A) => (b: B) => (c: C) => D) => (a: A, b: B, c: C): D =>
-  f(a)(b)(c);
+export const uncurry3 = <A, B, C, D>(f: (a: A) => (b: B) => (c: C) => D) => (a: A, b: B, c: C): D => f(a)(b)(c);
 
 /**
  * Converts a curried 4-argument function into a multi-argument function.
@@ -63,6 +62,5 @@ export const uncurry3 = <A, B, C, D>(f: (a: A) => (b: B) => (c: C) => D) => (a: 
  * add4(1, 2, 3, 4); // 10
  * ```
  */
-export const uncurry4 =
-  <A, B, C, D, E>(f: (a: A) => (b: B) => (c: C) => (d: D) => E) => (a: A, b: B, c: C, d: D): E =>
-    f(a)(b)(c)(d);
+export const uncurry4 = <A, B, C, D, E>(f: (a: A) => (b: B) => (c: C) => (d: D) => E) => (a: A, b: B, c: C, d: D): E =>
+	f(a)(b)(c)(d);

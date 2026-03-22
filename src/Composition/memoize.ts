@@ -25,22 +25,22 @@
  * ```
  */
 export const memoize = <A, B>(
-  f: (a: A) => B,
-  keyFn: (a: A) => unknown = (a) => a,
+	f: (a: A) => B,
+	keyFn: (a: A) => unknown = (a) => a,
 ): (a: A) => B => {
-  const cache = new Map<unknown, B>();
+	const cache = new Map<unknown, B>();
 
-  return (a: A): B => {
-    const key = keyFn(a);
+	return (a: A): B => {
+		const key = keyFn(a);
 
-    if (cache.has(key)) {
-      return cache.get(key)!;
-    }
+		if (cache.has(key)) {
+			return cache.get(key)!;
+		}
 
-    const result = f(a);
-    cache.set(key, result);
-    return result;
-  };
+		const result = f(a);
+		cache.set(key, result);
+		return result;
+	};
 };
 
 /**
@@ -61,15 +61,15 @@ export const memoize = <A, B>(
  * ```
  */
 export const memoizeWeak = <A extends object, B>(f: (a: A) => B): (a: A) => B => {
-  const cache = new WeakMap<A, B>();
+	const cache = new WeakMap<A, B>();
 
-  return (a: A): B => {
-    if (cache.has(a)) {
-      return cache.get(a)!;
-    }
+	return (a: A): B => {
+		if (cache.has(a)) {
+			return cache.get(a)!;
+		}
 
-    const result = f(a);
-    cache.set(a, result);
-    return result;
-  };
+		const result = f(a);
+		cache.set(a, result);
+		return result;
+	};
 };

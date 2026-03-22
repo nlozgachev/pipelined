@@ -1,6 +1,6 @@
 ---
 title: Why this exists
-description: The case for functional programming without jargon, and why this library exists.
+description: The reasoning behind pipelined — why it exists alongside other libraries, and what it is trying to be.
 ---
 
 There are already many functional programming libraries for TypeScript. Effect is powerful and

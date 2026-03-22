@@ -51,8 +51,8 @@ export const constVoid = (): void => {};
  * ```
  */
 export const and = <A extends ReadonlyArray<unknown>>(
-  p1: (...args: A) => boolean,
-  p2: (...args: A) => boolean,
+	p1: (...args: A) => boolean,
+	p2: (...args: A) => boolean,
 ) =>
 (...args: A): boolean => p1(...args) && p2(...args);
 
@@ -71,8 +71,8 @@ export const and = <A extends ReadonlyArray<unknown>>(
  * ```
  */
 export const or = <A extends ReadonlyArray<unknown>>(
-  p1: (...args: A) => boolean,
-  p2: (...args: A) => boolean,
+	p1: (...args: A) => boolean,
+	p2: (...args: A) => boolean,
 ) =>
 (...args: A): boolean => p1(...args) || p2(...args);
 
@@ -90,13 +90,13 @@ export const or = <A extends ReadonlyArray<unknown>>(
  * ```
  */
 export const once = <A>(f: () => A): () => A => {
-  let called = false;
-  let result: A;
-  return () => {
-    if (!called) {
-      result = f();
-      called = true;
-    }
-    return result;
-  };
+	let called = false;
+	let result: A;
+	return () => {
+		if (!called) {
+			result = f();
+			called = true;
+		}
+		return result;
+	};
 };

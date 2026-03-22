@@ -1,13 +1,27 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
-    "strict": true,
-    "lib": ["ES2022", "DOM"]
-  },
-  "include": ["src/**/*.ts"],
-  "exclude": ["src/**/__tests__/**"]
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"allowImportingTsExtensions": true,
+		"noEmit": true,
+		"strict": true,
+		"lib": [
+			"ES2022",
+			"DOM"
+		],
+		"paths": {
+			"#core/*": ["./src/Core/*"],
+			"#utils/*": ["./src/Utils/*"],
+			"#types/*": ["./src/Types/*"],
+			"#composition/*": ["./src/Composition/*"]
+		}
+	},
+	"include": [
+		"src/**/*.ts"
+	],
+	"exclude": [
+		"src/**/__tests__/**",
+		"src/**/__bench__/**"
+	]
 }

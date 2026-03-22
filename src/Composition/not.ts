@@ -22,6 +22,5 @@
  * );
  * ```
  */
-export const not =
-  <A extends ReadonlyArray<unknown>>(predicate: (...args: A) => boolean) => (...args: A): boolean =>
-    !predicate(...args);
+export const not = <A extends ReadonlyArray<unknown>>(predicate: (...args: A) => boolean) => (...args: A): boolean =>
+	!predicate(...args);

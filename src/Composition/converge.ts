@@ -16,20 +16,20 @@
  * ```
  */
 export function converge<A, B, C, R>(
-  f: (b: B, c: C) => R,
-  transformers: [(a: A) => B, (a: A) => C],
+	f: (b: B, c: C) => R,
+	transformers: [(a: A) => B, (a: A) => C],
 ): (a: A) => R;
 export function converge<A, B, C, D, R>(
-  f: (b: B, c: C, d: D) => R,
-  transformers: [(a: A) => B, (a: A) => C, (a: A) => D],
+	f: (b: B, c: C, d: D) => R,
+	transformers: [(a: A) => B, (a: A) => C, (a: A) => D],
 ): (a: A) => R;
 export function converge<A, B, C, D, E, R>(
-  f: (b: B, c: C, d: D, e: E) => R,
-  transformers: [(a: A) => B, (a: A) => C, (a: A) => D, (a: A) => E],
+	f: (b: B, c: C, d: D, e: E) => R,
+	transformers: [(a: A) => B, (a: A) => C, (a: A) => D, (a: A) => E],
 ): (a: A) => R;
 export function converge<A>(
-  f: (...args: unknown[]) => unknown,
-  transformers: ReadonlyArray<(a: A) => unknown>,
+	f: (...args: unknown[]) => unknown,
+	transformers: ReadonlyArray<(a: A) => unknown>,
 ): (a: A) => unknown {
-  return (a: A) => f(...transformers.map((t) => t(a)));
+	return (a: A) => f(...transformers.map((t) => t(a)));
 }

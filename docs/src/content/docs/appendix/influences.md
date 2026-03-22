@@ -27,7 +27,7 @@ inclusive-OR case: a value that can carry an error, a result, or both simultaneo
 
 Elm deserves particular credit for two things. First, it took the `Maybe` and `Result` types from
 Haskell and gave them an API that felt natural to people without a Haskell background — friendly,
-named, and consistent. That accessibility is something this library tries to maintain.
+named, and consistent.
 
 Second, Elm is where `RemoteData` as a named pattern originated, in a package by Kris Jenkins. The
 insight — that a data fetch has exactly four states, that those states are mutually exclusive, and

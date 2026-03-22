@@ -17,8 +17,6 @@ state flag soup, you get types that name every possible state and make invalid o
 Each type comes with a consistent set of operations — `map`, `chain`, `match`, `getOrElse` — that
 compose with `pipe` and `flow`.
 
-No FP jargon required. You won't find `Monad`, `Functor`, or `Applicative` in the API.
-
 ## What's included?
 
 ### pipelined/core
@@ -39,8 +37,16 @@ No FP jargon required. You won't find `Monad`, `Functor`, or `Applicative` in th
 - **`Optional<S, A>`** — like `Lens`, but the target may be absent (nullable fields, array indices).
 - **`Reader<R, A>`** — a computation that depends on an environment `R`, supplied once at the
   boundary.
+
+
+### pipelined/utils
+
+Everyday utilities for built-in JS types.
+
 - **`Arr`** — array utilities, data-last, returning `Option` instead of `undefined`.
-- **`Rec`** — record utilities, data-last, with `Option`-returning key lookup.
+- **`Rec`** — record/object utilities, data-last, with `Option`-returning key lookup.
+- **`Num`** — number utilities: `range`, `clamp`, `between`, safe `parse`, and curried arithmetic.
+- **`Str`** — string utilities: `split`, `trim`, `words`, `lines`, and safe `parse.int` / `parse.float`.
 
 ### pipelined/types
 
