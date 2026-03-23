@@ -1,6 +1,6 @@
 {
 	"name": "@nlozgachev/pipelined",
-	"version": "0.15.0",
+	"version": "0.16.0",
 	"description": "Simple functional programming toolkit for TypeScript",
 	"license": "BSD-3-Clause",
 	"homepage": "https://pipelined.lozgachev.dev",
