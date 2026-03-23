@@ -74,7 +74,7 @@ data.filter(predicate)
 ```
 
 That is also, in practice, the slowest option. Benchmarks showed `.filter()` taking 75 µs for
-10 000 elements; a manual index loop with `push` performs the same operation in 17 µs. The native
+10 000 elements; a manual index loop with `push` performs the same operation in 19 µs. The native
 method carries overhead that a direct loop does not — the difference is not theoretical.
 
 This pattern repeats across the library. Several techniques appear wherever the benchmarks show
@@ -82,13 +82,13 @@ a real gap:
 
 **Pre-allocation.** When the output length is known before the loop, `new Array<T>(n)` reserves
 the exact capacity upfront. Writing `result[i] = value` is then a direct slot write, with no
-re-allocation. A push-based loop on 10 000 numbers runs in ~23 µs; the pre-allocated equivalent
+re-allocation. A push-based loop on 10 000 numbers runs in ~24 µs; the pre-allocated equivalent
 runs in ~10 µs. `Arr.map`, `Arr.scan`, `Arr.zip`, `Arr.traverse`, and `Num.range` all use this.
 
 **Direct index loops over native methods.** `.filter()`, `.every()`, `.some()`, and `.flatMap()`
 all carry callback-dispatch overhead that cannot be avoided through the native API. Replacing them
 with `for (let i = 0; i < n; i++)` loops and inlining the check eliminates that overhead entirely.
-`Arr.every` dropped from 51 µs to 5.7 µs. `Arr.filter` dropped from 75 µs to 17 µs.
+`Arr.every` dropped from 42 µs to ~6 µs. `Arr.filter` dropped from 75 µs to 19 µs.
 
 **Choosing the right record iteration strategy.** `Object.entries` allocates a `[key, value]` pair
 per entry, which adds up across many keys. For operations that unconditionally read both key and
@@ -131,8 +131,8 @@ The numbers in this documentation were collected on the following setup:
 | -------------- | ---------------------- |
 | **CPU**        | Apple M1 Pro (aarch64) |
 | **OS**         | macOS (darwin)         |
-| **Node.js**    | 22                     |
-| **V8**         | 12.4.254.21            |
+| **Node.js**    | 24                     |
+| **V8**         | 13.6.233.17            |
 | **TypeScript** | 5.9.3                  |
 
 Results on other hardware or runtime versions will differ. x86 machines may show different ratios

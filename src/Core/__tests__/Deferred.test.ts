@@ -68,3 +68,11 @@ test("Deferred.toPromise rejects when the underlying Promise rejects", async () 
 	}
 	expect(threw).toBe(true);
 });
+
+test("Deferred.toPromise fallback — uses .then when deferred not in store", async () => {
+	const fakeDeferred = {
+		then: (f: (v: number) => void) => f(77),
+	} as unknown as Deferred<number>;
+	const result = await Deferred.toPromise(fakeDeferred);
+	expect(result).toBe(77);
+});
