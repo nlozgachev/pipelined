@@ -80,6 +80,34 @@ test("compose - integration with Result", () => {
 	expect(fn(Result.err("err") as Result<string, number>)).toBe(0);
 });
 
+// ---------------------------------------------------------------------------
+// switch case coverage (one test per step count to keep every case reachable)
+// ---------------------------------------------------------------------------
+
+const inc = (n: number) => n + 1;
+
+test("compose - 4 functions", () => {
+	expect(compose(inc, inc, inc, inc)(0)).toBe(4);
+});
+test("compose - 5 functions", () => {
+	expect(compose(inc, inc, inc, inc, inc)(0)).toBe(5);
+});
+test("compose - 6 functions", () => {
+	expect(compose(inc, inc, inc, inc, inc, inc)(0)).toBe(6);
+});
+test("compose - 7 functions", () => {
+	expect(compose(inc, inc, inc, inc, inc, inc, inc)(0)).toBe(7);
+});
+test("compose - 8 functions", () => {
+	expect(compose(inc, inc, inc, inc, inc, inc, inc, inc)(0)).toBe(8);
+});
+test("compose - 9 functions", () => {
+	expect(compose(inc, inc, inc, inc, inc, inc, inc, inc, inc)(0)).toBe(9);
+});
+test("compose - 10 functions", () => {
+	expect(compose(inc, inc, inc, inc, inc, inc, inc, inc, inc, inc)(0)).toBe(10);
+});
+
 test("compose - composed function is reusable", () => {
 	const increment = (n: number) => n + 1;
 	const triple = (n: number) => n * 3;

@@ -148,7 +148,7 @@ export function flow(
 	hi?: (b: unknown) => unknown,
 	ij?: (b: unknown) => unknown,
 	jk?: (b: unknown) => unknown,
-): (...args: ReadonlyArray<unknown>) => unknown {
+): unknown {
 	const len = arguments.length;
 	switch (len) {
 		case 0:
@@ -194,6 +194,5 @@ export function flow(
 				return jk!(ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab.apply(this, arguments as any))))))))));
 			};
 	}
-	return ab; // unreachable
 }
 /* oxlint-enable prefer-rest-params, func-names */

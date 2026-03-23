@@ -5,9 +5,15 @@ export const negate = (x: number) => -x;
 export const square = (x: number) => x * x;
 export const halve = (x: number) => x / 2;
 
-export const direct3 = (): void => { negate(double(add1(n))); };
-export const direct5 = (): void => { halve(square(negate(double(add1(n))))); };
-export const direct10 = (): void => { halve(square(negate(double(add1(halve(square(negate(double(add1(n)))))))))); };
+export const direct3 = (): void => {
+	negate(double(add1(n)));
+};
+export const direct5 = (): void => {
+	halve(square(negate(double(add1(n)))));
+};
+export const direct10 = (): void => {
+	halve(square(negate(double(add1(halve(square(negate(double(add1(n))))))))));
+};
 
 export const gc = (globalThis as any).gc as (() => void) | undefined;
 

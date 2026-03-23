@@ -107,7 +107,7 @@ export function compose(
 	f7?: (a: unknown) => unknown,
 	f8?: (a: unknown) => unknown,
 	f9?: (a: unknown) => unknown,
-): (arg: unknown) => unknown {
+): unknown {
 	const len = arguments.length;
 	switch (len) {
 		case 1:
@@ -149,6 +149,5 @@ export function compose(
 				return f0(f1!(f2!(f3!(f4!(f5!(f6!(f7!(f8!(f9!.apply(this, arguments as any))))))))));
 			};
 	}
-	return f0; // unreachable
 }
 /* oxlint-enable prefer-rest-params, func-names */

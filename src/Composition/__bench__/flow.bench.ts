@@ -8,17 +8,23 @@ const flow5 = flow(add1, double, negate, square, halve);
 const flow10 = flow(add1, double, negate, square, halve, add1, double, negate, square, halve);
 
 describe("flow-3-steps", () => {
-	bench("flow 3 steps", () => { flow3(n); });
+	bench("flow 3 steps", () => {
+		flow3(n);
+	});
 	bench("direct 3 steps", direct3);
 });
 
 describe("flow-5-steps", () => {
-	bench("flow 5 steps", () => { flow5(n); });
+	bench("flow 5 steps", () => {
+		flow5(n);
+	});
 	bench("direct 5 steps", direct5);
 });
 
 describe("flow-10-steps", () => {
-	bench("flow 10 steps", () => { flow10(n); });
+	bench("flow 10 steps", () => {
+		flow10(n);
+	});
 	bench("direct 10 steps", direct10);
 });
 
