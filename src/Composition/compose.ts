@@ -19,6 +19,9 @@
  * flowed(5); // 12 ((5 + 1) * 2)
  * ```
  *
+ * Fully typed for up to 10 steps. Beyond that TypeScript raises a compile error —
+ * use a cast or split the pipeline into named intermediate functions.
+ *
  * @see {@link flow} for left-to-right composition
  */
 export function compose<A, B>(ab: (a: A) => B): (a: A) => B;
@@ -79,9 +82,73 @@ export function compose<A, B, C, D, E, F, G, H, I, J>(
 	bc: (b: B) => C,
 	ab: (a: A) => B,
 ): (a: A) => J;
+export function compose<A, B, C, D, E, F, G, H, I, J, K>(
+	jk: (j: J) => K,
+	ij: (i: I) => J,
+	hi: (h: H) => I,
+	gh: (g: G) => H,
+	fg: (f: F) => G,
+	ef: (e: E) => F,
+	de: (d: D) => E,
+	cd: (c: C) => D,
+	bc: (b: B) => C,
+	ab: (a: A) => B,
+): (a: A) => K;
 
+/* oxlint-disable prefer-rest-params, func-names */
 export function compose(
-	...fns: ReadonlyArray<(arg: unknown) => unknown>
+	f0: (a: unknown) => unknown,
+	f1?: (a: unknown) => unknown,
+	f2?: (a: unknown) => unknown,
+	f3?: (a: unknown) => unknown,
+	f4?: (a: unknown) => unknown,
+	f5?: (a: unknown) => unknown,
+	f6?: (a: unknown) => unknown,
+	f7?: (a: unknown) => unknown,
+	f8?: (a: unknown) => unknown,
+	f9?: (a: unknown) => unknown,
 ): (arg: unknown) => unknown {
-	return (arg: unknown) => fns.reduceRight((acc, fn) => fn(acc), arg);
+	const len = arguments.length;
+	switch (len) {
+		case 1:
+			return f0;
+		case 2:
+			return function(this: unknown) {
+				return f0(f1!.apply(this, arguments as any));
+			};
+		case 3:
+			return function(this: unknown) {
+				return f0(f1!(f2!.apply(this, arguments as any)));
+			};
+		case 4:
+			return function(this: unknown) {
+				return f0(f1!(f2!(f3!.apply(this, arguments as any))));
+			};
+		case 5:
+			return function(this: unknown) {
+				return f0(f1!(f2!(f3!(f4!.apply(this, arguments as any)))));
+			};
+		case 6:
+			return function(this: unknown) {
+				return f0(f1!(f2!(f3!(f4!(f5!.apply(this, arguments as any))))));
+			};
+		case 7:
+			return function(this: unknown) {
+				return f0(f1!(f2!(f3!(f4!(f5!(f6!.apply(this, arguments as any)))))));
+			};
+		case 8:
+			return function(this: unknown) {
+				return f0(f1!(f2!(f3!(f4!(f5!(f6!(f7!.apply(this, arguments as any))))))));
+			};
+		case 9:
+			return function(this: unknown) {
+				return f0(f1!(f2!(f3!(f4!(f5!(f6!(f7!(f8!.apply(this, arguments as any)))))))));
+			};
+		case 10:
+			return function(this: unknown) {
+				return f0(f1!(f2!(f3!(f4!(f5!(f6!(f7!(f8!(f9!.apply(this, arguments as any))))))))));
+			};
+	}
+	return f0; // unreachable
 }
+/* oxlint-enable prefer-rest-params, func-names */

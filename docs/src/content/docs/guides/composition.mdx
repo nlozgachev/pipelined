@@ -63,6 +63,43 @@ compose(addOne, double)(5); // 11
 Use `compose` when adapting code from libraries or codebases that use right-to-left composition
 convention.
 
+<Aside title="Step limits and why they exist">
+`pipe`, `flow`, and `compose` are fully typed for up to **10 steps**. Beyond that TypeScript raises
+a compile error. The limit is set at the point where all major JavaScript runtimes stop optimizing
+function call chains — making additional overloads actively harmful rather than just unnecessary.
+
+**TypeScript.** The language has no way to express "a variadic function where each argument's input
+type must match the previous argument's output type". The only option is writing one overload
+signature per chain length, explicitly and manually. Each overload adds compile-time work that
+compounds across every call site in the codebase.
+
+**JIT compilers.** Every major JavaScript engine has a finite inlining budget per compilation unit.
+V8's TurboFan (Node, Chrome, Edge, Deno) exposes it via `--max-inlined-bytecode-size` and
+`--max-inlined-bytecode-size-cumulative` — run `node --v8-options | grep inlined` to see current
+defaults. JavaScriptCore's DFG and FTL tiers (Safari, Bun) apply analogous per-function limits.
+SpiderMonkey's Warp JIT (Firefox) does the same. Once a call chain exhausts the budget the JIT
+stops inlining and falls back to slower indirect calls. The performance benefit of composing
+functions is erased regardless of how the library is implemented. 10 is the point where the typed
+API and the runtime reality agree.
+
+_"But I can increase V8's inlining budget with flags."_ Custom flags only apply to the one process
+you control. The TypeScript constraint is universal — more overloads slow down `tsc` and IDE
+completions for every developer who imports this library, on every machine, regardless of which
+runtime they target.
+
+_"Only 10 is a no-go for me."_ If you genuinely need more than 10 steps, splitting into named
+stages costs nothing and gives you more: each stage gets its own type signature, can be tested in
+isolation, and can be reused across pipelines:
+
+```ts
+const pricing      = flow(calculateTax, applyDiscounts, calculateShipping, applyPromo);
+const fulfillment  = flow(reserveInventory, chargePayment, scheduleFulfillment);
+const notification = flow(generateInvoice, sendConfirmation, updateCRM, updateAnalytics);
+
+const processOrder = flow(validateStock, pricing, fulfillment, notification);
+```
+</Aside>
+
 ## Currying: `curry`, `curry3`, `curry4`
 
 A curried function takes its arguments one at a time. `curry` converts a two-argument function into

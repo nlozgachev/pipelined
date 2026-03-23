@@ -95,6 +95,7 @@ export default defineConfig({
               slug: "guides/refinement",
             },
             { label: "Predicate — boolean checks", slug: "guides/predicate" },
+            { label: "Resource — safe acquire-release", slug: "guides/resource" },
             { label: "State — threading state", slug: "guides/state" },
             { label: "Logged — values with logs", slug: "guides/logged" },
             { label: "Arr — array utilities", slug: "guides/arr" },

@@ -29,6 +29,7 @@ import from `@nlozgachev/pipelined/core`
 | [Logged](/api/core/type-aliases/logged)                       | A value paired with an accumulated log; thread logs through a pipeline.           |
 | [Predicate](/api/core/type-aliases/predicate)                 | Composable boolean checks; combine with `and`, `or`, `not`.                      |
 | [Refinement](/api/core/type-aliases/refinement)               | Type predicates with runtime validation; narrows a broad type to a specific one.  |
+| [Resource](/api/core/type-aliases/resource)                   | Safe acquire-use-release lifecycle; guarantees cleanup even when errors occur.    |
 
 ## Utils
 

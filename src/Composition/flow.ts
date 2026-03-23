@@ -6,6 +6,9 @@
  * Use `flow` when you want to create a named, reusable transformation.
  * Use `pipe` when you want to immediately transform a value.
  *
+ * Fully typed for up to 10 steps. Beyond that TypeScript raises a compile error — split into named
+ * intermediate functions or use a cast.
+ *
  * @example
  * ```ts
  * // Create a reusable transformation
@@ -132,320 +135,65 @@ export function flow<
 	ij: (i: I) => J,
 	jk: (j: J) => K,
 ): (...a: A) => K;
-export function flow<
-	A extends ReadonlyArray<unknown>,
-	B,
-	C,
-	D,
-	E,
-	F,
-	G,
-	H,
-	I,
-	J,
-	K,
-	L,
->(
-	ab: (...a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-	ef: (e: E) => F,
-	fg: (f: F) => G,
-	gh: (g: G) => H,
-	hi: (h: H) => I,
-	ij: (i: I) => J,
-	jk: (j: J) => K,
-	kl: (k: K) => L,
-): (...a: A) => L;
-export function flow<
-	A extends ReadonlyArray<unknown>,
-	B,
-	C,
-	D,
-	E,
-	F,
-	G,
-	H,
-	I,
-	J,
-	K,
-	L,
-	M,
->(
-	ab: (...a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-	ef: (e: E) => F,
-	fg: (f: F) => G,
-	gh: (g: G) => H,
-	hi: (h: H) => I,
-	ij: (i: I) => J,
-	jk: (j: J) => K,
-	kl: (k: K) => L,
-	lm: (l: L) => M,
-): (...a: A) => M;
-export function flow<
-	A extends ReadonlyArray<unknown>,
-	B,
-	C,
-	D,
-	E,
-	F,
-	G,
-	H,
-	I,
-	J,
-	K,
-	L,
-	M,
-	N,
->(
-	ab: (...a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-	ef: (e: E) => F,
-	fg: (f: F) => G,
-	gh: (g: G) => H,
-	hi: (h: H) => I,
-	ij: (i: I) => J,
-	jk: (j: J) => K,
-	kl: (k: K) => L,
-	lm: (l: L) => M,
-	mn: (m: M) => N,
-): (...a: A) => N;
-export function flow<
-	A extends ReadonlyArray<unknown>,
-	B,
-	C,
-	D,
-	E,
-	F,
-	G,
-	H,
-	I,
-	J,
-	K,
-	L,
-	M,
-	N,
-	O,
->(
-	ab: (...a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-	ef: (e: E) => F,
-	fg: (f: F) => G,
-	gh: (g: G) => H,
-	hi: (h: H) => I,
-	ij: (i: I) => J,
-	jk: (j: J) => K,
-	kl: (k: K) => L,
-	lm: (l: L) => M,
-	mn: (m: M) => N,
-	no: (n: N) => O,
-): (...a: A) => O;
-export function flow<
-	A extends ReadonlyArray<unknown>,
-	B,
-	C,
-	D,
-	E,
-	F,
-	G,
-	H,
-	I,
-	J,
-	K,
-	L,
-	M,
-	N,
-	O,
-	P,
->(
-	ab: (...a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-	ef: (e: E) => F,
-	fg: (f: F) => G,
-	gh: (g: G) => H,
-	hi: (h: H) => I,
-	ij: (i: I) => J,
-	jk: (j: J) => K,
-	kl: (k: K) => L,
-	lm: (l: L) => M,
-	mn: (m: M) => N,
-	no: (n: N) => O,
-	op: (o: O) => P,
-): (...a: A) => P;
-export function flow<
-	A extends ReadonlyArray<unknown>,
-	B,
-	C,
-	D,
-	E,
-	F,
-	G,
-	H,
-	I,
-	J,
-	K,
-	L,
-	M,
-	N,
-	O,
-	P,
-	Q,
->(
-	ab: (...a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-	ef: (e: E) => F,
-	fg: (f: F) => G,
-	gh: (g: G) => H,
-	hi: (h: H) => I,
-	ij: (i: I) => J,
-	jk: (j: J) => K,
-	kl: (k: K) => L,
-	lm: (l: L) => M,
-	mn: (m: M) => N,
-	no: (n: N) => O,
-	op: (o: O) => P,
-	pq: (p: P) => Q,
-): (...a: A) => Q;
-export function flow<
-	A extends ReadonlyArray<unknown>,
-	B,
-	C,
-	D,
-	E,
-	F,
-	G,
-	H,
-	I,
-	J,
-	K,
-	L,
-	M,
-	N,
-	O,
-	P,
-	Q,
-	R,
->(
-	ab: (...a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-	ef: (e: E) => F,
-	fg: (f: F) => G,
-	gh: (g: G) => H,
-	hi: (h: H) => I,
-	ij: (i: I) => J,
-	jk: (j: J) => K,
-	kl: (k: K) => L,
-	lm: (l: L) => M,
-	mn: (m: M) => N,
-	no: (n: N) => O,
-	op: (o: O) => P,
-	pq: (p: P) => Q,
-	qr: (q: Q) => R,
-): (...a: A) => R;
-export function flow<
-	A extends ReadonlyArray<unknown>,
-	B,
-	C,
-	D,
-	E,
-	F,
-	G,
-	H,
-	I,
-	J,
-	K,
-	L,
-	M,
-	N,
-	O,
-	P,
-	Q,
-	R,
-	S,
->(
-	ab: (...a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-	ef: (e: E) => F,
-	fg: (f: F) => G,
-	gh: (g: G) => H,
-	hi: (h: H) => I,
-	ij: (i: I) => J,
-	jk: (j: J) => K,
-	kl: (k: K) => L,
-	lm: (l: L) => M,
-	mn: (m: M) => N,
-	no: (n: N) => O,
-	op: (o: O) => P,
-	pq: (p: P) => Q,
-	qr: (q: Q) => R,
-	rs: (r: R) => S,
-): (...a: A) => S;
-export function flow<
-	A extends ReadonlyArray<unknown>,
-	B,
-	C,
-	D,
-	E,
-	F,
-	G,
-	H,
-	I,
-	J,
-	K,
-	L,
-	M,
-	N,
-	O,
-	P,
-	Q,
-	R,
-	S,
-	T,
->(
-	ab: (...a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-	ef: (e: E) => F,
-	fg: (f: F) => G,
-	gh: (g: G) => H,
-	hi: (h: H) => I,
-	ij: (i: I) => J,
-	jk: (j: J) => K,
-	kl: (k: K) => L,
-	lm: (l: L) => M,
-	mn: (m: M) => N,
-	no: (n: N) => O,
-	op: (o: O) => P,
-	pq: (p: P) => Q,
-	qr: (q: Q) => R,
-	rs: (r: R) => S,
-	st: (s: S) => T,
-): (...a: A) => T;
 
+/* oxlint-disable prefer-rest-params, func-names */
 export function flow(
-	...fns: ReadonlyArray<(...args: ReadonlyArray<unknown>) => unknown>
+	ab: (...args: ReadonlyArray<unknown>) => unknown,
+	bc?: (b: unknown) => unknown,
+	cd?: (b: unknown) => unknown,
+	de?: (b: unknown) => unknown,
+	ef?: (b: unknown) => unknown,
+	fg?: (b: unknown) => unknown,
+	gh?: (b: unknown) => unknown,
+	hi?: (b: unknown) => unknown,
+	ij?: (b: unknown) => unknown,
+	jk?: (b: unknown) => unknown,
 ): (...args: ReadonlyArray<unknown>) => unknown {
-	return (...args: ReadonlyArray<unknown>) => {
-		if (fns.length === 0) return args[0];
-
-		const [first, ...rest] = fns;
-		return rest.reduce((acc, fn) => fn(acc), first(...args));
-	};
+	const len = arguments.length;
+	switch (len) {
+		case 0:
+			return function(...args: unknown[]) {
+				return args[0];
+			};
+		case 1:
+			return ab;
+		case 2:
+			return function(this: unknown) {
+				return bc!(ab.apply(this, arguments as any));
+			};
+		case 3:
+			return function(this: unknown) {
+				return cd!(bc!(ab.apply(this, arguments as any)));
+			};
+		case 4:
+			return function(this: unknown) {
+				return de!(cd!(bc!(ab.apply(this, arguments as any))));
+			};
+		case 5:
+			return function(this: unknown) {
+				return ef!(de!(cd!(bc!(ab.apply(this, arguments as any)))));
+			};
+		case 6:
+			return function(this: unknown) {
+				return fg!(ef!(de!(cd!(bc!(ab.apply(this, arguments as any))))));
+			};
+		case 7:
+			return function(this: unknown) {
+				return gh!(fg!(ef!(de!(cd!(bc!(ab.apply(this, arguments as any)))))));
+			};
+		case 8:
+			return function(this: unknown) {
+				return hi!(gh!(fg!(ef!(de!(cd!(bc!(ab.apply(this, arguments as any))))))));
+			};
+		case 9:
+			return function(this: unknown) {
+				return ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab.apply(this, arguments as any)))))))));
+			};
+		case 10:
+			return function(this: unknown) {
+				return jk!(ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab.apply(this, arguments as any))))))))));
+			};
+	}
+	return ab; // unreachable
 }
+/* oxlint-enable prefer-rest-params, func-names */

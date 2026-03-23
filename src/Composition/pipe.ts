@@ -6,6 +6,9 @@
  * It makes code read top-to-bottom, left-to-right, which is more
  * intuitive for developers coming from imperative backgrounds.
  *
+ * Fully typed for up to 10 steps. Beyond that TypeScript raises a compile error — split into named
+ * intermediate functions or use a cast.
+ *
  * @example
  * ```ts
  * // Basic usage
@@ -112,193 +115,44 @@ export function pipe<A, B, C, D, E, F, G, H, I, J, K>(
 	ij: (i: I) => J,
 	jk: (j: J) => K,
 ): K;
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L>(
-	a: A,
-	ab: (a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-	ef: (e: E) => F,
-	fg: (f: F) => G,
-	gh: (g: G) => H,
-	hi: (h: H) => I,
-	ij: (i: I) => J,
-	jk: (j: J) => K,
-	kl: (k: K) => L,
-): L;
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M>(
-	a: A,
-	ab: (a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-	ef: (e: E) => F,
-	fg: (f: F) => G,
-	gh: (g: G) => H,
-	hi: (h: H) => I,
-	ij: (i: I) => J,
-	jk: (j: J) => K,
-	kl: (k: K) => L,
-	lm: (l: L) => M,
-): M;
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N>(
-	a: A,
-	ab: (a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-	ef: (e: E) => F,
-	fg: (f: F) => G,
-	gh: (g: G) => H,
-	hi: (h: H) => I,
-	ij: (i: I) => J,
-	jk: (j: J) => K,
-	kl: (k: K) => L,
-	lm: (l: L) => M,
-	mn: (m: M) => N,
-): N;
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>(
-	a: A,
-	ab: (a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-	ef: (e: E) => F,
-	fg: (f: F) => G,
-	gh: (g: G) => H,
-	hi: (h: H) => I,
-	ij: (i: I) => J,
-	jk: (j: J) => K,
-	kl: (k: K) => L,
-	lm: (l: L) => M,
-	mn: (m: M) => N,
-	no: (n: N) => O,
-): O;
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(
-	a: A,
-	ab: (a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-	ef: (e: E) => F,
-	fg: (f: F) => G,
-	gh: (g: G) => H,
-	hi: (h: H) => I,
-	ij: (i: I) => J,
-	jk: (j: J) => K,
-	kl: (k: K) => L,
-	lm: (l: L) => M,
-	mn: (m: M) => N,
-	no: (n: N) => O,
-	op: (o: O) => P,
-): P;
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
-	a: A,
-	ab: (a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-	ef: (e: E) => F,
-	fg: (f: F) => G,
-	gh: (g: G) => H,
-	hi: (h: H) => I,
-	ij: (i: I) => J,
-	jk: (j: J) => K,
-	kl: (k: K) => L,
-	lm: (l: L) => M,
-	mn: (m: M) => N,
-	no: (n: N) => O,
-	op: (o: O) => P,
-	pq: (p: P) => Q,
-): Q;
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>(
-	a: A,
-	ab: (a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-	ef: (e: E) => F,
-	fg: (f: F) => G,
-	gh: (g: G) => H,
-	hi: (h: H) => I,
-	ij: (i: I) => J,
-	jk: (j: J) => K,
-	kl: (k: K) => L,
-	lm: (l: L) => M,
-	mn: (m: M) => N,
-	no: (n: N) => O,
-	op: (o: O) => P,
-	pq: (p: P) => Q,
-	qr: (q: Q) => R,
-): R;
-export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>(
-	a: A,
-	ab: (a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-	ef: (e: E) => F,
-	fg: (f: F) => G,
-	gh: (g: G) => H,
-	hi: (h: H) => I,
-	ij: (i: I) => J,
-	jk: (j: J) => K,
-	kl: (k: K) => L,
-	lm: (l: L) => M,
-	mn: (m: M) => N,
-	no: (n: N) => O,
-	op: (o: O) => P,
-	pq: (p: P) => Q,
-	qr: (q: Q) => R,
-	rs: (r: R) => S,
-): S;
-export function pipe<
-	A,
-	B,
-	C,
-	D,
-	E,
-	F,
-	G,
-	H,
-	I,
-	J,
-	K,
-	L,
-	M,
-	N,
-	O,
-	P,
-	Q,
-	R,
-	S,
-	T,
->(
-	a: A,
-	ab: (a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-	ef: (e: E) => F,
-	fg: (f: F) => G,
-	gh: (g: G) => H,
-	hi: (h: H) => I,
-	ij: (i: I) => J,
-	jk: (j: J) => K,
-	kl: (k: K) => L,
-	lm: (l: L) => M,
-	mn: (m: M) => N,
-	no: (n: N) => O,
-	op: (o: O) => P,
-	pq: (p: P) => Q,
-	qr: (q: Q) => R,
-	rs: (r: R) => S,
-	st: (s: S) => T,
-): T;
 
 export function pipe(
 	a: unknown,
-	...fns: Array<(arg: unknown) => unknown>
+	ab?: (a: unknown) => unknown,
+	bc?: (a: unknown) => unknown,
+	cd?: (a: unknown) => unknown,
+	de?: (a: unknown) => unknown,
+	ef?: (a: unknown) => unknown,
+	fg?: (a: unknown) => unknown,
+	gh?: (a: unknown) => unknown,
+	hi?: (a: unknown) => unknown,
+	ij?: (a: unknown) => unknown,
+	jk?: (a: unknown) => unknown,
 ): unknown {
-	return fns.reduce((acc, fn) => fn(acc), a);
+	const len = arguments.length;
+	// oxlint-disable-next-line prefer-rest-params
+	switch (len) {
+		case 1:
+			return a;
+		case 2:
+			return ab!(a);
+		case 3:
+			return bc!(ab!(a));
+		case 4:
+			return cd!(bc!(ab!(a)));
+		case 5:
+			return de!(cd!(bc!(ab!(a))));
+		case 6:
+			return ef!(de!(cd!(bc!(ab!(a)))));
+		case 7:
+			return fg!(ef!(de!(cd!(bc!(ab!(a))))));
+		case 8:
+			return gh!(fg!(ef!(de!(cd!(bc!(ab!(a)))))));
+		case 9:
+			return hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a))))))));
+		case 10:
+			return ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a)))))))));
+		case 11:
+			return jk!(ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a))))))))));
+	}
 }

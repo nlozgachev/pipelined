@@ -7,6 +7,7 @@ export * from "./Predicate.ts";
 export * from "./Reader.ts";
 export * from "./Refinement.ts";
 export * from "./RemoteData.ts";
+export * from "./Resource.ts";
 export * from "./Result.ts";
 export * from "./State.ts";
 export * from "./Task.ts";
