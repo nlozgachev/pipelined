@@ -1,6 +1,6 @@
 ---
 title: Dict — dictionary utilities
-description: Pure, composable operations for key-value maps — lookup returns Option, every operation returns a new map.
+description: Pure, composable operations for key-value maps — lookup returns Maybe, every operation returns a new map.
 ---
 
 You reach for a `Map` when you need to associate values with keys that aren't strings, or when
@@ -36,11 +36,11 @@ starting point with one known entry.
 ## Looking up values safely
 
 The native `Map.get` returns `V | undefined`, which forces a null check at every call site.
-`Dict.lookup` returns `Option<V>` instead — the absence of a key is explicit in the type:
+`Dict.lookup` returns `Maybe<V>` instead — the absence of a key is explicit in the type:
 
 ```ts
 import { Dict } from "@nlozgachev/pipelined/utils";
-import { Option } from "@nlozgachev/pipelined/core";
+import { Maybe } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
 
 const config = Dict.fromRecord({ timeout: 5000, retries: 3 });
@@ -49,7 +49,7 @@ pipe(config, Dict.lookup("timeout"));  // Some(5000)
 pipe(config, Dict.lookup("missing")); // None
 ```
 
-When you only need a boolean, `Dict.has` is the right tool — it avoids allocating an `Option`
+When you only need a boolean, `Dict.has` is the right tool — it avoids allocating an `Maybe`
 for what is essentially a membership test:
 
 ```ts
@@ -112,9 +112,9 @@ For the common pattern of incrementing a counter or initialising a value on firs
 the key exists, or `None` if it doesn't:
 
 ```ts
-import { Option } from "@nlozgachev/pipelined/core";
+import { Maybe } from "@nlozgachev/pipelined/core";
 
-const increment = (opt: Option<number>) => (opt.kind === "Some" ? opt.value : 0) + 1;
+const increment = (opt: Maybe<number>) => (opt.kind === "Some" ? opt.value : 0) + 1;
 
 pipe(base, Dict.upsert("views", increment));
 // ReadonlyMap { "views" => 11, "likes" => 2 }
@@ -154,15 +154,15 @@ pipe(allUsers, Dict.difference(removedIds));
 ## Removing absent values with compact
 
 When you build a dictionary from fallible lookups — mapping over IDs that might not exist — you
-end up with `ReadonlyMap<K, Option<V>>`. `Dict.compact` collapses that into `ReadonlyMap<K, V>`:
+end up with `ReadonlyMap<K, Maybe<V>>`. `Dict.compact` collapses that into `ReadonlyMap<K, V>`:
 
 ```ts
-import { Option } from "@nlozgachev/pipelined/core";
+import { Maybe } from "@nlozgachev/pipelined/core";
 
-const profileMap = Dict.fromEntries<string, Option<string>>([
-  ["alice", Option.some("Alice Smith")],
-  ["b404",  Option.none()],
-  ["carol", Option.some("Carol Jones")],
+const profileMap = Dict.fromEntries<string, Maybe<string>>([
+  ["alice", Maybe.some("Alice Smith")],
+  ["b404",  Maybe.none()],
+  ["carol", Maybe.some("Carol Jones")],
 ]);
 
 Dict.compact(profileMap);
@@ -205,7 +205,7 @@ Use `Dict` when:
 - You need keys that aren't strings — numbers, objects, or any other type
 - You need guaranteed insertion-order iteration over entries
 - You're building lookup tables that grow and shrink over time
-- You want `lookup` to return `Option` instead of a nullable value
+- You want `lookup` to return `Maybe` instead of a nullable value
 
 Keep using `Rec` when:
 

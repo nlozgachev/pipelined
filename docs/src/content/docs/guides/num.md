@@ -72,7 +72,7 @@ callbacks.
 
 ## Safe parsing
 
-`Num.parse` converts a string to a number and wraps the result in `Option` — `None` if the string
+`Num.parse` converts a string to a number and wraps the result in `Maybe` — `None` if the string
 doesn't represent a valid number, `Some` otherwise:
 
 ```ts
@@ -82,16 +82,16 @@ Num.parse("abc");  // None
 Num.parse("");     // None
 ```
 
-This avoids the `isNaN` dance and integrates with the rest of the `Option` API:
+This avoids the `isNaN` dance and integrates with the rest of the `Maybe` API:
 
 ```ts
-import { Option } from "@nlozgachev/pipelined/core";
+import { Maybe } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
 
 pipe(
   Num.parse(rawInput),
-  Option.map(Num.clamp(0, 255)),
-  Option.getOrElse(() => 0),
+  Maybe.map(Num.clamp(0, 255)),
+  Maybe.getOrElse(() => 0),
 ); // a clamped byte value, defaulting to 0 for bad input
 ```
 
@@ -117,7 +117,7 @@ Use `Num` when:
 - You're mapping or filtering arrays of numbers and want to avoid inline arrow functions
 - You need to constrain user input to a valid range with `clamp`
 - You're parsing numeric strings from form fields, query params, or configuration and want a typed
-  `Option` instead of a `NaN` check
+  `Maybe` instead of a `NaN` check
 
 Keep using plain arithmetic operators when:
 

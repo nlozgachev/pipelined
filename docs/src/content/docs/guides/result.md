@@ -211,16 +211,16 @@ pipe(
 );
 ```
 
-## Converting to Option
+## Converting to Maybe
 
-When you only care about whether an operation succeeded — not why it failed — convert to `Option`:
+When you only care about whether an operation succeeded — not why it failed — convert to `Maybe`:
 
 ```ts
-Result.toOption(Result.ok(42)); // Some(42)
-Result.toOption(Result.err("oops")); // None
+Result.toMaybe(Result.ok(42)); // Some(42)
+Result.toMaybe(Result.err("oops")); // None
 ```
 
-The error is discarded. Use this at boundaries where you want to fall back to `Option`-based logic.
+The error is discarded. Use this at boundaries where you want to fall back to `Maybe`-based logic.
 
 ## When to use Result vs try/catch
 

@@ -5,7 +5,7 @@ description: Data-last string operations and safe parsers — designed to compos
 
 JavaScript's `String` prototype has a rich set of methods, but they're all data-first: you call
 them on the string itself, which doesn't compose inside `pipe`. `Str` provides the same operations
-as data-last curried functions, plus two safe parsers that return `Option` instead of `NaN`.
+as data-last curried functions, plus two safe parsers that return `Maybe` instead of `NaN`.
 
 ## Transforming case
 
@@ -81,7 +81,7 @@ pipe(logLines, Arr.filter(Str.startsWith("[ERROR]")));
 ## Safe number parsing
 
 Parsing a number with `Number(s)` or `parseInt` returns `NaN` on failure, which propagates
-silently. `Str.parse.int` and `Str.parse.float` return `Option<number>` instead:
+silently. `Str.parse.int` and `Str.parse.float` return `Maybe<number>` instead:
 
 ```ts
 Str.parse.int("42");   // Some(42)
@@ -93,16 +93,16 @@ Str.parse.float("3.14"); // Some(3.14)
 Str.parse.float("abc");  // None
 ```
 
-This integrates with the `Option` API for safe fallback handling:
+This integrates with the `Maybe` API for safe fallback handling:
 
 ```ts
-import { Option } from "@nlozgachev/pipelined/core";
+import { Maybe } from "@nlozgachev/pipelined/core";
 
 pipe(
   req.query.limit,
   Str.parse.int,
-  Option.map(n => Math.min(n, 100)),
-  Option.getOrElse(() => 20),
+  Maybe.map(n => Math.min(n, 100)),
+  Maybe.getOrElse(() => 20),
 ); // validated page limit, defaulting to 20
 ```
 
@@ -128,7 +128,7 @@ Use `Str` when:
 - You're composing string operations inside a `pipe` chain and want point-free style
 - You're filtering or mapping arrays of strings and want named predicates instead of inline lambdas
 - You're parsing numeric strings from user input, query parameters, or configuration and need a
-  typed `Option` rather than a `NaN` check
+  typed `Maybe` rather than a `NaN` check
 - You're splitting multi-line or whitespace-separated text and want consistent handling of edge
   cases
 

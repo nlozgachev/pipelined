@@ -1,11 +1,11 @@
 ---
-title: Option — absent values
+title: Maybe — absent values
 description: Model values that may not exist without null checks scattered across your code.
 ---
 
 Absence is everywhere in real code. A user that might not be in the database, a config value that
 might not be set, a lookup that might come up empty. The usual answer is `T | null`, and then a null
-check at every call site — each one a reminder that something might not be there. `Option<A>` makes
+check at every call site — each one a reminder that something might not be there. `Maybe<A>` makes
 the absence part of the type itself, so the check happens once and composes cleanly with everything
 else.
 
@@ -23,21 +23,21 @@ const name = user ? user.name : "Unknown"; // remember at every call site
 This scales poorly. The more values that might be absent, the more `if (x !== null)` checks you
 accumulate, often spread across different files and functions.
 
-## The Option approach
+## The Maybe approach
 
-With `Option`, the absence is encoded in the type itself. You can't accidentally skip the check —
-the operations that work on an `Option` handle both cases for you:
+With `Maybe`, the absence is encoded in the type itself. You can't accidentally skip the check —
+the operations that work on an `Maybe` handle both cases for you:
 
 ```ts
-import { Option } from "@nlozgachev/pipelined/core";
+import { Maybe } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
 
-declare function getUser(id: string): Option<User>;
+declare function getUser(id: string): Maybe<User>;
 
 const name = pipe(
   getUser(id),
-  Option.map((user) => user.name), // only runs if user exists
-  Option.getOrElse(() => "Unknown"), // provides the fallback
+  Maybe.map((user) => user.name), // only runs if user exists
+  Maybe.getOrElse(() => "Unknown"), // provides the fallback
 );
 ```
 
@@ -45,13 +45,13 @@ The `map` step only executes if the value is `Some`. If `getUser` returns `None`
 skipped and `None` flows through to `getOrElse`, which then returns the fallback. You never wrote a
 conditional — the type enforced the handling.
 
-## Creating Options
+## Creating Maybe
 
 ```ts
-Option.some(42); // Some(42) — wrap a value
-Option.none(); // None     — explicit absence
-Option.fromNullable(value); // Some if non-null, None if null or undefined
-Option.fromUndefined(value); // Some if defined, None if undefined
+Maybe.some(42); // Some(42) — wrap a value
+Maybe.none(); // None     — explicit absence
+Maybe.fromNullable(value); // Some if non-null, None if null or undefined
+Maybe.fromUndefined(value); // Some if defined, None if undefined
 ```
 
 `fromNullable` is the most common entry point when working with existing APIs that return `null` or
@@ -60,8 +60,8 @@ Option.fromUndefined(value); // Some if defined, None if undefined
 ```ts
 const setting = pipe(
   config.get("theme"), // string | undefined
-  Option.fromNullable, // Option<string>
-  Option.getOrElse(() => "light"), // string
+  Maybe.fromNullable, // Maybe<string>
+  Maybe.getOrElse(() => "light"), // string
 );
 ```
 
@@ -71,12 +71,12 @@ const setting = pipe(
 
 ```ts
 pipe(
-  Option.some(5),
-  Option.map((n) => n * 2),
+  Maybe.some(5),
+  Maybe.map((n) => n * 2),
 ); // Some(10)
 pipe(
-  Option.none(),
-  Option.map((n) => n * 2),
+  Maybe.none(),
+  Maybe.map((n) => n * 2),
 ); // None
 ```
 
@@ -84,27 +84,27 @@ You can chain multiple `map` calls — each one only runs if the previous step p
 
 ```ts
 pipe(
-  Option.fromNullable(user),
-  Option.map((u) => u.address),
-  Option.map((a) => a.city),
-  Option.getOrElse(() => "Unknown city"),
+  Maybe.fromNullable(user),
+  Maybe.map((u) => u.address),
+  Maybe.map((a) => a.city),
+  Maybe.getOrElse(() => "Unknown city"),
 );
 ```
 
 ## Chaining with `chain`
 
 When a transformation itself might produce an absent value, use `chain` instead of `map`. It
-prevents nesting `Option<Option<A>>`:
+prevents nesting `Maybe<Maybe<A>>`:
 
 ```ts
-const parseNumber = (s: string): Option<number> => {
+const parseNumber = (s: string): Maybe<number> => {
   const n = parseInt(s, 10);
-  return isNaN(n) ? Option.none() : Option.some(n);
+  return isNaN(n) ? Maybe.none() : Maybe.some(n);
 };
 
-pipe(Option.some("42"), Option.chain(parseNumber)); // Some(42)
-pipe(Option.some("abc"), Option.chain(parseNumber)); // None
-pipe(Option.none(), Option.chain(parseNumber)); // None
+pipe(Maybe.some("42"), Maybe.chain(parseNumber)); // Some(42)
+pipe(Maybe.some("abc"), Maybe.chain(parseNumber)); // None
+pipe(Maybe.none(), Maybe.chain(parseNumber)); // None
 ```
 
 Think of it as: `map` is for transformations that always succeed; `chain` is for transformations
@@ -116,37 +116,37 @@ that might not.
 
 ```ts
 pipe(
-  Option.some(5),
-  Option.filter((n) => n > 3),
+  Maybe.some(5),
+  Maybe.filter((n) => n > 3),
 ); // Some(5)
 pipe(
-  Option.some(2),
-  Option.filter((n) => n > 3),
+  Maybe.some(2),
+  Maybe.filter((n) => n > 3),
 ); // None
 ```
 
-This is useful for narrowing values within a pipeline without breaking out of the `Option` context.
+This is useful for narrowing values within a pipeline without breaking out of the `Maybe` context.
 
 ## Extracting the value
 
 At the edge of your pipeline, you need to get a plain value back. There are a few ways:
 
 **`getOrElse`** — provide a fallback as a thunk `() => B`. The thunk is only called when the
-Option is `None`, so expensive or side-effectful defaults are never computed unnecessarily. The
+Maybe is `None`, so expensive or side-effectful defaults are never computed unnecessarily. The
 fallback can be a different type, widening the result to the union of both:
 
 ```ts
-pipe(Option.some(5), Option.getOrElse(() => 0)); // 5
-pipe(Option.none(), Option.getOrElse(() => 0)); // 0
-pipe(Option.none(), Option.getOrElse(() => null)); // null — typed as number | null
+pipe(Maybe.some(5), Maybe.getOrElse(() => 0)); // 5
+pipe(Maybe.none(), Maybe.getOrElse(() => 0)); // 0
+pipe(Maybe.none(), Maybe.getOrElse(() => null)); // null — typed as number | null
 ```
 
 **`match`** — handle each case explicitly, producing a value from either branch:
 
 ```ts
 pipe(
-  optionUser,
-  Option.match({
+  possiblyUser,
+  Maybe.match({
     some: (user) => `Welcome, ${user.name}`,
     none: () => "Please log in",
   }),
@@ -158,8 +158,8 @@ second):
 
 ```ts
 pipe(
-  optionUser,
-  Option.fold(
+  possiblyUser,
+  Maybe.fold(
     () => "Please log in",
     (user) => `Welcome, ${user.name}`,
   ),
@@ -170,43 +170,43 @@ pipe(
 that expect them:
 
 ```ts
-const value: string | null = pipe(opt, Option.toNullable);
+const value: string | null = pipe(opt, Maybe.toNullable);
 ```
 
 ## Recovering from None
 
-`recover` provides a fallback `Option` when the current one is `None`. Unlike `getOrElse`, the
-fallback is itself an `Option` — useful when the fallback operation might also fail. The fallback
-can produce a different type, widening the result to `Option<A | B>`:
+`recover` provides a fallback `Maybe` when the current one is `None`. Unlike `getOrElse`, the
+fallback is itself an `Maybe` — useful when the fallback operation might also fail. The fallback
+can produce a different type, widening the result to `Maybe<A | B>`:
 
 ```ts
 pipe(
-  Option.fromNullable(cache.get(key)),
-  Option.recover(() => Option.fromNullable(db.get(key))),
-  Option.getOrElse(() => defaultValue),
+  Maybe.fromNullable(cache.get(key)),
+  Maybe.recover(() => Maybe.fromNullable(db.get(key))),
+  Maybe.getOrElse(() => defaultValue),
 );
 ```
 
 ## Converting to and from Result
 
-`Option` and `Result` are closely related — the difference is whether the absent case carries an
+`Maybe` and `Result` are closely related — the difference is whether the absent case carries an
 error message. You can convert between them:
 
 ```ts
-// Option → Result: provide an error for the None case
+// Maybe → Result: provide an error for the None case
 pipe(
-  Option.fromNullable(user),
-  Option.toResult(() => "User not found"),
+  Maybe.fromNullable(user),
+  Maybe.toResult(() => "User not found"),
 ); // Result<string, User>
 
-// Result → Option: discard the error, keep only the success
-Option.fromResult(Result.err("oops")); // None
-Option.fromResult(Result.ok(42)); // Some(42)
+// Result → Maybe: discard the error, keep only the success
+Maybe.fromResult(Result.err("oops")); // None
+Maybe.fromResult(Result.ok(42)); // Some(42)
 ```
 
-## When to use Option vs null
+## When to use Maybe vs null
 
-Use `Option` when:
+Use `Maybe` when:
 
 - You want absence to be visible in the type signature and composable through pipelines
 - Multiple operations in sequence might each fail to find a value

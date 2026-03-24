@@ -58,8 +58,8 @@ you can do with it.
 
 The intent is that after reading a guide, you understand the concept — not just the API. And
 understanding the concept means you'll recognise it in code that doesn't use this library. You'll
-see `Option<T>` in fp-ts, or `Maybe T` in Elm, and know immediately what you're looking at. You'll
-understand why Rust's standard library has `Option<T>` and `Result<T, E>` at its core. You'll read
+see `Maybe<T>` in fp-ts, or `Maybe T` in Elm, and know immediately what you're looking at. You'll
+understand why Rust's standard library has `Maybe<T>` and `Result<T, E>` at its core. You'll read
 Haskell's `Maybe` without needing a translation.
 
 Learning the pattern once — without jargon in the way — is worth more than learning any specific

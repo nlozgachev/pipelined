@@ -6,11 +6,11 @@
  * ```ts
  * // Debugging a pipeline
  * pipe(
- *   Option.some(5),
+ *   Maybe.some(5),
  *   tap(x => console.log("Before map:", x)),
- *   Option.map(n => n * 2),
+ *   Maybe.map(n => n * 2),
  *   tap(x => console.log("After map:", x)),
- *   Option.getOrElse(0)
+ *   Maybe.getOrElse(0)
  * );
  * // logs: "Before map: { kind: 'Some', value: 5 }"
  * // logs: "After map: { kind: 'Some', value: 10 }"
@@ -25,7 +25,7 @@
  * );
  * ```
  *
- * @see {@link Option.tap} for Option-specific tap that only runs on Some
+ * @see {@link Maybe.tap} for Maybe-specific tap that only runs on Some
  */
 export const tap = <A>(f: (a: A) => void) => (a: A): A => {
 	f(a);

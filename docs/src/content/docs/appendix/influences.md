@@ -12,7 +12,7 @@ book.
 
 ### Haskell
 
-Most of the core types in this library descend, in some form, from Haskell. `Maybe` became `Option`,
+Most of the core types in this library descend, in some form, from Haskell.
 `Either` became `Result`, and the `IO` type — a lazy, composable wrapper around side effects —
 inspired `Task`. The naming convention of `map` and `chain` follows Haskell's vocabulary (translated
 from `fmap` and `>>=` into names that describe what they do rather than where they come from).
@@ -46,8 +46,9 @@ failure are practical, not academic.
 
 The most direct TypeScript ancestor is fp-ts by Giulio Canti — a comprehensive, rigorous encoding
 of functional programming in TypeScript that covered every major typeclass, used `pipe` as its
-composition primitive, and followed the data-last convention throughout. fp-ts is no longer actively developed — its author joined the [Effect](https://effect.website/)
-organisation, and that's now where new development in this space happens.
+composition primitive, and followed the data-last convention throughout. fp-ts is no longer under active feature development — its author joined the [Effect](https://effect.website/)
+organisation, and Effect-TS is positioned as the successor to fp-ts; that's now where new
+development in this space happens.
 
 This library borrows several things from fp-ts directly: the `pipe` and `flow` functions, the
 data-last convention, and the pattern of defining each type as a TypeScript type alias alongside a
@@ -61,8 +62,9 @@ into deeper paths. The tradition originates primarily in Haskell, where Edward K
 package is the canonical implementation.
 
 The `lens` package defines a full optics hierarchy — `Iso`, `Prism`, `Lens`, `Traversal`, `Fold`,
-`Getter`, `Setter` — and unifies them using a profunctor encoding: an optic is a polymorphic
-function, and composition is ordinary function composition. This encoding is elegant, but it relies
+`Getter`, `Setter` — and unifies them using the van Laarhoven encoding: an optic is a polymorphic
+higher-order function over `Functor`/`Applicative`/etc., and composition is ordinary function
+composition. This encoding is elegant, but it relies
 on higher-kinded types — and while TypeScript can approximate those through HKT encoding tricks
 (as fp-ts demonstrates), this library deliberately avoids that approach for the same reasons
 described in the typeclass section below.
@@ -72,7 +74,7 @@ This library uses a simpler "concrete" representation instead. Each optic is a p
 
 ```ts
 type Lens<S, A>     = { get: (s: S) => A;          set: (a: A) => (s: S) => S };
-type Optional<S, A> = { get: (s: S) => Option<A>;  set: (a: A) => (s: S) => S };
+type Optional<S, A> = { get: (s: S) => Maybe<A>;  set: (a: A) => (s: S) => S };
 ```
 
 The concrete form gives up uniform composition across the full hierarchy but gains implementation
@@ -87,7 +89,7 @@ Every core type in this library is a discriminated union — a union of object t
 distinguished by a literal `kind` field:
 
 ```ts
-type Option<A> = { kind: "Some"; value: A } | { kind: "None" };
+type Maybe<A> = { kind: "Some"; value: A } | { kind: "None" };
 
 type Result<E, A> = { kind: "Ok"; value: A } | { kind: "Error"; error: E };
 
@@ -129,7 +131,7 @@ is always named `value`. A single failure is always named `error`. Multiple accu
 always named `errors`, and the type of `errors` is always `NonEmptyList` — guaranteeing at least one
 error exists when a type is in an invalid state.
 
-This consistency matters at runtime too: `Option.map` and `Result.map` and `RemoteData.map` all look
+This consistency matters at runtime too: `Maybe.map` and `Result.map` and `RemoteData.map` all look
 for `.value` to find the success payload. Sharing the field name is what makes this uniform without
 code duplication.
 
@@ -144,11 +146,11 @@ directionality it doesn't have.
 Each type is defined as a pair: a TypeScript type alias and a namespace with the same name:
 
 ```ts
-export type Option<A> = Some<A> | None;
+export type Maybe<A> = Some<A> | None;
 
-export namespace Option {
+export namespace Maybe {
   export const some = <A>(value: A): Some<A> => ({ kind: "Some", value });
-  export const map  = <A, B>(f: (a: A) => B) => (data: Option<A>): Option<B> => ...
+  export const map  = <A, B>(f: (a: A) => B) => (data: Maybe<A>): Maybe<B> => ...
   export const fold = ...
 }
 ```
@@ -156,9 +158,9 @@ export namespace Option {
 A single import gives you both:
 
 ```ts
-import { Option } from "@nlozgachev/pipelined/core";
+import { <Maybe> } from "@nlozgachev/pipelined/core";
 
-const x: Option<number> = Option.some(42); // type and constructor from the same import
+const x: <Maybe><number> = Maybe.some(42); // type and constructor from the same import
 ```
 
 The namespace acts like a module — a flat collection of named functions. There's no class, no
@@ -166,7 +168,7 @@ prototype, no `this`. The functions are just functions; they happen to share a n
 signals they operate on the same type.
 
 This pattern also means the operations are tree-shakeable. If your bundler can tell that
-`Option.filter` is never called, it can exclude it from the bundle. Method-on-class approaches don't
+`Maybe.filter` is never called, it can exclude it from the bundle. Method-on-class approaches don't
 give bundlers the same opportunity because the method is attached to the prototype at definition
 time.
 
@@ -188,9 +190,9 @@ that accepts the data. This is what makes `pipe` and `flow` compose cleanly:
 
 ```ts
 pipe(
-  Option.some(5),
-  Option.map((n) => n * 2), // map(n => n * 2) is already a function Option<number> → Option<number>
-  Option.getOrElse(0),
+  Maybe.some(5),
+  Maybe.map((n) => n * 2), // map(n => n * 2) is already a function Maybe<number> → Maybe<number>
+  Maybe.getOrElse(0),
 );
 ```
 
@@ -198,9 +200,9 @@ Without data-last, each `pipe` step would need to be wrapped in an arrow functio
 
 ```ts
 pipe(
-  Option.some(5),
-  (opt) => Option.map(opt, (n) => n * 2), // awkward — two arguments, data first
-  (opt) => Option.getOrElse(opt, 0),
+  Maybe.some(5),
+  (opt) => Maybe.map(opt, (n) => n * 2), // awkward — two arguments, data first
+  (opt) => Maybe.getOrElse(opt, 0),
 );
 ```
 
@@ -241,7 +243,7 @@ reasoning behind this is in [Why this exists](/motivation).
 
 **A typeclass system.** fp-ts uses a `HKT` encoding to simulate higher-kinded types in TypeScript,
 which allows generic code over any type that implements a given typeclass. This library makes no
-attempt at that. The `map` on `Option` and the `map` on `Result` share a naming convention, not a
+attempt at that. The `map` on `Maybe` and the `map` on `Result` share a naming convention, not a
 shared interface. This is a real limitation — you can't write a function that works generically over
 "any type with a `map`" — but the tradeoff is a much simpler type system with no encoding overhead.
 

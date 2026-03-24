@@ -1,5 +1,5 @@
 import { WithError, WithKind, WithValue } from "./InternalTypes.ts";
-import { Option } from "./Option.ts";
+import { Maybe } from "./Maybe.ts";
 
 /**
  * Result represents a value that can be one of two types: a success (Ok) or a failure (Err).
@@ -189,16 +189,16 @@ export namespace Result {
 			isErr(data) && data.error !== blockedErr ? fallback() : data;
 
 	/**
-	 * Converts a Result to an Option.
+	 * Converts a Result to an Maybe.
 	 * Ok becomes Some, Err becomes None (the error is discarded).
 	 *
 	 * @example
 	 * ```ts
-	 * Result.toOption(Result.ok(42)); // Some(42)
-	 * Result.toOption(Result.err("oops")); // None
+	 * Result.toMaybe(Result.ok(42)); // Some(42)
+	 * Result.toMaybe(Result.err("oops")); // None
 	 * ```
 	 */
-	export const toOption = <E, A>(data: Result<E, A>): Option<A> => isOk(data) ? Option.some(data.value) : Option.none();
+	export const toMaybe = <E, A>(data: Result<E, A>): Maybe<A> => isOk(data) ? Maybe.some(data.value) : Maybe.none();
 
 	/**
 	 * Applies a function wrapped in an Result to a value wrapped in an Result.

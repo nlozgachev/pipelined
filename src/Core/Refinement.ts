@@ -1,4 +1,4 @@
-import { Option } from "./Option.ts";
+import { Maybe } from "./Maybe.ts";
 import { Result } from "./Result.ts";
 
 /**
@@ -115,10 +115,10 @@ export namespace Refinement {
 		(a): a is B | C => first(a) || second(a);
 
 	/**
-	 * Converts a `Refinement<A, B>` into a function `(a: A) => Option<B>`.
+	 * Converts a `Refinement<A, B>` into a function `(a: A) => Maybe<B>`.
 	 *
 	 * Returns `Some(a)` when the refinement holds, `None` otherwise. Useful for
-	 * integrating runtime validation into an `Option`-based pipeline.
+	 * integrating runtime validation into an `Maybe`-based pipeline.
 	 *
 	 * @example
 	 * ```ts
@@ -130,8 +130,8 @@ export namespace Refinement {
 	 * pipe(42, Refinement.toFilter(isPositive)); // Some(42)
 	 * ```
 	 */
-	export const toFilter = <A, B extends A>(r: Refinement<A, B>) => (a: A): Option<B> =>
-		r(a) ? Option.some(a) : Option.none();
+	export const toFilter = <A, B extends A>(r: Refinement<A, B>) => (a: A): Maybe<B> =>
+		r(a) ? Maybe.some(a) : Maybe.none();
 
 	/**
 	 * Converts a `Refinement<A, B>` into a function `(a: A) => Result<E, B>`.

@@ -1,5 +1,5 @@
 import { pipe } from "#composition/pipe.ts";
-import { Option } from "#core/Option.ts";
+import { Maybe } from "#core/Maybe.ts";
 import { Result } from "#core/Result.ts";
 import { Task } from "#core/Task.ts";
 import { expect, test } from "vitest";
@@ -13,66 +13,66 @@ test(
 	"head - returns Some of the first element for a non-empty array",
 	() => {
 		const result = Arr.head([10, 20, 30]);
-		expect(result).toEqual(Option.some(10));
+		expect(result).toEqual(Maybe.some(10));
 	},
 );
 
 test("head - returns None for an empty array", () => {
 	const result = Arr.head([]);
-	expect(result).toEqual(Option.none());
+	expect(result).toEqual(Maybe.none());
 });
 
 test("head - returns Some for a single-element array", () => {
 	const result = Arr.head(["only"]);
-	expect(result).toEqual(Option.some("only"));
+	expect(result).toEqual(Maybe.some("only"));
 });
 
 test(
 	"last - returns Some of the last element for a non-empty array",
 	() => {
 		const result = Arr.last([10, 20, 30]);
-		expect(result).toEqual(Option.some(30));
+		expect(result).toEqual(Maybe.some(30));
 	},
 );
 
 test("last - returns None for an empty array", () => {
 	const result = Arr.last([]);
-	expect(result).toEqual(Option.none());
+	expect(result).toEqual(Maybe.none());
 });
 
 test("last - returns Some for a single-element array", () => {
 	const result = Arr.last([42]);
-	expect(result).toEqual(Option.some(42));
+	expect(result).toEqual(Maybe.some(42));
 });
 
 test("tail - returns Some of all elements except the first", () => {
 	const result = Arr.tail([1, 2, 3]);
-	expect(result).toEqual(Option.some([2, 3]));
+	expect(result).toEqual(Maybe.some([2, 3]));
 });
 
 test("tail - returns Some of empty array for single-element array", () => {
 	const result = Arr.tail([1]);
-	expect(result).toEqual(Option.some([]));
+	expect(result).toEqual(Maybe.some([]));
 });
 
 test("tail - returns None for an empty array", () => {
 	const result = Arr.tail([]);
-	expect(result).toEqual(Option.none());
+	expect(result).toEqual(Maybe.none());
 });
 
 test("init - returns Some of all elements except the last", () => {
 	const result = Arr.init([1, 2, 3]);
-	expect(result).toEqual(Option.some([1, 2]));
+	expect(result).toEqual(Maybe.some([1, 2]));
 });
 
 test("init - returns Some of empty array for single-element array", () => {
 	const result = Arr.init([1]);
-	expect(result).toEqual(Option.some([]));
+	expect(result).toEqual(Maybe.some([]));
 });
 
 test("init - returns None for an empty array", () => {
 	const result = Arr.init([]);
-	expect(result).toEqual(Option.none());
+	expect(result).toEqual(Maybe.none());
 });
 
 // =============================================================================
@@ -84,7 +84,7 @@ test("findFirst - returns Some of the first matching element", () => {
 		[1, 2, 3, 4, 5],
 		Arr.findFirst((n) => n > 3),
 	);
-	expect(result).toEqual(Option.some(4));
+	expect(result).toEqual(Maybe.some(4));
 });
 
 test("findFirst - returns None when no element matches", () => {
@@ -92,7 +92,7 @@ test("findFirst - returns None when no element matches", () => {
 		[1, 2, 3],
 		Arr.findFirst((n) => n > 10),
 	);
-	expect(result).toEqual(Option.none());
+	expect(result).toEqual(Maybe.none());
 });
 
 test("findFirst - returns None for an empty array", () => {
@@ -100,7 +100,7 @@ test("findFirst - returns None for an empty array", () => {
 		[] as number[],
 		Arr.findFirst((n) => n > 0),
 	);
-	expect(result).toEqual(Option.none());
+	expect(result).toEqual(Maybe.none());
 });
 
 test("findFirst - returns Some(undefined) when undefined matches", () => {
@@ -108,7 +108,7 @@ test("findFirst - returns Some(undefined) when undefined matches", () => {
 		[undefined, 1, 2] as (number | undefined)[],
 		Arr.findFirst((x) => x === undefined),
 	);
-	expect(result).toEqual(Option.some(undefined));
+	expect(result).toEqual(Maybe.some(undefined));
 });
 
 test("findLast - returns Some of the last matching element", () => {
@@ -116,7 +116,7 @@ test("findLast - returns Some of the last matching element", () => {
 		[1, 2, 3, 4, 5],
 		Arr.findLast((n) => n > 2),
 	);
-	expect(result).toEqual(Option.some(5));
+	expect(result).toEqual(Maybe.some(5));
 });
 
 test("findLast - returns None when no element matches", () => {
@@ -124,7 +124,7 @@ test("findLast - returns None when no element matches", () => {
 		[1, 2, 3],
 		Arr.findLast((n) => n > 10),
 	);
-	expect(result).toEqual(Option.none());
+	expect(result).toEqual(Maybe.none());
 });
 
 test("findLast - returns None for an empty array", () => {
@@ -132,7 +132,7 @@ test("findLast - returns None for an empty array", () => {
 		[] as number[],
 		Arr.findLast((_) => true),
 	);
-	expect(result).toEqual(Option.none());
+	expect(result).toEqual(Maybe.none());
 });
 
 test("findLast - returns Some(undefined) when undefined matches", () => {
@@ -140,7 +140,7 @@ test("findLast - returns Some(undefined) when undefined matches", () => {
 		[1, undefined, 2, undefined] as (number | undefined)[],
 		Arr.findLast((x) => x === undefined),
 	);
-	expect(result).toEqual(Option.some(undefined));
+	expect(result).toEqual(Maybe.some(undefined));
 });
 
 test("findIndex - returns Some of the index of the first match", () => {
@@ -148,7 +148,7 @@ test("findIndex - returns Some of the index of the first match", () => {
 		[10, 20, 30, 40],
 		Arr.findIndex((n) => n === 30),
 	);
-	expect(result).toEqual(Option.some(2));
+	expect(result).toEqual(Maybe.some(2));
 });
 
 test("findIndex - returns None when no element matches", () => {
@@ -156,7 +156,7 @@ test("findIndex - returns None when no element matches", () => {
 		[10, 20, 30],
 		Arr.findIndex((n) => n === 99),
 	);
-	expect(result).toEqual(Option.none());
+	expect(result).toEqual(Maybe.none());
 });
 
 test("findIndex - returns None for an empty array", () => {
@@ -164,7 +164,7 @@ test("findIndex - returns None for an empty array", () => {
 		[] as number[],
 		Arr.findIndex((_) => true),
 	);
-	expect(result).toEqual(Option.none());
+	expect(result).toEqual(Maybe.none());
 });
 
 // =============================================================================
@@ -558,55 +558,55 @@ test("reduce - builds an object from entries", () => {
 // =============================================================================
 
 test("traverse - all Some results in Some of array", () => {
-	const parseNum = (s: string): Option<number> => {
+	const parseNum = (s: string): Maybe<number> => {
 		const n = Number(s);
-		return isNaN(n) ? Option.none() : Option.some(n);
+		return isNaN(n) ? Maybe.none() : Maybe.some(n);
 	};
 	const result = pipe(["1", "2", "3"], Arr.traverse(parseNum));
-	expect(result).toEqual(Option.some([1, 2, 3]));
+	expect(result).toEqual(Maybe.some([1, 2, 3]));
 });
 
 test("traverse - any None results in None", () => {
-	const parseNum = (s: string): Option<number> => {
+	const parseNum = (s: string): Maybe<number> => {
 		const n = Number(s);
-		return isNaN(n) ? Option.none() : Option.some(n);
+		return isNaN(n) ? Maybe.none() : Maybe.some(n);
 	};
 	const result = pipe(["1", "x", "3"], Arr.traverse(parseNum));
-	expect(result).toEqual(Option.none());
+	expect(result).toEqual(Maybe.none());
 });
 
 test("traverse - empty array results in Some of empty array", () => {
 	const result = pipe(
 		[] as string[],
-		Arr.traverse((s) => Option.some(s)),
+		Arr.traverse((s) => Maybe.some(s)),
 	);
-	expect(result).toEqual(Option.some([]));
+	expect(result).toEqual(Maybe.some([]));
 });
 
 test("traverse - fails at first None and short-circuits", () => {
 	let callCount = 0;
-	const f = (n: number): Option<number> => {
+	const f = (n: number): Maybe<number> => {
 		callCount++;
-		return n > 0 ? Option.some(n) : Option.none();
+		return n > 0 ? Maybe.some(n) : Maybe.none();
 	};
 	const result = pipe([1, 0, 2, 3], Arr.traverse(f));
-	expect(result).toEqual(Option.none());
+	expect(result).toEqual(Maybe.none());
 	expect(callCount).toBe(2);
 });
 
 test("sequence - all Some results in Some of array", () => {
-	const result = Arr.sequence([Option.some(1), Option.some(2), Option.some(3)]);
-	expect(result).toEqual(Option.some([1, 2, 3]));
+	const result = Arr.sequence([Maybe.some(1), Maybe.some(2), Maybe.some(3)]);
+	expect(result).toEqual(Maybe.some([1, 2, 3]));
 });
 
 test("sequence - any None results in None", () => {
-	const result = Arr.sequence([Option.some(1), Option.none(), Option.some(3)]);
-	expect(result).toEqual(Option.none());
+	const result = Arr.sequence([Maybe.some(1), Maybe.none(), Maybe.some(3)]);
+	expect(result).toEqual(Maybe.none());
 });
 
 test("sequence - empty array results in Some of empty array", () => {
-	const result = Arr.sequence([] as Option<number>[]);
-	expect(result).toEqual(Option.some([]));
+	const result = Arr.sequence([] as Maybe<number>[]);
+	expect(result).toEqual(Maybe.some([]));
 });
 
 // =============================================================================
@@ -1045,7 +1045,7 @@ test("pipe composition - filter, map, head", () => {
 		Arr.map((n) => n * 10),
 		Arr.head,
 	);
-	expect(result).toEqual(Option.some(30));
+	expect(result).toEqual(Maybe.some(30));
 });
 
 test("pipe composition - map, filter, reduce", () => {

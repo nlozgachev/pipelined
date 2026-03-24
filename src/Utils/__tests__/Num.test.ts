@@ -1,5 +1,5 @@
 import { pipe } from "#composition/pipe.ts";
-import { Option } from "#core/Option.ts";
+import { Maybe } from "#core/Maybe.ts";
 import { expect, test } from "vitest";
 import { Arr } from "../Arr.ts";
 import { Num } from "../Num.ts";
@@ -75,23 +75,23 @@ test("Num.between returns false when value is outside range", () => {
 // ---------------------------------------------------------------------------
 
 test("Num.parse returns Some for a valid integer string", () => {
-	expect(Num.parse("42")).toEqual(Option.some(42));
+	expect(Num.parse("42")).toEqual(Maybe.some(42));
 });
 
 test("Num.parse returns Some for a valid float string", () => {
-	expect(Num.parse("3.14")).toEqual(Option.some(3.14));
+	expect(Num.parse("3.14")).toEqual(Maybe.some(3.14));
 });
 
 test("Num.parse returns None for a non-numeric string", () => {
-	expect(Num.parse("abc")).toEqual(Option.none());
+	expect(Num.parse("abc")).toEqual(Maybe.none());
 });
 
 test("Num.parse returns None for an empty string", () => {
-	expect(Num.parse("")).toEqual(Option.none());
+	expect(Num.parse("")).toEqual(Maybe.none());
 });
 
 test("Num.parse returns None for a whitespace-only string", () => {
-	expect(Num.parse("   ")).toEqual(Option.none());
+	expect(Num.parse("   ")).toEqual(Maybe.none());
 });
 
 // ---------------------------------------------------------------------------

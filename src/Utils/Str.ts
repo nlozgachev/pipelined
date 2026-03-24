@@ -1,8 +1,8 @@
-import { Option } from "#core/Option.ts";
+import { Maybe } from "#core/Maybe.ts";
 
 /**
  * String utilities. All transformation functions are data-last and curried so they
- * compose naturally with `pipe`. Safe parsers return `Option` instead of `NaN`.
+ * compose naturally with `pipe`. Safe parsers return `Maybe` instead of `NaN`.
  *
  * @example
  * ```ts
@@ -108,7 +108,7 @@ export namespace Str {
 	export const words = (s: string): readonly string[] => s.trim().split(/\s+/).filter(Boolean);
 
 	/**
-	 * Safe number parsers that return `Option` instead of `NaN`.
+	 * Safe number parsers that return `Maybe` instead of `NaN`.
 	 */
 	export const parse = {
 		/**
@@ -121,9 +121,9 @@ export namespace Str {
 		 * Str.parse.int("abc");  // None
 		 * ```
 		 */
-		int: (s: string): Option<number> => {
+		int: (s: string): Maybe<number> => {
 			const n = parseInt(s, 10);
-			return isNaN(n) ? Option.none() : Option.some(n);
+			return isNaN(n) ? Maybe.none() : Maybe.some(n);
 		},
 
 		/**
@@ -136,9 +136,9 @@ export namespace Str {
 		 * Str.parse.float("abc");  // None
 		 * ```
 		 */
-		float: (s: string): Option<number> => {
+		float: (s: string): Maybe<number> => {
 			const n = parseFloat(s);
-			return isNaN(n) ? Option.none() : Option.some(n);
+			return isNaN(n) ? Maybe.none() : Maybe.some(n);
 		},
 	};
 }

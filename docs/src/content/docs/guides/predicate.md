@@ -47,10 +47,10 @@ namespace provides utilities for combining and adapting these functions.
 `Refinement<A, B>` and `Predicate<A>` are closely related: every `Refinement<A, B>` is a
 `Predicate<A>`. The difference is what they tell the compiler:
 
-| | Compile-time effect | Use when |
-|---|---|---|
-| `Predicate<A>` | None — TypeScript still sees `A` after the check | You only need the boolean result and don't require type narrowing |
-| `Refinement<A, B>` | Narrows to `B` in the `true` branch | You need TypeScript to track the stricter type |
+|                    | Compile-time effect                              | Use when                                                          |
+| ------------------ | ------------------------------------------------ | ----------------------------------------------------------------- |
+| `Predicate<A>`     | None — TypeScript still sees `A` after the check | You only need the boolean result and don't require type narrowing |
+| `Refinement<A, B>` | Narrows to `B` in the `true` branch              | You need TypeScript to track the stricter type                    |
 
 In short: reach for `Refinement` when compile-time narrowing matters (e.g. `isString`, `isUser`),
 and for `Predicate` when you just need the boolean (e.g. `isAdult`, `isExpired`, `hasPermission`).
@@ -224,5 +224,5 @@ you need the narrowed type downstream, keep the value as a `Refinement` and use
 - You want to mix a type guard (`Refinement`) with plain checks in a single composition.
 
 **Keep using a `Refinement<A, B>` when** the narrowed type needs to flow into subsequent operations
-— for example when you want `Option<NonEmptyString>` from `toFilter`, or `Result<E, ValidEmail>`
+— for example when you want `Maybe<NonEmptyString>` from `toFilter`, or `Result<E, ValidEmail>`
 from `toResult`. `Predicate` discards that information; `Refinement` preserves it.

@@ -1,4 +1,4 @@
-import { Option } from "#core/Option.ts";
+import { Maybe } from "#core/Maybe.ts";
 
 /**
  * Number utilities for common operations. All transformation functions are data-last
@@ -77,10 +77,10 @@ export namespace Num {
 	 * Num.parse("");     // None
 	 * ```
 	 */
-	export const parse = (s: string): Option<number> => {
-		if (s.trim() === "") return Option.none();
+	export const parse = (s: string): Maybe<number> => {
+		if (s.trim() === "") return Maybe.none();
 		const n = Number(s);
-		return isNaN(n) ? Option.none() : Option.some(n);
+		return isNaN(n) ? Maybe.none() : Maybe.some(n);
 	};
 
 	/**

@@ -1,5 +1,5 @@
 import { pipe } from "#composition/pipe.ts";
-import { Option } from "#core/Option.ts";
+import { Maybe } from "#core/Maybe.ts";
 import { expect, test } from "vitest";
 import { Dict } from "../Dict.ts";
 
@@ -104,16 +104,16 @@ test("Dict.has returns false on empty map", () => {
 
 test("Dict.lookup returns Some when key exists", () => {
 	const m = Dict.fromEntries([["a", 42]]);
-	expect(pipe(m, Dict.lookup("a"))).toEqual(Option.some(42));
+	expect(pipe(m, Dict.lookup("a"))).toEqual(Maybe.some(42));
 });
 
 test("Dict.lookup returns None when key does not exist", () => {
 	const m = Dict.fromEntries([["a", 42]]);
-	expect(pipe(m, Dict.lookup("b"))).toEqual(Option.none());
+	expect(pipe(m, Dict.lookup("b"))).toEqual(Maybe.none());
 });
 
 test("Dict.lookup returns None on empty map", () => {
-	expect(pipe(Dict.empty<string, number>(), Dict.lookup("a"))).toEqual(Option.none());
+	expect(pipe(Dict.empty<string, number>(), Dict.lookup("a"))).toEqual(Maybe.none());
 });
 
 // ---------------------------------------------------------------------------
@@ -198,7 +198,7 @@ test("Dict.remove returns original when key does not exist", () => {
 test("Dict.upsert inserts when key is missing", () => {
 	const m = pipe(
 		Dict.empty<string, number>(),
-		Dict.upsert("count", (opt: Option<number>) => (opt.kind === "Some" ? opt.value : 0) + 1),
+		Dict.upsert("count", (opt: Maybe<number>) => (opt.kind === "Some" ? opt.value : 0) + 1),
 	);
 	expect(m.get("count")).toBe(1);
 });
@@ -206,7 +206,7 @@ test("Dict.upsert inserts when key is missing", () => {
 test("Dict.upsert updates when key exists", () => {
 	const m = pipe(
 		Dict.singleton("count", 5),
-		Dict.upsert("count", (opt: Option<number>) => (opt.kind === "Some" ? opt.value : 0) + 1),
+		Dict.upsert("count", (opt: Maybe<number>) => (opt.kind === "Some" ? opt.value : 0) + 1),
 	);
 	expect(m.get("count")).toBe(6);
 });
@@ -274,10 +274,10 @@ test("Dict.filterWithKey receives key and value", () => {
 
 test("Dict.compact removes None values and unwraps Some values", () => {
 	const m = Dict.compact(
-		Dict.fromEntries<string, Option<number>>([
-			["a", Option.some(1)],
-			["b", Option.none()],
-			["c", Option.some(3)],
+		Dict.fromEntries<string, Maybe<number>>([
+			["a", Maybe.some(1)],
+			["b", Maybe.none()],
+			["c", Maybe.some(3)],
 		]),
 	);
 	expect(m.size).toBe(2);
@@ -288,7 +288,7 @@ test("Dict.compact removes None values and unwraps Some values", () => {
 
 test("Dict.compact returns empty map when all values are None", () => {
 	const m = Dict.compact(
-		Dict.fromEntries<string, Option<number>>([["a", Option.none()], ["b", Option.none()]]),
+		Dict.fromEntries<string, Maybe<number>>([["a", Maybe.none()], ["b", Maybe.none()]]),
 	);
 	expect(m.size).toBe(0);
 });

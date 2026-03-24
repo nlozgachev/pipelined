@@ -170,12 +170,12 @@ rather than wrapping it in an arrow function:
 
 ```ts
 import { flip } from "@nlozgachev/pipelined/composition";
-import { Option } from "@nlozgachev/pipelined/core";
+import { Maybe } from "@nlozgachev/pipelined/core";
 
-// Option.map is data-last: map(fn)(option)
+// Maybe.map is data-last: map(fn)(option)
 // flip makes it data-first: mapFirst(option)(fn)
-const mapFirst = flip(Option.map);
-mapFirst(Option.some(5))((n: number) => n * 2); // Some(10)
+const mapFirst = flip(Maybe.map);
+mapFirst(Maybe.some(5))((n: number) => n * 2); // Some(10)
 ```
 
 ## Side effects without breaking the chain: `tap`
@@ -205,10 +205,10 @@ most often in `fold` or `match` when one branch should return the value as-is:
 
 ```ts
 import { identity } from "@nlozgachev/pipelined/composition";
-import { Option } from "@nlozgachev/pipelined/core";
+import { Maybe } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
 
-pipe(Option.some(42), Option.fold(() => 0, identity)); // 42
+pipe(Maybe.some(42), Maybe.fold(() => 0, identity)); // 42
 ```
 
 `constant` creates a function that always returns the same value, ignoring its argument. It is

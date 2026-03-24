@@ -181,13 +181,13 @@ pipe(RemoteData.loading(), RemoteData.getOrElse(() => null)); // null — typed 
 
 ## Converting to other types
 
-When you need to work with a part of the system that uses `Option` or `Result`, you can convert:
+When you need to work with a part of the system that uses `Maybe` or `Result`, you can convert:
 
-**`toOption`** — `Success` becomes `Some`, everything else becomes `None`:
+**`toMaybe`** — `Success` becomes `Some`, everything else becomes `None`:
 
 ```ts
-RemoteData.toOption(RemoteData.success(42)); // Some(42)
-RemoteData.toOption(RemoteData.loading()); // None
+RemoteData.toMaybe(RemoteData.success(42)); // Some(42)
+RemoteData.toMaybe(RemoteData.loading()); // None
 ```
 
 **`toResult`** — `Success` becomes `Ok`, `Failure` becomes `Err`. `NotAsked` and `Loading` become

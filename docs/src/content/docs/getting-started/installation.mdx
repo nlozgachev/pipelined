@@ -14,7 +14,7 @@ import { CodePackageManagers } from 'starlight-theme-nova/components'
 The library is split into four entry points. Import only what you need:
 
 ```ts
-import { Option, Result, Task } from "@nlozgachev/pipelined/core";
+import { Maybe, Result, Task } from "@nlozgachev/pipelined/core";
 import { Arr, Str } from "@nlozgachev/pipelined/utils";
 import { pipe, flow } from "@nlozgachev/pipelined/composition";
 import { Brand } from "@nlozgachev/pipelined/types";
@@ -22,7 +22,7 @@ import { Brand } from "@nlozgachev/pipelined/types";
 
 | Entry point             | Contains                                                                                                                                                                                                                         |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@nlozgachev/pipelined/core`        | `Option`, `Result`, `Validation`, `Task`, `TaskResult`, `TaskOption`, `TaskValidation`, `These`, `Tuple`, `RemoteData`, `Deferred`, `Lens`, `Optional`, `Reader`, `State`, `Logged`, `Predicate`, `Refinement` |
+| `@nlozgachev/pipelined/core`        | `Maybe`, `Result`, `Validation`, `Task`, `TaskResult`, `TaskMaybe`, `TaskValidation`, `These`, `Tuple`, `RemoteData`, `Deferred`, `Lens`, `Optional`, `Reader`, `State`, `Logged`, `Predicate`, `Refinement` |
 | `@nlozgachev/pipelined/utils`       | `Arr`, `Rec`, `Num`, `Str`, `Dict`, `Uniq`                                                                                                                                                                                       |
 | `@nlozgachev/pipelined/composition` | `pipe`, `flow`, `compose`, `curry`, `tap`, `memoize`, and other function utilities                                                                                                                                               |
 | `@nlozgachev/pipelined/types`       | `Brand`, `NonEmptyList`                                                                                                                                                                                                          |

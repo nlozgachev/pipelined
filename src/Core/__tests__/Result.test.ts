@@ -439,16 +439,16 @@ test("Result.ap returns first Err when both are Err", () => {
 });
 
 // ---------------------------------------------------------------------------
-// toOption
+// toMaybe
 // ---------------------------------------------------------------------------
 
-test("Result.toOption converts Ok to Some", () => {
-	const result = Result.toOption(Result.ok(42));
+test("Result.toMaybe converts Ok to Some", () => {
+	const result = Result.toMaybe(Result.ok(42));
 	expect(result).toEqual({ kind: "Some", value: 42 });
 });
 
-test("Result.toOption converts Err to None", () => {
-	const result = Result.toOption(Result.err("oops"));
+test("Result.toMaybe converts Err to None", () => {
+	const result = Result.toMaybe(Result.err("oops"));
 	expect(result).toEqual({ kind: "None" });
 });
 

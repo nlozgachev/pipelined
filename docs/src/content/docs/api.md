@@ -9,40 +9,40 @@ The library is split into four entry points. Each is independently importable.
 
 import from `@nlozgachev/pipelined/core`
 
-| Type                                                          | Description                                                                       |
-| ------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| [Option](/api/core/type-aliases/option)                       | A value that may or may not exist. Replaces `T \| null \| undefined`.             |
-| [Result](/api/core/type-aliases/result)                       | An operation that succeeds with a value or fails with an error.                   |
-| [Validation](/api/core/type-aliases/validation)               | Like Result, but accumulates all errors instead of stopping at the first.         |
-| [Task](/api/core/type-aliases/task)                           | A lazy, infallible async operation.                                               |
-| [TaskResult](/api/core/type-aliases/taskresult)               | A lazy async operation that can fail.                                             |
-| [TaskOption](/api/core/type-aliases/taskoption)               | A lazy async operation that may return nothing.                                   |
-| [TaskValidation](/api/core/type-aliases/taskvalidation)       | A lazy async operation that accumulates errors.                                   |
-| [RemoteData](/api/core/type-aliases/remotedata)               | The four states of a data fetch: NotAsked, Loading, Failure, Success.             |
-| [Deferred](/api/core/type-aliases/deferred)                   | A minimal async value that always resolves — no rejection handling needed.        |
-| [These](/api/core/type-aliases/these)                         | An inclusive-OR: holds a first value, a second value, or both simultaneously.     |
-| [Tuple](/api/core/type-aliases/tuple)                         | A typed pair where both values are always present.                                |
-| [Lens](/api/core/type-aliases/lens)                           | Focus on and immutably update a required nested field.                            |
-| [Optional](/api/core/type-aliases/optional)                   | Focus on and update an optional nested field or array index.                      |
-| [Reader](/api/core/type-aliases/reader)                       | Computations that read from a shared environment without threading it everywhere. |
-| [State](/api/core/type-aliases/state)                         | Thread mutable state through a pipeline without explicit passing.                 |
-| [Logged](/api/core/type-aliases/logged)                       | A value paired with an accumulated log; thread logs through a pipeline.           |
-| [Predicate](/api/core/type-aliases/predicate)                 | Composable boolean checks; combine with `and`, `or`, `not`.                      |
-| [Refinement](/api/core/type-aliases/refinement)               | Type predicates with runtime validation; narrows a broad type to a specific one.  |
-| [Resource](/api/core/type-aliases/resource)                   | Safe acquire-use-release lifecycle; guarantees cleanup even when errors occur.    |
+| Type                                                    | Description                                                                       |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| [Maybe](/api/core/type-aliases/maybe)                   | A value that may or may not exist. Replaces `T \| null \| undefined`.             |
+| [Result](/api/core/type-aliases/result)                 | An operation that succeeds with a value or fails with an error.                   |
+| [Validation](/api/core/type-aliases/validation)         | Like Result, but accumulates all errors instead of stopping at the first.         |
+| [Task](/api/core/type-aliases/task)                     | A lazy, infallible async operation.                                               |
+| [TaskResult](/api/core/type-aliases/taskresult)         | A lazy async operation that can fail.                                             |
+| [TaskMaybe](/api/core/type-aliases/taskoption)          | A lazy async operation that may return nothing.                                   |
+| [TaskValidation](/api/core/type-aliases/taskvalidation) | A lazy async operation that accumulates errors.                                   |
+| [RemoteData](/api/core/type-aliases/remotedata)         | The four states of a data fetch: NotAsked, Loading, Failure, Success.             |
+| [Deferred](/api/core/type-aliases/deferred)             | A minimal async value that always resolves — no rejection handling needed.        |
+| [These](/api/core/type-aliases/these)                   | An inclusive-OR: holds a first value, a second value, or both simultaneously.     |
+| [Tuple](/api/core/type-aliases/tuple)                   | A typed pair where both values are always present.                                |
+| [Lens](/api/core/type-aliases/lens)                     | Focus on and immutably update a required nested field.                            |
+| [Optional](/api/core/type-aliases/optional)             | Focus on and update an optional nested field or array index.                      |
+| [Reader](/api/core/type-aliases/reader)                 | Computations that read from a shared environment without threading it everywhere. |
+| [State](/api/core/type-aliases/state)                   | Thread mutable state through a pipeline without explicit passing.                 |
+| [Logged](/api/core/type-aliases/logged)                 | A value paired with an accumulated log; thread logs through a pipeline.           |
+| [Predicate](/api/core/type-aliases/predicate)           | Composable boolean checks; combine with `and`, `or`, `not`.                       |
+| [Refinement](/api/core/type-aliases/refinement)         | Type predicates with runtime validation; narrows a broad type to a specific one.  |
+| [Resource](/api/core/type-aliases/resource)             | Safe acquire-use-release lifecycle; guarantees cleanup even when errors occur.    |
 
 ## Utils
 
 import from `@nlozgachev/pipelined/utils`
 
-| Module                                                      | Description                                                                        |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| [Arr](/api/utils/namespaces/arr/functions)                  | Array utilities (find, groupBy, zip, partition) that return Option instead of throwing. |
-| [Dict](/api/utils/namespaces/dict/functions)                | Build, look up, and transform key-value maps.                                      |
-| [Num](/api/utils/namespaces/num/functions)                  | Number utilities: clamp, range, sum, and arithmetic helpers.                       |
-| [Rec](/api/utils/namespaces/rec/functions)                  | Record/object utilities: pick, omit, mapValues, and key transformations.           |
-| [Str](/api/utils/namespaces/str/functions)                  | String utilities: trim, split, capitalize, and parsing helpers.                    |
-| [Uniq](/api/utils/namespaces/uniq/functions)                | Deduplicate and manage sets represented as arrays.                                 |
+| Module                                       | Description                                                                            |
+| -------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [Arr](/api/utils/namespaces/arr/functions)   | Array utilities (find, groupBy, zip, partition) that return Maybe instead of throwing. |
+| [Dict](/api/utils/namespaces/dict/functions) | Build, look up, and transform key-value maps.                                          |
+| [Num](/api/utils/namespaces/num/functions)   | Number utilities: clamp, range, sum, and arithmetic helpers.                           |
+| [Rec](/api/utils/namespaces/rec/functions)   | Record/object utilities: pick, omit, mapValues, and key transformations.               |
+| [Str](/api/utils/namespaces/str/functions)   | String utilities: trim, split, capitalize, and parsing helpers.                        |
+| [Uniq](/api/utils/namespaces/uniq/functions) | Deduplicate and manage sets represented as arrays.                                     |
 
 ## Types
 

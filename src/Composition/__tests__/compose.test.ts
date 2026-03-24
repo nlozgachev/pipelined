@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { Option } from "../../Core/Option.ts";
+import { Maybe } from "../../Core/Maybe.ts";
 import { Result } from "../../Core/Result.ts";
 import { compose } from "../compose.ts";
 
@@ -60,14 +60,14 @@ test("compose - type transformation across functions", () => {
 	expect(fn("hello")).toBe(5);
 });
 
-test("compose - integration with Option", () => {
-	const getOrDefault = Option.getOrElse(() => "none");
-	const toUpper = Option.map((s: string) => s.toUpperCase());
+test("compose - integration with Maybe", () => {
+	const getOrDefault = Maybe.getOrElse(() => "none");
+	const toUpper = Maybe.map((s: string) => s.toUpperCase());
 
 	const fn = compose(getOrDefault, toUpper);
 
-	expect(fn(Option.some("hello"))).toBe("HELLO");
-	expect(fn(Option.none())).toBe("none");
+	expect(fn(Maybe.some("hello"))).toBe("HELLO");
+	expect(fn(Maybe.none())).toBe("none");
 });
 
 test("compose - integration with Result", () => {

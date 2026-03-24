@@ -1,7 +1,7 @@
 export * from "./Deferred.ts";
 export * from "./Lens.ts";
 export * from "./Logged.ts";
-export * from "./Option.ts";
+export * from "./Maybe.ts";
 export * from "./Optional.ts";
 export * from "./Predicate.ts";
 export * from "./Reader.ts";
@@ -11,7 +11,7 @@ export * from "./Resource.ts";
 export * from "./Result.ts";
 export * from "./State.ts";
 export * from "./Task.ts";
-export * from "./TaskOption.ts";
+export * from "./TaskMaybe.ts";
 export * from "./TaskResult.ts";
 export * from "./TaskValidation.ts";
 export * from "./These.ts";

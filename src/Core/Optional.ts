@@ -1,5 +1,5 @@
 import type { Lens } from "./Lens.ts";
-import { Option } from "./Option.ts";
+import { Maybe } from "./Maybe.ts";
 
 /** Keys of T for which undefined is assignable (i.e. optional fields). */
 type OptionalKeys<T> = {
@@ -8,7 +8,7 @@ type OptionalKeys<T> = {
 
 /**
  * Optional<S, A> focuses on a value A inside a structure S that may or may
- * not be present. Like a Lens, but get returns Option<A>.
+ * not be present. Like a Lens, but get returns Maybe<A>.
  *
  * Compose with other Optionals via `andThen`, or with a Lens via `andThenLens`.
  * Convert a Lens to an Optional with `Lens.toOptional`.
@@ -25,24 +25,24 @@ type OptionalKeys<T> = {
  * ```
  */
 export type Optional<S, A> = {
-	readonly get: (s: S) => Option<A>;
+	readonly get: (s: S) => Maybe<A>;
 	readonly set: (a: A) => (s: S) => S;
 };
 
 export namespace Optional {
 	/**
-	 * Constructs an Optional from a getter (returning Option<A>) and a setter.
+	 * Constructs an Optional from a getter (returning Maybe<A>) and a setter.
 	 *
 	 * @example
 	 * ```ts
 	 * const firstChar = Optional.make(
-	 *   (s: string) => s.length > 0 ? Option.some(s[0]) : Option.none(),
+	 *   (s: string) => s.length > 0 ? Maybe.some(s[0]) : Maybe.none(),
 	 *   (c) => (s) => s.length > 0 ? c + s.slice(1) : s,
 	 * );
 	 * ```
 	 */
 	export const make = <S, A>(
-		get: (s: S) => Option<A>,
+		get: (s: S) => Maybe<A>,
 		set: (a: A) => (s: S) => S,
 	): Optional<S, A> => ({ get, set });
 
@@ -61,7 +61,7 @@ export namespace Optional {
 		make(
 			(s) => {
 				const val = s[key];
-				return val !== null && val !== undefined ? Option.some(val as NonNullable<S[K]>) : Option.none();
+				return val !== null && val !== undefined ? Maybe.some(val as NonNullable<S[K]>) : Maybe.none();
 			},
 			(a) => (s) => ({ ...s, [key]: a } as S),
 		);
@@ -80,7 +80,7 @@ export namespace Optional {
 	 */
 	export const index = <A>(i: number): Optional<A[], A> =>
 		make(
-			(arr) => i >= 0 && i < arr.length ? Option.some(arr[i]) : Option.none(),
+			(arr) => i >= 0 && i < arr.length ? Maybe.some(arr[i]) : Maybe.none(),
 			(a) => (arr) => {
 				if (i < 0 || i >= arr.length) return arr;
 				const copy = [...arr];
@@ -90,14 +90,14 @@ export namespace Optional {
 		);
 
 	/**
-	 * Reads the focused value from a structure, returning Option<A>.
+	 * Reads the focused value from a structure, returning Maybe<A>.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(profile, Optional.get(bioOpt)); // Some("...") or None
 	 * ```
 	 */
-	export const get = <S, A>(opt: Optional<S, A>) => (s: S): Option<A> => opt.get(s);
+	export const get = <S, A>(opt: Optional<S, A>) => (s: S): Maybe<A> => opt.get(s);
 
 	/**
 	 * Replaces the focused value within a structure.
@@ -187,7 +187,7 @@ export namespace Optional {
 		make(
 			(s) => {
 				const mid = outer.get(s);
-				return mid.kind === "None" ? Option.none() : inner.get(mid.value);
+				return mid.kind === "None" ? Maybe.none() : inner.get(mid.value);
 			},
 			(b) => (s) => {
 				const mid = outer.get(s);
@@ -211,7 +211,7 @@ export namespace Optional {
 		make(
 			(s) => {
 				const mid = outer.get(s);
-				return mid.kind === "None" ? Option.none() : Option.some(inner.get(mid.value));
+				return mid.kind === "None" ? Maybe.none() : Maybe.some(inner.get(mid.value));
 			},
 			(b) => (s) => {
 				const mid = outer.get(s);

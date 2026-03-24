@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
-import { Option } from "../Option.ts";
+import { Maybe } from "../Maybe.ts";
 import { Refinement } from "../Refinement.ts";
 import { Result } from "../Result.ts";
 
@@ -134,14 +134,14 @@ test("Refinement.toFilter returns Some when refinement passes", () => {
 });
 
 test("Refinement.toFilter returns None when refinement fails", () => {
-	expect(pipe("", Refinement.toFilter(isNonEmpty)) as Option<string>).toEqual({ kind: "None" });
+	expect(pipe("", Refinement.toFilter(isNonEmpty)) as Maybe<string>).toEqual({ kind: "None" });
 });
 
 test("Refinement.toFilter works in a pipe chain with composed refinements", () => {
 	const isPositiveEven = pipe(isPositive, Refinement.and(isEven));
-	expect(Option.isSome(pipe(4, Refinement.toFilter(isPositiveEven)))).toBe(true);
-	expect(Option.isNone(pipe(3, Refinement.toFilter(isPositiveEven)))).toBe(true);
-	expect(Option.isNone(pipe(-2, Refinement.toFilter(isPositiveEven)))).toBe(true);
+	expect(Maybe.isSome(pipe(4, Refinement.toFilter(isPositiveEven)))).toBe(true);
+	expect(Maybe.isNone(pipe(3, Refinement.toFilter(isPositiveEven)))).toBe(true);
+	expect(Maybe.isNone(pipe(-2, Refinement.toFilter(isPositiveEven)))).toBe(true);
 });
 
 // ---------------------------------------------------------------------------

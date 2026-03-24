@@ -1,5 +1,5 @@
 import { WithError, WithKind, WithValue } from "./InternalTypes.ts";
-import { Option } from "./Option.ts";
+import { Maybe } from "./Maybe.ts";
 import { Result } from "./Result.ts";
 
 /**
@@ -250,11 +250,11 @@ export namespace RemoteData {
 			isFailure(data) ? fallback(data.error) : data;
 
 	/**
-	 * Converts a RemoteData to an Option.
+	 * Converts a RemoteData to an Maybe.
 	 * Success becomes Some, all other states become None.
 	 */
-	export const toOption = <E, A>(data: RemoteData<E, A>): Option<A> =>
-		isSuccess(data) ? Option.some(data.value) : Option.none();
+	export const toMaybe = <E, A>(data: RemoteData<E, A>): Maybe<A> =>
+		isSuccess(data) ? Maybe.some(data.value) : Maybe.none();
 
 	/**
 	 * Converts a RemoteData to a Result.

@@ -1,18 +1,18 @@
 ---
 title: Rec — record utilities
-description: Work with records in a pipeline — data-last utilities with Option-returning key lookup.
+description: Work with records in a pipeline — data-last utilities with Maybe-returning key lookup.
 ---
 
 Plain JavaScript objects used as maps — `Record<string, A>` — are one of the most common data
 structures in any TypeScript codebase. `Rec` is a small collection of utilities for working with
-them in pipelines: data-last, curried, and returning `Option` wherever a key might not exist.
+them in pipelines: data-last, curried, and returning `Maybe` wherever a key might not exist.
 
 ## Safe lookup
 
-`Rec.lookup` retrieves a value by key and returns `Option` to make the absence explicit:
+`Rec.lookup` retrieves a value by key and returns `Maybe` to make the absence explicit:
 
 ```ts
-import { Option, Rec } from "@nlozgachev/pipelined/core";
+import { Maybe, Rec } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
 
 const settings = { theme: "dark", lang: "en" };
@@ -21,14 +21,14 @@ pipe(settings, Rec.lookup("theme")); // Some("dark")
 pipe(settings, Rec.lookup("font")); // None — not undefined
 ```
 
-This composes naturally with `Option` operations:
+This composes naturally with `Maybe` operations:
 
 ```ts
 pipe(
   config,
-  Rec.lookup("timeout"), // Option<string>
-  Option.chain(parseNumber), // Option<number>
-  Option.getOrElse(() => 30_000),
+  Rec.lookup("timeout"), // Maybe<string>
+  Maybe.chain(parseNumber), // Maybe<number>
+  Maybe.getOrElse(() => 30_000),
 );
 ```
 

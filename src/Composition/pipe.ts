@@ -20,10 +20,10 @@
  *
  * // With library functions
  * const greeting = pipe(
- *   Option.some("Alice"),
- *   Option.map(name => name.toUpperCase()),
- *   Option.map(name => `Hello, ${name}!`),
- *   Option.getOrElse("Hello!")
+ *   Maybe.some("Alice"),
+ *   Maybe.map(name => name.toUpperCase()),
+ *   Maybe.map(name => `Hello, ${name}!`),
+ *   Maybe.getOrElse("Hello!")
  * ); // "Hello, ALICE!"
  *
  * // Error handling with Result

@@ -158,7 +158,52 @@ export namespace TaskResult {
 		});
 
 	/**
+	 * Polls a TaskResult repeatedly until the success value satisfies a predicate.
+	 * Stops immediately and returns `Err` if the task fails.
+	 *
+	 * `delay` accepts a fixed number of milliseconds or a function `(attempt) => ms`
+	 * for a computed delay — useful for starting fast and slowing down over time.
+	 *
+	 * @example
+	 * ```ts
+	 * const checkJob = (id: string): TaskResult<string, { status: "pending" | "done" }> =>
+	 *   TaskResult.tryCatch(() => fetch(`/jobs/${id}`).then(r => r.json()), String);
+	 *
+	 * // Fixed delay: poll every 2s
+	 * pipe(
+	 *   checkJob(jobId),
+	 *   TaskResult.pollUntil({ when: job => job.status === "done", delay: 2000 }),
+	 * );
+	 *
+	 * // Computed delay: 1s, 2s, 3s, ...
+	 * pipe(
+	 *   checkJob(jobId),
+	 *   TaskResult.pollUntil({ when: job => job.status === "done", delay: n => n * 1000 }),
+	 * );
+	 * ```
+	 */
+	export const pollUntil =
+		<A>(options: { when: (a: A) => boolean; delay?: number | ((attempt: number) => number) }) =>
+		<E>(task: TaskResult<E, A>): TaskResult<E, A> =>
+			Task.from(() => {
+				const { when: predicate, delay } = options;
+				const getDelay = (attempt: number): number =>
+					delay === undefined ? 0 : typeof delay === "function" ? delay(attempt) : delay;
+				const run = (attempt: number): Promise<Result<E, A>> =>
+					Deferred.toPromise(task()).then((result) => {
+						if (Result.isErr(result)) return result;
+						if (predicate(result.value)) return result;
+						const ms = getDelay(attempt);
+						return (
+							ms > 0 ? new Promise<void>((r) => setTimeout(r, ms)) : Promise.resolve()
+						).then(() => run(attempt + 1));
+					});
+				return run(1);
+			});
+
+	/**
 	 * Fails a TaskResult with a typed error if it does not resolve within the given time.
+	 * Uses `Promise.race` — the underlying operation keeps running after the timeout fires.
 	 *
 	 * @example
 	 * ```ts

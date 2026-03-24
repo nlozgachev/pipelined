@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { Option } from "../../Core/Option.ts";
+import { Maybe } from "../../Core/Maybe.ts";
 import { Result } from "../../Core/Result.ts";
 import { pipe } from "../pipe.ts";
 
@@ -54,21 +54,21 @@ test("pipe - type transformation through chain", () => {
 	expect(result).toBe(2);
 });
 
-test("pipe - integration with Option.map", () => {
+test("pipe - integration with Maybe.map", () => {
 	const result = pipe(
-		Option.some(5),
-		Option.map((n: number) => n * 2),
-		Option.map((n: number) => n + 1),
-		Option.getOrElse(() => 0),
+		Maybe.some(5),
+		Maybe.map((n: number) => n * 2),
+		Maybe.map((n: number) => n + 1),
+		Maybe.getOrElse(() => 0),
 	);
 	expect(result).toBe(11);
 });
 
-test("pipe - integration with Option.map on None", () => {
+test("pipe - integration with Maybe.map on None", () => {
 	const result = pipe(
-		Option.none() as Option<number>,
-		Option.map((n: number) => n * 2),
-		Option.getOrElse(() => 0),
+		Maybe.none() as Maybe<number>,
+		Maybe.map((n: number) => n * 2),
+		Maybe.getOrElse(() => 0),
 	);
 	expect(result).toBe(0);
 });

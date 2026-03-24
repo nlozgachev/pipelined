@@ -26,7 +26,7 @@ const updated = user.address
 ```
 
 `Optional<S, A>` closes that gap. It is a path through your data that accepts the path might
-not reach anything. Reads return `Option<A>` instead of `A`. Writes and modifications are
+not reach anything. Reads return `Maybe<A>` instead of `A`. Writes and modifications are
 no-ops when the path finds nothing — no conditional required.
 
 ## The Optional approach
@@ -70,14 +70,14 @@ Out-of-bounds reads return `None`. Out-of-bounds writes leave the array unchange
 
 ```ts
 const firstChar = Optional.make(
-  (s: string) => s.length > 0 ? Option.some(s[0]) : Option.none(),
+  (s: string) => s.length > 0 ? Maybe.some(s[0]) : Maybe.none(),
   (c) => (s) => s.length > 0 ? c + s.slice(1) : s,
 );
 ```
 
 ## Reading
 
-`Optional.get` returns `Option<A>` — `Some` when the value is there, `None` when it isn't:
+`Optional.get` returns `Maybe<A>` — `Some` when the value is there, `None` when it isn't:
 
 ```ts
 pipe({ username: "alice", bio: "hello" }, Optional.get(bioOpt)); // Some("hello")
@@ -177,9 +177,9 @@ pipe(
 
 ## Lens vs Optional — when to use which
 
-| Situation | Use |
-|---|---|
-| Required field, always present | `Lens.prop` |
-| Optional field (`field?: T`) | `Optional.prop` |
-| Array element by index | `Optional.index` |
+| Situation                                      | Use                                         |
+| ---------------------------------------------- | ------------------------------------------- |
+| Required field, always present                 | `Lens.prop`                                 |
+| Optional field (`field?: T`)                   | `Optional.prop`                             |
+| Array element by index                         | `Optional.index`                            |
 | Path that starts required and becomes optional | `Lens.andThenOptional` or `Lens.toOptional` |

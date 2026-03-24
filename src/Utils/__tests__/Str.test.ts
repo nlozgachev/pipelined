@@ -1,5 +1,5 @@
 import { pipe } from "#composition/pipe.ts";
-import { Option } from "#core/Option.ts";
+import { Maybe } from "#core/Maybe.ts";
 import { expect, test } from "vitest";
 import { Str } from "../Str.ts";
 
@@ -140,19 +140,19 @@ test("Str.words splits on mixed whitespace characters", () => {
 // ---------------------------------------------------------------------------
 
 test("Str.parse.int returns Some for a valid integer string", () => {
-	expect(Str.parse.int("42")).toEqual(Option.some(42));
+	expect(Str.parse.int("42")).toEqual(Maybe.some(42));
 });
 
 test("Str.parse.int truncates floats", () => {
-	expect(Str.parse.int("3.7")).toEqual(Option.some(3));
+	expect(Str.parse.int("3.7")).toEqual(Maybe.some(3));
 });
 
 test("Str.parse.int returns None for a non-numeric string", () => {
-	expect(Str.parse.int("abc")).toEqual(Option.none());
+	expect(Str.parse.int("abc")).toEqual(Maybe.none());
 });
 
 test("Str.parse.int returns None for empty string", () => {
-	expect(Str.parse.int("")).toEqual(Option.none());
+	expect(Str.parse.int("")).toEqual(Maybe.none());
 });
 
 // ---------------------------------------------------------------------------
@@ -160,19 +160,19 @@ test("Str.parse.int returns None for empty string", () => {
 // ---------------------------------------------------------------------------
 
 test("Str.parse.float returns Some for a valid float string", () => {
-	expect(Str.parse.float("3.14")).toEqual(Option.some(3.14));
+	expect(Str.parse.float("3.14")).toEqual(Maybe.some(3.14));
 });
 
 test("Str.parse.float returns Some for an integer string", () => {
-	expect(Str.parse.float("42")).toEqual(Option.some(42));
+	expect(Str.parse.float("42")).toEqual(Maybe.some(42));
 });
 
 test("Str.parse.float returns None for a non-numeric string", () => {
-	expect(Str.parse.float("abc")).toEqual(Option.none());
+	expect(Str.parse.float("abc")).toEqual(Maybe.none());
 });
 
 test("Str.parse.float returns None for empty string", () => {
-	expect(Str.parse.float("")).toEqual(Option.none());
+	expect(Str.parse.float("")).toEqual(Maybe.none());
 });
 
 // ---------------------------------------------------------------------------

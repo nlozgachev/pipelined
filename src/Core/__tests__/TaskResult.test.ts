@@ -561,3 +561,89 @@ test("TaskResult.timeout uses the onTimeout return value as the error", async ()
 	)();
 	expect(result).toEqual({ kind: "Error", error: "request timed out" });
 });
+
+// ---------------------------------------------------------------------------
+// pollUntil
+// ---------------------------------------------------------------------------
+
+test("TaskResult.pollUntil returns Ok immediately when predicate is satisfied on first run", async () => {
+	let calls = 0;
+	const task: TaskResult<string, number> = () => {
+		calls++;
+		return TaskResult.ok<string, number>(42)();
+	};
+	const result = await pipe(task, TaskResult.pollUntil({ when: (n) => n === 42 }))();
+	expect(result).toEqual({ kind: "Ok", value: 42 });
+	expect(calls).toBe(1);
+});
+
+test("TaskResult.pollUntil keeps polling until predicate is satisfied", async () => {
+	let calls = 0;
+	const task: TaskResult<string, number> = () => {
+		calls++;
+		return TaskResult.ok<string, number>(calls)();
+	};
+	const result = await pipe(task, TaskResult.pollUntil({ when: (n) => n >= 3 }))();
+	expect(result).toEqual({ kind: "Ok", value: 3 });
+	expect(calls).toBe(3);
+});
+
+test("TaskResult.pollUntil stops immediately on Err without retrying", async () => {
+	let calls = 0;
+	const task: TaskResult<string, number> = () => {
+		calls++;
+		return TaskResult.err<string, number>("fail")();
+	};
+	const result = await pipe(task, TaskResult.pollUntil({ when: (n) => n === 1 }))();
+	expect(result).toEqual({ kind: "Error", error: "fail" });
+	expect(calls).toBe(1);
+});
+
+test("TaskResult.pollUntil with fixed delay polls multiple times", async () => {
+	let calls = 0;
+	const task: TaskResult<string, number> = () => {
+		calls++;
+		return TaskResult.ok<string, number>(calls)();
+	};
+	const result = await pipe(task, TaskResult.pollUntil({ when: (n) => n >= 2, delay: 1 }))();
+	expect(result).toEqual({ kind: "Ok", value: 2 });
+	expect(calls).toBe(2);
+});
+
+test("TaskResult.pollUntil with function delay receives attempt number", async () => {
+	const recorded: number[] = [];
+	let calls = 0;
+	const task: TaskResult<string, number> = () => {
+		calls++;
+		return TaskResult.ok<string, number>(calls)();
+	};
+	await pipe(
+		task,
+		TaskResult.pollUntil({
+			when: (n) => n >= 3,
+			delay: (n) => {
+				recorded.push(n);
+				return 0;
+			},
+		}),
+	)();
+	expect(recorded).toEqual([1, 2]);
+	expect(calls).toBe(3);
+});
+
+test("TaskResult.pollUntil composes in a pipe chain", async () => {
+	let calls = 0;
+	const task: TaskResult<string, { status: string; value: number }> = () => {
+		calls++;
+		return TaskResult.ok<string, { status: string; value: number }>(
+			calls < 3 ? { status: "pending", value: 0 } : { status: "done", value: 99 },
+		)();
+	};
+	const result = await pipe(
+		task,
+		TaskResult.pollUntil({ when: (r) => r.status === "done" }),
+		TaskResult.map((r) => r.value),
+	)();
+	expect(result).toEqual({ kind: "Ok", value: 99 });
+	expect(calls).toBe(3);
+});

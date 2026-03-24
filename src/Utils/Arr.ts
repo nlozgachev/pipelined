@@ -1,5 +1,5 @@
 import { Deferred } from "#core/Deferred.ts";
-import { Option } from "#core/Option.ts";
+import { Maybe } from "#core/Maybe.ts";
 import { Result } from "#core/Result.ts";
 import { Task } from "#core/Task.ts";
 import { isNonEmptyList, NonEmptyList } from "#types/NonEmptyList.ts";
@@ -7,7 +7,7 @@ import { isNonEmptyList, NonEmptyList } from "#types/NonEmptyList.ts";
 /**
  * Functional array utilities that compose well with pipe.
  * All functions are data-last and curried where applicable.
- * Safe access functions return Option instead of throwing or returning undefined.
+ * Safe access functions return Maybe instead of throwing or returning undefined.
  *
  * @example
  * ```ts
@@ -31,7 +31,7 @@ export namespace Arr {
 	 * Arr.head([]); // None
 	 * ```
 	 */
-	export const head = <A>(data: readonly A[]): Option<A> => data.length > 0 ? Option.some(data[0]) : Option.none();
+	export const head = <A>(data: readonly A[]): Maybe<A> => data.length > 0 ? Maybe.some(data[0]) : Maybe.none();
 
 	/**
 	 * Returns the last element of an array, or None if the array is empty.
@@ -42,8 +42,8 @@ export namespace Arr {
 	 * Arr.last([]); // None
 	 * ```
 	 */
-	export const last = <A>(data: readonly A[]): Option<A> =>
-		data.length > 0 ? Option.some(data[data.length - 1]) : Option.none();
+	export const last = <A>(data: readonly A[]): Maybe<A> =>
+		data.length > 0 ? Maybe.some(data[data.length - 1]) : Maybe.none();
 
 	/**
 	 * Returns all elements except the first, or None if the array is empty.
@@ -54,8 +54,8 @@ export namespace Arr {
 	 * Arr.tail([]); // None
 	 * ```
 	 */
-	export const tail = <A>(data: readonly A[]): Option<readonly A[]> =>
-		data.length > 0 ? Option.some(data.slice(1)) : Option.none();
+	export const tail = <A>(data: readonly A[]): Maybe<readonly A[]> =>
+		data.length > 0 ? Maybe.some(data.slice(1)) : Maybe.none();
 
 	/**
 	 * Returns all elements except the last, or None if the array is empty.
@@ -66,8 +66,8 @@ export namespace Arr {
 	 * Arr.init([]); // None
 	 * ```
 	 */
-	export const init = <A>(data: readonly A[]): Option<readonly A[]> =>
-		data.length > 0 ? Option.some(data.slice(0, -1)) : Option.none();
+	export const init = <A>(data: readonly A[]): Maybe<readonly A[]> =>
+		data.length > 0 ? Maybe.some(data.slice(0, -1)) : Maybe.none();
 
 	// --- Search ---
 
@@ -79,9 +79,9 @@ export namespace Arr {
 	 * pipe([1, 2, 3, 4], Arr.findFirst(n => n > 2)); // Some(3)
 	 * ```
 	 */
-	export const findFirst = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): Option<A> => {
+	export const findFirst = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): Maybe<A> => {
 		const idx = data.findIndex(predicate);
-		return idx >= 0 ? Option.some(data[idx]) : Option.none();
+		return idx >= 0 ? Maybe.some(data[idx]) : Maybe.none();
 	};
 
 	/**
@@ -92,11 +92,11 @@ export namespace Arr {
 	 * pipe([1, 2, 3, 4], Arr.findLast(n => n > 2)); // Some(4)
 	 * ```
 	 */
-	export const findLast = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): Option<A> => {
+	export const findLast = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): Maybe<A> => {
 		for (let i = data.length - 1; i >= 0; i--) {
-			if (predicate(data[i])) return Option.some(data[i]);
+			if (predicate(data[i])) return Maybe.some(data[i]);
 		}
-		return Option.none();
+		return Maybe.none();
 	};
 
 	/**
@@ -107,9 +107,9 @@ export namespace Arr {
 	 * pipe([1, 2, 3, 4], Arr.findIndex(n => n > 2)); // Some(2)
 	 * ```
 	 */
-	export const findIndex = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): Option<number> => {
+	export const findIndex = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): Maybe<number> => {
 		const idx = data.findIndex(predicate);
-		return idx >= 0 ? Option.some(idx) : Option.none();
+		return idx >= 0 ? Maybe.some(idx) : Maybe.none();
 	};
 
 	// --- Transform ---
@@ -347,29 +347,29 @@ export namespace Arr {
 	// --- Traverse / Sequence ---
 
 	/**
-	 * Maps each element to an Option and collects the results.
+	 * Maps each element to an Maybe and collects the results.
 	 * Returns None if any mapping returns None.
 	 *
 	 * @example
 	 * ```ts
-	 * const parseNum = (s: string): Option<number> => {
+	 * const parseNum = (s: string): Maybe<number> => {
 	 *   const n = Number(s);
-	 *   return isNaN(n) ? Option.none() : Option.some(n);
+	 *   return isNaN(n) ? Maybe.none() : Maybe.some(n);
 	 * };
 	 *
 	 * pipe(["1", "2", "3"], Arr.traverse(parseNum)); // Some([1, 2, 3])
 	 * pipe(["1", "x", "3"], Arr.traverse(parseNum)); // None
 	 * ```
 	 */
-	export const traverse = <A, B>(f: (a: A) => Option<B>) => (data: readonly A[]): Option<readonly B[]> => {
+	export const traverse = <A, B>(f: (a: A) => Maybe<B>) => (data: readonly A[]): Maybe<readonly B[]> => {
 		const n = data.length;
 		const result = new Array<B>(n);
 		for (let i = 0; i < n; i++) {
 			const mapped = f(data[i]);
-			if (mapped.kind === "None") return Option.none();
+			if (mapped.kind === "None") return Maybe.none();
 			result[i] = mapped.value;
 		}
-		return Option.some(result);
+		return Maybe.some(result);
 	};
 
 	/**
@@ -411,18 +411,18 @@ export namespace Arr {
 		Task.from(() => Promise.all(data.map((a) => Deferred.toPromise(f(a)()))));
 
 	/**
-	 * Collects an array of Options into an Option of array.
+	 * Collects an array of Options into an Maybe of array.
 	 * Returns None if any element is None.
 	 *
 	 * @example
 	 * ```ts
-	 * Arr.sequence([Option.some(1), Option.some(2)]); // Some([1, 2])
-	 * Arr.sequence([Option.some(1), Option.none()]); // None
+	 * Arr.sequence([Maybe.some(1), Maybe.some(2)]); // Some([1, 2])
+	 * Arr.sequence([Maybe.some(1), Maybe.none()]); // None
 	 * ```
 	 */
 	export const sequence = <A>(
-		data: readonly Option<A>[],
-	): Option<readonly A[]> => traverse<Option<A>, A>((a) => a)(data);
+		data: readonly Maybe<A>[],
+	): Maybe<readonly A[]> => traverse<Maybe<A>, A>((a) => a)(data);
 
 	/**
 	 * Collects an array of Results into a Result of array.

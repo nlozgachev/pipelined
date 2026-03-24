@@ -1,5 +1,5 @@
 import { pipe } from "#composition/pipe.ts";
-import { Option } from "#core/Option.ts";
+import { Maybe } from "#core/Maybe.ts";
 import { bench, describe } from "vitest";
 import { Dict } from "../Dict.ts";
 
@@ -12,16 +12,16 @@ const dictA100 = makeDict(50);
 const dictB100 = Dict.fromEntries(Array.from({ length: 50 }, (_, i) => [`key${i + 25}`, i + 1000]));
 const dictA10k = makeDict(5_000);
 const dictB10k = Dict.fromEntries(Array.from({ length: 5_000 }, (_, i) => [`key${i + 2_500}`, i + 10_000]));
-const optDict100 = Dict.fromEntries<string, Option<number>>(
+const optDict100 = Dict.fromEntries<string, Maybe<number>>(
 	Array.from({ length: 100 }, (_, i) => [
 		`key${i}`,
-		i % 3 === 0 ? Option.none() : Option.some(i),
+		i % 3 === 0 ? Maybe.none() : Maybe.some(i),
 	]),
 );
-const optDict10k = Dict.fromEntries<string, Option<number>>(
+const optDict10k = Dict.fromEntries<string, Maybe<number>>(
 	Array.from({ length: 10_000 }, (_, i) => [
 		`key${i}`,
-		i % 3 === 0 ? Option.none() : Option.some(i),
+		i % 3 === 0 ? Maybe.none() : Maybe.some(i),
 	]),
 );
 const data100 = Array.from({ length: 100 }, (_, i) => i);

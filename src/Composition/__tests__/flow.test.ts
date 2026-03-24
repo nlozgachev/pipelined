@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { Option } from "../../Core/Option.ts";
+import { Maybe } from "../../Core/Maybe.ts";
 import { flow } from "../flow.ts";
 
 test("flow - single function wraps it", () => {
@@ -72,14 +72,14 @@ test("flow - multi-argument first function with three args", () => {
 	expect(fn(1, 2, 3)).toBe("Sum: 6");
 });
 
-test("flow - integration with Option", () => {
+test("flow - integration with Maybe", () => {
 	const safeParseAndDouble = flow(
 		(s: string) => {
 			const n = parseInt(s, 10);
-			return isNaN(n) ? (Option.none() as Option<number>) : Option.some(n);
+			return isNaN(n) ? (Maybe.none() as Maybe<number>) : Maybe.some(n);
 		},
-		Option.map((n: number) => n * 2),
-		Option.getOrElse(() => 0),
+		Maybe.map((n: number) => n * 2),
+		Maybe.getOrElse(() => 0),
 	);
 
 	expect(safeParseAndDouble("21")).toBe(42);

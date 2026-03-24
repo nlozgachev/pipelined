@@ -69,7 +69,7 @@ export default defineConfig({
           label: "Guides",
           items: [
             { label: "Composition utilities", slug: "guides/composition" },
-            { label: "Option — absent values", slug: "guides/option" },
+            { label: "Maybe — absent values", slug: "guides/maybe" },
             { label: "Result — handling failures", slug: "guides/result" },
             {
               label: "Validation — collecting errors",

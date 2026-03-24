@@ -1,4 +1,4 @@
-import { Option } from "#core/Option.ts";
+import { Maybe, None, Some } from "#core/Maybe.ts";
 
 /**
  * Functional record/object utilities that compose well with pipe.
@@ -90,7 +90,7 @@ export namespace Rec {
 	};
 
 	/**
-	 * Looks up a value by key, returning Option.
+	 * Looks up a value by key, returning Maybe.
 	 *
 	 * @example
 	 * ```ts
@@ -98,25 +98,32 @@ export namespace Rec {
 	 * pipe({ a: 1, b: 2 }, Rec.lookup("c")); // None
 	 * ```
 	 */
-	export const lookup = (key: string) => <A>(data: Readonly<Record<string, A>>): Option<A> =>
-		Object.hasOwn(data, key) ? Option.some(data[key]) : Option.none();
+	export const lookup = <K extends string>(key: K) => <V>(data: Record<string, V>): Maybe<V> =>
+		Object.hasOwn(data, key)
+			? { kind: "Some", value: data[key] } as Some<V>
+			: { kind: "None" } as None;
 
 	/**
 	 * Returns all keys of a record.
 	 */
-	export const keys = <A>(data: Readonly<Record<string, A>>): readonly string[] => Object.keys(data);
+	export const keys = <T extends Record<string, unknown>>(
+		data: T,
+	): readonly (keyof T & string)[] => Object.keys(data) as (keyof T & string)[];
 
 	/**
 	 * Returns all values of a record.
 	 */
-	export const values = <A>(data: Readonly<Record<string, A>>): readonly A[] => Object.values(data);
+	export const values = <T extends Record<string, unknown>>(
+		data: T,
+	): readonly T[keyof T & string][] => Object.values(data) as T[keyof T & string][];
 
 	/**
 	 * Returns all key-value pairs of a record.
 	 */
-	export const entries = <A>(
-		data: Readonly<Record<string, A>>,
-	): readonly (readonly [string, A])[] => Object.entries(data);
+	export const entries = <T extends Record<string, unknown>>(
+		data: T,
+	): readonly (readonly [keyof T, T[keyof T]])[] =>
+		Object.entries(data) as unknown as (readonly [keyof T, T[keyof T]])[];
 
 	/**
 	 * Creates a record from key-value pairs.
@@ -240,17 +247,17 @@ export namespace Rec {
 		};
 
 	/**
-	 * Removes all `None` values from a `Record<string, Option<A>>`, returning a plain `Record<string, A>`.
+	 * Removes all `None` values from a `Record<string, Maybe<A>>`, returning a plain `Record<string, A>`.
 	 * Useful when building records from fallible lookups.
 	 *
 	 * @example
 	 * ```ts
-	 * Rec.compact({ a: Option.some(1), b: Option.none(), c: Option.some(3) });
+	 * Rec.compact({ a: Maybe.some(1), b: Maybe.none(), c: Maybe.some(3) });
 	 * // { a: 1, c: 3 }
 	 * ```
 	 */
 	export const compact = <A>(
-		data: Readonly<Record<string, Option<A>>>,
+		data: Readonly<Record<string, Maybe<A>>>,
 	): Readonly<Record<string, A>> => {
 		const result: Record<string, A> = {};
 		for (const [k, v] of Object.entries(data)) {

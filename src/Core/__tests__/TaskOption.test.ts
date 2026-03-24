@@ -1,47 +1,47 @@
 import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
-import { Option } from "../Option.ts";
+import { Maybe } from "../Maybe.ts";
 import { Task } from "../Task.ts";
-import { TaskOption } from "../TaskOption.ts";
+import { TaskMaybe } from "../TaskMaybe.ts";
 
 // ---------------------------------------------------------------------------
 // of
 // ---------------------------------------------------------------------------
 
-test("TaskOption.some creates a Task that resolves to Some", async () => {
-	expect(await TaskOption.some(42)()).toEqual({ kind: "Some", value: 42 });
+test("TaskMaybe.some creates a Task that resolves to Some", async () => {
+	expect(await TaskMaybe.some(42)()).toEqual({ kind: "Some", value: 42 });
 });
 
 // ---------------------------------------------------------------------------
 // none
 // ---------------------------------------------------------------------------
 
-test("TaskOption.none creates a Task that resolves to None", async () => {
-	expect(await TaskOption.none()()).toEqual({ kind: "None" });
+test("TaskMaybe.none creates a Task that resolves to None", async () => {
+	expect(await TaskMaybe.none()()).toEqual({ kind: "None" });
 });
 
 // ---------------------------------------------------------------------------
-// fromOption
+// fromMaybe
 // ---------------------------------------------------------------------------
 
-test("TaskOption.fromOption lifts Some into a Task", async () => {
-	expect(await TaskOption.fromOption(Option.some(10))()).toEqual({
+test("TaskMaybe.fromMaybe lifts Some into a Task", async () => {
+	expect(await TaskMaybe.fromMaybe(Maybe.some(10))()).toEqual({
 		kind: "Some",
 		value: 10,
 	});
 });
 
-test("TaskOption.fromOption lifts None into a Task", async () => {
-	expect(await TaskOption.fromOption(Option.none())()).toEqual({ kind: "None" });
+test("TaskMaybe.fromMaybe lifts None into a Task", async () => {
+	expect(await TaskMaybe.fromMaybe(Maybe.none())()).toEqual({ kind: "None" });
 });
 
 // ---------------------------------------------------------------------------
 // fromTask
 // ---------------------------------------------------------------------------
 
-test("TaskOption.fromTask wraps a Task result in Some", async () => {
+test("TaskMaybe.fromTask wraps a Task result in Some", async () => {
 	const task = Task.resolve(5);
-	expect(await TaskOption.fromTask(task)()).toEqual({ kind: "Some", value: 5 });
+	expect(await TaskMaybe.fromTask(task)()).toEqual({ kind: "Some", value: 5 });
 });
 
 // ---------------------------------------------------------------------------
@@ -49,46 +49,46 @@ test("TaskOption.fromTask wraps a Task result in Some", async () => {
 // ---------------------------------------------------------------------------
 
 test(
-	"TaskOption.tryCatch returns Some when Promise resolves",
+	"TaskMaybe.tryCatch returns Some when Promise resolves",
 	async () => {
-		expect(await TaskOption.tryCatch(() => Promise.resolve(99))()).toEqual({
+		expect(await TaskMaybe.tryCatch(() => Promise.resolve(99))()).toEqual({
 			kind: "Some",
 			value: 99,
 		});
 	},
 );
 
-test("TaskOption.tryCatch returns None when Promise rejects", async () => {
-	expect(await TaskOption.tryCatch(() => Promise.reject(new Error("boom")))()).toEqual({ kind: "None" });
+test("TaskMaybe.tryCatch returns None when Promise rejects", async () => {
+	expect(await TaskMaybe.tryCatch(() => Promise.reject(new Error("boom")))()).toEqual({ kind: "None" });
 });
 
 // ---------------------------------------------------------------------------
 // map
 // ---------------------------------------------------------------------------
 
-test("TaskOption.map transforms Some value", async () => {
+test("TaskMaybe.map transforms Some value", async () => {
 	expect(
 		await pipe(
-			TaskOption.some(5),
-			TaskOption.map((n: number) => n * 2),
+			TaskMaybe.some(5),
+			TaskMaybe.map((n: number) => n * 2),
 		)(),
 	).toEqual({ kind: "Some", value: 10 });
 });
 
-test("TaskOption.map passes through None unchanged", async () => {
+test("TaskMaybe.map passes through None unchanged", async () => {
 	expect(
 		await pipe(
-			TaskOption.none<number>(),
-			TaskOption.map((n: number) => n * 2),
+			TaskMaybe.none<number>(),
+			TaskMaybe.map((n: number) => n * 2),
 		)(),
 	).toEqual({ kind: "None" });
 });
 
-test("TaskOption.map can change the value type", async () => {
+test("TaskMaybe.map can change the value type", async () => {
 	expect(
 		await pipe(
-			TaskOption.some(7),
-			TaskOption.map((n: number) => `val:${n}`),
+			TaskMaybe.some(7),
+			TaskMaybe.map((n: number) => `val:${n}`),
 		)(),
 	).toEqual({ kind: "Some", value: "val:7" });
 });
@@ -97,23 +97,23 @@ test("TaskOption.map can change the value type", async () => {
 // chain
 // ---------------------------------------------------------------------------
 
-test("TaskOption.chain applies function when Some", async () => {
+test("TaskMaybe.chain applies function when Some", async () => {
 	const result = await pipe(
-		TaskOption.some(5),
-		TaskOption.chain((n: number) => TaskOption.some(n * 2)),
+		TaskMaybe.some(5),
+		TaskMaybe.chain((n: number) => TaskMaybe.some(n * 2)),
 	)();
 	expect(result).toEqual({ kind: "Some", value: 10 });
 });
 
 test(
-	"TaskOption.chain propagates None without calling function",
+	"TaskMaybe.chain propagates None without calling function",
 	async () => {
 		let called = false;
 		await pipe(
-			TaskOption.none<number>(),
-			TaskOption.chain((_n: number) => {
+			TaskMaybe.none<number>(),
+			TaskMaybe.chain((_n: number) => {
 				called = true;
-				return TaskOption.some(_n);
+				return TaskMaybe.some(_n);
 			}),
 		)();
 		expect(called).toBe(false);
@@ -121,22 +121,22 @@ test(
 );
 
 test(
-	"TaskOption.chain returns None when function returns None",
+	"TaskMaybe.chain returns None when function returns None",
 	async () => {
 		expect(
 			await pipe(
-				TaskOption.some(5),
-				TaskOption.chain((_n: number) => TaskOption.none()),
+				TaskMaybe.some(5),
+				TaskMaybe.chain((_n: number) => TaskMaybe.none()),
 			)(),
 		).toEqual({ kind: "None" });
 	},
 );
 
-test("TaskOption.chain composes multiple async steps", async () => {
+test("TaskMaybe.chain composes multiple async steps", async () => {
 	const result = await pipe(
-		TaskOption.some(1),
-		TaskOption.chain((n: number) => TaskOption.some(n + 1)),
-		TaskOption.chain((n: number) => TaskOption.some(n * 10)),
+		TaskMaybe.some(1),
+		TaskMaybe.chain((n: number) => TaskMaybe.some(n + 1)),
+		TaskMaybe.chain((n: number) => TaskMaybe.some(n * 10)),
 	)();
 	expect(result).toEqual({ kind: "Some", value: 20 });
 });
@@ -145,28 +145,28 @@ test("TaskOption.chain composes multiple async steps", async () => {
 // ap
 // ---------------------------------------------------------------------------
 
-test("TaskOption.ap applies Some function to Some value", async () => {
+test("TaskMaybe.ap applies Some function to Some value", async () => {
 	const result = await pipe(
-		TaskOption.some((n: number) => n * 3),
-		TaskOption.ap(TaskOption.some(4)),
+		TaskMaybe.some((n: number) => n * 3),
+		TaskMaybe.ap(TaskMaybe.some(4)),
 	)();
 	expect(result).toEqual({ kind: "Some", value: 12 });
 });
 
-test("TaskOption.ap returns None when function is None", async () => {
+test("TaskMaybe.ap returns None when function is None", async () => {
 	expect(
 		await pipe(
-			TaskOption.none<(n: number) => number>(),
-			TaskOption.ap(TaskOption.some(4)),
+			TaskMaybe.none<(n: number) => number>(),
+			TaskMaybe.ap(TaskMaybe.some(4)),
 		)(),
 	).toEqual({ kind: "None" });
 });
 
-test("TaskOption.ap returns None when argument is None", async () => {
+test("TaskMaybe.ap returns None when argument is None", async () => {
 	expect(
 		await pipe(
-			TaskOption.some((n: number) => n * 3),
-			TaskOption.ap(TaskOption.none<number>()),
+			TaskMaybe.some((n: number) => n * 3),
+			TaskMaybe.ap(TaskMaybe.none<number>()),
 		)(),
 	).toEqual({ kind: "None" });
 });
@@ -175,11 +175,11 @@ test("TaskOption.ap returns None when argument is None", async () => {
 // fold
 // ---------------------------------------------------------------------------
 
-test("TaskOption.fold calls onSome for Some", async () => {
+test("TaskMaybe.fold calls onSome for Some", async () => {
 	expect(
 		await pipe(
-			TaskOption.some(5),
-			TaskOption.fold(
+			TaskMaybe.some(5),
+			TaskMaybe.fold(
 				() => "none",
 				(n: number) => `some:${n}`,
 			),
@@ -187,11 +187,11 @@ test("TaskOption.fold calls onSome for Some", async () => {
 	).toBe("some:5");
 });
 
-test("TaskOption.fold calls onNone for None", async () => {
+test("TaskMaybe.fold calls onNone for None", async () => {
 	expect(
 		await pipe(
-			TaskOption.none(),
-			TaskOption.fold(
+			TaskMaybe.none(),
+			TaskMaybe.fold(
 				() => "none",
 				(n: number) => `some:${n}`,
 			),
@@ -203,11 +203,11 @@ test("TaskOption.fold calls onNone for None", async () => {
 // match
 // ---------------------------------------------------------------------------
 
-test("TaskOption.match calls some handler for Some", async () => {
+test("TaskMaybe.match calls some handler for Some", async () => {
 	expect(
 		await pipe(
-			TaskOption.some(5),
-			TaskOption.match({
+			TaskMaybe.some(5),
+			TaskMaybe.match({
 				some: (n: number) => `got:${n}`,
 				none: () => "empty",
 			}),
@@ -215,11 +215,11 @@ test("TaskOption.match calls some handler for Some", async () => {
 	).toBe("got:5");
 });
 
-test("TaskOption.match calls none handler for None", async () => {
+test("TaskMaybe.match calls none handler for None", async () => {
 	expect(
 		await pipe(
-			TaskOption.none(),
-			TaskOption.match({
+			TaskMaybe.none(),
+			TaskMaybe.match({
 				some: (n: number) => `got:${n}`,
 				none: () => "empty",
 			}),
@@ -231,21 +231,21 @@ test("TaskOption.match calls none handler for None", async () => {
 // getOrElse
 // ---------------------------------------------------------------------------
 
-test("TaskOption.getOrElse returns value for Some", async () => {
-	expect(await pipe(TaskOption.some(5), TaskOption.getOrElse(() => 0))()).toBe(5);
+test("TaskMaybe.getOrElse returns value for Some", async () => {
+	expect(await pipe(TaskMaybe.some(5), TaskMaybe.getOrElse(() => 0))()).toBe(5);
 });
 
-test("TaskOption.getOrElse returns default for None", async () => {
-	expect(await pipe(TaskOption.none<number>(), TaskOption.getOrElse(() => 0))()).toBe(0);
+test("TaskMaybe.getOrElse returns default for None", async () => {
+	expect(await pipe(TaskMaybe.none<number>(), TaskMaybe.getOrElse(() => 0))()).toBe(0);
 });
 
-test("TaskOption.getOrElse widens return type to A | B when default is a different type", async () => {
-	const result = await pipe(TaskOption.none(), TaskOption.getOrElse(() => null))();
+test("TaskMaybe.getOrElse widens return type to A | B when default is a different type", async () => {
+	const result = await pipe(TaskMaybe.none(), TaskMaybe.getOrElse(() => null))();
 	expect(result).toBeNull();
 });
 
-test("TaskOption.getOrElse returns Some value typed as A | B when Some", async () => {
-	const result = await pipe(TaskOption.some(5), TaskOption.getOrElse(() => null))();
+test("TaskMaybe.getOrElse returns Some value typed as A | B when Some", async () => {
+	const result = await pipe(TaskMaybe.some(5), TaskMaybe.getOrElse(() => null))();
 	expect(result).toBe(5);
 });
 
@@ -254,12 +254,12 @@ test("TaskOption.getOrElse returns Some value typed as A | B when Some", async (
 // ---------------------------------------------------------------------------
 
 test(
-	"TaskOption.tap executes side effect on Some and returns original",
+	"TaskMaybe.tap executes side effect on Some and returns original",
 	async () => {
 		let seen = 0;
 		const result = await pipe(
-			TaskOption.some(5),
-			TaskOption.tap((n: number) => {
+			TaskMaybe.some(5),
+			TaskMaybe.tap((n: number) => {
 				seen = n;
 			}),
 		)();
@@ -268,11 +268,11 @@ test(
 	},
 );
 
-test("TaskOption.tap does not execute side effect on None", async () => {
+test("TaskMaybe.tap does not execute side effect on None", async () => {
 	let called = false;
 	await pipe(
-		TaskOption.none(),
-		TaskOption.tap(() => {
+		TaskMaybe.none(),
+		TaskMaybe.tap(() => {
 			called = true;
 		}),
 	)();
@@ -283,29 +283,29 @@ test("TaskOption.tap does not execute side effect on None", async () => {
 // filter
 // ---------------------------------------------------------------------------
 
-test("TaskOption.filter keeps Some when predicate passes", async () => {
+test("TaskMaybe.filter keeps Some when predicate passes", async () => {
 	expect(
 		await pipe(
-			TaskOption.some(5),
-			TaskOption.filter((n: number) => n > 3),
+			TaskMaybe.some(5),
+			TaskMaybe.filter((n: number) => n > 3),
 		)(),
 	).toEqual({ kind: "Some", value: 5 });
 });
 
-test("TaskOption.filter returns None when predicate fails", async () => {
+test("TaskMaybe.filter returns None when predicate fails", async () => {
 	expect(
 		await pipe(
-			TaskOption.some(2),
-			TaskOption.filter((n: number) => n > 3),
+			TaskMaybe.some(2),
+			TaskMaybe.filter((n: number) => n > 3),
 		)(),
 	).toEqual({ kind: "None" });
 });
 
-test("TaskOption.filter passes through None unchanged", async () => {
+test("TaskMaybe.filter passes through None unchanged", async () => {
 	expect(
 		await pipe(
-			TaskOption.none<number>(),
-			TaskOption.filter((_n) => true),
+			TaskMaybe.none<number>(),
+			TaskMaybe.filter((_n) => true),
 		)(),
 	).toEqual({ kind: "None" });
 });
@@ -314,22 +314,22 @@ test("TaskOption.filter passes through None unchanged", async () => {
 // toTaskResult
 // ---------------------------------------------------------------------------
 
-test("TaskOption.toTaskResult returns Ok for Some", async () => {
+test("TaskMaybe.toTaskResult returns Ok for Some", async () => {
 	expect(
 		await pipe(
-			TaskOption.some(42),
-			TaskOption.toTaskResult(() => "missing"),
+			TaskMaybe.some(42),
+			TaskMaybe.toTaskResult(() => "missing"),
 		)(),
 	).toEqual({ kind: "Ok", value: 42 });
 });
 
 test(
-	"TaskOption.toTaskResult returns Err for None using onNone",
+	"TaskMaybe.toTaskResult returns Err for None using onNone",
 	async () => {
 		expect(
 			await pipe(
-				TaskOption.none<number>(),
-				TaskOption.toTaskResult(() => "missing"),
+				TaskMaybe.none<number>(),
+				TaskMaybe.toTaskResult(() => "missing"),
 			)(),
 		).toEqual({ kind: "Error", error: "missing" });
 	},
@@ -339,23 +339,23 @@ test(
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("TaskOption composes well in a pipe chain", async () => {
+test("TaskMaybe composes well in a pipe chain", async () => {
 	const result = await pipe(
-		TaskOption.some(5),
-		TaskOption.map((n: number) => n * 2),
-		TaskOption.filter((n: number) => n > 5),
-		TaskOption.chain((n: number) => TaskOption.some(n + 1)),
-		TaskOption.getOrElse(() => 0),
+		TaskMaybe.some(5),
+		TaskMaybe.map((n: number) => n * 2),
+		TaskMaybe.filter((n: number) => n > 5),
+		TaskMaybe.chain((n: number) => TaskMaybe.some(n + 1)),
+		TaskMaybe.getOrElse(() => 0),
 	)();
 	expect(result).toBe(11);
 });
 
-test("TaskOption pipe short-circuits on None", async () => {
+test("TaskMaybe pipe short-circuits on None", async () => {
 	const result = await pipe(
-		TaskOption.some(2),
-		TaskOption.filter((n: number) => n > 5),
-		TaskOption.map((n: number) => n * 10),
-		TaskOption.getOrElse(() => 0),
+		TaskMaybe.some(2),
+		TaskMaybe.filter((n: number) => n > 5),
+		TaskMaybe.map((n: number) => n * 10),
+		TaskMaybe.getOrElse(() => 0),
 	)();
 	expect(result).toBe(0);
 });

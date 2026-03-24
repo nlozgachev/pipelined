@@ -396,17 +396,17 @@ test("RemoteData.recover preserves Success typed as RemoteData<E, A | B>", () =>
 });
 
 // ---------------------------------------------------------------------------
-// toOption
+// toMaybe
 // ---------------------------------------------------------------------------
 
-test("RemoteData.toOption returns Some for Success", () => {
-	expect(RemoteData.toOption(RemoteData.success(42))).toEqual({ kind: "Some", value: 42 });
+test("RemoteData.toMaybe returns Some for Success", () => {
+	expect(RemoteData.toMaybe(RemoteData.success(42))).toEqual({ kind: "Some", value: 42 });
 });
 
-test("RemoteData.toOption returns None for non-Success", () => {
-	expect(RemoteData.toOption(RemoteData.notAsked())).toEqual({ kind: "None" });
-	expect(RemoteData.toOption(RemoteData.loading())).toEqual({ kind: "None" });
-	expect(RemoteData.toOption(RemoteData.failure("e"))).toEqual({ kind: "None" });
+test("RemoteData.toMaybe returns None for non-Success", () => {
+	expect(RemoteData.toMaybe(RemoteData.notAsked())).toEqual({ kind: "None" });
+	expect(RemoteData.toMaybe(RemoteData.loading())).toEqual({ kind: "None" });
+	expect(RemoteData.toMaybe(RemoteData.failure("e"))).toEqual({ kind: "None" });
 });
 
 // ---------------------------------------------------------------------------

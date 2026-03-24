@@ -3,7 +3,7 @@ title: Performance & benchmarks
 description: Why wrapping native data types with a friendlier API requires ongoing benchmarking, and how custom implementations beat native methods without touching the public API.
 ---
 
-The types in `pipelined/core` — `Option`, `Result`, `Task`, `RemoteData` — replace patterns that
+The types in `pipelined/core` — `Maybe`, `Result`, `Task`, `RemoteData` — replace patterns that
 don't have a built-in equivalent in JavaScript. There is no native "absent value that propagates
 through transformations" or "typed failure channel". The overhead of introducing them is the cost
 of abstraction over nothing.

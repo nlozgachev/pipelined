@@ -1,5 +1,5 @@
 import { pipe } from "#composition/pipe.ts";
-import { Option } from "#core/Option.ts";
+import { Maybe } from "#core/Maybe.ts";
 import { Result } from "#core/Result.ts";
 import { bench, describe } from "vitest";
 import { Arr } from "../Arr.ts";
@@ -9,8 +9,8 @@ const data10k = Array.from({ length: 10_000 }, (_, i) => i);
 const otherArr = Array.from({ length: 10_000 }, (_, i) => i + 1);
 const shuffled = [...data10k].reverse();
 const words = Array.from({ length: 10_000 }, (_, i) => `word${i % 100}`);
-const toSome = (n: number): Option<number> => Option.some(n * 2);
-const toSome2 = (n: number): Option<number> => Option.some(n * 2);
+const toSome = (n: number): Maybe<number> => Maybe.some(n * 2);
+const toSome2 = (n: number): Maybe<number> => Maybe.some(n * 2);
 const toOk = (n: number): Result<never, number> => Result.ok(n * 2);
 const toOk2 = (n: number): Result<never, number> => Result.ok(n * 2);
 
@@ -77,11 +77,11 @@ describe("scan-10k", () => {
 	});
 });
 
-describe("traverse-option-10k", () => {
-	bench("Arr.traverse Option 10k (all-Some)", () => {
+describe("traverse-maybe-10k", () => {
+	bench("Arr.traverse Maybe 10k (all-Some)", () => {
 		pipe(data10k, Arr.traverse(toSome));
 	});
-	bench("native traverse Option 10k (all-Some)", () => {
+	bench("native traverse Maybe 10k (all-Some)", () => {
 		const result: number[] = [];
 		for (const n of data10k) {
 			const v = toSome(n);

@@ -50,17 +50,17 @@ Any function that takes one argument and returns a value can be a step. That inc
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
-import { Option } from "@nlozgachev/pipelined/core";
+import { Maybe } from "@nlozgachev/pipelined/core";
 
 const displayName = pipe(
   users.get(userId),              // User | undefined
-  Option.fromNullable,            // Option<User>   — library function, passed directly
-  Option.map((u) => u.name),      // Option<string> — partially applied
-  Option.getOrElse("Anonymous"),  // string
+  Maybe.fromNullable,            // Maybe<User>   — library function, passed directly
+  Maybe.map((u) => u.name),      // Maybe<string> — partially applied
+  Maybe.getOrElse("Anonymous"),  // string
 );
 ```
 
-`Option.fromNullable` is passed as a step without wrapping it in an arrow function. `Option.map((u) => u.name)` is called with just the mapping function — it returns a new function waiting for the `Option`, which `pipe` supplies. This is the data-last convention, covered below.
+`Maybe.fromNullable` is passed as a step without wrapping it in an arrow function. `Maybe.map((u) => u.name)` is called with just the mapping function — it returns a new function waiting for the `Maybe`, which `pipe` supplies. This is the data-last convention, covered below.
 
 ## `flow` — a pipeline as a reusable function
 
@@ -97,14 +97,14 @@ items.map(transform); // no wrapper arrow function needed
 
 Every function in this library takes the data it operates on as its **last** argument. This is what makes steps slot into `pipe` and `flow` without wrapper functions.
 
-When you write `Option.map((u) => u.name)`, you get back a function waiting for an `Option`. `pipe` supplies it automatically. If the library used data-first signatures instead, every step would need a wrapper: `(opt) => Option.map(opt, (u) => u.name)`. Data-last eliminates that ceremony entirely:
+When you write `Maybe.map((u) => u.name)`, you get back a function waiting for an `Maybe`. `pipe` supplies it automatically. If the library used data-first signatures instead, every step would need a wrapper: `(opt) => Maybe.map(opt, (u) => u.name)`. Data-last eliminates that ceremony entirely:
 
 ```ts
 pipe(
   value,
-  Option.map((u) => u.name),            // (option: Option<User>) => Option<string>
-  Option.filter((n) => n.length > 0),   // (option: Option<string>) => Option<string>
-  Option.getOrElse("Anonymous"),         // (option: Option<string>) => string
+  Maybe.map((u) => u.name),            // (option: Maybe<User>) => Maybe<string>
+  Maybe.filter((n) => n.length > 0),   // (option: Maybe<string>) => Maybe<string>
+  Maybe.getOrElse("Anonymous"),         // (option: Maybe<string>) => string
 );
 ```
 
@@ -112,9 +112,9 @@ This also means `flow` composes library functions directly:
 
 ```ts
 const formatUser = flow(
-  Option.fromNullable<User>,
-  Option.map((u) => u.name),
-  Option.getOrElse("Anonymous"),
+  Maybe.fromNullable<User>,
+  Maybe.map((u) => u.name),
+  Maybe.getOrElse("Anonymous"),
 );
 
 users.map(formatUser); // works — no wrapper needed
@@ -137,7 +137,7 @@ const result = pipe(
 );
 ```
 
-Remove the `tap` lines and the pipeline behaves identically. Most types in the library also have their own `tap` — `Option.tap`, `Result.tap`, and so on — which only fire when a value is present.
+Remove the `tap` lines and the pipeline behaves identically. Most types in the library also have their own `tap` — `Maybe.tap`, `Result.tap`, and so on — which only fire when a value is present.
 
 ## Keeping steps small and focused
 

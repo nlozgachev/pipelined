@@ -21,13 +21,13 @@ compose with `pipe` and `flow`.
 
 ### pipelined/core
 
-- **`Option<A>`** — a value that may not exist; propagates absence without null checks.
+- **`Maybe<A>`** — a value that may not exist; propagates absence without null checks.
 - **`Result<E, A>`** — an operation that succeeds or fails with a typed error.
 - **`Validation<E, A>`** — like `Result`, but accumulates every failure instead of stopping at the
   first.
 - **`Task<A>`** — a lazy, infallible async operation; nothing runs until called.
 - **`TaskResult<E, A>`** — a lazy async operation that can fail with a typed error.
-- **`TaskOption<A>`** — a lazy async operation that may produce nothing.
+- **`TaskMaybe<A>`** — a lazy async operation that may produce nothing.
 - **`TaskValidation<E, A>`** — a lazy async operation that accumulates validation errors.
 - **`These<E, A>`** — an inclusive OR: holds an error, a value, or both at once.
 - **`RemoteData<E, A>`** — the four states of a data fetch: `NotAsked`, `Loading`, `Failure`,
@@ -43,8 +43,8 @@ compose with `pipe` and `flow`.
 
 Everyday utilities for built-in JS types.
 
-- **`Arr`** — array utilities, data-last, returning `Option` instead of `undefined`.
-- **`Rec`** — record/object utilities, data-last, with `Option`-returning key lookup.
+- **`Arr`** — array utilities, data-last, returning `Maybe` instead of `undefined`.
+- **`Rec`** — record/object utilities, data-last, with `Maybe`-returning key lookup.
 - **`Num`** — number utilities: `range`, `clamp`, `between`, safe `parse`, and curried arithmetic.
 - **`Str`** — string utilities: `split`, `trim`, `words`, `lines`, and safe `parse.int` / `parse.float`.
 
@@ -61,25 +61,43 @@ Everyday utilities for built-in JS types.
 ## Example
 
 ```ts
-import { Option, Result } from "@nlozgachev/pipelined/core";
+import { TaskResult } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
 
-// Chain nullable lookups without nested null checks
-const city = pipe(
-  getUser(userId), // User | null
-  Option.fromNullable, // Option<User>
-  Option.chain((u) => Option.fromNullable(u.address)), // Option<Address>
-  Option.chain((a) => Option.fromNullable(a.city)), // Option<string>
-  Option.map((c) => c.toUpperCase()), // Option<string>
-  Option.getOrElse("UNKNOWN"), // string
-);
+// Typed errors. Lazy. Composable.
+const getUser = (id: string): TaskResult<string, User> =>
+  pipe(
+    TaskResult.tryCatch(
+      () => fetch(`/users/${id}`).then((r) => r.json() as Promise<User>),
+      (e) => `fetch failed: ${e}`,
+    ),
+    TaskResult.timeout(5_000, () => "request timed out"),
+    TaskResult.retry({ attempts: 3, backoff: (n) => n * 1_000 }),
+  );
 
-// Parse input and look up a record — both steps can fail
-const record = pipe(
-  parseId(rawInput), // Result<ParseError, number>
-  Result.chain((id) => db.find(id)), // Result<ParseError | NotFoundError, Record>
-  Result.map((r) => r.name), // Result<ParseError | NotFoundError, string>
-);
+// Poll until a background job finishes — stop immediately on failure
+const waitForExport = (jobId: string): TaskResult<string, ExportResult> =>
+  pipe(
+    TaskResult.tryCatch(
+      () => fetch(`/exports/${jobId}`).then((r) => r.json() as Promise<Job>),
+      String,
+    ),
+    TaskResult.pollUntil({
+      when: (job) => job.status === "done",
+      delay: (n) => n * 500,  // 500 ms, 1 s, 1.5 s, ...
+    }),
+    TaskResult.map((job) => job.result),
+  );
+
+// Compose the two — nothing runs until the final call
+const message = await pipe(
+  getUser("abc"),
+  TaskResult.chain((user) => waitForExport(user.exportId)),
+  TaskResult.match({
+    ok:  (r) => `Export ready: ${r.url}`,
+    err: (e) => `Failed: ${e}`,
+  }),
+)();
 ```
 
 ## Documentation

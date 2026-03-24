@@ -1,12 +1,12 @@
 ---
 title: Arr — array utilities
-description: Work with arrays in a pipeline — data-last utilities that return Option instead of undefined.
+description: Work with arrays in a pipeline — data-last utilities that return Maybe instead of undefined.
 ---
 
 JavaScript arrays come with a full set of built-in methods, but they have two friction points in
 pipelines: they put the data first (making partial application awkward), and they return `undefined`
 when something isn't found. `Arr` is a collection of array utilities that address both: data-last
-functions that slot directly into `pipe`, and `Option` wherever something might be absent.
+functions that slot directly into `pipe`, and `Maybe` wherever something might be absent.
 
 ## Safe access
 
@@ -14,7 +14,7 @@ JavaScript's built-in access functions silently return `undefined` when an eleme
 `Arr` makes the absence explicit:
 
 ```ts
-import { Arr, Option } from "@nlozgachev/pipelined/core";
+import { Arr, Maybe } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
 
 Arr.head([1, 2, 3]); // Some(1)
@@ -30,20 +30,20 @@ Arr.init([1, 2, 3]); // Some([1, 2]) — everything before the last
 Arr.init([]); // None
 ```
 
-These compose naturally with `Option` operations:
+These compose naturally with `Maybe` operations:
 
 ```ts
 pipe(
   users,
-  Arr.head, // Option<User>
-  Option.map((u) => u.displayName), // Option<string>
-  Option.getOrElse(() => "No users"),
+  Arr.head, // Maybe<User>
+  Maybe.map((u) => u.displayName), // Maybe<string>
+  Maybe.getOrElse(() => "No users"),
 );
 ```
 
 ## Search
 
-`findFirst`, `findLast`, and `findIndex` all return `Option` for the same reason — the element might
+`findFirst`, `findLast`, and `findIndex` all return `Maybe` for the same reason — the element might
 not exist:
 
 ```ts
@@ -211,12 +211,12 @@ The `traverse` family maps each element to a typed container and collects the re
 useful when you want to run a fallible operation across every element and collect either all
 successes or the first failure.
 
-**`traverse`** — maps to `Option`, returns `None` if any element fails:
+**`traverse`** — maps to `Maybe`, returns `None` if any element fails:
 
 ```ts
-const parseNum = (s: string): Option<number> => {
+const parseNum = (s: string): Maybe<number> => {
   const n = Number(s);
-  return isNaN(n) ? Option.none() : Option.some(n);
+  return isNaN(n) ? Maybe.none() : Maybe.some(n);
 };
 
 pipe(["1", "2", "3"], Arr.traverse(parseNum)); // Some([1, 2, 3])
@@ -259,10 +259,10 @@ pipe(
 ```
 
 **`sequence`**, **`sequenceResult`**, **`sequenceTask`**, **`sequenceTaskResult`** — shorthand for
-when you already have an array of containers and want to flip `Array<Option<A>>` into
-`Option<Array<A>>`:
+when you already have an array of containers and want to flip `Array<Maybe<A>>` into
+`Maybe<Array<A>>`:
 
 ```ts
-Arr.sequence([Option.some(1), Option.some(2)]); // Some([1, 2])
-Arr.sequence([Option.some(1), Option.none()]); // None
+Arr.sequence([Maybe.some(1), Maybe.some(2)]); // Some([1, 2])
+Arr.sequence([Maybe.some(1), Maybe.none()]); // None
 ```

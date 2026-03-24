@@ -1,5 +1,5 @@
 import { pipe } from "#composition/pipe.ts";
-import { Option } from "#core/Option.ts";
+import { Maybe } from "#core/Maybe.ts";
 import { expect, test } from "vitest";
 import { Rec } from "../Rec.ts";
 
@@ -117,39 +117,39 @@ test("filterWithKey - returns empty for empty input", () => {
 
 test("lookup - returns Some for existing key", () => {
 	const result = pipe({ a: 1, b: 2, c: 3 }, Rec.lookup("b"));
-	expect(result).toEqual(Option.some(2));
+	expect(result).toEqual(Maybe.some(2));
 });
 
 test("lookup - returns None for missing key", () => {
 	const result = pipe({ a: 1, b: 2 }, Rec.lookup("z"));
-	expect(result).toEqual(Option.none());
+	expect(result).toEqual(Maybe.none());
 });
 
 test("lookup - returns None for empty record", () => {
 	const result = pipe({} as Record<string, number>, Rec.lookup("a"));
-	expect(result).toEqual(Option.none());
+	expect(result).toEqual(Maybe.none());
 });
 
 test("lookup - returns Some even if value is falsy (0)", () => {
 	const result = pipe({ a: 0 }, Rec.lookup("a"));
-	expect(result).toEqual(Option.some(0));
+	expect(result).toEqual(Maybe.some(0));
 });
 
 test("lookup - returns Some even if value is falsy (empty string)", () => {
 	const result = pipe({ a: "" }, Rec.lookup("a"));
-	expect(result).toEqual(Option.some(""));
+	expect(result).toEqual(Maybe.some(""));
 });
 
 test("lookup - returns Some even if value is falsy (false)", () => {
 	const result = pipe({ a: false }, Rec.lookup("a"));
-	expect(result).toEqual(Option.some(false));
+	expect(result).toEqual(Maybe.some(false));
 });
 
 test("lookup - does not find inherited properties", () => {
 	const obj = Object.create({ inherited: 42 });
 	obj.own = 1;
 	const result = pipe(obj, Rec.lookup("inherited"));
-	expect(result).toEqual(Option.none());
+	expect(result).toEqual(Maybe.none());
 });
 
 // =============================================================================
@@ -373,18 +373,18 @@ test("mapKeys - prefix transformation", () => {
 // =============================================================================
 
 test("compact - removes None values and unwraps Some values", () => {
-	const result = Rec.compact({ a: Option.some(1), b: Option.none(), c: Option.some(3) });
+	const result = Rec.compact({ a: Maybe.some(1), b: Maybe.none(), c: Maybe.some(3) });
 	expect(result).toEqual({ a: 1, c: 3 });
 });
 
 test("compact - returns empty record when all values are None", () => {
-	const data: Record<string, Option<number>> = { x: Option.none(), y: Option.none() };
+	const data: Record<string, Maybe<number>> = { x: Maybe.none(), y: Maybe.none() };
 	const result = Rec.compact(data);
 	expect(result).toEqual({});
 });
 
 test("compact - returns all values when none are None", () => {
-	const result = Rec.compact({ a: Option.some(10), b: Option.some(20) });
+	const result = Rec.compact({ a: Maybe.some(10), b: Maybe.some(20) });
 	expect(result).toEqual({ a: 10, b: 20 });
 });
 

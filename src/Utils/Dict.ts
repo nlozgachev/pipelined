@@ -1,11 +1,11 @@
-import { Option } from "#core/Option.ts";
+import { Maybe } from "#core/Maybe.ts";
 
 /**
  * Functional utilities for key-value dictionaries (`ReadonlyMap<K, V>`). All functions are pure
  * and data-last — they compose naturally with `pipe`.
  *
  * Unlike plain objects (`Rec`), dictionaries support any key type, preserve insertion order, and
- * make membership checks explicit via `lookup` returning `Option`.
+ * make membership checks explicit via `lookup` returning `Maybe`.
  *
  * @example
  * ```ts
@@ -116,8 +116,8 @@ export namespace Dict {
 	 * pipe(Dict.fromEntries([["a", 1]]), Dict.lookup("b")); // None
 	 * ```
 	 */
-	export const lookup = <K>(key: K) => <V>(m: ReadonlyMap<K, V>): Option<V> =>
-		m.has(key) ? Option.some(m.get(key) as V) : Option.none();
+	export const lookup = <K>(key: K) => <V>(m: ReadonlyMap<K, V>): Maybe<V> =>
+		m.has(key) ? Maybe.some(m.get(key) as V) : Maybe.none();
 
 	/**
 	 * Returns the number of entries in the dictionary.
@@ -214,14 +214,14 @@ export namespace Dict {
 	 *
 	 * @example
 	 * ```ts
-	 * import { Option } from "@nlozgachev/pipelined/core";
+	 * import { Maybe } from "@nlozgachev/pipelined/core";
 	 *
-	 * const increment = (opt: Option<number>) => Option.getOrElse(() => 0)(opt) + 1;
+	 * const increment = (opt: Maybe<number>) => Maybe.getOrElse(() => 0)(opt) + 1;
 	 * pipe(Dict.fromEntries([["views", 5]]), Dict.upsert("views", increment)); // { views: 6 }
 	 * pipe(Dict.fromEntries([["views", 5]]), Dict.upsert("likes", increment)); // { views: 5, likes: 1 }
 	 * ```
 	 */
-	export const upsert = <K, V>(key: K, f: (existing: Option<V>) => V) => (m: ReadonlyMap<K, V>): ReadonlyMap<K, V> => {
+	export const upsert = <K, V>(key: K, f: (existing: Maybe<V>) => V) => (m: ReadonlyMap<K, V>): ReadonlyMap<K, V> => {
 		const result = new globalThis.Map(m);
 		result.set(key, f(lookup(key)(m)));
 		return result;
@@ -302,22 +302,22 @@ export namespace Dict {
 		};
 
 	/**
-	 * Removes all `None` values from a `ReadonlyMap<K, Option<A>>`, returning a plain
+	 * Removes all `None` values from a `ReadonlyMap<K, Maybe<A>>`, returning a plain
 	 * `ReadonlyMap<K, A>`. Useful when building dictionaries from fallible lookups.
 	 *
 	 * @example
 	 * ```ts
-	 * import { Option } from "@nlozgachev/pipelined/core";
+	 * import { Maybe } from "@nlozgachev/pipelined/core";
 	 *
 	 * Dict.compact(Dict.fromEntries([
-	 *   ["a", Option.some(1)],
-	 *   ["b", Option.none()],
-	 *   ["c", Option.some(3)],
+	 *   ["a", Maybe.some(1)],
+	 *   ["b", Maybe.none()],
+	 *   ["c", Maybe.some(3)],
 	 * ]));
 	 * // ReadonlyMap { "a" => 1, "c" => 3 }
 	 * ```
 	 */
-	export const compact = <K, A>(m: ReadonlyMap<K, Option<A>>): ReadonlyMap<K, A> => {
+	export const compact = <K, A>(m: ReadonlyMap<K, Maybe<A>>): ReadonlyMap<K, A> => {
 		const result = new globalThis.Map<K, A>();
 		for (const [k, v] of m) {
 			if (v.kind === "Some") result.set(k, v.value);

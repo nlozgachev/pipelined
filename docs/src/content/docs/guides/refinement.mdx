@@ -144,9 +144,9 @@ isPrivileged({ role: "super" });  // true
 isPrivileged({ role: "guest" });  // false
 ```
 
-## Bridging to Option with `toFilter`
+## Bridging to Maybe with `toFilter`
 
-`toFilter` converts a refinement into an `(a: A) => Option<B>` function, ready to drop into a
+`toFilter` converts a refinement into an `(a: A) => Maybe<B>` function, ready to drop into a
 pipeline. This is the idiomatic way to turn validation into an Optional presence.
 
 ```ts
@@ -155,7 +155,7 @@ const isNonEmpty: Refinement<string, NonEmptyString> =
   Refinement.make(s => s.length > 0);
 
 // Validate a config value that may be blank
-const parseTitle = (raw: string): Option<NonEmptyString> =>
+const parseTitle = (raw: string): Maybe<NonEmptyString> =>
   pipe(raw.trim(), Refinement.toFilter(isNonEmpty));
 
 parseTitle("My Report");  // Some("My Report")
@@ -174,8 +174,8 @@ const rawInput = "hello-world";
 const parseSlug = pipe(
   rawInput,
   Refinement.toFilter(isValidSlug),
-  Option.map(slug => `/posts/${slug}`),
-  Option.getOrElse(() => "/posts/untitled"),
+  Maybe.map(slug => `/posts/${slug}`),
+  Maybe.getOrElse(() => "/posts/untitled"),
 );
 ```
 
@@ -226,7 +226,7 @@ validateEmail("notanemail");        // Err("Not a valid email address")
   composable named types rather than ad-hoc boolean checks.
 - You need to combine two or more predicates into a single narrowing (`and`, `or`, `compose`)
   without writing a new type guard by hand.
-- You want to connect a runtime check to `Option` or `Result` pipelines using `toFilter` or
+- You want to connect a runtime check to `Maybe` or `Result` pipelines using `toFilter` or
   `toResult`.
 - You have a set of related refinements that build on each other (e.g. `NonEmptyString` →
   `TrimmedString` → `SlugString`) and want the narrowing to compose automatically.

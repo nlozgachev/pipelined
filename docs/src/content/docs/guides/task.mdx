@@ -230,30 +230,100 @@ const name = pipe(
 await name(); // "Alice" or "Unknown"
 ```
 
-**`TaskOption<A>`** — an async operation that may return nothing. It's `Task<Option<A>>`:
+### Retrying failed requests
+
+Network calls fail. `TaskResult.retry` re-runs a `TaskResult` on `Err` with a configurable number
+of attempts and an optional delay between them:
 
 ```ts
-import { TaskOption } from "@nlozgachev/pipelined/core";
+const fetchUser = (id: string): TaskResult<string, User> =>
+  TaskResult.tryCatch(
+    () => fetch(`/users/${id}`).then(r => r.json()),
+    e => `Fetch failed: ${e}`,
+  );
 
-const findUser = (id: string): TaskOption<User> =>
-  TaskOption.tryCatch(() => db.users.findById(id));
+const resilientFetch = pipe(
+  fetchUser("123"),
+  TaskResult.retry({ attempts: 3, backoff: 500 }),
+);
+
+await resilientFetch(); // tries up to 3 times, 500ms apart
+```
+
+`backoff` accepts a fixed number of milliseconds or a function of the attempt number — use the
+function form for exponential backoff:
+
+```ts
+TaskResult.retry({ attempts: 4, backoff: n => n * 1000 })
+// attempt 1 → wait 1s → attempt 2 → wait 2s → attempt 3 → wait 3s → attempt 4
+```
+
+If some errors are permanent and retrying them wastes time — an expired token, a 404 — use `when`
+to limit which errors trigger a retry:
+
+```ts
+const isTransient = (e: ApiError) => e.status >= 500 || e.status === 429;
+
+pipe(
+  fetchUser("123"),
+  TaskResult.retry({ attempts: 3, backoff: 1000, when: isTransient }),
+);
+```
+
+When the `when` predicate returns `false`, the `Err` is returned immediately without further
+attempts. When all attempts are exhausted, the last `Err` is returned.
+
+### Polling until a condition is met
+
+`TaskResult.pollUntil` repeatedly calls the same task until the success value satisfies a
+predicate. If the task fails at any point, polling stops and the `Err` is returned immediately —
+it won't retry on failure.
+
+```ts
+const checkJob = (id: string): TaskResult<string, { status: "pending" | "done" }> =>
+  TaskResult.tryCatch(() => fetch(`/jobs/${id}`).then(r => r.json()), String);
+
+pipe(
+  checkJob(jobId),
+  TaskResult.pollUntil({ when: (job) => job.status === "done", delay: 2000 }),
+);
+// polls every 2s; returns Ok(job) when done, Err if the request fails
+```
+
+`delay` accepts a fixed number of milliseconds or a function of the attempt number — use the
+function form to start polling frequently and slow down over time:
+
+```ts
+TaskResult.pollUntil({ when: (job) => job.status === "done", delay: n => n * 1000 })
+// attempt 1 → wait 1s → attempt 2 → wait 2s → attempt 3 → ...
+```
+
+The delay is not applied after the final successful poll. Omit it to poll as fast as possible.
+
+**`TaskMaybe<A>`** — an async operation that may return nothing. It's `Task<Maybe<A>>`:
+
+```ts
+import { TaskMaybe } from "@nlozgachev/pipelined/core";
+
+const findUser = (id: string): TaskMaybe<User> =>
+  TaskMaybe.tryCatch(() => db.users.findById(id));
 
 const displayName = pipe(
   findUser("123"),
-  TaskOption.map((user) => user.name),
-  TaskOption.getOrElse(() => "Guest"),
+  TaskMaybe.map((user) => user.name),
+  TaskMaybe.getOrElse(() => "Guest"),
 );
 
 await displayName();
 ```
 
-`TaskOption.tryCatch` catches any rejection and converts it to `None` — useful when you treat a
+`TaskMaybe.tryCatch` catches any rejection and converts it to `None` — useful when you treat a
 failed lookup the same as a missing value.
 
 **`TaskValidation<E, A>`** — an async operation that accumulates errors. Used for async validation
 where all checks should run regardless of individual failures.
 
-`TaskResult` and `TaskOption` follow the same API conventions as their synchronous counterparts
+`TaskResult` and `TaskMaybe` follow the same API conventions as their synchronous counterparts
 (`map`, `chain`, `match`, `getOrElse`, `recover`). `TaskValidation` mirrors `Validation` —
 `ap` instead of `chain` for error accumulation, plus `product` and `productAll` for combining
 independent async validations. If you've used `Result`, `TaskResult` will be immediately familiar.
@@ -268,7 +338,7 @@ const task: Task<number> = Task.resolve(42);
 const result: number = await task();
 ```
 
-For `TaskResult` and `TaskOption`, the result is a wrapped value:
+For `TaskResult` and `TaskMaybe`, the result is a wrapped value:
 
 ```ts
 const taskResult: TaskResult<string, number> = TaskResult.ok(42);
