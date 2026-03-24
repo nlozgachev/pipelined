@@ -119,21 +119,27 @@ const inc = (n: number) => n + 1;
 test("flow - 4 functions", () => {
 	expect(flow(inc, inc, inc, inc)(0)).toBe(4);
 });
+
 test("flow - 5 functions", () => {
 	expect(flow(inc, inc, inc, inc, inc)(0)).toBe(5);
 });
+
 test("flow - 6 functions", () => {
 	expect(flow(inc, inc, inc, inc, inc, inc)(0)).toBe(6);
 });
+
 test("flow - 7 functions", () => {
 	expect(flow(inc, inc, inc, inc, inc, inc, inc)(0)).toBe(7);
 });
+
 test("flow - 8 functions", () => {
 	expect(flow(inc, inc, inc, inc, inc, inc, inc, inc)(0)).toBe(8);
 });
+
 test("flow - 9 functions", () => {
 	expect(flow(inc, inc, inc, inc, inc, inc, inc, inc, inc)(0)).toBe(9);
 });
+
 test("flow - 10 functions", () => {
 	expect(flow(inc, inc, inc, inc, inc, inc, inc, inc, inc, inc)(0)).toBe(10);
 });

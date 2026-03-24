@@ -183,7 +183,7 @@ export namespace TaskResult {
 	 * ```
 	 */
 	export const pollUntil =
-		<A>(options: { when: (a: A) => boolean; delay?: number | ((attempt: number) => number) }) =>
+		<A>(options: { when: (a: A) => boolean; delay?: number | ((attempt: number) => number); }) =>
 		<E>(task: TaskResult<E, A>): TaskResult<E, A> =>
 			Task.from(() => {
 				const { when: predicate, delay } = options;

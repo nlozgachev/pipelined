@@ -633,9 +633,9 @@ test("TaskResult.pollUntil with function delay receives attempt number", async (
 
 test("TaskResult.pollUntil composes in a pipe chain", async () => {
 	let calls = 0;
-	const task: TaskResult<string, { status: string; value: number }> = () => {
+	const task: TaskResult<string, { status: string; value: number; }> = () => {
 		calls++;
-		return TaskResult.ok<string, { status: string; value: number }>(
+		return TaskResult.ok<string, { status: string; value: number; }>(
 			calls < 3 ? { status: "pending", value: 0 } : { status: "done", value: 99 },
 		)();
 	};

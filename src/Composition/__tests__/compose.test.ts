@@ -89,21 +89,27 @@ const inc = (n: number) => n + 1;
 test("compose - 4 functions", () => {
 	expect(compose(inc, inc, inc, inc)(0)).toBe(4);
 });
+
 test("compose - 5 functions", () => {
 	expect(compose(inc, inc, inc, inc, inc)(0)).toBe(5);
 });
+
 test("compose - 6 functions", () => {
 	expect(compose(inc, inc, inc, inc, inc, inc)(0)).toBe(6);
 });
+
 test("compose - 7 functions", () => {
 	expect(compose(inc, inc, inc, inc, inc, inc, inc)(0)).toBe(7);
 });
+
 test("compose - 8 functions", () => {
 	expect(compose(inc, inc, inc, inc, inc, inc, inc, inc)(0)).toBe(8);
 });
+
 test("compose - 9 functions", () => {
 	expect(compose(inc, inc, inc, inc, inc, inc, inc, inc, inc)(0)).toBe(9);
 });
+
 test("compose - 10 functions", () => {
 	expect(compose(inc, inc, inc, inc, inc, inc, inc, inc, inc, inc)(0)).toBe(10);
 });

@@ -129,9 +129,7 @@ export function pipe(
 	ij?: (a: unknown) => unknown,
 	jk?: (a: unknown) => unknown,
 ): unknown {
-	const len = arguments.length;
-	// oxlint-disable-next-line prefer-rest-params
-	switch (len) {
+	switch (arguments.length) {
 		case 1:
 			return a;
 		case 2:

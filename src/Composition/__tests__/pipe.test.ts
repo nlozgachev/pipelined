@@ -118,21 +118,27 @@ const inc = (n: number) => n + 1;
 test("pipe - 4 functions", () => {
 	expect(pipe(0, inc, inc, inc, inc)).toBe(4);
 });
+
 test("pipe - 5 functions", () => {
 	expect(pipe(0, inc, inc, inc, inc, inc)).toBe(5);
 });
+
 test("pipe - 6 functions", () => {
 	expect(pipe(0, inc, inc, inc, inc, inc, inc)).toBe(6);
 });
+
 test("pipe - 7 functions", () => {
 	expect(pipe(0, inc, inc, inc, inc, inc, inc, inc)).toBe(7);
 });
+
 test("pipe - 8 functions", () => {
 	expect(pipe(0, inc, inc, inc, inc, inc, inc, inc, inc)).toBe(8);
 });
+
 test("pipe - 9 functions", () => {
 	expect(pipe(0, inc, inc, inc, inc, inc, inc, inc, inc, inc)).toBe(9);
 });
+
 test("pipe - 10 functions", () => {
 	expect(pipe(0, inc, inc, inc, inc, inc, inc, inc, inc, inc, inc)).toBe(10);
 });
