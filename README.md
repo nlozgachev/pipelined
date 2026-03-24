@@ -23,40 +23,56 @@ Full guides and API reference at **[pipelined.lozgachev.dev](https://pipelined.l
 
 ## Example
 
-The standard approach to "fetch with retry and timeout":
+A careful, production-minded attempt at "fetch with retry, timeout, and cancellation":
 
 ```ts
-async function fetchUser(id: string, signal?: AbortSignal): Promise<User> {
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= 3; attempt++) {
+type UserResult =
+  | { ok: true; user: User }
+  | { ok: false; error: "Timeout" | "NetworkError" };
+
+async function fetchUser(
+  id: string,
+  signal?: AbortSignal,
+): Promise<UserResult> {
+  async function attempt(n: number): Promise<UserResult> {
+    const controller = new AbortController();
+    const timerId = setTimeout(() => controller.abort(), 5000);
+    signal?.addEventListener("abort", () => controller.abort(), { once: true });
+
     try {
-      const res = await fetch(`/users/${id}`, { signal });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
+      const res = await fetch(`/users/${id}`, { signal: controller.signal });
+      clearTimeout(timerId);
+      return { ok: true, user: await res.json() };
     } catch (e) {
-      if (signal?.aborted) throw e;
-      lastError = e;
-      if (attempt < 3) await new Promise(r => setTimeout(r, attempt * 1000));
+      clearTimeout(timerId);
+      if ((e as Error).name === "AbortError" && !signal?.aborted) {
+        return { ok: false, error: "Timeout" };
+      }
+      if (n < 3) {
+        await new Promise((r) => setTimeout(r, n * 1000));
+        return attempt(n + 1);
+      }
+      return { ok: false, error: "NetworkError" };
     }
   }
-  throw lastError;
+  return attempt(1);
 }
 ```
 
-The caller receives a `Promise<User>`. What it rejects with is `unknown`. The signal is checked by
-hand. The timeout is missing. The retry loop is inlined and will need to be rewritten for the next
-endpoint too.
+The signal is forwarded by hand. The timeout needs its own controller. Timed-out aborts are
+distinguished from external cancellation by checking `signal?.aborted`. The retry is recursive
+to thread the attempt count.
 
 With **pipelined**:
 
 ```ts
-import { TaskResult } from "@nlozgachev/pipelined/core";
+import { TaskResult, Result } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
 
 const fetchUser = (id: string): TaskResult<ApiError, User> =>
   pipe(
     TaskResult.tryCatch(
-      (signal) => fetch(`/users/${id}`, { signal }).then(r => r.json()),
+      (signal) => fetch(`/users/${id}`, { signal }).then((r) => r.json()),
       (e) => new ApiError(e),
     ),
     TaskResult.timeout(5000, () => new ApiError("request timed out")),
@@ -75,7 +91,7 @@ const result = await fetchUser("42")(controller.signal);
 if (Result.isOk(result)) {
   render(result.value); // User
 } else {
-  showError(result.error.message); // ApiError, not unknown
+  showError(result.error); // ApiError, not unknown
 }
 ```
 
