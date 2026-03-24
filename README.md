@@ -61,43 +61,25 @@ Everyday utilities for built-in JS types.
 ## Example
 
 ```ts
-import { TaskResult } from "@nlozgachev/pipelined/core";
+import { Maybe, Result } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
 
-// Typed errors. Lazy. Composable.
-const getUser = (id: string): TaskResult<string, User> =>
-  pipe(
-    TaskResult.tryCatch(
-      () => fetch(`/users/${id}`).then((r) => r.json() as Promise<User>),
-      (e) => `fetch failed: ${e}`,
-    ),
-    TaskResult.timeout(5_000, () => "request timed out"),
-    TaskResult.retry({ attempts: 3, backoff: (n) => n * 1_000 }),
-  );
+// Chain nullable lookups without nested null checks
+const city = pipe(
+  getUser(userId), // User | null
+  Maybe.fromNullable, // Maybe<User>
+  Maybe.chain((u) => Maybe.fromNullable(u.address)), // Maybe<Address>
+  Maybe.chain((a) => Maybe.fromNullable(a.city)), // Maybe<string>
+  Maybe.map((c) => c.toUpperCase()), // Maybe<string>
+  Maybe.getOrElse("UNKNOWN"), // string
+);
 
-// Poll until a background job finishes — stop immediately on failure
-const waitForExport = (jobId: string): TaskResult<string, ExportResult> =>
-  pipe(
-    TaskResult.tryCatch(
-      () => fetch(`/exports/${jobId}`).then((r) => r.json() as Promise<Job>),
-      String,
-    ),
-    TaskResult.pollUntil({
-      when: (job) => job.status === "done",
-      delay: (n) => n * 500,  // 500 ms, 1 s, 1.5 s, ...
-    }),
-    TaskResult.map((job) => job.result),
-  );
-
-// Compose the two — nothing runs until the final call
-const message = await pipe(
-  getUser("abc"),
-  TaskResult.chain((user) => waitForExport(user.exportId)),
-  TaskResult.match({
-    ok:  (r) => `Export ready: ${r.url}`,
-    err: (e) => `Failed: ${e}`,
-  }),
-)();
+// Parse input and look up a record — both steps can fail
+const record = pipe(
+  parseId(rawInput), // Result<ParseError, number>
+  Result.chain((id) => db.find(id)), // Result<ParseError | NotFoundError, Record>
+  Result.map((r) => r.name), // Result<ParseError | NotFoundError, string>
+);
 ```
 
 ## Documentation
