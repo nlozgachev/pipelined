@@ -10,14 +10,82 @@ Opinionated functional abstractions for TypeScript.
 npm add @nlozgachev/pipelined
 ```
 
-## What is this?
+## Possibly maybe
 
-A toolkit for expressing uncertainty precisely. Instead of `T | null`, `try/catch`, and loading
-state flag soup, you get types that name every possible state and make invalid ones unrepresentable.
-Each type comes with a consistent set of operations — `map`, `chain`, `match`, `getOrElse` — that
-compose with `pipe` and `flow`.
+**pipelined** names every possible state and gives you operations that compose. `Maybe<A>` for values
+that may or may not be there. `Result<E, A>` for operations that succeed or fail
+with a typed error. `TaskResult<E, A>` for async operations that do both — lazily, with retry,
+timeout, and cancellation built in. And, of course, there is more than that.
+
+## Documentation
+
+Full guides and API reference at **[pipelined.lozgachev.dev](https://pipelined.lozgachev.dev)**.
+
+## Example
+
+The standard approach to "fetch with retry and timeout":
+
+```ts
+async function fetchUser(id: string, signal?: AbortSignal): Promise<User> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(`/users/${id}`, { signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      if (signal?.aborted) throw e;
+      lastError = e;
+      if (attempt < 3) await new Promise(r => setTimeout(r, attempt * 1000));
+    }
+  }
+  throw lastError;
+}
+```
+
+The caller receives a `Promise<User>`. What it rejects with is `unknown`. The signal is checked by
+hand. The timeout is missing. The retry loop is inlined and will need to be rewritten for the next
+endpoint too.
+
+With **pipelined**:
+
+```ts
+import { TaskResult } from "@nlozgachev/pipelined/core";
+import { pipe } from "@nlozgachev/pipelined/composition";
+
+const fetchUser = (id: string): TaskResult<ApiError, User> =>
+  pipe(
+    TaskResult.tryCatch(
+      (signal) => fetch(`/users/${id}`, { signal }).then(r => r.json()),
+      (e) => new ApiError(e),
+    ),
+    TaskResult.timeout(5000, () => new ApiError("request timed out")),
+    TaskResult.retry({ attempts: 3, backoff: (n) => n * 1000 }),
+  );
+```
+
+`TaskResult<ApiError, User>` is a lazy function — nothing runs until called. The `AbortSignal`
+threads through every retry and the timeout automatically. The return type is the contract:
+`ApiError` on the left, `User` on the right, nothing escapes as an exception.
+
+```ts
+const controller = new AbortController();
+const result = await fetchUser("42")(controller.signal);
+
+if (Result.isOk(result)) {
+  render(result.value); // User
+} else {
+  showError(result.error.message); // ApiError, not unknown
+}
+```
 
 ## What's included?
+
+`TaskResult` is one type. The library also covers the rest of the states you encounter in real
+applications: values that may be absent, operations that accumulate multiple errors, data that moves
+through `NotAsked >> Loading >> ( Success | Failure )`, nested immutable updates, and computations that
+share a common environment. Every type follows the same conventions — `map`, `chain`, `match`,
+`getOrElse` — so moving between them feels familiar.
 
 ### pipelined/core
 
@@ -45,8 +113,15 @@ Everyday utilities for built-in JS types.
 
 - **`Arr`** — array utilities, data-last, returning `Maybe` instead of `undefined`.
 - **`Rec`** — record/object utilities, data-last, with `Maybe`-returning key lookup.
+- **`Dict`** — `ReadonlyMap<K, V>` utilities: `lookup`, `groupBy`, `upsert`, set operations.
+- **`Uniq`** — `ReadonlySet<A>` utilities: `insert`, `remove`, `union`, `intersection`, `difference`.
 - **`Num`** — number utilities: `range`, `clamp`, `between`, safe `parse`, and curried arithmetic.
 - **`Str`** — string utilities: `split`, `trim`, `words`, `lines`, and safe `parse.int` / `parse.float`.
+
+Every utility is benchmarked against its native equivalent. The data-last currying adds a function
+call; that is the expected cost of composability. Operations that exceeded a reasonable overhead
+have custom implementations that in several cases run faster than the native method they replace. See the
+[benchmarks page](https://pipelined.lozgachev.dev/appendix/benchmarks) for the methodology.
 
 ### pipelined/types
 
@@ -58,33 +133,8 @@ Everyday utilities for built-in JS types.
 - **`pipe`**, **`flow`**, **`compose`** — function composition.
 - **`curry`** / **`uncurry`**, **`tap`**, **`memoize`**, and other function utilities.
 
-## Example
 
-```ts
-import { Maybe, Result } from "@nlozgachev/pipelined/core";
-import { pipe } from "@nlozgachev/pipelined/composition";
 
-// Chain nullable lookups without nested null checks
-const city = pipe(
-  getUser(userId), // User | null
-  Maybe.fromNullable, // Maybe<User>
-  Maybe.chain((u) => Maybe.fromNullable(u.address)), // Maybe<Address>
-  Maybe.chain((a) => Maybe.fromNullable(a.city)), // Maybe<string>
-  Maybe.map((c) => c.toUpperCase()), // Maybe<string>
-  Maybe.getOrElse("UNKNOWN"), // string
-);
-
-// Parse input and look up a record — both steps can fail
-const record = pipe(
-  parseId(rawInput), // Result<ParseError, number>
-  Result.chain((id) => db.find(id)), // Result<ParseError | NotFoundError, Record>
-  Result.map((r) => r.name), // Result<ParseError | NotFoundError, string>
-);
-```
-
-## Documentation
-
-Full guides and API reference at **[pipelined.lozgachev.dev](https://pipelined.lozgachev.dev)**.
 
 ## License
 

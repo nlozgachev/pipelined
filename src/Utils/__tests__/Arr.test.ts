@@ -350,6 +350,11 @@ test("sortBy - returns empty for empty array", () => {
 	expect(result).toEqual([]);
 });
 
+test("sortBy - falls back to spread+sort when toSorted is unavailable", () => {
+	const arr = Object.defineProperty([3, 1, 2], "toSorted", { value: undefined, configurable: true });
+	expect(Arr.sortBy((a: number, b: number) => a - b)(arr)).toEqual([1, 2, 3]);
+});
+
 // =============================================================================
 // Combine: zip, zipWith, intersperse, chunksOf, flatten, flatMap
 // =============================================================================
@@ -900,6 +905,11 @@ test("insertAt - does not mutate the original array", () => {
 	expect(original).toEqual([1, 2, 3]);
 });
 
+test("insertAt - falls back to spread+splice when toSpliced is unavailable", () => {
+	const arr = Object.defineProperty([1, 2, 3], "toSpliced", { value: undefined, configurable: true });
+	expect(Arr.insertAt(1, 99)(arr)).toEqual([1, 99, 2, 3]);
+});
+
 // =============================================================================
 // removeAt
 // =============================================================================
@@ -934,6 +944,11 @@ test("removeAt - does not mutate the original array", () => {
 	const original = [1, 2, 3];
 	pipe(original, Arr.removeAt(1));
 	expect(original).toEqual([1, 2, 3]);
+});
+
+test("removeAt - falls back to spread+splice when toSpliced is unavailable", () => {
+	const arr = Object.defineProperty([1, 2, 3], "toSpliced", { value: undefined, configurable: true });
+	expect(Arr.removeAt(1)(arr)).toEqual([1, 3]);
 });
 
 test("take - takes first n elements", () => {

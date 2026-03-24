@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Task } from "../Task.ts";
 
@@ -515,4 +515,161 @@ test("Task.repeatUntil inserts delay between runs", async () => {
 	// 3 runs = 2 delays = ~60ms
 	expect(elapsed).toBeGreaterThanOrEqual(50);
 	expect(elapsed).toBeLessThan(120);
+});
+
+// ---------------------------------------------------------------------------
+// AbortSignal threading
+// ---------------------------------------------------------------------------
+
+test("Task.from receives the AbortSignal from the call site", async () => {
+	const controller = new AbortController();
+	let receivedSignal: AbortSignal | undefined;
+	const task = Task.from((signal) => {
+		receivedSignal = signal;
+		return Promise.resolve(1);
+	});
+	await task(controller.signal);
+	expect(receivedSignal).toBe(controller.signal);
+});
+
+test("Task.from called without signal receives undefined", async () => {
+	let receivedSignal: AbortSignal | undefined;
+	const task = Task.from((signal) => {
+		receivedSignal = signal;
+		return Promise.resolve(1);
+	});
+	await task();
+	expect(receivedSignal).toBeUndefined();
+});
+
+test("Task.map threads signal to the inner task", async () => {
+	const controller = new AbortController();
+	let receivedSignal: AbortSignal | undefined;
+	const base = Task.from((signal) => {
+		receivedSignal = signal;
+		return Promise.resolve(1);
+	});
+	await pipe(base, Task.map((n: number) => n * 2))(controller.signal);
+	expect(receivedSignal).toBe(controller.signal);
+});
+
+test("Task.chain threads signal to both tasks", async () => {
+	const controller = new AbortController();
+	const signals: Array<AbortSignal | undefined> = [];
+	const t1 = Task.from((signal) => {
+		signals.push(signal);
+		return Promise.resolve(1);
+	});
+	const t2 = (n: number) =>
+		Task.from((signal) => {
+			signals.push(signal);
+			return Promise.resolve(n + 1);
+		});
+	await pipe(t1, Task.chain(t2))(controller.signal);
+	expect(signals).toEqual([controller.signal, controller.signal]);
+});
+
+// ---------------------------------------------------------------------------
+// timeout — inner task receives AbortSignal
+// ---------------------------------------------------------------------------
+
+test("Task.timeout aborts the inner task when the deadline fires", async () => {
+	let innerSignal: AbortSignal | undefined;
+	const slow = Task.from((signal) => {
+		innerSignal = signal;
+		return new Promise<number>((r) => setTimeout(() => r(42), 200));
+	});
+	await pipe(slow, Task.timeout(10, () => "timed out"))();
+	expect(innerSignal?.aborted).toBe(true);
+});
+
+test("Task.timeout wires the outer signal to the inner task", async () => {
+	const outerController = new AbortController();
+	let innerSignal: AbortSignal | undefined;
+	const slow = Task.from((signal) => {
+		innerSignal = signal;
+		return new Promise<number>((r) => setTimeout(() => r(42), 200));
+	});
+	const composed = pipe(slow, Task.timeout(500, () => "timed out"));
+	const running = composed(outerController.signal);
+	// Abort via the outer signal before the deadline
+	outerController.abort();
+	await running;
+	expect(innerSignal?.aborted).toBe(true);
+});
+
+// ---------------------------------------------------------------------------
+// abortable
+// ---------------------------------------------------------------------------
+
+test("Task.abortable returns a task and an abort function", () => {
+	const { task, abort } = Task.abortable(() => Promise.resolve(42));
+	expectTypeOf(task).toBeFunction();
+	expectTypeOf(abort).toBeFunction();
+});
+
+test("Task.abortable task resolves normally when not aborted", async () => {
+	const { task } = Task.abortable(() => Promise.resolve(42));
+	const result = await task();
+	expect(result).toBe(42);
+});
+
+test("Task.abortable passes the controller signal to the factory", async () => {
+	let receivedSignal: AbortSignal | undefined;
+	const { task } = Task.abortable((signal) => {
+		receivedSignal = signal;
+		return Promise.resolve(1);
+	});
+	await task();
+	expect(receivedSignal).toBeInstanceOf(AbortSignal);
+});
+
+// oxlint-disable-next-line require-await
+test("Task.abortable abort() aborts the signal passed to the factory", async () => {
+	let capturedSignal: AbortSignal | undefined;
+	const { task, abort } = Task.abortable((signal) => {
+		capturedSignal = signal;
+		return new Promise<number>((r) => setTimeout(() => r(1), 100));
+	});
+	task(); // start but don't await
+	abort();
+	expect(capturedSignal?.aborted).toBe(true);
+});
+
+// oxlint-disable-next-line require-await
+test("Task.abortable wires outer signal to the internal controller", async () => {
+	const outerController = new AbortController();
+	let capturedSignal: AbortSignal | undefined;
+	const { task } = Task.abortable((signal) => {
+		capturedSignal = signal;
+		return new Promise<number>((r) => setTimeout(() => r(1), 100));
+	});
+	task(outerController.signal); // start but don't await
+	outerController.abort();
+	expect(capturedSignal?.aborted).toBe(true);
+});
+
+test("Task.abortable aborts the inner controller immediately when outer signal is already aborted", () => {
+	const outerController = new AbortController();
+	outerController.abort();
+	let capturedSignal: AbortSignal | undefined;
+	const { task } = Task.abortable((signal) => {
+		capturedSignal = signal;
+		return Promise.resolve(1);
+	});
+	task(outerController.signal);
+	expect(capturedSignal?.aborted).toBe(true);
+});
+
+test("Task.timeout removes the outer signal listener after normal completion", async () => {
+	const outerController = new AbortController();
+	let innerSignal: AbortSignal | undefined;
+	const fast = Task.from((signal) => {
+		innerSignal = signal;
+		return Promise.resolve(42);
+	});
+	await pipe(fast, Task.timeout(500, () => "timed out"))(outerController.signal);
+	// Task completed before the deadline — listener should have been removed
+	outerController.abort();
+	expect(innerSignal?.aborted).toBe(false);
 });

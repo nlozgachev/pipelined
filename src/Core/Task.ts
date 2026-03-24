@@ -9,6 +9,10 @@ import { Result } from "./Result.ts";
  * - **Infallible** — it never rejects. If failure is possible, encode it in the
  *   return type using `TaskResult<E, A>` instead.
  *
+ * An optional `AbortSignal` can be passed at the call site. Combinators like
+ * `retry`, `pollUntil`, and `timeout` thread it automatically to every inner
+ * operation. Existing tasks that ignore the signal continue to work unchanged.
+ *
  * Calling a Task returns a `Deferred<A>` — a one-shot async value that supports
  * `await` but has no `.catch()`, `.finally()`, or chainable `.then()`.
  *
@@ -39,12 +43,12 @@ import { Result } from "./Result.ts";
  * const result = await formatted();
  * ```
  */
-export type Task<A> = () => Deferred<A>;
+export type Task<A> = (signal?: AbortSignal) => Deferred<A>;
 
 // Internal helper — not exported. Runs a Task and converts the result to a Promise
 // so that combinators can use Promise chaining (.then, Promise.all, Promise.race, etc.)
 // internally without leaking that primitive through the public API.
-const toPromise = <A>(task: Task<A>): Promise<A> => Deferred.toPromise(task());
+const toPromise = <A>(task: Task<A>, signal?: AbortSignal): Promise<A> => Deferred.toPromise(task(signal));
 
 export namespace Task {
 	/**
@@ -60,13 +64,15 @@ export namespace Task {
 
 	/**
 	 * Creates a Task from a function that returns a Promise.
+	 * The factory optionally receives an `AbortSignal` forwarded from the call site.
 	 *
 	 * @example
 	 * ```ts
 	 * const getTimestamp = Task.from(() => Promise.resolve(Date.now()));
 	 * ```
 	 */
-	export const from = <A>(f: () => Promise<A>): Task<A> => () => Deferred.fromPromise(f());
+	export const from = <A>(f: (signal?: AbortSignal) => Promise<A>): Task<A> => (signal?: AbortSignal) =>
+		Deferred.fromPromise(f(signal));
 
 	/**
 	 * Transforms the value inside a Task.
@@ -79,7 +85,8 @@ export namespace Task {
 	 * )(); // Deferred<10>
 	 * ```
 	 */
-	export const map = <A, B>(f: (a: A) => B) => (data: Task<A>): Task<B> => from(() => toPromise(data).then(f));
+	export const map = <A, B>(f: (a: A) => B) => (data: Task<A>): Task<B> =>
+		from((signal) => toPromise(data, signal).then(f));
 
 	/**
 	 * Chains Task computations. Passes the resolved value of the first Task to f.
@@ -97,7 +104,7 @@ export namespace Task {
 	 * ```
 	 */
 	export const chain = <A, B>(f: (a: A) => Task<B>) => (data: Task<A>): Task<B> =>
-		from(() => toPromise(data).then((a) => toPromise(f(a))));
+		from((signal) => toPromise(data, signal).then((a) => toPromise(f(a), signal)));
 
 	/**
 	 * Applies a function wrapped in a Task to a value wrapped in a Task.
@@ -114,10 +121,10 @@ export namespace Task {
 	 * ```
 	 */
 	export const ap = <A>(arg: Task<A>) => <B>(data: Task<(a: A) => B>): Task<B> =>
-		from(() =>
+		from((signal) =>
 			Promise.all([
-				toPromise(data),
-				toPromise(arg),
+				toPromise(data, signal),
+				toPromise(arg, signal),
 			]).then(([f, a]) => f(a))
 		);
 
@@ -135,8 +142,8 @@ export namespace Task {
 	 * ```
 	 */
 	export const tap = <A>(f: (a: A) => void) => (data: Task<A>): Task<A> =>
-		from(() =>
-			toPromise(data).then((a) => {
+		from((signal) =>
+			toPromise(data, signal).then((a) => {
 				f(a);
 				return a;
 			})
@@ -155,8 +162,8 @@ export namespace Task {
 		tasks: T,
 	): Task<{ [K in keyof T]: T[K] extends Task<infer A> ? A : never; }> =>
 		from(
-			() =>
-				Promise.all(tasks.map((t) => toPromise(t))) as Promise<
+			(signal) =>
+				Promise.all(tasks.map((t) => toPromise(t, signal))) as Promise<
 					{
 						[K in keyof T]: T[K] extends Task<infer A> ? A : never;
 					}
@@ -177,10 +184,10 @@ export namespace Task {
 	 */
 	export const delay = (ms: number) => <A>(data: Task<A>): Task<A> =>
 		from(
-			() =>
+			(signal) =>
 				new Promise<A>((resolve) =>
 					setTimeout(
-						() => toPromise(data).then(resolve),
+						() => toPromise(data, signal).then(resolve),
 						ms,
 					)
 				),
@@ -199,14 +206,14 @@ export namespace Task {
 	 * ```
 	 */
 	export const repeat = (options: { times: number; delay?: number; }) => <A>(task: Task<A>): Task<A[]> =>
-		from(() => {
+		from((signal) => {
 			const { times, delay: ms } = options;
 			if (times <= 0) return Promise.resolve([]);
 			const results: A[] = [];
 			const wait = (): Promise<void> =>
 				ms !== undefined && ms > 0 ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve();
 			const run = (left: number): Promise<A[]> =>
-				toPromise(task).then((a) => {
+				toPromise(task, signal).then((a) => {
 					results.push(a);
 					if (left <= 1) return results;
 					return wait().then(() => run(left - 1));
@@ -227,12 +234,12 @@ export namespace Task {
 	 * ```
 	 */
 	export const repeatUntil = <A>(options: { when: (a: A) => boolean; delay?: number; }) => (task: Task<A>): Task<A> =>
-		from(() => {
+		from((signal) => {
 			const { when: predicate, delay: ms } = options;
 			const wait = (): Promise<void> =>
 				ms !== undefined && ms > 0 ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve();
 			const run = (): Promise<A> =>
-				toPromise(task).then((a) => {
+				toPromise(task, signal).then((a) => {
 					if (predicate(a)) return a;
 					return wait().then(run);
 				});
@@ -251,7 +258,8 @@ export namespace Task {
 	 * await Task.race([fast, slow])(); // "fast"
 	 * ```
 	 */
-	export const race = <A>(tasks: ReadonlyArray<Task<A>>): Task<A> => from(() => Promise.race(tasks.map(toPromise)));
+	export const race = <A>(tasks: ReadonlyArray<Task<A>>): Task<A> =>
+		from((signal) => Promise.race(tasks.map((t) => toPromise(t, signal))));
 
 	/**
 	 * Runs an array of Tasks one at a time in order, collecting all results.
@@ -270,18 +278,20 @@ export namespace Task {
 	 * ```
 	 */
 	export const sequential = <A>(tasks: ReadonlyArray<Task<A>>): Task<ReadonlyArray<A>> =>
-		from(async () => {
+		from(async (signal) => {
 			const results: A[] = [];
 			for (const task of tasks) {
 				// eslint-disable-next-line no-await-in-loop
-				results.push(await toPromise(task));
+				results.push(await toPromise(task, signal));
 			}
 			return results;
 		});
 
 	/**
 	 * Converts a `Task<A>` into a `Task<Result<E, A>>`, resolving to `Err` if the
-	 * Task does not complete within the given time.
+	 * Task does not complete within the given time. The inner Task receives an
+	 * `AbortSignal` that fires when the deadline passes, so operations like `fetch`
+	 * that accept a signal are cancelled rather than left dangling.
 	 *
 	 * @example
 	 * ```ts
@@ -293,16 +303,59 @@ export namespace Task {
 	 * ```
 	 */
 	export const timeout = <E>(ms: number, onTimeout: () => E) => <A>(task: Task<A>): Task<Result<E, A>> =>
-		from(() => {
+		from((outerSignal) => {
+			const controller = new AbortController();
+			const onOuterAbort = () => controller.abort();
+			outerSignal?.addEventListener("abort", onOuterAbort, { once: true });
+
 			let timerId: ReturnType<typeof setTimeout>;
+
 			return Promise.race([
-				toPromise(task).then((a): Result<E, A> => {
+				toPromise(task, controller.signal).then((a): Result<E, A> => {
 					clearTimeout(timerId);
+					outerSignal?.removeEventListener("abort", onOuterAbort);
 					return Result.ok(a);
 				}),
 				new Promise<Result<E, A>>((resolve) => {
-					timerId = setTimeout(() => resolve(Result.err(onTimeout())), ms);
+					timerId = setTimeout(() => {
+						controller.abort();
+						outerSignal?.removeEventListener("abort", onOuterAbort);
+						resolve(Result.err(onTimeout()));
+					}, ms);
 				}),
 			]);
 		});
+
+	/**
+	 * Creates a Task paired with an `abort` handle. When `abort()` is called the
+	 * `AbortSignal` passed to the factory is fired, cancelling any in-flight
+	 * operation (e.g. a `fetch`) immediately.
+	 *
+	 * If an outer signal is also present (passed at the call site), aborting it
+	 * propagates into the internal controller.
+	 *
+	 * @example
+	 * ```ts
+	 * const { task: poll, abort } = Task.abortable(
+	 *   (signal) => waitForEvent(bus, "ready", { signal }),
+	 * );
+	 *
+	 * onUnmount(abort);
+	 * await poll();
+	 * ```
+	 */
+	export const abortable = <A>(factory: (signal: AbortSignal) => Promise<A>): { task: Task<A>; abort: () => void; } => {
+		const controller = new AbortController();
+		const task: Task<A> = (outerSignal?: AbortSignal) => {
+			if (outerSignal) {
+				if (outerSignal.aborted) {
+					controller.abort(outerSignal.reason);
+				} else {
+					outerSignal.addEventListener("abort", () => controller.abort(outerSignal.reason), { once: true });
+				}
+			}
+			return Deferred.fromPromise(factory(controller.signal));
+		};
+		return { task, abort: () => controller.abort() };
+	};
 }

@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Result } from "../Result.ts";
 import { Task } from "../Task.ts";
@@ -533,10 +533,12 @@ test("TaskResult.timeout returns Err when task exceeds timeout", async () => {
 	const slow = Task.from(
 		() => new Promise<Result<string, number>>((r) => setTimeout(() => r({ kind: "Ok", value: 42 }), 200)),
 	);
+	const start = Date.now();
 	const result = await pipe(
 		slow,
 		TaskResult.timeout(10, () => "timed out"),
 	)();
+	expect(Date.now() - start).toBeLessThan(100);
 	expect(result).toEqual({ kind: "Error", error: "timed out" });
 });
 
@@ -555,10 +557,12 @@ test("TaskResult.timeout uses the onTimeout return value as the error", async ()
 	const slow = Task.from(
 		() => new Promise<Result<string, number>>((r) => setTimeout(() => r({ kind: "Ok", value: 42 }), 200)),
 	);
+	const start = Date.now();
 	const result = await pipe(
 		slow,
 		TaskResult.timeout(10, () => "request timed out"),
 	)();
+	expect(Date.now() - start).toBeLessThan(100);
 	expect(result).toEqual({ kind: "Error", error: "request timed out" });
 });
 
@@ -631,6 +635,209 @@ test("TaskResult.pollUntil with function delay receives attempt number", async (
 	expect(calls).toBe(3);
 });
 
+// ---------------------------------------------------------------------------
+// tryCatch — signal threading
+// ---------------------------------------------------------------------------
+
+test("TaskResult.tryCatch receives the AbortSignal from the call site", async () => {
+	const controller = new AbortController();
+	let receivedSignal: AbortSignal | undefined;
+	const task = TaskResult.tryCatch((signal) => {
+		receivedSignal = signal;
+		return Promise.resolve(42);
+	}, String);
+	await task(controller.signal);
+	expect(receivedSignal).toBe(controller.signal);
+});
+
+// ---------------------------------------------------------------------------
+// retry — signal threading and early stop
+// ---------------------------------------------------------------------------
+
+test("TaskResult.retry stops before the next attempt when signal is already aborted", async () => {
+	const controller = new AbortController();
+	let calls = 0;
+	const task: TaskResult<string, number> = (signal) => {
+		calls++;
+		// Abort after the first attempt
+		if (calls === 1) controller.abort();
+		return TaskResult.err<string, number>("fail")(signal);
+	};
+	const result = await pipe(task, TaskResult.retry({ attempts: 3 }))(controller.signal);
+	expect(result).toEqual({ kind: "Error", error: "fail" });
+	// Should stop after first attempt because signal was aborted
+	expect(calls).toBe(1);
+});
+
+test("TaskResult.retry cancellable delay resolves early on abort", async () => {
+	const controller = new AbortController();
+	let calls = 0;
+	const task: TaskResult<string, number> = () => {
+		calls++;
+		return TaskResult.err<string, number>("fail")();
+	};
+	// Use a long backoff that should be cancelled
+	const start = Date.now();
+	const promise = pipe(task, TaskResult.retry({ attempts: 3, backoff: 500 }))(controller.signal);
+	// Abort shortly after the first attempt fires
+	setTimeout(() => controller.abort(), 20);
+	await promise;
+	const elapsed = Date.now() - start;
+	// Should finish well before 500ms (the full backoff)
+	expect(elapsed).toBeLessThan(400);
+	expect(calls).toBeLessThanOrEqual(2);
+});
+
+test("TaskResult.retry threads signal to each attempt", async () => {
+	const controller = new AbortController();
+	const signals: Array<AbortSignal | undefined> = [];
+	const task: TaskResult<string, number> = (signal) => {
+		signals.push(signal);
+		return TaskResult.err<string, number>("fail")(signal);
+	};
+	await pipe(task, TaskResult.retry({ attempts: 2 }))(controller.signal);
+	expect(signals.every((s) => s === controller.signal)).toBe(true);
+});
+
+// ---------------------------------------------------------------------------
+// pollUntil — signal threading and early stop
+// ---------------------------------------------------------------------------
+
+test("TaskResult.pollUntil stops before the next poll when signal is already aborted", async () => {
+	const controller = new AbortController();
+	let calls = 0;
+	const task: TaskResult<string, number> = (signal) => {
+		calls++;
+		if (calls === 1) controller.abort();
+		return TaskResult.ok<string, number>(calls)(signal);
+	};
+	const result = await pipe(task, TaskResult.pollUntil({ when: (n) => n >= 5 }))(controller.signal);
+	expect(calls).toBe(1);
+	expect(result).toEqual({ kind: "Ok", value: 1 });
+});
+
+test("TaskResult.pollUntil cancellable delay resolves early on abort", async () => {
+	const controller = new AbortController();
+	let calls = 0;
+	const task: TaskResult<string, number> = () => {
+		calls++;
+		return TaskResult.ok<string, number>(calls)();
+	};
+	const start = Date.now();
+	const promise = pipe(task, TaskResult.pollUntil({ when: (n) => n >= 10, delay: 500 }))(controller.signal);
+	setTimeout(() => controller.abort(), 20);
+	await promise;
+	const elapsed = Date.now() - start;
+	expect(elapsed).toBeLessThan(400);
+	expect(calls).toBeLessThanOrEqual(2);
+});
+
+// ---------------------------------------------------------------------------
+// timeout — inner task receives AbortSignal
+// ---------------------------------------------------------------------------
+
+test("TaskResult.timeout aborts the inner task when the deadline fires", async () => {
+	let innerSignal: AbortSignal | undefined;
+	const slow = Task.from((signal) => {
+		innerSignal = signal;
+		return new Promise<Result<string, number>>((r) => setTimeout(() => r({ kind: "Ok", value: 42 }), 200));
+	});
+	await pipe(slow, TaskResult.timeout(10, () => "timed out"))();
+	expect(innerSignal?.aborted).toBe(true);
+});
+
+test("TaskResult.timeout wires the outer signal to the inner task", async () => {
+	const outerController = new AbortController();
+	let innerSignal: AbortSignal | undefined;
+	const slow = Task.from((signal) => {
+		innerSignal = signal;
+		return new Promise<Result<string, number>>((r) => setTimeout(() => r({ kind: "Ok", value: 42 }), 200));
+	});
+	const composed = pipe(slow, TaskResult.timeout(500, () => "timed out"));
+	const running = composed(outerController.signal);
+	outerController.abort();
+	await running;
+	expect(innerSignal?.aborted).toBe(true);
+});
+
+// ---------------------------------------------------------------------------
+// abortable
+// ---------------------------------------------------------------------------
+
+test("TaskResult.abortable returns a task and an abort function", () => {
+	const { task, abort } = TaskResult.abortable(() => Promise.resolve(42), String);
+	expectTypeOf(task).toBeFunction();
+	expectTypeOf(abort).toBeFunction();
+});
+
+test("TaskResult.abortable task resolves to Ok when not aborted", async () => {
+	const { task } = TaskResult.abortable(() => Promise.resolve(42), String);
+	const result = await task();
+	expect(result).toEqual({ kind: "Ok", value: 42 });
+});
+
+test("TaskResult.abortable abort() causes the task to resolve to Err via onError", async () => {
+	const { task, abort } = TaskResult.abortable(
+		(signal) =>
+			new Promise<number>((_, reject) => {
+				signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+			}),
+		(e) => (e as Error).message,
+	);
+	const promise = task(); // start before aborting so the listener is registered
+	abort();
+	const result = await promise;
+	expect(result).toEqual({ kind: "Error", error: "aborted" });
+});
+
+test("TaskResult.abortable passes the controller signal to the factory", async () => {
+	let receivedSignal: AbortSignal | undefined;
+	const { task } = TaskResult.abortable((signal) => {
+		receivedSignal = signal;
+		return Promise.resolve(1);
+	}, String);
+	await task();
+	expect(receivedSignal).toBeInstanceOf(AbortSignal);
+});
+
+// oxlint-disable-next-line require-await
+test("TaskResult.abortable wires outer signal to the internal controller", async () => {
+	const outerController = new AbortController();
+	let capturedSignal: AbortSignal | undefined;
+	const { task } = TaskResult.abortable((signal) => {
+		capturedSignal = signal;
+		return new Promise<number>((r) => setTimeout(() => r(1), 100));
+	}, String);
+	task(outerController.signal); // start but don't await
+	outerController.abort();
+	expect(capturedSignal?.aborted).toBe(true);
+});
+
+test("TaskResult.abortable aborts the inner controller immediately when outer signal is already aborted", () => {
+	const outerController = new AbortController();
+	outerController.abort();
+	let capturedSignal: AbortSignal | undefined;
+	const { task } = TaskResult.abortable((signal) => {
+		capturedSignal = signal;
+		return Promise.resolve(1);
+	}, String);
+	task(outerController.signal);
+	expect(capturedSignal?.aborted).toBe(true);
+});
+
+test("TaskResult.timeout removes the outer signal listener after normal completion", async () => {
+	const outerController = new AbortController();
+	let innerSignal: AbortSignal | undefined;
+	const fast = Task.from((signal) => {
+		innerSignal = signal;
+		return Promise.resolve<Result<string, number>>({ kind: "Ok", value: 42 });
+	});
+	await pipe(fast, TaskResult.timeout(500, () => "timed out"))(outerController.signal);
+	// Task completed before the deadline — listener should have been removed
+	outerController.abort();
+	expect(innerSignal?.aborted).toBe(false);
+});
+
 test("TaskResult.pollUntil composes in a pipe chain", async () => {
 	let calls = 0;
 	const task: TaskResult<string, { status: string; value: number; }> = () => {
@@ -646,4 +853,249 @@ test("TaskResult.pollUntil composes in a pipe chain", async () => {
 	)();
 	expect(result).toEqual({ kind: "Ok", value: 99 });
 	expect(calls).toBe(3);
+});
+
+// ---------------------------------------------------------------------------
+// composition scenarios
+// ---------------------------------------------------------------------------
+
+test("TaskResult.recover value flows into subsequent map steps", async () => {
+	const result = await pipe(
+		TaskResult.err<string, number>("not found"),
+		TaskResult.recover((_e: string) => TaskResult.ok<string, number>(0)),
+		TaskResult.map((n: number) => n + 1),
+	)();
+	expect(result).toEqual({ kind: "Ok", value: 1 });
+});
+
+test("TaskResult.mapError normalizes the error type before recover acts on it", async () => {
+	type ApiError = { code: number; msg: string; };
+	const result = await pipe(
+		TaskResult.tryCatch(
+			() => Promise.reject(new Error("service unavailable")),
+			(e) => (e as Error).message,
+		),
+		TaskResult.mapError((msg: string): ApiError => ({ code: 503, msg })),
+		TaskResult.recover((e: ApiError) =>
+			e.code >= 500
+				? TaskResult.ok<ApiError, string>("cached")
+				: TaskResult.err<ApiError, string>(e)
+		),
+		TaskResult.getOrElse(() => "none"),
+	)();
+	expect(result).toBe("cached");
+});
+
+test("TaskResult.tap runs its side effect at the correct point in the chain", async () => {
+	const log: number[] = [];
+	const result = await pipe(
+		TaskResult.ok<string, number>(5),
+		TaskResult.tap((n: number) => log.push(n)),
+		TaskResult.chain((n: number) => TaskResult.ok<string, number>(n * 2)),
+		TaskResult.map((n: number) => n + 1),
+	)();
+	expect(result).toEqual({ kind: "Ok", value: 11 });
+	expect(log).toEqual([5]); // tap sees the pre-chain value
+});
+
+test("TaskResult.match handles the ok path at the end of a composed chain", async () => {
+	const result = await pipe(
+		TaskResult.tryCatch(() => Promise.resolve(10), String),
+		TaskResult.map((n: number) => n * 2),
+		TaskResult.chain((n: number) =>
+			n > 15 ? TaskResult.ok<string, number>(n) : TaskResult.err<string, number>("too small")
+		),
+		TaskResult.match({ ok: (n: number) => `val:${n}`, err: (e: string) => `err:${e}` }),
+	)();
+	expect(result).toBe("val:20");
+});
+
+test("TaskResult.match handles the err path at the end of a composed chain", async () => {
+	const result = await pipe(
+		TaskResult.tryCatch(() => Promise.resolve(5), String),
+		TaskResult.map((n: number) => n * 2),
+		TaskResult.chain((n: number) =>
+			n > 15 ? TaskResult.ok<string, number>(n) : TaskResult.err<string, number>("too small")
+		),
+		TaskResult.match({ ok: (n: number) => `val:${n}`, err: (e: string) => `err:${e}` }),
+	)();
+	expect(result).toBe("err:too small");
+});
+
+test("TaskResult.fold receives the transformed error from a prior mapError", async () => {
+	const result = await pipe(
+		TaskResult.tryCatch(
+			() => Promise.reject(new Error("boom")),
+			(e: unknown) => (e as Error).message,
+		),
+		TaskResult.mapError((msg: string) => msg.toUpperCase()),
+		TaskResult.fold(
+			(e: string) => `error: ${e}`,
+			(_: number) => "ok",
+		),
+	)();
+	expect(result).toBe("error: BOOM");
+});
+
+test("TaskResult.timeout fires before retry exhausts all attempts", async () => {
+	let calls = 0;
+	const slow: TaskResult<string, number> = Task.from(() => {
+		calls++;
+		return new Promise<Result<string, number>>((r) => setTimeout(() => r(Result.err("fail")), 100));
+	});
+	const result = await pipe(
+		slow,
+		TaskResult.retry({ attempts: 5, backoff: 0 }),
+		TaskResult.timeout(50, () => "timed out"),
+	)();
+	expect(result).toEqual({ kind: "Error", error: "timed out" });
+	expect(calls).toBeLessThan(5);
+});
+
+test("TaskResult.abortable task can be piped through retry and match", async () => {
+	let calls = 0;
+	const { task } = TaskResult.abortable(
+		() => {
+			calls++;
+			return calls < 3 ? Promise.reject(new Error("not yet")) : Promise.resolve(99);
+		},
+		(e) => (e as Error).message,
+	);
+	const result = await pipe(
+		task,
+		TaskResult.retry({ attempts: 5 }),
+		TaskResult.match({
+			ok: (n: number) => `ok:${n}`,
+			err: (e: string) => `err:${e}`,
+		}),
+	)();
+	expect(result).toBe("ok:99");
+	expect(calls).toBe(3);
+});
+
+test("TaskResult two stacked timeouts — the shorter outer fires first", async () => {
+	const slow: TaskResult<string, number> = Task.from(() =>
+		new Promise<Result<string, number>>((r) => setTimeout(() => r(Result.ok(42)), 400))
+	);
+	const result = await pipe(
+		slow,
+		TaskResult.timeout(300, () => "inner timeout"),
+		TaskResult.timeout(100, () => "outer timeout"),
+	)();
+	expect(result).toEqual({ kind: "Error", error: "outer timeout" });
+});
+
+test("TaskResult two stacked retries multiply the total attempt count", async () => {
+	let calls = 0;
+	const task: TaskResult<string, number> = Task.from((): Promise<Result<string, number>> => {
+		calls++;
+		return calls < 5
+			? Promise.resolve(Result.err("fail"))
+			: Promise.resolve(Result.ok(42));
+	});
+	// inner retry(2): up to 2 attempts per outer round
+	// outer retry(3): up to 3 rounds
+	// round 1 -> calls 1,2 -> Err; round 2 -> calls 3,4 -> Err; round 3 -> call 5 -> Ok
+	const result = await pipe(
+		task,
+		TaskResult.retry({ attempts: 2 }),
+		TaskResult.retry({ attempts: 3 }),
+	)();
+	expect(result).toEqual({ kind: "Ok", value: 42 });
+	expect(calls).toBe(5);
+});
+
+test("TaskResult timeout terminates a pollUntil that would never complete", async () => {
+	let calls = 0;
+	const task: TaskResult<string, { status: string; }> = Task.from(
+		(): Promise<Result<string, { status: string; }>> => {
+			calls++;
+			return Promise.resolve(Result.ok({ status: "pending" }));
+		},
+	);
+	const result = await pipe(
+		task,
+		TaskResult.pollUntil({ when: (r) => r.status === "done", delay: 10 }),
+		TaskResult.timeout(80, () => "deadline exceeded"),
+	)();
+	expect(result).toEqual({ kind: "Error", error: "deadline exceeded" });
+	expect(calls).toBeGreaterThan(1);
+});
+
+test("TaskResult retry wrapping pollUntil restarts the entire poll sequence on Err", async () => {
+	let calls = 0;
+	const task: TaskResult<string, { status: string; }> = () => {
+		calls++;
+		// call 1 -> Err  (pollUntil stops, retry round 1 fails)
+		// calls 2,3 -> Ok(pending); call 4 -> Err  (retry round 2 fails)
+		// call 5 -> Ok(done)
+		if (calls === 1 || calls === 4) return TaskResult.err<string, { status: string; }>("network error")();
+		const done = calls === 5;
+		return TaskResult.ok<string, { status: string; }>({ status: done ? "done" : "pending" })();
+	};
+	const result = await pipe(
+		task,
+		TaskResult.pollUntil({ when: (r) => r.status === "done", delay: 0 }),
+		TaskResult.retry({ attempts: 3 }),
+	)();
+	expect(result).toEqual({ kind: "Ok", value: { status: "done" } });
+	expect(calls).toBe(5);
+});
+
+test("TaskResult abortable abort() before the timeout deadline resolves via onError not timeout", async () => {
+	const { task, abort } = TaskResult.abortable(
+		(signal) =>
+			new Promise<number>((_, reject) => {
+				signal.addEventListener("abort", () => reject(new Error("cancelled")), { once: true });
+			}),
+		(e) => (e as Error).message,
+	);
+	const composed = pipe(task, TaskResult.timeout(500, () => "timed out"));
+	const promise = composed();
+	abort();
+	const result = await promise;
+	// abort fires before 500ms — factory rejects, timeout timer is cleared, Err comes from onError
+	expect(result).toEqual({ kind: "Error", error: "cancelled" });
+});
+
+test("TaskResult pollUntil + retry + timeout — timeout is the global backstop", async () => {
+	let calls = 0;
+	const task: TaskResult<string, { status: string; }> = Task.from(
+		(): Promise<Result<string, { status: string; }>> => {
+			calls++;
+			return Promise.resolve(Result.ok({ status: "pending" }));
+		},
+	);
+	// poll never satisfies predicate; retry(10) would restart on Err but poll never errors;
+	// timeout(80ms) is the only exit
+	const result = await pipe(
+		task,
+		TaskResult.pollUntil({ when: (r) => r.status === "done", delay: 10 }),
+		TaskResult.retry({ attempts: 10 }),
+		TaskResult.timeout(80, () => "global timeout"),
+	)();
+	expect(result).toEqual({ kind: "Error", error: "global timeout" });
+	expect(calls).toBeGreaterThan(3);
+});
+
+test("TaskResult full request lifecycle: tryCatch -> retry -> tap -> map -> recover -> getOrElse", async () => {
+	let calls = 0;
+	const tapped: number[] = [];
+	const result = await pipe(
+		TaskResult.tryCatch(
+			() => {
+				calls++;
+				return calls < 3 ? Promise.reject(new Error("transient")) : Promise.resolve(42);
+			},
+			(e) => (e as Error).message,
+		),
+		TaskResult.retry({ attempts: 3 }),
+		TaskResult.tap((n: number) => tapped.push(n)),
+		TaskResult.map((n: number) => n * 2),
+		TaskResult.recover((_e: string) => TaskResult.ok<string, number>(0)),
+		TaskResult.getOrElse(() => -1),
+	)();
+	expect(result).toBe(84);
+	expect(calls).toBe(3);
+	expect(tapped).toEqual([42]); // tap fires once, after retry succeeds, before map
 });

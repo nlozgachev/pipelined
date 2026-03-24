@@ -10,12 +10,26 @@ import { Task } from "./Task.ts";
  * ```ts
  * const fetchUser = (id: string): TaskResult<Error, User> =>
  *   TaskResult.tryCatch(
- *     () => fetch(`/users/${id}`).then(r => r.json()),
+ *     (signal) => fetch(`/users/${id}`, { signal }).then(r => r.json()),
  *     (e) => new Error(`Failed to fetch user: ${e}`)
  *   );
  * ```
  */
 export type TaskResult<E, A> = Task<Result<E, A>>;
+
+// Waits for `ms` milliseconds, resolving early if the signal fires.
+// Resolving (not rejecting) on abort keeps Task infallibility intact.
+const cancellableWait = (ms: number, signal?: AbortSignal): Promise<void> => {
+	if (ms <= 0) return Promise.resolve();
+	if (!signal) return new Promise<void>((r) => setTimeout(r, ms));
+	return new Promise<void>((resolve) => {
+		const id = setTimeout(resolve, ms);
+		signal.addEventListener("abort", () => {
+			clearTimeout(id);
+			resolve();
+		}, { once: true });
+	});
+};
 
 export namespace TaskResult {
 	/**
@@ -31,22 +45,23 @@ export namespace TaskResult {
 	/**
 	 * Creates a TaskResult from a function that may throw.
 	 * Catches any errors and transforms them using the onError function.
+	 * The factory optionally receives an `AbortSignal` forwarded from the call site.
 	 *
 	 * @example
 	 * ```ts
-	 * const parseJson = (s: string): TaskResult<string, unknown> =>
+	 * const fetchUser = (id: string): TaskResult<string, User> =>
 	 *   TaskResult.tryCatch(
-	 *     async () => JSON.parse(s),
-	 *     (e) => `Parse error: ${e}`
+	 *     (signal) => fetch(`/users/${id}`, { signal }).then(r => r.json()),
+	 *     String
 	 *   );
 	 * ```
 	 */
 	export const tryCatch = <E, A>(
-		f: () => Promise<A>,
+		f: (signal?: AbortSignal) => Promise<A>,
 		onError: (e: unknown) => E,
 	): TaskResult<E, A> =>
-		Task.from(() =>
-			f()
+		Task.from((signal) =>
+			f(signal)
 				.then(Result.ok)
 				.catch((e) => Result.err(onError(e)))
 		);
@@ -110,6 +125,8 @@ export namespace TaskResult {
 
 	/**
 	 * Re-runs a TaskResult on `Err` with configurable attempts, backoff, and retry condition.
+	 * An `AbortSignal` passed at the call site is forwarded to each attempt; the loop also
+	 * checks the signal before starting a new attempt so cancellation stops the loop promptly.
 	 *
 	 * @param options.attempts - Total number of attempts (1 = no retry, 3 = up to 3 tries)
 	 * @param options.backoff - Fixed delay in ms, or a function `(attempt) => ms` for computed delay
@@ -136,22 +153,24 @@ export namespace TaskResult {
 		when?: (error: E) => boolean;
 	}) =>
 	<A>(data: TaskResult<E, A>): TaskResult<E, A> =>
-		Task.from(() => {
+		Task.from((signal) => {
 			const { attempts, backoff, when: shouldRetry } = options;
 			const getDelay = (n: number): number =>
 				backoff === undefined ? 0 : typeof backoff === "function" ? backoff(n) : backoff;
 
 			const run = (left: number): Promise<Result<E, A>> =>
-				Deferred.toPromise(data()).then((result) => {
+				Deferred.toPromise(data(signal)).then((result) => {
 					if (Result.isOk(result)) return result;
 					if (left <= 1) return result;
 					if (shouldRetry !== undefined && !shouldRetry(result.error)) {
 						return result;
 					}
+					if (signal?.aborted) return result;
 					const ms = getDelay(attempts - left + 1);
-					return (
-						ms > 0 ? new Promise<void>((r) => setTimeout(r, ms)) : Promise.resolve()
-					).then(() => run(left - 1));
+					return cancellableWait(ms, signal).then(() => {
+						if (signal?.aborted) return result;
+						return run(left - 1);
+					});
 				});
 
 			return run(attempts);
@@ -160,6 +179,8 @@ export namespace TaskResult {
 	/**
 	 * Polls a TaskResult repeatedly until the success value satisfies a predicate.
 	 * Stops immediately and returns `Err` if the task fails.
+	 * An `AbortSignal` passed at the call site is forwarded to each attempt; the loop
+	 * also checks the signal before starting a new poll so cancellation stops promptly.
 	 *
 	 * `delay` accepts a fixed number of milliseconds or a function `(attempt) => ms`
 	 * for a computed delay — useful for starting fast and slowing down over time.
@@ -167,7 +188,10 @@ export namespace TaskResult {
 	 * @example
 	 * ```ts
 	 * const checkJob = (id: string): TaskResult<string, { status: "pending" | "done" }> =>
-	 *   TaskResult.tryCatch(() => fetch(`/jobs/${id}`).then(r => r.json()), String);
+	 *   TaskResult.tryCatch(
+	 *     (signal) => fetch(`/jobs/${id}`, { signal }).then(r => r.json()),
+	 *     String
+	 *   );
 	 *
 	 * // Fixed delay: poll every 2s
 	 * pipe(
@@ -185,25 +209,28 @@ export namespace TaskResult {
 	export const pollUntil =
 		<A>(options: { when: (a: A) => boolean; delay?: number | ((attempt: number) => number); }) =>
 		<E>(task: TaskResult<E, A>): TaskResult<E, A> =>
-			Task.from(() => {
+			Task.from((signal) => {
 				const { when: predicate, delay } = options;
 				const getDelay = (attempt: number): number =>
 					delay === undefined ? 0 : typeof delay === "function" ? delay(attempt) : delay;
 				const run = (attempt: number): Promise<Result<E, A>> =>
-					Deferred.toPromise(task()).then((result) => {
+					Deferred.toPromise(task(signal)).then((result) => {
 						if (Result.isErr(result)) return result;
 						if (predicate(result.value)) return result;
+						if (signal?.aborted) return result;
 						const ms = getDelay(attempt);
-						return (
-							ms > 0 ? new Promise<void>((r) => setTimeout(r, ms)) : Promise.resolve()
-						).then(() => run(attempt + 1));
+						return cancellableWait(ms, signal).then(() => {
+							if (signal?.aborted) return result;
+							return run(attempt + 1);
+						});
 					});
 				return run(1);
 			});
 
 	/**
 	 * Fails a TaskResult with a typed error if it does not resolve within the given time.
-	 * Uses `Promise.race` — the underlying operation keeps running after the timeout fires.
+	 * The inner task receives an `AbortSignal` that fires when the deadline passes —
+	 * operations like `fetch` that accept a signal are cancelled rather than left dangling.
 	 *
 	 * @example
 	 * ```ts
@@ -214,16 +241,69 @@ export namespace TaskResult {
 	 * ```
 	 */
 	export const timeout = <E>(ms: number, onTimeout: () => E) => <A>(data: TaskResult<E, A>): TaskResult<E, A> =>
-		Task.from(() => {
+		Task.from((outerSignal) => {
+			const controller = new AbortController();
+			const onOuterAbort = () => controller.abort();
+			outerSignal?.addEventListener("abort", onOuterAbort, { once: true });
+
 			let timerId: ReturnType<typeof setTimeout>;
+
 			return Promise.race([
-				Deferred.toPromise(data()).then((result) => {
+				Deferred.toPromise(data(controller.signal)).then((result) => {
 					clearTimeout(timerId);
+					outerSignal?.removeEventListener("abort", onOuterAbort);
 					return result;
 				}),
 				new Promise<Result<E, A>>((resolve) => {
-					timerId = setTimeout(() => resolve(Result.err(onTimeout())), ms);
+					timerId = setTimeout(() => {
+						controller.abort();
+						outerSignal?.removeEventListener("abort", onOuterAbort);
+						resolve(Result.err(onTimeout()));
+					}, ms);
 				}),
 			]);
 		});
+
+	/**
+	 * Creates a TaskResult paired with an `abort` handle. When `abort()` is called the
+	 * `AbortSignal` passed to the factory is fired, cancelling any in-flight operation.
+	 * The abort error is transformed by `onError` into a typed `Err`.
+	 *
+	 * If an outer signal is also present (passed at the call site), aborting it
+	 * propagates into the internal controller.
+	 *
+	 * @example
+	 * ```ts
+	 * const { task: req, abort } = TaskResult.abortable(
+	 *   (signal) => fetch(`/users/${id}`, { signal }).then(r => r.json()),
+	 *   String,
+	 * );
+	 *
+	 * const result = pipe(req, TaskResult.retry({ attempts: 3 }));
+	 *
+	 * onCancel(abort);
+	 * await result();
+	 * ```
+	 */
+	export const abortable = <E, A>(
+		factory: (signal: AbortSignal) => Promise<A>,
+		onError: (e: unknown) => E,
+	): { task: TaskResult<E, A>; abort: () => void; } => {
+		const controller = new AbortController();
+		const task: TaskResult<E, A> = (outerSignal?: AbortSignal) => {
+			if (outerSignal) {
+				if (outerSignal.aborted) {
+					controller.abort(outerSignal.reason);
+				} else {
+					outerSignal.addEventListener("abort", () => controller.abort(outerSignal.reason), { once: true });
+				}
+			}
+			return Deferred.fromPromise(
+				factory(controller.signal)
+					.then(Result.ok)
+					.catch((e) => Result.err(onError(e))),
+			);
+		};
+		return { task, abort: () => controller.abort() };
+	};
 }

@@ -233,25 +233,19 @@ test("Uniq.difference with empty other returns equivalent set", () => {
 // ---------------------------------------------------------------------------
 
 test("Uniq.isSubsetOf polyfill path — true when all items in other", () => {
-	const proto = Set.prototype as unknown as Record<string, unknown>;
-	const native = proto["isSubsetOf"];
-	proto["isSubsetOf"] = undefined;
-	try {
-		expect(pipe(Uniq.fromArray([1, 2]), Uniq.isSubsetOf(Uniq.fromArray([1, 2, 3])))).toBe(true);
-	} finally {
-		proto["isSubsetOf"] = native;
-	}
+	const s = Object.defineProperty(Uniq.fromArray([1, 2]) as Set<number>, "isSubsetOf", {
+		value: undefined,
+		configurable: true,
+	});
+	expect(pipe(s, Uniq.isSubsetOf(Uniq.fromArray([1, 2, 3])))).toBe(true);
 });
 
 test("Uniq.isSubsetOf polyfill path — false when item missing from other", () => {
-	const proto = Set.prototype as unknown as Record<string, unknown>;
-	const native = proto["isSubsetOf"];
-	proto["isSubsetOf"] = undefined;
-	try {
-		expect(pipe(Uniq.fromArray([1, 4]), Uniq.isSubsetOf(Uniq.fromArray([1, 2, 3])))).toBe(false);
-	} finally {
-		proto["isSubsetOf"] = native;
-	}
+	const s = Object.defineProperty(Uniq.fromArray([1, 4]) as Set<number>, "isSubsetOf", {
+		value: undefined,
+		configurable: true,
+	});
+	expect(pipe(s, Uniq.isSubsetOf(Uniq.fromArray([1, 2, 3])))).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
@@ -259,17 +253,14 @@ test("Uniq.isSubsetOf polyfill path — false when item missing from other", () 
 // ---------------------------------------------------------------------------
 
 test("Uniq.union polyfill path — combines items from both sets", () => {
-	const proto = Set.prototype as unknown as Record<string, unknown>;
-	const native = proto["union"];
-	proto["union"] = undefined;
-	try {
-		const s = pipe(Uniq.fromArray([1, 2, 3]), Uniq.union(Uniq.fromArray([2, 3, 4])));
-		expect(s.size).toBe(4);
-		expect(s.has(1)).toBe(true);
-		expect(s.has(4)).toBe(true);
-	} finally {
-		proto["union"] = native;
-	}
+	const data = Object.defineProperty(Uniq.fromArray([1, 2, 3]) as Set<number>, "union", {
+		value: undefined,
+		configurable: true,
+	});
+	const s = pipe(data, Uniq.union(Uniq.fromArray([2, 3, 4])));
+	expect(s.size).toBe(4);
+	expect(s.has(1)).toBe(true);
+	expect(s.has(4)).toBe(true);
 });
 
 // ---------------------------------------------------------------------------
@@ -277,30 +268,24 @@ test("Uniq.union polyfill path — combines items from both sets", () => {
 // ---------------------------------------------------------------------------
 
 test("Uniq.intersection polyfill path — keeps only items in both sets", () => {
-	const proto = Set.prototype as unknown as Record<string, unknown>;
-	const native = proto["intersection"];
-	proto["intersection"] = undefined;
-	try {
-		const s = pipe(Uniq.fromArray([1, 2, 3]), Uniq.intersection(Uniq.fromArray([2, 3, 4])));
-		expect(s.size).toBe(2);
-		expect(s.has(2)).toBe(true);
-		expect(s.has(3)).toBe(true);
-		expect(s.has(1)).toBe(false);
-	} finally {
-		proto["intersection"] = native;
-	}
+	const data = Object.defineProperty(Uniq.fromArray([1, 2, 3]) as Set<number>, "intersection", {
+		value: undefined,
+		configurable: true,
+	});
+	const s = pipe(data, Uniq.intersection(Uniq.fromArray([2, 3, 4])));
+	expect(s.size).toBe(2);
+	expect(s.has(2)).toBe(true);
+	expect(s.has(3)).toBe(true);
+	expect(s.has(1)).toBe(false);
 });
 
 test("Uniq.intersection polyfill path — returns empty set when no common items", () => {
-	const proto = Set.prototype as unknown as Record<string, unknown>;
-	const native = proto["intersection"];
-	proto["intersection"] = undefined;
-	try {
-		const s = pipe(Uniq.fromArray([1, 2]), Uniq.intersection(Uniq.fromArray([3, 4])));
-		expect(s.size).toBe(0);
-	} finally {
-		proto["intersection"] = native;
-	}
+	const data = Object.defineProperty(Uniq.fromArray([1, 2]) as Set<number>, "intersection", {
+		value: undefined,
+		configurable: true,
+	});
+	const s = pipe(data, Uniq.intersection(Uniq.fromArray([3, 4])));
+	expect(s.size).toBe(0);
 });
 
 // ---------------------------------------------------------------------------
@@ -308,17 +293,14 @@ test("Uniq.intersection polyfill path — returns empty set when no common items
 // ---------------------------------------------------------------------------
 
 test("Uniq.difference polyfill path — keeps items not in other", () => {
-	const proto = Set.prototype as unknown as Record<string, unknown>;
-	const native = proto["difference"];
-	proto["difference"] = undefined;
-	try {
-		const s = pipe(Uniq.fromArray([1, 2, 3, 4]), Uniq.difference(Uniq.fromArray([2, 4])));
-		expect(s.size).toBe(2);
-		expect(s.has(1)).toBe(true);
-		expect(s.has(3)).toBe(true);
-	} finally {
-		proto["difference"] = native;
-	}
+	const data = Object.defineProperty(Uniq.fromArray([1, 2, 3, 4]) as Set<number>, "difference", {
+		value: undefined,
+		configurable: true,
+	});
+	const s = pipe(data, Uniq.difference(Uniq.fromArray([2, 4])));
+	expect(s.size).toBe(2);
+	expect(s.has(1)).toBe(true);
+	expect(s.has(3)).toBe(true);
 });
 
 // ---------------------------------------------------------------------------

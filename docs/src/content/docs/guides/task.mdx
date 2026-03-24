@@ -217,7 +217,7 @@ import { TaskResult } from "@nlozgachev/pipelined/core";
 
 const fetchUser = (id: string): TaskResult<string, User> =>
   TaskResult.tryCatch(
-    () => fetch(`/users/${id}`).then((r) => r.json()),
+    (signal) => fetch(`/users/${id}`, { signal }).then((r) => r.json()),
     (e) => `Fetch failed: ${e}`,
   );
 
@@ -238,7 +238,7 @@ of attempts and an optional delay between them:
 ```ts
 const fetchUser = (id: string): TaskResult<string, User> =>
   TaskResult.tryCatch(
-    () => fetch(`/users/${id}`).then(r => r.json()),
+    (signal) => fetch(`/users/${id}`, { signal }).then(r => r.json()),
     e => `Fetch failed: ${e}`,
   );
 
@@ -281,7 +281,7 @@ it won't retry on failure.
 
 ```ts
 const checkJob = (id: string): TaskResult<string, { status: "pending" | "done" }> =>
-  TaskResult.tryCatch(() => fetch(`/jobs/${id}`).then(r => r.json()), String);
+  TaskResult.tryCatch((signal) => fetch(`/jobs/${id}`, { signal }).then(r => r.json()), String);
 
 pipe(
   checkJob(jobId),
@@ -299,6 +299,88 @@ TaskResult.pollUntil({ when: (job) => job.status === "done", delay: n => n * 100
 ```
 
 The delay is not applied after the final successful poll. Omit it to poll as fast as possible.
+
+### Cancelling in-flight requests
+
+Web applications cancel async work constantly: a component unmounts while a fetch is still in
+flight, a user navigates away mid-poll, or a timeout fires on a slow endpoint. Without explicit
+cancellation, the underlying request keeps running even though no one will consume the result —
+wasting bandwidth, holding server connections open, and in the case of `retry` and `pollUntil`,
+continuing to fire new requests that have already been abandoned.
+
+`TaskResult.abortable` returns a plain `TaskResult` paired with an `abort` handle. When called,
+`abort` fires an `AbortSignal` into the factory function. Pass it to `fetch` and the browser
+cancels the in-flight request immediately:
+
+```ts
+const { task: fetchUser, abort } = TaskResult.abortable(
+  (signal) => fetch(`/users/${id}`, { signal }).then((r) => r.json()),
+  (e) => `Fetch failed: ${e}`,
+);
+
+// React component: cancel the request when the component unmounts
+useEffect(() => {
+  fetchUser().then(setUser);
+  return abort;
+}, [id]);
+```
+
+The returned `task` is a plain `TaskResult`. It composes in a `pipe` chain just like any other,
+and the signal threads through every combinator automatically — no extra wiring needed at the call
+site:
+
+```ts
+const resilientFetch = pipe(
+  fetchUser,
+  TaskResult.retry({ attempts: 3, backoff: 1000 }),
+  TaskResult.pollUntil({ when: (user) => user.status === "active", delay: 2000 }),
+);
+
+onCancel(abort);        // wire abort to whatever external event applies
+await resilientFetch(); // abort reaches every retry attempt and every inter-poll delay
+```
+
+If cancellation fires during a backoff delay, `retry` stops immediately rather than starting
+another request. `pollUntil` does the same — the inter-poll wait is cut short the moment the
+signal fires.
+
+#### Timeout that actually cancels
+
+`TaskResult.timeout` doesn't just give up when the deadline fires — it passes an `AbortSignal` to
+the inner operation so that the underlying request is actually cancelled rather than left running
+silently in the background:
+
+```ts
+pipe(
+  TaskResult.tryCatch(
+    (signal) => fetch(`/reports/${id}`, { signal }).then((r) => r.json()),
+    String,
+  ),
+  TaskResult.timeout(5000, () => new TimeoutError("report request timed out")),
+);
+// after 5 seconds: the fetch is aborted and Err(TimeoutError) is returned
+// without the signal, the browser would keep the connection open and discard the result silently
+```
+
+#### Using your own controller
+
+If you already hold an `AbortController` — from a framework hook, a test helper, or a parent
+orchestrator — pass the signal at the call site instead of using `abortable`:
+
+```ts
+const controller = new AbortController();
+
+const result = pipe(
+  TaskResult.tryCatch(
+    (signal) => fetch(url, { signal }).then((r) => r.json()),
+    String,
+  ),
+  TaskResult.retry({ attempts: 3 }),
+);
+
+controller.abort();              // can be called before or after running
+await result(controller.signal); // signal threads through every retry automatically
+```
 
 **`TaskMaybe<A>`** — an async operation that may return nothing. It's `Task<Maybe<A>>`:
 
