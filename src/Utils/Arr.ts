@@ -231,8 +231,11 @@ export namespace Arr {
 	 * pipe([3, 1, 2], Arr.sortBy((a, b) => a - b)); // [1, 2, 3]
 	 * ```
 	 */
-	export const sortBy = <A>(compare: (a: A, b: A) => number) => (data: readonly A[]): readonly A[] =>
-		[...data].sort(compare);
+	export const sortBy = <A>(compare: (a: A, b: A) => number) => (data: readonly A[]): readonly A[] => {
+		const arr = data as A[];
+		if (typeof arr.toSorted === "function") return arr.toSorted(compare);
+		return [...data].sort(compare);
+	};
 
 	// --- Combine ---
 
@@ -527,6 +530,46 @@ export namespace Arr {
 	 * ```
 	 */
 	export const reverse = <A>(data: readonly A[]): readonly A[] => [...data].reverse();
+
+	/**
+	 * Returns a new array with `item` inserted before the element at `index`.
+	 * Negative indices are clamped to 0; indices beyond the array length append to the end.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe([1, 2, 3], Arr.insertAt(1, 99)); // [1, 99, 2, 3]
+	 * pipe([1, 2, 3], Arr.insertAt(0, 99)); // [99, 1, 2, 3]
+	 * pipe([1, 2, 3], Arr.insertAt(3, 99)); // [1, 2, 3, 99]
+	 * ```
+	 */
+	export const insertAt = <A>(index: number, item: A) => (data: readonly A[]): readonly A[] => {
+		const i = Math.max(0, Math.min(index, data.length));
+		const arr = data as A[];
+		if (typeof arr.toSpliced === "function") return arr.toSpliced(i, 0, item);
+		const result = [...data];
+		result.splice(i, 0, item);
+		return result;
+	};
+
+	/**
+	 * Returns a new array with the element at `index` removed.
+	 * Returns the original array unchanged if `index` is out of bounds.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe([1, 2, 3], Arr.removeAt(1)); // [1, 3]
+	 * pipe([1, 2, 3], Arr.removeAt(0)); // [2, 3]
+	 * pipe([1, 2, 3], Arr.removeAt(5)); // [1, 2, 3]
+	 * ```
+	 */
+	export const removeAt = (index: number) => <A>(data: readonly A[]): readonly A[] => {
+		if (index < 0 || index >= data.length) return data;
+		const arr = data as A[];
+		if (typeof arr.toSpliced === "function") return arr.toSpliced(index, 1);
+		const result = [...data];
+		result.splice(index, 1);
+		return result;
+	};
 
 	/**
 	 * Takes the first n elements from an array.

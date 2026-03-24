@@ -866,6 +866,76 @@ test("reverse - single element returns same", () => {
 	expect(Arr.reverse([42])).toEqual([42]);
 });
 
+// =============================================================================
+// insertAt
+// =============================================================================
+
+test("insertAt - inserts at start", () => {
+	expect(pipe([1, 2, 3], Arr.insertAt(0, 99))).toEqual([99, 1, 2, 3]);
+});
+
+test("insertAt - inserts in middle", () => {
+	expect(pipe([1, 2, 3], Arr.insertAt(1, 99))).toEqual([1, 99, 2, 3]);
+});
+
+test("insertAt - inserts at end", () => {
+	expect(pipe([1, 2, 3], Arr.insertAt(3, 99))).toEqual([1, 2, 3, 99]);
+});
+
+test("insertAt - clamps negative index to 0", () => {
+	expect(pipe([1, 2, 3], Arr.insertAt(-5, 99))).toEqual([99, 1, 2, 3]);
+});
+
+test("insertAt - clamps over-length index to end", () => {
+	expect(pipe([1, 2, 3], Arr.insertAt(100, 99))).toEqual([1, 2, 3, 99]);
+});
+
+test("insertAt - inserts into empty array", () => {
+	expect(pipe([] as number[], Arr.insertAt(0, 99))).toEqual([99]);
+});
+
+test("insertAt - does not mutate the original array", () => {
+	const original = [1, 2, 3];
+	pipe(original, Arr.insertAt(1, 99));
+	expect(original).toEqual([1, 2, 3]);
+});
+
+// =============================================================================
+// removeAt
+// =============================================================================
+
+test("removeAt - removes at start", () => {
+	expect(pipe([1, 2, 3], Arr.removeAt(0))).toEqual([2, 3]);
+});
+
+test("removeAt - removes in middle", () => {
+	expect(pipe([1, 2, 3], Arr.removeAt(1))).toEqual([1, 3]);
+});
+
+test("removeAt - removes at end", () => {
+	expect(pipe([1, 2, 3], Arr.removeAt(2))).toEqual([1, 2]);
+});
+
+test("removeAt - returns original for negative index", () => {
+	const original = [1, 2, 3];
+	expect(pipe(original, Arr.removeAt(-1))).toBe(original);
+});
+
+test("removeAt - returns original for out-of-bounds index", () => {
+	const original = [1, 2, 3];
+	expect(pipe(original, Arr.removeAt(5))).toBe(original);
+});
+
+test("removeAt - returns empty for single-element array", () => {
+	expect(pipe([42], Arr.removeAt(0))).toEqual([]);
+});
+
+test("removeAt - does not mutate the original array", () => {
+	const original = [1, 2, 3];
+	pipe(original, Arr.removeAt(1));
+	expect(original).toEqual([1, 2, 3]);
+});
+
 test("take - takes first n elements", () => {
 	const result = pipe([1, 2, 3, 4, 5], Arr.take(3));
 	expect(result).toEqual([1, 2, 3]);

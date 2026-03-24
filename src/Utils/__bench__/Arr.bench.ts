@@ -142,6 +142,41 @@ describe("sortBy-10k", () => {
 	bench("native .sort 10k", () => {
 		[...shuffled].sort((a, b) => a - b);
 	});
+	bench("native .toSorted 10k", () => {
+		shuffled.toSorted((a, b) => a - b);
+	});
+});
+
+describe("reverse-10k", () => {
+	bench("Arr.reverse 10k", () => {
+		pipe(data10k, Arr.reverse);
+	});
+	bench("native .reverse 10k", () => {
+		[...data10k].reverse();
+	});
+	bench("native .toReversed 10k", () => {
+		data10k.toReversed();
+	});
+});
+
+describe("insertAt-10k", () => {
+	bench("native .toSpliced insert 10k", () => {
+		data10k.toSpliced(5_000, 0, -1);
+	});
+	bench("spread + splice insert 10k", () => {
+		const result = [...data10k];
+		result.splice(5_000, 0, -1);
+	});
+});
+
+describe("removeAt-10k", () => {
+	bench("native .toSpliced remove 10k", () => {
+		data10k.toSpliced(5_000, 1);
+	});
+	bench("spread + splice remove 10k", () => {
+		const result = [...data10k];
+		result.splice(5_000, 1);
+	});
 });
 
 describe("zip-10k", () => {

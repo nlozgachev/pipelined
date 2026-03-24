@@ -152,6 +152,25 @@ pipe(
 ); // [3, 1]
 ```
 
+## Modifying by index
+
+**`insertAt`** returns a new array with an item inserted before the element at a given index.
+Negative indices are clamped to 0; indices beyond the array length append to the end:
+
+```ts
+pipe([1, 2, 3], Arr.insertAt(1, 99)); // [1, 99, 2, 3]
+pipe([1, 2, 3], Arr.insertAt(0, 99)); // [99, 1, 2, 3]
+pipe([1, 2, 3], Arr.insertAt(3, 99)); // [1, 2, 3, 99]
+```
+
+**`removeAt`** returns a new array with the element at the given index removed. If the index is
+out of bounds the original array is returned unchanged:
+
+```ts
+pipe([1, 2, 3], Arr.removeAt(1)); // [1, 3]
+pipe([1, 2, 3], Arr.removeAt(5)); // [1, 2, 3]
+```
+
 ## Combining arrays
 
 **`zip`** pairs elements from two arrays, stopping at the shorter one:
