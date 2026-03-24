@@ -29,9 +29,9 @@ In these cases, discarding either piece loses information. `Both` holds them tog
 ```ts
 import { These } from "@nlozgachev/pipelined/core";
 
-These.first(42);            // First — only a first value
-These.second("bad input");  // Second — only a second value
-These.both(42, "trimmed");  // Both — first and second simultaneously
+These.first(42); // First — only a first value
+These.second("bad input"); // Second — only a second value
+These.both(42, "trimmed"); // Both — first and second simultaneously
 ```
 
 A typical use: a parser that's lenient but records what it fixed:
@@ -40,16 +40,16 @@ A typical use: a parser that's lenient but records what it fixed:
 import { pipe } from "@nlozgachev/pipelined/composition";
 
 const parseNumber = (s: string): These<number, string> => {
-  const trimmed = s.trim();
-  const n = parseFloat(trimmed);
-  if (isNaN(n)) return These.second("Not a number");
-  if (s !== trimmed) return These.both(n, "Leading/trailing whitespace trimmed");
-  return These.first(n);
+	const trimmed = s.trim();
+	const n = parseFloat(trimmed);
+	if (isNaN(n)) return These.second("Not a number");
+	if (s !== trimmed) return These.both(n, "Leading/trailing whitespace trimmed");
+	return These.first(n);
 };
 
 parseNumber("  42  "); // Both(42, "Leading/trailing whitespace trimmed")
-parseNumber("42");     // First(42)
-parseNumber("abc");    // Second("Not a number")
+parseNumber("42"); // First(42)
+parseNumber("abc"); // Second("Not a number")
 ```
 
 ## Transforming values
@@ -57,9 +57,9 @@ parseNumber("abc");    // Second("Not a number")
 `mapFirst` transforms the first value in `First` and `Both`, leaving `Second` untouched:
 
 ```ts
-pipe(These.first(5), These.mapFirst((n) => n * 2));           // First(10)
-pipe(These.both(5, "warn"), These.mapFirst((n) => n * 2));    // Both(10, "warn")
-pipe(These.second("warn"), These.mapFirst((n) => n * 2));     // Second("warn")
+pipe(These.first(5), These.mapFirst((n) => n * 2)); // First(10)
+pipe(These.both(5, "warn"), These.mapFirst((n) => n * 2)); // Both(10, "warn")
+pipe(These.second("warn"), These.mapFirst((n) => n * 2)); // Second("warn")
 ```
 
 `mapSecond` transforms the second value in `Second` and `Both`, leaving `First` untouched:
@@ -73,11 +73,11 @@ pipe(These.both(5, "warn"), These.mapSecond((e) => e.toUpperCase())); // Both(5,
 
 ```ts
 pipe(
-  These.both(5, "warn"),
-  These.mapBoth(
-    (n) => n * 2,
-    (e) => e.toUpperCase(),
-  ),
+	These.both(5, "warn"),
+	These.mapBoth(
+		(n) => n * 2,
+		(e) => e.toUpperCase(),
+	),
 ); // Both(10, "WARN")
 ```
 
@@ -89,9 +89,9 @@ the second value is not preserved — the result of `f` is returned directly:
 ```ts
 const double = (n: number): These<number, string> => These.first(n * 2);
 
-pipe(These.first(5), These.chainFirst(double));         // First(10)
-pipe(These.both(5, "warn"), These.chainFirst(double));  // First(10) — second not carried
-pipe(These.second("warn"), These.chainFirst(double));   // Second("warn")
+pipe(These.first(5), These.chainFirst(double)); // First(10)
+pipe(These.both(5, "warn"), These.chainFirst(double)); // First(10) — second not carried
+pipe(These.second("warn"), These.chainFirst(double)); // Second("warn")
 ```
 
 `chainSecond` is the symmetric operation on the second side:
@@ -99,9 +99,9 @@ pipe(These.second("warn"), These.chainFirst(double));   // Second("warn")
 ```ts
 const shout = (s: string): These<number, string> => These.second(s.toUpperCase());
 
-pipe(These.second("warn"), These.chainSecond(shout));   // Second("WARN")
-pipe(These.both(5, "warn"), These.chainSecond(shout));  // Second("WARN")
-pipe(These.first(5), These.chainSecond(shout));         // First(5)
+pipe(These.second("warn"), These.chainSecond(shout)); // Second("WARN")
+pipe(These.both(5, "warn"), These.chainSecond(shout)); // Second("WARN")
+pipe(These.first(5), These.chainSecond(shout)); // First(5)
 ```
 
 ## Extracting values
@@ -110,12 +110,12 @@ pipe(These.first(5), These.chainSecond(shout));         // First(5)
 
 ```ts
 pipe(
-  result,
-  These.match({
-    first: (value) => `First: ${value}`,
-    second: (note) => `Second: ${note}`,
-    both: (value, note) => `Both — ${value} / ${note}`,
-  }),
+	result,
+	These.match({
+		first: (value) => `First: ${value}`,
+		second: (note) => `Second: ${note}`,
+		both: (value, note) => `Both — ${value} / ${note}`,
+	}),
 );
 ```
 
@@ -123,12 +123,12 @@ pipe(
 
 ```ts
 pipe(
-  result,
-  These.fold(
-    (value) => `First: ${value}`,
-    (note) => `Second: ${note}`,
-    (value, note) => `Both: ${value} / ${note}`,
-  ),
+	result,
+	These.fold(
+		(value) => `First: ${value}`,
+		(note) => `Second: ${note}`,
+		(value, note) => `Both: ${value} / ${note}`,
+	),
 );
 ```
 
@@ -136,10 +136,10 @@ pipe(
 The fallback can be a different type, widening the result to `A | C`:
 
 ```ts
-pipe(These.first(5), These.getFirstOrElse(0));            // 5
-pipe(These.both(5, "warn"), These.getFirstOrElse(0));     // 5
-pipe(These.second("warn"), These.getFirstOrElse(0));      // 0
-pipe(These.second("warn"), These.getFirstOrElse(null));   // null — typed as number | null
+pipe(These.first(5), These.getFirstOrElse(0)); // 5
+pipe(These.both(5, "warn"), These.getFirstOrElse(0)); // 5
+pipe(These.second("warn"), These.getFirstOrElse(0)); // 0
+pipe(These.second("warn"), These.getFirstOrElse(null)); // null — typed as number | null
 ```
 
 **`getSecondOrElse`** — symmetric: returns the second value or a fallback for `First`. The fallback
@@ -148,8 +148,8 @@ can be a different type, widening the result to `B | D`:
 ```ts
 pipe(These.second("warn"), These.getSecondOrElse("none")); // "warn"
 pipe(These.both(5, "warn"), These.getSecondOrElse("none")); // "warn"
-pipe(These.first(5), These.getSecondOrElse("none"));       // "none"
-pipe(These.first(5), These.getSecondOrElse(null));         // null — typed as string | null
+pipe(These.first(5), These.getSecondOrElse("none")); // "none"
+pipe(These.first(5), These.getSecondOrElse(null)); // null — typed as string | null
 ```
 
 ## Type guards
@@ -157,11 +157,11 @@ pipe(These.first(5), These.getSecondOrElse(null));         // null — typed as 
 For checking the variant directly:
 
 ```ts
-These.isFirst(t);   // true if First only
-These.isSecond(t);  // true if Second only
-These.isBoth(t);    // true if Both
+These.isFirst(t); // true if First only
+These.isSecond(t); // true if Second only
+These.isBoth(t); // true if Both
 
-These.hasFirst(t);  // true if First or Both
+These.hasFirst(t); // true if First or Both
 These.hasSecond(t); // true if Second or Both
 ```
 
@@ -170,9 +170,9 @@ These.hasSecond(t); // true if Second or Both
 **`swap`** — flips first and second roles:
 
 ```ts
-These.swap(These.first(5));            // Second(5)
-These.swap(These.second("warn"));      // First("warn")
-These.swap(These.both(5, "warn"));     // Both("warn", 5)
+These.swap(These.first(5)); // Second(5)
+These.swap(These.second("warn")); // First("warn")
+These.swap(These.both(5, "warn")); // Both("warn", 5)
 ```
 
 **`tap`** — run a side effect on the first value without changing the These:

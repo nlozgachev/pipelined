@@ -18,16 +18,18 @@ every function or introduce shared mutation:
 // Option 1 — explicit parameter threading
 // Every function must accept and return the counter, even when it's not the main concern
 function buildGraph(counter: number): [Graph, number] {
-  const [nodeA, c1] = makeNode("root", counter);
-  const [nodeB, c2] = makeNode("child", c1);
-  const [edge,  c3] = makeEdge(nodeA, nodeB, c2);
-  return [{ nodes: [nodeA, nodeB], edges: [edge] }, c3];
+	const [nodeA, c1] = makeNode("root", counter);
+	const [nodeB, c2] = makeNode("child", c1);
+	const [edge, c3] = makeEdge(nodeA, nodeB, c2);
+	return [{ nodes: [nodeA, nodeB], edges: [edge] }, c3];
 }
 
 // Option 2 — mutable variable
 // The counter is implicit; any function in scope can corrupt it
 let counter = 0;
-function nextId() { return counter++; }
+function nextId() {
+	return counter++;
+}
 ```
 
 The first approach is verbose and breaks when you add or remove a step — every caller must be
@@ -65,7 +67,7 @@ State.run(["a", "b"])(snapshot); // [["a", "b"], ["a", "b"]]
 need one field:
 
 ```ts
-type Config = { retries: number; timeout: number };
+type Config = { retries: number; timeout: number; };
 
 const maxRetries: State<Config, number> = State.gets(c => c.retries);
 State.run({ retries: 3, timeout: 5000 })(maxRetries); // [3, { retries: 3, timeout: 5000 }]
@@ -92,8 +94,8 @@ State.run(5)(increment); // [undefined, 6]
 
 ```ts
 const stackSize: State<string[], number> = pipe(
-  State.get<string[]>(),
-  State.map(stack => stack.length),
+	State.get<string[]>(),
+	State.map(stack => stack.length),
 );
 
 State.evaluate(["a", "b", "c"])(stackSize); // 3
@@ -106,14 +108,13 @@ input of the next, so you can write a sequence of stateful steps without passing
 explicitly at each one:
 
 ```ts
-const push = (item: string): State<string[], undefined> =>
-  State.modify(stack => [...stack, item]);
+const push = (item: string): State<string[], undefined> => State.modify(stack => [...stack, item]);
 
 const program = pipe(
-  push("first"),
-  State.chain(() => push("second")),
-  State.chain(() => push("third")),
-  State.chain(() => State.get<string[]>()),
+	push("first"),
+	State.chain(() => push("second")),
+	State.chain(() => push("third")),
+	State.chain(() => State.get<string[]>()),
 );
 
 State.evaluate([])(program); // ["first", "second", "third"]
@@ -124,20 +125,19 @@ Each call to `push` extends the stack in turn. The final `State.get` reads the a
 Here is a more realistic example: building a shopping cart by chaining item additions:
 
 ```ts
-type Cart = { items: string[]; total: number };
+type Cart = { items: string[]; total: number; };
 
-const addItem =
-  (name: string, price: number): State<Cart, undefined> =>
-    State.modify(cart => ({
-      items: [...cart.items, name],
-      total: cart.total + price,
-    }));
+const addItem = (name: string, price: number): State<Cart, undefined> =>
+	State.modify(cart => ({
+		items: [...cart.items, name],
+		total: cart.total + price,
+	}));
 
 const checkout = pipe(
-  addItem("coffee", 4),
-  State.chain(() => addItem("croissant", 3)),
-  State.chain(() => addItem("juice", 2)),
-  State.chain(() => State.gets((c: Cart) => c.total)),
+	addItem("coffee", 4),
+	State.chain(() => addItem("croissant", 3)),
+	State.chain(() => addItem("juice", 2)),
+	State.chain(() => State.gets((c: Cart) => c.total)),
 );
 
 State.evaluate({ items: [], total: 0 })(checkout); // 9
@@ -151,8 +151,8 @@ Three runners extract results from a State:
 
 ```ts
 const [value, finalState] = State.run(0)(pipe(
-  State.modify<number>(n => n + 10),
-  State.chain(() => State.get<number>()),
+	State.modify<number>(n => n + 10),
+	State.chain(() => State.get<number>()),
 ));
 // value = 10, finalState = 10
 ```
@@ -169,8 +169,8 @@ state but not the value:
 
 ```ts
 const finalCart = State.execute({ items: [], total: 0 })(pipe(
-  addItem("coffee", 4),
-  State.chain(() => addItem("juice", 2)),
+	addItem("coffee", 4),
+	State.chain(() => addItem("juice", 2)),
 ));
 // { items: ["coffee", "juice"], total: 6 }
 ```
@@ -183,22 +183,28 @@ A common use case for State is generating unique integer IDs while building a da
 type IdState = number;
 
 const nextId: State<IdState, number> = pipe(
-  State.get<IdState>(),
-  State.chain(id => pipe(
-    State.put(id + 1),
-    State.chain(() => State.resolve(id)),
-  )),
+	State.get<IdState>(),
+	State.chain(id =>
+		pipe(
+			State.put(id + 1),
+			State.chain(() => State.resolve(id)),
+		)
+	),
 );
 
 const buildNodes = pipe(
-  nextId,
-  State.chain(id1 => pipe(
-    nextId,
-    State.chain(id2 => State.resolve([
-      { id: id1, label: "root" },
-      { id: id2, label: "child" },
-    ])),
-  )),
+	nextId,
+	State.chain(id1 =>
+		pipe(
+			nextId,
+			State.chain(id2 =>
+				State.resolve([
+					{ id: id1, label: "root" },
+					{ id: id2, label: "child" },
+				])
+			),
+		)
+	),
 );
 
 State.evaluate(0)(buildNodes);

@@ -22,13 +22,13 @@ implementation and can choose strategies that the language's built-in methods ca
 When you write:
 
 ```ts
-pipe(users, Arr.filter(u => u.active))
+pipe(users, Arr.filter(u => u.active));
 ```
 
 instead of:
 
 ```ts
-users.filter(u => u.active)
+users.filter(u => u.active);
 ```
 
 the result is identical, but the path to get there is not. The pipelined version goes through
@@ -42,11 +42,11 @@ The goal of the utilities is to make this:
 
 ```ts
 pipe(
-  rawData,
-  Rec.filter(isActive),
-  Rec.mapKeys(toSnakeCase),
-  Rec.map(formatValue),
-)
+	rawData,
+	Rec.filter(isActive),
+	Rec.mapKeys(toSnakeCase),
+	Rec.map(formatValue),
+);
 ```
 
 feel as natural as chaining methods, without making it meaningfully slower. A small overhead is
@@ -70,7 +70,7 @@ Operations that exceed that threshold by a significant margin are worth examinin
 The simplest implementation of `Arr.filter` is one line — delegate to the native method:
 
 ```ts
-data.filter(predicate)
+data.filter(predicate);
 ```
 
 That is also, in practice, the slowest option. Benchmarks showed `.filter()` taking 75 µs for
@@ -142,7 +142,7 @@ order of approaches tends to be stable; the exact multipliers do not.
 ## What the benchmarks are not
 
 They are not a performance contract. The numbers shift between V8 versions, and
-machine architectures. What they measure is the *relationship* between pipelined and native —
+machine architectures. What they measure is the _relationship_ between pipelined and native —
 and that relationship is what matters.
 
 They are also not a guarantee that every use of the library is fast. Benchmarks measure isolated

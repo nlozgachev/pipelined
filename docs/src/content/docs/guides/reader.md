@@ -16,15 +16,15 @@ even when most functions only forward it:
 
 ```ts
 function buildUrl(config: ApiConfig, path: string): string {
-  return `${config.baseUrl}${path}`;
+	return `${config.baseUrl}${path}`;
 }
 
 function withApiKey(config: ApiConfig, url: string): string {
-  return `${url}?key=${config.apiKey}`;
+	return `${url}?key=${config.apiKey}`;
 }
 
 function endpoint(config: ApiConfig, path: string): string {
-  return withApiKey(config, buildUrl(config, path));
+	return withApiKey(config, buildUrl(config, path));
 }
 ```
 
@@ -39,19 +39,16 @@ than accepting the dependency as an argument. The pipeline is built first, and t
 through automatically when it is supplied once at the end:
 
 ```ts
-import { Reader } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Reader } from "@nlozgachev/pipelined/core";
 
-type ApiConfig = { baseUrl: string; apiKey: string };
+type ApiConfig = { baseUrl: string; apiKey: string; };
 
-const buildUrl = (path: string): Reader<ApiConfig, string> =>
-  Reader.asks((c) => `${c.baseUrl}${path}`);
+const buildUrl = (path: string): Reader<ApiConfig, string> => Reader.asks((c) => `${c.baseUrl}${path}`);
 
-const withApiKey = (url: string): Reader<ApiConfig, string> =>
-  Reader.asks((c) => `${url}?key=${c.apiKey}`);
+const withApiKey = (url: string): Reader<ApiConfig, string> => Reader.asks((c) => `${url}?key=${c.apiKey}`);
 
-const endpoint = (path: string): Reader<ApiConfig, string> =>
-  pipe(buildUrl(path), Reader.chain(withApiKey));
+const endpoint = (path: string): Reader<ApiConfig, string> => pipe(buildUrl(path), Reader.chain(withApiKey));
 
 pipe(endpoint("/users"), Reader.run(apiConfig));
 // "https://api.example.com/users?key=secret"
@@ -73,8 +70,8 @@ const getApiKey: Reader<ApiConfig, string> = Reader.asks((c) => c.apiKey);
 
 ```ts
 const logConfig: Reader<ApiConfig, void> = pipe(
-  Reader.ask<ApiConfig>(),
-  Reader.map((c) => console.log("Config:", c)),
+	Reader.ask<ApiConfig>(),
+	Reader.map((c) => console.log("Config:", c)),
 );
 ```
 
@@ -92,19 +89,18 @@ Consider locale-aware formatting, where rendering an amount correctly depends on
 context — but that context is not a property of the amount itself:
 
 ```ts
-type Locale = { symbol: string; separator: string };
+type Locale = { symbol: string; separator: string; };
 
 const formatCents = (cents: number): Reader<Locale, string> =>
-  Reader.asks(
-    (locale) =>
-      `${locale.symbol}${(cents / 100).toFixed(2).replace(".", locale.separator)}`,
-  );
+	Reader.asks(
+		(locale) => `${locale.symbol}${(cents / 100).toFixed(2).replace(".", locale.separator)}`,
+	);
 
 const labeledAmount = (label: string, cents: number): Reader<Locale, string> =>
-  pipe(
-    formatCents(cents),
-    Reader.map((amount) => `${label}: ${amount}`),
-  );
+	pipe(
+		formatCents(cents),
+		Reader.map((amount) => `${label}: ${amount}`),
+	);
 
 const usd: Locale = { symbol: "$", separator: "." };
 const eur: Locale = { symbol: "€", separator: "," };
@@ -123,15 +119,15 @@ same `R`:
 
 ```ts
 const formatSummary = (subtotal: number, tax: number): Reader<Locale, string> =>
-  pipe(
-    labeledAmount("Subtotal", subtotal),
-    Reader.chain((sub) =>
-      pipe(
-        labeledAmount("Tax", tax),
-        Reader.map((t) => `${sub}\n${t}`),
-      ),
-    ),
-  );
+	pipe(
+		labeledAmount("Subtotal", subtotal),
+		Reader.chain((sub) =>
+			pipe(
+				labeledAmount("Tax", tax),
+				Reader.map((t) => `${sub}\n${t}`),
+			)
+		),
+	);
 
 pipe(formatSummary(1999, 160), Reader.run(usd));
 // "Subtotal: $19.99\nTax: $1.60"
@@ -146,38 +142,38 @@ Different parts of a program often need different slices of the total environmen
 Reader that expects a narrow type to work inside a broader one, by providing the extraction function:
 
 ```ts
-type DbConfig = { host: string; port: number };
-type AppEnv = { db: DbConfig; api: ApiConfig };
+type DbConfig = { host: string; port: number; };
+type AppEnv = { db: DbConfig; api: ApiConfig; };
 
 // This Reader knows only about DbConfig
 const connectionString: Reader<DbConfig, string> = Reader.asks(
-  (db) => `postgres://${db.host}:${db.port}/myapp`,
+	(db) => `postgres://${db.host}:${db.port}/myapp`,
 );
 
 // This Reader knows only about ApiConfig
 const authHeader: Reader<ApiConfig, string> = Reader.asks(
-  (api) => `Bearer ${api.apiKey}`,
+	(api) => `Bearer ${api.apiKey}`,
 );
 
 // Widen each to AppEnv by telling it where to find its slice
 const diagnostics: Reader<AppEnv, string> = pipe(
-  connectionString,
-  Reader.local((env: AppEnv) => env.db),
-  Reader.chain((conn) =>
-    pipe(
-      authHeader,
-      Reader.local((env: AppEnv) => env.api),
-      Reader.map((auth) => `db=${conn}  auth=${auth}`),
-    ),
-  ),
+	connectionString,
+	Reader.local((env: AppEnv) => env.db),
+	Reader.chain((conn) =>
+		pipe(
+			authHeader,
+			Reader.local((env: AppEnv) => env.api),
+			Reader.map((auth) => `db=${conn}  auth=${auth}`),
+		)
+	),
 );
 
 pipe(
-  diagnostics,
-  Reader.run({
-    db: { host: "localhost", port: 5432 },
-    api: { baseUrl: "...", apiKey: "secret" },
-  }),
+	diagnostics,
+	Reader.run({
+		db: { host: "localhost", port: 5432 },
+		api: { baseUrl: "...", apiKey: "secret" },
+	}),
 );
 // "db=postgres://localhost:5432/myapp  auth=Bearer secret"
 ```
@@ -199,9 +195,9 @@ const firstNumber: Reader<Config, number> = Reader.asks((c) => c.multiplier);
 const secondNumber: Reader<Config, number> = Reader.asks((c) => c.offset);
 
 const product: Reader<Config, number> = pipe(
-  Reader.resolve(multiply),
-  Reader.ap(firstNumber),
-  Reader.ap(secondNumber),
+	Reader.resolve(multiply),
+	Reader.ap(firstNumber),
+	Reader.ap(secondNumber),
 );
 
 pipe(product, Reader.run({ multiplier: 3, offset: 5 })); // 15
@@ -216,10 +212,10 @@ middle of a pipeline:
 
 ```ts
 pipe(
-  buildUrl("/users"),
-  Reader.tap((url) => console.log("Requesting:", url)),
-  Reader.chain(withApiKey),
-  Reader.run(apiConfig),
+	buildUrl("/users"),
+	Reader.tap((url) => console.log("Requesting:", url)),
+	Reader.chain(withApiKey),
+	Reader.run(apiConfig),
 );
 ```
 

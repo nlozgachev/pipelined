@@ -1,124 +1,132 @@
 // @ts-check
-import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import starlightTypeDoc, { typeDocSidebarGroup } from "starlight-typedoc";
+import { defineConfig } from "astro/config";
 import starlightThemeNova from "starlight-theme-nova";
+import starlightTypeDoc, { typeDocSidebarGroup } from "starlight-typedoc";
 
 export default defineConfig({
-  integrations: [
-    starlight({
-      title: "pipelined",
-      favicon: "favicon.svg",
-      customCss: ["./src/styles/custom.css"],
-      components: {
-        Footer: "./src/components/Footer.astro",
-      },
-      social: [
-        {
-          icon: "github",
-          label: "GitHub",
-          href: "https://github.com/nlozgachev/pipelined",
-        },
-        {
-          icon: "npm",
-          label: "npm",
-          href: "https://www.npmjs.com/package/@nlozgachev/pipelined",
-        },
-      ],
-      plugins: [
-        starlightThemeNova({
-          nav: [
-            {
-              label: "Docs",
-              href: "/getting-started/installation",
-            },
-          ],
-        }),
-        starlightTypeDoc({
-          entryPoints: [
-            "../src/Core/index.ts",
-            "../src/Types/index.ts",
-            "../src/Composition/index.ts",
-            "../src/Utils/index.ts",
-          ],
-          tsconfig: "../tsconfig.typedoc.json",
-          output: "api",
-          typeDoc: {
-            entryPointStrategy: "expand",
-            excludePrivate: true,
-            excludeInternal: true,
-          },
-          sidebar: {
-            label: "API Reference",
-            collapsed: true,
-          },
-        }),
-      ],
-      sidebar: [
-        {
-          label: "Getting Started",
-          items: [
-            { label: "Installation", slug: "getting-started/installation" },
-            {
-              label: "Thinking in pipelines",
-              slug: "getting-started/pipelines",
-            },
-          ],
-        },
-        {
-          label: "Guides",
-          items: [
-            { label: "Composition utilities", slug: "guides/composition" },
-            { label: "Maybe — absent values", slug: "guides/maybe" },
-            { label: "Result — handling failures", slug: "guides/result" },
-            {
-              label: "Validation — collecting errors",
-              slug: "guides/validation",
-            },
-            {
-              label: "Deferred — infallible async values",
-              slug: "guides/deferred",
-            },
-            { label: "Task — lazy async", slug: "guides/task" },
-            {
-              label: "RemoteData — loading states",
-              slug: "guides/remote-data",
-            },
-            { label: "These — inclusive OR", slug: "guides/these" },
-            { label: "Tuple — typed pairs", slug: "guides/tuple" },
-            { label: "Lens — nested updates", slug: "guides/lens" },
-            { label: "Optional — nullable paths", slug: "guides/optional" },
-            { label: "Reader — deferred dependencies", slug: "guides/reader" },
-            { label: "Brand — distinguishing values", slug: "guides/brand" },
-            {
-              label: "Refinement — type predicates",
-              slug: "guides/refinement",
-            },
-            { label: "Predicate — boolean checks", slug: "guides/predicate" },
-            { label: "Resource — safe acquire-release", slug: "guides/resource" },
-            { label: "State — threading state", slug: "guides/state" },
-            { label: "Logged — values with logs", slug: "guides/logged" },
-            { label: "Arr — array utilities", slug: "guides/arr" },
-            { label: "Rec — record utilities", slug: "guides/rec" },
-            { label: "Num — number utilities", slug: "guides/num" },
-            { label: "Str — string utilities", slug: "guides/str" },
-            { label: "Dict — dictionary utilities", slug: "guides/dict" },
-            {
-              label: "Uniq — unique collection utilities",
-              slug: "guides/uniq",
-            },
-          ],
-        },
-        {
-          label: "Appendix",
-          items: [
-            { label: "Why this exists", slug: "appendix/motivation" },
-            { label: "Design & influences", slug: "appendix/influences" },
-            { label: "Performance & benchmarks", slug: "appendix/benchmarks" },
-          ],
-        },
-        typeDocSidebarGroup,
-      ],
-    }),
-  ],
+	redirects: {
+		"/api/utils/namespaces/arr/functions": "/api/utils/namespaces/arr/functions/chunksof",
+    "/api/utils/namespaces/rec/functions": "/api/utils/namespaces/rec/functions/compact",
+    "/api/utils/namespaces/uniq/functions": "/api/utils/namespaces/uniq/functions/difference",
+		"/api/utils/namespaces/dict/functions": "/api/utils/namespaces/dict/functions/compact",
+    "/api/utils/namespaces/num/functions": 'api/utils/namespaces/num/functions/add',
+    "/api/utils/namespaces/str/functions": 'api/utils/namespaces/str/functions/endswith'
+	},
+	integrations: [
+		starlight({
+			title: "pipelined",
+			favicon: "favicon.svg",
+			customCss: ["./src/styles/custom.css"],
+			components: {
+				Footer: "./src/components/Footer.astro",
+			},
+			social: [
+				{
+					icon: "github",
+					label: "GitHub",
+					href: "https://github.com/nlozgachev/pipelined",
+				},
+				{
+					icon: "npm",
+					label: "npm",
+					href: "https://www.npmjs.com/package/@nlozgachev/pipelined",
+				},
+			],
+			plugins: [
+				starlightThemeNova({
+					nav: [
+						{
+							label: "Docs",
+							href: "/getting-started/installation",
+						},
+					],
+				}),
+				starlightTypeDoc({
+					entryPoints: [
+						"../src/Core/index.ts",
+						"../src/Types/index.ts",
+						"../src/Composition/index.ts",
+						"../src/Utils/index.ts",
+					],
+					tsconfig: "../tsconfig.typedoc.json",
+					output: "api",
+					typeDoc: {
+						entryPointStrategy: "expand",
+						excludePrivate: true,
+						excludeInternal: true,
+					},
+					sidebar: {
+						label: "API Reference",
+						collapsed: true,
+					},
+				}),
+			],
+			sidebar: [
+				{
+					label: "Getting Started",
+					items: [
+						{ label: "Installation", slug: "getting-started/installation" },
+						{
+							label: "Thinking in pipelines",
+							slug: "getting-started/pipelines",
+						},
+					],
+				},
+				{
+					label: "Guides",
+					items: [
+						{ label: "Composition utilities", slug: "guides/composition" },
+						{ label: "Maybe — absent values", slug: "guides/maybe" },
+						{ label: "Result — handling failures", slug: "guides/result" },
+						{
+							label: "Validation — collecting errors",
+							slug: "guides/validation",
+						},
+						{
+							label: "Deferred — infallible async values",
+							slug: "guides/deferred",
+						},
+						{ label: "Task — lazy async", slug: "guides/task" },
+						{
+							label: "RemoteData — loading states",
+							slug: "guides/remote-data",
+						},
+						{ label: "These — inclusive OR", slug: "guides/these" },
+						{ label: "Tuple — typed pairs", slug: "guides/tuple" },
+						{ label: "Lens — nested updates", slug: "guides/lens" },
+						{ label: "Optional — nullable paths", slug: "guides/optional" },
+						{ label: "Reader — deferred dependencies", slug: "guides/reader" },
+						{ label: "Brand — distinguishing values", slug: "guides/brand" },
+						{
+							label: "Refinement — type predicates",
+							slug: "guides/refinement",
+						},
+						{ label: "Predicate — boolean checks", slug: "guides/predicate" },
+						{ label: "Resource — safe acquire-release", slug: "guides/resource" },
+						{ label: "State — threading state", slug: "guides/state" },
+						{ label: "Logged — values with logs", slug: "guides/logged" },
+						{ label: "Arr — array utilities", slug: "guides/arr" },
+						{ label: "Rec — record utilities", slug: "guides/rec" },
+						{ label: "Num — number utilities", slug: "guides/num" },
+						{ label: "Str — string utilities", slug: "guides/str" },
+						{ label: "Dict — dictionary utilities", slug: "guides/dict" },
+						{
+							label: "Uniq — unique collection utilities",
+							slug: "guides/uniq",
+						},
+					],
+				},
+				{
+					label: "Appendix",
+					items: [
+						{ label: "Why this exists", slug: "appendix/motivation" },
+						{ label: "Design & influences", slug: "appendix/influences" },
+						{ label: "Performance & benchmarks", slug: "appendix/benchmarks" },
+					],
+				},
+				typeDocSidebarGroup,
+			],
+		}),
+	],
 });

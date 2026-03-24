@@ -23,8 +23,8 @@ import { Dict } from "@nlozgachev/pipelined/utils";
 const empty = Dict.empty<string, number>();
 
 const byId = Dict.fromEntries([
-  ["u1", { name: "Alice", role: "admin" }],
-  ["u2", { name: "Bob",   role: "editor" }],
+	["u1", { name: "Alice", role: "admin" }],
+	["u2", { name: "Bob", role: "editor" }],
 ]);
 
 const scores = Dict.fromRecord({ alice: 85, bob: 92, carol: 74 });
@@ -39,13 +39,13 @@ The native `Map.get` returns `V | undefined`, which forces a null check at every
 `Dict.lookup` returns `Maybe<V>` instead — the absence of a key is explicit in the type:
 
 ```ts
-import { Dict } from "@nlozgachev/pipelined/utils";
-import { Maybe } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Maybe } from "@nlozgachev/pipelined/core";
+import { Dict } from "@nlozgachev/pipelined/utils";
 
 const config = Dict.fromRecord({ timeout: 5000, retries: 3 });
 
-pipe(config, Dict.lookup("timeout"));  // Some(5000)
+pipe(config, Dict.lookup("timeout")); // Some(5000)
 pipe(config, Dict.lookup("missing")); // None
 ```
 
@@ -69,8 +69,8 @@ pipe(scores, Dict.map(score => score / 100));
 
 // Prepend the key to each value for display
 pipe(
-  Dict.fromRecord({ alice: "admin", bob: "editor" }),
-  Dict.mapWithKey((name, role) => `${name} (${role})`),
+	Dict.fromRecord({ alice: "admin", bob: "editor" }),
+	Dict.mapWithKey((name, role) => `${name} (${role})`),
 );
 // ReadonlyMap { "alice" => "alice (admin)", "bob" => "bob (editor)" }
 ```
@@ -86,8 +86,8 @@ pipe(scores, Dict.filter(score => score >= 75));
 
 // Remove entries where the key starts with a prefix
 pipe(
-  Dict.fromRecord({ test_alice: 1, alice: 2, test_bob: 3 }),
-  Dict.filterWithKey((k, _v) => !k.startsWith("test_")),
+	Dict.fromRecord({ test_alice: 1, alice: 2, test_bob: 3 }),
+	Dict.filterWithKey((k, _v) => !k.startsWith("test_")),
 );
 // ReadonlyMap { "alice" => 2 }
 ```
@@ -140,8 +140,8 @@ pipe(defaults, Dict.union(overrides));
 the left. `Dict.difference` removes from the left any keys that appear in the right:
 
 ```ts
-const allUsers   = Dict.fromRecord({ alice: "admin", bob: "editor", carol: "viewer" });
-const activeIds  = Dict.fromRecord({ alice: true, carol: true });
+const allUsers = Dict.fromRecord({ alice: "admin", bob: "editor", carol: "viewer" });
+const activeIds = Dict.fromRecord({ alice: true, carol: true });
 const removedIds = Dict.fromRecord({ bob: true });
 
 pipe(allUsers, Dict.intersection(activeIds));
@@ -160,9 +160,9 @@ end up with `ReadonlyMap<K, Maybe<V>>`. `Dict.compact` collapses that into `Read
 import { Maybe } from "@nlozgachev/pipelined/core";
 
 const profileMap = Dict.fromEntries<string, Maybe<string>>([
-  ["alice", Maybe.some("Alice Smith")],
-  ["b404",  Maybe.none()],
-  ["carol", Maybe.some("Carol Jones")],
+	["alice", Maybe.some("Alice Smith")],
+	["b404", Maybe.none()],
+	["carol", Maybe.some("Carol Jones")],
 ]);
 
 Dict.compact(profileMap);
@@ -191,10 +191,10 @@ filtered to passing grades, scaled, and summed:
 import { pipe } from "@nlozgachev/pipelined/composition";
 
 pipe(
-  Dict.fromRecord({ alice: 85, bob: 42, carol: 91, dave: 68 }),
-  Dict.filter(score => score >= 50),       // remove failures
-  Dict.map(score => Math.round(score / 10)), // convert to grade 1–10
-  Dict.reduce(0, (acc, grade) => acc + grade), // total grade points
+	Dict.fromRecord({ alice: 85, bob: 42, carol: 91, dave: 68 }),
+	Dict.filter(score => score >= 50), // remove failures
+	Dict.map(score => Math.round(score / 10)), // convert to grade 1–10
+	Dict.reduce(0, (acc, grade) => acc + grade), // total grade points
 );
 ```
 

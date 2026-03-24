@@ -16,13 +16,13 @@ the result:
 
 ```ts
 function normalise(s: string, log: string[]): [string, string[]] {
-  const result = s.trim().toLowerCase();
-  return [result, [...log, `normalise: "${s}" → "${result}"`]];
+	const result = s.trim().toLowerCase();
+	return [result, [...log, `normalise: "${s}" → "${result}"`]];
 }
 
 function truncate(max: number, s: string, log: string[]): [string, string[]] {
-  const result = s.slice(0, max);
-  return [result, [...log, `truncate(${max}): "${s}" → "${result}"`]];
+	const result = s.slice(0, max);
+	return [result, [...log, `truncate(${max}): "${s}" → "${result}"`]];
 }
 
 const [step1, log1] = normalise("  Hello  ", []);
@@ -38,7 +38,7 @@ every signature.
 ## What a Logged is
 
 ```ts
-type Logged<W, A> = { readonly value: A; readonly log: ReadonlyArray<W> };
+type Logged<W, A> = { readonly value: A; readonly log: ReadonlyArray<W>; };
 ```
 
 A `Logged<W, A>` is a plain data structure — a value of type `A` paired with an ordered sequence
@@ -67,8 +67,8 @@ const entry: Logged<string, undefined> = Logged.tell("processing started");
 
 ```ts
 const doubled = pipe(
-  Logged.make<string, number>(5),
-  Logged.map(n => n * 2),
+	Logged.make<string, number>(5),
+	Logged.map(n => n * 2),
 );
 // { value: 10, log: [] }
 ```
@@ -88,9 +88,9 @@ another `Logged`, and automatically concatenates both logs:
 
 ```ts
 const program = pipe(
-  Logged.make<string, number>(1),
-  Logged.chain(n => pipe(Logged.tell("incremented"), Logged.map(() => n + 1))),
-  Logged.chain(n => pipe(Logged.tell("doubled"),     Logged.map(() => n * 2))),
+	Logged.make<string, number>(1),
+	Logged.chain(n => pipe(Logged.tell("incremented"), Logged.map(() => n + 1))),
+	Logged.chain(n => pipe(Logged.tell("doubled"), Logged.map(() => n * 2))),
 );
 
 Logged.run(program); // [4, ["incremented", "doubled"]]
@@ -108,21 +108,21 @@ apply a modifier and should record its reasoning:
 type Rule = (price: number) => Logged<string, number>;
 
 const memberDiscount: Rule = (price) =>
-  price > 100
-    ? pipe(Logged.tell("member discount: -10%"), Logged.map(() => price * 0.9))
-    : pipe(Logged.tell("member discount: not applicable"), Logged.map(() => price));
+	price > 100
+		? pipe(Logged.tell("member discount: -10%"), Logged.map(() => price * 0.9))
+		: pipe(Logged.tell("member discount: not applicable"), Logged.map(() => price));
 
 const bulkDiscount: Rule = (price) =>
-  price > 200
-    ? pipe(Logged.tell("bulk discount: -5%"), Logged.map(() => price * 0.95))
-    : pipe(Logged.tell("bulk discount: not applicable"), Logged.map(() => price));
+	price > 200
+		? pipe(Logged.tell("bulk discount: -5%"), Logged.map(() => price * 0.95))
+		: pipe(Logged.tell("bulk discount: not applicable"), Logged.map(() => price));
 
 const applyRules = (basePrice: number): Logged<string, number> =>
-  pipe(
-    Logged.make<string, number>(basePrice),
-    Logged.chain(memberDiscount),
-    Logged.chain(bulkDiscount),
-  );
+	pipe(
+		Logged.make<string, number>(basePrice),
+		Logged.chain(memberDiscount),
+		Logged.chain(bulkDiscount),
+	);
 
 const [finalPrice, auditTrail] = Logged.run(applyRules(250));
 // finalPrice ≈ 213.75
@@ -139,27 +139,27 @@ actual logging infrastructure:
 
 ```ts
 const normalise = (s: string): Logged<string, string> => {
-  const result = s.trim().toLowerCase();
-  return pipe(
-    Logged.tell(`normalise: "${s}" → "${result}"`),
-    Logged.map(() => result),
-  );
+	const result = s.trim().toLowerCase();
+	return pipe(
+		Logged.tell(`normalise: "${s}" → "${result}"`),
+		Logged.map(() => result),
+	);
 };
 
 const truncate = (max: number) => (s: string): Logged<string, string> => {
-  const result = s.slice(0, max);
-  return pipe(
-    Logged.tell(`truncate(${max}): "${s}" → "${result}"`),
-    Logged.map(() => result),
-  );
+	const result = s.slice(0, max);
+	return pipe(
+		Logged.tell(`truncate(${max}): "${s}" → "${result}"`),
+		Logged.map(() => result),
+	);
 };
 
 const processSlug = (raw: string): Logged<string, string> =>
-  pipe(
-    Logged.make<string, string>(raw),
-    Logged.chain(normalise),
-    Logged.chain(truncate(20)),
-  );
+	pipe(
+		Logged.make<string, string>(raw),
+		Logged.chain(normalise),
+		Logged.chain(truncate(20)),
+	);
 
 const [slug, trace] = Logged.run(processSlug("  Hello World Foo Bar  "));
 // slug  = "hello world foo bar"

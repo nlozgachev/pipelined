@@ -14,8 +14,8 @@ JavaScript's built-in access functions silently return `undefined` when an eleme
 `Arr` makes the absence explicit:
 
 ```ts
-import { Arr, Maybe } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Arr, Maybe } from "@nlozgachev/pipelined/core";
 
 Arr.head([1, 2, 3]); // Some(1)
 Arr.head([]); // None
@@ -34,10 +34,10 @@ These compose naturally with `Maybe` operations:
 
 ```ts
 pipe(
-  users,
-  Arr.head, // Maybe<User>
-  Maybe.map((u) => u.displayName), // Maybe<string>
-  Maybe.getOrElse(() => "No users"),
+	users,
+	Arr.head, // Maybe<User>
+	Maybe.map((u) => u.displayName), // Maybe<string>
+	Maybe.getOrElse(() => "No users"),
 );
 ```
 
@@ -48,21 +48,21 @@ not exist:
 
 ```ts
 pipe(
-  [1, 2, 3, 4],
-  Arr.findFirst((n) => n > 2),
+	[1, 2, 3, 4],
+	Arr.findFirst((n) => n > 2),
 ); // Some(3)
 pipe(
-  [1, 2, 3, 4],
-  Arr.findLast((n) => n > 2),
+	[1, 2, 3, 4],
+	Arr.findLast((n) => n > 2),
 ); // Some(4)
 pipe(
-  [1, 2, 3, 4],
-  Arr.findIndex((n) => n > 2),
+	[1, 2, 3, 4],
+	Arr.findIndex((n) => n > 2),
 ); // Some(2)
 
 pipe(
-  [1, 2],
-  Arr.findFirst((n) => n > 10),
+	[1, 2],
+	Arr.findFirst((n) => n > 10),
 ); // None
 ```
 
@@ -72,12 +72,12 @@ The core transforms work exactly like their built-in counterparts, but curried f
 
 ```ts
 pipe(
-  [1, 2, 3],
-  Arr.map((n) => n * 2),
+	[1, 2, 3],
+	Arr.map((n) => n * 2),
 ); // [2, 4, 6]
 pipe(
-  [1, 2, 3, 4],
-  Arr.filter((n) => n % 2 === 0),
+	[1, 2, 3, 4],
+	Arr.filter((n) => n % 2 === 0),
 ); // [2, 4]
 pipe([1, 2, 3], Arr.reverse); // [3, 2, 1]
 ```
@@ -86,8 +86,8 @@ pipe([1, 2, 3], Arr.reverse); // [3, 2, 1]
 
 ```ts
 const [evens, odds] = pipe(
-  [1, 2, 3, 4, 5],
-  Arr.partition((n) => n % 2 === 0),
+	[1, 2, 3, 4, 5],
+	Arr.partition((n) => n % 2 === 0),
 ); // [[2, 4], [1, 3, 5]]
 ```
 
@@ -96,8 +96,8 @@ const [evens, odds] = pipe(
 
 ```ts
 pipe(
-  ["apple", "avocado", "banana", "blueberry"],
-  Arr.groupBy((s) => s[0]),
+	["apple", "avocado", "banana", "blueberry"],
+	Arr.groupBy((s) => s[0]),
 ); // { a: ["apple", "avocado"], b: ["banana", "blueberry"] }
 ```
 
@@ -108,12 +108,12 @@ function:
 Arr.uniq([1, 2, 2, 3, 1]); // [1, 2, 3]
 
 pipe(
-  [
-    { id: 1, name: "a" },
-    { id: 1, name: "b" },
-    { id: 2, name: "c" },
-  ],
-  Arr.uniqBy((x) => x.id),
+	[
+		{ id: 1, name: "a" },
+		{ id: 1, name: "b" },
+		{ id: 2, name: "c" },
+	],
+	Arr.uniqBy((x) => x.id),
 ); // [{ id: 1, name: "a" }, { id: 2, name: "c" }]
 ```
 
@@ -121,8 +121,8 @@ pipe(
 
 ```ts
 pipe(
-  [3, 1, 4, 1, 5],
-  Arr.sortBy((a, b) => a - b),
+	[3, 1, 4, 1, 5],
+	Arr.sortBy((a, b) => a - b),
 ); // [1, 1, 3, 4, 5]
 ```
 
@@ -130,8 +130,8 @@ pipe(
 
 ```ts
 pipe(
-  [1, 2, 3],
-  Arr.flatMap((n) => [n, n * 10]),
+	[1, 2, 3],
+	Arr.flatMap((n) => [n, n * 10]),
 ); // [1, 10, 2, 20, 3, 30]
 Arr.flatten([[1, 2], [3], [4, 5]]); // [1, 2, 3, 4, 5]
 ```
@@ -143,12 +143,12 @@ pipe([1, 2, 3, 4], Arr.take(2)); // [1, 2]
 pipe([1, 2, 3, 4], Arr.drop(2)); // [3, 4]
 
 pipe(
-  [1, 2, 3, 1],
-  Arr.takeWhile((n) => n < 3),
+	[1, 2, 3, 1],
+	Arr.takeWhile((n) => n < 3),
 ); // [1, 2]
 pipe(
-  [1, 2, 3, 1],
-  Arr.dropWhile((n) => n < 3),
+	[1, 2, 3, 1],
+	Arr.dropWhile((n) => n < 3),
 ); // [3, 1]
 ```
 
@@ -183,8 +183,8 @@ pipe([1, 2, 3], Arr.zip(["a", "b"])); // [[1, "a"], [2, "b"]]
 
 ```ts
 pipe(
-  [1, 2, 3],
-  Arr.zipWith((a, b) => `${a}${b}`)(["a", "b"]),
+	[1, 2, 3],
+	Arr.zipWith((a, b) => `${a}${b}`)(["a", "b"]),
 ); // ["1a", "2b"]
 ```
 
@@ -204,8 +204,8 @@ pipe([1, 2, 3, 4, 5], Arr.chunksOf(2)); // [[1, 2], [3, 4], [5]]
 
 ```ts
 pipe(
-  [1, 2, 3, 4],
-  Arr.reduce(0, (acc, n) => acc + n),
+	[1, 2, 3, 4],
+	Arr.reduce(0, (acc, n) => acc + n),
 ); // 10
 ```
 
@@ -213,12 +213,12 @@ pipe(
 
 ```ts
 pipe(
-  [1, 2, 3],
-  Arr.some((n) => n > 2),
+	[1, 2, 3],
+	Arr.some((n) => n > 2),
 ); // true
 pipe(
-  [1, 2, 3],
-  Arr.every((n) => n > 0),
+	[1, 2, 3],
+	Arr.every((n) => n > 0),
 ); // true
 Arr.isNonEmpty([]); // false
 Arr.isNonEmpty([1, 2]); // true (also narrows to NonEmptyList)
@@ -234,8 +234,8 @@ successes or the first failure.
 
 ```ts
 const parseNum = (s: string): Maybe<number> => {
-  const n = Number(s);
-  return isNaN(n) ? Maybe.none() : Maybe.some(n);
+	const n = Number(s);
+	return isNaN(n) ? Maybe.none() : Maybe.some(n);
 };
 
 pipe(["1", "2", "3"], Arr.traverse(parseNum)); // Some([1, 2, 3])
@@ -245,8 +245,7 @@ pipe(["1", "x", "3"], Arr.traverse(parseNum)); // None
 **`traverseResult`** — maps to `Result`, returns the first `Err` if any element fails:
 
 ```ts
-const validatePositive = (n: number): Result<string, number> =>
-  n > 0 ? Result.ok(n) : Result.err("not positive");
+const validatePositive = (n: number): Result<string, number> => n > 0 ? Result.ok(n) : Result.err("not positive");
 
 pipe([1, 2, 3], Arr.traverseResult(validatePositive)); // Ok([1, 2, 3])
 pipe([1, -1, 3], Arr.traverseResult(validatePositive)); // Err("not positive")
@@ -256,8 +255,8 @@ pipe([1, -1, 3], Arr.traverseResult(validatePositive)); // Err("not positive")
 
 ```ts
 pipe(
-  userIds,
-  Arr.traverseTask((id) => fetchUser(id)),
+	userIds,
+	Arr.traverseTask((id) => fetchUser(id)),
 )(); // Promise<User[]> — all fetches run in parallel
 ```
 
@@ -266,14 +265,14 @@ first `Err`:
 
 ```ts
 const validate = (id: string): TaskResult<string, User> =>
-  TaskResult.tryCatch(
-    () => fetch(`/users/${id}`).then((r) => r.json()),
-    (e) => `Failed to load ${id}: ${e}`,
-  );
+	TaskResult.tryCatch(
+		() => fetch(`/users/${id}`).then((r) => r.json()),
+		(e) => `Failed to load ${id}: ${e}`,
+	);
 
 pipe(
-  ["u1", "u2", "u3"],
-  Arr.traverseTaskResult(validate),
+	["u1", "u2", "u3"],
+	Arr.traverseTaskResult(validate),
 )(); // TaskResult<string, User[]> — stops at the first failure
 ```
 

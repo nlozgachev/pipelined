@@ -19,7 +19,7 @@ affects every part of your code that holds a reference to it:
 
 ```ts
 function relocate(user: User) {
-  user.address.city = "Hamburg"; // silently changes the caller's object too
+	user.address.city = "Hamburg"; // silently changes the caller's object too
 }
 
 const user = { name: "Alice", address: { city: "Berlin" } };
@@ -54,11 +54,11 @@ intermediate object along the path:
 
 ```ts
 const updated = {
-  ...user,
-  address: {
-    ...user.address,
-    city: "Hamburg",
-  },
+	...user,
+	address: {
+		...user.address,
+		city: "Hamburg",
+	},
 };
 ```
 
@@ -66,14 +66,14 @@ Two levels deep, two spreads. Three levels deep:
 
 ```ts
 const updated = {
-  ...user,
-  address: {
-    ...user.address,
-    location: {
-      ...user.address.location,
-      city: "Hamburg",
-    },
-  },
+	...user,
+	address: {
+		...user.address,
+		location: {
+			...user.address.location,
+			city: "Hamburg",
+		},
+	},
 };
 ```
 
@@ -89,16 +89,16 @@ a value at that path (`get`) and how to produce an updated copy with a new value
 (`set`). You define the path once; the spread chain is generated for you:
 
 ```ts
-import { Lens } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Lens } from "@nlozgachev/pipelined/core";
 
 const cityLens = pipe(
-  Lens.prop<User>()("address"),
-  Lens.andThen(Lens.prop<Address>()("city")),
+	Lens.prop<User>()("address"),
+	Lens.andThen(Lens.prop<Address>()("city")),
 );
 
-pipe(user, Lens.get(cityLens));               // "Berlin"
-pipe(user, Lens.set(cityLens)("Hamburg"));    // new User, city updated
+pipe(user, Lens.get(cityLens)); // "Berlin"
+pipe(user, Lens.set(cityLens)("Hamburg")); // new User, city updated
 pipe(user, Lens.modify(cityLens)(c => c.toUpperCase())); // "BERLIN"
 ```
 
@@ -112,7 +112,7 @@ field name:
 
 ```ts
 const addressLens = Lens.prop<User>()("address"); // Lens<User, Address>
-const nameLens    = Lens.prop<User>()("name");    // Lens<User, string>
+const nameLens = Lens.prop<User>()("name"); // Lens<User, string>
 ```
 
 The double-call (`<User>()("address")`) lets TypeScript know the object type upfront so it can
@@ -123,8 +123,8 @@ a simple property lookup:
 
 ```ts
 const nameLens = Lens.make(
-  (user: User) => user.name,
-  (name) => (user) => ({ ...user, name }),
+	(user: User) => user.name,
+	(name) => (user) => ({ ...user, name }),
 );
 ```
 
@@ -133,8 +133,8 @@ const nameLens = Lens.make(
 All three operations are data-last and work directly in a `pipe`:
 
 ```ts
-pipe(user, Lens.get(nameLens));              // read the value
-pipe(user, Lens.set(nameLens)("Bob"));       // replace with a new value
+pipe(user, Lens.get(nameLens)); // read the value
+pipe(user, Lens.set(nameLens)("Bob")); // replace with a new value
 pipe(user, Lens.modify(nameLens)(n => n.toUpperCase())); // apply a function
 ```
 
@@ -148,13 +148,13 @@ a sequence of single-field steps:
 
 ```ts
 const userCityLens = pipe(
-  Lens.prop<User>()("address"),
-  Lens.andThen(Lens.prop<Address>()("city")),
+	Lens.prop<User>()("address"),
+	Lens.andThen(Lens.prop<Address>()("city")),
 );
 
 const userZipLens = pipe(
-  Lens.prop<User>()("address"),
-  Lens.andThen(Lens.prop<Address>()("zip")),
+	Lens.prop<User>()("address"),
+	Lens.andThen(Lens.prop<Address>()("zip")),
 );
 ```
 
@@ -172,8 +172,8 @@ You can cross over with `Lens.andThenOptional`:
 import { Optional } from "@nlozgachev/pipelined/core";
 
 const userBioOpt = pipe(
-  Lens.prop<User>()("profile"),
-  Lens.andThenOptional(Optional.prop<Profile>()("bio")),
+	Lens.prop<User>()("profile"),
+	Lens.andThenOptional(Optional.prop<Profile>()("bio")),
 ); // Optional<User, string>
 ```
 
@@ -182,9 +182,9 @@ Or convert any lens to an Optional first with `Lens.toOptional`, then continue w
 
 ```ts
 pipe(
-  Lens.prop<User>()("address"),
-  Lens.toOptional,
-  Optional.andThen(Optional.prop<Address>()("landmark")),
+	Lens.prop<User>()("address"),
+	Lens.toOptional,
+	Optional.andThen(Optional.prop<Address>()("landmark")),
 ); // Optional<User, string>
 ```
 
@@ -201,7 +201,7 @@ code that looks like mutation but produces a new immutable object under the hood
 import produce from "immer";
 
 const updated = produce(user, draft => {
-  draft.address.city = "Hamburg";
+	draft.address.city = "Hamburg";
 });
 ```
 
@@ -217,8 +217,8 @@ it, and pass it around:
 ```ts
 // Defined once:
 const userCityLens = pipe(
-  Lens.prop<User>()("address"),
-  Lens.andThen(Lens.prop<Address>()("city")),
+	Lens.prop<User>()("address"),
+	Lens.andThen(Lens.prop<Address>()("city")),
 );
 
 // Used anywhere, including passed to other functions:

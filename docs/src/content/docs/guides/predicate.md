@@ -5,7 +5,7 @@ description: First-class boolean functions with not, and, or, using, and Refinem
 
 When you reach for `Array.filter`, `if` branches, or access-control gates, you are writing
 predicates. Usually they are anonymous inline functions: `n => n > 0`, `u => u.role === "admin"`.
-They work, but they don't *compose*. You can't take two boolean functions and combine them into a
+They work, but they don't _compose_. You can't take two boolean functions and combine them into a
 third without writing a new function by hand each time. `Predicate<A>` makes boolean checks
 first-class values you can name, reuse, negate, combine, and adapt to new types.
 
@@ -16,17 +16,17 @@ Combining checks inline is fine for a single call site, but it doesn't scale:
 ```ts
 // To reuse this later you have to extract and name it yourself every time
 const eligible = users.filter(
-  u => u.age >= 18 && u.subscription === "active" && !u.banned,
+	u => u.age >= 18 && u.subscription === "active" && !u.banned,
 );
 
 // Negating requires wrapping the whole expression
 const ineligible = users.filter(
-  u => !(u.age >= 18 && u.subscription === "active" && !u.banned),
+	u => !(u.age >= 18 && u.subscription === "active" && !u.banned),
 );
 
 // Adapting to a different type means rewriting the check
 const eligibleOrders = orders.filter(
-  o => o.customer.age >= 18 && o.customer.subscription === "active" && !o.customer.banned,
+	o => o.customer.age >= 18 && o.customer.subscription === "active" && !o.customer.banned,
 );
 ```
 
@@ -69,8 +69,8 @@ so there is no `Exclude<A, B>` complexity.
 const isExpired: Predicate<Date> = (d) => d < new Date();
 const isActive: Predicate<Date> = Predicate.not(isExpired);
 
-isActive(new Date("2099-01-01"));  // true
-isActive(new Date("2000-01-01"));  // false
+isActive(new Date("2099-01-01")); // true
+isActive(new Date("2000-01-01")); // false
 ```
 
 `not` works as a direct transformer in `pipe`:
@@ -90,22 +90,22 @@ const isAdult: Predicate<number> = (age) => age >= 18;
 const isSenior: Predicate<number> = (age) => age >= 65;
 
 const isWorkingAge: Predicate<number> = pipe(
-  isAdult,
-  Predicate.and(Predicate.not(isSenior)),
+	isAdult,
+	Predicate.and(Predicate.not(isSenior)),
 );
 
-isWorkingAge(30);  // true
-isWorkingAge(15);  // false — too young
-isWorkingAge(70);  // false — retired
+isWorkingAge(30); // true
+isWorkingAge(15); // false — too young
+isWorkingAge(70); // false — retired
 ```
 
 Building up a chain of checks reads left to right in `pipe`:
 
 ```ts
 const isValidPassword: Predicate<string> = pipe(
-  (s: string) => s.length >= 8,
-  Predicate.and(s => /[A-Z]/.test(s)),
-  Predicate.and(s => /[0-9]/.test(s)),
+	(s: string) => s.length >= 8,
+	Predicate.and(s => /[A-Z]/.test(s)),
+	Predicate.and(s => /[0-9]/.test(s)),
 );
 ```
 
@@ -116,24 +116,24 @@ to a `Predicate<B>` by providing a function `B → A` that extracts the relevant
 The check itself doesn't change — only the type it operates on does.
 
 ```ts
-type Product = { name: string; price: number; inStock: boolean };
+type Product = { name: string; price: number; inStock: boolean; };
 
 const isAffordable: Predicate<number> = (price) => price < 50;
 const isInStock: Predicate<boolean> = (b) => b;
 
 const isAffordableProduct: Predicate<Product> = pipe(
-  isAffordable,
-  Predicate.using((p: Product) => p.price),
+	isAffordable,
+	Predicate.using((p: Product) => p.price),
 );
 
 const isAvailableProduct: Predicate<Product> = pipe(
-  isInStock,
-  Predicate.using((p: Product) => p.inStock),
+	isInStock,
+	Predicate.using((p: Product) => p.inStock),
 );
 
 const canBuyNow: Predicate<Product> = pipe(
-  isAffordableProduct,
-  Predicate.and(isAvailableProduct),
+	isAffordableProduct,
+	Predicate.and(isAvailableProduct),
 );
 ```
 
@@ -143,13 +143,13 @@ don't rewrite them for each type that contains a price or a stock flag.
 `using` chains are also useful when your data is nested:
 
 ```ts
-type Order = { customer: { tier: string } };
+type Order = { customer: { tier: string; }; };
 
 const isPremiumTier: Predicate<string> = (tier) => tier === "premium";
 const isPremiumOrder: Predicate<Order> = pipe(
-  isPremiumTier,
-  Predicate.using((c: { tier: string }) => c.tier),
-  Predicate.using((o: Order) => o.customer),
+	isPremiumTier,
+	Predicate.using((c: { tier: string; }) => c.tier),
+	Predicate.using((o: Order) => o.customer),
 );
 ```
 
@@ -160,33 +160,33 @@ must pass) are cleaner than chaining `and`/`or`.
 
 ```ts
 const contentRules: Predicate<string>[] = [
-  (s) => s.length > 0,
-  (s) => s.length <= 500,
-  (s) => !/<script/i.test(s),
-  (s) => !s.includes("\0"),
+	(s) => s.length > 0,
+	(s) => s.length <= 500,
+	(s) => !/<script/i.test(s),
+	(s) => !s.includes("\0"),
 ];
 
 const isSafeContent = Predicate.all(contentRules);
 
-isSafeContent("Hello world");   // true
-isSafeContent("");              // false — too short
-isSafeContent("<script>...</script>");  // false — rejected pattern
+isSafeContent("Hello world"); // true
+isSafeContent(""); // false — too short
+isSafeContent("<script>...</script>"); // false — rejected pattern
 ```
 
 `any` is useful for allowing a set of alternative conditions:
 
 ```ts
 const allowedExtensions: Predicate<string>[] = [
-  (name) => name.endsWith(".jpg"),
-  (name) => name.endsWith(".jpeg"),
-  (name) => name.endsWith(".png"),
-  (name) => name.endsWith(".webp"),
+	(name) => name.endsWith(".jpg"),
+	(name) => name.endsWith(".jpeg"),
+	(name) => name.endsWith(".png"),
+	(name) => name.endsWith(".webp"),
 ];
 
 const isAcceptedImage = Predicate.any(allowedExtensions);
 
-isAcceptedImage("banner.png");   // true
-isAcceptedImage("script.exe");   // false
+isAcceptedImage("banner.png"); // true
+isAcceptedImage("script.exe"); // false
 ```
 
 Both `all` and `any` short-circuit internally (`Array.every` and `Array.some`) so predicates that
@@ -197,17 +197,16 @@ come later in the array are skipped once the result is determined.
 When you need to combine a type guard with plain predicates, convert it first:
 
 ```ts
-const isString: Refinement<unknown, string> =
-  Refinement.make((x) => typeof x === "string");
+const isString: Refinement<unknown, string> = Refinement.make((x) => typeof x === "string");
 
 const isShortString: Predicate<unknown> = pipe(
-  Predicate.fromRefinement(isString),
-  Predicate.and((x) => (x as string).length < 20),
+	Predicate.fromRefinement(isString),
+	Predicate.and((x) => (x as string).length < 20),
 );
 
-isShortString("hello");   // true
-isShortString(42);        // false — not a string
-isShortString("a very long string that exceeds the limit");  // false — too long
+isShortString("hello"); // true
+isShortString(42); // false — not a string
+isShortString("a very long string that exceeds the limit"); // false — too long
 ```
 
 This is a one-way conversion: once you have a `Predicate`, the narrowing information is gone. If

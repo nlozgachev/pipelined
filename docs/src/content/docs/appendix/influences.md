@@ -73,8 +73,8 @@ This library uses a simpler "concrete" representation instead. Each optic is a p
 `get` and `set` fields:
 
 ```ts
-type Lens<S, A>     = { get: (s: S) => A;          set: (a: A) => (s: S) => S };
-type Optional<S, A> = { get: (s: S) => Maybe<A>;  set: (a: A) => (s: S) => S };
+type Lens<S, A> = { get: (s: S) => A; set: (a: A) => (s: S) => S; };
+type Optional<S, A> = { get: (s: S) => Maybe<A>; set: (a: A) => (s: S) => S; };
 ```
 
 The concrete form gives up uniform composition across the full hierarchy but gains implementation
@@ -89,15 +89,15 @@ Every core type in this library is a discriminated union — a union of object t
 distinguished by a literal `kind` field:
 
 ```ts
-type Maybe<A> = { kind: "Some"; value: A } | { kind: "None" };
+type Maybe<A> = { kind: "Some"; value: A; } | { kind: "None"; };
 
-type Result<E, A> = { kind: "Ok"; value: A } | { kind: "Error"; error: E };
+type Result<E, A> = { kind: "Ok"; value: A; } | { kind: "Error"; error: E; };
 
 type RemoteData<E, A> =
-  | { kind: "NotAsked" }
-  | { kind: "Loading" }
-  | { kind: "Failure"; error: E }
-  | { kind: "Success"; value: A };
+	| { kind: "NotAsked"; }
+	| { kind: "Loading"; }
+	| { kind: "Failure"; error: E; }
+	| { kind: "Success"; value: A; };
 ```
 
 This representation has several properties that make it well-suited for TypeScript:
@@ -120,10 +120,10 @@ ties the library to a specific instantiation model.
 The four types in `InternalTypes.ts` are the structural vocabulary of the entire library:
 
 ```ts
-type WithKind<K extends string> = { readonly kind: K };
-type WithValue<T> = { readonly value: T };
-type WithError<T> = { readonly error: T };
-type WithErrors<T> = { readonly errors: NonEmptyList<T> };
+type WithKind<K extends string> = { readonly kind: K; };
+type WithValue<T> = { readonly value: T; };
+type WithError<T> = { readonly error: T; };
+type WithErrors<T> = { readonly errors: NonEmptyList<T>; };
 ```
 
 These ensure that field names are consistent across every type in the library. The success payload
@@ -190,9 +190,9 @@ that accepts the data. This is what makes `pipe` and `flow` compose cleanly:
 
 ```ts
 pipe(
-  Maybe.some(5),
-  Maybe.map((n) => n * 2), // map(n => n * 2) is already a function Maybe<number> → Maybe<number>
-  Maybe.getOrElse(0),
+	Maybe.some(5),
+	Maybe.map((n) => n * 2), // map(n => n * 2) is already a function Maybe<number> → Maybe<number>
+	Maybe.getOrElse(0),
 );
 ```
 
@@ -200,9 +200,9 @@ Without data-last, each `pipe` step would need to be wrapped in an arrow functio
 
 ```ts
 pipe(
-  Maybe.some(5),
-  (opt) => Maybe.map(opt, (n) => n * 2), // awkward — two arguments, data first
-  (opt) => Maybe.getOrElse(opt, 0),
+	Maybe.some(5),
+	(opt) => Maybe.map(opt, (n) => n * 2), // awkward — two arguments, data first
+	(opt) => Maybe.getOrElse(opt, 0),
 );
 ```
 

@@ -13,8 +13,8 @@ as data-last curried functions, plus two safe parsers that return `Maybe` instea
 `Arr.map`:
 
 ```ts
-import { Str, Arr } from "@nlozgachev/pipelined/utils";
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Arr, Str } from "@nlozgachev/pipelined/utils";
 
 pipe("hello", Str.toUpperCase); // "HELLO"
 pipe("WORLD", Str.toLowerCase); // "world"
@@ -37,7 +37,7 @@ In a validation pipeline, `trim` is typically the first step before any pattern 
 `Str.split` splits a string by a string or regex separator, returning a readonly array:
 
 ```ts
-pipe("a,b,c", Str.split(","));    // ["a", "b", "c"]
+pipe("a,b,c", Str.split(",")); // ["a", "b", "c"]
 pipe("2024-03-22", Str.split("-")); // ["2024", "03", "22"]
 ```
 
@@ -50,7 +50,7 @@ line-ending edge cases for you.
 parsing multi-line text from different sources:
 
 ```ts
-Str.lines("one\ntwo\nthree");     // ["one", "two", "three"]
+Str.lines("one\ntwo\nthree"); // ["one", "two", "three"]
 Str.lines("one\r\ntwo\r\nthree"); // ["one", "two", "three"]
 ```
 
@@ -59,7 +59,7 @@ tokens — no need to chain `trim` + `split` + `filter`:
 
 ```ts
 Str.words("  hello   world  "); // ["hello", "world"]
-Str.words("a\tb\nc");           // ["a", "b", "c"]
+Str.words("a\tb\nc"); // ["a", "b", "c"]
 ```
 
 ## Predicates for filtering
@@ -69,9 +69,9 @@ with `Arr.filter`:
 
 ```ts
 const logLines = [
-  "[ERROR] disk full",
-  "[INFO] server started",
-  "[ERROR] connection refused",
+	"[ERROR] disk full",
+	"[INFO] server started",
+	"[ERROR] connection refused",
 ];
 
 pipe(logLines, Arr.filter(Str.startsWith("[ERROR]")));
@@ -84,13 +84,13 @@ Parsing a number with `Number(s)` or `parseInt` returns `NaN` on failure, which 
 silently. `Str.parse.int` and `Str.parse.float` return `Maybe<number>` instead:
 
 ```ts
-Str.parse.int("42");   // Some(42)
-Str.parse.int("3.7");  // Some(3) — truncates to integer
-Str.parse.int("abc");  // None
-Str.parse.int("");     // None
+Str.parse.int("42"); // Some(42)
+Str.parse.int("3.7"); // Some(3) — truncates to integer
+Str.parse.int("abc"); // None
+Str.parse.int(""); // None
 
 Str.parse.float("3.14"); // Some(3.14)
-Str.parse.float("abc");  // None
+Str.parse.float("abc"); // None
 ```
 
 This integrates with the `Maybe` API for safe fallback handling:
@@ -99,10 +99,10 @@ This integrates with the `Maybe` API for safe fallback handling:
 import { Maybe } from "@nlozgachev/pipelined/core";
 
 pipe(
-  req.query.limit,
-  Str.parse.int,
-  Maybe.map(n => Math.min(n, 100)),
-  Maybe.getOrElse(() => 20),
+	req.query.limit,
+	Str.parse.int,
+	Maybe.map(n => Math.min(n, 100)),
+	Maybe.getOrElse(() => 20),
 ); // validated page limit, defaulting to 20
 ```
 
@@ -112,12 +112,12 @@ pipe(
 
 ```ts
 pipe(
-  rawCsv,
-  Str.trim,
-  Str.split("\n"),
-  Arr.map(Str.trim),
-  Arr.filter(Str.includes(",")),
-  Arr.map(Str.split(",")),
+	rawCsv,
+	Str.trim,
+	Str.split("\n"),
+	Arr.map(Str.trim),
+	Arr.filter(Str.includes(",")),
+	Arr.map(Str.split(",")),
 ); // a 2D array of trimmed, non-empty CSV rows
 ```
 

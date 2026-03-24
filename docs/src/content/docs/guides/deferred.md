@@ -20,8 +20,8 @@ arrive.
 
 ```ts
 type Deferred<A> = {
-  readonly [_deferred]: A;
-  readonly then: (onfulfilled: (value: A) => void) => void;
+	readonly [_deferred]: A;
+	readonly then: (onfulfilled: (value: A) => void) => void;
 };
 ```
 

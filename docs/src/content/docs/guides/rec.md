@@ -12,8 +12,8 @@ them in pipelines: data-last, curried, and returning `Maybe` wherever a key migh
 `Rec.lookup` retrieves a value by key and returns `Maybe` to make the absence explicit:
 
 ```ts
-import { Maybe, Rec } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Maybe, Rec } from "@nlozgachev/pipelined/core";
 
 const settings = { theme: "dark", lang: "en" };
 
@@ -25,10 +25,10 @@ This composes naturally with `Maybe` operations:
 
 ```ts
 pipe(
-  config,
-  Rec.lookup("timeout"), // Maybe<string>
-  Maybe.chain(parseNumber), // Maybe<number>
-  Maybe.getOrElse(() => 30_000),
+	config,
+	Rec.lookup("timeout"), // Maybe<string>
+	Maybe.chain(parseNumber), // Maybe<number>
+	Maybe.getOrElse(() => 30_000),
 );
 ```
 
@@ -61,8 +61,8 @@ pipe({ a: 1, b: 2, c: 3 }, Rec.filter((n) => n > 1));
 
 ```ts
 pipe(
-  { a: 1, b: 0, c: 3 },
-  Rec.filterWithKey((key, val) => key !== "a" && val > 0),
+	{ a: 1, b: 0, c: 3 },
+	Rec.filterWithKey((key, val) => key !== "a" && val > 0),
 ); // { c: 3 }
 ```
 
@@ -89,8 +89,8 @@ type reflects exactly which keys are present.
 
 ```ts
 pipe(
-  { a: 1, b: 2 },
-  Rec.merge({ b: 99, c: 3 }),
+	{ a: 1, b: 2 },
+	Rec.merge({ b: 99, c: 3 }),
 ); // { a: 1, b: 99, c: 3 }
 ```
 
@@ -115,10 +115,10 @@ to entries, mapping, and converting back:
 
 ```ts
 pipe(
-  { firstName: "Alice", lastName: "Smith" },
-  Rec.entries,
-  (entries) => entries.map(([k, v]) => [k.toUpperCase(), v] as const),
-  Rec.fromEntries,
+	{ firstName: "Alice", lastName: "Smith" },
+	Rec.entries,
+	(entries) => entries.map(([k, v]) => [k.toUpperCase(), v] as const),
+	Rec.fromEntries,
 ); // { FIRSTNAME: "Alice", LASTNAME: "Smith" }
 ```
 
@@ -136,10 +136,10 @@ Because all `Rec` functions are curried and data-last, they chain naturally:
 
 ```ts
 const result = pipe(
-  rawConfig,
-  Rec.filter((v) => v !== null),
-  Rec.mapWithKey((key, val) => `${key}: ${val}`),
-  Rec.omit("debug", "internal"),
+	rawConfig,
+	Rec.filter((v) => v !== null),
+	Rec.mapWithKey((key, val) => `${key}: ${val}`),
+	Rec.omit("debug", "internal"),
 );
 ```
 

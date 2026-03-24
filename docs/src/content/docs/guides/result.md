@@ -19,9 +19,9 @@ This leads to one of two outcomes — either error handling is scattered across 
 ```ts
 let result: number;
 try {
-  result = parseInput(raw);
+	result = parseInput(raw);
 } catch (e) {
-  result = 0;
+	result = 0;
 }
 ```
 
@@ -35,15 +35,15 @@ With `Result`, the possibility of failure is part of the type. A function that m
 wrong:
 
 ```ts
-import { Result } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Result } from "@nlozgachev/pipelined/core";
 
 declare function parseInput(raw: string): Result<string, number>;
 
 const value = pipe(
-  parseInput(raw),
-  Result.map((n) => n * 2), // only runs if parsing succeeded
-  Result.getOrElse(() => 0), // provides the fallback
+	parseInput(raw),
+	Result.map((n) => n * 2), // only runs if parsing succeeded
+	Result.getOrElse(() => 0), // provides the fallback
 );
 ```
 
@@ -67,10 +67,10 @@ a `Result`:
 
 ```ts
 const parseJson = (s: string): Result<string, unknown> =>
-  Result.tryCatch(
-    () => JSON.parse(s),
-    (e) => `Invalid JSON: ${e}`,
-  );
+	Result.tryCatch(
+		() => JSON.parse(s),
+		(e) => `Invalid JSON: ${e}`,
+	);
 
 parseJson('{"ok": true}'); // Ok({ ok: true })
 parseJson("not json"); // Err("Invalid JSON: ...")
@@ -84,12 +84,12 @@ The second argument maps the caught exception to your error type, so the result 
 
 ```ts
 pipe(
-  Result.ok(5),
-  Result.map((n) => n * 2),
+	Result.ok(5),
+	Result.map((n) => n * 2),
 ); // Ok(10)
 pipe(
-  Result.err("oops"),
-  Result.map((n) => n * 2),
+	Result.err("oops"),
+	Result.map((n) => n * 2),
 ); // Err("oops")
 ```
 
@@ -98,10 +98,10 @@ short-circuits the rest:
 
 ```ts
 pipe(
-  parseJson(input),
-  Result.map((data) => data.userId),
-  Result.map((id) => users.get(id)),
-  Result.getOrElse(() => null),
+	parseJson(input),
+	Result.map((data) => data.userId),
+	Result.map((id) => users.get(id)),
+	Result.getOrElse(() => null),
 );
 ```
 
@@ -111,8 +111,8 @@ pipe(
 
 ```ts
 pipe(
-  Result.err("connection refused"),
-  Result.mapError((e) => ({ code: 503, message: e })),
+	Result.err("connection refused"),
+	Result.mapError((e) => ({ code: 503, message: e })),
 ); // Err({ code: 503, message: "connection refused" })
 ```
 
@@ -125,8 +125,7 @@ When a transformation might itself fail, use `chain` instead of `map`. It preven
 `Result<E, Result<E, A>>`:
 
 ```ts
-const validatePositive = (n: number): Result<string, number> =>
-  n > 0 ? Result.ok(n) : Result.err("Must be positive");
+const validatePositive = (n: number): Result<string, number> => n > 0 ? Result.ok(n) : Result.err("Must be positive");
 
 pipe(Result.ok(5), Result.chain(validatePositive)); // Ok(5)
 pipe(Result.ok(-1), Result.chain(validatePositive)); // Err("Must be positive")
@@ -137,11 +136,11 @@ A typical pipeline chains multiple steps that can each fail independently:
 
 ```ts
 pipe(
-  parseInput(raw), // Result<string, string>
-  Result.chain(validateRange), // Result<string, number>
-  Result.chain(lookupRecord), // Result<string, Record>
-  Result.map((r) => r.name), // Result<string, string>
-  Result.getOrElse(() => "Unknown"),
+	parseInput(raw), // Result<string, string>
+	Result.chain(validateRange), // Result<string, number>
+	Result.chain(lookupRecord), // Result<string, Record>
+	Result.map((r) => r.name), // Result<string, string>
+	Result.getOrElse(() => "Unknown"),
 );
 ```
 
@@ -163,11 +162,11 @@ pipe(Result.err("oops"), Result.getOrElse(() => null)); // null — typed as num
 
 ```ts
 pipe(
-  result,
-  Result.match({
-    ok: (value) => `Success: ${value}`,
-    err: (error) => `Failed: ${error}`,
-  }),
+	result,
+	Result.match({
+		ok: (value) => `Success: ${value}`,
+		err: (error) => `Failed: ${error}`,
+	}),
 );
 ```
 
@@ -176,11 +175,11 @@ second):
 
 ```ts
 pipe(
-  result,
-  Result.fold(
-    (error) => `Failed: ${error}`,
-    (value) => `Success: ${value}`,
-  ),
+	result,
+	Result.fold(
+		(error) => `Failed: ${error}`,
+		(value) => `Success: ${value}`,
+	),
 );
 ```
 
@@ -192,12 +191,12 @@ can produce a different success type, widening the result to `Result<E, A | B>`:
 
 ```ts
 pipe(
-  fetchFromPrimary(url),
-  Result.recover((e) => {
-    console.warn("Primary failed:", e);
-    return fetchFromFallback(url);
-  }),
-  Result.getOrElse(() => cachedValue),
+	fetchFromPrimary(url),
+	Result.recover((e) => {
+		console.warn("Primary failed:", e);
+		return fetchFromFallback(url);
+	}),
+	Result.getOrElse(() => cachedValue),
 );
 ```
 
@@ -206,8 +205,8 @@ type means "stop trying":
 
 ```ts
 pipe(
-  authenticate(token),
-  Result.recoverUnless("REVOKED", () => refreshAndRetry(token)),
+	authenticate(token),
+	Result.recoverUnless("REVOKED", () => refreshAndRetry(token)),
 );
 ```
 

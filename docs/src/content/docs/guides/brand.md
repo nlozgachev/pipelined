@@ -138,8 +138,7 @@ type Email = Brand<"Email", string>;
 
 const toEmail = Brand.wrap<"Email", string>();
 
-const parseEmail = (s: string): Maybe<Email> =>
-  s.includes("@") ? Maybe.some(toEmail(s)) : Maybe.none();
+const parseEmail = (s: string): Maybe<Email> => s.includes("@") ? Maybe.some(toEmail(s)) : Maybe.none();
 ```
 
 Now the only way to get an `Email` value is through `parseEmail`, which enforces the invariant. Any

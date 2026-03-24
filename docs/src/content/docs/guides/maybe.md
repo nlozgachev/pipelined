@@ -29,15 +29,15 @@ With `Maybe`, the absence is encoded in the type itself. You can't accidentally 
 the operations that work on an `Maybe` handle both cases for you:
 
 ```ts
-import { Maybe } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Maybe } from "@nlozgachev/pipelined/core";
 
 declare function getUser(id: string): Maybe<User>;
 
 const name = pipe(
-  getUser(id),
-  Maybe.map((user) => user.name), // only runs if user exists
-  Maybe.getOrElse(() => "Unknown"), // provides the fallback
+	getUser(id),
+	Maybe.map((user) => user.name), // only runs if user exists
+	Maybe.getOrElse(() => "Unknown"), // provides the fallback
 );
 ```
 
@@ -59,9 +59,9 @@ Maybe.fromUndefined(value); // Some if defined, None if undefined
 
 ```ts
 const setting = pipe(
-  config.get("theme"), // string | undefined
-  Maybe.fromNullable, // Maybe<string>
-  Maybe.getOrElse(() => "light"), // string
+	config.get("theme"), // string | undefined
+	Maybe.fromNullable, // Maybe<string>
+	Maybe.getOrElse(() => "light"), // string
 );
 ```
 
@@ -71,12 +71,12 @@ const setting = pipe(
 
 ```ts
 pipe(
-  Maybe.some(5),
-  Maybe.map((n) => n * 2),
+	Maybe.some(5),
+	Maybe.map((n) => n * 2),
 ); // Some(10)
 pipe(
-  Maybe.none(),
-  Maybe.map((n) => n * 2),
+	Maybe.none(),
+	Maybe.map((n) => n * 2),
 ); // None
 ```
 
@@ -84,10 +84,10 @@ You can chain multiple `map` calls — each one only runs if the previous step p
 
 ```ts
 pipe(
-  Maybe.fromNullable(user),
-  Maybe.map((u) => u.address),
-  Maybe.map((a) => a.city),
-  Maybe.getOrElse(() => "Unknown city"),
+	Maybe.fromNullable(user),
+	Maybe.map((u) => u.address),
+	Maybe.map((a) => a.city),
+	Maybe.getOrElse(() => "Unknown city"),
 );
 ```
 
@@ -98,8 +98,8 @@ prevents nesting `Maybe<Maybe<A>>`:
 
 ```ts
 const parseNumber = (s: string): Maybe<number> => {
-  const n = parseInt(s, 10);
-  return isNaN(n) ? Maybe.none() : Maybe.some(n);
+	const n = parseInt(s, 10);
+	return isNaN(n) ? Maybe.none() : Maybe.some(n);
 };
 
 pipe(Maybe.some("42"), Maybe.chain(parseNumber)); // Some(42)
@@ -116,12 +116,12 @@ that might not.
 
 ```ts
 pipe(
-  Maybe.some(5),
-  Maybe.filter((n) => n > 3),
+	Maybe.some(5),
+	Maybe.filter((n) => n > 3),
 ); // Some(5)
 pipe(
-  Maybe.some(2),
-  Maybe.filter((n) => n > 3),
+	Maybe.some(2),
+	Maybe.filter((n) => n > 3),
 ); // None
 ```
 
@@ -145,11 +145,11 @@ pipe(Maybe.none(), Maybe.getOrElse(() => null)); // null — typed as number | n
 
 ```ts
 pipe(
-  possiblyUser,
-  Maybe.match({
-    some: (user) => `Welcome, ${user.name}`,
-    none: () => "Please log in",
-  }),
+	possiblyUser,
+	Maybe.match({
+		some: (user) => `Welcome, ${user.name}`,
+		none: () => "Please log in",
+	}),
 );
 ```
 
@@ -158,11 +158,11 @@ second):
 
 ```ts
 pipe(
-  possiblyUser,
-  Maybe.fold(
-    () => "Please log in",
-    (user) => `Welcome, ${user.name}`,
-  ),
+	possiblyUser,
+	Maybe.fold(
+		() => "Please log in",
+		(user) => `Welcome, ${user.name}`,
+	),
 );
 ```
 
@@ -181,9 +181,9 @@ can produce a different type, widening the result to `Maybe<A | B>`:
 
 ```ts
 pipe(
-  Maybe.fromNullable(cache.get(key)),
-  Maybe.recover(() => Maybe.fromNullable(db.get(key))),
-  Maybe.getOrElse(() => defaultValue),
+	Maybe.fromNullable(cache.get(key)),
+	Maybe.recover(() => Maybe.fromNullable(db.get(key))),
+	Maybe.getOrElse(() => defaultValue),
 );
 ```
 
@@ -195,8 +195,8 @@ error message. You can convert between them:
 ```ts
 // Maybe → Result: provide an error for the None case
 pipe(
-  Maybe.fromNullable(user),
-  Maybe.toResult(() => "User not found"),
+	Maybe.fromNullable(user),
+	Maybe.toResult(() => "User not found"),
 ); // Result<string, User>
 
 // Result → Maybe: discard the error, keep only the success

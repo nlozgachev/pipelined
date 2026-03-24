@@ -11,7 +11,7 @@ Some values always come in pairs: a product name and its price, a city and its p
 import { Tuple } from "@nlozgachev/pipelined/core";
 
 Tuple.make("Paris", 2_161_000); // ["Paris", 2161000]
-Tuple.make("tax_rate", 0.21);   // ["tax_rate", 0.21]
+Tuple.make("tax_rate", 0.21); // ["tax_rate", 0.21]
 ```
 
 If you already have a `readonly [A, B]` value — from `Arr.zip`, `Arr.splitAt`, or a native tuple
@@ -27,7 +27,7 @@ import { pipe } from "@nlozgachev/pipelined/composition";
 
 const entry = Tuple.make("alice", 980);
 
-Tuple.first(entry);  // "alice"
+Tuple.first(entry); // "alice"
 Tuple.second(entry); // 980
 
 pipe(entry, Tuple.second); // 980
@@ -40,11 +40,11 @@ element unchanged.
 
 ```ts
 pipe(
-  Tuple.make("alice", 980),
-  Tuple.mapFirst((name) => name.toUpperCase()),
-  // ["ALICE", 980]
-  Tuple.mapSecond((score) => score + 20),
-  // ["ALICE", 1000]
+	Tuple.make("alice", 980),
+	Tuple.mapFirst((name) => name.toUpperCase()),
+	// ["ALICE", 980]
+	Tuple.mapSecond((score) => score + 20),
+	// ["ALICE", 1000]
 );
 ```
 
@@ -52,12 +52,12 @@ A realistic example — formatting a localised price:
 
 ```ts
 const formatPrice = (locale: string, amountCents: number): string =>
-  (amountCents / 100).toLocaleString(locale, { style: "currency", currency: "EUR" });
+	(amountCents / 100).toLocaleString(locale, { style: "currency", currency: "EUR" });
 
 pipe(
-  Tuple.make("fr-FR", 1299),
-  Tuple.mapSecond((cents) => cents * 1.2),   // apply VAT in cents
-  Tuple.fold(formatPrice),                    // "15,59 €"
+	Tuple.make("fr-FR", 1299),
+	Tuple.mapSecond((cents) => cents * 1.2), // apply VAT in cents
+	Tuple.fold(formatPrice), // "15,59 €"
 );
 ```
 
@@ -67,12 +67,12 @@ pipe(
 
 ```ts
 pipe(
-  Tuple.make("product-a", 4999),
-  Tuple.mapBoth(
-    (sku) => sku.toUpperCase(),
-    (priceCents) => priceCents / 100,
-  ),
-  // ["PRODUCT-A", 49.99]
+	Tuple.make("product-a", 4999),
+	Tuple.mapBoth(
+		(sku) => sku.toUpperCase(),
+		(priceCents) => priceCents / 100,
+	),
+	// ["PRODUCT-A", 49.99]
 );
 ```
 
@@ -83,9 +83,9 @@ in a pipeline:
 
 ```ts
 pipe(
-  Tuple.make("Alice", 100),
-  Tuple.mapSecond((score) => score * 1.1),
-  Tuple.fold((name, score) => `${name}: ${score.toFixed(0)} pts`),
+	Tuple.make("Alice", 100),
+	Tuple.mapSecond((score) => score * 1.1),
+	Tuple.fold((name, score) => `${name}: ${score.toFixed(0)} pts`),
 ); // "Alice: 110 pts"
 ```
 
@@ -99,9 +99,9 @@ Tuple.swap(Tuple.make("key", 42)); // [42, "key"]
 
 // Swap the pair before passing to a function that expects (score, name)
 pipe(
-  Tuple.make("Bob", 77),
-  Tuple.swap,
-  Tuple.fold((score: number, name: string) => `${name} scored ${score}`),
+	Tuple.make("Bob", 77),
+	Tuple.swap,
+	Tuple.fold((score: number, name: string) => `${name} scored ${score}`),
 ); // "Bob scored 77"
 ```
 
@@ -120,10 +120,10 @@ debugging in the middle of a pipeline:
 
 ```ts
 pipe(
-  Tuple.make("Paris", 2_161_000),
-  Tuple.tap((city, pop) => console.log(`Processing: ${city} (${pop})`)),
-  Tuple.mapSecond((pop) => pop / 1_000_000),
-  Tuple.fold((city, popM) => `${city}: ${popM.toFixed(1)}M`),
+	Tuple.make("Paris", 2_161_000),
+	Tuple.tap((city, pop) => console.log(`Processing: ${city} (${pop})`)),
+	Tuple.mapSecond((pop) => pop / 1_000_000),
+	Tuple.fold((city, popM) => `${city}: ${popM.toFixed(1)}M`),
 ); // logs "Processing: Paris (2161000)", returns "Paris: 2.2M"
 ```
 

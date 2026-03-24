@@ -30,8 +30,8 @@ showing stale data while `loading` is true.
 time:
 
 ```ts
-import { RemoteData } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { RemoteData } from "@nlozgachev/pipelined/core";
 
 type State = RemoteData<string, User>;
 
@@ -61,13 +61,13 @@ compiler ensures you've covered all cases:
 
 ```ts
 const message = pipe(
-  userData,
-  RemoteData.match({
-    notAsked: () => "Click to load",
-    loading: () => "Loading...",
-    failure: (err) => `Failed: ${err}`,
-    success: (user) => `Hello, ${user.name}`,
-  }),
+	userData,
+	RemoteData.match({
+		notAsked: () => "Click to load",
+		loading: () => "Loading...",
+		failure: (err) => `Failed: ${err}`,
+		success: (user) => `Hello, ${user.name}`,
+	}),
 );
 ```
 
@@ -78,13 +78,13 @@ forget to handle errors. The type checker will tell you if a case is missing.
 
 ```ts
 pipe(
-  userData,
-  RemoteData.fold(
-    () => "Not asked",
-    () => "Loading...",
-    (err) => `Error: ${err}`,
-    (user) => `Hello, ${user.name}`,
-  ),
+	userData,
+	RemoteData.fold(
+		() => "Not asked",
+		() => "Loading...",
+		(err) => `Error: ${err}`,
+		(user) => `Hello, ${user.name}`,
+	),
 );
 ```
 
@@ -94,20 +94,20 @@ pipe(
 
 ```ts
 pipe(
-  RemoteData.success(5),
-  RemoteData.map((n) => n * 2),
+	RemoteData.success(5),
+	RemoteData.map((n) => n * 2),
 ); // Success(10)
 pipe(
-  RemoteData.loading(),
-  RemoteData.map((n) => n * 2),
+	RemoteData.loading(),
+	RemoteData.map((n) => n * 2),
 ); // Loading
 pipe(
-  RemoteData.failure("!"),
-  RemoteData.map((n) => n * 2),
+	RemoteData.failure("!"),
+	RemoteData.map((n) => n * 2),
 ); // Failure("!")
 pipe(
-  RemoteData.notAsked(),
-  RemoteData.map((n) => n * 2),
+	RemoteData.notAsked(),
+	RemoteData.map((n) => n * 2),
 ); // NotAsked
 ```
 
@@ -115,9 +115,9 @@ This lets you transform data as part of a pipeline without breaking out of the `
 
 ```ts
 const userName = pipe(
-  userData, // RemoteData<string, User>
-  RemoteData.map((u) => u.name), // RemoteData<string, string>
-  RemoteData.getOrElse(() => "Unknown"),
+	userData, // RemoteData<string, User>
+	RemoteData.map((u) => u.name), // RemoteData<string, string>
+	RemoteData.getOrElse(() => "Unknown"),
 );
 ```
 
@@ -127,8 +127,8 @@ const userName = pipe(
 
 ```ts
 pipe(
-  RemoteData.failure("connection refused"),
-  RemoteData.mapError((e) => ({ code: 503, message: e })),
+	RemoteData.failure("connection refused"),
+	RemoteData.mapError((e) => ({ code: 503, message: e })),
 ); // Failure({ code: 503, message: "connection refused" })
 ```
 
@@ -142,8 +142,8 @@ pass through:
 
 ```ts
 pipe(
-  userData, // RemoteData<string, User>
-  RemoteData.chain((user) => fetchUserPosts(user.id)), // RemoteData<string, Post[]>
+	userData, // RemoteData<string, User>
+	RemoteData.chain((user) => fetchUserPosts(user.id)), // RemoteData<string, Post[]>
 );
 ```
 
@@ -158,11 +158,11 @@ can produce a different success type, widening the result to `RemoteData<E, A | 
 
 ```ts
 pipe(
-  fetchFromPrimary(url),
-  RemoteData.recover((err) => {
-    console.warn("Primary failed:", err);
-    return fetchFromFallback(url);
-  }),
+	fetchFromPrimary(url),
+	RemoteData.recover((err) => {
+		console.warn("Primary failed:", err);
+		return fetchFromFallback(url);
+	}),
 );
 ```
 
@@ -195,13 +195,13 @@ RemoteData.toMaybe(RemoteData.loading()); // None
 
 ```ts
 pipe(
-  RemoteData.success(42),
-  RemoteData.toResult(() => "not loaded yet"),
+	RemoteData.success(42),
+	RemoteData.toResult(() => "not loaded yet"),
 ); // Ok(42)
 
 pipe(
-  RemoteData.loading(),
-  RemoteData.toResult(() => "not loaded yet"),
+	RemoteData.loading(),
+	RemoteData.toResult(() => "not loaded yet"),
 ); // Err("not loaded yet")
 ```
 

@@ -14,9 +14,9 @@ When validating a form, `Result`'s behavior is unhelpful:
 
 ```ts
 pipe(
-  validateName(form.name),
-  Result.chain(() => validateEmail(form.email)),
-  Result.chain(() => validateAge(form.age)),
+	validateName(form.name),
+	Result.chain(() => validateEmail(form.email)),
+	Result.chain(() => validateAge(form.age)),
 );
 ```
 
@@ -29,27 +29,27 @@ sees the next one. You want to show all three errors at once.
 both error lists are merged:
 
 ```ts
-import { Validation } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Validation } from "@nlozgachev/pipelined/core";
 
 const validateName = (name: string): Validation<string, string> =>
-  name.length > 0
-    ? Validation.valid(name)
-    : Validation.invalid("Name is required");
+	name.length > 0
+		? Validation.valid(name)
+		: Validation.invalid("Name is required");
 
 const validateAge = (age: number): Validation<string, number> =>
-  age >= 0
-    ? Validation.valid(age)
-    : Validation.invalid("Age must be non-negative");
+	age >= 0
+		? Validation.valid(age)
+		: Validation.invalid("Age must be non-negative");
 ```
 
 Running both checks with `ap` collects all failures:
 
 ```ts
 pipe(
-  Validation.valid((name: string) => (age: number) => ({ name, age })),
-  Validation.ap(validateName("")),
-  Validation.ap(validateAge(-1)),
+	Validation.valid((name: string) => (age: number) => ({ name, age })),
+	Validation.ap(validateName("")),
+	Validation.ap(validateAge(-1)),
 );
 // Invalid(["Name is required", "Age must be non-negative"])
 ```
@@ -58,9 +58,9 @@ If both pass, you get the assembled value:
 
 ```ts
 pipe(
-  Validation.valid((name: string) => (age: number) => ({ name, age })),
-  Validation.ap(validateName("Alice")),
-  Validation.ap(validateAge(30)),
+	Validation.valid((name: string) => (age: number) => ({ name, age })),
+	Validation.ap(validateName("Alice")),
+	Validation.ap(validateAge(30)),
 );
 // Valid({ name: "Alice", age: 30 })
 ```
@@ -84,16 +84,16 @@ function wrapped in `Validation.valid`, then apply each validated argument with 
 ```ts
 // Constructor: (field1) => (field2) => (field3) => result
 const build = (email: string) => (password: string) => (age: number) => ({
-  email,
-  password,
-  age,
+	email,
+	password,
+	age,
 });
 
 pipe(
-  Validation.valid(build),
-  Validation.ap(validateEmail(form.email)), // applies first arg
-  Validation.ap(validatePassword(form.password)), // applies second arg
-  Validation.ap(validateAge(form.age)), // applies third arg
+	Validation.valid(build),
+	Validation.ap(validateEmail(form.email)), // applies first arg
+	Validation.ap(validatePassword(form.password)), // applies second arg
+	Validation.ap(validateAge(form.age)), // applies third arg
 );
 ```
 
@@ -112,13 +112,13 @@ tuple of both values. If either fails, errors from both sides are merged:
 
 ```ts
 Validation.product(
-  Validation.valid("alice"),
-  Validation.valid(30),
+	Validation.valid("alice"),
+	Validation.valid(30),
 ); // Valid(["alice", 30])
 
 Validation.product(
-  Validation.invalid("Name required"),
-  Validation.invalid("Age must be >= 0"),
+	Validation.invalid("Name required"),
+	Validation.invalid("Age must be >= 0"),
 ); // Invalid(["Name required", "Age must be >= 0"])
 ```
 
@@ -132,9 +132,9 @@ or accumulates all errors:
 
 ```ts
 Validation.productAll([
-  validateName(form.name),
-  validateEmail(form.email),
-  validateAge(form.age),
+	validateName(form.name),
+	validateEmail(form.email),
+	validateAge(form.age),
 ]);
 // Valid([name, email, age]) — if all pass
 // Invalid([...all errors]) — if any fail
@@ -149,12 +149,12 @@ type is always `Validation<E, readonly A[]>` with no `undefined`.
 
 ```ts
 pipe(
-  Validation.valid(5),
-  Validation.map((n) => n * 2),
+	Validation.valid(5),
+	Validation.map((n) => n * 2),
 ); // Valid(10)
 pipe(
-  Validation.invalid("oops"),
-  Validation.map((n) => n * 2),
+	Validation.invalid("oops"),
+	Validation.map((n) => n * 2),
 ); // Invalid(["oops"])
 ```
 
@@ -173,11 +173,11 @@ pipe(Validation.invalid("oops"), Validation.getOrElse(() => null)); // null — 
 
 ```ts
 pipe(
-  validation,
-  Validation.match({
-    valid: (value) => renderSuccess(value),
-    invalid: (errors) => renderErrors(errors), // errors: NonEmptyList<string>
-  }),
+	validation,
+	Validation.match({
+		valid: (value) => renderSuccess(value),
+		invalid: (errors) => renderErrors(errors), // errors: NonEmptyList<string>
+	}),
 );
 ```
 
@@ -185,11 +185,11 @@ pipe(
 
 ```ts
 pipe(
-  validation,
-  Validation.fold(
-    (errors) => errors.join(", "),
-    (value) => `Valid: ${value}`,
-  ),
+	validation,
+	Validation.fold(
+		(errors) => errors.join(", "),
+		(value) => `Valid: ${value}`,
+	),
 );
 ```
 
@@ -200,11 +200,11 @@ accumulated error list, so you can inspect which errors occurred and decide how 
 
 ```ts
 pipe(
-  validateConfig(input),
-  Validation.recover((errors) => {
-    console.warn("Validation failed:", errors);
-    return Validation.valid(defaultConfig);
-  }),
+	validateConfig(input),
+	Validation.recover((errors) => {
+		console.warn("Validation failed:", errors);
+		return Validation.valid(defaultConfig);
+	}),
 );
 ```
 
@@ -212,8 +212,8 @@ When the input is already `Valid`, the fallback is never called:
 
 ```ts
 pipe(
-  Validation.valid(42),
-  Validation.recover((_errors) => Validation.valid(0)),
+	Validation.valid(42),
+	Validation.recover((_errors) => Validation.valid(0)),
 ); // Valid(42) — fallback skipped
 ```
 

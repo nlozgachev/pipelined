@@ -16,10 +16,10 @@ value that does not exceed it:
 ```ts
 import { Num } from "@nlozgachev/pipelined/utils";
 
-Num.range(0, 5);       // [0, 1, 2, 3, 4, 5]
-Num.range(0, 10, 2);   // [0, 2, 4, 6, 8, 10]
-Num.range(0, 9, 2);    // [0, 2, 4, 6, 8]   — 9 is not reachable, stops at 8
-Num.range(5, 0);       // [] — start > end produces nothing
+Num.range(0, 5); // [0, 1, 2, 3, 4, 5]
+Num.range(0, 10, 2); // [0, 2, 4, 6, 8, 10]
+Num.range(0, 9, 2); // [0, 2, 4, 6, 8]   — 9 is not reachable, stops at 8
+Num.range(5, 0); // [] — start > end produces nothing
 ```
 
 This pairs naturally with `Arr.map` and `Arr.filter` to build datasets for charts, pagination, or
@@ -31,11 +31,11 @@ test fixtures without manually constructing arrays.
 making them directly composable in `pipe` and `Arr.map`:
 
 ```ts
-import { Num, Arr } from "@nlozgachev/pipelined/utils";
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Arr, Num } from "@nlozgachev/pipelined/utils";
 
 pipe([1, 2, 3, 4, 5], Arr.map(Num.multiply(2))); // [2, 4, 6, 8, 10]
-pipe([10, 20, 30], Arr.map(Num.subtract(5)));     // [5, 15, 25]
+pipe([10, 20, 30], Arr.map(Num.subtract(5))); // [5, 15, 25]
 ```
 
 `subtract(b)(a)` = `a - b` and `divide(b)(a)` = `a / b`, so they read as "subtract `b`" and
@@ -48,8 +48,8 @@ become `min`; values above `max` become `max`:
 
 ```ts
 pipe(150, Num.clamp(0, 100)); // 100
-pipe(-5,  Num.clamp(0, 100)); // 0
-pipe(42,  Num.clamp(0, 100)); // 42
+pipe(-5, Num.clamp(0, 100)); // 0
+pipe(42, Num.clamp(0, 100)); // 42
 ```
 
 A common use case is normalising user input — ensuring a slider value stays within the allowed
@@ -62,8 +62,8 @@ range before sending it to an API.
 
 ```ts
 pipe(
-  Num.range(0, 20),
-  Arr.filter(Num.between(5, 15)),
+	Num.range(0, 20),
+	Arr.filter(Num.between(5, 15)),
 ); // [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]  — both bounds inclusive
 ```
 
@@ -76,22 +76,22 @@ callbacks.
 doesn't represent a valid number, `Some` otherwise:
 
 ```ts
-Num.parse("42");   // Some(42)
+Num.parse("42"); // Some(42)
 Num.parse("3.14"); // Some(3.14)
-Num.parse("abc");  // None
-Num.parse("");     // None
+Num.parse("abc"); // None
+Num.parse(""); // None
 ```
 
 This avoids the `isNaN` dance and integrates with the rest of the `Maybe` API:
 
 ```ts
-import { Maybe } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Maybe } from "@nlozgachev/pipelined/core";
 
 pipe(
-  Num.parse(rawInput),
-  Maybe.map(Num.clamp(0, 255)),
-  Maybe.getOrElse(() => 0),
+	Num.parse(rawInput),
+	Maybe.map(Num.clamp(0, 255)),
+	Maybe.getOrElse(() => 0),
 ); // a clamped byte value, defaulting to 0 for bad input
 ```
 
@@ -102,10 +102,10 @@ Here, a range of integers is scaled, filtered to a sub-range, and summed:
 
 ```ts
 pipe(
-  Num.range(1, 20),           // [1 .. 20]
-  Arr.map(Num.multiply(3)),   // [3, 6, 9, ..., 60]
-  Arr.filter(Num.between(10, 40)),
-  Arr.reduce(0, Num.add),     // curried add works as a reducer too
+	Num.range(1, 20), // [1 .. 20]
+	Arr.map(Num.multiply(3)), // [3, 6, 9, ..., 60]
+	Arr.filter(Num.between(10, 40)),
+	Arr.reduce(0, Num.add), // curried add works as a reducer too
 ); // 10+12+15+18+21+24+27+30+33+36+39 = ?
 ```
 
