@@ -1,7 +1,5 @@
 declare const _deferred: unique symbol;
 
-const _store = new WeakMap<object, Promise<unknown>>();
-
 /**
  * A nominally typed, one-shot async value that supports `await` but enforces infallibility.
  *
@@ -37,12 +35,9 @@ export namespace Deferred {
 	 * const value = await d; // "hello"
 	 * ```
 	 */
-	export const fromPromise = <A>(p: Promise<A>): Deferred<A> => {
+	export const fromPromise = <A>(p: Promise<A>): Deferred<A> =>
 		// eslint-disable-next-line unicorn/no-thenable -- Deferred is intentionally thenable; it is the mechanism that makes Task awaitable
-		const d = ({ then: ((f) => p.then(f)) as Deferred<A>["then"] }) as Deferred<A>;
-		_store.set(d as object, p);
-		return d;
-	};
+		({ then: ((f) => p.then(f)) as Deferred<A>["then"] }) as Deferred<A>;
 
 	/**
 	 * Converts a `Deferred` back into a `Promise`.
@@ -53,7 +48,5 @@ export namespace Deferred {
 	 * // p is Promise<42>
 	 * ```
 	 */
-	export const toPromise = <A>(d: Deferred<A>): Promise<A> =>
-		(_store.get(d as object) as Promise<A> | undefined)
-			?? new Promise((resolve) => d.then(resolve));
+	export const toPromise = <A>(d: Deferred<A>): Promise<A> => new Promise<A>((resolve) => d.then(resolve));
 }

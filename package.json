@@ -57,6 +57,7 @@
 	},
 	"devDependencies": {
 		"@types/node": "25.5.0",
+		"fast-check": "4.6.0",
 		"@vitest/coverage-v8": "4.1.0",
 		"dprint": "0.53.0",
 		"oxlint": "1.56.0",

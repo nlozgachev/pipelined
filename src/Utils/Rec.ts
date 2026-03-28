@@ -27,7 +27,7 @@ export namespace Rec {
 		const vals = Object.values(data);
 		const result: Record<string, B> = {};
 		for (let i = 0; i < keys.length; i++) {
-			result[keys[i]] = f(vals[i]);
+			Object.defineProperty(result, keys[i], { value: f(vals[i]), writable: true, enumerable: true, configurable: true });
 		}
 		return result;
 	};
@@ -47,7 +47,7 @@ export namespace Rec {
 			const vals = Object.values(data);
 			const result: Record<string, B> = {};
 			for (let i = 0; i < keys.length; i++) {
-				result[keys[i]] = f(keys[i], vals[i]);
+				Object.defineProperty(result, keys[i], { value: f(keys[i], vals[i]), writable: true, enumerable: true, configurable: true });
 			}
 			return result;
 		};
@@ -64,7 +64,7 @@ export namespace Rec {
 		<A>(predicate: (a: A) => boolean) => (data: Readonly<Record<string, A>>): Readonly<Record<string, A>> => {
 			const result: Record<string, A> = {};
 			for (const [k, v] of Object.entries(data)) {
-				if (predicate(v)) result[k] = v;
+				if (predicate(v)) Object.defineProperty(result, k, { value: v, writable: true, enumerable: true, configurable: true });
 			}
 			return result;
 		};
@@ -84,7 +84,7 @@ export namespace Rec {
 	): Readonly<Record<string, A>> => {
 		const result: Record<string, A> = {};
 		for (const [k, v] of Object.entries(data)) {
-			if (predicate(k, v)) result[k] = v;
+			if (predicate(k, v)) Object.defineProperty(result, k, { value: v, writable: true, enumerable: true, configurable: true });
 		}
 		return result;
 	};
@@ -157,8 +157,11 @@ export namespace Rec {
 			const result: Record<string, A[]> = {};
 			for (const item of items) {
 				const key = keyFn(item);
-				if (key in result) result[key].push(item);
-				else result[key] = [item];
+				if (Object.hasOwn(result, key)) {
+					result[key].push(item);
+				} else {
+					Object.defineProperty(result, key, { value: [item], writable: true, enumerable: true, configurable: true });
+				}
 			}
 			return result;
 		};
@@ -178,7 +181,7 @@ export namespace Rec {
 		const result = {} as Pick<A, K>;
 		for (const key of pickedKeys) {
 			if (Object.hasOwn(data, key)) {
-				result[key] = data[key];
+				Object.defineProperty(result, key, { value: data[key], writable: true, enumerable: true, configurable: true });
 			}
 		}
 		return result;
@@ -197,7 +200,7 @@ export namespace Rec {
 		const result = {} as Record<string, unknown>;
 		for (const key of Object.keys(data)) {
 			if (!omitSet.has(key)) {
-				result[key] = (data as Record<string, unknown>)[key];
+				Object.defineProperty(result, key, { value: (data as Record<string, unknown>)[key], writable: true, enumerable: true, configurable: true });
 			}
 		}
 		return result as Omit<A, K>;
@@ -241,7 +244,7 @@ export namespace Rec {
 		(f: (key: string) => string) => <A>(data: Readonly<Record<string, A>>): Readonly<Record<string, A>> => {
 			const result: Record<string, A> = {};
 			for (const [k, v] of Object.entries(data)) {
-				result[f(k)] = v;
+				Object.defineProperty(result, f(k), { value: v, writable: true, enumerable: true, configurable: true });
 			}
 			return result;
 		};
@@ -261,7 +264,7 @@ export namespace Rec {
 	): Readonly<Record<string, A>> => {
 		const result: Record<string, A> = {};
 		for (const [k, v] of Object.entries(data)) {
-			if (v.kind === "Some") result[k] = v.value;
+			if (v.kind === "Some") Object.defineProperty(result, k, { value: v.value, writable: true, enumerable: true, configurable: true });
 		}
 		return result;
 	};

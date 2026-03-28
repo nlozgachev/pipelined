@@ -41,6 +41,15 @@
 		"max-statements": "off",
 		"vitest/no-importing-vitest-globals": "off",
 		"no-promise-executor-return": "off",
-		"no-shadow": "off"
+		"no-shadow": "off",
+		"unicorn/import-style": ["error", {
+			"styles": {
+				"fast-check": {
+					"default": true,
+					"named": false,
+					"namespace": false
+				}
+			}
+		}]
 	}
 }
