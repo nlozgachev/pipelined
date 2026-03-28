@@ -382,6 +382,115 @@ controller.abort();              // can be called before or after running
 await result(controller.signal); // signal threads through every retry automatically
 ```
 
+#### One `abortable` call = one cancellable unit
+
+`abortable` bakes the `AbortController` into the task at creation time, not at invocation time.
+Calling the same task twice in parallel shares one controller — `abort()` reaches both invocations:
+
+```ts
+const { task, abort } = TaskResult.abortable(
+  (signal) => fetch(`/users/${id}`, { signal }),
+  String,
+);
+
+task();
+task();
+// both tasks above use the same AbortController — abort() cancels them together
+```
+
+For requests that can be cancelled independently, create a separate `abortable` for each:
+
+```ts
+const { task: fetchUser,  abort: cancelUser  } = TaskResult.abortable(
+  (signal) => fetch(`/users/${id}`, { signal }),
+  String,
+);
+const { task: fetchPosts, abort: cancelPosts } = TaskResult.abortable(
+  (signal) => fetch(`/posts?user=${id}`, { signal }),
+  String,
+);
+```
+
+#### Running requests in parallel with independent cancellation
+
+Create one `abortable` per request, run them with `Task.all`, and cancel whichever one you
+need without touching the others:
+
+```ts
+const { task: fetchUser,  abort: cancelUser  } = TaskResult.abortable(
+  (signal) => fetch(`/users/${id}`, { signal }),
+  String,
+);
+const { task: fetchPosts, abort: cancelPosts } = TaskResult.abortable(
+  (signal) => fetch(`/posts?user=${id}`, { signal }),
+  String,
+);
+
+const [userResult, postsResult] = await Task.all([fetchUser, fetchPosts])();
+
+cancelUser();  // only the user request is cancelled
+cancelPosts(); // only the posts request is cancelled
+```
+
+The same principle applies to sequential requests. A common case is a search input that fires on
+each keystroke: cancel the in-flight request before starting the next one, so only the latest
+result is used. `TaskResult.restartable` handles this directly:
+
+```ts
+const { fn: search, abort } = TaskResult.restartable((query: string) =>
+  TaskResult.tryCatch(
+    (signal) => fetch(`/search?q=${query}`, { signal }),
+    String,
+  )
+);
+
+search("fo")().then(setResults);
+search("foo")().then(setResults);   // cancels "fo", starts fresh
+search("foob")().then(setResults);  // cancels "foo", starts fresh
+
+abort(); // cancel without starting a new request — e.g. on component unmount
+```
+
+`restartable` holds one `AbortController` internally, replacing it on each call. The factory
+always receives a fresh signal, and the previous one is aborted immediately.
+
+#### Cancelling a multi-step chain
+
+Some operations require several dependent requests in sequence: the first returns a URL, the next
+follows it, and so on until the final response contains the data. `TaskResult.chain` handles this
+naturally — and because `chain` forwards the call-site signal to each inner step, a single abort
+reaches whichever request is currently in flight:
+
+```ts
+const fetchReport = (id: string): TaskResult<string, Report> =>
+  pipe(
+    TaskResult.tryCatch(
+      (signal) => fetch(`/reports/${id}/start`, { signal }).then((r) => r.json()),
+      String,
+    ),
+    TaskResult.chain((step1) =>
+      TaskResult.tryCatch(
+        (signal) => fetch(step1.nextUrl, { signal }).then((r) => r.json()),
+        String,
+      )
+    ),
+    TaskResult.chain((step2) =>
+      TaskResult.tryCatch(
+        (signal) => fetch(step2.dataUrl, { signal }).then((r) => r.json()),
+        String,
+      )
+    ),
+  );
+
+const controller = new AbortController();
+const result = await fetchReport(id)(controller.signal);
+// controller.abort() at any point cancels the step currently in flight
+// and the chain stops — no subsequent requests are made
+```
+
+You can add as many `chain` steps as the transaction requires. The signal propagates through all
+of them without any extra wiring.
+
 **`TaskMaybe<A>`** — an async operation that may return nothing. It's `Task<Maybe<A>>`:
 
 ```ts

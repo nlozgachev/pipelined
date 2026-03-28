@@ -7,11 +7,11 @@ import starlightTypeDoc, { typeDocSidebarGroup } from "starlight-typedoc";
 export default defineConfig({
 	redirects: {
 		"/api/utils/namespaces/arr/functions": "/api/utils/namespaces/arr/functions/chunksof",
-    "/api/utils/namespaces/rec/functions": "/api/utils/namespaces/rec/functions/compact",
-    "/api/utils/namespaces/uniq/functions": "/api/utils/namespaces/uniq/functions/difference",
+		"/api/utils/namespaces/rec/functions": "/api/utils/namespaces/rec/functions/compact",
+		"/api/utils/namespaces/uniq/functions": "/api/utils/namespaces/uniq/functions/difference",
 		"/api/utils/namespaces/dict/functions": "/api/utils/namespaces/dict/functions/compact",
-    "/api/utils/namespaces/num/functions": 'api/utils/namespaces/num/functions/add',
-    "/api/utils/namespaces/str/functions": 'api/utils/namespaces/str/functions/endswith'
+		"/api/utils/namespaces/num/functions": "/api/utils/namespaces/num/functions/add",
+		"/api/utils/namespaces/str/functions": "/api/utils/namespaces/str/functions/endswith",
 	},
 	integrations: [
 		starlight({
@@ -70,6 +70,10 @@ export default defineConfig({
 						{
 							label: "Thinking in pipelines",
 							slug: "getting-started/pipelines",
+						},
+						{
+							label: "What you will learn",
+							slug: "getting-started/overview",
 						},
 					],
 				},

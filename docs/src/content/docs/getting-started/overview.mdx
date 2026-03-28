@@ -1,0 +1,146 @@
+---
+title: What you will learn
+description: The situations every TypeScript application encounters, and the types that name them.
+---
+
+TypeScript has excellent types for everything except the states your application is actually in.
+You get `null`, `try/catch`, and `Promise` — the mechanisms — but no standard way to carry the
+surrounding state as a typed value. So every project invents its own conventions, and every new
+developer learns them from context.
+
+**pipelined** gives those situations names. Here is what they are.
+
+## A value that may not be present — `Maybe<A>`
+
+Optional chaining propagates absence through a chain of property reads. It just doesn't give that
+absence a name you can pass around, map over, or convert to a typed failure without breaking out
+of the chain.
+
+`Maybe<A>` is either `Some<A>` (a value is present) or `None` (it isn't). Operations like `map`,
+`chain`, and `getOrElse` skip the absent case automatically, so you describe what to do with the
+value without checking for its absence at every step:
+
+```ts
+import { Maybe } from "@nlozgachev/pipelined/core";
+import { pipe } from "@nlozgachev/pipelined/composition";
+
+pipe(
+  users.get(id),                     // User | undefined
+  Maybe.fromNullable,                // Maybe<User>
+  Maybe.map((u) => u.address),       // Maybe<Address>
+  Maybe.map((a) => a.city),          // Maybe<string>
+  Maybe.getOrElse(() => "Unknown"),  // string
+);
+```
+
+If any step produces `None`, the rest are skipped and `getOrElse` provides the fallback. Full
+guide: [Maybe — absent values](/guides/maybe).
+
+## An operation that can fail — `Result<E, A>`
+
+TypeScript's `unknown` error type is accurate. It tells you exactly what you know about the error,
+which is nothing. There is also nothing in a function's return type to tell callers it can throw,
+so failures propagate as unhandled exceptions and `try/catch` accumulates at call sites.
+
+`Result<E, A>` is either `Ok<A>` (success) or `Err<E>` (a typed failure). The error type is in
+the signature:
+
+```ts
+import { Result } from "@nlozgachev/pipelined/core";
+
+const parseId = (raw: string): Result<string, number> => {
+  const n = Number(raw);
+  return isNaN(n) ? Result.err("not a number") : Result.ok(n);
+};
+
+pipe(
+  parseId(input),
+  Result.map((id) => `/users/${id}`),
+  Result.getOrElse(() => "/users/unknown"),
+);
+```
+
+Full guide: [Result — handling failures](/guides/result).
+
+## Collecting every failure — `Validation<E, A>`
+
+Your form shows one error at a time. Whether that was a product decision or a side effect of using
+`Result` for validation is sometimes hard to say — `Result` stops at the first error by design,
+which is correct for sequential operations and wrong for forms.
+
+`Validation<E, A>` is either `Valid<A>` or `Invalid<NonEmptyList<E>>`. When you combine two
+`Validation` values, their errors accumulate rather than short-circuit:
+
+```ts
+import { Validation } from "@nlozgachev/pipelined/core";
+
+const validateName = (s: string): Validation<string, string> =>
+  s.trim() ? Validation.valid(s.trim()) : Validation.invalid("Name is required");
+
+const validateAge = (n: number): Validation<string, number> =>
+  n >= 0 ? Validation.valid(n) : Validation.invalid("Age must be non-negative");
+```
+
+If both fields are invalid, both errors come back in one result. Full guide:
+[Validation — collecting errors](/guides/validation).
+
+## Async operations with typed errors — `TaskResult<E, A>`
+
+Fetch with retry, timeout, and cancellation is a solved problem. Just not a short one. The signal
+needs forwarding by hand, the timeout needs its own controller, timed-out aborts must be
+distinguished from external cancellation, and the retry loop will be rewritten for the next
+endpoint.
+
+`TaskResult<E, A>` is a lazy async operation — nothing runs until called — with a typed error on
+the left and the result on the right. Retry, timeout, and cancellation are combinators:
+
+```ts
+import { TaskResult } from "@nlozgachev/pipelined/core";
+import { pipe } from "@nlozgachev/pipelined/composition";
+
+const fetchUser = (id: string): TaskResult<ApiError, User> =>
+  pipe(
+    TaskResult.tryCatch(
+      (signal) => fetch(`/users/${id}`, { signal }).then((r) => r.json()),
+      (e) => new ApiError(e),
+    ),
+    TaskResult.timeout(5000, () => new ApiError("timed out")),
+    TaskResult.retry({ attempts: 3, backoff: (n) => n * 1000 }),
+  );
+
+const result = await fetchUser("42")();
+// Result<ApiError, User> — never throws
+```
+
+Full guide: [Task — lazy async](/guides/task).
+
+## The four states of a data fetch — `RemoteData<E, A>`
+
+`isLoading: true` and `data: User | null` can technically both be set at the same time. Whether
+that has happened in your codebase is your business. The deeper problem is that some states have
+no name at all — "we haven't asked yet" is just `data: null` with `isLoading: false`, which is
+identical to "we asked and got nothing."
+
+`RemoteData<E, A>` has exactly four constructors: `NotAsked`, `Loading`, `Failure<E>`, and
+`Success<A>`. Pattern matching is exhaustive:
+
+```ts
+import { RemoteData } from "@nlozgachev/pipelined/core";
+
+RemoteData.match({
+  notAsked: () => renderPlaceholder(),
+  loading:  () => renderSpinner(),
+  failure:  (err) => renderError(err.message),
+  success:  (user) => renderProfile(user),
+})(userState);
+```
+
+Full guide: [RemoteData — loading states](/guides/remote-data).
+
+## What comes next
+
+The guides cover each type in depth — all operations, composition patterns, and when to use one
+type over another. If you already know the problem you're facing, go directly to the relevant guide.
+
+For the mechanics of building pipelines — `pipe`, `flow`, and the data-last convention that makes
+them work — start with [Thinking in pipelines](/getting-started/pipelines).

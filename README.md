@@ -1,6 +1,6 @@
 # pipelined
 
-[![npm](https://img.shields.io/npm/v/@nlozgachev/pipelined?style=for-the-badge&color=000&logo=npm&label&logoColor=fff)](https://www.npmjs.com/package/@nlozgachev/pipelined)[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/nlozgachev/pipelined/publish.yml?style=for-the-badge&color=000&logo=githubactions&label&logoColor=fff)](https://github.com/nlozgachev/pipelined/actions/workflows/publish.yml)[![Codecov](https://img.shields.io/codecov/c/github/nlozgachev/pipelined?style=for-the-badge&color=000&logo=codecov&label&logoColor=fff)](https://app.codecov.io/github/nlozgachev/pipelined)[![TypeScript](https://img.shields.io/badge/-0?style=for-the-badge&color=000&logo=typescript&label&logoColor=fff)](https://www.typescriptlang.org)
+[![npm](https://img.shields.io/npm/v/@nlozgachev/pipelined?style=for-the-badge&color=000&logo=npm&label&logoColor=fff)](https://www.npmjs.com/package/@nlozgachev/pipelined) [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/nlozgachev/pipelined/publish.yml?style=for-the-badge&color=000&logo=githubactions&label&logoColor=fff)](https://github.com/nlozgachev/pipelined/actions/workflows/publish.yml) [![Codecov](https://img.shields.io/codecov/c/github/nlozgachev/pipelined?style=for-the-badge&color=000&logo=codecov&label&logoColor=fff)](https://app.codecov.io/github/nlozgachev/pipelined) [![TypeScript](https://img.shields.io/badge/-0?style=for-the-badge&color=000&logo=typescript&label&logoColor=fff)](https://www.typescriptlang.org)
 
 Opinionated functional abstractions for TypeScript.
 
@@ -27,35 +27,35 @@ A careful, production-minded attempt at "fetch with retry, timeout, and cancella
 
 ```ts
 type UserResult =
-  | { ok: true; user: User }
-  | { ok: false; error: "Timeout" | "NetworkError" };
+	| { ok: true; user: User; }
+	| { ok: false; error: "Timeout" | "NetworkError"; };
 
 async function fetchUser(
-  id: string,
-  signal?: AbortSignal,
+	id: string,
+	signal?: AbortSignal,
 ): Promise<UserResult> {
-  async function attempt(n: number): Promise<UserResult> {
-    const controller = new AbortController();
-    const timerId = setTimeout(() => controller.abort(), 5000);
-    signal?.addEventListener("abort", () => controller.abort(), { once: true });
+	async function attempt(n: number): Promise<UserResult> {
+		const controller = new AbortController();
+		const timerId = setTimeout(() => controller.abort(), 5000);
+		signal?.addEventListener("abort", () => controller.abort(), { once: true });
 
-    try {
-      const res = await fetch(`/users/${id}`, { signal: controller.signal });
-      clearTimeout(timerId);
-      return { ok: true, user: await res.json() };
-    } catch (e) {
-      clearTimeout(timerId);
-      if ((e as Error).name === "AbortError" && !signal?.aborted) {
-        return { ok: false, error: "Timeout" };
-      }
-      if (n < 3) {
-        await new Promise((r) => setTimeout(r, n * 1000));
-        return attempt(n + 1);
-      }
-      return { ok: false, error: "NetworkError" };
-    }
-  }
-  return attempt(1);
+		try {
+			const res = await fetch(`/users/${id}`, { signal: controller.signal });
+			clearTimeout(timerId);
+			return { ok: true, user: await res.json() };
+		} catch (e) {
+			clearTimeout(timerId);
+			if ((e as Error).name === "AbortError" && !signal?.aborted) {
+				return { ok: false, error: "Timeout" };
+			}
+			if (n < 3) {
+				await new Promise((r) => setTimeout(r, n * 1000));
+				return attempt(n + 1);
+			}
+			return { ok: false, error: "NetworkError" };
+		}
+	}
+	return attempt(1);
 }
 ```
 
@@ -66,18 +66,18 @@ to thread the attempt count.
 With **pipelined**:
 
 ```ts
-import { TaskResult, Result } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Result, TaskResult } from "@nlozgachev/pipelined/core";
 
 const fetchUser = (id: string): TaskResult<ApiError, User> =>
-  pipe(
-    TaskResult.tryCatch(
-      (signal) => fetch(`/users/${id}`, { signal }).then((r) => r.json()),
-      (e) => new ApiError(e),
-    ),
-    TaskResult.timeout(5000, () => new ApiError("request timed out")),
-    TaskResult.retry({ attempts: 3, backoff: (n) => n * 1000 }),
-  );
+	pipe(
+		TaskResult.tryCatch(
+			(signal) => fetch(`/users/${id}`, { signal }).then((r) => r.json()),
+			(e) => new ApiError(e),
+		),
+		TaskResult.timeout(5000, () => new ApiError("request timed out")),
+		TaskResult.retry({ attempts: 3, backoff: (n) => n * 1000 }),
+	);
 ```
 
 `TaskResult<ApiError, User>` is a lazy function — nothing runs until called. The `AbortSignal`
@@ -89,9 +89,9 @@ const controller = new AbortController();
 const result = await fetchUser("42")(controller.signal);
 
 if (Result.isOk(result)) {
-  render(result.value); // User
+	render(result.value); // User
 } else {
-  showError(result.error); // ApiError, not unknown
+	showError(result.error); // ApiError, not unknown
 }
 ```
 
@@ -122,7 +122,6 @@ share a common environment. Every type follows the same conventions — `map`, `
 - **`Reader<R, A>`** — a computation that depends on an environment `R`, supplied once at the
   boundary.
 
-
 ### pipelined/utils
 
 Everyday utilities for built-in JS types.
@@ -148,9 +147,6 @@ have custom implementations that in several cases run faster than the native met
 
 - **`pipe`**, **`flow`**, **`compose`** — function composition.
 - **`curry`** / **`uncurry`**, **`tap`**, **`memoize`**, and other function utilities.
-
-
-
 
 ## License
 
