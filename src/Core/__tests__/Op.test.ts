@@ -948,6 +948,22 @@ test("Op.interpret once abort() resolves in-flight Deferred with AbortedNil", as
 	expect(await p).toEqual({ kind: "Nil", reason: "aborted" });
 });
 
+test("Op.interpret once abort() on idle manager does nothing", () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "once" });
+	expect(manager.state).toEqual({ kind: "Idle" });
+	manager.abort(); // state is Idle — no emit, no resolve to call
+	expect(manager.state).toEqual({ kind: "Idle" });
+});
+
+test("Op.interpret once subscribe after run started fires immediately with current state", async () => {
+	const manager = Op.interpret(delayedOp(50), { strategy: "once" });
+	manager.run(1);
+	const received: Op.State<string, number>[] = [];
+	manager.subscribe((s) => received.push(s));
+	expect(received[0]).toEqual({ kind: "Pending" }); // immediate callback: state is non-Idle
+	manager.abort();
+});
+
 // ---------------------------------------------------------------------------
 // Op.all and Op.race
 // ---------------------------------------------------------------------------
@@ -1011,6 +1027,16 @@ test("Op.interpret throttled abort() cancels in-flight and clears cooldown", asy
 	manager.abort();
 	expect(await p).toEqual({ kind: "Nil", reason: "aborted" });
 	expect(manager.state).toEqual({ kind: "Nil", reason: "aborted" });
+});
+
+test("Op.interpret throttled subscribe after run started fires immediately with current state", () => {
+	const manager = Op.interpret(delayedOp(50), { strategy: "throttled", ms: 0 });
+	manager.run(1);
+	const received: Op.State<string, number>[] = [];
+	manager.subscribe((s) => received.push(s));
+	// state is Pending — subscriber fires immediately
+	expect(received[0]).toEqual({ kind: "Pending" });
+	manager.abort();
 });
 
 // ---------------------------------------------------------------------------
@@ -1172,6 +1198,41 @@ test("Op.interpret keyed exclusive: abort() cancels all keys", async () => {
 	const [r1, r2] = await Promise.all([p1, p2]);
 	expect(r1).toEqual({ kind: "Nil", reason: "aborted" });
 	expect(r2).toEqual({ kind: "Nil", reason: "aborted" });
+});
+
+test("Op.interpret keyed exclusive: abort(key) for a key not currently active is a no-op", async () => {
+	const manager = Op.interpret(delayedOp(20), {
+		strategy: "keyed",
+		key: (n) => n,
+		perKey: "exclusive",
+	});
+	manager.abort(99); // key 99 has no active slot — no-op
+	const result = await manager.run(1);
+	expect(result).toEqual({ kind: "Ok", value: 1 });
+});
+
+test("Op.interpret keyed exclusive: abort() with no active keys is a no-op", () => {
+	const manager = Op.interpret(delayedOp(), {
+		strategy: "keyed",
+		key: (n) => n,
+		perKey: "exclusive",
+	});
+	manager.abort(); // no active keys — no emit, no resolves
+	expect(manager.state.size).toBe(0);
+});
+
+test("Op.interpret keyed exclusive: subscribe after run started fires immediately with snapshot", async () => {
+	const manager = Op.interpret(delayedOp(50), {
+		strategy: "keyed",
+		key: (n) => n,
+		perKey: "exclusive",
+	});
+	manager.run(1);
+	const received: ReadonlyMap<number, Op.KeyedExclusivePerKey<string, number>>[] = [];
+	manager.subscribe((map) => received.push(map));
+	// stateMap.size > 0 — subscriber fires immediately with current snapshot
+	expect(received[0]?.get(1)).toEqual({ kind: "Pending" });
+	manager.abort();
 });
 
 test("Op.interpret keyed exclusive: state map keeps terminal state after completion", async () => {
@@ -1520,4 +1581,359 @@ test("Op.interpret queue with overflow: replace-last and dedupe produces Dropped
 	expect(await p1).toEqual({ kind: "Ok", value: 1 });
 	expect(await p3).toEqual({ kind: "Ok", value: 10 });
 	expect(await p5).toEqual({ kind: "Ok", value: 30 });
+});
+
+// ---------------------------------------------------------------------------
+// Op.interpret — retry with queue, buffered, debounced, throttled, concurrent
+// ---------------------------------------------------------------------------
+
+test("Op.interpret queue with retry emits Retrying states between attempts", async () => {
+	let calls = 0;
+	const op = Op.create(
+		(_: number) => {
+			calls++;
+			return Promise.reject(new Error("fail"));
+		},
+		(e) => (e as Error).message,
+	);
+	const manager = Op.interpret(op, { strategy: "queue", retry: { attempts: 3 } });
+	const states = await runAndCollect(manager, 1);
+	expect(calls).toBe(3);
+	expect(states[0]).toEqual({ kind: "Pending" });
+	expect(states[1]).toEqual({ kind: "Retrying", attempt: 1, lastError: "fail" });
+	expect(states[2]).toEqual({ kind: "Retrying", attempt: 2, lastError: "fail" });
+	expect(states[3]).toEqual({ kind: "Err", error: "fail" });
+});
+
+test("Op.interpret buffered with retry emits Retrying states between attempts", async () => {
+	let calls = 0;
+	const op = Op.create(
+		(_: number) => {
+			calls++;
+			return Promise.reject(new Error("fail"));
+		},
+		(e) => (e as Error).message,
+	);
+	const manager = Op.interpret(op, { strategy: "buffered", retry: { attempts: 3 } });
+	const states = await runAndCollect(manager, 1);
+	expect(calls).toBe(3);
+	expect(states[0]).toEqual({ kind: "Pending" });
+	expect(states[1]).toEqual({ kind: "Retrying", attempt: 1, lastError: "fail" });
+	expect(states[2]).toEqual({ kind: "Retrying", attempt: 2, lastError: "fail" });
+	expect(states[3]).toEqual({ kind: "Err", error: "fail" });
+});
+
+test("Op.interpret debounced leading with retry emits Retrying states between attempts", async () => {
+	let calls = 0;
+	const op = Op.create(
+		(_: number) => {
+			calls++;
+			return Promise.reject(new Error("fail"));
+		},
+		(e) => (e as Error).message,
+	);
+	const manager = Op.interpret(op, { strategy: "debounced", ms: 0, leading: true, retry: { attempts: 3 } });
+	const states = await runAndCollect(manager, 1);
+	expect(calls).toBe(3);
+	expect(states[0]).toEqual({ kind: "Pending" });
+	expect(states[1]).toEqual({ kind: "Retrying", attempt: 1, lastError: "fail" });
+	expect(states[2]).toEqual({ kind: "Retrying", attempt: 2, lastError: "fail" });
+	expect(states[3]).toEqual({ kind: "Err", error: "fail" });
+});
+
+test("Op.interpret debounced trailing with retry emits Retrying states between attempts", async () => {
+	let calls = 0;
+	const op = Op.create(
+		(_: number) => {
+			calls++;
+			return Promise.reject(new Error("fail"));
+		},
+		(e) => (e as Error).message,
+	);
+	const manager = Op.interpret(op, { strategy: "debounced", ms: 10, retry: { attempts: 3 } });
+	const states = await runAndCollect(manager, 1);
+	expect(calls).toBe(3);
+	expect(states[0]).toEqual({ kind: "Pending" });
+	expect(states[1]).toEqual({ kind: "Retrying", attempt: 1, lastError: "fail" });
+	expect(states[2]).toEqual({ kind: "Retrying", attempt: 2, lastError: "fail" });
+	expect(states[3]).toEqual({ kind: "Err", error: "fail" });
+});
+
+test("Op.interpret throttled with retry emits Retrying states between attempts", async () => {
+	let calls = 0;
+	const op = Op.create(
+		(_: number) => {
+			calls++;
+			return Promise.reject(new Error("fail"));
+		},
+		(e) => (e as Error).message,
+	);
+	const manager = Op.interpret(op, { strategy: "throttled", ms: 0, retry: { attempts: 3 } });
+	const states = await runAndCollect(manager, 1);
+	expect(calls).toBe(3);
+	expect(states[0]).toEqual({ kind: "Pending" });
+	expect(states[1]).toEqual({ kind: "Retrying", attempt: 1, lastError: "fail" });
+	expect(states[2]).toEqual({ kind: "Retrying", attempt: 2, lastError: "fail" });
+	expect(states[3]).toEqual({ kind: "Err", error: "fail" });
+});
+
+test("Op.interpret concurrent with retry emits Retrying states between attempts", async () => {
+	let calls = 0;
+	const op = Op.create(
+		(_: number) => {
+			calls++;
+			return Promise.reject(new Error("fail"));
+		},
+		(e) => (e as Error).message,
+	);
+	const manager = Op.interpret(op, { strategy: "concurrent", n: 1, overflow: "drop", retry: { attempts: 3 } });
+	const states = await runAndCollect(manager, 1);
+	expect(calls).toBe(3);
+	expect(states[0]).toEqual({ kind: "Pending" });
+	expect(states[1]).toEqual({ kind: "Retrying", attempt: 1, lastError: "fail" });
+	expect(states[2]).toEqual({ kind: "Retrying", attempt: 2, lastError: "fail" });
+	expect(states[3]).toEqual({ kind: "Err", error: "fail" });
+});
+
+// ---------------------------------------------------------------------------
+// Op.interpret — manager.state getter for exclusive and concurrent
+// ---------------------------------------------------------------------------
+
+test("Op.interpret exclusive manager.state returns current state", async () => {
+	const manager = Op.interpret(delayedOp(20), { strategy: "exclusive" });
+	expect(manager.state).toEqual({ kind: "Idle" });
+	const p = manager.run(1);
+	expect(manager.state).toEqual({ kind: "Pending" });
+	await p;
+	expect(manager.state).toEqual({ kind: "Ok", value: 1 });
+});
+
+test("Op.interpret concurrent manager.state returns current state", async () => {
+	const manager = Op.interpret(delayedOp(20), { strategy: "concurrent", n: 1, overflow: "drop" });
+	expect(manager.state).toEqual({ kind: "Idle" });
+	const p = manager.run(1);
+	expect(manager.state).toEqual({ kind: "Pending" });
+	await p;
+	expect(manager.state).toEqual({ kind: "Ok", value: 1 });
+});
+
+test("Op.interpret concurrent abort() on idle manager does nothing", () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "concurrent", n: 2, overflow: "drop" });
+	expect(manager.state).toEqual({ kind: "Idle" });
+	manager.abort(); // no in-flight ops — no emit
+	expect(manager.state).toEqual({ kind: "Idle" });
+});
+
+test("Op.interpret concurrent subscribe after run started fires immediately with current state", async () => {
+	const manager = Op.interpret(delayedOp(50), { strategy: "concurrent", n: 1, overflow: "drop" });
+	manager.run(1);
+	const received: Op.State<string, number>[] = [];
+	manager.subscribe((s) => received.push(s));
+	// state is Pending — subscriber fires immediately
+	expect(received[0]).toEqual({ kind: "Pending" });
+	manager.abort();
+});
+
+// ---------------------------------------------------------------------------
+// Op.interpret — default parameter values (Op.ts branch coverage)
+// ---------------------------------------------------------------------------
+
+test("Op.interpret debounced without ms or leading uses ms=0 and leading=false defaults", async () => {
+	// Exercises options.ms ?? 0 and options.leading ?? false in the interpret switch
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const manager = Op.interpret(delayedOp(), { strategy: "debounced" } as any);
+	expect(await manager.run(42)).toEqual({ kind: "Ok", value: 42 });
+});
+
+test("Op.interpret throttled without ms or trailing uses ms=0 and trailing=false defaults", async () => {
+	// Exercises options.ms ?? 0 and options.trailing ?? false in the interpret switch
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const manager = Op.interpret(delayedOp(), { strategy: "throttled" } as any);
+	expect(await manager.run(42)).toEqual({ kind: "Ok", value: 42 });
+});
+
+test("Op.interpret concurrent without n or overflow uses n=1 and overflow=drop defaults", async () => {
+	// Exercises options.n ?? 1 and options.overflow ?? "drop" in the interpret switch
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const manager = Op.interpret(delayedOp(20), { strategy: "concurrent" } as any);
+	const p1 = manager.run(1); // fills the single slot (n=1 default)
+	const p2 = manager.run(2); // dropped — overflow=drop default
+	expect(await p2).toEqual({ kind: "Nil", reason: "dropped" });
+	expect(await p1).toEqual({ kind: "Ok", value: 1 });
+});
+
+test("Op.interpret keyed without key or perKey uses identity key and exclusive defaults", async () => {
+	// Exercises options.key ?? identity and options.perKey ?? "exclusive" in the interpret switch
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const manager = Op.interpret(delayedOp(20), { strategy: "keyed" } as any);
+	const p1 = manager.run(1);
+	const p2 = manager.run(1); // identity key → same key → exclusive drops
+	expect(await p2).toEqual({ kind: "Nil", reason: "dropped" });
+	expect(await p1).toEqual({ kind: "Ok", value: 1 });
+});
+
+// ---------------------------------------------------------------------------
+// runWithRetry — numeric backoff (lines 56, 70-73)
+// ---------------------------------------------------------------------------
+
+test("Op.interpret restartable with numeric backoff emits Retrying with nextRetryIn", async () => {
+	// Covers the `backoff` as a plain number branch (line 56) and the ms>0 nextRetryIn path (lines 70-73)
+	let calls = 0;
+	const op = Op.create(
+		(_: number) => {
+			calls++;
+			return Promise.reject(new Error("fail"));
+		},
+		(e) => (e as Error).message,
+	);
+	const manager = Op.interpret(op, { strategy: "restartable", retry: { attempts: 3, backoff: 50 } });
+	const states = await runAndCollect(manager, 1);
+	expect(calls).toBe(3);
+	expect(states[1]).toEqual({ kind: "Retrying", attempt: 1, lastError: "fail", nextRetryIn: 50 });
+	expect(states[2]).toEqual({ kind: "Retrying", attempt: 2, lastError: "fail", nextRetryIn: 50 });
+	expect(states.at(-1)).toEqual({ kind: "Err", error: "fail" });
+});
+
+test("Op.interpret exclusive with numeric backoff emits Retrying with nextRetryIn", async () => {
+	let calls = 0;
+	const op = Op.create(
+		(_: number) => {
+			calls++;
+			return Promise.reject(new Error("fail"));
+		},
+		(e) => (e as Error).message,
+	);
+	const manager = Op.interpret(op, { strategy: "exclusive", retry: { attempts: 3, backoff: 50 } });
+	const states = await runAndCollect(manager, 1);
+	expect(calls).toBe(3);
+	expect(states[1]).toEqual({ kind: "Retrying", attempt: 1, lastError: "fail", nextRetryIn: 50 });
+});
+
+// ---------------------------------------------------------------------------
+// abort() on idle manager — false branch of `if (currentState.kind !== "Idle")`
+// ---------------------------------------------------------------------------
+
+test("Op.interpret restartable abort() on idle manager is a no-op", () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "restartable" });
+	expect(manager.state).toEqual({ kind: "Idle" });
+	manager.abort();
+	expect(manager.state).toEqual({ kind: "Idle" });
+});
+
+test("Op.interpret exclusive abort() on idle manager is a no-op", () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "exclusive" });
+	expect(manager.state).toEqual({ kind: "Idle" });
+	manager.abort();
+	expect(manager.state).toEqual({ kind: "Idle" });
+});
+
+test("Op.interpret queue abort() on idle manager is a no-op", () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "queue" });
+	expect(manager.state).toEqual({ kind: "Idle" });
+	manager.abort();
+	expect(manager.state).toEqual({ kind: "Idle" });
+});
+
+test("Op.interpret buffered abort() on idle manager is a no-op", () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "buffered" });
+	expect(manager.state).toEqual({ kind: "Idle" });
+	manager.abort();
+	expect(manager.state).toEqual({ kind: "Idle" });
+});
+
+test("Op.interpret debounced abort() on idle manager is a no-op", () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "debounced", ms: 50 });
+	expect(manager.state).toEqual({ kind: "Idle" });
+	manager.abort();
+	expect(manager.state).toEqual({ kind: "Idle" });
+});
+
+test("Op.interpret throttled abort() on idle manager is a no-op", () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "throttled", ms: 50 });
+	expect(manager.state).toEqual({ kind: "Idle" });
+	manager.abort();
+	expect(manager.state).toEqual({ kind: "Idle" });
+});
+
+// ---------------------------------------------------------------------------
+// manager.state getter and subscribe initial-callback for queue, buffered,
+// debounced, throttled (ensures get state() and the non-Idle subscribe path)
+// ---------------------------------------------------------------------------
+
+test("Op.interpret queue manager.state returns current state", async () => {
+	const manager = Op.interpret(delayedOp(20), { strategy: "queue" });
+	expect(manager.state).toEqual({ kind: "Idle" });
+	const p = manager.run(1);
+	expect(manager.state).toEqual({ kind: "Pending" });
+	await p;
+	expect(manager.state).toEqual({ kind: "Ok", value: 1 });
+});
+
+test("Op.interpret queue subscribe after run started fires immediately with current state", () => {
+	const manager = Op.interpret(delayedOp(50), { strategy: "queue" });
+	manager.run(1);
+	const received: Op.State<string, number>[] = [];
+	manager.subscribe((s) => received.push(s));
+	expect(received[0]).toEqual({ kind: "Pending" });
+	manager.abort();
+});
+
+test("Op.interpret buffered manager.state returns current state", async () => {
+	const manager = Op.interpret(delayedOp(20), { strategy: "buffered" });
+	expect(manager.state).toEqual({ kind: "Idle" });
+	const p = manager.run(1);
+	expect(manager.state).toEqual({ kind: "Pending" });
+	await p;
+	expect(manager.state).toEqual({ kind: "Ok", value: 1 });
+});
+
+test("Op.interpret buffered subscribe after run started fires immediately with current state", () => {
+	const manager = Op.interpret(delayedOp(50), { strategy: "buffered" });
+	manager.run(1);
+	const received: Op.State<string, number>[] = [];
+	manager.subscribe((s) => received.push(s));
+	expect(received[0]).toEqual({ kind: "Pending" });
+	manager.abort();
+});
+
+test("Op.interpret debounced manager.state returns current state after timer fires", async () => {
+	const manager = Op.interpret(delayedOp(20), { strategy: "debounced", ms: 10 });
+	expect(manager.state).toEqual({ kind: "Idle" });
+	const p = manager.run(1);
+	await new Promise((r) => setTimeout(r, 15)); // wait for debounce to fire
+	expect(manager.state).toEqual({ kind: "Pending" });
+	await p;
+	expect(manager.state).toEqual({ kind: "Ok", value: 1 });
+});
+
+test("Op.interpret debounced subscribe after op starts fires immediately with current state", async () => {
+	const manager = Op.interpret(delayedOp(50), { strategy: "debounced", ms: 10 });
+	manager.run(1);
+	await new Promise((r) => setTimeout(r, 15)); // wait for debounce timer to fire
+	const received: Op.State<string, number>[] = [];
+	manager.subscribe((s) => received.push(s));
+	expect(received[0]).toEqual({ kind: "Pending" });
+	manager.abort();
+});
+
+test("Op.interpret throttled manager.state returns current state", async () => {
+	const manager = Op.interpret(delayedOp(20), { strategy: "throttled", ms: 0 });
+	expect(manager.state).toEqual({ kind: "Idle" });
+	const p = manager.run(1);
+	expect(manager.state).toEqual({ kind: "Pending" });
+	await p;
+	expect(manager.state).toEqual({ kind: "Ok", value: 1 });
+});
+
+// ---------------------------------------------------------------------------
+// Debounced with leading=true: abort() while leading execution is in-flight
+// ---------------------------------------------------------------------------
+
+test("Op.interpret debounced leading abort() while in-flight resolves with AbortedNil", async () => {
+	// Covers line 560: `if (leadingController !== controller) return` true branch in fireLeading.then()
+	const manager = Op.interpret(delayedOp(100), { strategy: "debounced", ms: 0, leading: true });
+	const p = manager.run(1); // fires immediately (leading)
+	// leading is in-flight; now abort while it runs
+	manager.abort();
+	expect(await p).toEqual({ kind: "Nil", reason: "aborted" });
 });
