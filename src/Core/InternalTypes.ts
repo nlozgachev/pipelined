@@ -33,18 +33,18 @@ export type TimeoutOptions<E> = {
 
 // Cross-cutting option wrappers
 
-export type WithRetry<E>   = { readonly retry: RetryOptions<E>; };
+export type WithRetry<E> = { readonly retry: RetryOptions<E>; };
 export type WithTimeout<E> = { readonly timeout?: TimeoutOptions<E>; };
 
 // Throttled / debounced options
 
-export type WithMs       = { readonly ms: number; };
+export type WithMs = { readonly ms: number; };
 /** For `throttled`: also fire on the trailing edge after the cooldown. */
 export type WithTrailing = { readonly trailing: true; };
 /** For `debounced`: also fire on the leading edge (first call). */
-export type WithLeading  = { readonly leading: true; };
+export type WithLeading = { readonly leading: true; };
 /** For `debounced`: maximum ms before the trailing call fires regardless of continued activity. */
-export type WithMaxWait  = { readonly maxWait: number; };
+export type WithMaxWait = { readonly maxWait: number; };
 
 // Concurrent options
 
@@ -61,9 +61,9 @@ export type WithOverflow<O extends string> = { readonly overflow: O; };
 
 // Queue options
 
-export type WithMaxSize    = { readonly maxSize: number; };
+export type WithMaxSize = { readonly maxSize: number; };
 export type WithConcurrency = { readonly concurrency?: number; };
-export type WithDedupe<I>  = { readonly dedupe: (a: I, b: I) => boolean; };
+export type WithDedupe<I> = { readonly dedupe: (a: I, b: I) => boolean; };
 
 // Buffered options
 
@@ -79,5 +79,5 @@ export type WithMinInterval = { readonly minInterval?: number; };
 
 // Keyed options (formalising existing inline fields)
 
-export type WithKey<I, K>               = { readonly key: (input: I) => K; };
+export type WithKey<I, K> = { readonly key: (input: I) => K; };
 export type WithPerKey<S extends string> = { readonly perKey: S; };

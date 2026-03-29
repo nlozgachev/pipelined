@@ -261,15 +261,48 @@ export namespace Op {
 	/** States reachable by a `queue` manager with `overflow:"drop"` or `dedupe` (no retry). */
 	export type QueueDropState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil | DroppedNil;
 	/** States reachable by a `queue` manager with `overflow:"drop"` or `dedupe`, with retry. */
-	export type RetryableQueueDropState<E, A> = Idle | Pending | Queued | Retrying<E> | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type RetryableQueueDropState<E, A> =
+		| Idle
+		| Pending
+		| Queued
+		| Retrying<E>
+		| Ok<A>
+		| Err<E>
+		| AbortedNil
+		| DroppedNil;
 	/** States reachable by a `queue` manager with `overflow:"replace-last"` and no `dedupe` (no retry). */
 	export type QueueReplaceState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil | EvictedNil;
 	/** States reachable by a `queue` manager with `overflow:"replace-last"` and no `dedupe`, with retry. */
-	export type RetryableQueueReplaceState<E, A> = Idle | Pending | Queued | Retrying<E> | Ok<A> | Err<E> | AbortedNil | EvictedNil;
+	export type RetryableQueueReplaceState<E, A> =
+		| Idle
+		| Pending
+		| Queued
+		| Retrying<E>
+		| Ok<A>
+		| Err<E>
+		| AbortedNil
+		| EvictedNil;
 	/** States reachable by a `queue` manager with `overflow:"replace-last"` AND `dedupe` (no retry). */
-	export type QueueDropAndReplaceState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil | DroppedNil | EvictedNil;
+	export type QueueDropAndReplaceState<E, A> =
+		| Idle
+		| Pending
+		| Queued
+		| Ok<A>
+		| Err<E>
+		| AbortedNil
+		| DroppedNil
+		| EvictedNil;
 	/** States reachable by a `queue` manager with `overflow:"replace-last"` AND `dedupe`, with retry. */
-	export type RetryableQueueDropAndReplaceState<E, A> = Idle | Pending | Queued | Retrying<E> | Ok<A> | Err<E> | AbortedNil | DroppedNil | EvictedNil;
+	export type RetryableQueueDropAndReplaceState<E, A> =
+		| Idle
+		| Pending
+		| Queued
+		| Retrying<E>
+		| Ok<A>
+		| Err<E>
+		| AbortedNil
+		| DroppedNil
+		| EvictedNil;
 	/** States reachable by a `buffered` manager (no retry). */
 	export type BufferedState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil | EvictedNil;
 	/** States reachable by a `buffered` manager with retry configured. */
@@ -766,16 +799,35 @@ export namespace Op {
 	// queue — overflow:"replace-last" + dedupe (most specific first)
 	export function interpret<I, E, A>(
 		op: Op<I, E, A>,
-		options: { strategy: "queue"; } & WithMaxSize & WithOverflow<"replace-last"> & WithDedupe<I> & WithRetry<E> & WithConcurrency & WithTimeout<E>,
+		options:
+			& { strategy: "queue"; }
+			& WithMaxSize
+			& WithOverflow<"replace-last">
+			& WithDedupe<I>
+			& WithRetry<E>
+			& WithConcurrency
+			& WithTimeout<E>,
 	): Manager<I, E, A, RetryableQueueDropAndReplaceState<E, A>>;
 	export function interpret<I, E, A>(
 		op: Op<I, E, A>,
-		options: { strategy: "queue"; } & WithMaxSize & WithOverflow<"replace-last"> & WithDedupe<I> & WithConcurrency & WithTimeout<E>,
+		options:
+			& { strategy: "queue"; }
+			& WithMaxSize
+			& WithOverflow<"replace-last">
+			& WithDedupe<I>
+			& WithConcurrency
+			& WithTimeout<E>,
 	): Manager<I, E, A, QueueDropAndReplaceState<E, A>>;
 	// queue — overflow:"replace-last" without dedupe
 	export function interpret<I, E, A>(
 		op: Op<I, E, A>,
-		options: { strategy: "queue"; } & WithMaxSize & WithOverflow<"replace-last"> & WithRetry<E> & WithConcurrency & WithTimeout<E>,
+		options:
+			& { strategy: "queue"; }
+			& WithMaxSize
+			& WithOverflow<"replace-last">
+			& WithRetry<E>
+			& WithConcurrency
+			& WithTimeout<E>,
 	): Manager<I, E, A, RetryableQueueReplaceState<E, A>>;
 	export function interpret<I, E, A>(
 		op: Op<I, E, A>,
@@ -865,7 +917,13 @@ export namespace Op {
 			case "throttled":
 				return makeThrottled(op, options.ms ?? 0, options.trailing ?? false, retryOptions, timeoutOptions);
 			case "concurrent":
-				return makeConcurrent(op, options.n ?? 1, options.overflow as "queue" | "drop" ?? "drop", retryOptions, timeoutOptions);
+				return makeConcurrent(
+					op,
+					options.n ?? 1,
+					options.overflow as "queue" | "drop" ?? "drop",
+					retryOptions,
+					timeoutOptions,
+				);
 			case "keyed":
 				return makeKeyed(op, options.key ?? ((i: I) => i), options.perKey ?? "exclusive", timeoutOptions);
 		}

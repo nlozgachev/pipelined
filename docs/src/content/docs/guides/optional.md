@@ -137,6 +137,10 @@ pipe(profile, Optional.modify(bioOpt)(s => s.trim()));
 // trims the bio if present, returns profile unchanged if absent
 ```
 
+One thing to watch out for: `Optional.set` on an absent optional field _inserts_ the value — it
+doesn't skip the write just because the field wasn't there. If you want to update only when the
+field already exists, use `modify` instead.
+
 ## Composing paths
 
 `Optional.andThen` extends a path by another optional step. If either step finds nothing, the

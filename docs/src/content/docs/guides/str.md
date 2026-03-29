@@ -93,6 +93,9 @@ Str.parse.float("3.14"); // Some(3.14)
 Str.parse.float("abc"); // None
 ```
 
+`Str.parse.int("3.7")` returns `Some(3)` — it truncates like `parseInt`, not like `parseFloat`.
+If you need the decimal, use `Str.parse.float`.
+
 This integrates with the `Maybe` API for safe fallback handling:
 
 ```ts

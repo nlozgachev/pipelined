@@ -311,7 +311,7 @@ export const makeQueue = <I, E, A>(
 	let currentState: Op.State<E, A> = _idle;
 	let generation = 0;
 	let inFlight = 0;
-	const queue: Array<{ input: I; resolve: (o: Op.Outcome<E, A>) => void }> = [];
+	const queue: Array<{ input: I; resolve: (o: Op.Outcome<E, A>) => void; }> = [];
 	const inflightControllers = new Set<AbortController>();
 	const inflightResolvers: Array<(o: Op.Outcome<E, A>) => void> = [];
 	const subscribers = new Set<(state: Op.State<E, A>) => void>();
@@ -362,6 +362,7 @@ export const makeQueue = <I, E, A>(
 		if (dedupe !== undefined) {
 			const idx = queue.findIndex((item) => dedupe(input, item.input));
 			if (idx !== -1) {
+				// oxlint-disable-next-line prefer-destructuring
 				const dup = queue.splice(idx, 1)[0];
 				dup.resolve(_droppedNil);
 			}
@@ -438,7 +439,7 @@ export const makeBuffered = <I, E, A>(
 	let currentState: Op.State<E, A> = _idle;
 	let currentController: AbortController | undefined;
 	let currentResolve: ((o: Op.Outcome<E, A>) => void) | undefined;
-	const buffer: Array<{ input: I; resolve: (o: Op.Outcome<E, A>) => void }> = [];
+	const buffer: Array<{ input: I; resolve: (o: Op.Outcome<E, A>) => void; }> = [];
 	const subscribers = new Set<(state: Op.State<E, A>) => void>();
 
 	const emit = (state: Op.State<E, A>): void => {
@@ -790,7 +791,7 @@ export const makeConcurrent = <I, E, A>(
 	let generation = 0;
 	const controllers = new Set<AbortController>();
 	const inflightResolvers: Array<(o: Op.Outcome<E, A>) => void> = [];
-	const overflowQueue: Array<{ input: I; resolve: (o: Op.Outcome<E, A>) => void }> = [];
+	const overflowQueue: Array<{ input: I; resolve: (o: Op.Outcome<E, A>) => void; }> = [];
 	const subscribers = new Set<(state: Op.State<E, A>) => void>();
 
 	const emit = (state: Op.State<E, A>): void => {
@@ -889,7 +890,7 @@ export const makeKeyed = <I, K, E, A>(
 ): Op.KeyedManager<I, K, E, Op.KeyedExclusivePerKey<E, A> | Op.KeyedRestartablePerKey<E, A>> => {
 	type PerKeyS = Op.KeyedExclusivePerKey<E, A> | Op.KeyedRestartablePerKey<E, A>;
 	const stateMap = new Map<K, PerKeyS>();
-	const slots = new Map<K, { controller: AbortController; resolve: (o: Op.Outcome<E, A>) => void }>();
+	const slots = new Map<K, { controller: AbortController; resolve: (o: Op.Outcome<E, A>) => void; }>();
 	const subscribers = new Set<(state: ReadonlyMap<K, PerKeyS>) => void>();
 
 	const emitSnapshot = (): void => {

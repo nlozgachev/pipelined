@@ -47,7 +47,12 @@ export namespace Rec {
 			const vals = Object.values(data);
 			const result: Record<string, B> = {};
 			for (let i = 0; i < keys.length; i++) {
-				Object.defineProperty(result, keys[i], { value: f(keys[i], vals[i]), writable: true, enumerable: true, configurable: true });
+				Object.defineProperty(result, keys[i], {
+					value: f(keys[i], vals[i]),
+					writable: true,
+					enumerable: true,
+					configurable: true,
+				});
 			}
 			return result;
 		};
@@ -64,7 +69,9 @@ export namespace Rec {
 		<A>(predicate: (a: A) => boolean) => (data: Readonly<Record<string, A>>): Readonly<Record<string, A>> => {
 			const result: Record<string, A> = {};
 			for (const [k, v] of Object.entries(data)) {
-				if (predicate(v)) Object.defineProperty(result, k, { value: v, writable: true, enumerable: true, configurable: true });
+				if (predicate(v)) {
+					Object.defineProperty(result, k, { value: v, writable: true, enumerable: true, configurable: true });
+				}
 			}
 			return result;
 		};
@@ -84,7 +91,9 @@ export namespace Rec {
 	): Readonly<Record<string, A>> => {
 		const result: Record<string, A> = {};
 		for (const [k, v] of Object.entries(data)) {
-			if (predicate(k, v)) Object.defineProperty(result, k, { value: v, writable: true, enumerable: true, configurable: true });
+			if (predicate(k, v)) {
+				Object.defineProperty(result, k, { value: v, writable: true, enumerable: true, configurable: true });
+			}
 		}
 		return result;
 	};
@@ -200,7 +209,12 @@ export namespace Rec {
 		const result = {} as Record<string, unknown>;
 		for (const key of Object.keys(data)) {
 			if (!omitSet.has(key)) {
-				Object.defineProperty(result, key, { value: (data as Record<string, unknown>)[key], writable: true, enumerable: true, configurable: true });
+				Object.defineProperty(result, key, {
+					value: (data as Record<string, unknown>)[key],
+					writable: true,
+					enumerable: true,
+					configurable: true,
+				});
 			}
 		}
 		return result as Omit<A, K>;
@@ -264,7 +278,9 @@ export namespace Rec {
 	): Readonly<Record<string, A>> => {
 		const result: Record<string, A> = {};
 		for (const [k, v] of Object.entries(data)) {
-			if (v.kind === "Some") Object.defineProperty(result, k, { value: v.value, writable: true, enumerable: true, configurable: true });
+			if (v.kind === "Some") {
+				Object.defineProperty(result, k, { value: v.value, writable: true, enumerable: true, configurable: true });
+			}
 		}
 		return result;
 	};

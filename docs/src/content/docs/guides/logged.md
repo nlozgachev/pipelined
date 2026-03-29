@@ -37,13 +37,13 @@ every signature.
 
 ## What a Logged is
 
+Each step can append entries to the log as it computes its value. The entries concatenate in order,
+and the log is just data — no console output, no side effects. You decide what to do with it at the
+edge of the program:
+
 ```ts
 type Logged<W, A> = { readonly value: A; readonly log: ReadonlyArray<W>; };
 ```
-
-A `Logged<W, A>` is a plain data structure — a value of type `A` paired with an ordered sequence
-of log entries of type `W`. There are no side effects, no mutation, no console output. The log is
-just data that you inspect or emit at the edge of your program.
 
 ## Creating a Logged value
 
@@ -60,6 +60,9 @@ const start: Logged<string, number> = Logged.make(0);
 const entry: Logged<string, undefined> = Logged.tell("processing started");
 // { value: undefined, log: ["processing started"] }
 ```
+
+The log entries accumulate left-to-right in the same order the steps execute. If you log from
+parallel branches, the order between branches is not defined.
 
 ## Transforming with `map`
 

@@ -211,7 +211,8 @@ isShortString("a very long string that exceeds the limit"); // false — too lon
 
 This is a one-way conversion: once you have a `Predicate`, the narrowing information is gone. If
 you need the narrowed type downstream, keep the value as a `Refinement` and use
-`Refinement.toFilter` or `Refinement.toResult` instead.
+`Refinement.toFilter` or `Refinement.toResult` instead. A common mistake is converting too early
+and then casting (`x as string`) to get back the type information you just discarded.
 
 ## When to use Predicate
 

@@ -106,7 +106,7 @@ pipe(These.first(5), These.chainSecond(shout)); // First(5)
 
 ## Extracting values
 
-**`match`** — handle all three cases:
+**`match`** — handle all three cases. `fold` is the positional form if you'd rather not name them:
 
 ```ts
 pipe(
@@ -116,19 +116,6 @@ pipe(
 		second: (note) => `Second: ${note}`,
 		both: (value, note) => `Both — ${value} / ${note}`,
 	}),
-);
-```
-
-**`fold`** — same with positional arguments:
-
-```ts
-pipe(
-	result,
-	These.fold(
-		(value) => `First: ${value}`,
-		(note) => `Second: ${note}`,
-		(value, note) => `Both: ${value} / ${note}`,
-	),
 );
 ```
 
@@ -192,4 +179,9 @@ Use `These` when:
 
 `These` is the less commonly reached-for type in the family. When you find yourself wanting to
 carry two independent pieces of data where any combination is possible, that's the signal to
-reach for it.
+reach for it. If you're unsure whether you need it, you probably don't — reach for `Result` or
+`Maybe` first and only switch to `These` when one of those would lose information you need to keep.
+
+One thing to watch out for: `chainFirst` on a `Both` does not carry the second value forward — the
+result of `f` is returned directly. If you need the second value preserved through a chain, `Both`
+is not a transparent container for it.

@@ -140,6 +140,7 @@ twice.
 
 Not sure which strategy to pick? Four questions narrow it down:
 
+- **One-shot**, runs exactly once → `once`
 - **Multiple independent keys** (one slot per user, per row, per ID)? → `keyed`
 - **Multiple simultaneous operations** at once? → `concurrent`
 - **One at a time** — what happens when a new call arrives while busy?
@@ -150,7 +151,6 @@ Not sure which strategy to pick? Four questions narrow it down:
 - **Delay or rate-limit calls?**
   - Wait for quiet before starting → `debounced`
   - Fire now, then enforce a cooldown → `throttled`
-- **One-shot**, runs exactly once → `once`
 
 If you're unsure, start with `restartable` for user input and `exclusive` for actions.
 

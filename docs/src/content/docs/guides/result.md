@@ -158,7 +158,8 @@ pipe(Result.err("oops"), Result.getOrElse(() => 0)); // 0
 pipe(Result.err("oops"), Result.getOrElse(() => null)); // null — typed as number | null
 ```
 
-**`match`** — handle each case explicitly:
+**`match`** — handle each case explicitly. `fold` is the positional form of the same thing — error
+handler first, success handler second — useful when you'd rather not name the cases:
 
 ```ts
 pipe(
@@ -167,19 +168,6 @@ pipe(
 		ok: (value) => `Success: ${value}`,
 		err: (error) => `Failed: ${error}`,
 	}),
-);
-```
-
-**`fold`** — same as `match` but with positional arguments (error handler first, success handler
-second):
-
-```ts
-pipe(
-	result,
-	Result.fold(
-		(error) => `Failed: ${error}`,
-		(value) => `Success: ${value}`,
-	),
 );
 ```
 
@@ -220,6 +208,10 @@ Result.toMaybe(Result.err("oops")); // None
 ```
 
 The error is discarded. Use this at boundaries where you want to fall back to `Maybe`-based logic.
+
+One thing to watch out for: errors don't accumulate in a `Result` chain — if `validateName` and
+`validateEmail` both fail, you'll only see the first. For collecting all failures at once, use
+`Validation` instead.
 
 ## When to use Result vs try/catch
 

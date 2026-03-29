@@ -38,8 +38,7 @@ const arbNilOutcome = fc
 const arbOutcome = fc.oneof(arbOkOutcome, arbErrOutcome, arbNilOutcome);
 
 /** Already-resolved Deferred wrapping an outcome value. */
-const settled = <E, A>(o: Op.Outcome<E, A>): Deferred<Op.Outcome<E, A>> =>
-	Deferred.fromPromise(Promise.resolve(o));
+const settled = <E, A>(o: Op.Outcome<E, A>): Deferred<Op.Outcome<E, A>> => Deferred.fromPromise(Promise.resolve(o));
 
 // ---------------------------------------------------------------------------
 // Pure outcome combinators — algebraic laws
@@ -74,10 +73,8 @@ test("Op.chain — short-circuits on Err and Nil", () => {
 test("Op.chain — associativity on Ok", () => {
 	fc.assert(
 		fc.property(arbOkOutcome, fc.integer(), (o, threshold) => {
-			const f = (x: number): Op.Outcome<string, number> =>
-				x > 0 ? Op.ok(x * 2) : Op.err("non-positive");
-			const g = (x: number): Op.Outcome<string, number> =>
-				x > threshold ? Op.ok(x + 1) : Op.err("too small");
+			const f = (x: number): Op.Outcome<string, number> => x > 0 ? Op.ok(x * 2) : Op.err("non-positive");
+			const g = (x: number): Op.Outcome<string, number> => x > threshold ? Op.ok(x + 1) : Op.err("too small");
 			expect(Op.chain(f)(Op.chain(g)(o))).toEqual(
 				Op.chain((x: number) => Op.chain(f)(g(x)))(o),
 			);
@@ -109,7 +106,7 @@ test("Op.fold — handles all outcome kinds without throwing", () => {
 				(v: number) => `ok:${v}`,
 				() => "nil",
 			)(o);
-			expect(typeof result).toBe("string");
+			expectTypeOf(result).toBeString();
 		}),
 	);
 });
@@ -396,9 +393,7 @@ test("Op.interpret restartable with minInterval: 0 — burst still produces 1 Ok
 test("Op.interpret buffered size=k — burst of N > k+1 produces exactly k+1 Ok and N-k-1 EvictedNil", async () => {
 	await fc.assert(
 		fc.asyncProperty(
-			fc.integer({ min: 1, max: 4 }).chain((k) =>
-				fc.integer({ min: k + 2, max: k + 8 }).map((n) => ({ k, n })),
-			),
+			fc.integer({ min: 1, max: 4 }).chain((k) => fc.integer({ min: k + 2, max: k + 8 }).map((n) => ({ k, n }))),
 			async ({ k, n }) => {
 				const manager = Op.interpret(immediateOp, { strategy: "buffered", size: k });
 				const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
@@ -417,9 +412,7 @@ test("Op.interpret buffered size=k — burst of N > k+1 produces exactly k+1 Ok 
 test("Op.interpret buffered size=k — burst of N <= k+1 all resolve to Ok", async () => {
 	await fc.assert(
 		fc.asyncProperty(
-			fc.integer({ min: 1, max: 5 }).chain((k) =>
-				fc.integer({ min: 1, max: k + 1 }).map((n) => ({ k, n })),
-			),
+			fc.integer({ min: 1, max: 5 }).chain((k) => fc.integer({ min: 1, max: k + 1 }).map((n) => ({ k, n }))),
 			async ({ k, n }) => {
 				const manager = Op.interpret(immediateOp, { strategy: "buffered", size: k });
 				const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
@@ -439,9 +432,7 @@ test("Op.interpret buffered size=k — burst of N <= k+1 all resolve to Ok", asy
 test("Op.interpret queue maxSize=m — burst of N > m+1 produces m+1 Ok and N-m-1 DroppedNil", async () => {
 	await fc.assert(
 		fc.asyncProperty(
-			fc.integer({ min: 1, max: 4 }).chain((m) =>
-				fc.integer({ min: m + 2, max: m + 8 }).map((n) => ({ m, n })),
-			),
+			fc.integer({ min: 1, max: 4 }).chain((m) => fc.integer({ min: m + 2, max: m + 8 }).map((n) => ({ m, n }))),
 			async ({ m, n }) => {
 				const manager = Op.interpret(immediateOp, { strategy: "queue", maxSize: m });
 				const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
@@ -464,9 +455,7 @@ test("Op.interpret queue maxSize=m — burst of N > m+1 produces m+1 Ok and N-m-
 test("Op.interpret queue overflow replace-last — burst of N > m+1 produces m+1 Ok and N-m-1 EvictedNil", async () => {
 	await fc.assert(
 		fc.asyncProperty(
-			fc.integer({ min: 1, max: 3 }).chain((m) =>
-				fc.integer({ min: m + 2, max: m + 6 }).map((n) => ({ m, n })),
-			),
+			fc.integer({ min: 1, max: 3 }).chain((m) => fc.integer({ min: m + 2, max: m + 6 }).map((n) => ({ m, n }))),
 			async ({ m, n }) => {
 				const manager = Op.interpret(immediateOp, {
 					strategy: "queue",

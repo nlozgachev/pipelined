@@ -127,6 +127,10 @@ pipe(
 
 This is useful for narrowing values within a pipeline without breaking out of the `Maybe` context.
 
+If you find yourself calling `toNullable` early to continue processing, that's usually a signal to
+use `map` or `chain` instead — breaking out of `Maybe` too early means writing null checks again
+downstream.
+
 ## Extracting the value
 
 At the edge of your pipeline, you need to get a plain value back. There are a few ways:
@@ -141,7 +145,8 @@ pipe(Maybe.none(), Maybe.getOrElse(() => 0)); // 0
 pipe(Maybe.none(), Maybe.getOrElse(() => null)); // null — typed as number | null
 ```
 
-**`match`** — handle each case explicitly, producing a value from either branch:
+**`match`** — handle each case explicitly, producing a value from either branch. `fold` is the
+positional form — none handler first, some handler second — if you'd rather not name the cases:
 
 ```ts
 pipe(
@@ -153,25 +158,8 @@ pipe(
 );
 ```
 
-**`fold`** — same as `match` but with positional arguments (none handler first, some handler
-second):
-
-```ts
-pipe(
-	possiblyUser,
-	Maybe.fold(
-		() => "Please log in",
-		(user) => `Welcome, ${user.name}`,
-	),
-);
-```
-
-**`toNullable` / `toUndefined`** — escape hatch back to null/undefined when interoperating with APIs
-that expect them:
-
-```ts
-const value: string | null = pipe(opt, Maybe.toNullable);
-```
+For interop with APIs that expect `null` or `undefined`, `toNullable` and `toUndefined` convert
+back at the boundary.
 
 ## Recovering from None
 

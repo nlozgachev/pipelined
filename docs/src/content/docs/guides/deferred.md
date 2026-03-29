@@ -44,6 +44,10 @@ import { Deferred } from "@nlozgachev/pipelined/core";
 const d: Deferred<number> = Deferred.fromPromise(Promise.resolve(42));
 ```
 
+`fromPromise` trusts you that the Promise won't reject. If it does, that rejection becomes an
+unhandled error — the same as a rejected Promise with no `.catch()`. Only wrap Promises you're
+confident about.
+
 The wrapped Promise should be genuinely infallible — a scheduled pure computation, an in-memory
 read, or a cache lookup where a miss returns a default:
 

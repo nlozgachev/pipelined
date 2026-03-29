@@ -22,6 +22,8 @@ Num.range(0, 9, 2); // [0, 2, 4, 6, 8]   — 9 is not reachable, stops at 8
 Num.range(5, 0); // [] — start > end produces nothing
 ```
 
+`Num.range(5, 0)` returns an empty array — when start > end the sequence is empty, not reversed.
+
 This pairs naturally with `Arr.map` and `Arr.filter` to build datasets for charts, pagination, or
 test fixtures without manually constructing arrays.
 

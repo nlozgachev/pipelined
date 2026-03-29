@@ -105,6 +105,11 @@ Each `ap` step:
 The key property: all `ap` steps run regardless of prior failures. This is what allows all errors to
 be collected.
 
+The `ap` pattern looks unusual at first. A simpler read: you're lifting a curried constructor and
+applying each validated argument one by one. If the constructor shape feels awkward, `productAll`
+often expresses the same intent more directly — pass a list of validations, get back a list of valid
+values.
+
 ## Combining two validations with `product`
 
 `product` takes two independent validations and combines them into a single `Validation` holding a
@@ -169,7 +174,8 @@ pipe(Validation.invalid("oops"), Validation.getOrElse(() => 0)); // 0
 pipe(Validation.invalid("oops"), Validation.getOrElse(() => null)); // null — typed as number | null
 ```
 
-**`match`** — handle each case explicitly. The invalid handler receives the full error list:
+**`match`** — handle each case explicitly. The invalid handler receives the full error list. `fold`
+is the positional form — invalid handler first, valid handler second:
 
 ```ts
 pipe(
@@ -178,18 +184,6 @@ pipe(
 		valid: (value) => renderSuccess(value),
 		invalid: (errors) => renderErrors(errors), // errors: NonEmptyList<string>
 	}),
-);
-```
-
-**`fold`** — same as `match` with positional arguments (invalid handler first):
-
-```ts
-pipe(
-	validation,
-	Validation.fold(
-		(errors) => errors.join(", "),
-		(value) => `Valid: ${value}`,
-	),
 );
 ```
 

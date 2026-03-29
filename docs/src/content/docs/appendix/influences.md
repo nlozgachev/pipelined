@@ -158,9 +158,9 @@ export namespace Maybe {
 A single import gives you both:
 
 ```ts
-import { <Maybe> } from "@nlozgachev/pipelined/core";
+import { Maybe } from "@nlozgachev/pipelined/core";
 
-const x: <Maybe><number> = Maybe.some(42); // type and constructor from the same import
+const x: Maybe<number> = Maybe.some(42); // type and constructor from the same import
 ```
 
 The namespace acts like a module — a flat collection of named functions. There's no class, no

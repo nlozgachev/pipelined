@@ -160,6 +160,10 @@ const userZipLens = pipe(
 
 Each composed lens is a plain value you can store in a variable and reuse wherever you need it.
 
+Lens paths do not verify at runtime that the field exists — they trust the type. If the type
+says the field is always present but you've cast somewhere unsafely, you'll get `undefined`
+without a type error. Lens is only as sound as your types.
+
 ## When the field might not be there
 
 `Lens` only works for fields that are always present. If the next field in your path is optional

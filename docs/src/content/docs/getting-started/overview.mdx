@@ -86,30 +86,28 @@ If both fields are invalid, both errors come back in one result. Full guide:
 
 ## Async operations with typed errors — `TaskResult<E, A>`
 
-Fetch with retry, timeout, and cancellation is a solved problem. Just not a short one. The signal
-needs forwarding by hand, the timeout needs its own controller, timed-out aborts must be
-distinguished from external cancellation, and the retry loop will be rewritten for the next
-endpoint.
-
-`TaskResult<E, A>` is a lazy async operation — nothing runs until called — with a typed error on
-the left and the result on the right. Retry, timeout, and cancellation are combinators:
+`try/catch` around `async/await` keeps errors untyped — callers can't tell from the return type
+whether a function can fail. `TaskResult<E, A>` is a lazy async operation — nothing runs until
+called — with a typed error on the left and the result on the right:
 
 ```ts
 import { TaskResult } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
 
-const fetchUser = (id: string): TaskResult<ApiError, User> =>
-  pipe(
-    TaskResult.tryCatch(
-      (signal) => fetch(`/users/${id}`, { signal }).then((r) => r.json()),
-      (e) => new ApiError(e),
-    ),
-    TaskResult.timeout(5000, () => new ApiError("timed out")),
-    TaskResult.retry({ attempts: 3, backoff: (n) => n * 1000 }),
+const fetchUser = (id: string): TaskResult<string, User> =>
+  TaskResult.tryCatch(
+    (signal) => fetch(`/users/${id}`, { signal }).then((r) => r.json()),
+    (e) => `Fetch failed: ${e}`,
   );
 
-const result = await fetchUser("42")();
-// Result<ApiError, User> — never throws
+const name = pipe(
+  fetchUser("42"),
+  TaskResult.map((user) => user.name),
+  TaskResult.getOrElse(() => "Unknown"),
+);
+
+const result = await name();
+// string — never throws
 ```
 
 Full guide: [Task — lazy async](/guides/task).

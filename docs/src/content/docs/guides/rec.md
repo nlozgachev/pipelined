@@ -32,7 +32,13 @@ pipe(
 );
 ```
 
+`Rec.lookup` always returns `Maybe` — if you need the raw `undefined` for interop with code that
+expects it, plain `obj[key]` is still there.
+
 ## Transforming values
+
+`map` is the most common operation — most record transformations are just "apply this function to
+every value". Reach for `mapWithKey` when the key matters in the transformation.
 
 **`map`** transforms every value in a record, preserving keys:
 
@@ -144,3 +150,16 @@ const result = pipe(
 ```
 
 Each step produces a new record — no mutation, no intermediate variables.
+
+## When to use Rec
+
+Use `Rec` when:
+
+- You're transforming or filtering a `Record<string, A>` and want the step to compose in `pipe`
+- You need `Maybe`-returning key lookup instead of `undefined`
+- You're picking or omitting keys and want the resulting type to reflect exactly what's present
+
+Keep using plain object operations when:
+
+- The operation is a one-liner in a function body where `obj[key]` or spread is already clear
+- You don't need the result to compose in a pipeline

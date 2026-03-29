@@ -66,20 +66,9 @@ const getBaseUrl: Reader<ApiConfig, string> = Reader.asks((c) => c.baseUrl);
 const getApiKey: Reader<ApiConfig, string> = Reader.asks((c) => c.apiKey);
 ```
 
-**`Reader.ask`** returns the entire `R` unchanged, when you need to pass it whole to something else:
-
-```ts
-const logConfig: Reader<ApiConfig, void> = pipe(
-	Reader.ask<ApiConfig>(),
-	Reader.map((c) => console.log("Config:", c)),
-);
-```
-
-**`Reader.resolve`** lifts a pure value that needs nothing from `R`:
-
-```ts
-const version: Reader<ApiConfig, string> = Reader.resolve("1.0.0");
-```
+`Reader.ask` returns the entire `R` unchanged — useful when something downstream needs the full
+config. `Reader.resolve` lifts a plain value that needs nothing from `R`. Both come up
+occasionally; `asks` covers most cases.
 
 ## Transforming with `map`
 
@@ -232,6 +221,9 @@ endpoint("/users")(apiConfig);
 
 `Reader.run` fits naturally at the end of a `pipe` chain. Call it once, at the point in your
 program where the environment is available.
+
+Reader is for values fixed at startup — API config, locale, database connections. If a value
+updates at runtime, it isn't a Reader; pass it explicitly.
 
 ## When to use Reader
 

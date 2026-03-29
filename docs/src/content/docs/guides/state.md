@@ -38,55 +38,33 @@ from racing on the shared variable.
 
 ## What a State is
 
+Each step receives the current state and returns the next state alongside its result. There's no
+shared variable; the state flows through the chain explicitly, and nothing runs until you call
+`State.run` at the end:
+
 ```ts
 type State<S, A> = (s: S) => readonly [A, S];
 ```
 
-A `State<S, A>` is a function that takes an initial state of type `S` and produces both a value `A`
-and a new (or unchanged) state. Nothing runs until you explicitly provide the initial state. The
-return tuple `[value, nextState]` makes the state transition explicit — there is no implicit shared
-mutable variable.
+The return tuple `[value, nextState]` makes the state transition explicit — no side effects, no
+mutation.
 
 ## Creating State computations
 
-`State.resolve` lifts a pure value without touching the state:
-
-```ts
-const greet: State<number, string> = State.resolve("hello");
-State.run(0)(greet); // ["hello", 0] — state is untouched
-```
-
-`State.get` reads the current state as the produced value:
+`State.get` reads the current state as the produced value; `State.modify` updates it. These are
+the two you'll reach for most often:
 
 ```ts
 const snapshot: State<string[], string[]> = State.get();
 State.run(["a", "b"])(snapshot); // [["a", "b"], ["a", "b"]]
-```
 
-`State.gets` reads a projection of the state — useful when your state type is a record and you only
-need one field:
-
-```ts
-type Config = { retries: number; timeout: number; };
-
-const maxRetries: State<Config, number> = State.gets(c => c.retries);
-State.run({ retries: 3, timeout: 5000 })(maxRetries); // [3, { retries: 3, timeout: 5000 }]
-```
-
-`State.put` replaces the state entirely:
-
-```ts
-const resetCounter: State<number, undefined> = State.put(0);
-State.run(99)(resetCounter); // [undefined, 0]
-```
-
-`State.modify` applies a function to the state to produce the next state, similar to how `Array`
-reducers work:
-
-```ts
 const increment: State<number, undefined> = State.modify(n => n + 1);
 State.run(5)(increment); // [undefined, 6]
 ```
+
+`State.gets` projects a field from the state — useful when your state is a record and you only need
+one piece. `State.put` replaces the state entirely. `State.resolve` lifts a plain value without
+touching state. These are less common; `get` and `modify` cover most cases.
 
 ## Transforming with `map`
 
@@ -213,6 +191,9 @@ State.evaluate(0)(buildNodes);
 
 The counter starts at 0 and is incremented by each call to `nextId`. The final value is the list of
 nodes — the counter itself is discarded.
+
+If you build up a chain and forget to call `State.run` at the end, you have a function, not a
+value — nothing runs and no type error tells you why.
 
 ## When to use State
 

@@ -72,21 +72,8 @@ const message = pipe(
 ```
 
 Because all four branches are required, there's no way to accidentally skip the loading state or
-forget to handle errors. The type checker will tell you if a case is missing.
-
-**`fold`** does the same thing with positional arguments:
-
-```ts
-pipe(
-	userData,
-	RemoteData.fold(
-		() => "Not asked",
-		() => "Loading...",
-		(err) => `Error: ${err}`,
-		(user) => `Hello, ${user.name}`,
-	),
-);
-```
+forget to handle errors. The type checker will tell you if a case is missing. `fold` is the
+positional form — notAsked, loading, failure, success — if you'd rather not name the cases.
 
 ## Transforming the success value with `map`
 
@@ -181,19 +168,15 @@ pipe(RemoteData.loading(), RemoteData.getOrElse(() => null)); // null — typed 
 
 ## Converting to other types
 
-When you need to work with a part of the system that uses `Maybe` or `Result`, you can convert:
-
-**`toMaybe`** — `Success` becomes `Some`, everything else becomes `None`:
+When you need to work with a part of the system that uses `Maybe` or `Result`, you can convert.
+`toMaybe` maps `Success` to `Some` and everything else to `None`. `toResult` maps `Success` to
+`Ok` and `Failure` to `Err`; `NotAsked` and `Loading` both become `Err` using a fallback you
+provide — they're both "not yet succeeded":
 
 ```ts
 RemoteData.toMaybe(RemoteData.success(42)); // Some(42)
 RemoteData.toMaybe(RemoteData.loading()); // None
-```
 
-**`toResult`** — `Success` becomes `Ok`, `Failure` becomes `Err`. `NotAsked` and `Loading` become
-`Err` using a fallback error you provide:
-
-```ts
 pipe(
 	RemoteData.success(42),
 	RemoteData.toResult(() => "not loaded yet"),
@@ -204,6 +187,9 @@ pipe(
 	RemoteData.toResult(() => "not loaded yet"),
 ); // Err("not loaded yet")
 ```
+
+If you need to distinguish `NotAsked` from `Loading` after conversion, keep using `RemoteData`
+directly — both states collapse into `Err` and the distinction is lost.
 
 ## When to use RemoteData
 

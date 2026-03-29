@@ -83,14 +83,14 @@ export default defineConfig({
 						{ label: "Composition utilities", slug: "guides/composition" },
 						{ label: "Maybe — absent values", slug: "guides/maybe" },
 						{ label: "Result — handling failures", slug: "guides/result" },
+						{
+							label: "Deferred — infallible async values",
+							slug: "guides/deferred",
+						},
 						{ label: "Op — managed async operations", slug: "guides/op" },
 						{
 							label: "Validation — collecting errors",
 							slug: "guides/validation",
-						},
-						{
-							label: "Deferred — infallible async values",
-							slug: "guides/deferred",
 						},
 						{ label: "Task — lazy async", slug: "guides/task" },
 						{

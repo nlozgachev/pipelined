@@ -10,4 +10,8 @@
     padding-bottom: 2rem;
     padding-top: 3rem;
   }
+
+  .content-panel li > ul {
+    margin-left: 1.4rem;
+  }
 }

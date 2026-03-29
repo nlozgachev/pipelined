@@ -226,9 +226,10 @@ Arr.isNonEmpty([1, 2]); // true (also narrows to NonEmptyList)
 
 ## Traversing across types
 
-The `traverse` family maps each element to a typed container and collects the results. They're
-useful when you want to run a fallible operation across every element and collect either all
-successes or the first failure.
+The `traverse` family maps each element to a typed container and collects the results. For most
+cases, `traverseResult` is what you want — it stops at the first failure and tells you what went
+wrong. Use `traverse` when working with `Maybe`; use `traverseTask` when the operations are
+independent and can run in parallel.
 
 **`traverse`** — maps to `Maybe`, returns `None` if any element fails:
 
@@ -251,7 +252,8 @@ pipe([1, 2, 3], Arr.traverseResult(validatePositive)); // Ok([1, 2, 3])
 pipe([1, -1, 3], Arr.traverseResult(validatePositive)); // Err("not positive")
 ```
 
-**`traverseTask`** — maps to `Task` and runs all in parallel:
+**`traverseTask`** — maps to `Task` and runs all in parallel. Note: if you need sequential
+processing that stops at the first error, use `traverseTaskResult` instead:
 
 ```ts
 pipe(
@@ -284,3 +286,18 @@ when you already have an array of containers and want to flip `Array<Maybe<A>>` 
 Arr.sequence([Maybe.some(1), Maybe.some(2)]); // Some([1, 2])
 Arr.sequence([Maybe.some(1), Maybe.none()]); // None
 ```
+
+## When to use Arr
+
+Use `Arr` when:
+
+- You're composing array operations inside a `pipe` chain and want to avoid data-first method calls
+- You need `Maybe`-returning access functions (`head`, `last`, `findFirst`) instead of `undefined`
+- You're mapping or filtering and want the step to read as a named operation rather than an inline
+  arrow function
+- You need to traverse an array with a fallible or async operation and collect the results
+
+Keep using the native array methods when:
+
+- The operation is a one-liner in a function body where `.map()` or `.filter()` is already clear
+- You don't need the result to compose in a pipeline
