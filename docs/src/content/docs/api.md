@@ -13,6 +13,7 @@ import from `@nlozgachev/pipelined/core`
 | ------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | [Maybe](/api/core/type-aliases/maybe)                   | A value that may or may not exist. Replaces `T \| null \| undefined`.             |
 | [Result](/api/core/type-aliases/result)                 | An operation that succeeds with a value or fails with an error.                   |
+| [Op](/api/core/type-aliases/op)                         | A reusable async operation with typed outcomes and managed execution.             |
 | [Validation](/api/core/type-aliases/validation)         | Like Result, but accumulates all errors instead of stopping at the first.         |
 | [Task](/api/core/type-aliases/task)                     | A lazy, infallible async operation.                                               |
 | [TaskResult](/api/core/type-aliases/taskresult)         | A lazy async operation that can fail.                                             |

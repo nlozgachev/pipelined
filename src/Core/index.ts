@@ -2,6 +2,7 @@ export * from "./Deferred.ts";
 export * from "./Lens.ts";
 export * from "./Logged.ts";
 export * from "./Maybe.ts";
+export * from "./Op.ts";
 export * from "./Optional.ts";
 export * from "./Predicate.ts";
 export * from "./Reader.ts";

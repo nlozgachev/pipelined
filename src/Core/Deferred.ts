@@ -21,13 +21,17 @@ declare const _deferred: unique symbol;
  */
 export type Deferred<A> = {
 	readonly [_deferred]: A;
-	readonly then: (onfulfilled: (value: A) => void) => void;
+	readonly then: (onfulfilled: (value: A) => unknown) => void;
 };
 
 export namespace Deferred {
 	/**
 	 * Wraps a `Promise` into a `Deferred`, structurally excluding rejection handlers,
 	 * `.catch()`, `.finally()`, and chainable `.then()`.
+	 *
+	 * **Precondition**: `p` must never reject. If `p` rejects, the returned `Deferred` will
+	 * never resolve — `await`-ing it will hang indefinitely. Use `TaskResult.tryCatch` to
+	 * handle operations that may fail before converting to a `Deferred`.
 	 *
 	 * @example
 	 * ```ts

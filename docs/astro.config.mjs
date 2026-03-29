@@ -83,6 +83,7 @@ export default defineConfig({
 						{ label: "Composition utilities", slug: "guides/composition" },
 						{ label: "Maybe — absent values", slug: "guides/maybe" },
 						{ label: "Result — handling failures", slug: "guides/result" },
+						{ label: "Op — managed async operations", slug: "guides/op" },
 						{
 							label: "Validation — collecting errors",
 							slug: "guides/validation",

@@ -12,8 +12,6 @@ callers have no way to anticipate from the return type alone. `Task<A>` solves b
 
 ## The problems with Promises
 
-Promises have two quirks that make them hard to compose.
-
 **Promises are eager.** A Promise starts the moment it's created:
 
 ```ts
@@ -135,6 +133,9 @@ const [config, locale, theme] = await Task.all([
 The return type is inferred from the input tuple — if you pass `[Task<Config>, Task<string>]`, you
 get back `Task<[Config, string]>`.
 
+Easy mix-up: `all` runs every task simultaneously. If tasks must not overlap or order matters, use
+`sequential` instead.
+
 ## Racing Tasks with `race`
 
 `Task.race` starts all Tasks simultaneously and resolves as soon as the first one completes. The
@@ -182,8 +183,8 @@ Useful for debouncing or rate limiting.
 
 ## Repeating Tasks
 
-Unlike retry — which re-runs a computation in response to failure — `repeat` and `repeatUntil` run a
-Task multiple times unconditionally. This fits naturally with Task's guarantee that it never fails.
+`repeat` and `repeatUntil` run a Task multiple times unconditionally — useful for scheduled polling
+or heartbeats, not error recovery. This fits naturally with Task's guarantee that it never fails.
 
 `Task.repeat` runs a Task a fixed number of times and collects every result:
 
@@ -207,7 +208,7 @@ final run.
 ## The Task family
 
 `Task<A>` is for async operations that always succeed. When failure is possible, use the specialised
-variants:
+variants — for most async work that can fail, `TaskResult` is what you want:
 
 **`TaskResult<E, A>`** — an async operation that can fail with a typed error. It's
 `Task<Result<E, A>>` under the hood:
@@ -230,236 +231,11 @@ const name = pipe(
 await name(); // "Alice" or "Unknown"
 ```
 
-### Retrying failed requests
+### Cancelling a multi-step chain
 
-Network calls fail. `TaskResult.retry` re-runs a `TaskResult` on `Err` with a configurable number
-of attempts and an optional delay between them:
-
-```ts
-const fetchUser = (id: string): TaskResult<string, User> =>
-  TaskResult.tryCatch(
-    (signal) => fetch(`/users/${id}`, { signal }).then(r => r.json()),
-    e => `Fetch failed: ${e}`,
-  );
-
-const resilientFetch = pipe(
-  fetchUser("123"),
-  TaskResult.retry({ attempts: 3, backoff: 500 }),
-);
-
-await resilientFetch(); // tries up to 3 times, 500ms apart
-```
-
-`backoff` accepts a fixed number of milliseconds or a function of the attempt number — use the
-function form for exponential backoff:
-
-```ts
-TaskResult.retry({ attempts: 4, backoff: n => n * 1000 })
-// attempt 1 → wait 1s → attempt 2 → wait 2s → attempt 3 → wait 3s → attempt 4
-```
-
-If some errors are permanent and retrying them wastes time — an expired token, a 404 — use `when`
-to limit which errors trigger a retry:
-
-```ts
-const isTransient = (e: ApiError) => e.status >= 500 || e.status === 429;
-
-pipe(
-  fetchUser("123"),
-  TaskResult.retry({ attempts: 3, backoff: 1000, when: isTransient }),
-);
-```
-
-When the `when` predicate returns `false`, the `Err` is returned immediately without further
-attempts. When all attempts are exhausted, the last `Err` is returned.
-
-### Polling until a condition is met
-
-`TaskResult.pollUntil` repeatedly calls the same task until the success value satisfies a
-predicate. If the task fails at any point, polling stops and the `Err` is returned immediately —
-it won't retry on failure.
-
-```ts
-const checkJob = (id: string): TaskResult<string, { status: "pending" | "done" }> =>
-  TaskResult.tryCatch((signal) => fetch(`/jobs/${id}`, { signal }).then(r => r.json()), String);
-
-pipe(
-  checkJob(jobId),
-  TaskResult.pollUntil({ when: (job) => job.status === "done", delay: 2000 }),
-);
-// polls every 2s; returns Ok(job) when done, Err if the request fails
-```
-
-`delay` accepts a fixed number of milliseconds or a function of the attempt number — use the
-function form to start polling frequently and slow down over time:
-
-```ts
-TaskResult.pollUntil({ when: (job) => job.status === "done", delay: n => n * 1000 })
-// attempt 1 → wait 1s → attempt 2 → wait 2s → attempt 3 → ...
-```
-
-The delay is not applied after the final successful poll. Omit it to poll as fast as possible.
-
-### Cancelling in-flight requests
-
-Web applications cancel async work constantly: a component unmounts while a fetch is still in
-flight, a user navigates away mid-poll, or a timeout fires on a slow endpoint. Without explicit
-cancellation, the underlying request keeps running even though no one will consume the result —
-wasting bandwidth, holding server connections open, and in the case of `retry` and `pollUntil`,
-continuing to fire new requests that have already been abandoned.
-
-`TaskResult.abortable` returns a plain `TaskResult` paired with an `abort` handle. When called,
-`abort` fires an `AbortSignal` into the factory function. Pass it to `fetch` and the browser
-cancels the in-flight request immediately:
-
-```ts
-const { task: fetchUser, abort } = TaskResult.abortable(
-  (signal) => fetch(`/users/${id}`, { signal }).then((r) => r.json()),
-  (e) => `Fetch failed: ${e}`,
-);
-
-// React component: cancel the request when the component unmounts
-useEffect(() => {
-  fetchUser().then(setUser);
-  return abort;
-}, [id]);
-```
-
-The returned `task` is a plain `TaskResult`. It composes in a `pipe` chain just like any other,
-and the signal threads through every combinator automatically — no extra wiring needed at the call
-site:
-
-```ts
-const resilientFetch = pipe(
-  fetchUser,
-  TaskResult.retry({ attempts: 3, backoff: 1000 }),
-  TaskResult.pollUntil({ when: (user) => user.status === "active", delay: 2000 }),
-);
-
-onCancel(abort);        // wire abort to whatever external event applies
-await resilientFetch(); // abort reaches every retry attempt and every inter-poll delay
-```
-
-If cancellation fires during a backoff delay, `retry` stops immediately rather than starting
-another request. `pollUntil` does the same — the inter-poll wait is cut short the moment the
-signal fires.
-
-#### Timeout that actually cancels
-
-`TaskResult.timeout` doesn't just give up when the deadline fires — it passes an `AbortSignal` to
-the inner operation so that the underlying request is actually cancelled rather than left running
-silently in the background:
-
-```ts
-pipe(
-  TaskResult.tryCatch(
-    (signal) => fetch(`/reports/${id}`, { signal }).then((r) => r.json()),
-    String,
-  ),
-  TaskResult.timeout(5000, () => new TimeoutError("report request timed out")),
-);
-// after 5 seconds: the fetch is aborted and Err(TimeoutError) is returned
-// without the signal, the browser would keep the connection open and discard the result silently
-```
-
-#### Using your own controller
-
-If you already hold an `AbortController` — from a framework hook, a test helper, or a parent
-orchestrator — pass the signal at the call site instead of using `abortable`:
-
-```ts
-const controller = new AbortController();
-
-const result = pipe(
-  TaskResult.tryCatch(
-    (signal) => fetch(url, { signal }).then((r) => r.json()),
-    String,
-  ),
-  TaskResult.retry({ attempts: 3 }),
-);
-
-controller.abort();              // can be called before or after running
-await result(controller.signal); // signal threads through every retry automatically
-```
-
-#### One `abortable` call = one cancellable unit
-
-`abortable` bakes the `AbortController` into the task at creation time, not at invocation time.
-Calling the same task twice in parallel shares one controller — `abort()` reaches both invocations:
-
-```ts
-const { task, abort } = TaskResult.abortable(
-  (signal) => fetch(`/users/${id}`, { signal }),
-  String,
-);
-
-task();
-task();
-// both tasks above use the same AbortController — abort() cancels them together
-```
-
-For requests that can be cancelled independently, create a separate `abortable` for each:
-
-```ts
-const { task: fetchUser,  abort: cancelUser  } = TaskResult.abortable(
-  (signal) => fetch(`/users/${id}`, { signal }),
-  String,
-);
-const { task: fetchPosts, abort: cancelPosts } = TaskResult.abortable(
-  (signal) => fetch(`/posts?user=${id}`, { signal }),
-  String,
-);
-```
-
-#### Running requests in parallel with independent cancellation
-
-Create one `abortable` per request, run them with `Task.all`, and cancel whichever one you
-need without touching the others:
-
-```ts
-const { task: fetchUser,  abort: cancelUser  } = TaskResult.abortable(
-  (signal) => fetch(`/users/${id}`, { signal }),
-  String,
-);
-const { task: fetchPosts, abort: cancelPosts } = TaskResult.abortable(
-  (signal) => fetch(`/posts?user=${id}`, { signal }),
-  String,
-);
-
-const [userResult, postsResult] = await Task.all([fetchUser, fetchPosts])();
-
-cancelUser();  // only the user request is cancelled
-cancelPosts(); // only the posts request is cancelled
-```
-
-The same principle applies to sequential requests. A common case is a search input that fires on
-each keystroke: cancel the in-flight request before starting the next one, so only the latest
-result is used. `TaskResult.restartable` handles this directly:
-
-```ts
-const { fn: search, abort } = TaskResult.restartable((query: string) =>
-  TaskResult.tryCatch(
-    (signal) => fetch(`/search?q=${query}`, { signal }),
-    String,
-  )
-);
-
-search("fo")().then(setResults);
-search("foo")().then(setResults);   // cancels "fo", starts fresh
-search("foob")().then(setResults);  // cancels "foo", starts fresh
-
-abort(); // cancel without starting a new request — e.g. on component unmount
-```
-
-`restartable` holds one `AbortController` internally, replacing it on each call. The factory
-always receives a fresh signal, and the previous one is aborted immediately.
-
-#### Cancelling a multi-step chain
-
-Some operations require several dependent requests in sequence: the first returns a URL, the next
-follows it, and so on until the final response contains the data. `TaskResult.chain` handles this
-naturally — and because `chain` forwards the call-site signal to each inner step, a single abort
-reaches whichever request is currently in flight:
+`TaskResult.chain` forwards the call-site signal to each inner step automatically. A single
+`AbortController` at the call site reaches whichever request is currently in flight — no extra
+wiring at each step:
 
 ```ts
 const fetchReport = (id: string): TaskResult<string, Report> =>
