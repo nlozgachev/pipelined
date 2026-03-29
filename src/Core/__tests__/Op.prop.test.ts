@@ -1,5 +1,5 @@
 import fc from "fast-check";
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 import { Deferred } from "../Deferred.ts";
 import { Op } from "../Op.ts";
 
