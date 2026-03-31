@@ -392,18 +392,30 @@ export namespace Op {
 	/**
 	 * Creates an `Op` from an async factory and an error mapper.
 	 *
-	 * The factory receives an `AbortSignal` and returns a function that takes the input.
-	 * Operations that support cancellation (like `fetch`) should capture the signal in the
-	 * outer closure. The error mapper converts any thrown value into a typed error; it is
-	 * never called for aborts.
+	 * The factory receives an `AbortSignal` and returns a function that takes the input. Capture
+	 * the signal in the outer closure and pass it to cancellable APIs like `fetch`. The error
+	 * mapper converts any thrown value into a typed error; it is never called for aborts.
+	 *
+	 * **If the factory ignores the signal**, cancellation silently stops working: the operation
+	 * runs to completion and emits `Ok` even after the strategy has aborted it. This is harmless
+	 * for `exclusive` and `once` (which do not abort in-flight work), but causes stale `Ok`
+	 * emissions on `restartable`, `debounced`, `throttled`, `buffered`, and `queue` strategies
+	 * where in-flight runs are regularly replaced or dropped.
 	 *
 	 * @example
 	 * ```ts
+	 * // With cancellation — fetch is aborted when the Op is replaced or aborted
 	 * const saveProfile = Op.create(
 	 *   (signal) => (data: ProfileData) =>
 	 *     fetch("/profile", { method: "POST", body: JSON.stringify(data), signal })
 	 *       .then(r => r.json()),
 	 *   (e) => new ApiError(e),
+	 * );
+	 *
+	 * // Without cancellation — safe only for exclusive / once
+	 * const computeScore = Op.create(
+	 *   () => (input: number[]) => Promise.resolve(input.reduce((a, b) => a + b, 0)),
+	 *   (e) => new Error(String(e)),
 	 * );
 	 * ```
 	 */

@@ -2,6 +2,7 @@
 title: Op — managed async operations
 description: Separate what an async operation does from how it runs — nine concurrency strategies with typed outcomes, retry, and timeout built in.
 ---
+import { Aside } from '@astrojs/starlight/components'
 
 You're building a search input. The user types and a fetch fires on every keystroke. Three requests
 leave in flight simultaneously. The first one to land overwrites the result, even if it's stale.
@@ -33,6 +34,13 @@ The factory receives an `AbortSignal` and returns a function that takes the inpu
 signal in the outer closure and thread it through to cancellable APIs like `fetch`. The error
 mapper converts any thrown value into a typed error — it is never called when the operation is
 aborted; aborted operations produce `Nil` instead.
+
+<Aside type="caution">
+`Op` is designed primarily for network requests. The signal is not optional plumbing: it is how every strategy tears down work it no
+longer needs. Always pass it through. If you choose to ignore it, that is a deliberate trade-off:
+the operation will run to completion and emit `Ok` even after the strategy has replaced or dropped
+it, producing stale state.
+</Aside>
 
 Calling `create` doesn't run anything. It just defines how to run it later — nothing executes
 until `Op.interpret` is called.
