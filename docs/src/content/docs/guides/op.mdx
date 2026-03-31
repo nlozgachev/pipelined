@@ -23,15 +23,16 @@ and a useRef keeping track of the controller.
 import { Op } from "@nlozgachev/pipelined/core";
 
 const searchUsers = Op.create(
-  (query: string, signal) =>
+  (signal) => (query: string) =>
     fetch(`/users?q=${query}`, { signal }).then((r) => r.json() as Promise<User[]>),
   (e) => new ApiError(e),
 );
 ```
 
-The factory receives the input value and an `AbortSignal`. Thread the signal through to
-cancellable APIs like `fetch`. The error mapper converts any thrown value into a typed error — it
-is never called when the operation is aborted; aborted operations produce `Nil` instead.
+The factory receives an `AbortSignal` and returns a function that takes the input. Capture the
+signal in the outer closure and thread it through to cancellable APIs like `fetch`. The error
+mapper converts any thrown value into a typed error — it is never called when the operation is
+aborted; aborted operations produce `Nil` instead.
 
 Calling `create` doesn't run anything. It just defines how to run it later — nothing executes
 until `Op.interpret` is called.
@@ -46,7 +47,7 @@ import { Op } from "@nlozgachev/pipelined/core";
 
 // 1. create — describe the async work once
 const fetchUser = Op.create(
-  (id: string, signal) =>
+  (signal) => (id: string) =>
     fetch(`/users/${id}`, { signal }).then((r) => r.json() as Promise<User>),
   (e) => new ApiError(e),
 );

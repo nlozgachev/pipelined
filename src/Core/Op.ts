@@ -51,7 +51,7 @@ import { Result } from "./Result.ts";
  * @example
  * ```ts
  * const fetchUser = Op.create(
- *   (id: string, signal) => fetch(`/users/${id}`, { signal }).then(r => r.json()),
+ *   (signal) => (id: string) => fetch(`/users/${id}`, { signal }).then(r => r.json()),
  *   (e) => new ApiError(e),
  * );
  *
@@ -392,14 +392,15 @@ export namespace Op {
 	/**
 	 * Creates an `Op` from an async factory and an error mapper.
 	 *
-	 * The factory receives the input and an `AbortSignal`. Operations that support
-	 * cancellation (like `fetch`) should thread the signal through. The error mapper
-	 * converts any thrown value into a typed error; it is never called for aborts.
+	 * The factory receives an `AbortSignal` and returns a function that takes the input.
+	 * Operations that support cancellation (like `fetch`) should capture the signal in the
+	 * outer closure. The error mapper converts any thrown value into a typed error; it is
+	 * never called for aborts.
 	 *
 	 * @example
 	 * ```ts
 	 * const saveProfile = Op.create(
-	 *   (data: ProfileData, signal) =>
+	 *   (signal) => (data: ProfileData) =>
 	 *     fetch("/profile", { method: "POST", body: JSON.stringify(data), signal })
 	 *       .then(r => r.json()),
 	 *   (e) => new ApiError(e),
@@ -407,12 +408,12 @@ export namespace Op {
 	 * ```
 	 */
 	export const create = <I, E, A>(
-		factory: (input: I, signal: AbortSignal) => Promise<A>,
+		factory: (signal: AbortSignal) => (input: I) => Promise<A>,
 		onError: (e: unknown) => E,
 	): Op<I, E, A> => ({
 		_factory: (input, signal) =>
 			Deferred.fromPromise(
-				factory(input, signal)
+				factory(signal)(input)
 					.then((value): Result<E, A> => Result.ok(value))
 					.catch((e): Result<E, A> | null => signal.aborted ? null : Result.err(onError(e))),
 			),

@@ -106,7 +106,7 @@ if (Result.isOk(result)) {
 import { Op } from "@nlozgachev/pipelined/core";
 
 const searchOp = Op.create(
-  (query: string, signal) =>
+  (signal) => (query: string) =>
     fetch(`/search?q=${query}`, { signal }).then((r) => r.json() as Promise<SearchResult[]>),
   (e) => new SearchError(e),
 );
@@ -130,7 +130,7 @@ input.addEventListener("input", (e) => search.run(e.currentTarget.value));
 
 ```ts
 const submitOp = Op.create(
-  (data: FormData, signal) =>
+  (signal) => (data: FormData) =>
     fetch("/orders", { method: "POST", body: data, signal }).then((r) => r.json()),
   (e) => new ApiError(e),
 );

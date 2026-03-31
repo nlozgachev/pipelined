@@ -8,13 +8,13 @@ import { Op } from "../Op.ts";
 // ---------------------------------------------------------------------------
 
 /** Resolves immediately with the input value. */
-const immediateOp = Op.create((n: number) => Promise.resolve(n), String);
+const immediateOp = Op.create((_signal) => (n: number) => Promise.resolve(n), String);
 
 /** Resolves after one microtask tick — genuinely async without a real timer. */
-const tickOp = Op.create((n: number) => Promise.resolve().then(() => n), String);
+const tickOp = Op.create((_signal) => (n: number) => Promise.resolve().then(() => n), String);
 
 /** Promise that never settles — useful for abort() tests on restartable. */
-const neverOp = Op.create((_: number) => new Promise<number>(() => {}), String);
+const neverOp = Op.create((_signal) => (_: number) => new Promise<number>(() => {}), String);
 
 /**
  * Like neverOp but rejects when the AbortSignal fires.
@@ -23,7 +23,7 @@ const neverOp = Op.create((_: number) => new Promise<number>(() => {}), String);
  * respect the signal to avoid hanging forever.
  */
 const signalNeverOp = Op.create(
-	(_: number, signal: AbortSignal) =>
+	(signal) => (_: number) =>
 		new Promise<number>((_, reject) => {
 			signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
 		}),
@@ -332,7 +332,7 @@ test("Op.interpret retry — factory is called exactly attempts times when alway
 		fc.asyncProperty(fc.integer({ min: 1, max: 5 }), async (attempts) => {
 			let calls = 0;
 			const countingOp = Op.create(
-				(_: number) => {
+				(_signal) => (_: number) => {
 					calls++;
 					return Promise.reject(new Error("fail"));
 				},

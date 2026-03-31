@@ -29,7 +29,7 @@ import {
 /** Op that resolves with the input value after an optional delay. */
 const successOp = (delayMs = 0): Op<number, string, number> =>
 	Op.create(
-		(input, signal) =>
+		(signal) => (input) =>
 			new Promise<number>((resolve, reject) => {
 				const id = setTimeout(() => resolve(input), delayMs);
 				signal.addEventListener("abort", () => {
@@ -43,7 +43,7 @@ const successOp = (delayMs = 0): Op<number, string, number> =>
 /** Op that always rejects with `msg` after an optional delay. */
 const failOp = (msg = "fail", delayMs = 0): Op<number, string, number> =>
 	Op.create(
-		(_input, signal) =>
+		(signal) => (_input) =>
 			new Promise<never>((_resolve, reject) => {
 				const id = setTimeout(() => reject(new Error(msg)), delayMs);
 				signal.addEventListener("abort", () => {
@@ -129,7 +129,7 @@ test("runWithRetry returns Ok on first success", async () => {
 test("runWithRetry retries on Err and returns Err when attempts exhausted", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(_: number) => { calls++; return Promise.reject(new Error("boom")); },
+		(_signal) => (_: number) => { calls++; return Promise.reject(new Error("boom")); },
 		(e) => (e as Error).message,
 	);
 	const retrying: Op.Retrying<string>[] = [];
@@ -148,7 +148,7 @@ test("runWithRetry retries on Err and returns Err when attempts exhausted", asyn
 test("runWithRetry stops early on Ok without exhausting all attempts", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(_: number) => {
+		(_signal) => (_: number) => {
 			calls++;
 			return calls < 2 ? Promise.reject(new Error("not yet")) : Promise.resolve(99);
 		},
@@ -166,7 +166,7 @@ test("runWithRetry stops early on Ok without exhausting all attempts", async () 
 test("runWithRetry respects the `when` guard and stops early on non-retryable error", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(_: number) => { calls++; return Promise.reject(new Error("not-retryable")); },
+		(_signal) => (_: number) => { calls++; return Promise.reject(new Error("not-retryable")); },
 		(e) => (e as Error).message,
 	);
 	const result = await runWithRetry(
@@ -180,7 +180,7 @@ test("runWithRetry respects the `when` guard and stops early on non-retryable er
 
 test("runWithRetry includes nextRetryIn when backoff is a number > 0", async () => {
 	const op = Op.create(
-		(_: number) => Promise.reject(new Error("fail")),
+		(_signal) => (_: number) => Promise.reject(new Error("fail")),
 		(e) => (e as Error).message,
 	);
 	const retrying: Op.Retrying<string>[] = [];
@@ -194,7 +194,7 @@ test("runWithRetry includes nextRetryIn when backoff is a number > 0", async () 
 
 test("runWithRetry includes nextRetryIn when backoff is a function", async () => {
 	const op = Op.create(
-		(_: number) => Promise.reject(new Error("fail")),
+		(_signal) => (_: number) => Promise.reject(new Error("fail")),
 		(e) => (e as Error).message,
 	);
 	const retrying: Op.Retrying<string>[] = [];
@@ -208,7 +208,7 @@ test("runWithRetry includes nextRetryIn when backoff is a function", async () =>
 
 test("runWithRetry returns null when signal is aborted during backoff wait", async () => {
 	const op = Op.create(
-		(_: number) => Promise.reject(new Error("fail")),
+		(_signal) => (_: number) => Promise.reject(new Error("fail")),
 		(e) => (e as Error).message,
 	);
 	const controller = new AbortController();
@@ -451,7 +451,7 @@ test("makeThrottled: onRetrying guard suppresses stale Retrying state from first
 
 	let factoryCalls = 0;
 	const op = Op.create(
-		(_: number, signal: AbortSignal) =>
+		(signal) => (_: number) =>
 			new Promise<never>((_r, reject) => {
 				factoryCalls++;
 				const id = setTimeout(() => reject(new Error("fail")), 20);
@@ -497,7 +497,7 @@ test("makeDebounced (trailing): onRetrying guard suppresses stale Retrying state
 
 	let factoryCalls = 0;
 	const op = Op.create(
-		(_: number, signal: AbortSignal) =>
+		(signal) => (_: number) =>
 			new Promise<never>((_r, reject) => {
 				factoryCalls++;
 				const id = setTimeout(() => reject(new Error("fail")), 25);

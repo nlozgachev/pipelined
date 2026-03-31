@@ -10,7 +10,7 @@ import { Result } from "../Result.ts";
 /** Op that resolves with the input value after an optional delay. */
 const delayedOp = (delayMs = 0): Op<number, string, number> =>
 	Op.create(
-		(input, signal) =>
+		(signal) => (input) =>
 			new Promise<number>((resolve, reject) => {
 				const id = setTimeout(() => resolve(input), delayMs);
 				signal.addEventListener("abort", () => {
@@ -24,7 +24,7 @@ const delayedOp = (delayMs = 0): Op<number, string, number> =>
 /** Op that always rejects with `error` after an optional delay. */
 const failingOp = (error: string, delayMs = 0): Op<number, string, number> =>
 	Op.create(
-		(_input, signal) =>
+		(signal) => (_input) =>
 			new Promise<never>((_resolve, reject) => {
 				const id = setTimeout(() => reject(new Error(error)), delayMs);
 				signal.addEventListener("abort", () => {
@@ -61,7 +61,7 @@ const runAndCollect = <I, E, A, S extends Op.State<E, A>>(
 // ---------------------------------------------------------------------------
 
 test("Op.create produces an Op with a _factory function", () => {
-	const op = Op.create(() => Promise.resolve(1), String);
+	const op = Op.create((_signal) => () => Promise.resolve(1), String);
 	expectTypeOf(op._factory).toBeFunction();
 });
 
@@ -411,7 +411,7 @@ test("Op.interpret restartable subscribe fires immediately with current non-Idle
 test("Op.interpret restartable with retry emits Retrying between attempts", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(_: number) => {
+		(_signal) => (_: number) => {
 			calls++;
 			return Promise.reject(new Error("fail"));
 		},
@@ -429,7 +429,7 @@ test("Op.interpret restartable with retry emits Retrying between attempts", asyn
 test("Op.interpret restartable with retry stops retrying on Ok", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(_: number) => {
+		(_signal) => (_: number) => {
 			calls++;
 			return calls < 2 ? Promise.reject(new Error("not yet")) : Promise.resolve(99);
 		},
@@ -444,7 +444,7 @@ test("Op.interpret restartable with retry stops retrying on Ok", async () => {
 test("Op.interpret restartable with retry respects when guard", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(_: number) => {
+		(_signal) => (_: number) => {
 			calls++;
 			return Promise.reject(new Error("non-retryable"));
 		},
@@ -488,7 +488,7 @@ test("Op.interpret restartable with timeout resolves Ok when op finishes in time
 test("Op.interpret restartable retry + timeout — deadline wraps entire retry sequence", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(_: number, signal) =>
+		(signal) => (_: number) =>
 			new Promise<never>((_, reject) => {
 				calls++;
 				const id = setTimeout(() => reject(new Error("fail")), 20);
@@ -688,7 +688,7 @@ test("Op.interpret debounced waits for idle period before running", async () => 
 test("Op.interpret debounced resets timer on new call — only latest input runs", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(input: number) => {
+		(_signal) => (input: number) => {
 			calls++;
 			return Promise.resolve(input);
 		},
@@ -737,7 +737,7 @@ test("Op.interpret once emits Pending then Err on failure", async () => {
 test("Op.interpret once subsequent start() calls are ignored — only first runs", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(input: number, signal) =>
+		(signal) => (input: number) =>
 			new Promise<number>((resolve, reject) => {
 				calls++;
 				const id = setTimeout(() => resolve(input), 20);
@@ -787,7 +787,7 @@ test("Op.interpret once abort() emits Nil and further start() is no-op", () => {
 test("Op.interpret once with retry — retries on Err, then settles", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(_: number) => {
+		(_signal) => (_: number) => {
 			calls++;
 			return calls < 3 ? Promise.reject(new Error("not yet")) : Promise.resolve(99);
 		},
@@ -1046,7 +1046,7 @@ test("Op.interpret throttled subscribe after run started fires immediately with 
 test("Op.interpret throttled trailing fires trailing call after cooldown", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(input: number) => {
+		(_signal) => (input: number) => {
 			calls++;
 			return Promise.resolve(input);
 		},
@@ -1322,7 +1322,7 @@ test("Op.interpret debounced with leading: true fires immediately on first call"
 test("Op.interpret debounced with leading: true fires trailing call after quiet period", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(input: number) => {
+		(_signal) => (input: number) => {
 			calls++;
 			return Promise.resolve(input);
 		},
@@ -1360,7 +1360,7 @@ test("Op.interpret debounced with leading: true intermediate calls get EvictedNi
 test("Op.interpret debounced with maxWait fires after maxWait even without quiet period", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(input: number) => {
+		(_signal) => (input: number) => {
 			calls++;
 			return Promise.resolve(input);
 		},
@@ -1458,7 +1458,7 @@ test("Op.interpret buffered with size: 2 holds two waiting calls", async () => {
 test("Op.interpret buffered with size: 2 processes buffer in FIFO order", async () => {
 	const order: number[] = [];
 	const op = Op.create(
-		(input: number) => {
+		(_signal) => (input: number) => {
 			order.push(input);
 			return Promise.resolve(input);
 		},
@@ -1532,7 +1532,7 @@ test("Op.interpret queue with dedupe drops duplicate queued items", async () => 
 test("Op.interpret queue with concurrency: 2 runs two items in-flight simultaneously", async () => {
 	const startTimes: number[] = [];
 	const op = Op.create(
-		(input: number, signal: AbortSignal) =>
+		(signal) => (input: number) =>
 			new Promise<number>((resolve, reject) => {
 				startTimes.push(Date.now());
 				const id = setTimeout(() => resolve(input), 30);
@@ -1590,7 +1590,7 @@ test("Op.interpret queue with overflow: replace-last and dedupe produces Dropped
 test("Op.interpret queue with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(_: number) => {
+		(_signal) => (_: number) => {
 			calls++;
 			return Promise.reject(new Error("fail"));
 		},
@@ -1608,7 +1608,7 @@ test("Op.interpret queue with retry emits Retrying states between attempts", asy
 test("Op.interpret buffered with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(_: number) => {
+		(_signal) => (_: number) => {
 			calls++;
 			return Promise.reject(new Error("fail"));
 		},
@@ -1626,7 +1626,7 @@ test("Op.interpret buffered with retry emits Retrying states between attempts", 
 test("Op.interpret debounced leading with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(_: number) => {
+		(_signal) => (_: number) => {
 			calls++;
 			return Promise.reject(new Error("fail"));
 		},
@@ -1644,7 +1644,7 @@ test("Op.interpret debounced leading with retry emits Retrying states between at
 test("Op.interpret debounced trailing with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(_: number) => {
+		(_signal) => (_: number) => {
 			calls++;
 			return Promise.reject(new Error("fail"));
 		},
@@ -1662,7 +1662,7 @@ test("Op.interpret debounced trailing with retry emits Retrying states between a
 test("Op.interpret throttled with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(_: number) => {
+		(_signal) => (_: number) => {
 			calls++;
 			return Promise.reject(new Error("fail"));
 		},
@@ -1680,7 +1680,7 @@ test("Op.interpret throttled with retry emits Retrying states between attempts",
 test("Op.interpret concurrent with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(_: number) => {
+		(_signal) => (_: number) => {
 			calls++;
 			return Promise.reject(new Error("fail"));
 		},
@@ -1780,7 +1780,7 @@ test("Op.interpret restartable with numeric backoff emits Retrying with nextRetr
 	// Covers the `backoff` as a plain number branch (line 56) and the ms>0 nextRetryIn path (lines 70-73)
 	let calls = 0;
 	const op = Op.create(
-		(_: number) => {
+		(_signal) => (_: number) => {
 			calls++;
 			return Promise.reject(new Error("fail"));
 		},
@@ -1797,7 +1797,7 @@ test("Op.interpret restartable with numeric backoff emits Retrying with nextRetr
 test("Op.interpret exclusive with numeric backoff emits Retrying with nextRetryIn", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(_: number) => {
+		(_signal) => (_: number) => {
 			calls++;
 			return Promise.reject(new Error("fail"));
 		},
