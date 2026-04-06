@@ -9,6 +9,17 @@ check at every call site — each one a reminder that something might not be the
 the absence part of the type itself, so the check happens once and composes cleanly with everything
 else.
 
+```mermaid
+flowchart TB
+  A([input]) --> B{has a value?}
+  B -->|"yes — Some"| C[run your transforms]
+  B -->|"no — None"| D[nothing runs]
+  C --> E{still has a value?}
+  E -->|yes| F[your result]
+  E -->|no| G[use fallback]
+  D --> G
+```
+
 ## The problem with null
 
 When a function returns `User | null`, nothing in the type system stops you from accessing `.name`
@@ -190,6 +201,24 @@ pipe(
 // Result → Maybe: discard the error, keep only the success
 Maybe.fromResult(Result.err("oops")); // None
 Maybe.fromResult(Result.ok(42)); // Some(42)
+```
+
+```mermaid
+sequenceDiagram
+  participant P as your code
+  participant S1 as get address
+  participant S2 as get city
+  participant G as fallback
+
+  P->>S1: Some(user)
+  S1->>S2: Some(address)
+  S2->>G: Some("London")
+  G-->>P: "London"
+
+  P->>S1: None
+  S1-->>S2: None — skipped
+  S2-->>G: None — skipped
+  G-->>P: "Unknown city"
 ```
 
 ## When to use Maybe vs null

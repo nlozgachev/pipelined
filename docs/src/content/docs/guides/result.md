@@ -8,6 +8,17 @@ error leaks out as an exception — invisible to callers, untraceable through th
 `Result<E, A>` puts both outcomes in the type. Callers know an operation can fail, the compiler
 tracks what's handled, and errors compose the same way values do.
 
+```mermaid
+flowchart TB
+  A([operation]) --> B{succeeded?}
+  B -->|"yes — Ok"| C[run next steps]
+  B -->|"no — Err"| D[nothing runs]
+  C --> E{still Ok?}
+  E -->|yes| F[your result]
+  E -->|no| G[use fallback]
+  D --> G
+```
+
 ## The problem with exceptions
 
 `try/catch` has a fundamental issue: nothing in the type of a function tells you it can throw. A
@@ -212,6 +223,26 @@ The error is discarded. Use this at boundaries where you want to fall back to `M
 One thing to watch out for: errors don't accumulate in a `Result` chain — if `validateName` and
 `validateEmail` both fail, you'll only see the first. For collecting all failures at once, use
 `Validation` instead.
+
+```mermaid
+sequenceDiagram
+  participant P as your code
+  participant V1 as check range
+  participant V2 as look up record
+  participant G as fallback
+
+  P->>V1: Ok("42")
+  V1->>V2: Ok(42)
+  V2->>G: Ok(record)
+  G-->>P: record.name
+
+  P->>V1: Ok("-1")
+  V1-->>V2: Err("Must be positive")
+  Note over V2: skipped
+  V2-->>G: Err
+  Note over G: skipped
+  G-->>P: "Unknown"
+```
 
 ## When to use Result vs try/catch
 

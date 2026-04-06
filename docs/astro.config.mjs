@@ -1,5 +1,6 @@
 // @ts-check
 import starlight from "@astrojs/starlight";
+import mermaid from "astro-mermaid";
 import { defineConfig } from "astro/config";
 import starlightThemeNova from "starlight-theme-nova";
 import starlightTypeDoc, { typeDocSidebarGroup } from "starlight-typedoc";
@@ -14,6 +15,7 @@ export default defineConfig({
 		"/api/utils/namespaces/str/functions": "/api/utils/namespaces/str/functions/endswith",
 	},
 	integrations: [
+		mermaid(),
 		starlight({
 			title: "pipelined",
 			favicon: "favicon.svg",

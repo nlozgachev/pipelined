@@ -75,6 +75,17 @@ getUser.subscribe((state) => {
 const outcome = await getUser.run(userId);
 ```
 
+```mermaid
+flowchart TB
+  A["Op.create()\ndescribe the work once"] --> B["Op.interpret()\nchoose a strategy"]
+  B --> C["manager.subscribe()\nreact to state changes"]
+  C --> D["manager.run()\ntrigger the operation"]
+  D --> E{outcome}
+  E -->|success| F[Ok]
+  E -->|failure| G[Err]
+  E -->|"cancelled / dropped"| H[Nil]
+```
+
 `create` and `interpret` are called once, usually at module or component setup time.
 `subscribe` registers a listener before the first `run()`. `run` is called wherever the
 trigger lives — a button click, a mount hook, a route change. It returns a `Deferred` that
@@ -162,6 +173,26 @@ Not sure which strategy to pick? Four questions narrow it down:
   - Fire now, then enforce a cooldown → `throttled`
 
 If you're unsure, start with `restartable` for user input and `exclusive` for actions.
+
+```mermaid
+flowchart TB
+  A[new call arrives] --> B{already running?}
+  B -->|no| C[starts immediately]
+  B -->|yes| D{what should happen?}
+  D -->|cancel current, start new| E[restartable]
+  D -->|ignore the new call| F[exclusive]
+  D -->|run all of them| G{how many at once?}
+  G -->|unlimited| H[concurrent]
+  G -->|one at a time in order| I[queue]
+  G -->|current + latest pending| J[buffered]
+  A --> K{need a delay?}
+  K -->|wait for user to stop| L[debounced]
+  K -->|fire now then cooldown| M[throttled]
+  A --> N{one time only?}
+  N -->|yes| O[once]
+  A --> P{one slot per item?}
+  P -->|yes| Q[keyed]
+```
 
 | Situation | Strategy |
 | --- | --- |
@@ -421,6 +452,28 @@ await q; // Ok(results)  — this invocation completed
 
 // Subscriber saw: Pending → Pending → Ok
 // p's Deferred and the subscriber's view are consistent but not the same thing.
+```
+
+```mermaid
+sequenceDiagram
+  participant IN as Initiator
+  participant SUB as Subscriber
+  participant M as Manager
+  participant RT as Request Target
+
+  Note over M: Idle
+  IN->>M: run("fo")
+  M->>RT: fetch /search?q=fo
+  M-->>SUB: Pending
+  IN->>M: run("foo")
+  M-->>SUB: Pending
+  M->>RT: abort "fo"
+  RT-->>M: aborted
+  M-->>IN: p → ReplacedNil
+  M->>RT: fetch /search?q=foo
+  RT-->>M: results
+  M-->>IN: q → Ok(results)
+  M-->>SUB: Ok(results)
 ```
 
 ## Retry and timeout

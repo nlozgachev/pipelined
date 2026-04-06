@@ -211,6 +211,40 @@ pipe(
 ); // Valid(42) — fallback skipped
 ```
 
+## How it compares to Result
+
+**Result — stops at first error**
+
+```mermaid
+sequenceDiagram
+  participant P as your code
+  participant N as check name
+  participant E as check email
+  participant A as check age
+
+  P->>N: name = ""
+  N-->>P: Err("Name required")
+  Note over E,A: never called
+```
+
+**Validation — all checks run**
+
+```mermaid
+sequenceDiagram
+  participant P as your code
+  participant N as check name
+  participant E as check email
+  participant A as check age
+
+  P->>N: name = ""
+  N-->>P: Invalid("Name required")
+  P->>E: email = "bad"
+  E-->>P: Invalid("Invalid email")
+  P->>A: age = -1
+  A-->>P: Invalid("Age must be >= 0")
+  Note over P: Invalid(["Name required", "Invalid email", "Age must be >= 0"])
+```
+
 ## When to use Validation vs Result
 
 Use `Validation` when:

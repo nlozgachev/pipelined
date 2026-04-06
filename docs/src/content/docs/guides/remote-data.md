@@ -9,6 +9,17 @@ across separate variables that can get out of sync and produce combinations that
 `RemoteData<E, A>` gives each state a name and keeps them mutually exclusive — only one is active at
 any given time.
 
+```mermaid
+stateDiagram-v2
+  direction TB
+  [*] --> NotAsked
+  NotAsked --> Loading : fetch starts
+  Loading --> Success : data arrives
+  Loading --> Failure : request fails
+  Failure --> Loading : retry
+  Success --> Loading : refresh
+```
+
 ## The problem with flag soup
 
 A typical approach to loading states looks like this:
@@ -44,6 +55,25 @@ state = RemoteData.success(user); // request succeeded
 
 Each state is represented once, and they can't overlap. The type system prevents you from combining
 them incorrectly.
+
+```mermaid
+sequenceDiagram
+  participant U as user action
+  participant C as your component
+  participant S as server
+
+  C->>C: notAsked
+  U->>C: click "Load"
+  C->>C: loading
+  C->>S: fetch /users/123
+  alt success
+    S-->>C: 200 OK { name: "Alice" }
+    C->>C: success(user)
+  else failure
+    S-->>C: 404 Not Found
+    C->>C: failure("Not found")
+  end
+```
 
 ## Creating RemoteData values
 
