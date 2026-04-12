@@ -29,7 +29,7 @@ import {
 /** Op that resolves with the input value after an optional delay. */
 const successOp = (delayMs = 0): Op<number, string, number> =>
 	Op.create(
-		(signal) => (input) =>
+		(signal) => (input: number) =>
 			new Promise<number>((resolve, reject) => {
 				const id = setTimeout(() => resolve(input), delayMs);
 				signal.addEventListener("abort", () => {
@@ -43,7 +43,7 @@ const successOp = (delayMs = 0): Op<number, string, number> =>
 /** Op that always rejects with `msg` after an optional delay. */
 const failOp = (msg = "fail", delayMs = 0): Op<number, string, number> =>
 	Op.create(
-		(signal) => (_input) =>
+		(signal) => (_input: number) =>
 			new Promise<never>((_resolve, reject) => {
 				const id = setTimeout(() => reject(new Error(msg)), delayMs);
 				signal.addEventListener("abort", () => {
@@ -54,24 +54,6 @@ const failOp = (msg = "fail", delayMs = 0): Op<number, string, number> =>
 		(e) => (e as Error).message,
 	);
 
-/** Collect all states emitted until the first terminal state, then resolve. */
-const collectUntilTerminal = <S extends Op.State<E, A>, E, A>(
-	manager: Op.Manager<number, E, A, S>,
-	input: number,
-): Promise<S[]> => {
-	const states: S[] = [];
-	return new Promise((resolve) => {
-		const unsub = manager.subscribe((s) => {
-			states.push(s);
-			if (s.kind === "Ok" || s.kind === "Err" || s.kind === "Nil") {
-				unsub();
-				resolve(states);
-			}
-		});
-		manager.run(input);
-	});
-};
-
 // ---------------------------------------------------------------------------
 // cancellableWait
 // ---------------------------------------------------------------------------
@@ -79,7 +61,9 @@ const collectUntilTerminal = <S extends Op.State<E, A>, E, A>(
 test("cancellableWait resolves immediately when ms <= 0", async () => {
 	let done = false;
 	const c = new AbortController();
-	cancellableWait(0, c.signal).then(() => { done = true; });
+	cancellableWait(0, c.signal).then(() => {
+		done = true;
+	});
 	await Promise.resolve(); // one microtask tick
 	expect(done).toBe(true);
 });
@@ -104,7 +88,9 @@ test("cancellableWait resolves immediately when signal is already aborted", asyn
 	c.abort();
 	let done = false;
 	// ms <= 0 path: should resolve in next microtask
-	cancellableWait(0, c.signal).then(() => { done = true; });
+	cancellableWait(0, c.signal).then(() => {
+		done = true;
+	});
 	await Promise.resolve();
 	expect(done).toBe(true);
 });
@@ -129,12 +115,17 @@ test("runWithRetry returns Ok on first success", async () => {
 test("runWithRetry retries on Err and returns Err when attempts exhausted", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(_signal) => (_: number) => { calls++; return Promise.reject(new Error("boom")); },
+		(_signal) => (_: number) => {
+			calls++;
+			return Promise.reject(new Error("boom"));
+		},
 		(e) => (e as Error).message,
 	);
 	const retrying: Op.Retrying<string>[] = [];
 	const result = await runWithRetry(
-		op, 1, new AbortController().signal,
+		op,
+		1,
+		new AbortController().signal,
 		{ attempts: 3 },
 		(r) => retrying.push(r),
 	);
@@ -155,7 +146,9 @@ test("runWithRetry stops early on Ok without exhausting all attempts", async () 
 		(e) => (e as Error).message,
 	);
 	const result = await runWithRetry(
-		op, 1, new AbortController().signal,
+		op,
+		1,
+		new AbortController().signal,
 		{ attempts: 5 },
 		() => {},
 	);
@@ -166,11 +159,16 @@ test("runWithRetry stops early on Ok without exhausting all attempts", async () 
 test("runWithRetry respects the `when` guard and stops early on non-retryable error", async () => {
 	let calls = 0;
 	const op = Op.create(
-		(_signal) => (_: number) => { calls++; return Promise.reject(new Error("not-retryable")); },
+		(_signal) => (_: number) => {
+			calls++;
+			return Promise.reject(new Error("not-retryable"));
+		},
 		(e) => (e as Error).message,
 	);
 	const result = await runWithRetry(
-		op, 1, new AbortController().signal,
+		op,
+		1,
+		new AbortController().signal,
 		{ attempts: 5, when: (e) => e !== "not-retryable" },
 		() => {},
 	);
@@ -185,7 +183,9 @@ test("runWithRetry includes nextRetryIn when backoff is a number > 0", async () 
 	);
 	const retrying: Op.Retrying<string>[] = [];
 	await runWithRetry(
-		op, 1, new AbortController().signal,
+		op,
+		1,
+		new AbortController().signal,
 		{ attempts: 2, backoff: 50 },
 		(r) => retrying.push(r),
 	);
@@ -199,7 +199,9 @@ test("runWithRetry includes nextRetryIn when backoff is a function", async () =>
 	);
 	const retrying: Op.Retrying<string>[] = [];
 	await runWithRetry(
-		op, 1, new AbortController().signal,
+		op,
+		1,
+		new AbortController().signal,
 		{ attempts: 2, backoff: (n) => n * 30 },
 		(r) => retrying.push(r),
 	);
@@ -214,7 +216,9 @@ test("runWithRetry returns null when signal is aborted during backoff wait", asy
 	const controller = new AbortController();
 	setTimeout(() => controller.abort(), 20); // abort during the 200ms backoff
 	const result = await runWithRetry(
-		op, 1, controller.signal,
+		op,
+		1,
+		controller.signal,
 		{ attempts: 5, backoff: 200 },
 		() => {},
 	);
@@ -455,7 +459,10 @@ test("makeThrottled: onRetrying guard suppresses stale Retrying state from first
 			new Promise<never>((_r, reject) => {
 				factoryCalls++;
 				const id = setTimeout(() => reject(new Error("fail")), 20);
-				signal.addEventListener("abort", () => { clearTimeout(id); reject(new Error("abort")); }, { once: true });
+				signal.addEventListener("abort", () => {
+					clearTimeout(id);
+					reject(new Error("abort"));
+				}, { once: true });
 			}),
 		(e) => (e as Error).message,
 	);
@@ -501,7 +508,10 @@ test("makeDebounced (trailing): onRetrying guard suppresses stale Retrying state
 			new Promise<never>((_r, reject) => {
 				factoryCalls++;
 				const id = setTimeout(() => reject(new Error("fail")), 25);
-				signal.addEventListener("abort", () => { clearTimeout(id); reject(new Error("abort")); }, { once: true });
+				signal.addEventListener("abort", () => {
+					clearTimeout(id);
+					reject(new Error("abort"));
+				}, { once: true });
 			}),
 		(e) => (e as Error).message,
 	);

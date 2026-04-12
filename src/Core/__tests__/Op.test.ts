@@ -10,7 +10,7 @@ import { Result } from "../Result.ts";
 /** Op that resolves with the input value after an optional delay. */
 const delayedOp = (delayMs = 0): Op<number, string, number> =>
 	Op.create(
-		(signal) => (input) =>
+		(signal) => (input: number) =>
 			new Promise<number>((resolve, reject) => {
 				const id = setTimeout(() => resolve(input), delayMs);
 				signal.addEventListener("abort", () => {
@@ -24,7 +24,7 @@ const delayedOp = (delayMs = 0): Op<number, string, number> =>
 /** Op that always rejects with `error` after an optional delay. */
 const failingOp = (error: string, delayMs = 0): Op<number, string, number> =>
 	Op.create(
-		(signal) => (_input) =>
+		(signal) => (_input: number) =>
 			new Promise<never>((_resolve, reject) => {
 				const id = setTimeout(() => reject(new Error(error)), delayMs);
 				signal.addEventListener("abort", () => {
@@ -63,6 +63,19 @@ const runAndCollect = <I, E, A, S extends Op.State<E, A>>(
 test("Op.create produces an Op with a _factory function", () => {
 	const op = Op.create((_signal) => () => Promise.resolve(1), String);
 	expectTypeOf(op._factory).toBeFunction();
+});
+
+test("Op.create infers Op<void> when factory takes no input", () => {
+	const op = Op.create((_signal) => () => Promise.resolve(42), String);
+	expectTypeOf(op).toEqualTypeOf<Op<void, string, number>>();
+});
+
+test("Op.create void: manager.run() accepts no arguments", async () => {
+	const op = Op.create((_signal) => () => Promise.resolve(99), String);
+	const manager = Op.interpret(op, { strategy: "once" });
+	// run() with no args must type-check and resolve Ok
+	const result = await manager.run();
+	expect(result).toEqual(Op.ok(99));
 });
 
 // ---------------------------------------------------------------------------
@@ -955,7 +968,7 @@ test("Op.interpret once abort() on idle manager does nothing", () => {
 	expect(manager.state).toEqual({ kind: "Idle" });
 });
 
-test("Op.interpret once subscribe after run started fires immediately with current state", async () => {
+test("Op.interpret once subscribe after run started fires immediately with current state", () => {
 	const manager = Op.interpret(delayedOp(50), { strategy: "once" });
 	manager.run(1);
 	const received: Op.State<string, number>[] = [];
@@ -1221,7 +1234,7 @@ test("Op.interpret keyed exclusive: abort() with no active keys is a no-op", () 
 	expect(manager.state.size).toBe(0);
 });
 
-test("Op.interpret keyed exclusive: subscribe after run started fires immediately with snapshot", async () => {
+test("Op.interpret keyed exclusive: subscribe after run started fires immediately with snapshot", () => {
 	const manager = Op.interpret(delayedOp(50), {
 		strategy: "keyed",
 		key: (n) => n,
@@ -1724,7 +1737,7 @@ test("Op.interpret concurrent abort() on idle manager does nothing", () => {
 	expect(manager.state).toEqual({ kind: "Idle" });
 });
 
-test("Op.interpret concurrent subscribe after run started fires immediately with current state", async () => {
+test("Op.interpret concurrent subscribe after run started fires immediately with current state", () => {
 	const manager = Op.interpret(delayedOp(50), { strategy: "concurrent", n: 1, overflow: "drop" });
 	manager.run(1);
 	const received: Op.State<string, number>[] = [];

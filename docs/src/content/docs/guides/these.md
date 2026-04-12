@@ -13,7 +13,6 @@ at once. Where `Result<E, A>` is either an error _or_ a value, `These<A, B>` has
 Neither side carries a success or failure connotation. `These` is a neutral inclusive-OR pair:
 any combination is valid, and neither side is privileged.
 
-
 ## When two sides coexist
 
 Some operations naturally produce two pieces of information at once:

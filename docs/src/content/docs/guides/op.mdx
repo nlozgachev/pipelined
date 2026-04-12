@@ -25,7 +25,10 @@ import { Op } from "@nlozgachev/pipelined/core";
 
 const searchUsers = Op.create(
   (signal) => (query: string) =>
-    fetch(`/users?q=${query}`, { signal }).then((r) => r.json() as Promise<User[]>),
+    fetch(`/users?q=${query}`, { signal }).then((r) => {
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      return r.json() as Promise<User[]>;
+    }),
   (e) => new ApiError(e),
 );
 ```
@@ -56,7 +59,10 @@ import { Op } from "@nlozgachev/pipelined/core";
 // 1. create — describe the async work once
 const fetchUser = Op.create(
   (signal) => (id: string) =>
-    fetch(`/users/${id}`, { signal }).then((r) => r.json() as Promise<User>),
+    fetch(`/users/${id}`, { signal }).then((r) => {
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      return r.json() as Promise<User>;
+    }),
   (e) => new ApiError(e),
 );
 

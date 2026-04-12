@@ -11,24 +11,16 @@ import {
 } from "../internal/Op.util.ts";
 import { Deferred } from "./Deferred.ts";
 import {
+	type RetryOptions,
 	WithConcurrency,
 	WithCooldown,
-	WithDedupe,
 	WithError,
-	WithKey,
 	WithKind,
-	WithLeading,
-	WithMaxSize,
-	WithMaxWait,
 	WithMinInterval,
 	WithMs,
 	WithN,
-	WithOverflow,
-	WithPerKey,
-	WithRetry,
 	WithSize,
 	WithTimeout,
-	WithTrailing,
 	WithValue,
 } from "./InternalTypes.ts";
 import { Maybe } from "./Maybe.ts";
@@ -51,7 +43,11 @@ import { Result } from "./Result.ts";
  * @example
  * ```ts
  * const fetchUser = Op.create(
- *   (signal) => (id: string) => fetch(`/users/${id}`, { signal }).then(r => r.json()),
+ *   (signal) => (id: string) =>
+ *     fetch(`/users/${id}`, { signal }).then(r => {
+ *       if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+ *       return r.json() as Promise<User>;
+ *     }),
  *   (e) => new ApiError(e),
  * );
  *
@@ -72,6 +68,67 @@ export type Op<I, E, A> = {
 	 */
 	readonly _factory: (input: I, signal: AbortSignal) => Deferred<Result<E, A> | null>;
 };
+
+// ---------------------------------------------------------------------------
+// Op.interpret — internal helpers (not part of the public Op namespace)
+// ---------------------------------------------------------------------------
+
+// `Retrying<E>` is only added to the state union when retry options are present.
+type MaybeRetry<E, O> = O extends { retry: RetryOptions<E>; } ? Op.Retrying<E> : never;
+
+// Union of all valid option shapes — exposed as a single type so the TS language service
+// can show all strategy literals in autocomplete (overload aggregation is unreliable).
+type AllInterpretOptions<I, E> =
+	| ({ strategy: "once"; retry?: RetryOptions<E>; } & WithTimeout<E>)
+	| ({ strategy: "restartable"; retry?: RetryOptions<E>; } & WithMinInterval & WithTimeout<E>)
+	| ({ strategy: "exclusive"; retry?: RetryOptions<E>; } & WithCooldown & WithTimeout<E>)
+	| (
+		& {
+			strategy: "queue";
+			retry?: RetryOptions<E>;
+			maxSize?: number;
+			overflow?: "drop" | "replace-last";
+			dedupe?: (a: I, b: I) => boolean;
+		}
+		& WithConcurrency
+		& WithTimeout<E>
+	)
+	| ({ strategy: "buffered"; retry?: RetryOptions<E>; } & WithSize & WithTimeout<E>)
+	| ({ strategy: "debounced"; retry?: RetryOptions<E>; leading?: true; maxWait?: number; } & WithMs & WithTimeout<E>)
+	| ({ strategy: "throttled"; retry?: RetryOptions<E>; trailing?: true; } & WithMs & WithTimeout<E>)
+	| ({ strategy: "concurrent"; retry?: RetryOptions<E>; overflow?: "queue" | "drop"; } & WithN & WithTimeout<E>)
+	| ({ strategy: "keyed"; perKey?: "exclusive" | "restartable"; key: (input: I) => unknown; } & WithTimeout<E>);
+
+// Extracts the key type from the `keyed` strategy's `key` function.
+type KeyType<I, O> = O extends { key: (input: I) => infer K; } ? K : unknown;
+
+// Conditional return type — dispatches on strategy (and variant flags) to preserve
+// precise state-union typing without needing per-strategy overloads.
+// Tuple form `[O] extends [...]` prevents distribution over unions.
+type InterpretResult<I, E, A, O> = [O] extends [{ strategy: "throttled"; trailing: true; }]
+	? Op.Manager<I, E, A, Op.ThrottledTrailingState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "throttled"; }] ? Op.Manager<I, E, A, Op.ThrottledState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "debounced"; }] ? Op.Manager<I, E, A, Op.DebouncedState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "concurrent"; overflow: "queue"; }]
+		? Op.Manager<I, E, A, Op.ConcurrentQueueState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "concurrent"; }] ? Op.Manager<I, E, A, Op.ConcurrentDropState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "keyed"; perKey: "restartable"; }]
+		? Op.KeyedManager<I, KeyType<I, O>, E, Op.KeyedRestartablePerKey<E, A>>
+	: [O] extends [{ strategy: "keyed"; }] ? Op.KeyedManager<I, KeyType<I, O>, E, Op.KeyedExclusivePerKey<E, A>>
+	: [O] extends [{ strategy: "once"; }] ? Op.Manager<I, E, A, Op.OnceState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "restartable"; }] ? Op.Manager<I, E, A, Op.RestartableState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "exclusive"; }] ? Op.Manager<I, E, A, Op.ExclusiveState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "queue"; overflow: "replace-last"; dedupe: (a: I, b: I) => boolean; }]
+		? Op.Manager<I, E, A, Op.QueueDropAndReplaceState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "queue"; overflow: "replace-last"; }]
+		? Op.Manager<I, E, A, Op.QueueReplaceState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "queue"; maxSize: number; }]
+		? Op.Manager<I, E, A, Op.QueueDropState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "queue"; dedupe: (a: I, b: I) => boolean; }]
+		? Op.Manager<I, E, A, Op.QueueDropState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "queue"; }] ? Op.Manager<I, E, A, Op.QueueState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "buffered"; }] ? Op.Manager<I, E, A, Op.BufferedState<E, A> | MaybeRetry<E, O>>
+	: never;
 
 // ---------------------------------------------------------------------------
 // Op namespace — all types and operations
@@ -408,18 +465,26 @@ export namespace Op {
 	 * const saveProfile = Op.create(
 	 *   (signal) => (data: ProfileData) =>
 	 *     fetch("/profile", { method: "POST", body: JSON.stringify(data), signal })
-	 *       .then(r => r.json()),
+	 *       .then(r => {
+	 *         if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+	 *         return r.json() as Promise<ProfileData>;
+	 *       }),
 	 *   (e) => new ApiError(e),
 	 * );
 	 *
-	 * // Without cancellation — safe only for exclusive / once
-	 * const computeScore = Op.create(
-	 *   () => (input: number[]) => Promise.resolve(input.reduce((a, b) => a + b, 0)),
-	 *   (e) => new Error(String(e)),
+	 * // No input — fetches the current user; manager.run() takes no arguments
+	 * const fetchCurrentUser = Op.create(
+	 *   (signal) => () => fetch("/me", { signal }).then(r => {
+	 *     if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+	 *     return r.json() as Promise<User>;
+	 *   }),
+	 *   (e) => new ApiError(e),
 	 * );
+	 * const manager = Op.interpret(fetchCurrentUser, { strategy: "once" });
+	 * manager.run(); // no argument needed
 	 * ```
 	 */
-	export const create = <I, E, A>(
+	export const create = <E, A, I = void>(
 		factory: (signal: AbortSignal) => (input: I) => Promise<A>,
 		onError: (e: unknown) => E,
 	): Op<I, E, A> => ({
@@ -706,173 +771,10 @@ export namespace Op {
 	 * const save = Op.interpret(saveOp, { strategy: "buffered" });
 	 * ```
 	 */
-	// throttled
-	export function interpret<I, E, A>(
+	export function interpret<I, E, A, O extends AllInterpretOptions<I, E>>(
 		op: Op<I, E, A>,
-		options: { strategy: "throttled"; } & WithMs & WithTrailing & WithRetry<E> & WithTimeout<E>,
-	): Manager<I, E, A, RetryableThrottledTrailingState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "throttled"; } & WithMs & WithTrailing & WithTimeout<E>,
-	): Manager<I, E, A, ThrottledTrailingState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "throttled"; } & WithMs & WithRetry<E> & WithTimeout<E>,
-	): Manager<I, E, A, RetryableThrottledState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "throttled"; } & WithMs & WithTimeout<E>,
-	): Manager<I, E, A, ThrottledState<E, A>>;
-	// debounced
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "debounced"; } & WithMs & WithLeading & WithMaxWait & WithRetry<E> & WithTimeout<E>,
-	): Manager<I, E, A, RetryableDebouncedState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "debounced"; } & WithMs & WithLeading & WithMaxWait & WithTimeout<E>,
-	): Manager<I, E, A, DebouncedState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "debounced"; } & WithMs & WithLeading & WithRetry<E> & WithTimeout<E>,
-	): Manager<I, E, A, RetryableDebouncedState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "debounced"; } & WithMs & WithLeading & WithTimeout<E>,
-	): Manager<I, E, A, DebouncedState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "debounced"; } & WithMs & WithMaxWait & WithRetry<E> & WithTimeout<E>,
-	): Manager<I, E, A, RetryableDebouncedState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "debounced"; } & WithMs & WithMaxWait & WithTimeout<E>,
-	): Manager<I, E, A, DebouncedState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "debounced"; } & WithMs & WithRetry<E> & WithTimeout<E>,
-	): Manager<I, E, A, RetryableDebouncedState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "debounced"; } & WithMs & WithTimeout<E>,
-	): Manager<I, E, A, DebouncedState<E, A>>;
-	// concurrent
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "concurrent"; } & WithN & WithOverflow<"queue"> & WithRetry<E> & WithTimeout<E>,
-	): Manager<I, E, A, RetryableConcurrentQueueState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "concurrent"; } & WithN & WithOverflow<"queue"> & WithTimeout<E>,
-	): Manager<I, E, A, ConcurrentQueueState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "concurrent"; } & WithN & WithOverflow<"drop"> & WithRetry<E> & WithTimeout<E>,
-	): Manager<I, E, A, RetryableConcurrentDropState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "concurrent"; } & WithN & WithOverflow<"drop"> & WithTimeout<E>,
-	): Manager<I, E, A, ConcurrentDropState<E, A>>;
-	// keyed
-	export function interpret<I, K, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "keyed"; } & WithKey<I, K> & WithPerKey<"exclusive"> & WithTimeout<E>,
-	): KeyedManager<I, K, E, KeyedExclusivePerKey<E, A>>;
-	export function interpret<I, K, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "keyed"; } & WithKey<I, K> & WithPerKey<"restartable"> & WithTimeout<E>,
-	): KeyedManager<I, K, E, KeyedRestartablePerKey<E, A>>;
-	// once
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "once"; } & WithRetry<E> & WithTimeout<E>,
-	): Manager<I, E, A, RetryableOnceState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "once"; } & WithTimeout<E>,
-	): Manager<I, E, A, OnceState<E, A>>;
-	// restartable
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "restartable"; } & WithMinInterval & WithRetry<E> & WithTimeout<E>,
-	): Manager<I, E, A, RetryableRestartableState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "restartable"; } & WithMinInterval & WithTimeout<E>,
-	): Manager<I, E, A, RestartableState<E, A>>;
-	// exclusive
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "exclusive"; } & WithCooldown & WithRetry<E> & WithTimeout<E>,
-	): Manager<I, E, A, RetryableExclusiveState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "exclusive"; } & WithCooldown & WithTimeout<E>,
-	): Manager<I, E, A, ExclusiveState<E, A>>;
-	// queue — overflow:"replace-last" + dedupe (most specific first)
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options:
-			& { strategy: "queue"; }
-			& WithMaxSize
-			& WithOverflow<"replace-last">
-			& WithDedupe<I>
-			& WithRetry<E>
-			& WithConcurrency
-			& WithTimeout<E>,
-	): Manager<I, E, A, RetryableQueueDropAndReplaceState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options:
-			& { strategy: "queue"; }
-			& WithMaxSize
-			& WithOverflow<"replace-last">
-			& WithDedupe<I>
-			& WithConcurrency
-			& WithTimeout<E>,
-	): Manager<I, E, A, QueueDropAndReplaceState<E, A>>;
-	// queue — overflow:"replace-last" without dedupe
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options:
-			& { strategy: "queue"; }
-			& WithMaxSize
-			& WithOverflow<"replace-last">
-			& WithRetry<E>
-			& WithConcurrency
-			& WithTimeout<E>,
-	): Manager<I, E, A, RetryableQueueReplaceState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "queue"; } & WithMaxSize & WithOverflow<"replace-last"> & WithConcurrency & WithTimeout<E>,
-	): Manager<I, E, A, QueueReplaceState<E, A>>;
-	// queue — maxSize (implicit drop) or dedupe → DroppedNil
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "queue"; } & (WithMaxSize | WithDedupe<I>) & WithRetry<E> & WithConcurrency & WithTimeout<E>,
-	): Manager<I, E, A, RetryableQueueDropState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "queue"; } & (WithMaxSize | WithDedupe<I>) & WithConcurrency & WithTimeout<E>,
-	): Manager<I, E, A, QueueDropState<E, A>>;
-	// queue — base (unbounded, no dedupe)
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "queue"; } & WithRetry<E> & WithConcurrency & WithTimeout<E>,
-	): Manager<I, E, A, RetryableQueueState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "queue"; } & WithConcurrency & WithTimeout<E>,
-	): Manager<I, E, A, QueueState<E, A>>;
-	// buffered
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "buffered"; } & WithSize & WithRetry<E> & WithTimeout<E>,
-	): Manager<I, E, A, RetryableBufferedState<E, A>>;
-	export function interpret<I, E, A>(
-		op: Op<I, E, A>,
-		options: { strategy: "buffered"; } & WithSize & WithTimeout<E>,
-	): Manager<I, E, A, BufferedState<E, A>>;
+		options: O,
+	): InterpretResult<I, E, A, O>;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	export function interpret<I, E, A>(
 		op: Op<I, E, A>,
