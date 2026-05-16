@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import { Maybe } from "../Maybe.ts";
 import { RemoteData } from "../RemoteData.ts";
 import { Result } from "../Result.ts";
 
@@ -474,4 +475,34 @@ test("RemoteData.fromResult preserves complex error types", () => {
 	expect(RemoteData.fromResult(Result.err({ code: 404 }))).toEqual(
 		RemoteData.failure({ code: 404 }),
 	);
+});
+
+// ---------------------------------------------------------------------------
+// fromMaybe
+// ---------------------------------------------------------------------------
+
+test("RemoteData.fromMaybe converts Some to Success", () => {
+	expect(RemoteData.fromMaybe(() => "missing")(Maybe.some(42))).toEqual(RemoteData.success(42));
+});
+
+test("RemoteData.fromMaybe converts None to Failure using onNone", () => {
+	expect(RemoteData.fromMaybe(() => "missing")(Maybe.none())).toEqual(RemoteData.failure("missing"));
+});
+
+test("RemoteData.fromMaybe preserves complex value types", () => {
+	expect(
+		RemoteData.fromMaybe(() => "not found")(Maybe.some({ id: 1, name: "Alice" })),
+	).toEqual(RemoteData.success({ id: 1, name: "Alice" }));
+});
+
+test("RemoteData.fromMaybe composes in pipe", () => {
+	expect(
+		pipe(Maybe.some(5), RemoteData.fromMaybe(() => "no value")),
+	).toEqual(RemoteData.success(5));
+});
+
+test("RemoteData.fromMaybe curried handler can be assigned and reused", () => {
+	const toRemote = RemoteData.fromMaybe(() => "missing");
+	expect(toRemote(Maybe.some(1))).toEqual(RemoteData.success(1));
+	expect(toRemote(Maybe.none())).toEqual(RemoteData.failure("missing"));
 });

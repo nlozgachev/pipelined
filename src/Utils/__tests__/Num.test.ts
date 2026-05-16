@@ -143,6 +143,106 @@ test("Num.divide composes with Arr.map", () => {
 });
 
 // ---------------------------------------------------------------------------
+// abs
+// ---------------------------------------------------------------------------
+
+test("Num.abs returns absolute value of positive number", () => {
+	expect(pipe(5, Num.abs)).toBe(5);
+});
+
+test("Num.abs returns absolute value of negative number", () => {
+	expect(pipe(-5, Num.abs)).toBe(5);
+});
+
+test("Num.abs returns 0 for 0", () => {
+	expect(pipe(0, Num.abs)).toBe(0);
+});
+
+test("Num.abs composes with Arr.map", () => {
+	expect(pipe([-1, -2, 3], Arr.map(Num.abs))).toEqual([1, 2, 3]);
+});
+
+// ---------------------------------------------------------------------------
+// negate
+// ---------------------------------------------------------------------------
+
+test("Num.negate negates a positive number", () => {
+	expect(pipe(5, Num.negate)).toBe(-5);
+});
+
+test("Num.negate negates a negative number", () => {
+	expect(pipe(-5, Num.negate)).toBe(5);
+});
+
+test("Num.negate composes with Arr.map", () => {
+	expect(pipe([1, 2, 3], Arr.map(Num.negate))).toEqual([-1, -2, -3]);
+});
+
+// ---------------------------------------------------------------------------
+// round
+// ---------------------------------------------------------------------------
+
+test("Num.round rounds to nearest integer (up)", () => {
+	expect(pipe(3.5, Num.round)).toBe(4);
+});
+
+test("Num.round rounds to nearest integer (down)", () => {
+	expect(pipe(3.4, Num.round)).toBe(3);
+});
+
+test("Num.round returns integer unchanged", () => {
+	expect(pipe(5, Num.round)).toBe(5);
+});
+
+// ---------------------------------------------------------------------------
+// floor
+// ---------------------------------------------------------------------------
+
+test("Num.floor rounds down to integer", () => {
+	expect(pipe(3.9, Num.floor)).toBe(3);
+});
+
+test("Num.floor returns negative integer (rounding down)", () => {
+	expect(pipe(-3.2, Num.floor)).toBe(-4);
+});
+
+test("Num.floor returns integer unchanged", () => {
+	expect(pipe(5, Num.floor)).toBe(5);
+});
+
+// ---------------------------------------------------------------------------
+// ceil
+// ---------------------------------------------------------------------------
+
+test("Num.ceil rounds up to integer", () => {
+	expect(pipe(3.1, Num.ceil)).toBe(4);
+});
+
+test("Num.ceil returns negative integer (rounding up toward zero)", () => {
+	expect(pipe(-3.9, Num.ceil)).toBe(-3);
+});
+
+test("Num.ceil returns integer unchanged", () => {
+	expect(pipe(5, Num.ceil)).toBe(5);
+});
+
+// ---------------------------------------------------------------------------
+// remainder
+// ---------------------------------------------------------------------------
+
+test("Num.remainder returns the remainder of division", () => {
+	expect(pipe(10, Num.remainder(3))).toBe(1);
+});
+
+test("Num.remainder returns 0 when evenly divisible", () => {
+	expect(pipe(9, Num.remainder(3))).toBe(0);
+});
+
+test("Num.remainder composes with Arr.map", () => {
+	expect(pipe([10, 11, 12], Arr.map(Num.remainder(3)))).toEqual([1, 2, 0]);
+});
+
+// ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 

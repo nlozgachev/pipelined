@@ -673,3 +673,38 @@ test("Task.timeout removes the outer signal listener after normal completion", a
 	outerController.abort();
 	expect(innerSignal?.aborted).toBe(false);
 });
+
+// ---------------------------------------------------------------------------
+// fromSync
+// ---------------------------------------------------------------------------
+
+test("Task.fromSync does not call f until the task is called", async () => {
+	let called = false;
+	const t = Task.fromSync(() => {
+		called = true;
+		return 42;
+	});
+	expect(called).toBe(false);
+	await t();
+	expect(called).toBe(true);
+});
+
+test("Task.fromSync resolves to the return value of f", async () => {
+	const t = Task.fromSync(() => "hello");
+	expect(await t()).toBe("hello");
+});
+
+test("Task.fromSync composes with Task.map in pipe", async () => {
+	const result = await pipe(
+		Task.fromSync(() => 5),
+		Task.map((n) => n * 2),
+	)();
+	expect(result).toBe(10);
+});
+
+test("Task.fromSync re-evaluates f on each call", async () => {
+	let count = 0;
+	const t = Task.fromSync(() => ++count);
+	expect(await t()).toBe(1);
+	expect(await t()).toBe(2);
+});

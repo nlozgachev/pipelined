@@ -126,4 +126,70 @@ export namespace Num {
 	 * ```
 	 */
 	export const divide = (b: number) => (a: number): number => a / b;
+
+	/**
+	 * Returns the absolute value of a number.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(-5, Num.abs); // 5
+	 * pipe(5, Num.abs);  // 5
+	 * ```
+	 */
+	export const abs = (n: number): number => Math.abs(n);
+
+	/**
+	 * Negates a number (arithmetic negation).
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(5, Num.negate);  // -5
+	 * pipe(-5, Num.negate); // 5
+	 * ```
+	 */
+	export const negate = (n: number): number => -n;
+
+	/**
+	 * Rounds a number to the nearest integer.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(3.5, Num.round); // 4
+	 * pipe(3.4, Num.round); // 3
+	 * ```
+	 */
+	export const round = (n: number): number => Math.round(n);
+
+	/**
+	 * Rounds a number down to the nearest integer.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(3.9, Num.floor); // 3
+	 * pipe(-3.2, Num.floor); // -4
+	 * ```
+	 */
+	export const floor = (n: number): number => Math.floor(n);
+
+	/**
+	 * Rounds a number up to the nearest integer.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(3.1, Num.ceil); // 4
+	 * pipe(-3.9, Num.ceil); // -3
+	 * ```
+	 */
+	export const ceil = (n: number): number => Math.ceil(n);
+
+	/**
+	 * Returns the remainder of dividing a number by `divisor`. Data-last: `remainder(divisor)(a)` = `a % divisor`.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(10, Num.remainder(3));                    // 1
+	 * pipe([10, 11, 12], Arr.map(Num.remainder(3))); // [1, 2, 0]
+	 * ```
+	 */
+	export const remainder = (divisor: number) => (n: number): number => n % divisor;
 }

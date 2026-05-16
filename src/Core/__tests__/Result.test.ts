@@ -485,13 +485,23 @@ test("Result pipe short-circuits on Err", () => {
 
 test("Result.tapError calls side effect with error value on Err", () => {
 	let captured: string | undefined;
-	pipe(Result.err("oops"), Result.tapError((e) => { captured = e; }));
+	pipe(
+		Result.err("oops"),
+		Result.tapError((e) => {
+			captured = e;
+		}),
+	);
 	expect(captured).toBe("oops");
 });
 
 test("Result.tapError does not call side effect on Ok", () => {
 	let called = false;
-	pipe(Result.ok(1), Result.tapError(() => { called = true; }));
+	pipe(
+		Result.ok(1),
+		Result.tapError(() => {
+			called = true;
+		}),
+	);
 	expect(called).toBe(false);
 });
 
@@ -503,4 +513,37 @@ test("Result.tapError returns original Err unchanged", () => {
 test("Result.tapError returns original Ok unchanged", () => {
 	const r = Result.ok(42);
 	expect(pipe(r, Result.tapError(() => {}))).toEqual(r);
+});
+
+// ---------------------------------------------------------------------------
+// fromPredicate
+// ---------------------------------------------------------------------------
+
+test("Result.fromPredicate returns Ok when predicate passes", () => {
+	expect(pipe(5, Result.fromPredicate(n => n > 0, n => `${n} is not positive`))).toEqual(Result.ok(5));
+});
+
+test("Result.fromPredicate returns Err when predicate fails", () => {
+	expect(pipe(-1, Result.fromPredicate(n => n > 0, n => `${n} is not positive`))).toEqual(
+		Result.err("-1 is not positive"),
+	);
+});
+
+test("Result.fromPredicate returns Err for boundary value", () => {
+	expect(pipe(0, Result.fromPredicate(n => n > 0, () => "must be positive"))).toEqual(Result.err("must be positive"));
+});
+
+test("Result.fromPredicate works with string predicates", () => {
+	const nonEmpty = Result.fromPredicate((s: string) => s.length > 0, () => "empty string");
+	expect(pipe("hi", nonEmpty)).toEqual(Result.ok("hi"));
+	expect(pipe("", nonEmpty)).toEqual(Result.err("empty string"));
+});
+
+test("Result.fromPredicate composes in pipe with chain", () => {
+	const result = pipe(
+		-5,
+		Result.fromPredicate((n: number) => n >= 0, n => `${n} is negative`),
+		Result.map(n => n * 2),
+	);
+	expect(result).toEqual(Result.err("-5 is negative"));
 });

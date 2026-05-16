@@ -208,6 +208,114 @@ test("Str.replaceAll returns the string unchanged when pattern not found", () =>
 });
 
 // ---------------------------------------------------------------------------
+// isEmpty
+// ---------------------------------------------------------------------------
+
+test("Str.isEmpty returns true for an empty string", () => {
+	expect(pipe("", Str.isEmpty)).toBe(true);
+});
+
+test("Str.isEmpty returns false for a non-empty string", () => {
+	expect(pipe("hi", Str.isEmpty)).toBe(false);
+});
+
+test("Str.isEmpty returns false for a whitespace-only string", () => {
+	expect(pipe("   ", Str.isEmpty)).toBe(false);
+});
+
+// ---------------------------------------------------------------------------
+// isBlank
+// ---------------------------------------------------------------------------
+
+test("Str.isBlank returns true for an empty string", () => {
+	expect(pipe("", Str.isBlank)).toBe(true);
+});
+
+test("Str.isBlank returns true for a whitespace-only string", () => {
+	expect(pipe("   ", Str.isBlank)).toBe(true);
+});
+
+test("Str.isBlank returns false for a non-empty string", () => {
+	expect(pipe("hi", Str.isBlank)).toBe(false);
+});
+
+// ---------------------------------------------------------------------------
+// length
+// ---------------------------------------------------------------------------
+
+test("Str.length returns the correct length", () => {
+	expect(pipe("hello", Str.length)).toBe(5);
+});
+
+test("Str.length returns 0 for an empty string", () => {
+	expect(pipe("", Str.length)).toBe(0);
+});
+
+test("Str.length includes whitespace in count", () => {
+	expect(pipe("a b c", Str.length)).toBe(5);
+});
+
+// ---------------------------------------------------------------------------
+// slice
+// ---------------------------------------------------------------------------
+
+test("Str.slice slices with start and end indices", () => {
+	expect(pipe("hello", Str.slice(1, 3))).toBe("el");
+});
+
+test("Str.slice slices with only start index", () => {
+	expect(pipe("hello", Str.slice(2))).toBe("llo");
+});
+
+test("Str.slice handles negative start index", () => {
+	expect(pipe("hello", Str.slice(-2))).toBe("lo");
+});
+
+test("Str.slice with start beyond length returns empty string", () => {
+	expect(pipe("hello", Str.slice(10))).toBe("");
+});
+
+// ---------------------------------------------------------------------------
+// padStart
+// ---------------------------------------------------------------------------
+
+test("Str.padStart pads to the specified length", () => {
+	expect(pipe("5", Str.padStart(3, "0"))).toBe("005");
+});
+
+test("Str.padStart with default fill uses space", () => {
+	expect(pipe("hi", Str.padStart(5))).toBe("   hi");
+});
+
+test("Str.padStart is a no-op when string is already long enough", () => {
+	expect(pipe("hello", Str.padStart(3, "0"))).toBe("hello");
+});
+
+test("Str.padStart pads with custom fill string", () => {
+	expect(pipe("x", Str.padStart(5, "ab"))).toBe("ababx");
+});
+
+// ---------------------------------------------------------------------------
+// padEnd
+// ---------------------------------------------------------------------------
+
+test("Str.padEnd pads to the specified length", () => {
+	expect(pipe("hi", Str.padEnd(5, "."))).toBe("hi...");
+});
+
+test("Str.padEnd with default fill uses space", () => {
+	expect(pipe("hi", Str.padEnd(5))).toBe("hi   ");
+});
+
+test("Str.padEnd is a no-op when string is already long enough", () => {
+	expect(pipe("hello", Str.padEnd(3, "0"))).toBe("hello");
+});
+
+test("Str.padEnd pads with custom fill string", () => {
+	expect(pipe("x", Str.padEnd(5, "ab"))).toBe("xabab");
+});
+
+// ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 

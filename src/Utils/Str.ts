@@ -132,6 +132,74 @@ export namespace Str {
 	export const words = (s: string): readonly string[] => s.trim().split(/\s+/).filter(Boolean);
 
 	/**
+	 * Returns `true` when the string is empty.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe("", Str.isEmpty);   // true
+	 * pipe("hi", Str.isEmpty); // false
+	 * ```
+	 */
+	export const isEmpty = (s: string): boolean => s.length === 0;
+
+	/**
+	 * Returns `true` when the string is empty or contains only whitespace.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe("   ", Str.isBlank); // true
+	 * pipe("hi", Str.isBlank);  // false
+	 * ```
+	 */
+	export const isBlank = (s: string): boolean => s.trim().length === 0;
+
+	/**
+	 * Returns the length of the string.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe("hello", Str.length); // 5
+	 * pipe("", Str.length);      // 0
+	 * ```
+	 */
+	export const length = (s: string): number => s.length;
+
+	/**
+	 * Extracts a substring between two indices. Data-last: use in `pipe`.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe("hello", Str.slice(1, 3)); // "el"
+	 * pipe("hello", Str.slice(2));    // "llo"
+	 * ```
+	 */
+	export const slice = (start: number, end?: number) => (s: string): string => s.slice(start, end);
+
+	/**
+	 * Pads the start of a string to a specified length. Data-last: use in `pipe`.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe("5", Str.padStart(3, "0")); // "005"
+	 * pipe("hi", Str.padStart(5));     // "   hi"
+	 * ```
+	 */
+	export const padStart = (maxLength: number, fillString?: string) => (s: string): string =>
+		s.padStart(maxLength, fillString);
+
+	/**
+	 * Pads the end of a string to a specified length. Data-last: use in `pipe`.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe("hi", Str.padEnd(5, "."));  // "hi..."
+	 * pipe("hi", Str.padEnd(5));       // "hi   "
+	 * ```
+	 */
+	export const padEnd = (maxLength: number, fillString?: string) => (s: string): string =>
+		s.padEnd(maxLength, fillString);
+
+	/**
 	 * Safe number parsers that return `Maybe` instead of `NaN`.
 	 */
 	export const parse = {

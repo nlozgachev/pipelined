@@ -192,6 +192,23 @@ export namespace Result {
 	};
 
 	/**
+	 * Creates a Result from a predicate applied to a value.
+	 * Returns Ok if the predicate passes, Err from onFalse otherwise.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(5, Result.fromPredicate(n => n > 0, n => `${n} is not positive`));  // Ok(5)
+	 * pipe(-1, Result.fromPredicate(n => n > 0, n => `${n} is not positive`)); // Err("-1 is not positive")
+	 * pipe("", Result.fromPredicate(s => s.length > 0, () => "empty string")); // Err("empty string")
+	 * ```
+	 */
+	export const fromPredicate = <E, A>(
+		pred: (a: A) => boolean,
+		onFalse: (a: A) => E,
+	) =>
+	(a: A): Result<E, A> => pred(a) ? ok(a) : err(onFalse(a));
+
+	/**
 	 * Recovers from an error by providing a fallback Result.
 	 * The fallback can produce a different success type, widening the result to `Result<E, A | B>`.
 	 */

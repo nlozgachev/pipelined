@@ -130,6 +130,24 @@ export namespace Arr {
 	};
 
 	/**
+	 * Transforms each element using both its value and its zero-based index.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   ["a", "b", "c"],
+	 *   Arr.mapWithIndex((i, s) => ({ position: i + 1, value: s }))
+	 * ); // [{ position: 1, value: "a" }, { position: 2, value: "b" }, { position: 3, value: "c" }]
+	 * ```
+	 */
+	export const mapWithIndex = <A, B>(f: (i: number, a: A) => B) => (data: readonly A[]): readonly B[] => {
+		const n = data.length;
+		const result = new Array<B>(n);
+		for (let i = 0; i < n; i++) result[i] = f(i, data[i]);
+		return result;
+	};
+
+	/**
 	 * Filters elements that satisfy the predicate.
 	 *
 	 * @example

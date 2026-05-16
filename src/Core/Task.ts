@@ -75,6 +75,18 @@ export namespace Task {
 		Deferred.fromPromise(f(signal));
 
 	/**
+	 * Creates a Task from a lazy synchronous thunk.
+	 * Unlike `Task.resolve(f())`, `fromSync` does not evaluate `f` until the Task is called.
+	 *
+	 * @example
+	 * ```ts
+	 * const t = Task.fromSync(() => Date.now()); // Date.now() not called yet
+	 * const ts = await t(); // called here, every time
+	 * ```
+	 */
+	export const fromSync = <A>(f: () => A): Task<A> => () => Deferred.fromPromise(Promise.resolve(f()));
+
+	/**
 	 * Transforms the value inside a Task.
 	 *
 	 * @example

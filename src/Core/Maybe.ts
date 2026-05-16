@@ -87,8 +87,7 @@ export namespace Maybe {
 	 * pipe("", Maybe.fromPredicate((s: string) => s.length > 0));      // None
 	 * ```
 	 */
-	export const fromPredicate = <A>(pred: (a: A) => boolean) => (a: A): Maybe<A> =>
-		pred(a) ? some(a) : none();
+	export const fromPredicate = <A>(pred: (a: A) => boolean) => (a: A): Maybe<A> => pred(a) ? some(a) : none();
 
 	/**
 	 * Converts an Maybe to a Result.

@@ -284,4 +284,17 @@ export namespace RemoteData {
 	 */
 	export const fromResult = <E, A>(data: Result<E, A>): RemoteData<E, A> =>
 		Result.isOk(data) ? success(data.value) : failure(data.error);
+
+	/**
+	 * Converts a Maybe to a RemoteData.
+	 * Some becomes Success, None becomes Failure using the onNone error producer.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Maybe.some(user), RemoteData.fromMaybe(() => "not found")); // Success(user)
+	 * pipe(Maybe.none(), RemoteData.fromMaybe(() => "not found"));     // Failure("not found")
+	 * ```
+	 */
+	export const fromMaybe = <E>(onNone: () => E) => <A>(data: Maybe<A>): RemoteData<E, A> =>
+		Maybe.isSome(data) ? success(data.value) : failure(onNone());
 }

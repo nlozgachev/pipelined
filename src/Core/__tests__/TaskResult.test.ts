@@ -494,13 +494,23 @@ test("TaskResult.fold receives the transformed error from a prior mapError", asy
 
 test("TaskResult.tapError calls side effect with error on Err", async () => {
 	let captured: string | undefined;
-	await pipe(TaskResult.err<string, number>("oops"), TaskResult.tapError((e) => { captured = e; }))();
+	await pipe(
+		TaskResult.err<string, number>("oops"),
+		TaskResult.tapError((e) => {
+			captured = e;
+		}),
+	)();
 	expect(captured).toBe("oops");
 });
 
 test("TaskResult.tapError does not call side effect on Ok", async () => {
 	let called = false;
-	await pipe(TaskResult.ok<string, number>(1), TaskResult.tapError(() => { called = true; }))();
+	await pipe(
+		TaskResult.ok<string, number>(1),
+		TaskResult.tapError(() => {
+			called = true;
+		}),
+	)();
 	expect(called).toBe(false);
 });
 

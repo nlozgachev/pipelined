@@ -187,6 +187,31 @@ test("map - returns empty array for empty input", () => {
 	expect(result).toEqual([]);
 });
 
+// =============================================================================
+// mapWithIndex
+// =============================================================================
+
+test("Arr.mapWithIndex provides zero-based index alongside each element", () => {
+	expect(pipe(["a", "b", "c"], Arr.mapWithIndex((i, s) => `${i}:${s}`))).toEqual(["0:a", "1:b", "2:c"]);
+});
+
+test("Arr.mapWithIndex passes correct index and value", () => {
+	expect(pipe([10, 20, 30], Arr.mapWithIndex((i, n) => i + n))).toEqual([10, 21, 32]);
+});
+
+test("Arr.mapWithIndex on empty array returns empty array", () => {
+	expect(pipe([], Arr.mapWithIndex((i, n: number) => n))).toEqual([]);
+});
+
+test("Arr.mapWithIndex composes in pipe", () => {
+	expect(
+		pipe(
+			["a", "b", "c"],
+			Arr.mapWithIndex((i, s) => ({ position: i + 1, value: s })),
+		),
+	).toEqual([{ position: 1, value: "a" }, { position: 2, value: "b" }, { position: 3, value: "c" }]);
+});
+
 test("filter - keeps elements satisfying the predicate", () => {
 	const result = pipe(
 		[1, 2, 3, 4, 5],
