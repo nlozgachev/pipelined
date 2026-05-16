@@ -107,4 +107,20 @@ export namespace TaskResult {
 	 */
 	export const tap = <E, A>(f: (a: A) => void) => (data: TaskResult<E, A>): TaskResult<E, A> =>
 		Task.map(Result.tap<E, A>(f))(data);
+
+	/**
+	 * Executes a side effect on the error value without changing the TaskResult.
+	 * Useful for logging or reporting async errors.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   fetchUser(id),
+	 *   TaskResult.tapError(e => console.error("fetch failed:", e)),
+	 *   TaskResult.chain(saveToCache),
+	 * )
+	 * ```
+	 */
+	export const tapError = <E, A>(f: (e: E) => void) => (data: TaskResult<E, A>): TaskResult<E, A> =>
+		Task.map(Result.tapError<E, A>(f))(data);
 }

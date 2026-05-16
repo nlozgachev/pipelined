@@ -506,3 +506,29 @@ test("Maybe pipe short-circuits on None", () => {
 	);
 	expect(result).toBe(0);
 });
+
+// ---------------------------------------------------------------------------
+// fromPredicate
+// ---------------------------------------------------------------------------
+
+test("Maybe.fromPredicate returns Some when predicate passes", () => {
+	expect(Maybe.fromPredicate((n: number) => n > 0)(5)).toEqual(Maybe.some(5));
+});
+
+test("Maybe.fromPredicate returns None when predicate fails", () => {
+	expect(Maybe.fromPredicate((n: number) => n > 0)(-1)).toEqual(Maybe.none());
+});
+
+test("Maybe.fromPredicate returns None for boundary value", () => {
+	expect(Maybe.fromPredicate((n: number) => n > 0)(0)).toEqual(Maybe.none());
+});
+
+test("Maybe.fromPredicate works with string predicates", () => {
+	expect(Maybe.fromPredicate((s: string) => s.length > 0)("")).toEqual(Maybe.none());
+	expect(Maybe.fromPredicate((s: string) => s.length > 0)("hi")).toEqual(Maybe.some("hi"));
+});
+
+test("Maybe.fromPredicate composes in pipe", () => {
+	expect(pipe(18, Maybe.fromPredicate((n: number) => n >= 18))).toEqual(Maybe.some(18));
+	expect(pipe(17, Maybe.fromPredicate((n: number) => n >= 18))).toEqual(Maybe.none());
+});

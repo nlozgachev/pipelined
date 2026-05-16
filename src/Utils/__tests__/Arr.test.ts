@@ -211,6 +211,39 @@ test("filter - returns empty array for empty input", () => {
 	expect(result).toEqual([]);
 });
 
+// =============================================================================
+// filterMap
+// =============================================================================
+
+test("Arr.filterMap collects Some values and discards None", () => {
+	const parseNum = (s: string): Maybe<number> => {
+		const n = Number(s);
+		return isNaN(n) ? Maybe.none() : Maybe.some(n);
+	};
+	expect(pipe(["1", "abc", "3"], Arr.filterMap(parseNum))).toEqual([1, 3]);
+});
+
+test("Arr.filterMap returns empty array when all elements map to None", () => {
+	expect(pipe(["a", "b", "c"], Arr.filterMap(() => Maybe.none()))).toEqual([]);
+});
+
+test("Arr.filterMap returns all values when all elements map to Some", () => {
+	expect(pipe([1, 2, 3], Arr.filterMap(Maybe.some))).toEqual([1, 2, 3]);
+});
+
+test("Arr.filterMap on empty array returns empty array", () => {
+	expect(pipe([], Arr.filterMap(Maybe.some))).toEqual([]);
+});
+
+test("Arr.filterMap maps and filters in a single pipe", () => {
+	expect(
+		pipe(
+			[1, 2, 3, 4, 5],
+			Arr.filterMap(n => n % 2 === 0 ? Maybe.some(n * 10) : Maybe.none()),
+		),
+	).toEqual([20, 40]);
+});
+
 test("partition - splits array into pass and fail groups", () => {
 	const result = pipe(
 		[1, 2, 3, 4, 5],

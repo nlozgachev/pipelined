@@ -221,6 +221,19 @@ pipe(
 If you need to distinguish `NotAsked` from `Loading` after conversion, keep using `RemoteData`
 directly — both states collapse into `Err` and the distinction is lost.
 
+The reverse conversion — going from a `Result` into a `RemoteData` — is just as common. When a
+`TaskResult` resolves, you get a `Result<E, A>` and typically want to store it as `RemoteData` in
+component state. `fromResult` does this in one step: `Ok` becomes `Success`, `Err` becomes
+`Failure`:
+
+```ts
+const result = await TaskResult.tryCatch(fetchUser, String)();
+setState(RemoteData.fromResult(result)); // Success(user) or Failure(msg)
+```
+
+Without `fromResult` you'd write a manual `match` or `fold` just to map the two cases — which is
+boilerplate that belongs in the library, not your component.
+
 ## When to use RemoteData
 
 Use `RemoteData` when:

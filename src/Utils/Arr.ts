@@ -147,6 +147,29 @@ export namespace Arr {
 	};
 
 	/**
+	 * Maps each element to a Maybe and collects only the Some values.
+	 * Combines map and filter in a single pass.
+	 *
+	 * @example
+	 * ```ts
+	 * const parseNum = (s: string): Maybe<number> => {
+	 *   const n = Number(s);
+	 *   return isNaN(n) ? Maybe.none() : Maybe.some(n);
+	 * };
+	 *
+	 * pipe(["1", "abc", "3"], Arr.filterMap(parseNum)); // [1, 3]
+	 * ```
+	 */
+	export const filterMap = <A, B>(f: (a: A) => Maybe<B>) => (data: readonly A[]): readonly B[] => {
+		const result: B[] = [];
+		for (let i = 0; i < data.length; i++) {
+			const mapped = f(data[i]);
+			if (mapped.kind === "Some") result.push(mapped.value);
+		}
+		return result;
+	};
+
+	/**
 	 * Splits an array into two groups based on a predicate.
 	 * First group contains elements that satisfy the predicate,
 	 * second group contains the rest.

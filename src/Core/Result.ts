@@ -174,6 +174,24 @@ export namespace Result {
 	};
 
 	/**
+	 * Executes a side effect on the error value without changing the Result.
+	 * Useful for logging or reporting errors.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Result.err("not found"),
+	 *   Result.tapError(e => console.error("validation failed:", e)),
+	 *   Result.chain(save),
+	 * )
+	 * ```
+	 */
+	export const tapError = <E, A>(f: (e: E) => void) => (data: Result<E, A>): Result<E, A> => {
+		if (isErr(data)) f(data.error);
+		return data;
+	};
+
+	/**
 	 * Recovers from an error by providing a fallback Result.
 	 * The fallback can produce a different success type, widening the result to `Result<E, A | B>`.
 	 */

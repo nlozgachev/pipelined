@@ -176,6 +176,38 @@ test("Str.parse.float returns None for empty string", () => {
 });
 
 // ---------------------------------------------------------------------------
+// replace
+// ---------------------------------------------------------------------------
+
+test("Str.replace replaces the first occurrence of a substring", () => {
+	expect(pipe("foo foo foo", Str.replace("foo", "bar"))).toBe("bar foo foo");
+});
+
+test("Str.replace works with a RegExp pattern", () => {
+	expect(pipe("Hello World", Str.replace(/world/i, "Earth"))).toBe("Hello Earth");
+});
+
+test("Str.replace returns the string unchanged when pattern not found", () => {
+	expect(pipe("hello", Str.replace("xyz", "abc"))).toBe("hello");
+});
+
+// ---------------------------------------------------------------------------
+// replaceAll
+// ---------------------------------------------------------------------------
+
+test("Str.replaceAll replaces all occurrences of a substring", () => {
+	expect(pipe("foo foo foo", Str.replaceAll("foo", "bar"))).toBe("bar bar bar");
+});
+
+test("Str.replaceAll with a global RegExp replaces all matches", () => {
+	expect(pipe("aAbBaA", Str.replaceAll(/a/gi, "x"))).toBe("xxbBxx");
+});
+
+test("Str.replaceAll returns the string unchanged when pattern not found", () => {
+	expect(pipe("hello", Str.replaceAll("xyz", "abc"))).toBe("hello");
+});
+
+// ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 

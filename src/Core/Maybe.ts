@@ -75,6 +75,22 @@ export namespace Maybe {
 	export const fromUndefined = <A>(value: A | undefined): Maybe<A> => value === undefined ? none() : some(value);
 
 	/**
+	 * Creates a Maybe from a predicate applied to a value.
+	 * Returns Some if the predicate passes, None otherwise.
+	 *
+	 * @example
+	 * ```ts
+	 * Maybe.fromPredicate((n: number) => n >= 18)(21); // Some(21)
+	 * Maybe.fromPredicate((n: number) => n >= 18)(15); // None
+	 *
+	 * pipe("hello", Maybe.fromPredicate((s: string) => s.length > 0)); // Some("hello")
+	 * pipe("", Maybe.fromPredicate((s: string) => s.length > 0));      // None
+	 * ```
+	 */
+	export const fromPredicate = <A>(pred: (a: A) => boolean) => (a: A): Maybe<A> =>
+		pred(a) ? some(a) : none();
+
+	/**
 	 * Converts an Maybe to a Result.
 	 * Some becomes Ok, None becomes Err with the provided error.
 	 *

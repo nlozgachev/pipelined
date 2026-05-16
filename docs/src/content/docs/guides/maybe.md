@@ -142,6 +142,18 @@ If you find yourself calling `toNullable` early to continue processing, that's u
 use `map` or `chain` instead — breaking out of `Maybe` too early means writing null checks again
 downstream.
 
+`fromPredicate` is the complement for when you're starting from a plain value rather than an
+existing `Maybe`. It wraps the value in `Some` if the predicate passes, or returns `None` if not:
+
+```ts
+pipe(age, Maybe.fromPredicate((n) => n >= 18)); // Some(age) or None
+pipe("", Maybe.fromPredicate((s) => s.length > 0)); // None
+pipe("hello", Maybe.fromPredicate((s) => s.length > 0)); // Some("hello")
+```
+
+Use `filter` when you already have a `Maybe`; use `fromPredicate` when you are starting from a
+plain value and a condition decides whether it should exist at all.
+
 ## Extracting the value
 
 At the edge of your pipeline, you need to get a plain value back. There are a few ways:

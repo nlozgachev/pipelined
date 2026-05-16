@@ -487,3 +487,29 @@ test("TaskResult.fold receives the transformed error from a prior mapError", asy
 	)();
 	expect(result).toBe("error: BOOM");
 });
+
+// ---------------------------------------------------------------------------
+// tapError
+// ---------------------------------------------------------------------------
+
+test("TaskResult.tapError calls side effect with error on Err", async () => {
+	let captured: string | undefined;
+	await pipe(TaskResult.err<string, number>("oops"), TaskResult.tapError((e) => { captured = e; }))();
+	expect(captured).toBe("oops");
+});
+
+test("TaskResult.tapError does not call side effect on Ok", async () => {
+	let called = false;
+	await pipe(TaskResult.ok<string, number>(1), TaskResult.tapError(() => { called = true; }))();
+	expect(called).toBe(false);
+});
+
+test("TaskResult.tapError returns original Err result unchanged", async () => {
+	const result = await pipe(TaskResult.err<string, number>("oops"), TaskResult.tapError(() => {}))();
+	expect(result).toEqual({ kind: "Error", error: "oops" });
+});
+
+test("TaskResult.tapError returns original Ok result unchanged", async () => {
+	const result = await pipe(TaskResult.ok<string, number>(42), TaskResult.tapError(() => {}))();
+	expect(result).toEqual({ kind: "Ok", value: 42 });
+});

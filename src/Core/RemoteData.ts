@@ -271,4 +271,17 @@ export namespace RemoteData {
 	 */
 	export const toResult = <E>(onNotReady: () => E) => <A>(data: RemoteData<E, A>): Result<E, A> =>
 		isSuccess(data) ? Result.ok(data.value) : Result.err(isFailure(data) ? data.error : onNotReady());
+
+	/**
+	 * Converts a Result to a RemoteData.
+	 * Ok becomes Success, Err becomes Failure.
+	 *
+	 * @example
+	 * ```ts
+	 * const result = await TaskResult.tryCatch(fetchUser, String)();
+	 * setState(RemoteData.fromResult(result)); // Success(user) or Failure(msg)
+	 * ```
+	 */
+	export const fromResult = <E, A>(data: Result<E, A>): RemoteData<E, A> =>
+		Result.isOk(data) ? success(data.value) : failure(data.error);
 }

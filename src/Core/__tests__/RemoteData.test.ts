@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { RemoteData } from "../RemoteData.ts";
+import { Result } from "../Result.ts";
 
 // ---------------------------------------------------------------------------
 // Constructors
@@ -449,4 +450,28 @@ test("RemoteData composes well in a pipe chain", () => {
 		RemoteData.getOrElse(() => 0),
 	);
 	expect(result).toBe(10);
+});
+
+// ---------------------------------------------------------------------------
+// fromResult
+// ---------------------------------------------------------------------------
+
+test("RemoteData.fromResult converts Ok to Success", () => {
+	expect(RemoteData.fromResult(Result.ok(42))).toEqual(RemoteData.success(42));
+});
+
+test("RemoteData.fromResult converts Err to Failure", () => {
+	expect(RemoteData.fromResult(Result.err("oops"))).toEqual(RemoteData.failure("oops"));
+});
+
+test("RemoteData.fromResult preserves complex value types", () => {
+	expect(RemoteData.fromResult(Result.ok({ id: 1, name: "Alice" }))).toEqual(
+		RemoteData.success({ id: 1, name: "Alice" }),
+	);
+});
+
+test("RemoteData.fromResult preserves complex error types", () => {
+	expect(RemoteData.fromResult(Result.err({ code: 404 }))).toEqual(
+		RemoteData.failure({ code: 404 }),
+	);
 });

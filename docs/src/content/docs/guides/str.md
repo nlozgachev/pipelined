@@ -62,6 +62,23 @@ Str.words("  hello   world  "); // ["hello", "world"]
 Str.words("a\tb\nc"); // ["a", "b", "c"]
 ```
 
+## Replacing text
+
+`Str.replace` replaces the first occurrence of a pattern — either a string or a `RegExp` — and
+returns the updated string. `Str.replaceAll` does the same but replaces every match:
+
+```ts
+pipe("foo foo foo", Str.replace("foo", "bar")); // "bar foo foo"
+pipe("Hello World", Str.replace(/world/i, "Earth")); // "Hello Earth"
+
+pipe("foo foo foo", Str.replaceAll("foo", "bar")); // "bar bar bar"
+pipe("aAbBaA", Str.replaceAll(/a/gi, "x")); // "xxBBxx"
+```
+
+Both are data-last wrappers around the native `String.prototype.replace` and
+`String.prototype.replaceAll`, so they slot directly into a `pipe` chain without requiring you to
+flip the argument order.
+
 ## Predicates for filtering
 
 `Str.includes`, `Str.startsWith`, and `Str.endsWith` are curried predicates that work directly

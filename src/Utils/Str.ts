@@ -45,6 +45,30 @@ export namespace Str {
 	export const includes = (substring: string) => (s: string): boolean => s.includes(substring);
 
 	/**
+	 * Replaces the first occurrence of a pattern in a string. Data-last: use in `pipe`.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe("foo foo foo", Str.replace("foo", "bar")); // "bar foo foo"
+	 * pipe("Hello World", Str.replace(/world/i, "Earth")); // "Hello Earth"
+	 * ```
+	 */
+	export const replace = (pattern: string | RegExp, replacement: string) => (s: string): string =>
+		s.replace(pattern, replacement);
+
+	/**
+	 * Replaces all occurrences of a pattern in a string. Data-last: use in `pipe`.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe("foo foo foo", Str.replaceAll("foo", "bar")); // "bar bar bar"
+	 * pipe("aAbBaA", Str.replaceAll(/a/gi, "x")); // "xxBBxx"
+	 * ```
+	 */
+	export const replaceAll = (pattern: string | RegExp, replacement: string) => (s: string): string =>
+		s.replaceAll(pattern, replacement);
+
+	/**
 	 * Returns `true` when the string starts with the given prefix.
 	 *
 	 * @example

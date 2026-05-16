@@ -209,6 +209,35 @@ pipe(
 );
 ```
 
+## Observing values without changing them
+
+Sometimes you want to log, report, or track something in the middle of a pipeline without
+interrupting the flow. `tap` runs a side effect on the success value and passes the `Result`
+through unchanged:
+
+```ts
+pipe(
+	parseConfig(input),
+	Result.tap((cfg) => console.log("Config loaded:", cfg.version)),
+	Result.chain(validateConfig),
+	Result.map(buildApp),
+);
+```
+
+`tapError` does the same on the error side — useful for logging failures without breaking the
+pipeline or losing the error for downstream handling:
+
+```ts
+pipe(
+	parseConfig(input),
+	Result.tapError((e) => console.error("Config parse failed:", e)),
+	Result.chain(validateConfig),
+);
+```
+
+Both `tap` and `tapError` always return the original `Result` — they never change the value or the
+error, and they never turn an `Ok` into an `Err` or vice versa.
+
 ## Converting to Maybe
 
 When you only care about whether an operation succeeded — not why it failed — convert to `Maybe`:

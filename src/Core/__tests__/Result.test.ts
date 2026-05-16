@@ -478,3 +478,29 @@ test("Result pipe short-circuits on Err", () => {
 	);
 	expect(result).toBe(-1);
 });
+
+// ---------------------------------------------------------------------------
+// tapError
+// ---------------------------------------------------------------------------
+
+test("Result.tapError calls side effect with error value on Err", () => {
+	let captured: string | undefined;
+	pipe(Result.err("oops"), Result.tapError((e) => { captured = e; }));
+	expect(captured).toBe("oops");
+});
+
+test("Result.tapError does not call side effect on Ok", () => {
+	let called = false;
+	pipe(Result.ok(1), Result.tapError(() => { called = true; }));
+	expect(called).toBe(false);
+});
+
+test("Result.tapError returns original Err unchanged", () => {
+	const r = Result.err("oops");
+	expect(pipe(r, Result.tapError(() => {}))).toEqual(r);
+});
+
+test("Result.tapError returns original Ok unchanged", () => {
+	const r = Result.ok(42);
+	expect(pipe(r, Result.tapError(() => {}))).toEqual(r);
+});

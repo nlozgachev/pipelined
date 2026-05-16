@@ -136,6 +136,23 @@ pipe(
 Arr.flatten([[1, 2], [3], [4, 5]]); // [1, 2, 3, 4, 5]
 ```
 
+**`filterMap`** maps each element to a `Maybe` and collects only the `Some` values in a single
+pass — the combination of `map` and `filter` that comes up constantly when extracting structured
+data from arrays that may contain missing or invalid entries:
+
+```ts
+const parseNum = (s: string): Maybe<number> => {
+	const n = Number(s);
+	return isNaN(n) ? Maybe.none() : Maybe.some(n);
+};
+
+pipe(["1", "abc", "3", "hello", "9"], Arr.filterMap(parseNum)); // [1, 3, 9]
+```
+
+You could write this as `Arr.map(parseNum)` followed by `Arr.filter(isSome)` followed by unwrapping
+— but that's three passes and requires manual type annotation at each step. `filterMap` handles it
+in one.
+
 ## Slicing
 
 ```ts
