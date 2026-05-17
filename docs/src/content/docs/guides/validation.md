@@ -76,6 +76,23 @@ Validation.invalidAll(["too short", "missing digits"]); // Invalid([...]) — mu
 `invalid` wraps a single error in a list. `invalidAll` accepts a `NonEmptyList` directly, useful
 when you already have a collection of errors.
 
+`fromPredicate` builds a `Validation` from a condition check — useful when validating a single
+field against a rule:
+
+```ts
+const validateLength = Validation.fromPredicate(
+	(s: string) => s.length >= 8,
+	(s) => `"${s}" must be at least 8 characters`,
+);
+
+validateLength("hi"); // Invalid(['"hi" must be at least 8 characters'])
+validateLength("longpassword"); // Valid("longpassword")
+```
+
+The second argument receives the original value, so error messages can include the bad input.
+`fromPredicate` composes naturally with `ap` and `product` — create one validator per rule, then
+combine them.
+
 ## How `ap` accumulates errors
 
 `ap` is what sets `Validation` apart from `Result`. The pattern is: start with your constructor
@@ -210,6 +227,44 @@ pipe(
 	Validation.recover((_errors) => Validation.valid(0)),
 ); // Valid(42) — fallback skipped
 ```
+
+## Observing errors without changing them
+
+`tapError` runs a side effect on the error list when the result is `Invalid`, then passes the
+`Validation` through unchanged. Use it to log or report failures mid-pipeline:
+
+```ts
+pipe(
+	Validation.productAll([validateName(form.name), validateEmail(form.email)]),
+	Validation.tapError((errors) => logger.warn("Validation failed", { errors })),
+	Validation.match({
+		valid: (data) => save(data),
+		invalid: (errors) => renderErrors(errors),
+	}),
+);
+```
+
+`tapError` receives the full `NonEmptyList<E>` — all accumulated errors, not just the first. When
+the result is `Valid`, `tapError` is a no-op and the value passes through.
+
+## Converting to Result
+
+When you've finished collecting errors and want to feed the result into a pipeline that uses
+`Result`, `toResult` does the conversion in one step: `Valid` becomes `Ok`, `Invalid` becomes `Err`
+with the full error list:
+
+```ts
+pipe(
+	Validation.productAll([validateName(form.name), validateEmail(form.email)]),
+	Validation.toResult,
+	Result.chain(saveUser),
+	Result.getOrElse(() => null),
+);
+```
+
+The `Err` carries `NonEmptyList<E>` — every error that was collected — so downstream error handling
+has the full picture. This is the natural handoff point from `Validation` (run all checks) to
+`Result` (sequence the side effects).
 
 ## How it compares to Result
 

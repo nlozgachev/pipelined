@@ -2,7 +2,6 @@
 
 [![npm](https://img.shields.io/npm/v/@nlozgachev/pipelined?style=for-the-badge&color=000&logo=npm&label&logoColor=fff)](https://www.npmjs.com/package/@nlozgachev/pipelined) [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/nlozgachev/pipelined/publish.yml?style=for-the-badge&color=000&logo=githubactions&label&logoColor=fff)](https://github.com/nlozgachev/pipelined/actions/workflows/publish.yml) [![Codecov](https://img.shields.io/codecov/c/github/nlozgachev/pipelined?style=for-the-badge&color=000&logo=codecov&label&logoColor=fff)](https://app.codecov.io/github/nlozgachev/pipelined)
 
-
 Opinionated functional abstractions for TypeScript.
 
 > **Note:** pipelined is pre-1.0. The API may change between minor versions until the 1.0 release.
@@ -14,49 +13,165 @@ npm add @nlozgachev/pipelined
 ## Possibly maybe
 
 **pipelined** names every possible state and gives you operations that compose. `Maybe<A>` for values
-that may or may not be there. `Result<E, A>` for operations that succeed or fail
-with a typed error. `TaskResult<E, A>` for async operations that do both — lazily, with retry,
-timeout, and cancellation built in. And, of course, there is more than that.
+that may or may not be there. `Result<E, A>` for operations that succeed or fail with a typed error.
+`TaskResult<E, A>` for async operations that keep failures as typed values and propagate cancellation
+automatically. `Op<I, E, A>` for managing repeated async interactions — retry, timeout, and
+concurrency strategy in one place. And, of course, there is more than that.
 
 ## Documentation
 
 Full guides and API reference at **[pipelined.lozgachev.dev](https://pipelined.lozgachev.dev)**.
 
-## Example: a single async call
+## Example: composing optional values
+
+`null` checks accumulate fast. Each one is a conditional branch that the type system can't help you
+forget. `Maybe<A>` turns absence into a value that composes — the same operations apply whether or
+not anything is there:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Maybe } from "@nlozgachev/pipelined/core";
+import { Num, Str } from "@nlozgachev/pipelined/utils";
+
+const parseDiscount = (raw: string): string =>
+	pipe(
+		raw,
+		Str.trim,
+		Num.parse,                              // "10" → Some(10), "abc" → None
+		Maybe.filter((n) => n >= 0 && n <= 100), // out of range → None
+		Maybe.map((n) => `${n}% off`),
+		Maybe.getOrElse(() => "No discount"),
+	);
+
+parseDiscount("  15  "); // "15% off"
+parseDiscount("150");    // "No discount"
+parseDiscount("abc");    // "No discount"
+```
+
+Every step that sees `None` is skipped. The fallback runs once, at the end.
+
+## Example: typed async errors
+
+Unhandled rejections are invisible until they crash. `TaskResult<E, A>` keeps failures as typed
+values — the error type is part of the signature, not a runtime surprise.
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Result, TaskResult } from "@nlozgachev/pipelined/core";
+
+type ApiError = { status: number; message: string };
+
+const fetchUser = (id: string): TaskResult<ApiError, User> =>
+	TaskResult.tryCatch(
+		(signal) =>
+			fetch(`/users/${id}`, { signal }).then((r) => {
+				if (!r.ok) throw { status: r.status, message: r.statusText };
+				return r.json() as Promise<User>;
+			}),
+		(e) => e as ApiError,
+	);
+
+const fetchPosts = (userId: string): TaskResult<ApiError, Post[]> =>
+	TaskResult.tryCatch(
+		(signal) => fetch(`/users/${userId}/posts`, { signal }).then((r) => r.json()),
+		(e) => e as ApiError,
+	);
+
+// Chain two requests — the AbortSignal propagates to both automatically
+const userWithPosts = (id: string) =>
+	pipe(
+		fetchUser(id),
+		TaskResult.chain((user) =>
+			pipe(
+				fetchPosts(user.id),
+				TaskResult.map((posts) => ({ ...user, posts })),
+			)
+		),
+	);
+```
+
+`userWithPosts` is a lazy function — nothing runs until called. The `AbortSignal` threads through
+both requests: abort at any point and whichever request is in flight is cancelled immediately.
+
+```ts
+const controller = new AbortController();
+const result = await userWithPosts("42")(controller.signal);
+
+if (Result.isOk(result)) {
+	render(result.value); // { ...User, posts: Post[] }
+} else {
+	showError(result.error); // ApiError — typed, not unknown
+}
+```
+
+## Example: transforming data
+
+The utils modules wrap JavaScript's built-in types with data-last, curried operations that return
+`Maybe` wherever a value might be absent. They compose naturally with the core types:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Maybe } from "@nlozgachev/pipelined/core";
+import { Arr, Num, Rec, Str } from "@nlozgachev/pipelined/utils";
+
+type RawItem = { name: string; price: string; category: string };
+type Item = { name: string; price: number; category: string };
+
+const normalise = (raw: RawItem): Maybe<Item> =>
+	pipe(
+		Num.parse(raw.price),                              // "9.99" → Some(9.99), "n/a" → None
+		Maybe.map((price) => ({ name: Str.trim(raw.name), price, category: raw.category })),
+	);
+
+const cheapestByCategory = (items: RawItem[]) =>
+	pipe(
+		items,
+		Arr.filterMap(normalise),                          // parse + drop unparseable prices in one pass
+		Arr.sortBy((a, b) => a.price - b.price),           // ascending price
+		Arr.groupBy((item) => item.category),              // Record<string, NonEmptyList<Item>>
+		Rec.map((group) => Arr.head(group)),               // cheapest per category — Maybe<Item>
+	);
+```
+
+`filterMap` applies a function that returns `Maybe` and collects only the `Some` results — one step
+replaces a `map` followed by a `filter`. `Arr.head` returns `Maybe<Item>` rather than `Item | undefined`,
+so the absence is explicit in the type and the rest of the pipeline handles it the same way.
+
+## Example: retry, timeout, and cancellation
 
 A careful, production-minded attempt at "fetch with retry, timeout, and cancellation":
 
 ```ts
 type UserResult =
-  | { ok: true; user: User; }
-  | { ok: false; error: "Timeout" | "NetworkError"; };
+	| { ok: true; user: User; }
+	| { ok: false; error: "Timeout" | "NetworkError"; };
 
 async function fetchUser(
-  id: string,
-  signal?: AbortSignal,
+	id: string,
+	signal?: AbortSignal,
 ): Promise<UserResult> {
-  async function attempt(n: number): Promise<UserResult> {
-    const controller = new AbortController();
-    const timerId = setTimeout(() => controller.abort(), 5000);
-    signal?.addEventListener("abort", () => controller.abort(), { once: true });
+	async function attempt(n: number): Promise<UserResult> {
+		const controller = new AbortController();
+		const timerId = setTimeout(() => controller.abort(), 5000);
+		signal?.addEventListener("abort", () => controller.abort(), { once: true });
 
-    try {
-      const res = await fetch(`/users/${id}`, { signal: controller.signal });
-      clearTimeout(timerId);
-      return { ok: true, user: await res.json() };
-    } catch (e) {
-      clearTimeout(timerId);
-      if ((e as Error).name === "AbortError" && !signal?.aborted) {
-        return { ok: false, error: "Timeout" };
-      }
-      if (n < 3) {
-        await new Promise((r) => setTimeout(r, n * 1000));
-        return attempt(n + 1);
-      }
-      return { ok: false, error: "NetworkError" };
-    }
-  }
-  return attempt(1);
+		try {
+			const res = await fetch(`/users/${id}`, { signal: controller.signal });
+			clearTimeout(timerId);
+			return { ok: true, user: await res.json() };
+		} catch (e) {
+			clearTimeout(timerId);
+			if ((e as Error).name === "AbortError" && !signal?.aborted) {
+				return { ok: false, error: "Timeout" };
+			}
+			if (n < 3) {
+				await new Promise((r) => setTimeout(r, n * 1000));
+				return attempt(n + 1);
+			}
+			return { ok: false, error: "NetworkError" };
+		}
+	}
+	return attempt(1);
 }
 ```
 
@@ -67,38 +182,43 @@ to thread the attempt count.
 With **pipelined**:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Result, TaskResult } from "@nlozgachev/pipelined/core";
+import { Op } from "@nlozgachev/pipelined/core";
 
-const fetchUser = (id: string): TaskResult<ApiError, User> =>
-  pipe(
-    TaskResult.tryCatch(
-      (signal) => fetch(`/users/${id}`, { signal }).then((r) => r.json()),
-      (e) => new ApiError(e),
-    ),
-    TaskResult.timeout(5000, () => new ApiError("request timed out")),
-    TaskResult.retry({ attempts: 3, backoff: (n) => n * 1000 }),
-  );
+const fetchUser = Op.interpret(
+	Op.create(
+		(signal) => (id: string) => fetch(`/users/${id}`, { signal }).then((r) => r.json() as Promise<User>),
+		(e) => new ApiError(e),
+	),
+	{
+		strategy: "restartable",
+		retry: { attempts: 3, backoff: (n) => n * 1000 },
+		timeout: { ms: 5000, onTimeout: () => new ApiError("request timed out") },
+	},
+);
 ```
 
-`TaskResult<ApiError, User>` is a lazy function — nothing runs until called. The `AbortSignal`
-threads through every retry and the timeout automatically. The return type is the contract:
-`ApiError` on the left, `User` on the right, nothing escapes as an exception.
+`fetchUser` is a managed operator — nothing runs until you call `run`. Retry logic, signal
+propagation, and timeout wiring are handled automatically. The outcome type is the contract:
+`ApiError` on the left, `User` on the right, nothing escapes as an unhandled exception.
 
 ```ts
-const controller = new AbortController();
-const result = await fetchUser("42")(controller.signal);
+const outcome = await fetchUser.run("42");
 
-if (Result.isOk(result)) {
-  render(result.value); // User
-} else {
-  showError(result.error); // ApiError, not unknown
+if (Op.isOk(outcome)) {
+	render(outcome.value); // User
+} else if (Op.isErr(outcome)) {
+	showError(outcome.error); // ApiError, not unknown
 }
+
+// explicit cancellation — in-flight request is aborted immediately
+fetchUser.abort();
 ```
 
 ## Example: repeated interactions
 
-`TaskResult` handles one call well. Real UIs make the same call many times — a search input fires on every keystroke, a submit button gets clicked twice, a polling loop needs to stop when something newer starts. Each scenario has a different answer to the same question: *what happens to the previous call when a new one arrives?*
+Real UIs make the same call many times — a search input fires on every keystroke, a submit button
+gets clicked twice, a polling loop needs to stop when something newer starts. Each scenario has a
+different answer to the same question: _what happens to the previous call when a new one arrives?_
 
 `Op` makes that question a one-word configuration choice.
 
@@ -108,21 +228,21 @@ if (Result.isOk(result)) {
 import { Op } from "@nlozgachev/pipelined/core";
 
 const searchOp = Op.create(
-  (signal) => (query: string) =>
-    fetch(`/search?q=${query}`, { signal }).then((r) => r.json() as Promise<SearchResult[]>),
-  (e) => new SearchError(e),
+	(signal) => (query: string) =>
+		fetch(`/search?q=${query}`, { signal }).then((r) => r.json() as Promise<SearchResult[]>),
+	(e) => new SearchError(e),
 );
 
 const search = Op.interpret(searchOp, {
-  strategy: "restartable", // new call cancels the previous one
-  retry: { attempts: 2, backoff: 300 },
+	strategy: "restartable", // new call cancels the previous one
+	retry: { attempts: 2, backoff: 300 },
 });
 
 search.subscribe((state) => {
-  if (state.kind === "Pending")  showSpinner();
-  if (state.kind === "Retrying") showSpinner(`retrying… attempt ${state.attempt}`);
-  if (state.kind === "Ok")       showResults(state.value);
-  if (state.kind === "Err")      showError(state.error);
+	if (state.kind === "Pending") showSpinner();
+	if (state.kind === "Retrying") showSpinner(`retrying… attempt ${state.attempt}`);
+	if (state.kind === "Ok") showResults(state.value);
+	if (state.kind === "Err") showError(state.error);
 });
 
 input.addEventListener("input", (e) => search.run(e.currentTarget.value));
@@ -132,28 +252,27 @@ input.addEventListener("input", (e) => search.run(e.currentTarget.value));
 
 ```ts
 const submitOp = Op.create(
-  (signal) => (data: FormData) =>
-    fetch("/orders", { method: "POST", body: data, signal }).then((r) => r.json()),
-  (e) => new ApiError(e),
+	(signal) => (data: FormData) => fetch("/orders", { method: "POST", body: data, signal }).then((r) => r.json()),
+	(e) => new ApiError(e),
 );
 
 const submit = Op.interpret(submitOp, {
-  strategy: "exclusive", // in-flight? new calls are dropped immediately
+	strategy: "exclusive", // in-flight? new calls are dropped immediately
 });
 
 submit.subscribe((state) => {
-  submitButton.disabled = state.kind === "Pending";
-  if (state.kind === "Ok")  showConfirmation(state.value);
-  if (state.kind === "Err") showError(state.error);
+	submitButton.disabled = state.kind === "Pending";
+	if (state.kind === "Ok") showConfirmation(state.value);
+	if (state.kind === "Err") showError(state.error);
 });
 
 form.addEventListener("submit", (e) => {
-  e.preventDefault();
-  submit.run(new FormData(form)); // double-clicks and rage-clicks are ignored
+	e.preventDefault();
+	submit.run(new FormData(form)); // double-clicks and rage-clicks are ignored
 });
 ```
 
-`restartable`, `exclusive`, `debounced`, `throttled`, `queue`, `concurrent`, `keyed` — each strategy is a complete, tested answer to one concurrency scenario. Swap the word, keep the rest of the code.
+`restartable`, `exclusive`, `debounced`, `throttled`, `queue`, `buffered`, `concurrent`, `keyed`, `once` — each strategy is a complete, tested answer to one concurrency scenario. Swap the word, keep the rest of the code.
 
 ## What's included?
 
@@ -168,7 +287,7 @@ The library covers the states you encounter in real applications: values that ma
 - **`TaskResult<E, A>`** — a lazy async operation that can fail with a typed error.
 - **`TaskMaybe<A>`** — a lazy async operation that may produce nothing.
 - **`TaskValidation<E, A>`** — a lazy async operation that accumulates validation errors.
-- **`Op<I, E, A>`** — a managed async operation with a named concurrency strategy: `restartable`, `exclusive`, `debounced`, `throttled`, `queue`, `concurrent`, `keyed`, or `once`. Handles retry, timeout, cancellation, and state in one place.
+- **`Op<I, E, A>`** — a managed async operation with a named concurrency strategy: `restartable`, `exclusive`, `debounced`, `throttled`, `queue`, `buffered`, `concurrent`, `keyed`, or `once`. Handles retry, timeout, cancellation, and state in one place.
 - **`RemoteData<E, A>`** — the four states of a data fetch: `NotAsked`, `Loading`, `Failure`, `Success`.
 - **`These<A, B>`** — an inclusive OR: holds a first value, a second, or both at once.
 - **`Lens<S, A>`** — focus on a required field in a nested structure. Read, set, and modify immutably.

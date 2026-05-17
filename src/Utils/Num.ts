@@ -117,15 +117,16 @@ export namespace Num {
 	export const multiply = (b: number) => (a: number): number => a * b;
 
 	/**
-	 * Divides a number by `b`. Data-last: `divide(b)(a)` = `a / b`.
+	 * Divides a number by `b`. Returns `None` when `b` is zero. Data-last: `divide(b)(a)` = `a / b`.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(20, Num.divide(4));                      // 5
-	 * pipe([10, 20, 30], Arr.map(Num.divide(10)));  // [1, 2, 3]
+	 * pipe(20, Num.divide(4));                           // Some(5)
+	 * pipe(5, Num.divide(0));                            // None
+	 * pipe([10, 20, 30], Arr.filterMap(Num.divide(10))); // [1, 2, 3]
 	 * ```
 	 */
-	export const divide = (b: number) => (a: number): number => a / b;
+	export const divide = (b: number) => (a: number): Maybe<number> => b === 0 ? Maybe.none() : Maybe.some(a / b);
 
 	/**
 	 * Returns the absolute value of a number.
@@ -183,13 +184,16 @@ export namespace Num {
 	export const ceil = (n: number): number => Math.ceil(n);
 
 	/**
-	 * Returns the remainder of dividing a number by `divisor`. Data-last: `remainder(divisor)(a)` = `a % divisor`.
+	 * Returns the remainder of dividing a number by `divisor`. Returns `None` when `divisor` is zero.
+	 * Data-last: `remainder(divisor)(a)` = `a % divisor`.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(10, Num.remainder(3));                    // 1
-	 * pipe([10, 11, 12], Arr.map(Num.remainder(3))); // [1, 2, 0]
+	 * pipe(10, Num.remainder(3));                           // Some(1)
+	 * pipe(5, Num.remainder(0));                            // None
+	 * pipe([10, 11, 12], Arr.filterMap(Num.remainder(3))); // [1, 2, 0]
 	 * ```
 	 */
-	export const remainder = (divisor: number) => (n: number): number => n % divisor;
+	export const remainder = (divisor: number) => (n: number): Maybe<number> =>
+		divisor === 0 ? Maybe.none() : Maybe.some(n % divisor);
 }

@@ -112,9 +112,10 @@ For the common pattern of incrementing a counter or initialising a value on firs
 the key exists, or `None` if it doesn't:
 
 ```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
 import { Maybe } from "@nlozgachev/pipelined/core";
 
-const increment = (opt: Maybe<number>) => (opt.kind === "Some" ? opt.value : 0) + 1;
+const increment = (opt: Maybe<number>) => pipe(opt, Maybe.getOrElse(() => 0)) + 1;
 
 pipe(base, Dict.upsert("views", increment));
 // ReadonlyMap { "views" => 11, "likes" => 2 }

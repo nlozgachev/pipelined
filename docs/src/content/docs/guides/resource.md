@@ -23,6 +23,20 @@ import { pipe } from "@nlozgachev/pipelined/composition";
 import { Resource, Task, TaskResult } from "@nlozgachev/pipelined/core";
 ```
 
+```mermaid
+flowchart TB
+  A([Resource.use]) --> B[acquire]
+  B -->|"Ok — resource opened"| C[run your work function]
+  B -->|"Err — acquire failed"| Z([return Err, nothing to release])
+  C -->|"work succeeds"| D[release]
+  C -->|"work fails"| D
+  D --> E([return work result])
+```
+
+The key guarantee is in the two right-hand paths: `release` runs whether the work succeeded or
+failed. The only case where `release` is skipped is when `acquire` itself failed — there is
+nothing to clean up.
+
 ## Creating a Resource with `make`
 
 `Resource.make` takes the acquire step and the release function:
@@ -132,11 +146,18 @@ The transaction is released (committed or rolled back) before the connection is 
 
 ## When to use Resource
 
+Use `Resource` when:
+
 - Opening and closing database connections, file handles, or network sockets
 - Acquiring and releasing locks around a critical section
 - Starting and stopping background workers tied to a request's lifetime
-- Any pattern where cleanup must run even when errors occur
+- Any pattern where cleanup must run even when errors occur, and you want that guarantee to be
+  structurally enforced rather than relying on every caller to remember `try/finally`
 
-Keep using `try/finally` when you are working with a single synchronous operation inside a narrow
-scope. `Resource` pays off when cleanup is async, when resources compose, or when the acquire step
-can itself fail.
+A sign you need `Resource`: you find yourself writing the same `try/finally` block in multiple
+functions, or a function takes both an open resource and has a close obligation that callers must
+remember to fulfil.
+
+Keep using `try/finally` directly when you are working with a single synchronous operation inside
+a narrow scope and the resource never leaves the function. `Resource` pays off when cleanup is
+async, when multiple resources compose, or when the acquire step can itself fail.

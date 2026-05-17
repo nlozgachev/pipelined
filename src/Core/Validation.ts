@@ -1,5 +1,6 @@
 import { NonEmptyList } from "#types/NonEmptyList.ts";
 import { WithErrors, WithKind, WithValue } from "./InternalTypes.ts";
+import { Result } from "./Result.ts";
 
 /**
  * Validation represents a value that is either valid with a success value,
@@ -80,6 +81,27 @@ export namespace Validation {
 	 * Type guard that checks if a Validation is invalid.
 	 */
 	export const isInvalid = <E, A>(data: Validation<E, A>): data is Invalid<E> => data.kind === "Invalid";
+
+	/**
+	 * Creates a Validation from a predicate applied to a value.
+	 * Returns Valid if the predicate passes, Invalid from `onFalse` otherwise.
+	 *
+	 * @example
+	 * ```ts
+	 * const validateName = Validation.fromPredicate(
+	 *   (s: string) => s.length > 0,
+	 *   () => "Name is required"
+	 * );
+	 *
+	 * validateName("Alice"); // Valid("Alice")
+	 * validateName("");      // Invalid(["Name is required"])
+	 * ```
+	 */
+	export const fromPredicate = <E, A>(
+		pred: (a: A) => boolean,
+		onFalse: (a: A) => E,
+	) =>
+	(a: A): Validation<E, A> => pred(a) ? valid(a) : invalid(onFalse(a));
 
 	/**
 	 * Transforms the success value inside a Validation.
@@ -194,6 +216,24 @@ export namespace Validation {
 	};
 
 	/**
+	 * Executes a side effect on the accumulated errors without changing the Validation.
+	 * Useful for logging or reporting validation failures.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Validation.invalid("Name required"),
+	 *   Validation.tapError(errors => console.error("validation failed:", errors)),
+	 *   Validation.map(toUser)
+	 * );
+	 * ```
+	 */
+	export const tapError = <E, A>(f: (errors: NonEmptyList<E>) => void) => (data: Validation<E, A>): Validation<E, A> => {
+		if (isInvalid(data)) f(data.errors);
+		return data;
+	};
+
+	/**
 	 * Recovers from an Invalid state by providing a fallback Validation.
 	 * The fallback receives the accumulated error list so callers can inspect which errors occurred.
 	 * The fallback can produce a different success type, widening the result to `Validation<E, A | B>`.
@@ -203,16 +243,33 @@ export namespace Validation {
 		(data: Validation<E, A>): Validation<E, A | B> => isValid(data) ? data : fallback(data.errors);
 
 	/**
-	 * Recovers from an Invalid state unless the errors contain any of the blocked errors.
+	 * Recovers from an Invalid state unless `isBlocked` returns true for any of the accumulated errors.
 	 * The fallback can produce a different success type, widening the result to `Validation<E, A | B>`.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Validation.invalid("field-error"),
+	 *   Validation.recoverUnless(e => e === "fatal", () => Validation.valid(0))
+	 * ); // Valid(0)
+	 * ```
 	 */
 	export const recoverUnless =
-		<E, A, B>(blockedErrors: readonly E[], fallback: () => Validation<E, B>) =>
-		(data: Validation<E, A>): Validation<E, A | B> =>
-			isInvalid(data)
-				&& !data.errors.some((err: E) => blockedErrors.includes(err))
-				? fallback()
-				: data;
+		<E, A, B>(isBlocked: (e: E) => boolean, fallback: () => Validation<E, B>) =>
+		(data: Validation<E, A>): Validation<E, A | B> => isInvalid(data) && !data.errors.some(isBlocked) ? fallback() : data;
+
+	/**
+	 * Converts a Validation to a Result.
+	 * Valid becomes Ok, Invalid becomes Err with the accumulated error list.
+	 *
+	 * @example
+	 * ```ts
+	 * Validation.toResult(Validation.valid(42));        // Ok(42)
+	 * Validation.toResult(Validation.invalid("oops"));  // Err(["oops"])
+	 * ```
+	 */
+	export const toResult = <E, A>(data: Validation<E, A>): Result<NonEmptyList<E>, A> =>
+		isValid(data) ? Result.ok(data.value) : Result.err(data.errors);
 
 	/**
 	 * Combines two independent Validation instances into a tuple.

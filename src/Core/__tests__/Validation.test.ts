@@ -54,6 +54,68 @@ test("Validation.invalid creates an Invalid from a single error", () => {
 });
 
 // ---------------------------------------------------------------------------
+// fromPredicate
+// ---------------------------------------------------------------------------
+
+test("Validation.fromPredicate returns Valid when predicate passes", () => {
+	expect(
+		pipe(
+			"Alice",
+			Validation.fromPredicate((s) => s.length > 0, () => "required"),
+		),
+	).toEqual({
+		kind: "Valid",
+		value: "Alice",
+	});
+});
+
+test("Validation.fromPredicate returns Invalid when predicate fails", () => {
+	expect(
+		pipe(
+			"",
+			Validation.fromPredicate((s) => s.length > 0, () => "required"),
+		),
+	).toEqual({
+		kind: "Invalid",
+		errors: ["required"],
+	});
+});
+
+test("Validation.fromPredicate passes the value to onFalse", () => {
+	expect(
+		pipe(
+			-1,
+			Validation.fromPredicate((n) => n >= 0, (n) => `${n} is negative`),
+		),
+	).toEqual({
+		kind: "Invalid",
+		errors: ["-1 is negative"],
+	});
+});
+
+test("Validation.fromPredicate composes with ap for multi-field validation", () => {
+	const validateName = Validation.fromPredicate(
+		(s: string) => s.length > 0,
+		() => "Name required",
+	);
+	const validateAge = Validation.fromPredicate(
+		(n: number) => n >= 0,
+		() => "Age invalid",
+	);
+	const result = pipe(
+		Validation.valid<string, (name: string) => (age: number) => { name: string; age: number; }>(
+			(name: string) => (age: number) => ({ name, age }),
+		),
+		Validation.ap(validateName("")),
+		Validation.ap(validateAge(-1)),
+	);
+	expect(result).toEqual({
+		kind: "Invalid",
+		errors: ["Name required", "Age invalid"],
+	});
+});
+
+// ---------------------------------------------------------------------------
 // map
 // ---------------------------------------------------------------------------
 
@@ -304,6 +366,49 @@ test("Validation.tap does not execute side effect on Invalid", () => {
 });
 
 // ---------------------------------------------------------------------------
+// tapError
+// ---------------------------------------------------------------------------
+
+test("Validation.tapError calls f on Invalid", () => {
+	let called = false;
+	pipe(
+		Validation.invalid("err"),
+		Validation.tapError(() => {
+			called = true;
+		}),
+	);
+	expect(called).toBe(true);
+});
+
+test("Validation.tapError does not call f on Valid", () => {
+	let called = false;
+	pipe(
+		Validation.valid(42),
+		Validation.tapError(() => {
+			called = true;
+		}),
+	);
+	expect(called).toBe(false);
+});
+
+test("Validation.tapError returns the Validation unchanged", () => {
+	const data = Validation.invalid("err");
+	const result = pipe(data, Validation.tapError(() => {}));
+	expect(result).toEqual(data);
+});
+
+test("Validation.tapError receives the full error list", () => {
+	let received: readonly string[] | undefined;
+	pipe(
+		Validation.invalidAll(["a", "b"]),
+		Validation.tapError((errs) => {
+			received = errs;
+		}),
+	);
+	expect(received).toEqual(["a", "b"]);
+});
+
+// ---------------------------------------------------------------------------
 // recover
 // ---------------------------------------------------------------------------
 
@@ -375,22 +480,22 @@ test("Validation.recover preserves Valid typed as Validation<E, A | B>", () => {
 // ---------------------------------------------------------------------------
 
 test(
-	"Validation.recoverUnless recovers when errors do not include blocked errors",
+	"Validation.recoverUnless recovers when predicate returns false for all errors",
 	() => {
 		const result = pipe(
 			Validation.invalid("recoverable"),
-			Validation.recoverUnless(["fatal"], () => Validation.valid<string, number>(42)),
+			Validation.recoverUnless((e) => e === "fatal", () => Validation.valid<string, number>(42)),
 		);
 		expect(result).toEqual({ kind: "Valid", value: 42 });
 	},
 );
 
 test(
-	"Validation.recoverUnless does NOT recover when errors include a blocked error",
+	"Validation.recoverUnless does NOT recover when predicate returns true for any error",
 	() => {
 		const result = pipe(
 			Validation.invalid("fatal"),
-			Validation.recoverUnless(["fatal"], () => Validation.valid<string, number>(42)),
+			Validation.recoverUnless((e) => e === "fatal", () => Validation.valid<string, number>(42)),
 		);
 		expect(result).toEqual({ kind: "Invalid", errors: ["fatal"] });
 	},
@@ -399,17 +504,17 @@ test(
 test("Validation.recoverUnless passes through Valid unchanged", () => {
 	const result = pipe(
 		Validation.valid<string, number>(10),
-		Validation.recoverUnless(["fatal"], () => Validation.valid<string, number>(42)),
+		Validation.recoverUnless((e) => e === "fatal", () => Validation.valid<string, number>(42)),
 	);
 	expect(result).toEqual({ kind: "Valid", value: 10 });
 });
 
 test(
-	"Validation.recoverUnless does NOT recover when any error matches blocked list",
+	"Validation.recoverUnless does NOT recover when any error in accumulation matches",
 	() => {
 		const result = pipe(
 			Validation.invalidAll(["minor", "fatal"]),
-			Validation.recoverUnless(["fatal"], () => Validation.valid<string, number>(42)),
+			Validation.recoverUnless((e) => e === "fatal", () => Validation.valid<string, number>(42)),
 		);
 		expect(result).toEqual({ kind: "Invalid", errors: ["minor", "fatal"] });
 	},
@@ -420,7 +525,7 @@ test(
 	() => {
 		const result = pipe(
 			Validation.invalid("recoverable"),
-			Validation.recoverUnless(["fatal"], () => Validation.valid("recovered")),
+			Validation.recoverUnless((e) => e === "fatal", () => Validation.valid("recovered")),
 		);
 		expect(result).toEqual({ kind: "Valid", value: "recovered" });
 	},
@@ -512,6 +617,31 @@ test("Validation.productAll with all Invalid accumulates all errors", () => {
 test("Validation.productAll with single element returns singleton array", () => {
 	const result = Validation.productAll([Validation.valid<string, number>(42)]);
 	expect(result).toEqual({ kind: "Valid", value: [42] });
+});
+
+// ---------------------------------------------------------------------------
+// toResult
+// ---------------------------------------------------------------------------
+
+test("Validation.toResult converts Valid to Ok", () => {
+	expect(Validation.toResult(Validation.valid(42))).toEqual({
+		kind: "Ok",
+		value: 42,
+	});
+});
+
+test("Validation.toResult converts Invalid to Err with error list", () => {
+	expect(Validation.toResult(Validation.invalid("oops"))).toEqual({
+		kind: "Error",
+		error: ["oops"],
+	});
+});
+
+test("Validation.toResult preserves all accumulated errors in Err", () => {
+	expect(Validation.toResult(Validation.invalidAll(["a", "b", "c"]))).toEqual({
+		kind: "Error",
+		error: ["a", "b", "c"],
+	});
 });
 
 // ---------------------------------------------------------------------------

@@ -517,6 +517,17 @@ test("Task.repeatUntil inserts delay between runs", async () => {
 	expect(elapsed).toBeLessThan(120);
 });
 
+test("Task.repeatUntil stops after maxAttempts even if predicate never holds", async () => {
+	let count = 0;
+	const task = Task.fromSync(() => ++count);
+	const result = await pipe(
+		task,
+		Task.repeatUntil({ when: (n) => n > 100, maxAttempts: 3 }),
+	)();
+	expect(result).toBe(3);
+	expect(count).toBe(3);
+});
+
 // ---------------------------------------------------------------------------
 // AbortSignal threading
 // ---------------------------------------------------------------------------
@@ -659,6 +670,40 @@ test("Task.abortable aborts the inner controller immediately when outer signal i
 	});
 	task(outerController.signal);
 	expect(capturedSignal?.aborted).toBe(true);
+});
+
+test("Task.abortable abort() cancels current call but next call starts fresh", async () => {
+	let callCount = 0;
+	const { task, abort } = Task.abortable((signal) => {
+		callCount++;
+		return new Promise<number>((resolve) => {
+			const id = setTimeout(() => resolve(callCount), 100);
+			signal.addEventListener("abort", () => clearTimeout(id));
+		});
+	});
+
+	// Start first call and abort it immediately
+	task(); // not awaited — fires but gets aborted
+	abort();
+
+	// Second call should work normally
+	const second = await task();
+	expect(second).toBe(2);
+});
+
+test("Task.abortable second call cancels first in-flight call", async () => {
+	let firstSignalAborted = false;
+	const { task } = Task.abortable((signal) => {
+		signal.addEventListener("abort", () => {
+			firstSignalAborted = true;
+		});
+		return new Promise<number>((resolve) => setTimeout(() => resolve(1), 100));
+	});
+
+	task(); // first call, not awaited
+	await task(); // second call cancels first
+
+	expect(firstSignalAborted).toBe(true);
 });
 
 test("Task.timeout removes the outer signal listener after normal completion", async () => {

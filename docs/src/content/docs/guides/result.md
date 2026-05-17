@@ -89,6 +89,24 @@ parseJson("not json"); // Err("Invalid JSON: ...")
 
 The second argument maps the caught exception to your error type, so the result is typed correctly.
 
+### Constructing from a predicate with `fromPredicate`
+
+When you have a value and a condition that determines whether it's valid, `fromPredicate` avoids an
+explicit `if`/`else` before entering `Result`-land:
+
+```ts
+const validatePositive = Result.fromPredicate(
+	(n: number) => n > 0,
+	(n) => `${n} is not a positive number`,
+);
+
+pipe(validatePositive(5), Result.map((n) => n * 2)); // Ok(10)
+pipe(validatePositive(-1), Result.map((n) => n * 2)); // Err("-1 is not a positive number")
+```
+
+The second argument receives the original value, so error messages can include the bad input. This
+composes cleanly in pipelines where you're validating one field at a time.
+
 ## Transforming values with `map`
 
 `map` transforms the success value, leaving `Err` untouched:
@@ -199,13 +217,13 @@ pipe(
 );
 ```
 
-`recoverUnless` lets you recover from all errors except one specific case — useful when one error
-type means "stop trying":
+`recoverUnless` lets you recover from all errors except those matching a predicate — useful when one
+error type means "stop trying":
 
 ```ts
 pipe(
 	authenticate(token),
-	Result.recoverUnless("REVOKED", () => refreshAndRetry(token)),
+	Result.recoverUnless((e) => e === "REVOKED", () => refreshAndRetry(token)),
 );
 ```
 

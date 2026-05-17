@@ -62,7 +62,6 @@ conditional — the type enforced the handling.
 Maybe.some(42); // Some(42) — wrap a value
 Maybe.none(); // None     — explicit absence
 Maybe.fromNullable(value); // Some if non-null, None if null or undefined
-Maybe.fromUndefined(value); // Some if defined, None if undefined
 ```
 
 `fromNullable` is the most common entry point when working with existing APIs that return `null` or

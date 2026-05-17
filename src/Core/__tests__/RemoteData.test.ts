@@ -59,32 +59,36 @@ test("RemoteData.isSuccess", () => {
 // ---------------------------------------------------------------------------
 
 test("RemoteData.map transforms Success value", () => {
+	const data: RemoteData<string, number> = RemoteData.success(5);
 	const result = pipe(
-		RemoteData.success<string, number>(5),
+		data,
 		RemoteData.map((n: number) => n * 2),
 	);
 	expect(result).toEqual({ kind: "Success", value: 10 });
 });
 
 test("RemoteData.map passes through NotAsked", () => {
+	const data: RemoteData<string, number> = RemoteData.notAsked();
 	const result = pipe(
-		RemoteData.notAsked<string, number>(),
+		data,
 		RemoteData.map((n: number) => n * 2),
 	);
 	expect(result).toEqual({ kind: "NotAsked" });
 });
 
 test("RemoteData.map passes through Loading", () => {
+	const data: RemoteData<string, number> = RemoteData.loading();
 	const result = pipe(
-		RemoteData.loading<string, number>(),
+		data,
 		RemoteData.map((n: number) => n * 2),
 	);
 	expect(result).toEqual({ kind: "Loading" });
 });
 
 test("RemoteData.map passes through Failure", () => {
+	const data: RemoteData<string, number> = RemoteData.failure("err");
 	const result = pipe(
-		RemoteData.failure<string, number>("err"),
+		data,
 		RemoteData.map((n: number) => n * 2),
 	);
 	expect(result).toEqual({ kind: "Failure", error: "err" });
@@ -95,16 +99,18 @@ test("RemoteData.map passes through Failure", () => {
 // ---------------------------------------------------------------------------
 
 test("RemoteData.mapError transforms Failure error", () => {
+	const data: RemoteData<string, number> = RemoteData.failure("oops");
 	const result = pipe(
-		RemoteData.failure<string, number>("oops"),
+		data,
 		RemoteData.mapError((e: string) => e.toUpperCase()),
 	);
 	expect(result).toEqual({ kind: "Failure", error: "OOPS" });
 });
 
 test("RemoteData.mapError passes through Success", () => {
+	const data: RemoteData<string, number> = RemoteData.success(5);
 	const result = pipe(
-		RemoteData.success<string, number>(5),
+		data,
 		RemoteData.mapError((e: string) => e.toUpperCase()),
 	);
 	expect(result).toEqual({ kind: "Success", value: 5 });
@@ -121,35 +127,37 @@ test("RemoteData.mapError passes through NotAsked and Loading", () => {
 // ---------------------------------------------------------------------------
 
 test("RemoteData.chain applies function on Success", () => {
+	const data: RemoteData<string, number> = RemoteData.success(5);
 	const result = pipe(
-		RemoteData.success<string, number>(5),
-		RemoteData.chain((n: number) =>
-			n > 0 ? RemoteData.success<string, number>(n * 2) : RemoteData.failure<string, number>("neg")
-		),
+		data,
+		RemoteData.chain((n: number) => n > 0 ? RemoteData.success(n * 2) : RemoteData.failure<string>("neg")),
 	);
 	expect(result).toEqual({ kind: "Success", value: 10 });
 });
 
 test("RemoteData.chain propagates Failure", () => {
+	const data: RemoteData<string, number> = RemoteData.failure("err");
 	const result = pipe(
-		RemoteData.failure<string, number>("err"),
-		RemoteData.chain((n: number) => RemoteData.success<string, number>(n * 2)),
+		data,
+		RemoteData.chain((n: number) => RemoteData.success(n * 2)),
 	);
 	expect(result).toEqual({ kind: "Failure", error: "err" });
 });
 
 test("RemoteData.chain propagates Loading", () => {
+	const data: RemoteData<string, number> = RemoteData.loading();
 	const result = pipe(
-		RemoteData.loading<string, number>(),
-		RemoteData.chain((n: number) => RemoteData.success<string, number>(n * 2)),
+		data,
+		RemoteData.chain((n: number) => RemoteData.success(n * 2)),
 	);
 	expect(result).toEqual({ kind: "Loading" });
 });
 
 test("RemoteData.chain propagates NotAsked", () => {
+	const data: RemoteData<string, number> = RemoteData.notAsked();
 	const result = pipe(
-		RemoteData.notAsked<string, number>(),
-		RemoteData.chain((n: number) => RemoteData.success<string, number>(n * 2)),
+		data,
+		RemoteData.chain((n: number) => RemoteData.success(n * 2)),
 	);
 	expect(result).toEqual({ kind: "NotAsked" });
 });
@@ -160,60 +168,67 @@ test("RemoteData.chain propagates NotAsked", () => {
 
 test("RemoteData.ap applies function to value when both Success", () => {
 	const add = (a: number) => (b: number) => a + b;
+	const fn: RemoteData<string, typeof add> = RemoteData.success(add);
 	const result = pipe(
-		RemoteData.success<string, typeof add>(add),
-		RemoteData.ap(RemoteData.success<string, number>(5)),
-		RemoteData.ap(RemoteData.success<string, number>(3)),
+		fn,
+		RemoteData.ap(RemoteData.success(5)),
+		RemoteData.ap(RemoteData.success(3)),
 	);
 	expect(result).toEqual({ kind: "Success", value: 8 });
 });
 
 test("RemoteData.ap returns Failure when function is Failure", () => {
+	const fn: RemoteData<string, (n: number) => number> = RemoteData.failure("err");
 	const result = pipe(
-		RemoteData.failure<string, (n: number) => number>("err"),
-		RemoteData.ap(RemoteData.success<string, number>(5)),
+		fn,
+		RemoteData.ap(RemoteData.success(5)),
 	);
 	expect(result).toEqual({ kind: "Failure", error: "err" });
 });
 
 test("RemoteData.ap returns Failure when value is Failure", () => {
 	const double = (n: number) => n * 2;
+	const fn: RemoteData<string, typeof double> = RemoteData.success(double);
 	const result = pipe(
-		RemoteData.success<string, typeof double>(double),
-		RemoteData.ap(RemoteData.failure<string, number>("err")),
+		fn,
+		RemoteData.ap(RemoteData.failure<string>("err")),
 	);
 	expect(result).toEqual({ kind: "Failure", error: "err" });
 });
 
 test("RemoteData.ap returns Loading when either is Loading", () => {
 	const double = (n: number) => n * 2;
+	const fn: RemoteData<string, typeof double> = RemoteData.success(double);
 	const result = pipe(
-		RemoteData.success<string, typeof double>(double),
-		RemoteData.ap(RemoteData.loading<string, number>()),
+		fn,
+		RemoteData.ap(RemoteData.loading()),
 	);
 	expect(result).toEqual({ kind: "Loading" });
 });
 
 test("RemoteData.ap returns Failure of function when both are Failure", () => {
+	const fn: RemoteData<string, (n: number) => number> = RemoteData.failure("fn error");
 	const result = pipe(
-		RemoteData.failure<string, (n: number) => number>("fn error"),
-		RemoteData.ap(RemoteData.failure<string, number>("arg error")),
+		fn,
+		RemoteData.ap(RemoteData.failure<string>("arg error")),
 	);
 	expect(result).toEqual({ kind: "Failure", error: "fn error" });
 });
 
 test("RemoteData.ap returns NotAsked when function is NotAsked and arg is Success", () => {
+	const fn: RemoteData<string, (n: number) => number> = RemoteData.notAsked();
 	const result = pipe(
-		RemoteData.notAsked<string, (n: number) => number>(),
-		RemoteData.ap(RemoteData.success<string, number>(5)),
+		fn,
+		RemoteData.ap(RemoteData.success(5)),
 	);
 	expect(result).toEqual({ kind: "NotAsked" });
 });
 
 test("RemoteData.ap returns Loading when function is Loading and arg is Success", () => {
+	const fn: RemoteData<string, (n: number) => number> = RemoteData.loading();
 	const result = pipe(
-		RemoteData.loading<string, (n: number) => number>(),
-		RemoteData.ap(RemoteData.success<string, number>(5)),
+		fn,
+		RemoteData.ap(RemoteData.success(5)),
 	);
 	expect(result).toEqual({ kind: "Loading" });
 });
@@ -255,8 +270,9 @@ test("RemoteData.match handles all four cases", () => {
 });
 
 test("RemoteData.match works in pipe", () => {
+	const data: RemoteData<string, number> = RemoteData.success(42);
 	const result = pipe(
-		RemoteData.success<string, number>(42),
+		data,
 		RemoteData.match({
 			notAsked: () => "na",
 			loading: () => "ld",
@@ -272,14 +288,18 @@ test("RemoteData.match works in pipe", () => {
 // ---------------------------------------------------------------------------
 
 test("RemoteData.getOrElse returns value for Success", () => {
-	const result = pipe(RemoteData.success<string, number>(5), RemoteData.getOrElse(() => 0));
+	const data: RemoteData<string, number> = RemoteData.success(5);
+	const result = pipe(data, RemoteData.getOrElse(() => 0));
 	expect(result).toBe(5);
 });
 
 test("RemoteData.getOrElse returns default for non-Success", () => {
-	expect(pipe(RemoteData.notAsked<string, number>(), RemoteData.getOrElse(() => 0))).toBe(0);
-	expect(pipe(RemoteData.loading<string, number>(), RemoteData.getOrElse(() => 0))).toBe(0);
-	expect(pipe(RemoteData.failure<string, number>("e"), RemoteData.getOrElse(() => 0))).toBe(0);
+	const notAsked: RemoteData<string, number> = RemoteData.notAsked();
+	const loading: RemoteData<string, number> = RemoteData.loading();
+	const failure: RemoteData<string, number> = RemoteData.failure("e");
+	expect(pipe(notAsked, RemoteData.getOrElse(() => 0))).toBe(0);
+	expect(pipe(loading, RemoteData.getOrElse(() => 0))).toBe(0);
+	expect(pipe(failure, RemoteData.getOrElse(() => 0))).toBe(0);
 });
 
 test("RemoteData.getOrElse widens return type to A | B when default is a different type", () => {
@@ -304,8 +324,9 @@ test("RemoteData.getOrElse returns Success value typed as A | B when Success", (
 
 test("RemoteData.tap executes side effect on Success", () => {
 	let captured = 0;
+	const data: RemoteData<string, number> = RemoteData.success(42);
 	pipe(
-		RemoteData.success<string, number>(42),
+		data,
 		RemoteData.tap((n: number) => {
 			captured = n;
 		}),
@@ -315,8 +336,9 @@ test("RemoteData.tap executes side effect on Success", () => {
 
 test("RemoteData.tap does not execute on Failure", () => {
 	let called = false;
+	const data: RemoteData<string, number> = RemoteData.failure("err");
 	pipe(
-		RemoteData.failure<string, number>("err"),
+		data,
 		RemoteData.tap((_: number) => {
 			called = true;
 		}),
@@ -335,11 +357,66 @@ test("RemoteData.tap does not execute on NotAsked or Loading", () => {
 });
 
 test("RemoteData.tap returns original value", () => {
+	const data: RemoteData<string, number> = RemoteData.success(5);
 	const result = pipe(
-		RemoteData.success<string, number>(5),
+		data,
 		RemoteData.tap(() => {}),
 	);
 	expect(result).toEqual({ kind: "Success", value: 5 });
+});
+
+// ---------------------------------------------------------------------------
+// tapError
+// ---------------------------------------------------------------------------
+
+test("RemoteData.tapError calls f on Failure", () => {
+	let called = false;
+	pipe(
+		RemoteData.failure("oops"),
+		RemoteData.tapError(() => {
+			called = true;
+		}),
+	);
+	expect(called).toBe(true);
+});
+
+test("RemoteData.tapError does not call f on Success", () => {
+	let called = false;
+	pipe(
+		RemoteData.success(42),
+		RemoteData.tapError(() => {
+			called = true;
+		}),
+	);
+	expect(called).toBe(false);
+});
+
+test("RemoteData.tapError does not call f on Loading", () => {
+	let called = false;
+	pipe(
+		RemoteData.loading(),
+		RemoteData.tapError(() => {
+			called = true;
+		}),
+	);
+	expect(called).toBe(false);
+});
+
+test("RemoteData.tapError returns the RemoteData unchanged", () => {
+	const data = RemoteData.failure("oops");
+	const result = pipe(data, RemoteData.tapError(() => {}));
+	expect(result).toEqual(data);
+});
+
+test("RemoteData.tapError receives the error value", () => {
+	let received: string | undefined;
+	pipe(
+		RemoteData.failure("oops"),
+		RemoteData.tapError((e) => {
+			received = e;
+		}),
+	);
+	expect(received).toBe("oops");
 });
 
 // ---------------------------------------------------------------------------
@@ -347,33 +424,37 @@ test("RemoteData.tap returns original value", () => {
 // ---------------------------------------------------------------------------
 
 test("RemoteData.recover provides fallback for Failure", () => {
+	const data: RemoteData<string, number> = RemoteData.failure("err");
 	const result = pipe(
-		RemoteData.failure<string, number>("err"),
-		RemoteData.recover((_e: string) => RemoteData.success<string, number>(99)),
+		data,
+		RemoteData.recover((_e: string) => RemoteData.success(99)),
 	);
 	expect(result).toEqual({ kind: "Success", value: 99 });
 });
 
 test("RemoteData.recover passes through Success", () => {
+	const data: RemoteData<string, number> = RemoteData.success(5);
 	const result = pipe(
-		RemoteData.success<string, number>(5),
-		RemoteData.recover((_e: string) => RemoteData.success<string, number>(99)),
+		data,
+		RemoteData.recover((_e: string) => RemoteData.success(99)),
 	);
 	expect(result).toEqual({ kind: "Success", value: 5 });
 });
 
 test("RemoteData.recover passes through Loading", () => {
+	const data: RemoteData<string, number> = RemoteData.loading();
 	const result = pipe(
-		RemoteData.loading<string, number>(),
-		RemoteData.recover((_e: string) => RemoteData.success<string, number>(99)),
+		data,
+		RemoteData.recover((_e: string) => RemoteData.success(99)),
 	);
 	expect(result).toEqual({ kind: "Loading" });
 });
 
 test("RemoteData.recover passes through NotAsked", () => {
+	const data: RemoteData<string, number> = RemoteData.notAsked();
 	const result = pipe(
-		RemoteData.notAsked<string, number>(),
-		RemoteData.recover((_e: string) => RemoteData.success<string, number>(99)),
+		data,
+		RemoteData.recover((_e: string) => RemoteData.success(99)),
 	);
 	expect(result).toEqual({ kind: "NotAsked" });
 });
@@ -416,16 +497,18 @@ test("RemoteData.toMaybe returns None for non-Success", () => {
 // ---------------------------------------------------------------------------
 
 test("RemoteData.toResult returns Ok for Success", () => {
+	const data: RemoteData<string, number> = RemoteData.success(42);
 	const result = pipe(
-		RemoteData.success<string, number>(42),
+		data,
 		RemoteData.toResult(() => "not ready"),
 	);
 	expect(result).toEqual({ kind: "Ok", value: 42 });
 });
 
 test("RemoteData.toResult returns Err with original error for Failure", () => {
+	const data: RemoteData<string, number> = RemoteData.failure("bad");
 	const result = pipe(
-		RemoteData.failure<string, number>("bad"),
+		data,
 		RemoteData.toResult(() => "not ready"),
 	);
 	expect(result).toEqual({ kind: "Error", error: "bad" });
@@ -442,12 +525,11 @@ test("RemoteData.toResult returns Err with fallback for NotAsked/Loading", () =>
 // ---------------------------------------------------------------------------
 
 test("RemoteData composes well in a pipe chain", () => {
+	const data: RemoteData<string, number> = RemoteData.success(5);
 	const result = pipe(
-		RemoteData.success<string, number>(5),
+		data,
 		RemoteData.map((n: number) => n * 2),
-		RemoteData.chain((n: number) =>
-			n > 5 ? RemoteData.success<string, number>(n) : RemoteData.failure<string, number>("too small")
-		),
+		RemoteData.chain((n: number) => n > 5 ? RemoteData.success(n) : RemoteData.failure<string>("too small")),
 		RemoteData.getOrElse(() => 0),
 	);
 	expect(result).toBe(10);

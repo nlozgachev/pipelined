@@ -1,3 +1,4 @@
+import { Maybe } from "#core/Maybe.ts";
 import fc from "fast-check";
 import { expect, test } from "vitest";
 import { Num } from "../Num.ts";
@@ -72,7 +73,8 @@ test("Num.multiply + Num.divide — inverse", () => {
 			fc.integer({ min: -100, max: 100 }).filter((b) => b !== 0),
 			(n, b) => {
 				// (n * b) / b === n for integers within float precision
-				expect(Num.divide(b)(Num.multiply(b)(n))).toBe(n);
+				// divide now returns Maybe, so we compare with Some(n)
+				expect(Num.divide(b)(Num.multiply(b)(n))).toEqual(Maybe.some(n));
 			},
 		),
 	);

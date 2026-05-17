@@ -83,15 +83,17 @@ pipe(
 
 ## Chaining
 
-`chainFirst` passes the first value to the next step, leaving `Second` unchanged. For `Both`,
-the second value is not preserved — the result of `f` is returned directly:
+`chainFirst` passes the first value to the next step, leaving `Second` unchanged. When the input
+is `Both`, the second value is dropped — the step produces whatever `f` returns, which may be
+`First`, `Second`, or `Both`. If you need the second value to survive the chain, either include it
+in the return value of `f` or use `mapBoth` to transform both sides without chaining:
 
 ```ts
 const double = (n: number): These<number, string> => These.first(n * 2);
 
 pipe(These.first(5), These.chainFirst(double)); // First(10)
-pipe(These.both(5, "warn"), These.chainFirst(double)); // First(10) — second not carried
-pipe(These.second("warn"), These.chainFirst(double)); // Second("warn")
+pipe(These.both(5, "warn"), These.chainFirst(double)); // First(10) — "warn" discarded
+pipe(These.second("warn"), These.chainFirst(double)); // Second("warn") — no first to chain
 ```
 
 `chainSecond` is the symmetric operation on the second side:

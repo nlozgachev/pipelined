@@ -216,12 +216,20 @@ export namespace Result {
 		isOk(data) ? data : fallback(data.error);
 
 	/**
-	 * Recovers from an error unless it matches the blocked error.
+	 * Recovers from an error unless the predicate `isBlocked` returns true for that error.
 	 * The fallback can produce a different success type, widening the result to `Result<E, A | B>`.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Result.err(new Error("not found")),
+	 *   Result.recoverUnless(e => e.message === "fatal", () => Result.ok(0))
+	 * ); // Ok(0)
+	 * ```
 	 */
 	export const recoverUnless =
-		<E, A, B>(blockedErr: E, fallback: () => Result<E, B>) => (data: Result<E, A>): Result<E, A | B> =>
-			isErr(data) && data.error !== blockedErr ? fallback() : data;
+		<E, A, B>(isBlocked: (e: E) => boolean, fallback: () => Result<E, B>) => (data: Result<E, A>): Result<E, A | B> =>
+			isErr(data) && !isBlocked(data.error) ? fallback() : data;
 
 	/**
 	 * Converts a Result to an Maybe.

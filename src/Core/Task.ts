@@ -217,7 +217,7 @@ export namespace Task {
 	 * )(); // Task<Reading[]> — 5 readings, one per second
 	 * ```
 	 */
-	export const repeat = (options: { times: number; delay?: number; }) => <A>(task: Task<A>): Task<A[]> =>
+	export const repeat = (options: { times: number; delay?: number; }) => <A>(task: Task<A>): Task<readonly A[]> =>
 		from((signal) => {
 			const { times, delay: ms } = options;
 			if (times <= 0) return Promise.resolve([]);
@@ -236,6 +236,8 @@ export namespace Task {
 	/**
 	 * Runs a Task repeatedly until the result satisfies a predicate, returning that result.
 	 * An optional delay (ms) can be inserted between runs.
+	 * An optional `maxAttempts` cap stops the loop after N calls — the last value is returned
+	 * regardless of whether the predicate was satisfied.
 	 *
 	 * @example
 	 * ```ts
@@ -245,18 +247,20 @@ export namespace Task {
 	 * )(); // polls every 500ms until status is "ready"
 	 * ```
 	 */
-	export const repeatUntil = <A>(options: { when: (a: A) => boolean; delay?: number; }) => (task: Task<A>): Task<A> =>
-		from((signal) => {
-			const { when: predicate, delay: ms } = options;
-			const wait = (): Promise<void> =>
-				ms !== undefined && ms > 0 ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve();
-			const run = (): Promise<A> =>
-				toPromise(task, signal).then((a) => {
-					if (predicate(a)) return a;
-					return wait().then(run);
-				});
-			return run();
-		});
+	export const repeatUntil =
+		<A>(options: { when: (a: A) => boolean; delay?: number; maxAttempts?: number; }) => (task: Task<A>): Task<A> =>
+			from((signal) => {
+				const { when: predicate, delay: ms, maxAttempts } = options;
+				const wait = (): Promise<void> =>
+					ms !== undefined && ms > 0 ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve();
+				const run = (attempt: number): Promise<A> =>
+					toPromise(task, signal).then((a) => {
+						if (predicate(a)) return a;
+						if (maxAttempts !== undefined && attempt >= maxAttempts) return a;
+						return wait().then(() => run(attempt + 1));
+					});
+				return run(1);
+			});
 
 	/**
 	 * Resolves with the value of the first Task to complete. All Tasks start
@@ -339,9 +343,12 @@ export namespace Task {
 		});
 
 	/**
-	 * Creates a Task paired with an `abort` handle. When `abort()` is called the
-	 * `AbortSignal` passed to the factory is fired, cancelling any in-flight
-	 * operation (e.g. a `fetch`) immediately.
+	 * Creates a Task paired with an `abort` handle. Calling `abort()` cancels the
+	 * current in-flight call immediately. Unlike a one-shot abort, calling `task()`
+	 * again after `abort()` starts a fresh call with a new signal.
+	 *
+	 * Each invocation of `task()` automatically cancels the previous in-flight call,
+	 * making it safe to call repeatedly (e.g. on user input) without leaking promises.
 	 *
 	 * If an outer signal is also present (passed at the call site), aborting it
 	 * propagates into the internal controller.
@@ -357,8 +364,16 @@ export namespace Task {
 	 * ```
 	 */
 	export const abortable = <A>(factory: (signal: AbortSignal) => Promise<A>): { task: Task<A>; abort: () => void; } => {
-		const controller = new AbortController();
+		let currentController: AbortController | null = null;
+
+		const abort = () => currentController?.abort();
+
 		const task: Task<A> = (outerSignal?: AbortSignal) => {
+			// Cancel any previous in-flight call before starting a new one.
+			currentController?.abort();
+			currentController = new AbortController();
+			const controller = currentController;
+
 			if (outerSignal) {
 				if (outerSignal.aborted) {
 					controller.abort(outerSignal.reason);
@@ -366,8 +381,10 @@ export namespace Task {
 					outerSignal.addEventListener("abort", () => controller.abort(outerSignal.reason), { once: true });
 				}
 			}
+
 			return Deferred.fromPromise(factory(controller.signal));
 		};
-		return { task, abort: () => controller.abort() };
+
+		return { task, abort };
 	};
 }

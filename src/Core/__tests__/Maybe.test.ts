@@ -112,25 +112,6 @@ test("Maybe.toUndefined returns undefined for None", () => {
 });
 
 // ---------------------------------------------------------------------------
-// fromUndefined
-// ---------------------------------------------------------------------------
-
-test("Maybe.fromUndefined returns None for undefined", () => {
-	expect(Maybe.fromUndefined(undefined)).toEqual({ kind: "None" });
-});
-
-test(
-	"Maybe.fromUndefined returns Some for null (null is not undefined)",
-	() => {
-		expect(Maybe.fromUndefined(null)).toEqual({ kind: "Some", value: null });
-	},
-);
-
-test("Maybe.fromUndefined returns Some for a value", () => {
-	expect(Maybe.fromUndefined(42)).toEqual({ kind: "Some", value: 42 });
-});
-
-// ---------------------------------------------------------------------------
 // toResult
 // ---------------------------------------------------------------------------
 

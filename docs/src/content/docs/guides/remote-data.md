@@ -183,6 +183,26 @@ pipe(
 );
 ```
 
+## Observing failures without changing state
+
+`tapError` runs a side effect when the current state is `Failure`, then passes the `RemoteData`
+through unchanged. Use it to log or report errors without interrupting the pipeline:
+
+```ts
+pipe(
+	userData,
+	RemoteData.tapError((err) => analytics.track("fetch_failed", { reason: err })),
+	RemoteData.match({
+		notAsked: () => null,
+		loading: () => <Spinner />,
+		failure: (err) => <ErrorMessage error={err} />,
+		success: (user) => <UserCard user={user} />,
+	}),
+);
+```
+
+For any state other than `Failure`, `tapError` is a no-op and the value passes through.
+
 ## Extracting the value
 
 **`getOrElse`** — returns the success value or a default thunk `() => B` for any other state. The

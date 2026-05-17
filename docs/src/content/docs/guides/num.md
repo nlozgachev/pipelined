@@ -29,8 +29,8 @@ test fixtures without manually constructing arrays.
 
 ## Curried arithmetic
 
-`add`, `subtract`, `multiply`, and `divide` each take the operand first and the value last —
-making them directly composable in `pipe` and `Arr.map`:
+`add`, `subtract`, and `multiply` each take the operand first and the value last — making them
+directly composable in `pipe` and `Arr.map`:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -40,8 +40,28 @@ pipe([1, 2, 3, 4, 5], Arr.map(Num.multiply(2))); // [2, 4, 6, 8, 10]
 pipe([10, 20, 30], Arr.map(Num.subtract(5))); // [5, 15, 25]
 ```
 
-`subtract(b)(a)` = `a - b` and `divide(b)(a)` = `a / b`, so they read as "subtract `b`" and
-"divide by `b`" — natural for transforming arrays of values.
+`subtract(b)(a)` = `a - b`, so it reads as "subtract `b`" — natural for transforming arrays of
+values.
+
+`divide` and `remainder` return `Maybe<number>` rather than a plain number, because dividing by
+zero has no valid result. A `None` signals the invalid input; a `Some` holds the result:
+
+```ts
+import { Maybe } from "@nlozgachev/pipelined/core";
+
+pipe(20, Num.divide(4)); // Some(5)
+pipe(20, Num.divide(0)); // None
+
+pipe(10, Num.remainder(3)); // Some(1)
+pipe(10, Num.remainder(0)); // None
+```
+
+This integrates cleanly with `Arr.filterMap` to skip invalid inputs in a batch:
+
+```ts
+pipe([10, 20, 30], Arr.filterMap(Num.divide(10))); // [1, 2, 3]
+pipe([10, 20, 0], Arr.filterMap(Num.remainder(3))); // [1, 2, 0] — zero is a valid remainder
+```
 
 ## Clamping values to a range
 
@@ -107,7 +127,7 @@ pipe(
 	Num.range(1, 20), // [1 .. 20]
 	Arr.map(Num.multiply(3)), // [3, 6, 9, ..., 60]
 	Arr.filter(Num.between(10, 40)),
-	Arr.reduce(0, Num.add), // curried add works as a reducer too
+	Arr.reduce(0, Num.add), // sums all values — Num.add(acc)(val) = acc + val
 ); // 10+12+15+18+21+24+27+30+33+36+39 = ?
 ```
 

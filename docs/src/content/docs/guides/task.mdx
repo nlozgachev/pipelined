@@ -181,6 +181,28 @@ pipe(Task.resolve("ping"), Task.delay(1000))(); // resolves to "ping" after 1 se
 
 Useful for debouncing or rate limiting.
 
+## Cancelling in-flight work with `abortable`
+
+`Task.abortable` wraps a factory function that receives an `AbortSignal` and returns a `Task` plus
+a shared `abort` handle. Calling `abort()` cancels whichever call is currently in flight, and the
+next call starts fresh:
+
+```ts
+const { task: searchUsers, abort } = Task.abortable(
+  (signal) => fetch(`/users?q=${query}`, { signal }).then((r) => r.json()),
+);
+
+// User types quickly — each keystroke cancels the previous request
+input.addEventListener("input", async (e) => {
+  abort(); // cancel whatever is in flight
+  const results = await searchUsers();
+});
+```
+
+If you call `task()` while a previous call is still running, the previous call is aborted
+automatically — you don't need to call `abort()` manually before each invocation. Both the explicit
+`abort()` and an outer `AbortSignal` passed to `task(signal)` are respected.
+
 ## Repeating Tasks
 
 `repeat` and `repeatUntil` run a Task multiple times unconditionally — useful for scheduled polling
@@ -189,7 +211,7 @@ or heartbeats, not error recovery. This fits naturally with Task's guarantee tha
 `Task.repeat` runs a Task a fixed number of times and collects every result:
 
 ```ts
-pipe(pollSensor, Task.repeat({ times: 5, delay: 1000 }))(); // Task<Reading[]> — 5 readings, one per second
+pipe(pollSensor, Task.repeat({ times: 5, delay: 1000 }))(); // Task<readonly Reading[]> — 5 readings, one per second
 ```
 
 `Task.repeatUntil` keeps running until the result satisfies a predicate, then returns it. This is
@@ -200,6 +222,16 @@ pipe(
   checkDeploymentStatus,
   Task.repeatUntil({ when: (s) => s === "ready", delay: 2000 }),
 )(); // checks every 2s until the deployment is ready
+```
+
+To avoid polling indefinitely, pass `maxAttempts`. When the limit is reached the last result is
+returned regardless of whether the predicate passed:
+
+```ts
+pipe(
+  checkDeploymentStatus,
+  Task.repeatUntil({ when: (s) => s === "ready", delay: 2000, maxAttempts: 10 }),
+)(); // gives up after 10 checks
 ```
 
 Both accept an optional `delay` (in ms) inserted between runs. The delay is not applied after the

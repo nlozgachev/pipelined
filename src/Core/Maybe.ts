@@ -69,12 +69,6 @@ export namespace Maybe {
 	export const toUndefined = <A>(data: Maybe<A>): A | undefined => isSome(data) ? data.value : undefined;
 
 	/**
-	 * Creates a Maybe from a possibly undefined value.
-	 * Returns None if undefined, Some otherwise.
-	 */
-	export const fromUndefined = <A>(value: A | undefined): Maybe<A> => value === undefined ? none() : some(value);
-
-	/**
 	 * Creates a Maybe from a predicate applied to a value.
 	 * Returns Some if the predicate passes, None otherwise.
 	 *

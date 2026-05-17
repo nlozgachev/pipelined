@@ -351,12 +351,12 @@ test("Result.recover passes the error to the fallback", () => {
 // ---------------------------------------------------------------------------
 
 test(
-	"Result.recoverUnless recovers when error does not match blockedErr",
+	"Result.recoverUnless recovers when predicate returns false",
 	() => {
 		const result = pipe(
 			Result.err("recoverable"),
 			Result.recoverUnless(
-				"fatal",
+				(e) => e === "fatal",
 				() => Result.ok(42),
 			),
 		);
@@ -365,12 +365,12 @@ test(
 );
 
 test(
-	"Result.recoverUnless does NOT recover when error matches blockedErr",
+	"Result.recoverUnless does NOT recover when predicate returns true",
 	() => {
 		const result = pipe(
 			Result.err("fatal"),
 			Result.recoverUnless(
-				"fatal",
+				(e) => e === "fatal",
 				() => Result.ok(42),
 			),
 		);
@@ -382,7 +382,7 @@ test("Result.recoverUnless passes through Ok unchanged", () => {
 	const result = pipe(
 		Result.ok(10),
 		Result.recoverUnless(
-			"fatal",
+			(e) => e === "fatal",
 			() => Result.ok(42),
 		),
 	);
@@ -394,9 +394,21 @@ test(
 	() => {
 		const result = pipe(
 			Result.err("recoverable"),
-			Result.recoverUnless("fatal", () => Result.ok("recovered")),
+			Result.recoverUnless((e) => e === "fatal", () => Result.ok("recovered")),
 		);
 		expect(result).toEqual({ kind: "Ok", value: "recovered" });
+	},
+);
+
+test(
+	"Result.recoverUnless uses predicate — works with object errors",
+	() => {
+		const err = new Error("recoverable");
+		const result = pipe(
+			Result.err(err),
+			Result.recoverUnless((e) => e.message === "fatal", () => Result.ok(0)),
+		);
+		expect(result).toEqual({ kind: "Ok", value: 0 });
 	},
 );
 

@@ -134,12 +134,16 @@ test("Num.multiply composes with Arr.map", () => {
 // divide
 // ---------------------------------------------------------------------------
 
-test("Num.divide divides the value by the operand", () => {
-	expect(pipe(20, Num.divide(4))).toBe(5);
+test("Num.divide returns Some for non-zero divisor", () => {
+	expect(pipe(20, Num.divide(4))).toEqual(Maybe.some(5));
 });
 
-test("Num.divide composes with Arr.map", () => {
-	expect(pipe([10, 20, 30], Arr.map(Num.divide(10)))).toEqual([1, 2, 3]);
+test("Num.divide returns None when divisor is zero", () => {
+	expect(pipe(5, Num.divide(0))).toEqual(Maybe.none());
+});
+
+test("Num.divide composes with Arr.filterMap", () => {
+	expect(pipe([10, 20, 30], Arr.filterMap(Num.divide(10)))).toEqual([1, 2, 3]);
 });
 
 // ---------------------------------------------------------------------------
@@ -230,16 +234,20 @@ test("Num.ceil returns integer unchanged", () => {
 // remainder
 // ---------------------------------------------------------------------------
 
-test("Num.remainder returns the remainder of division", () => {
-	expect(pipe(10, Num.remainder(3))).toBe(1);
+test("Num.remainder returns Some for the remainder of division", () => {
+	expect(pipe(10, Num.remainder(3))).toEqual(Maybe.some(1));
 });
 
-test("Num.remainder returns 0 when evenly divisible", () => {
-	expect(pipe(9, Num.remainder(3))).toBe(0);
+test("Num.remainder returns Some(0) when evenly divisible", () => {
+	expect(pipe(9, Num.remainder(3))).toEqual(Maybe.some(0));
 });
 
-test("Num.remainder composes with Arr.map", () => {
-	expect(pipe([10, 11, 12], Arr.map(Num.remainder(3)))).toEqual([1, 2, 0]);
+test("Num.remainder returns None when divisor is zero", () => {
+	expect(pipe(5, Num.remainder(0))).toEqual(Maybe.none());
+});
+
+test("Num.remainder composes with Arr.filterMap", () => {
+	expect(pipe([10, 11, 12], Arr.filterMap(Num.remainder(3)))).toEqual([1, 2, 0]);
 });
 
 // ---------------------------------------------------------------------------

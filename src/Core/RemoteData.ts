@@ -36,17 +36,17 @@ export namespace RemoteData {
 	/**
 	 * Creates a NotAsked RemoteData.
 	 */
-	export const notAsked = <E, A>(): RemoteData<E, A> => _notAsked;
+	export const notAsked = (): NotAsked => _notAsked;
 
 	/**
 	 * Creates a Loading RemoteData.
 	 */
-	export const loading = <E, A>(): RemoteData<E, A> => _loading;
+	export const loading = (): Loading => _loading;
 
 	/**
 	 * Creates a Failure RemoteData with the given error.
 	 */
-	export const failure = <E, A>(error: E): RemoteData<E, A> => ({
+	export const failure = <E>(error: E): Failure<E> => ({
 		kind: "Failure",
 		error,
 	});
@@ -54,7 +54,7 @@ export namespace RemoteData {
 	/**
 	 * Creates a Success RemoteData with the given value.
 	 */
-	export const success = <E, A>(value: A): RemoteData<E, A> => ({
+	export const success = <A>(value: A): Success<A> => ({
 		kind: "Success",
 		value,
 	});
@@ -238,6 +238,24 @@ export namespace RemoteData {
 	 */
 	export const tap = <E, A>(f: (a: A) => void) => (data: RemoteData<E, A>): RemoteData<E, A> => {
 		if (isSuccess(data)) f(data.value);
+		return data;
+	};
+
+	/**
+	 * Executes a side effect on the failure error without changing the RemoteData.
+	 * Useful for logging errors.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   RemoteData.failure("not found"),
+	 *   RemoteData.tapError(e => console.error("fetch failed:", e)),
+	 *   RemoteData.map(render)
+	 * );
+	 * ```
+	 */
+	export const tapError = <E, A>(f: (e: E) => void) => (data: RemoteData<E, A>): RemoteData<E, A> => {
+		if (isFailure(data)) f(data.error);
 		return data;
 	};
 
