@@ -1,5 +1,6 @@
 import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import { Deferred } from "../Deferred.ts";
 import { Task } from "../Task.ts";
 
 // ---------------------------------------------------------------------------
@@ -752,4 +753,29 @@ test("Task.fromSync re-evaluates f on each call", async () => {
 	const t = Task.fromSync(() => ++count);
 	expect(await t()).toBe(1);
 	expect(await t()).toBe(2);
+});
+
+// ---------------------------------------------------------------------------
+// run
+// ---------------------------------------------------------------------------
+
+test("Task.run executes the task and resolves with the value", async () => {
+	const task: Task<number> = () => Deferred.fromPromise(Promise.resolve(42));
+	expect(await pipe(task, Task.run())).toBe(42);
+});
+
+test("Task.run passes the signal to the task", async () => {
+	const controller = new AbortController();
+	let receivedSignal: AbortSignal | undefined;
+	const task: Task<void> = (signal) => {
+		receivedSignal = signal;
+		return Deferred.fromPromise(Promise.resolve(undefined));
+	};
+	await pipe(task, Task.run(controller.signal));
+	expect(receivedSignal).toBe(controller.signal);
+});
+
+test("Task.run works without a signal", async () => {
+	const task: Task<string> = () => Deferred.fromPromise(Promise.resolve("ok"));
+	expect(await pipe(task, Task.run())).toBe("ok");
 });

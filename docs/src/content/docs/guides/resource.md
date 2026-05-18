@@ -43,11 +43,11 @@ nothing to clean up.
 
 ```ts
 const dbResource = Resource.make(
-	TaskResult.tryCatch(
-		() => openConnection({ host: "db.internal", port: 5432 }),
-		(e) => new Error(`Could not connect: ${e}`),
-	),
-	(conn) => Task.from(() => conn.close()),
+  TaskResult.tryCatch(
+    () => openConnection({ host: "db.internal", port: 5432 }),
+    (e) => new Error(`Could not connect: ${e}`),
+  ),
+  (conn) => Task.from(() => conn.close()),
 );
 ```
 
@@ -62,8 +62,8 @@ When the acquire step cannot fail — an in-memory structure, a timer, or a simp
 
 ```ts
 const lockResource = Resource.fromTask<never, Lock>(
-	Task.from(() => Promise.resolve(acquireLock("export-job"))),
-	(lock) => Task.from(() => Promise.resolve(lock.release())),
+  Task.from(() => Promise.resolve(acquireLock("export-job"))),
+  (lock) => Task.from(() => Promise.resolve(lock.release())),
 );
 ```
 
@@ -77,13 +77,13 @@ acquires the resource, runs your function, then releases the resource — always
 
 ```ts
 const rows = await pipe(
-	dbResource,
-	Resource.use((conn) =>
-		TaskResult.tryCatch(
-			() => conn.query("SELECT id, name FROM products WHERE active = true"),
-			(e) => new Error(`Query failed: ${e}`),
-		)
-	),
+  dbResource,
+  Resource.use((conn) =>
+    TaskResult.tryCatch(
+      () => conn.query("SELECT id, name FROM products WHERE active = true"),
+      (e) => new Error(`Query failed: ${e}`),
+    )
+  ),
 )();
 ```
 
@@ -100,19 +100,19 @@ When a piece of work needs two resources — a database connection and a cache c
 const combined = Resource.combine(dbResource, cacheResource);
 
 const result = await pipe(
-	combined,
-	Resource.use(([conn, cache]) =>
-		TaskResult.tryCatch(
-			async () => {
-				const cached = await cache.get("user:42");
-				if (cached) return cached;
-				const row = await conn.query("SELECT * FROM users WHERE id = 42");
-				await cache.set("user:42", row, 300);
-				return row;
-			},
-			(e) => new Error(`Lookup failed: ${e}`),
-		)
-	),
+  combined,
+  Resource.use(([conn, cache]) =>
+    TaskResult.tryCatch(
+      async () => {
+        const cached = await cache.get("user:42");
+        if (cached) return cached;
+        const row = await conn.query("SELECT * FROM users WHERE id = 42");
+        await cache.set("user:42", row, 300);
+        return row;
+      },
+      (e) => new Error(`Lookup failed: ${e}`),
+    )
+  ),
 )();
 ```
 
@@ -127,18 +127,18 @@ acquire-release lifecycle independently:
 
 ```ts
 const result = await pipe(
-	dbResource,
-	Resource.use((conn) =>
-		pipe(
-			transactionResource(conn),
-			Resource.use((tx) =>
-				TaskResult.tryCatch(
-					() => insertOrder(tx, order),
-					(e) => new Error(`Insert failed: ${e}`),
-				)
-			),
-		)
-	),
+  dbResource,
+  Resource.use((conn) =>
+    pipe(
+      transactionResource(conn),
+      Resource.use((tx) =>
+        TaskResult.tryCatch(
+          () => insertOrder(tx, order),
+          (e) => new Error(`Insert failed: ${e}`),
+        )
+      ),
+    )
+  ),
 )();
 ```
 

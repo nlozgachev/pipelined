@@ -544,7 +544,7 @@ test("RemoteData.fromResult converts Ok to Success", () => {
 });
 
 test("RemoteData.fromResult converts Err to Failure", () => {
-	expect(RemoteData.fromResult(Result.err("oops"))).toEqual(RemoteData.failure("oops"));
+	expect(RemoteData.fromResult(Result.error("oops"))).toEqual(RemoteData.failure("oops"));
 });
 
 test("RemoteData.fromResult preserves complex value types", () => {
@@ -554,7 +554,7 @@ test("RemoteData.fromResult preserves complex value types", () => {
 });
 
 test("RemoteData.fromResult preserves complex error types", () => {
-	expect(RemoteData.fromResult(Result.err({ code: 404 }))).toEqual(
+	expect(RemoteData.fromResult(Result.error({ code: 404 }))).toEqual(
 		RemoteData.failure({ code: 404 }),
 	);
 });
@@ -587,4 +587,38 @@ test("RemoteData.fromMaybe curried handler can be assigned and reused", () => {
 	const toRemote = RemoteData.fromMaybe(() => "missing");
 	expect(toRemote(Maybe.some(1))).toEqual(RemoteData.success(1));
 	expect(toRemote(Maybe.none())).toEqual(RemoteData.failure("missing"));
+});
+
+// ---------------------------------------------------------------------------
+// filter
+// ---------------------------------------------------------------------------
+
+test("RemoteData.filter keeps Success when predicate passes", () => {
+	expect(
+		RemoteData.filter((n: number) => n > 0, () => "not positive")(RemoteData.success(5)),
+	).toEqual({ kind: "Success", value: 5 });
+});
+
+test("RemoteData.filter converts Success to Failure when predicate fails", () => {
+	expect(
+		RemoteData.filter((n: number) => n > 0, (n) => `${n} is not positive`)(RemoteData.success(-3)),
+	).toEqual({ kind: "Failure", error: "-3 is not positive" });
+});
+
+test("RemoteData.filter passes NotAsked through unchanged", () => {
+	expect(
+		RemoteData.filter((_: number) => true, () => "error")(RemoteData.notAsked()),
+	).toEqual({ kind: "NotAsked" });
+});
+
+test("RemoteData.filter passes Loading through unchanged", () => {
+	expect(
+		RemoteData.filter((_: number) => true, () => "error")(RemoteData.loading()),
+	).toEqual({ kind: "Loading" });
+});
+
+test("RemoteData.filter passes Failure through unchanged", () => {
+	expect(
+		RemoteData.filter((_: number) => true, () => "new error")(RemoteData.failure("original")),
+	).toEqual({ kind: "Failure", error: "original" });
 });

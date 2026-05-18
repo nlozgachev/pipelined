@@ -23,8 +23,8 @@ import { Dict } from "@nlozgachev/pipelined/utils";
 const empty = Dict.empty<string, number>();
 
 const byId = Dict.fromEntries([
-	["u1", { name: "Alice", role: "admin" }],
-	["u2", { name: "Bob", role: "editor" }],
+  ["u1", { name: "Alice", role: "admin" }],
+  ["u2", { name: "Bob", role: "editor" }],
 ]);
 
 const scores = Dict.fromRecord({ alice: 85, bob: 92, carol: 74 });
@@ -69,8 +69,8 @@ pipe(scores, Dict.map(score => score / 100));
 
 // Prepend the key to each value for display
 pipe(
-	Dict.fromRecord({ alice: "admin", bob: "editor" }),
-	Dict.mapWithKey((name, role) => `${name} (${role})`),
+  Dict.fromRecord({ alice: "admin", bob: "editor" }),
+  Dict.mapWithKey((name, role) => `${name} (${role})`),
 );
 // ReadonlyMap { "alice" => "alice (admin)", "bob" => "bob (editor)" }
 ```
@@ -86,11 +86,31 @@ pipe(scores, Dict.filter(score => score >= 75));
 
 // Remove entries where the key starts with a prefix
 pipe(
-	Dict.fromRecord({ test_alice: 1, alice: 2, test_bob: 3 }),
-	Dict.filterWithKey((k, _v) => !k.startsWith("test_")),
+  Dict.fromRecord({ test_alice: 1, alice: 2, test_bob: 3 }),
+  Dict.filterWithKey((k, _v) => !k.startsWith("test_")),
 );
 // ReadonlyMap { "alice" => 2 }
 ```
+
+## Mapping and filtering in one pass
+
+`Dict.filterMap` applies a function that returns `Maybe` to each value. Entries where the
+function returns `None` are removed; entries where it returns `Some` are kept with the
+unwrapped value — all in one pass:
+
+```ts
+const parse = (s: string): Maybe<number> => {
+  const n = Number(s);
+  return isNaN(n) ? Maybe.none() : Maybe.some(n);
+};
+
+Dict.filterMap(parse)(Dict.fromRecord({ a: "1", b: "two", c: "3" }));
+// ReadonlyMap { "a" => 1, "c" => 3 }
+```
+
+This is more efficient than `Dict.map(f)` followed by `Dict.compact` when the mapping
+and the filtering are naturally coupled — you avoid building an intermediate
+`ReadonlyMap<K, Maybe<V>>`.
 
 ## Modifying individual entries
 
@@ -161,9 +181,9 @@ end up with `ReadonlyMap<K, Maybe<V>>`. `Dict.compact` collapses that into `Read
 import { Maybe } from "@nlozgachev/pipelined/core";
 
 const profileMap = Dict.fromEntries<string, Maybe<string>>([
-	["alice", Maybe.some("Alice Smith")],
-	["b404", Maybe.none()],
-	["carol", Maybe.some("Carol Jones")],
+  ["alice", Maybe.some("Alice Smith")],
+  ["b404", Maybe.none()],
+  ["carol", Maybe.some("Carol Jones")],
 ]);
 
 Dict.compact(profileMap);
@@ -192,10 +212,10 @@ filtered to passing grades, scaled, and summed:
 import { pipe } from "@nlozgachev/pipelined/composition";
 
 pipe(
-	Dict.fromRecord({ alice: 85, bob: 42, carol: 91, dave: 68 }),
-	Dict.filter(score => score >= 50), // remove failures
-	Dict.map(score => Math.round(score / 10)), // convert to grade 1–10
-	Dict.reduce(0, (acc, grade) => acc + grade), // total grade points
+  Dict.fromRecord({ alice: 85, bob: 42, carol: 91, dave: 68 }),
+  Dict.filter(score => score >= 50), // remove failures
+  Dict.map(score => Math.round(score / 10)), // convert to grade 1–10
+  Dict.reduce(0, (acc, grade) => acc + grade), // total grade points
 );
 ```
 

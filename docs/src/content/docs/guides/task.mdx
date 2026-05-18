@@ -203,6 +203,31 @@ If you call `task()` while a previous call is still running, the previous call i
 automatically — you don't need to call `abort()` manually before each invocation. Both the explicit
 `abort()` and an outer `AbortSignal` passed to `task(signal)` are respected.
 
+## Running a task in a pipe chain
+
+`Task.run` executes a task at the end of a `pipe` chain. Without it, a composed task needs
+to be called with `task(signal)` outside the pipe — which splits the composition in two. `Task.run`
+closes the pipe naturally:
+
+```ts
+const result = await pipe(
+  loadConfig,
+  Task.map(config => config.apiUrl),
+  Task.run(),
+);
+```
+
+Pass a signal to cancel the task from outside:
+
+```ts
+const controller = new AbortController();
+const result = await pipe(
+  loadConfig,
+  Task.map(config => config.apiUrl),
+  Task.run(controller.signal),
+);
+```
+
 ## Repeating Tasks
 
 `repeat` and `repeatUntil` run a Task multiple times unconditionally — useful for scheduled polling
@@ -298,6 +323,26 @@ const result = await fetchReport(id)(controller.signal);
 
 You can add as many `chain` steps as the transaction requires. The signal propagates through all
 of them without any extra wiring.
+
+### Running a TaskResult in a pipe chain
+
+`TaskResult.run` is the terminal step for a `TaskResult` pipe chain. It executes the task
+and returns `Promise<Result<E, A>>`:
+
+```ts
+const controller = new AbortController();
+const result = await pipe(
+  fetchUser("42"),
+  TaskResult.chain(user => fetchPosts(user.id)),
+  TaskResult.run(controller.signal),
+);
+
+if (Result.isOk(result)) render(result.value);
+else showError(result.error);
+```
+
+The signal threads through all tasks in the chain — abort at any point and whichever request
+is in flight is cancelled immediately.
 
 **`TaskMaybe<A>`** — an async operation that may return nothing. It's `Task<Maybe<A>>`:
 

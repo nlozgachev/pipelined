@@ -294,6 +294,34 @@ test("Dict.compact returns empty map when all values are None", () => {
 });
 
 // ---------------------------------------------------------------------------
+// filterMap
+// ---------------------------------------------------------------------------
+
+test("Dict.filterMap keeps entries where f returns Some", () => {
+	const m = Dict.fromRecord({ a: "1", b: "two", c: "3" });
+	const result = pipe(
+		m,
+		Dict.filterMap((s: string) => {
+			const n = Number(s);
+			return isNaN(n) ? Maybe.none() : Maybe.some(n);
+		}),
+	);
+	expect(Dict.toRecord(result as ReadonlyMap<string, number>)).toEqual({ a: 1, c: 3 });
+});
+
+test("Dict.filterMap returns empty map when all entries return None", () => {
+	const m = Dict.fromRecord({ a: "x", b: "y" });
+	const result = pipe(m, Dict.filterMap((_: string): Maybe<number> => Maybe.none()));
+	expect(result.size).toBe(0);
+});
+
+test("Dict.filterMap preserves keys of matching entries", () => {
+	const m = Dict.fromEntries<number, number>([[1, 10], [2, -5], [3, 30]]);
+	const result = pipe(m, Dict.filterMap((n: number) => n > 0 ? Maybe.some(n * 2) : Maybe.none()));
+	expect([...result.entries()]).toEqual([[1, 20], [3, 60]]);
+});
+
+// ---------------------------------------------------------------------------
 // union
 // ---------------------------------------------------------------------------
 

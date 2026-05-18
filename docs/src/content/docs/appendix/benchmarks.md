@@ -42,10 +42,10 @@ The goal of the utilities is to make this:
 
 ```ts
 pipe(
-	rawData,
-	Rec.filter(isActive),
-	Rec.mapKeys(toSnakeCase),
-	Rec.map(formatValue),
+  rawData,
+  Rec.filter(isActive),
+  Rec.mapKeys(toSnakeCase),
+  Rec.map(formatValue),
 );
 ```
 

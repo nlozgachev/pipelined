@@ -30,9 +30,9 @@ This leads to one of two outcomes — either error handling is scattered across 
 ```ts
 let result: number;
 try {
-	result = parseInput(raw);
+  result = parseInput(raw);
 } catch (e) {
-	result = 0;
+  result = 0;
 }
 ```
 
@@ -52,9 +52,9 @@ import { Result } from "@nlozgachev/pipelined/core";
 declare function parseInput(raw: string): Result<string, number>;
 
 const value = pipe(
-	parseInput(raw),
-	Result.map((n) => n * 2), // only runs if parsing succeeded
-	Result.getOrElse(() => 0), // provides the fallback
+  parseInput(raw),
+  Result.map((n) => n * 2), // only runs if parsing succeeded
+  Result.getOrElse(() => 0), // provides the fallback
 );
 ```
 
@@ -65,7 +65,7 @@ through unchanged to `getOrElse`, which provides the fallback. No try/catch. No 
 
 ```ts
 Result.ok(42); // Ok(42)  — a successful result
-Result.err("not found"); // Err("not found") — a failure
+Result.error("not found"); // Err("not found") — a failure
 ```
 
 The error type in `Result<E, A>` can be anything — a string, a discriminated union, an Error object.
@@ -78,10 +78,10 @@ a `Result`:
 
 ```ts
 const parseJson = (s: string): Result<string, unknown> =>
-	Result.tryCatch(
-		() => JSON.parse(s),
-		(e) => `Invalid JSON: ${e}`,
-	);
+  Result.tryCatch(
+    () => JSON.parse(s),
+    (e) => `Invalid JSON: ${e}`,
+  );
 
 parseJson('{"ok": true}'); // Ok({ ok: true })
 parseJson("not json"); // Err("Invalid JSON: ...")
@@ -96,8 +96,8 @@ explicit `if`/`else` before entering `Result`-land:
 
 ```ts
 const validatePositive = Result.fromPredicate(
-	(n: number) => n > 0,
-	(n) => `${n} is not a positive number`,
+  (n: number) => n > 0,
+  (n) => `${n} is not a positive number`,
 );
 
 pipe(validatePositive(5), Result.map((n) => n * 2)); // Ok(10)
@@ -113,12 +113,12 @@ composes cleanly in pipelines where you're validating one field at a time.
 
 ```ts
 pipe(
-	Result.ok(5),
-	Result.map((n) => n * 2),
+  Result.ok(5),
+  Result.map((n) => n * 2),
 ); // Ok(10)
 pipe(
-	Result.err("oops"),
-	Result.map((n) => n * 2),
+  Result.error("oops"),
+  Result.map((n) => n * 2),
 ); // Err("oops")
 ```
 
@@ -127,10 +127,10 @@ short-circuits the rest:
 
 ```ts
 pipe(
-	parseJson(input),
-	Result.map((data) => data.userId),
-	Result.map((id) => users.get(id)),
-	Result.getOrElse(() => null),
+  parseJson(input),
+  Result.map((data) => data.userId),
+  Result.map((id) => users.get(id)),
+  Result.getOrElse(() => null),
 );
 ```
 
@@ -140,8 +140,8 @@ pipe(
 
 ```ts
 pipe(
-	Result.err("connection refused"),
-	Result.mapError((e) => ({ code: 503, message: e })),
+  Result.error("connection refused"),
+  Result.mapError((e) => ({ code: 503, message: e })),
 ); // Err({ code: 503, message: "connection refused" })
 ```
 
@@ -154,22 +154,23 @@ When a transformation might itself fail, use `chain` instead of `map`. It preven
 `Result<E, Result<E, A>>`:
 
 ```ts
-const validatePositive = (n: number): Result<string, number> => n > 0 ? Result.ok(n) : Result.err("Must be positive");
+const validatePositive = (n: number): Result<string, number> =>
+  n > 0 ? Result.ok(n) : Result.error("Must be positive");
 
 pipe(Result.ok(5), Result.chain(validatePositive)); // Ok(5)
 pipe(Result.ok(-1), Result.chain(validatePositive)); // Err("Must be positive")
-pipe(Result.err("parse failed"), Result.chain(validatePositive)); // Err("parse failed")
+pipe(Result.error("parse failed"), Result.chain(validatePositive)); // Err("parse failed")
 ```
 
 A typical pipeline chains multiple steps that can each fail independently:
 
 ```ts
 pipe(
-	parseInput(raw), // Result<string, string>
-	Result.chain(validateRange), // Result<string, number>
-	Result.chain(lookupRecord), // Result<string, Record>
-	Result.map((r) => r.name), // Result<string, string>
-	Result.getOrElse(() => "Unknown"),
+  parseInput(raw), // Result<string, string>
+  Result.chain(validateRange), // Result<string, number>
+  Result.chain(lookupRecord), // Result<string, Record>
+  Result.map((r) => r.name), // Result<string, string>
+  Result.getOrElse(() => "Unknown"),
 );
 ```
 
@@ -183,8 +184,8 @@ fallback can be a different type, widening the result to the union of both:
 
 ```ts
 pipe(Result.ok(5), Result.getOrElse(() => 0)); // 5
-pipe(Result.err("oops"), Result.getOrElse(() => 0)); // 0
-pipe(Result.err("oops"), Result.getOrElse(() => null)); // null — typed as number | null
+pipe(Result.error("oops"), Result.getOrElse(() => 0)); // 0
+pipe(Result.error("oops"), Result.getOrElse(() => null)); // null — typed as number | null
 ```
 
 **`match`** — handle each case explicitly. `fold` is the positional form of the same thing — error
@@ -192,11 +193,11 @@ handler first, success handler second — useful when you'd rather not name the 
 
 ```ts
 pipe(
-	result,
-	Result.match({
-		ok: (value) => `Success: ${value}`,
-		err: (error) => `Failed: ${error}`,
-	}),
+  result,
+  Result.match({
+    ok: (value) => `Success: ${value}`,
+    err: (error) => `Failed: ${error}`,
+  }),
 );
 ```
 
@@ -208,12 +209,12 @@ can produce a different success type, widening the result to `Result<E, A | B>`:
 
 ```ts
 pipe(
-	fetchFromPrimary(url),
-	Result.recover((e) => {
-		console.warn("Primary failed:", e);
-		return fetchFromFallback(url);
-	}),
-	Result.getOrElse(() => cachedValue),
+  fetchFromPrimary(url),
+  Result.recover((e) => {
+    console.warn("Primary failed:", e);
+    return fetchFromFallback(url);
+  }),
+  Result.getOrElse(() => cachedValue),
 );
 ```
 
@@ -222,8 +223,8 @@ error type means "stop trying":
 
 ```ts
 pipe(
-	authenticate(token),
-	Result.recoverUnless((e) => e === "REVOKED", () => refreshAndRetry(token)),
+  authenticate(token),
+  Result.recoverUnless((e) => e === "REVOKED", () => refreshAndRetry(token)),
 );
 ```
 
@@ -235,10 +236,10 @@ through unchanged:
 
 ```ts
 pipe(
-	parseConfig(input),
-	Result.tap((cfg) => console.log("Config loaded:", cfg.version)),
-	Result.chain(validateConfig),
-	Result.map(buildApp),
+  parseConfig(input),
+  Result.tap((cfg) => console.log("Config loaded:", cfg.version)),
+  Result.chain(validateConfig),
+  Result.map(buildApp),
 );
 ```
 
@@ -247,9 +248,9 @@ pipeline or losing the error for downstream handling:
 
 ```ts
 pipe(
-	parseConfig(input),
-	Result.tapError((e) => console.error("Config parse failed:", e)),
-	Result.chain(validateConfig),
+  parseConfig(input),
+  Result.tapError((e) => console.error("Config parse failed:", e)),
+  Result.chain(validateConfig),
 );
 ```
 
@@ -262,7 +263,7 @@ When you only care about whether an operation succeeded — not why it failed �
 
 ```ts
 Result.toMaybe(Result.ok(42)); // Some(42)
-Result.toMaybe(Result.err("oops")); // None
+Result.toMaybe(Result.error("oops")); // None
 ```
 
 The error is discarded. Use this at boundaries where you want to fall back to `Maybe`-based logic.

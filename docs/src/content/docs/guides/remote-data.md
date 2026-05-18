@@ -91,13 +91,13 @@ compiler ensures you've covered all cases:
 
 ```ts
 const message = pipe(
-	userData,
-	RemoteData.match({
-		notAsked: () => "Click to load",
-		loading: () => "Loading...",
-		failure: (err) => `Failed: ${err}`,
-		success: (user) => `Hello, ${user.name}`,
-	}),
+  userData,
+  RemoteData.match({
+    notAsked: () => "Click to load",
+    loading: () => "Loading...",
+    failure: (err) => `Failed: ${err}`,
+    success: (user) => `Hello, ${user.name}`,
+  }),
 );
 ```
 
@@ -111,20 +111,20 @@ positional form — notAsked, loading, failure, success — if you'd rather not 
 
 ```ts
 pipe(
-	RemoteData.success(5),
-	RemoteData.map((n) => n * 2),
+  RemoteData.success(5),
+  RemoteData.map((n) => n * 2),
 ); // Success(10)
 pipe(
-	RemoteData.loading(),
-	RemoteData.map((n) => n * 2),
+  RemoteData.loading(),
+  RemoteData.map((n) => n * 2),
 ); // Loading
 pipe(
-	RemoteData.failure("!"),
-	RemoteData.map((n) => n * 2),
+  RemoteData.failure("!"),
+  RemoteData.map((n) => n * 2),
 ); // Failure("!")
 pipe(
-	RemoteData.notAsked(),
-	RemoteData.map((n) => n * 2),
+  RemoteData.notAsked(),
+  RemoteData.map((n) => n * 2),
 ); // NotAsked
 ```
 
@@ -132,9 +132,9 @@ This lets you transform data as part of a pipeline without breaking out of the `
 
 ```ts
 const userName = pipe(
-	userData, // RemoteData<string, User>
-	RemoteData.map((u) => u.name), // RemoteData<string, string>
-	RemoteData.getOrElse(() => "Unknown"),
+  userData, // RemoteData<string, User>
+  RemoteData.map((u) => u.name), // RemoteData<string, string>
+  RemoteData.getOrElse(() => "Unknown"),
 );
 ```
 
@@ -144,8 +144,8 @@ const userName = pipe(
 
 ```ts
 pipe(
-	RemoteData.failure("connection refused"),
-	RemoteData.mapError((e) => ({ code: 503, message: e })),
+  RemoteData.failure("connection refused"),
+  RemoteData.mapError((e) => ({ code: 503, message: e })),
 ); // Failure({ code: 503, message: "connection refused" })
 ```
 
@@ -159,8 +159,8 @@ pass through:
 
 ```ts
 pipe(
-	userData, // RemoteData<string, User>
-	RemoteData.chain((user) => fetchUserPosts(user.id)), // RemoteData<string, Post[]>
+  userData, // RemoteData<string, User>
+  RemoteData.chain((user) => fetchUserPosts(user.id)), // RemoteData<string, Post[]>
 );
 ```
 
@@ -175,11 +175,11 @@ can produce a different success type, widening the result to `RemoteData<E, A | 
 
 ```ts
 pipe(
-	fetchFromPrimary(url),
-	RemoteData.recover((err) => {
-		console.warn("Primary failed:", err);
-		return fetchFromFallback(url);
-	}),
+  fetchFromPrimary(url),
+  RemoteData.recover((err) => {
+    console.warn("Primary failed:", err);
+    return fetchFromFallback(url);
+  }),
 );
 ```
 
@@ -190,18 +190,38 @@ through unchanged. Use it to log or report errors without interrupting the pipel
 
 ```ts
 pipe(
-	userData,
-	RemoteData.tapError((err) => analytics.track("fetch_failed", { reason: err })),
-	RemoteData.match({
-		notAsked: () => null,
-		loading: () => <Spinner />,
-		failure: (err) => <ErrorMessage error={err} />,
-		success: (user) => <UserCard user={user} />,
-	}),
+  userData,
+  RemoteData.tapError((err) => analytics.track("fetch_failed", { reason: err })),
+  RemoteData.match({
+    notAsked: () => null,
+    loading: () => <Spinner />,
+    failure: (err) => <ErrorMessage error={err} />,
+    success: (user) => <UserCard user={user} />,
+  }),
 );
 ```
 
 For any state other than `Failure`, `tapError` is a no-op and the value passes through.
+
+## Filtering a successful value
+
+`RemoteData.filter` tests a `Success` value against a predicate. When the predicate fails,
+the `Success` becomes a `Failure` — you supply the error. All other states pass through
+unchanged:
+
+```ts
+RemoteData.filter(n => n > 0, n => `${n} is not a positive price`)(RemoteData.success(9.99));
+// Success(9.99)
+
+RemoteData.filter(n => n > 0, n => `${n} is not a positive price`)(RemoteData.success(-1));
+// Failure("-1 is not a positive price")
+
+RemoteData.filter(n => n > 0, () => "invalid")(RemoteData.loading());
+// Loading — passes through unchanged
+```
+
+This is useful when additional constraints apply after a fetch succeeds — for example,
+checking that a list is non-empty or that a fetched value falls within an expected range.
 
 ## Extracting the value
 
@@ -228,13 +248,13 @@ RemoteData.toMaybe(RemoteData.success(42)); // Some(42)
 RemoteData.toMaybe(RemoteData.loading()); // None
 
 pipe(
-	RemoteData.success(42),
-	RemoteData.toResult(() => "not loaded yet"),
+  RemoteData.success(42),
+  RemoteData.toResult(() => "not loaded yet"),
 ); // Ok(42)
 
 pipe(
-	RemoteData.loading(),
-	RemoteData.toResult(() => "not loaded yet"),
+  RemoteData.loading(),
+  RemoteData.toResult(() => "not loaded yet"),
 ); // Err("not loaded yet")
 ```
 

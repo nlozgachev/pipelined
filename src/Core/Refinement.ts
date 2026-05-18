@@ -150,5 +150,5 @@ export namespace Refinement {
 	 * ```
 	 */
 	export const toResult = <A, B extends A, E>(r: Refinement<A, B>, onFail: (a: A) => E) => (a: A): Result<E, B> =>
-		r(a) ? Result.ok(a) : Result.err(onFail(a));
+		r(a) ? Result.ok(a) : Result.error(onFail(a));
 }

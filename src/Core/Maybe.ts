@@ -101,7 +101,7 @@ export namespace Maybe {
 	 * ```
 	 */
 	export const toResult = <E>(onNone: () => E) => <A>(data: Maybe<A>): Result<E, A> =>
-		isSome(data) ? Result.ok(data.value) : Result.err(onNone());
+		isSome(data) ? Result.ok(data.value) : Result.error(onNone());
 
 	/**
 	 * Creates an Maybe from a Result.
@@ -110,7 +110,7 @@ export namespace Maybe {
 	 * @example
 	 * ```ts
 	 * Maybe.fromResult(Result.ok(42)); // Some(42)
-	 * Maybe.fromResult(Result.err("oops")); // None
+	 * Maybe.fromResult(Result.error("oops")); // None
 	 * ```
 	 */
 	export const fromResult = <E, A>(data: Result<E, A>): Maybe<A> => Result.isOk(data) ? some(data.value) : none();

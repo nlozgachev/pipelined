@@ -8,9 +8,8 @@
 		"quoteStyle": "preferDouble",
 		"trailingCommas": "onlyMultiLine"
 	},
-	"excludes": ["dist/", "node_modules/"],
+	"excludes": ["dist/", "node_modules/", "*.md", "*.mdx"],
 	"plugins": [
 		"https://plugins.dprint.dev/typescript-0.95.15.wasm",
-		"https://plugins.dprint.dev/markdown-0.21.1.wasm"
 	]
 }

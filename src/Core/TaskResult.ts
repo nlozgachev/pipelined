@@ -1,3 +1,4 @@
+import { Deferred } from "./Deferred.ts";
 import { Result } from "./Result.ts";
 import { Task } from "./Task.ts";
 
@@ -25,7 +26,7 @@ export namespace TaskResult {
 	/**
 	 * Creates a failed TaskResult with the given error.
 	 */
-	export const err = <E, A>(error: E): TaskResult<E, A> => Task.resolve(Result.err(error));
+	export const err = <E, A>(error: E): TaskResult<E, A> => Task.resolve(Result.error(error));
 
 	/**
 	 * Creates a TaskResult from a function that may throw.
@@ -48,7 +49,7 @@ export namespace TaskResult {
 		Task.from((signal) =>
 			f(signal)
 				.then(Result.ok)
-				.catch((e) => Result.err(onError(e)))
+				.catch((e) => Result.error(onError(e)))
 		);
 
 	/**
@@ -68,7 +69,9 @@ export namespace TaskResult {
 	 * If the first fails, propagates the error.
 	 */
 	export const chain = <E, A, B>(f: (a: A) => TaskResult<E, B>) => (data: TaskResult<E, A>): TaskResult<E, B> =>
-		Task.chain((result: Result<E, A>) => Result.isOk(result) ? f(result.value) : Task.resolve(Result.err(result.error)))(
+		Task.chain((result: Result<E, A>) =>
+			Result.isOk(result) ? f(result.value) : Task.resolve(Result.error(result.error))
+		)(
 			data,
 		);
 
@@ -91,7 +94,7 @@ export namespace TaskResult {
 	export const recover =
 		<E, A, B>(fallback: (e: E) => TaskResult<E, B>) => (data: TaskResult<E, A>): TaskResult<E, A | B> =>
 			Task.chain((result: Result<E, A>) =>
-				Result.isErr(result) ? fallback(result.error) : Task.resolve(result as Result<E, A | B>)
+				Result.isError(result) ? fallback(result.error) : Task.resolve(result as Result<E, A | B>)
 			)(data);
 
 	/**
@@ -123,4 +126,22 @@ export namespace TaskResult {
 	 */
 	export const tapError = <E, A>(f: (e: E) => void) => (data: TaskResult<E, A>): TaskResult<E, A> =>
 		Task.map(Result.tapError<E, A>(f))(data);
+
+	/**
+	 * Executes a `TaskResult` with an optional signal, returning `Promise<Result<E, A>>`.
+	 * Use as a terminal step in a `pipe` chain.
+	 *
+	 * @example
+	 * ```ts
+	 * const controller = new AbortController();
+	 * const result = await pipe(
+	 *     fetchUser("42"),
+	 *     TaskResult.chain(user => fetchPosts(user.id)),
+	 *     TaskResult.run(controller.signal),
+	 * );
+	 * if (Result.isOk(result)) render(result.value);
+	 * ```
+	 */
+	export const run = (signal?: AbortSignal) => <E, A>(task: TaskResult<E, A>): Promise<Result<E, A>> =>
+		Deferred.toPromise(task(signal));
 }

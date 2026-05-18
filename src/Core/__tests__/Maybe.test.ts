@@ -156,7 +156,7 @@ test("Maybe.fromResult converts Ok to Some", () => {
 });
 
 test("Maybe.fromResult converts Err to None", () => {
-	const result = Maybe.fromResult(Result.err("x"));
+	const result = Maybe.fromResult(Result.error("x"));
 	expect(result).toEqual({ kind: "None" });
 });
 

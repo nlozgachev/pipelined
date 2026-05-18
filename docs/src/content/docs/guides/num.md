@@ -84,8 +84,8 @@ range before sending it to an API.
 
 ```ts
 pipe(
-	Num.range(0, 20),
-	Arr.filter(Num.between(5, 15)),
+  Num.range(0, 20),
+  Arr.filter(Num.between(5, 15)),
 ); // [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]  — both bounds inclusive
 ```
 
@@ -111,9 +111,9 @@ import { pipe } from "@nlozgachev/pipelined/composition";
 import { Maybe } from "@nlozgachev/pipelined/core";
 
 pipe(
-	Num.parse(rawInput),
-	Maybe.map(Num.clamp(0, 255)),
-	Maybe.getOrElse(() => 0),
+  Num.parse(rawInput),
+  Maybe.map(Num.clamp(0, 255)),
+  Maybe.getOrElse(() => 0),
 ); // a clamped byte value, defaulting to 0 for bad input
 ```
 
@@ -124,10 +124,10 @@ Here, a range of integers is scaled, filtered to a sub-range, and summed:
 
 ```ts
 pipe(
-	Num.range(1, 20), // [1 .. 20]
-	Arr.map(Num.multiply(3)), // [3, 6, 9, ..., 60]
-	Arr.filter(Num.between(10, 40)),
-	Arr.reduce(0, Num.add), // sums all values — Num.add(acc)(val) = acc + val
+  Num.range(1, 20), // [1 .. 20]
+  Arr.map(Num.multiply(3)), // [3, 6, 9, ..., 60]
+  Arr.filter(Num.between(10, 40)),
+  Arr.reduce(0, Num.add), // sums all values — Num.add(acc)(val) = acc + val
 ); // 10+12+15+18+21+24+27+30+33+36+39 = ?
 ```
 

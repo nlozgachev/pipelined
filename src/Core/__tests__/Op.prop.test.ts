@@ -31,7 +31,7 @@ const signalNeverOp = Op.create(
 );
 
 const arbOkOutcome = fc.integer().map((n) => Op.ok(n) as Op.Outcome<string, number>);
-const arbErrOutcome = fc.string().map((s) => Op.err(s) as Op.Outcome<string, number>);
+const arbErrOutcome = fc.string().map((s) => Op.error(s) as Op.Outcome<string, number>);
 const arbNilOutcome = fc
 	.constantFrom<Op.NilReason>("aborted", "dropped", "replaced", "evicted")
 	.map((r) => Op.nil(r) as Op.Outcome<string, number>);
@@ -73,8 +73,8 @@ test("Op.chain — short-circuits on Err and Nil", () => {
 test("Op.chain — associativity on Ok", () => {
 	fc.assert(
 		fc.property(arbOkOutcome, fc.integer(), (o, threshold) => {
-			const f = (x: number): Op.Outcome<string, number> => x > 0 ? Op.ok(x * 2) : Op.err("non-positive");
-			const g = (x: number): Op.Outcome<string, number> => x > threshold ? Op.ok(x + 1) : Op.err("too small");
+			const f = (x: number): Op.Outcome<string, number> => x > 0 ? Op.ok(x * 2) : Op.error("non-positive");
+			const g = (x: number): Op.Outcome<string, number> => x > threshold ? Op.ok(x + 1) : Op.error("too small");
 			expect(Op.chain(f)(Op.chain(g)(o))).toEqual(
 				Op.chain((x: number) => Op.chain(f)(g(x)))(o),
 			);
@@ -299,7 +299,7 @@ test("Op.interpret once — first run produces Ok, subsequent burst runs produce
 			const outcomes = (await Promise.all(
 				deferreds.map(Deferred.toPromise),
 			)) as Op.Outcome<string, number>[];
-			expect(outcomes[0]).toMatchObject({ kind: "Ok", value: 0 });
+			expect(outcomes[0]).toMatchObject({ kind: "OpOk", value: 0 });
 			expect(
 				outcomes.slice(1).every((o) => Op.isNil(o) && (o as Op.Nil).reason === "dropped"),
 			).toBe(true);
@@ -570,8 +570,8 @@ test("Op.interpret debounced leading — burst of N produces Ok for first and la
 			const outcomes = (await Promise.all(
 				deferreds.map(Deferred.toPromise),
 			)) as Op.Outcome<string, number>[];
-			expect(outcomes[0]).toMatchObject({ kind: "Ok" }); // leading
-			expect(outcomes[n - 1]).toMatchObject({ kind: "Ok" }); // trailing
+			expect(outcomes[0]).toMatchObject({ kind: "OpOk" }); // leading
+			expect(outcomes[n - 1]).toMatchObject({ kind: "OpOk" }); // trailing
 			expect(
 				outcomes
 					.slice(1, -1)

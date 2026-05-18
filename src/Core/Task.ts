@@ -336,7 +336,7 @@ export namespace Task {
 					timerId = setTimeout(() => {
 						controller.abort();
 						outerSignal?.removeEventListener("abort", onOuterAbort);
-						resolve(Result.err(onTimeout()));
+						resolve(Result.error(onTimeout()));
 					}, ms);
 				}),
 			]);
@@ -387,4 +387,18 @@ export namespace Task {
 
 		return { task, abort };
 	};
+
+	/**
+	 * Executes a task with an optional signal. Use as a terminal step in a `pipe` chain.
+	 *
+	 * @example
+	 * ```ts
+	 * const name = await pipe(
+	 *     fetchConfig,
+	 *     Task.map(config => config.name),
+	 *     Task.run(),
+	 * );
+	 * ```
+	 */
+	export const run = (signal?: AbortSignal) => <A>(task: Task<A>): Promise<A> => Deferred.toPromise(task(signal));
 }

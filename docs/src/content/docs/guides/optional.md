@@ -21,8 +21,8 @@ it stops working. There is no `?.=` operator. You are back to writing spreads wi
 
 ```ts
 const updated = user.address
-	? { ...user, address: { ...user.address, city: "Hamburg" } }
-	: user; // do nothing if address isn't there
+  ? { ...user, address: { ...user.address, city: "Hamburg" } }
+  : user; // do nothing if address isn't there
 ```
 
 `Optional<S, A>` closes that gap. It is a path through your data that accepts the path might
@@ -70,8 +70,8 @@ Out-of-bounds reads return `None`. Out-of-bounds writes leave the array unchange
 
 ```ts
 const firstChar = Optional.make(
-	(s: string) => s.length > 0 ? Maybe.some(s[0]) : Maybe.none(),
-	(c) => (s) => s.length > 0 ? c + s.slice(1) : s,
+  (s: string) => s.length > 0 ? Maybe.some(s[0]) : Maybe.none(),
+  (c) => (s) => s.length > 0 ? c + s.slice(1) : s,
 );
 ```
 
@@ -92,20 +92,20 @@ pipe(profile, Optional.getOrElse(bioOpt)(() => "no bio"));
 
 // Handle both cases by name:
 pipe(
-	profile,
-	Optional.match(bioOpt)({
-		none: () => "no bio",
-		some: (bio) => bio.toUpperCase(),
-	}),
+  profile,
+  Optional.match(bioOpt)({
+    none: () => "no bio",
+    some: (bio) => bio.toUpperCase(),
+  }),
 );
 
 // Or positionally (none handler first):
 pipe(
-	profile,
-	Optional.fold(bioOpt)(
-		() => "no bio",
-		(bio) => bio.toUpperCase(),
-	),
+  profile,
+  Optional.fold(bioOpt)(
+    () => "no bio",
+    (bio) => bio.toUpperCase(),
+  ),
 );
 ```
 
@@ -151,8 +151,8 @@ type City = { name: string; landmark?: string; };
 type Region = { capital?: City; };
 
 const landmarkOpt = pipe(
-	Optional.prop<Region>()("capital"),
-	Optional.andThen(Optional.prop<City>()("landmark")),
+  Optional.prop<Region>()("capital"),
+  Optional.andThen(Optional.prop<City>()("landmark")),
 ); // Optional<Region, string>
 ```
 
@@ -161,8 +161,8 @@ continue with a `Lens` rather than converting it to an `Optional` manually:
 
 ```ts
 const capitalNameOpt = pipe(
-	Optional.prop<Region>()("capital"),
-	Optional.andThenLens(Lens.prop<City>()("name")),
+  Optional.prop<Region>()("capital"),
+  Optional.andThenLens(Lens.prop<City>()("name")),
 ); // Optional<Region, string>
 ```
 
@@ -173,9 +173,9 @@ to an `Optional` with `Lens.toOptional` and continue from there:
 
 ```ts
 pipe(
-	Lens.prop<User>()("profile"), // Lens<User, Profile>
-	Lens.toOptional, // Optional<User, Profile>
-	Optional.andThen(Optional.prop<Profile>()("bio")), // Optional<User, string>
+  Lens.prop<User>()("profile"), // Lens<User, Profile>
+  Lens.toOptional, // Optional<User, Profile>
+  Optional.andThen(Optional.prop<Profile>()("bio")), // Optional<User, string>
 );
 ```
 

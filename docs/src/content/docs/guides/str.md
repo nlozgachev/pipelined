@@ -86,9 +86,9 @@ with `Arr.filter`:
 
 ```ts
 const logLines = [
-	"[ERROR] disk full",
-	"[INFO] server started",
-	"[ERROR] connection refused",
+  "[ERROR] disk full",
+  "[INFO] server started",
+  "[ERROR] connection refused",
 ];
 
 pipe(logLines, Arr.filter(Str.startsWith("[ERROR]")));
@@ -119,10 +119,10 @@ This integrates with the `Maybe` API for safe fallback handling:
 import { Maybe } from "@nlozgachev/pipelined/core";
 
 pipe(
-	req.query.limit,
-	Str.parse.int,
-	Maybe.map(n => Math.min(n, 100)),
-	Maybe.getOrElse(() => 20),
+  req.query.limit,
+  Str.parse.int,
+  Maybe.map(n => Math.min(n, 100)),
+  Maybe.getOrElse(() => 20),
 ); // validated page limit, defaulting to 20
 ```
 
@@ -132,12 +132,12 @@ pipe(
 
 ```ts
 pipe(
-	rawCsv,
-	Str.trim,
-	Str.split("\n"),
-	Arr.map(Str.trim),
-	Arr.filter(Str.includes(",")),
-	Arr.map(Str.split(",")),
+  rawCsv,
+  Str.trim,
+  Str.split("\n"),
+  Arr.map(Str.trim),
+  Arr.filter(Str.includes(",")),
+  Arr.map(Str.split(",")),
 ); // a 2D array of trimmed, non-empty CSV rows
 ```
 

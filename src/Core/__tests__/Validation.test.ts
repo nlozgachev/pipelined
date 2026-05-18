@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import { Result } from "../Result.ts";
 import { Validation } from "../Validation.ts";
 
 // ---------------------------------------------------------------------------
@@ -642,6 +643,34 @@ test("Validation.toResult preserves all accumulated errors in Err", () => {
 		kind: "Error",
 		error: ["a", "b", "c"],
 	});
+});
+
+// ---------------------------------------------------------------------------
+// toMaybe
+// ---------------------------------------------------------------------------
+
+test("Validation.toMaybe converts Valid to Some", () => {
+	expect(Validation.toMaybe(Validation.valid(42))).toEqual({ kind: "Some", value: 42 });
+});
+
+test("Validation.toMaybe converts Invalid to None", () => {
+	expect(Validation.toMaybe(Validation.invalid("oops"))).toEqual({ kind: "None" });
+});
+
+test("Validation.toMaybe discards all errors on Invalid", () => {
+	expect(Validation.toMaybe(Validation.invalidAll(["a", "b"]))).toEqual({ kind: "None" });
+});
+
+// ---------------------------------------------------------------------------
+// fromResult
+// ---------------------------------------------------------------------------
+
+test("Validation.fromResult converts Ok to Valid", () => {
+	expect(Validation.fromResult(Result.ok(42))).toEqual({ kind: "Valid", value: 42 });
+});
+
+test("Validation.fromResult converts Err to Invalid with single-element error list", () => {
+	expect(Validation.fromResult(Result.error("bad"))).toEqual({ kind: "Invalid", errors: ["bad"] });
 });
 
 // ---------------------------------------------------------------------------

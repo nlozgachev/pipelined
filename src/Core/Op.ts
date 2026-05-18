@@ -53,10 +53,10 @@ import { Result } from "./Result.ts";
  *
  * const manager = Op.interpret(fetchUser, { strategy: "restartable" });
  * manager.subscribe(state => {
- *   if (state.kind === "Pending") showSpinner();
- *   if (state.kind === "Ok")      render(state.value);
- *   if (state.kind === "Err")     showError(state.error);
- *   if (state.kind === "Nil")     resetUI();
+ *   if (Op.isPending(state)) showSpinner();
+ *   if (Op.isOk(state))      render(state.value);
+ *   if (Op.isError(state))   showError(state.error);
+ *   if (Op.isNil(state))     resetUI();
  * });
  * manager.run(userId);
  * ```
@@ -150,12 +150,12 @@ export namespace Op {
 	 *   over a call that was already running; `"evicted"` — a newer `run()` took over
 	 *   a call that was waiting and had not yet started.
 	 */
-	export type Outcome<E, A> = Ok<A> | Err<E> | Nil;
+	export type Outcome<E, A> = Ok<A> | Error<E> | Nil;
 
 	/** A successful outcome with a value. */
-	export type Ok<A> = WithKind<"Ok"> & WithValue<A>;
+	export type Ok<A> = WithKind<"OpOk"> & WithValue<A>;
 	/** A failed outcome with a typed error. */
-	export type Err<E> = WithKind<"Err"> & WithError<E>;
+	export type Error<E> = WithKind<"OpError"> & WithError<E>;
 	/**
 	 * An outcome that produced nothing. `reason` identifies why:
 	 * - `"aborted"` — `abort()` was called explicitly.
@@ -164,7 +164,7 @@ export namespace Op {
 	 * - `"evicted"` — a newer invocation took a slot from a call that was waiting and
 	 *   had not yet started (buffered slot, debounce timer, throttle trailing slot).
 	 */
-	export type Nil = WithKind<"Nil"> & { readonly reason: NilReason; };
+	export type Nil = WithKind<"OpNil"> & { readonly reason: NilReason; };
 
 	/** The reason a `Nil` outcome was produced. */
 	export type NilReason = "aborted" | "dropped" | "replaced" | "evicted";
@@ -213,9 +213,9 @@ export namespace Op {
 	 * const manager = Op.interpret(saveConfig, { strategy: "exclusive" });
 	 *
 	 * manager.subscribe(state => {
-	 *   if (state.kind === "Pending") lockForm();
-	 *   if (state.kind === "Ok")      toast("Saved");
-	 *   if (state.kind === "Err")     toast(`Error: ${state.error.message}`);
+	 *   if (Op.isPending(state)) lockForm();
+	 *   if (Op.isOk(state))     toast("Saved");
+	 *   if (Op.isError(state))  toast(`Error: ${state.error.message}`);
 	 * });
 	 *
 	 * // Fire and subscribe (subscriber pattern)
@@ -246,6 +246,13 @@ export namespace Op {
 		 * The callback fires immediately with the current state if the manager is not idle.
 		 */
 		subscribe: (cb: (state: S) => void) => () => void;
+		/** Returns state to Idle. Does not cancel any in-flight operation. */
+		reset: () => void;
+		/**
+		 * Runs the input immediately, then every `interval` milliseconds.
+		 * Returns a stop handle — call it to cancel future runs.
+		 */
+		poll: (input: I, options: { interval: number; }) => () => void;
 	};
 
 	// -------------------------------------------------------------------------
@@ -268,8 +275,8 @@ export namespace Op {
 	 *
 	 * getUser.subscribe((map) => {
 	 *   for (const [id, state] of map) {
-	 *     if (state.kind === "Pending") showSpinner(id);
-	 *     if (state.kind === "Ok")      render(id, state.value);
+	 *     if (Op.isPending(state)) showSpinner(id);
+	 *     if (Op.isOk(state))     render(id, state.value);
 	 *   }
 	 * });
 	 *
@@ -293,6 +300,13 @@ export namespace Op {
 		 * Fires immediately with the current map if any key is active.
 		 */
 		subscribe: (cb: (state: ReadonlyMap<K, PerKeyS>) => void) => () => void;
+		/** Clears all per-key state and notifies subscribers. Does not cancel in-flight operations. */
+		reset: () => void;
+		/**
+		 * Runs the input immediately, then every `interval` milliseconds.
+		 * Returns a stop handle — call it to cancel future runs.
+		 */
+		poll: (input: I, options: { interval: number; }) => () => void;
 	};
 
 	// -------------------------------------------------------------------------
@@ -300,23 +314,30 @@ export namespace Op {
 	// -------------------------------------------------------------------------
 
 	/** States reachable by a `once` manager (no retry). */
-	export type OnceState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type OnceState<E, A> = Idle | Pending | Ok<A> | Error<E> | AbortedNil | DroppedNil;
 	/** States reachable by a `once` manager with retry configured. */
-	export type RetryableOnceState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type RetryableOnceState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Error<E> | AbortedNil | DroppedNil;
 	/** States reachable by a `restartable` manager (no retry). */
-	export type RestartableState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | ReplacedNil;
+	export type RestartableState<E, A> = Idle | Pending | Ok<A> | Error<E> | AbortedNil | ReplacedNil;
 	/** States reachable by a `restartable` manager with retry configured. */
-	export type RetryableRestartableState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Err<E> | AbortedNil | ReplacedNil;
+	export type RetryableRestartableState<E, A> =
+		| Idle
+		| Pending
+		| Retrying<E>
+		| Ok<A>
+		| Error<E>
+		| AbortedNil
+		| ReplacedNil;
 	/** States reachable by an `exclusive` manager (no retry). */
-	export type ExclusiveState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type ExclusiveState<E, A> = Idle | Pending | Ok<A> | Error<E> | AbortedNil | DroppedNil;
 	/** States reachable by an `exclusive` manager with retry configured. */
-	export type RetryableExclusiveState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type RetryableExclusiveState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Error<E> | AbortedNil | DroppedNil;
 	/** States reachable by a `queue` manager (no retry, no overflow, no dedupe). */
-	export type QueueState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil;
+	export type QueueState<E, A> = Idle | Pending | Queued | Ok<A> | Error<E> | AbortedNil;
 	/** States reachable by a `queue` manager with retry (no overflow, no dedupe). */
-	export type RetryableQueueState<E, A> = Idle | Pending | Queued | Retrying<E> | Ok<A> | Err<E> | AbortedNil;
+	export type RetryableQueueState<E, A> = Idle | Pending | Queued | Retrying<E> | Ok<A> | Error<E> | AbortedNil;
 	/** States reachable by a `queue` manager with `overflow:"drop"` or `dedupe` (no retry). */
-	export type QueueDropState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type QueueDropState<E, A> = Idle | Pending | Queued | Ok<A> | Error<E> | AbortedNil | DroppedNil;
 	/** States reachable by a `queue` manager with `overflow:"drop"` or `dedupe`, with retry. */
 	export type RetryableQueueDropState<E, A> =
 		| Idle
@@ -324,11 +345,11 @@ export namespace Op {
 		| Queued
 		| Retrying<E>
 		| Ok<A>
-		| Err<E>
+		| Error<E>
 		| AbortedNil
 		| DroppedNil;
 	/** States reachable by a `queue` manager with `overflow:"replace-last"` and no `dedupe` (no retry). */
-	export type QueueReplaceState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil | EvictedNil;
+	export type QueueReplaceState<E, A> = Idle | Pending | Queued | Ok<A> | Error<E> | AbortedNil | EvictedNil;
 	/** States reachable by a `queue` manager with `overflow:"replace-last"` and no `dedupe`, with retry. */
 	export type RetryableQueueReplaceState<E, A> =
 		| Idle
@@ -336,7 +357,7 @@ export namespace Op {
 		| Queued
 		| Retrying<E>
 		| Ok<A>
-		| Err<E>
+		| Error<E>
 		| AbortedNil
 		| EvictedNil;
 	/** States reachable by a `queue` manager with `overflow:"replace-last"` AND `dedupe` (no retry). */
@@ -345,7 +366,7 @@ export namespace Op {
 		| Pending
 		| Queued
 		| Ok<A>
-		| Err<E>
+		| Error<E>
 		| AbortedNil
 		| DroppedNil
 		| EvictedNil;
@@ -356,12 +377,12 @@ export namespace Op {
 		| Queued
 		| Retrying<E>
 		| Ok<A>
-		| Err<E>
+		| Error<E>
 		| AbortedNil
 		| DroppedNil
 		| EvictedNil;
 	/** States reachable by a `buffered` manager (no retry). */
-	export type BufferedState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil | EvictedNil;
+	export type BufferedState<E, A> = Idle | Pending | Queued | Ok<A> | Error<E> | AbortedNil | EvictedNil;
 	/** States reachable by a `buffered` manager with retry configured. */
 	export type RetryableBufferedState<E, A> =
 		| Idle
@@ -369,30 +390,30 @@ export namespace Op {
 		| Queued
 		| Retrying<E>
 		| Ok<A>
-		| Err<E>
+		| Error<E>
 		| AbortedNil
 		| EvictedNil;
 	/** States reachable by a `debounced` manager (no retry). */
-	export type DebouncedState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | EvictedNil;
+	export type DebouncedState<E, A> = Idle | Pending | Ok<A> | Error<E> | AbortedNil | EvictedNil;
 	/** States reachable by a `debounced` manager with retry configured. */
-	export type RetryableDebouncedState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Err<E> | AbortedNil | EvictedNil;
+	export type RetryableDebouncedState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Error<E> | AbortedNil | EvictedNil;
 	/** States reachable by a `throttled` manager (leading-only, no retry). */
-	export type ThrottledState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type ThrottledState<E, A> = Idle | Pending | Ok<A> | Error<E> | AbortedNil | DroppedNil;
 	/** States reachable by a `throttled` manager (leading-only, with retry). */
-	export type RetryableThrottledState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type RetryableThrottledState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Error<E> | AbortedNil | DroppedNil;
 	/** States reachable by a `throttled` manager with `trailing: true` (no retry). */
-	export type ThrottledTrailingState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | EvictedNil;
+	export type ThrottledTrailingState<E, A> = Idle | Pending | Ok<A> | Error<E> | AbortedNil | EvictedNil;
 	/** States reachable by a `throttled` manager with `trailing: true` and retry. */
 	export type RetryableThrottledTrailingState<E, A> =
 		| Idle
 		| Pending
 		| Retrying<E>
 		| Ok<A>
-		| Err<E>
+		| Error<E>
 		| AbortedNil
 		| EvictedNil;
 	/** States reachable by a `concurrent` manager with `overflow: "queue"` (no retry). */
-	export type ConcurrentQueueState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil;
+	export type ConcurrentQueueState<E, A> = Idle | Pending | Queued | Ok<A> | Error<E> | AbortedNil;
 	/** States reachable by a `concurrent` manager with `overflow: "queue"` and retry. */
 	export type RetryableConcurrentQueueState<E, A> =
 		| Idle
@@ -400,23 +421,23 @@ export namespace Op {
 		| Queued
 		| Retrying<E>
 		| Ok<A>
-		| Err<E>
+		| Error<E>
 		| AbortedNil;
 	/** States reachable by a `concurrent` manager with `overflow: "drop"` (no retry). */
-	export type ConcurrentDropState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type ConcurrentDropState<E, A> = Idle | Pending | Ok<A> | Error<E> | AbortedNil | DroppedNil;
 	/** States reachable by a `concurrent` manager with `overflow: "drop"` and retry. */
 	export type RetryableConcurrentDropState<E, A> =
 		| Idle
 		| Pending
 		| Retrying<E>
 		| Ok<A>
-		| Err<E>
+		| Error<E>
 		| AbortedNil
 		| DroppedNil;
 	/** Per-key state union for a `keyed` manager with `perKey: "exclusive"`. */
-	export type KeyedExclusivePerKey<E, A> = Pending | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type KeyedExclusivePerKey<E, A> = Pending | Ok<A> | Error<E> | AbortedNil | DroppedNil;
 	/** Per-key state union for a `keyed` manager with `perKey: "restartable"`. */
-	export type KeyedRestartablePerKey<E, A> = Pending | Ok<A> | Err<E> | AbortedNil | ReplacedNil;
+	export type KeyedRestartablePerKey<E, A> = Pending | Ok<A> | Error<E> | AbortedNil | ReplacedNil;
 
 	// -------------------------------------------------------------------------
 	// Types — Options (defined in InternalTypes.ts, re-exported here for convenience)
@@ -434,13 +455,13 @@ export namespace Op {
 	 *
 	 * @example
 	 * ```ts
-	 * Op.nil("aborted");  // { kind: "Nil", reason: "aborted" }
-	 * Op.nil("dropped");  // { kind: "Nil", reason: "dropped" }
-	 * Op.nil("replaced"); // { kind: "Nil", reason: "replaced" }
-	 * Op.nil("evicted");  // { kind: "Nil", reason: "evicted" }
+	 * Op.nil("aborted");  // { kind: "OpNil", reason: "aborted" }
+	 * Op.nil("dropped");  // { kind: "OpNil", reason: "dropped" }
+	 * Op.nil("replaced"); // { kind: "OpNil", reason: "replaced" }
+	 * Op.nil("evicted");  // { kind: "OpNil", reason: "evicted" }
 	 * ```
 	 */
-	export const nil = (reason: NilReason): Nil => ({ kind: "Nil", reason });
+	export const nil = (reason: NilReason): Nil => ({ kind: "OpNil", reason });
 
 	// -------------------------------------------------------------------------
 	// Constructors
@@ -492,63 +513,141 @@ export namespace Op {
 			Deferred.fromPromise(
 				factory(signal)(input)
 					.then((value): Result<E, A> => Result.ok(value))
-					.catch((e): Result<E, A> | null => signal.aborted ? null : Result.err(onError(e))),
+					.catch((e): Result<E, A> | null => signal.aborted ? null : Result.error(onError(e))),
 			),
 	});
+
+	/**
+	 * Lifts a plain async function into an Op, treating all errors as `unknown`.
+	 *
+	 * Use this when you have a simple async function that doesn't need custom error mapping.
+	 * The signal is passed so the operation can respect cancellation.
+	 *
+	 * @example
+	 * ```ts
+	 * const fetchUser = Op.lift((id: number, signal: AbortSignal) =>
+	 *   fetch(`/api/users/${id}`, { signal }).then(r => r.json())
+	 * );
+	 * const manager = Op.interpret(fetchUser, { strategy: "restartable" });
+	 * const outcome = await manager.run(42);
+	 * if (Op.isOk(outcome)) console.log(outcome.value);
+	 * ```
+	 */
+	export const lift = <I, A>(
+		f: (input: I, signal: AbortSignal) => Promise<A>,
+	): Op<I, unknown, A> =>
+		create(
+			(signal) => (input: I) => f(input, signal),
+			(e) => e,
+		);
 
 	/**
 	 * Creates a successful Outcome.
 	 *
 	 * @example
 	 * ```ts
-	 * Op.ok(42); // { kind: "Ok", value: 42 }
+	 * Op.ok(42); // { kind: "OpOk", value: 42 }
 	 * ```
 	 */
-	export const ok = <A>(value: A): Ok<A> => ({ kind: "Ok", value });
+	export const ok = <A>(value: A): Ok<A> => ({ kind: "OpOk", value });
 
 	/**
 	 * Creates a failed Outcome with a typed error.
 	 *
 	 * @example
 	 * ```ts
-	 * Op.err(new ApiError("not found")); // { kind: "Err", error: ApiError }
+	 * Op.error(new ApiError("not found")); // { kind: "OpError", error: ApiError }
 	 * ```
 	 */
-	export const err = <E>(error: E): Err<E> => ({ kind: "Err", error });
+	export const error = <E>(error: E): Error<E> => ({ kind: "OpError", error });
 
 	// -------------------------------------------------------------------------
 	// Type guards
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Returns `true` if the Outcome is `Ok`.
+	 * Returns `true` if the state is `Idle`.
 	 *
 	 * @example
 	 * ```ts
-	 * if (Op.isOk(outcome)) render(outcome.value);
+	 * manager.subscribe(state => {
+	 *   if (Op.isIdle(state)) hideSpinner();
+	 * });
 	 * ```
 	 */
-	export const isOk = <E, A>(outcome: Outcome<E, A>): outcome is Ok<A> => outcome.kind === "Ok";
+	export const isIdle = <E, A>(state: State<E, A>): state is Idle => state.kind === "Idle";
 
 	/**
-	 * Returns `true` if the Outcome is `Err`.
+	 * Returns `true` if the state is `Pending` (an operation is in-flight).
 	 *
 	 * @example
 	 * ```ts
-	 * if (Op.isErr(outcome)) logger.error(outcome.error);
+	 * manager.subscribe(state => {
+	 *   if (Op.isPending(state)) showSpinner();
+	 * });
 	 * ```
 	 */
-	export const isErr = <E, A>(outcome: Outcome<E, A>): outcome is Err<E> => outcome.kind === "Err";
+	export const isPending = <E, A>(state: State<E, A>): state is Pending => state.kind === "Pending";
 
 	/**
-	 * Returns `true` if the Outcome is `Nil`.
+	 * Returns `true` if the state is `Queued` (an invocation is waiting to run).
 	 *
 	 * @example
 	 * ```ts
-	 * if (Op.isNil(outcome)) resetUI();
+	 * manager.subscribe(state => {
+	 *   if (Op.isQueued(state)) showQueuePosition(state.position);
+	 * });
 	 * ```
 	 */
-	export const isNil = <E, A>(outcome: Outcome<E, A>): outcome is Nil => outcome.kind === "Nil";
+	export const isQueued = <E, A>(state: State<E, A>): state is Queued => state.kind === "Queued";
+
+	/**
+	 * Returns `true` if the state is `Retrying`.
+	 *
+	 * @example
+	 * ```ts
+	 * manager.subscribe(state => {
+	 *   if (Op.isRetrying(state)) showRetryBadge(state.attempt);
+	 * });
+	 * ```
+	 */
+	export const isRetrying = <E, A>(state: State<E, A>): state is Retrying<E> => state.kind === "Retrying";
+
+	/**
+	 * Returns `true` if the state is `Ok` (the operation produced a value).
+	 *
+	 * @example
+	 * ```ts
+	 * manager.subscribe(state => {
+	 *   if (Op.isOk(state)) render(state.value);
+	 * });
+	 * ```
+	 */
+	export const isOk = <E, A>(state: State<E, A>): state is Ok<A> => state.kind === "OpOk";
+
+	/**
+	 * Returns `true` if the state is `Error` (the operation failed with a typed error).
+	 *
+	 * @example
+	 * ```ts
+	 * manager.subscribe(state => {
+	 *   if (Op.isError(state)) showError(state.error);
+	 * });
+	 * ```
+	 */
+	export const isError = <E, A>(state: State<E, A>): state is Error<E> => state.kind === "OpError";
+
+	/**
+	 * Returns `true` if the state is `Nil` (the operation completed without a value or error).
+	 *
+	 * @example
+	 * ```ts
+	 * manager.subscribe(state => {
+	 *   if (Op.isNil(state)) resetUI();
+	 * });
+	 * ```
+	 */
+	export const isNil = <E, A>(state: State<E, A>): state is Nil => state.kind === "OpNil";
 
 	// -------------------------------------------------------------------------
 	// Outcome operations
@@ -561,21 +660,21 @@ export namespace Op {
 	 * ```ts
 	 * Op.match({
 	 *   ok:  (user) => render(user),
-	 *   err: (e)    => showError(e.message),
+	 *   error: (e)    => showError(e.message),
 	 *   nil: ()     => resetUI(),
 	 * })(outcome);
 	 * ```
 	 */
 	export const match =
-		<E, A, B>(cases: { ok: (a: A) => B; err: (e: E) => B; nil: () => B; }) => (outcome: Outcome<E, A>): B => {
-			if (outcome.kind === "Ok") return cases.ok(outcome.value);
-			if (outcome.kind === "Err") return cases.err(outcome.error);
+		<E, A, B>(cases: { ok: (a: A) => B; error: (e: E) => B; nil: () => B; }) => (outcome: Outcome<E, A>): B => {
+			if (outcome.kind === "OpOk") return cases.ok(outcome.value);
+			if (outcome.kind === "OpError") return cases.error(outcome.error);
 			return cases.nil();
 		};
 
 	/**
 	 * Eliminates an Outcome with positional handlers.
-	 * Order: `onErr`, `onOk`, `onNil` — mirrors `Result.fold` for the first two.
+	 * Order: `onError`, `onOk`, `onNil` — mirrors `Result.fold` for the first two.
 	 *
 	 * @example
 	 * ```ts
@@ -587,9 +686,9 @@ export namespace Op {
 	 * ```
 	 */
 	export const fold =
-		<E, A, B>(onErr: (e: E) => B, onOk: (a: A) => B, onNil: () => B) => (outcome: Outcome<E, A>): B => {
-			if (outcome.kind === "Ok") return onOk(outcome.value);
-			if (outcome.kind === "Err") return onErr(outcome.error);
+		<E, A, B>(onError: (e: E) => B, onOk: (a: A) => B, onNil: () => B) => (outcome: Outcome<E, A>): B => {
+			if (outcome.kind === "OpOk") return onOk(outcome.value);
+			if (outcome.kind === "OpError") return onError(outcome.error);
 			return onNil();
 		};
 
@@ -602,7 +701,7 @@ export namespace Op {
 	 * ```
 	 */
 	export const getOrElse = <E, A, B>(defaultValue: () => B) => (outcome: Outcome<E, A>): A | B =>
-		outcome.kind === "Ok" ? outcome.value : defaultValue();
+		outcome.kind === "OpOk" ? outcome.value : defaultValue();
 
 	/**
 	 * Transforms the success value. `Err` and `Nil` pass through unchanged.
@@ -613,7 +712,7 @@ export namespace Op {
 	 * ```
 	 */
 	export const map = <E, A, B>(f: (a: A) => B) => (outcome: Outcome<E, A>): Outcome<E, B> =>
-		outcome.kind === "Ok" ? ok(f(outcome.value)) : outcome as Outcome<E, B>;
+		outcome.kind === "OpOk" ? ok(f(outcome.value)) : outcome as Outcome<E, B>;
 
 	/**
 	 * Transforms the error value. `Ok` and `Nil` pass through unchanged.
@@ -624,7 +723,7 @@ export namespace Op {
 	 * ```
 	 */
 	export const mapError = <E, F, A>(f: (e: E) => F) => (outcome: Outcome<E, A>): Outcome<F, A> =>
-		outcome.kind === "Err" ? err(f(outcome.error)) : outcome as Outcome<F, A>;
+		outcome.kind === "OpError" ? error(f(outcome.error)) : outcome as Outcome<F, A>;
 
 	/**
 	 * Chains Outcome computations. Runs `f` on `Ok`; `Err` and `Nil` pass through.
@@ -633,12 +732,12 @@ export namespace Op {
 	 * ```ts
 	 * pipe(
 	 *   outcome,
-	 *   Op.chain(user => user.active ? Op.ok(user) : Op.err(new Error("inactive"))),
+	 *   Op.chain(user => user.active ? Op.ok(user) : Op.error(new Error("inactive"))),
 	 * );
 	 * ```
 	 */
 	export const chain = <E, A, B>(f: (a: A) => Outcome<E, B>) => (outcome: Outcome<E, A>): Outcome<E, B> =>
-		outcome.kind === "Ok" ? f(outcome.value) : outcome as Outcome<E, B>;
+		outcome.kind === "OpOk" ? f(outcome.value) : outcome as Outcome<E, B>;
 
 	/**
 	 * Runs a side effect on the success value without changing the Outcome.
@@ -649,7 +748,7 @@ export namespace Op {
 	 * ```
 	 */
 	export const tap = <E, A>(f: (a: A) => void) => (outcome: Outcome<E, A>): Outcome<E, A> => {
-		if (outcome.kind === "Ok") f(outcome.value);
+		if (outcome.kind === "OpOk") f(outcome.value);
 		return outcome;
 	};
 
@@ -660,12 +759,12 @@ export namespace Op {
 	 * ```ts
 	 * pipe(
 	 *   outcome,
-	 *   Op.recover(e => e.isRetryable ? Op.ok(cachedValue) : Op.err(e)),
+	 *   Op.recover(e => e.isRetryable ? Op.ok(cachedValue) : Op.error(e)),
 	 * );
 	 * ```
 	 */
 	export const recover = <E, A, B>(f: (e: E) => Outcome<E, B>) => (outcome: Outcome<E, A>): Outcome<E, A | B> =>
-		outcome.kind === "Err" ? f(outcome.error) : outcome as Outcome<E, A | B>;
+		outcome.kind === "OpError" ? f(outcome.error) : outcome as Outcome<E, A | B>;
 
 	/**
 	 * Converts an Outcome to a `Result`. `Nil` becomes `Err(onNil())`.
@@ -676,9 +775,9 @@ export namespace Op {
 	 * ```
 	 */
 	export const toResult = <E, A>(onNil: () => E) => (outcome: Outcome<E, A>): Result<E, A> => {
-		if (outcome.kind === "Ok") return Result.ok(outcome.value);
-		if (outcome.kind === "Err") return Result.err(outcome.error);
-		return Result.err(onNil());
+		if (outcome.kind === "OpOk") return Result.ok(outcome.value);
+		if (outcome.kind === "OpError") return Result.error(outcome.error);
+		return Result.error(onNil());
 	};
 
 	/**
@@ -690,7 +789,7 @@ export namespace Op {
 	 * ```
 	 */
 	export const toMaybe = <E, A>(outcome: Outcome<E, A>): Maybe<A> =>
-		outcome.kind === "Ok" ? Maybe.some(outcome.value) : Maybe.none();
+		outcome.kind === "OpOk" ? Maybe.some(outcome.value) : Maybe.none();
 
 	// -------------------------------------------------------------------------
 	// Combinators for invocation-level results
@@ -721,6 +820,50 @@ export namespace Op {
 	export const race = <E, A>(
 		invocations: ReadonlyArray<Deferred<Outcome<E, A>>>,
 	): Deferred<Outcome<E, A>> => Deferred.fromPromise(Promise.race(invocations.map(Deferred.toPromise)));
+
+	/**
+	 * Subscribes to a manager and calls a handler when the state reaches `OpOk`.
+	 * Returns an unsubscribe function.
+	 *
+	 * @example
+	 * ```ts
+	 * const manager = Op.interpret(fetchUser, { strategy: "restartable" });
+	 * const stop = Op.wire(manager, (user) => {
+	 *   console.log("User loaded:", user.name);
+	 * });
+	 * manager.run(userId);
+	 * // ... later
+	 * stop(); // removes the subscription
+	 * ```
+	 */
+	export const wire = <I, E, A, S extends State<E, A>>(
+		source: Manager<I, E, A, S>,
+		f: (a: A) => void,
+	): () => void =>
+		source.subscribe((state) => {
+			if (isOk(state)) f(state.value);
+		});
+
+	/**
+	 * Wires multiple source-handler pairs, returning a combined cleanup function.
+	 * When any source reaches `OpOk`, its corresponding handler is called.
+	 *
+	 * @example
+	 * ```ts
+	 * const stop = Op.wireAll(
+	 *   [userManager, (u) => render(u)],
+	 *   [settingsManager, (s) => applySettings(s)],
+	 * );
+	 * // ... later
+	 * stop(); // removes all subscriptions
+	 * ```
+	 */
+	export const wireAll = <I, E, A, S extends State<E, A>>(
+		...pairs: Array<[Manager<I, E, A, S>, (a: A) => void]>
+	): () => void => {
+		const cleanups = pairs.map(([source, f]) => wire(source, f));
+		return () => cleanups.forEach((c) => c());
+	};
 
 	// -------------------------------------------------------------------------
 	// Op.interpret — single entry point for managed execution
@@ -753,7 +896,7 @@ export namespace Op {
 	 * const getUser = Op.interpret(fetchUser, { strategy: "once" });
 	 * getUser.subscribe(state => {
 	 *   if (state.kind === "Pending") showSpinner();
-	 *   if (state.kind === "Ok")      render(state.value);
+	 *   if (state.kind === "OpOk")      render(state.value);
 	 * });
 	 * getUser.run(userId);
 	 *

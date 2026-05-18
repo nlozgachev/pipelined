@@ -11,14 +11,14 @@ import { Result } from "../Core/Result.ts";
 // Internal singletons
 // ---------------------------------------------------------------------------
 
-const _abortedNil: Op.Nil = { kind: "Nil", reason: "aborted" };
-const _droppedNil: Op.Nil = { kind: "Nil", reason: "dropped" };
-const _replacedNil: Op.Nil = { kind: "Nil", reason: "replaced" };
-const _evictedNil: Op.Nil = { kind: "Nil", reason: "evicted" };
+const _abortedNil: Op.Nil = { kind: "OpNil", reason: "aborted" };
+const _droppedNil: Op.Nil = { kind: "OpNil", reason: "dropped" };
+const _replacedNil: Op.Nil = { kind: "OpNil", reason: "replaced" };
+const _evictedNil: Op.Nil = { kind: "OpNil", reason: "evicted" };
 const _idle: Op.Idle = { kind: "Idle" };
 const _pending: Op.Pending = { kind: "Pending" };
-const ok = <A>(value: A): Op.Ok<A> => ({ kind: "Ok", value });
-const err = <E>(error: E): Op.Err<E> => ({ kind: "Err", error });
+const ok = <A>(value: A): Op.Ok<A> => ({ kind: "OpOk", value });
+const err = <E>(error: E): Op.Error<E> => ({ kind: "OpError", error });
 
 // ---------------------------------------------------------------------------
 // cancellableWait
@@ -216,6 +216,12 @@ export const makeRestartable = <I, E, A>(
 			if (currentState.kind !== "Idle") cb(currentState);
 			return () => subscribers.delete(cb);
 		},
+		reset: () => emit(_idle),
+		poll: (input: I, { interval }: { interval: number; }) => {
+			void run(input);
+			const id = setInterval(() => void run(input), interval);
+			return () => clearInterval(id);
+		},
 	};
 };
 
@@ -294,6 +300,12 @@ export const makeExclusive = <I, E, A>(
 			subscribers.add(cb);
 			if (currentState.kind !== "Idle") cb(currentState);
 			return () => subscribers.delete(cb);
+		},
+		reset: () => emit(_idle),
+		poll: (input: I, { interval }: { interval: number; }) => {
+			void run(input);
+			const id = setInterval(() => void run(input), interval);
+			return () => clearInterval(id);
 		},
 	};
 };
@@ -426,6 +438,12 @@ export const makeQueue = <I, E, A>(
 			if (currentState.kind !== "Idle") cb(currentState);
 			return () => subscribers.delete(cb);
 		},
+		reset: () => emit(_idle),
+		poll: (input: I, { interval }: { interval: number; }) => {
+			void run(input);
+			const id = setInterval(() => void run(input), interval);
+			return () => clearInterval(id);
+		},
 	};
 };
 
@@ -513,6 +531,12 @@ export const makeBuffered = <I, E, A>(
 			subscribers.add(cb);
 			if (currentState.kind !== "Idle") cb(currentState);
 			return () => subscribers.delete(cb);
+		},
+		reset: () => emit(_idle),
+		poll: (input: I, { interval }: { interval: number; }) => {
+			void run(input);
+			const id = setInterval(() => void run(input), interval);
+			return () => clearInterval(id);
 		},
 	};
 };
@@ -667,6 +691,12 @@ export const makeDebounced = <I, E, A>(
 			if (currentState.kind !== "Idle") cb(currentState);
 			return () => subscribers.delete(cb);
 		},
+		reset: () => emit(_idle),
+		poll: (input: I, { interval }: { interval: number; }) => {
+			void run(input);
+			const id = setInterval(() => void run(input), interval);
+			return () => clearInterval(id);
+		},
 	};
 };
 
@@ -776,6 +806,12 @@ export const makeThrottled = <I, E, A>(
 			if (currentState.kind !== "Idle") cb(currentState);
 			return () => subscribers.delete(cb);
 		},
+		reset: () => emit(_idle),
+		poll: (input: I, { interval }: { interval: number; }) => {
+			void run(input);
+			const id = setInterval(() => void run(input), interval);
+			return () => clearInterval(id);
+		},
 	};
 };
 
@@ -879,6 +915,12 @@ export const makeConcurrent = <I, E, A>(
 			if (currentState.kind !== "Idle") cb(currentState);
 			return () => subscribers.delete(cb);
 		},
+		reset: () => emit(_idle),
+		poll: (input: I, { interval }: { interval: number; }) => {
+			void run(input);
+			const id = setInterval(() => void run(input), interval);
+			return () => clearInterval(id);
+		},
 	};
 };
 
@@ -970,6 +1012,15 @@ export const makeKeyed = <I, K, E, A>(
 			if (stateMap.size > 0) cb(new Map(stateMap) as ReadonlyMap<K, PerKeyS>);
 			return () => subscribers.delete(cb);
 		},
+		reset: () => {
+			stateMap.clear();
+			emitSnapshot();
+		},
+		poll: (input: I, { interval }: { interval: number; }) => {
+			void run(input);
+			const id = setInterval(() => void run(input), interval);
+			return () => clearInterval(id);
+		},
 	};
 };
 
@@ -1037,6 +1088,12 @@ export const makeOnce = <I, E, A>(
 			subscribers.add(cb);
 			if (currentState.kind !== "Idle") cb(currentState);
 			return () => subscribers.delete(cb);
+		},
+		reset: () => emit(_idle),
+		poll: (input: I, { interval }: { interval: number; }) => {
+			void run(input);
+			const id = setInterval(() => void run(input), interval);
+			return () => clearInterval(id);
 		},
 	};
 };

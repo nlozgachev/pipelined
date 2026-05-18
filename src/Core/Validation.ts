@@ -1,5 +1,6 @@
 import { NonEmptyList } from "#types/NonEmptyList.ts";
 import { WithErrors, WithKind, WithValue } from "./InternalTypes.ts";
+import { Maybe } from "./Maybe.ts";
 import { Result } from "./Result.ts";
 
 /**
@@ -269,7 +270,35 @@ export namespace Validation {
 	 * ```
 	 */
 	export const toResult = <E, A>(data: Validation<E, A>): Result<NonEmptyList<E>, A> =>
-		isValid(data) ? Result.ok(data.value) : Result.err(data.errors);
+		isValid(data) ? Result.ok(data.value) : Result.error(data.errors);
+
+	/**
+	 * Converts a Validation to a Maybe. `Valid` becomes `Some`; `Invalid` becomes `None`
+	 * (errors are discarded).
+	 *
+	 * @example
+	 * ```ts
+	 * Validation.toMaybe(Validation.valid(42));       // Some(42)
+	 * Validation.toMaybe(Validation.invalid("bad"));  // None
+	 * ```
+	 */
+	export const toMaybe = <E, A>(data: Validation<E, A>): Maybe<A> =>
+		isValid(data) ? Maybe.some(data.value) : Maybe.none();
+
+	/**
+	 * Converts a `Result` to a `Validation`. `Ok` becomes `Valid`; `Err(e)` becomes `Invalid([e])`.
+	 *
+	 * Useful when bridging from error-short-circuiting `Result` pipelines into
+	 * error-accumulating `Validation` pipelines.
+	 *
+	 * @example
+	 * ```ts
+	 * Validation.fromResult(Result.ok(42));       // Valid(42)
+	 * Validation.fromResult(Result.error("bad"));   // Invalid(["bad"])
+	 * ```
+	 */
+	export const fromResult = <E, A>(data: Result<E, A>): Validation<E, A> =>
+		data.kind === "Ok" ? valid(data.value) : invalid(data.error);
 
 	/**
 	 * Combines two independent Validation instances into a tuple.

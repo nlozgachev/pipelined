@@ -1,5 +1,7 @@
 import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import { Deferred } from "../Deferred.ts";
+import { Result } from "../Result.ts";
 import { TaskResult } from "../TaskResult.ts";
 
 // ---------------------------------------------------------------------------
@@ -522,4 +524,38 @@ test("TaskResult.tapError returns original Err result unchanged", async () => {
 test("TaskResult.tapError returns original Ok result unchanged", async () => {
 	const result = await pipe(TaskResult.ok<string, number>(42), TaskResult.tapError(() => {}))();
 	expect(result).toEqual({ kind: "Ok", value: 42 });
+});
+
+// ---------------------------------------------------------------------------
+// run
+// ---------------------------------------------------------------------------
+
+test("TaskResult.run executes the task and returns the Result", async () => {
+	const result = await pipe(TaskResult.ok<string, number>(42), TaskResult.run());
+	expect(result).toEqual({ kind: "Ok", value: 42 });
+});
+
+test("TaskResult.run passes the signal to the task", async () => {
+	const controller = new AbortController();
+	let receivedSignal: AbortSignal | undefined;
+	const task: TaskResult<never, void> = (signal) => {
+		receivedSignal = signal;
+		return Deferred.fromPromise(Promise.resolve(Result.ok(undefined)));
+	};
+	await pipe(task, TaskResult.run(controller.signal));
+	expect(receivedSignal).toBe(controller.signal);
+});
+
+test("TaskResult.run works without a signal", async () => {
+	const result = await pipe(TaskResult.err<string, number>("boom"), TaskResult.run());
+	expect(result).toEqual({ kind: "Error", error: "boom" });
+});
+
+test("TaskResult.run composes naturally at the end of a pipe chain", async () => {
+	const result = await pipe(
+		TaskResult.ok<string, number>(10),
+		TaskResult.map((n) => n * 2),
+		TaskResult.run(),
+	);
+	expect(result).toEqual({ kind: "Ok", value: 20 });
 });

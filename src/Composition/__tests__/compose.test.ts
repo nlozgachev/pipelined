@@ -77,7 +77,7 @@ test("compose - integration with Result", () => {
 	const fn = compose(getOrDefault, doubleResult);
 
 	expect(fn(Result.ok<number>(5))).toBe(10);
-	expect(fn(Result.err("err") as Result<string, number>)).toBe(0);
+	expect(fn(Result.error("err") as Result<string, number>)).toBe(0);
 });
 
 // ---------------------------------------------------------------------------

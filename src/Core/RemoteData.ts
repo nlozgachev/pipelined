@@ -288,7 +288,7 @@ export namespace RemoteData {
 	 * ```
 	 */
 	export const toResult = <E>(onNotReady: () => E) => <A>(data: RemoteData<E, A>): Result<E, A> =>
-		isSuccess(data) ? Result.ok(data.value) : Result.err(isFailure(data) ? data.error : onNotReady());
+		isSuccess(data) ? Result.ok(data.value) : Result.error(isFailure(data) ? data.error : onNotReady());
 
 	/**
 	 * Converts a Result to a RemoteData.
@@ -315,4 +315,23 @@ export namespace RemoteData {
 	 */
 	export const fromMaybe = <E>(onNone: () => E) => <A>(data: Maybe<A>): RemoteData<E, A> =>
 		Maybe.isSome(data) ? success(data.value) : failure(onNone());
+
+	/**
+	 * Filters a `Success` value. When the predicate passes, the value is kept. When it fails,
+	 * `Success` becomes `Failure` using the error produced by `onFalse`. All other states pass through unchanged.
+	 *
+	 * @example
+	 * ```ts
+	 * RemoteData.filter(n => n > 0, n => `${n} is not a valid price`)(RemoteData.success(9.99));
+	 * // Success(9.99)
+	 * RemoteData.filter(n => n > 0, n => `${n} is not a valid price`)(RemoteData.success(-1));
+	 * // Failure("-1 is not a valid price")
+	 * RemoteData.filter(n => n > 0, () => "error")(RemoteData.loading()); // Loading
+	 * ```
+	 */
+	export const filter =
+		<E, A>(pred: (a: A) => boolean, onFalse: (a: A) => E) => (data: RemoteData<E, A>): RemoteData<E, A> =>
+			isSuccess(data)
+				? pred(data.value) ? data : failure(onFalse(data.value))
+				: data;
 }

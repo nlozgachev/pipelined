@@ -84,7 +84,7 @@ test("pipe - integration with Result.map on Ok", () => {
 
 test("pipe - integration with Result.map on Err", () => {
 	const result = pipe(
-		Result.err("oops") as Result<string, number>,
+		Result.error("oops") as Result<string, number>,
 		Result.map((n: number) => n * 3),
 		Result.getOrElse(() => 0),
 	);

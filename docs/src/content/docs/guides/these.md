@@ -40,11 +40,11 @@ A typical use: a parser that's lenient but records what it fixed:
 import { pipe } from "@nlozgachev/pipelined/composition";
 
 const parseNumber = (s: string): These<number, string> => {
-	const trimmed = s.trim();
-	const n = parseFloat(trimmed);
-	if (isNaN(n)) return These.second("Not a number");
-	if (s !== trimmed) return These.both(n, "Leading/trailing whitespace trimmed");
-	return These.first(n);
+  const trimmed = s.trim();
+  const n = parseFloat(trimmed);
+  if (isNaN(n)) return These.second("Not a number");
+  if (s !== trimmed) return These.both(n, "Leading/trailing whitespace trimmed");
+  return These.first(n);
 };
 
 parseNumber("  42  "); // Both(42, "Leading/trailing whitespace trimmed")
@@ -73,11 +73,11 @@ pipe(These.both(5, "warn"), These.mapSecond((e) => e.toUpperCase())); // Both(5,
 
 ```ts
 pipe(
-	These.both(5, "warn"),
-	These.mapBoth(
-		(n) => n * 2,
-		(e) => e.toUpperCase(),
-	),
+  These.both(5, "warn"),
+  These.mapBoth(
+    (n) => n * 2,
+    (e) => e.toUpperCase(),
+  ),
 ); // Both(10, "WARN")
 ```
 
@@ -112,12 +112,12 @@ pipe(These.first(5), These.chainSecond(shout)); // First(5)
 
 ```ts
 pipe(
-	result,
-	These.match({
-		first: (value) => `First: ${value}`,
-		second: (note) => `Second: ${note}`,
-		both: (value, note) => `Both — ${value} / ${note}`,
-	}),
+  result,
+  These.match({
+    first: (value) => `First: ${value}`,
+    second: (note) => `Second: ${note}`,
+    both: (value, note) => `Both — ${value} / ${note}`,
+  }),
 );
 ```
 

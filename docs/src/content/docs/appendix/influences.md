@@ -94,10 +94,10 @@ type Maybe<A> = { kind: "Some"; value: A; } | { kind: "None"; };
 type Result<E, A> = { kind: "Ok"; value: A; } | { kind: "Error"; error: E; };
 
 type RemoteData<E, A> =
-	| { kind: "NotAsked"; }
-	| { kind: "Loading"; }
-	| { kind: "Failure"; error: E; }
-	| { kind: "Success"; value: A; };
+  | { kind: "NotAsked"; }
+  | { kind: "Loading"; }
+  | { kind: "Failure"; error: E; }
+  | { kind: "Success"; value: A; };
 ```
 
 This representation has several properties that make it well-suited for TypeScript:
@@ -190,9 +190,9 @@ that accepts the data. This is what makes `pipe` and `flow` compose cleanly:
 
 ```ts
 pipe(
-	Maybe.some(5),
-	Maybe.map((n) => n * 2), // map(n => n * 2) is already a function Maybe<number> → Maybe<number>
-	Maybe.getOrElse(0),
+  Maybe.some(5),
+  Maybe.map((n) => n * 2), // map(n => n * 2) is already a function Maybe<number> → Maybe<number>
+  Maybe.getOrElse(0),
 );
 ```
 
@@ -200,9 +200,9 @@ Without data-last, each `pipe` step would need to be wrapped in an arrow functio
 
 ```ts
 pipe(
-	Maybe.some(5),
-	(opt) => Maybe.map(opt, (n) => n * 2), // awkward — two arguments, data first
-	(opt) => Maybe.getOrElse(opt, 0),
+  Maybe.some(5),
+  (opt) => Maybe.map(opt, (n) => n * 2), // awkward — two arguments, data first
+  (opt) => Maybe.getOrElse(opt, 0),
 );
 ```
 

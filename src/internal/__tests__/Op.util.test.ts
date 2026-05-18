@@ -129,7 +129,7 @@ test("runWithRetry retries on Err and returns Err when attempts exhausted", asyn
 		{ attempts: 3 },
 		(r) => retrying.push(r),
 	);
-	expect(result).toEqual(Result.err("boom"));
+	expect(result).toEqual(Result.error("boom"));
 	expect(calls).toBe(3);
 	expect(retrying).toHaveLength(2); // attempt 1 and 2 produce a Retrying; 3rd attempt returns Err
 	expect(retrying[0]).toEqual({ kind: "Retrying", attempt: 1, lastError: "boom" });
@@ -172,7 +172,7 @@ test("runWithRetry respects the `when` guard and stops early on non-retryable er
 		{ attempts: 5, when: (e) => e !== "not-retryable" },
 		() => {},
 	);
-	expect(result).toEqual(Result.err("not-retryable"));
+	expect(result).toEqual(Result.error("not-retryable"));
 	expect(calls).toBe(1);
 });
 
@@ -234,7 +234,7 @@ test("execute resolves to Ok when the factory succeeds", async () => {
 	const outcome = await Deferred.toPromise(
 		execute(successOp(), 42, controller, undefined, undefined, undefined),
 	);
-	expect(outcome).toEqual({ kind: "Ok", value: 42 });
+	expect(outcome).toEqual({ kind: "OpOk", value: 42 });
 });
 
 test("execute resolves to Err when the factory fails without retry", async () => {
@@ -242,7 +242,7 @@ test("execute resolves to Err when the factory fails without retry", async () =>
 	const outcome = await Deferred.toPromise(
 		execute(failOp("oops"), 1, controller, undefined, undefined, undefined),
 	);
-	expect(outcome).toEqual({ kind: "Err", error: "oops" });
+	expect(outcome).toEqual({ kind: "OpError", error: "oops" });
 });
 
 test("execute resolves to AbortedNil when the controller is aborted before the op finishes", async () => {
@@ -250,7 +250,7 @@ test("execute resolves to AbortedNil when the controller is aborted before the o
 	const d = execute(successOp(100), 1, controller, undefined, undefined, undefined);
 	controller.abort();
 	const outcome = await Deferred.toPromise(d);
-	expect(outcome).toEqual({ kind: "Nil", reason: "aborted" });
+	expect(outcome).toEqual({ kind: "OpNil", reason: "aborted" });
 });
 
 test("execute calls onRetrying when retryOptions is provided", async () => {
@@ -274,7 +274,7 @@ test("execute resolves to Err(onTimeout()) when the timeout fires", async () => 
 			undefined,
 		),
 	);
-	expect(outcome).toEqual({ kind: "Err", error: "timed out" });
+	expect(outcome).toEqual({ kind: "OpError", error: "timed out" });
 });
 
 test("execute resolves to Ok when the op finishes before the timeout", async () => {
@@ -289,7 +289,7 @@ test("execute resolves to Ok when the op finishes before the timeout", async () 
 			undefined,
 		),
 	);
-	expect(outcome).toEqual({ kind: "Ok", value: 7 });
+	expect(outcome).toEqual({ kind: "OpOk", value: 7 });
 });
 
 // ---------------------------------------------------------------------------
@@ -300,15 +300,15 @@ test("makeRestartable: second run() replaces in-flight first run()", async () =>
 	const manager = makeRestartable(successOp(50), undefined, undefined, undefined);
 	const p1 = manager.run(1);
 	const p2 = manager.run(2);
-	expect(await p1).toEqual({ kind: "Nil", reason: "replaced" });
-	expect(await p2).toEqual({ kind: "Ok", value: 2 });
+	expect(await p1).toEqual({ kind: "OpNil", reason: "replaced" });
+	expect(await p2).toEqual({ kind: "OpOk", value: 2 });
 });
 
 test("makeRestartable: abort() resolves in-flight Deferred with AbortedNil", async () => {
 	const manager = makeRestartable(successOp(100), undefined, undefined, undefined);
 	const p = manager.run(1);
 	manager.abort();
-	expect(await p).toEqual({ kind: "Nil", reason: "aborted" });
+	expect(await p).toEqual({ kind: "OpNil", reason: "aborted" });
 });
 
 // ---------------------------------------------------------------------------
@@ -319,8 +319,8 @@ test("makeExclusive: second run() while in-flight returns DroppedNil immediately
 	const manager = makeExclusive(successOp(50), undefined, undefined, undefined);
 	const p1 = manager.run(1);
 	const p2 = manager.run(2); // dropped
-	expect(await p2).toEqual({ kind: "Nil", reason: "dropped" });
-	expect(await p1).toEqual({ kind: "Ok", value: 1 });
+	expect(await p2).toEqual({ kind: "OpNil", reason: "dropped" });
+	expect(await p1).toEqual({ kind: "OpOk", value: 1 });
 });
 
 // ---------------------------------------------------------------------------
@@ -330,8 +330,8 @@ test("makeExclusive: second run() while in-flight returns DroppedNil immediately
 test("makeQueue: queued run() waits for the in-flight one to finish", async () => {
 	const manager = makeQueue(successOp(20), undefined, undefined, undefined, undefined, undefined, undefined);
 	const [r1, r2] = await Promise.all([manager.run(1), manager.run(2)]);
-	expect(r1).toEqual({ kind: "Ok", value: 1 });
-	expect(r2).toEqual({ kind: "Ok", value: 2 });
+	expect(r1).toEqual({ kind: "OpOk", value: 1 });
+	expect(r2).toEqual({ kind: "OpOk", value: 2 });
 });
 
 // ---------------------------------------------------------------------------
@@ -343,9 +343,9 @@ test("makeBuffered: third run() evicts the waiting run()", async () => {
 	const p1 = manager.run(1);
 	const p2 = manager.run(2); // waiting
 	const p3 = manager.run(3); // evicts p2
-	expect(await p2).toEqual({ kind: "Nil", reason: "evicted" });
-	expect(await p1).toEqual({ kind: "Ok", value: 1 });
-	expect(await p3).toEqual({ kind: "Ok", value: 3 });
+	expect(await p2).toEqual({ kind: "OpNil", reason: "evicted" });
+	expect(await p1).toEqual({ kind: "OpOk", value: 1 });
+	expect(await p3).toEqual({ kind: "OpOk", value: 3 });
 });
 
 // ---------------------------------------------------------------------------
@@ -355,14 +355,14 @@ test("makeBuffered: third run() evicts the waiting run()", async () => {
 test("makeDebounced (trailing): run() resolves after the debounce timer", async () => {
 	const manager = makeDebounced(successOp(), 10, false, undefined, undefined, undefined);
 	const result = await manager.run(5);
-	expect(result).toEqual({ kind: "Ok", value: 5 });
+	expect(result).toEqual({ kind: "OpOk", value: 5 });
 });
 
 test("makeDebounced (leading): run() fires immediately", async () => {
 	const manager = makeDebounced(successOp(), 30, true, undefined, undefined, undefined);
 	const p = manager.run(7);
 	expect(manager.state).toEqual({ kind: "Pending" });
-	expect(await p).toEqual({ kind: "Ok", value: 7 });
+	expect(await p).toEqual({ kind: "OpOk", value: 7 });
 });
 
 // ---------------------------------------------------------------------------
@@ -373,8 +373,8 @@ test("makeThrottled: run() fires immediately and drops run() calls within the co
 	const manager = makeThrottled(successOp(), 50, false, undefined, undefined);
 	const p1 = manager.run(1);
 	const p2 = manager.run(2); // dropped — in cooldown
-	expect(await p2).toEqual({ kind: "Nil", reason: "dropped" });
-	expect(await p1).toEqual({ kind: "Ok", value: 1 });
+	expect(await p2).toEqual({ kind: "OpNil", reason: "dropped" });
+	expect(await p1).toEqual({ kind: "OpOk", value: 1 });
 });
 
 // ---------------------------------------------------------------------------
@@ -384,15 +384,15 @@ test("makeThrottled: run() fires immediately and drops run() calls within the co
 test("makeConcurrent: two runs at once when n=2", async () => {
 	const manager = makeConcurrent(successOp(20), 2, "drop", undefined, undefined);
 	const [r1, r2] = await Promise.all([manager.run(1), manager.run(2)]);
-	expect(r1).toEqual({ kind: "Ok", value: 1 });
-	expect(r2).toEqual({ kind: "Ok", value: 2 });
+	expect(r1).toEqual({ kind: "OpOk", value: 1 });
+	expect(r2).toEqual({ kind: "OpOk", value: 2 });
 });
 
 test("makeConcurrent: overflow=drop returns DroppedNil when all slots full", async () => {
 	const manager = makeConcurrent(successOp(30), 1, "drop", undefined, undefined);
 	const p1 = manager.run(1);
 	const p2 = manager.run(2); // dropped
-	expect(await p2).toEqual({ kind: "Nil", reason: "dropped" });
+	expect(await p2).toEqual({ kind: "OpNil", reason: "dropped" });
 	await p1;
 });
 
@@ -404,16 +404,16 @@ test("makeKeyed exclusive: same key while in-flight returns DroppedNil", async (
 	const manager = makeKeyed(successOp(50), (n: number) => n, "exclusive", undefined);
 	const p1 = manager.run(1);
 	const p2 = manager.run(1); // same key → dropped
-	expect(await p2).toEqual({ kind: "Nil", reason: "dropped" });
-	expect(await p1).toEqual({ kind: "Ok", value: 1 });
+	expect(await p2).toEqual({ kind: "OpNil", reason: "dropped" });
+	expect(await p1).toEqual({ kind: "OpOk", value: 1 });
 });
 
 test("makeKeyed restartable: same key while in-flight cancels previous", async () => {
 	const manager = makeKeyed(successOp(50), (n: number) => n, "restartable", undefined);
 	const p1 = manager.run(1);
 	const p2 = manager.run(1); // same key → replaces
-	expect(await p1).toEqual({ kind: "Nil", reason: "replaced" });
-	expect(await p2).toEqual({ kind: "Ok", value: 1 });
+	expect(await p1).toEqual({ kind: "OpNil", reason: "replaced" });
+	expect(await p2).toEqual({ kind: "OpOk", value: 1 });
 });
 
 // ---------------------------------------------------------------------------
@@ -424,8 +424,8 @@ test("makeOnce: first run() resolves; all subsequent run() calls return DroppedN
 	const manager = makeOnce(successOp(), undefined, undefined);
 	const p1 = manager.run(1);
 	const p2 = manager.run(2);
-	expect(await p1).toEqual({ kind: "Ok", value: 1 });
-	expect(await p2).toEqual({ kind: "Nil", reason: "dropped" });
+	expect(await p1).toEqual({ kind: "OpOk", value: 1 });
+	expect(await p2).toEqual({ kind: "OpNil", reason: "dropped" });
 });
 
 // ---------------------------------------------------------------------------

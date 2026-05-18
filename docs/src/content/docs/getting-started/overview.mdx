@@ -50,7 +50,7 @@ import { Result } from "@nlozgachev/pipelined/core";
 
 const parseId = (raw: string): Result<string, number> => {
   const n = Number(raw);
-  return isNaN(n) ? Result.err("not a number") : Result.ok(n);
+  return isNaN(n) ? Result.error("not a number") : Result.ok(n);
 };
 
 pipe(

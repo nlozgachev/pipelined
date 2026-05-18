@@ -48,6 +48,23 @@ it, producing stale state.
 Calling `create` doesn't run anything. It just defines how to run it later — nothing executes
 until `Op.interpret` is called.
 
+## Lifting a plain async function
+
+`Op.lift` creates an `Op` from a plain async function without a custom error mapping.
+Rejections are captured as `Err<unknown>`. Use it for quick wiring where a typed error
+channel is not needed:
+
+```ts
+const search = Op.interpret(
+  Op.lift((query: string, signal) =>
+    fetch(`/search?q=${query}`, { signal }).then(r => r.json()),
+  ),
+  { strategy: "restartable" },
+);
+```
+
+When you need a typed error — to pattern-match on a specific failure — use `Op.create` instead.
+
 ## The full lifecycle
 
 Four steps take you from a raw `fetch` to a component that reacts to loading, success, and error
@@ -71,10 +88,10 @@ const getUser = Op.interpret(fetchUser, { strategy: "once" });
 
 // 3. subscribe — react to every state transition
 getUser.subscribe((state) => {
-  if (state.kind === "Pending") showSpinner();
-  if (state.kind === "Ok")      render(state.value);
-  if (state.kind === "Err")     showError(state.error);
-  if (state.kind === "Nil")     resetUI();
+  if (Op.isPending(state)) showSpinner();
+  if (Op.isOk(state))      render(state.value);
+  if (Op.isError(state))     showError(state.error);
+  if (Op.isNil(state))     resetUI();
 });
 
 // 4. run — trigger the operation; await its per-invocation outcome
@@ -115,7 +132,7 @@ exactly what happened:
 `Nil.reason` means you never need external tracking to distinguish a cancellation from a capacity
 drop. Code that cares can just read the field.
 
-Constructors (`Op.ok`, `Op.err`, `Op.nil`) and guards (`Op.isOk`, `Op.isErr`, `Op.isNil`) are in
+Constructors (`Op.ok`, `Op.error`, `Op.nil`) and guards (`Op.isOk`, `Op.isError`, `Op.isNil`) are in
 the API reference.
 
 ## Handling results
@@ -127,7 +144,7 @@ const outcome = await search.run(query);
 
 if (Op.isOk(outcome)) {
   render(outcome.value);
-} else if (Op.isErr(outcome)) {
+} else if (Op.isError(outcome)) {
   showError(outcome.error.message);
 } else {
   // Nil — call was cancelled, dropped, or replaced
@@ -150,7 +167,7 @@ pipe(
 ```ts
 Op.match({
   ok:  (users) => render(users),
-  err: (e)     => showError(e.message),
+  error: (e)   => showError(e.message),
   nil: ()      => resetSearch(),
 })(outcome);
 ```
@@ -225,8 +242,8 @@ not `DroppedNil`, so TypeScript catches incorrect `Nil` handling at compile time
 // Load once on mount — further run() calls return DroppedNil immediately
 const getUser = Op.interpret(fetchUser, { strategy: "once" });
 getUser.subscribe((state) => {
-  if (state.kind === "Pending") showSpinner();
-  if (state.kind === "Ok")      render(state.value);
+  if (Op.isPending(state)) showSpinner();
+  if (Op.isOk(state))      render(state.value);
 });
 getUser.run(userId);
 
@@ -337,9 +354,9 @@ fresh snapshot on every transition:
 ```ts
 fetchUser.subscribe((map) => {
   for (const [userId, state] of map) {
-    if (state.kind === "Pending") showSpinner(userId);
-    if (state.kind === "Ok")      renderUser(userId, state.value);
-    if (state.kind === "Err")     showError(userId, state.error);
+    if (Op.isPending(state)) showSpinner(userId);
+    if (Op.isOk(state))      renderUser(userId, state.value);
+    if (Op.isError(state))     showError(userId, state.error);
   }
 });
 ```
@@ -358,11 +375,11 @@ const manager = Op.interpret(searchUsers, { strategy: "restartable" });
 
 manager.subscribe((state) => {
   // state: Idle | Pending | Ok<User[]> | Err<ApiError> | Nil
-  if (state.kind === "Idle")    return;
-  if (state.kind === "Pending") showSpinner();
-  if (state.kind === "Ok")      render(state.value);   // no unwrapping needed
-  if (state.kind === "Err")     showError(state.error);
-  if (state.kind === "Nil")     resetSearch();
+  if (Op.isIdle(state))    return;
+  if (Op.isPending(state)) showSpinner();
+  if (Op.isOk(state))      render(state.value);   // no unwrapping needed
+  if (Op.isError(state))     showError(state.error);
+  if (Op.isNil(state))     resetSearch();
 });
 
 manager.run(query);
@@ -389,6 +406,32 @@ not fire until something actually happens.
 no Deferred hangs indefinitely. The manager's state transitions to the appropriate terminal `Nil`
 as each one settles.
 
+## Resetting manager state
+
+`manager.reset()` returns the manager to `Idle` without cancelling any in-flight operation.
+Use it to clear displayed results or dismiss an error state without affecting a pending request:
+
+```ts
+if (userNavigatesAway) {
+  manager.reset(); // clears Ok/Err state — UI resets to initial state
+}
+```
+
+## Polling on an interval
+
+`manager.poll(input, { interval })` runs the operation immediately, then every `interval`
+milliseconds. It returns a stop handle:
+
+```ts
+// Poll a job status endpoint every 5 seconds
+const stopPolling = statusManager.poll(jobId, { interval: 5000 });
+
+// Stop when the job completes or the component unmounts
+statusManager.subscribe(state => {
+  if (Op.isOk(state) && state.value.status === "done") stopPolling();
+});
+```
+
 ## Per-invocation results
 
 Every `run()` call returns a `Deferred` that resolves to the outcome of that specific invocation.
@@ -401,7 +444,7 @@ const result = await submit.run(formData);
 
 if (Op.isOk(result)) {
   router.push("/success");
-} else if (Op.isErr(result)) {
+} else if (Op.isError(result)) {
   showError(result.error.message);
 } else {
   // Nil — invocation did not produce a value
@@ -555,6 +598,31 @@ manager.subscribe((state) => {
 ```ts
 const users = Op.getOrElse(() => [] as User[])(outcome);
 ```
+
+## Wiring managers together
+
+`Op.wire` subscribes to a manager and calls a handler whenever it reaches `Ok`. The
+typical use is to trigger a downstream manager:
+
+```ts
+const stopWire = Op.wire(searchManager, (results) => displayManager.run(results));
+// Later:
+stopWire();
+```
+
+`Op.wireAll` wires multiple source-handler pairs and returns a single cleanup:
+
+```ts
+const stop = Op.wireAll(
+  [searchManager, (results) => displayManager.run(results)],
+  [displayManager, (rendered) => analyticsManager.run(rendered)],
+);
+stop(); // removes all subscriptions at once
+```
+
+Wire is intentionally minimal — it triggers a handler on each `Ok`, nothing more. For
+unified loading states across multiple managers or cancellation propagation, compose
+managers at the Op level with `Op.create` using `TaskResult` pipelines.
 
 ## When to use Op
 

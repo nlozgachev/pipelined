@@ -24,14 +24,14 @@ test("Result.ok and Result.ok produce equivalent results", () => {
 // ---------------------------------------------------------------------------
 
 test("Result.err creates an Err with the given error", () => {
-	expect(Result.err("something went wrong")).toEqual({
+	expect(Result.error("something went wrong")).toEqual({
 		kind: "Error",
 		error: "something went wrong",
 	});
 });
 
 test("Result.err works with complex error types", () => {
-	const err = Result.err({ code: 404, message: "Not Found" });
+	const err = Result.error({ code: 404, message: "Not Found" });
 	expect(err).toEqual({
 		kind: "Error",
 		error: { code: 404, message: "Not Found" },
@@ -47,15 +47,15 @@ test("Result.isOk returns true for Ok", () => {
 });
 
 test("Result.isOk returns false for Err", () => {
-	expect(Result.isOk(Result.err("e"))).toBe(false);
+	expect(Result.isOk(Result.error("e"))).toBe(false);
 });
 
 test("Result.isErr returns true for Err", () => {
-	expect(Result.isErr(Result.err("e"))).toBe(true);
+	expect(Result.isError(Result.error("e"))).toBe(true);
 });
 
 test("Result.isErr returns false for Ok", () => {
-	expect(Result.isErr(Result.ok(1))).toBe(false);
+	expect(Result.isError(Result.ok(1))).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
@@ -102,7 +102,7 @@ test("Result.map transforms Ok value", () => {
 
 test("Result.map passes through Err unchanged", () => {
 	const result = pipe(
-		Result.err("error"),
+		Result.error("error"),
 		Result.map((n: number) => n * 2),
 	);
 	expect(result).toEqual({ kind: "Error", error: "error" });
@@ -122,7 +122,7 @@ test("Result.map can change the value type", () => {
 
 test("Result.mapError transforms Err value", () => {
 	const result = pipe(
-		Result.err("oops"),
+		Result.error("oops"),
 		Result.mapError((e: string) => e.toUpperCase()),
 	);
 	expect(result).toEqual({ kind: "Error", error: "OOPS" });
@@ -141,7 +141,7 @@ test("Result.mapError passes through Ok unchanged", () => {
 // ---------------------------------------------------------------------------
 
 test("Result.chain applies function when Ok", () => {
-	const validatePositive = (n: number) => n > 0 ? Result.ok(n) : Result.err("Must be positive");
+	const validatePositive = (n: number) => n > 0 ? Result.ok(n) : Result.error("Must be positive");
 
 	const result = pipe(
 		Result.ok(5),
@@ -151,7 +151,7 @@ test("Result.chain applies function when Ok", () => {
 });
 
 test("Result.chain returns Err when function returns Err", () => {
-	const validatePositive = (n: number) => n > 0 ? Result.ok(n) : Result.err("Must be positive");
+	const validatePositive = (n: number) => n > 0 ? Result.ok(n) : Result.error("Must be positive");
 
 	const result = pipe(
 		Result.ok(-1),
@@ -163,7 +163,7 @@ test("Result.chain returns Err when function returns Err", () => {
 test("Result.chain propagates Err without calling function", () => {
 	let called = false;
 	pipe(
-		Result.err("error"),
+		Result.error("error"),
 		Result.chain((_n: number) => {
 			called = true;
 			return Result.ok(_n);
@@ -189,7 +189,7 @@ test("Result.fold calls onOk for Ok", () => {
 
 test("Result.fold calls onErr for Err", () => {
 	const result = pipe(
-		Result.err("bad"),
+		Result.error("bad"),
 		Result.fold(
 			(e: string) => `Error: ${e}`,
 			(n: number) => `Value: ${n}`,
@@ -215,7 +215,7 @@ test("Result.match calls ok handler for Ok", () => {
 
 test("Result.match calls err handler for Err", () => {
 	const result = pipe(
-		Result.err("bad"),
+		Result.error("bad"),
 		Result.match({
 			ok: (n: number) => `got ${n}`,
 			err: (e: string) => `failed: ${e}`,
@@ -230,7 +230,7 @@ test("Result.match is data-last (returns a function first)", () => {
 		err: (e) => `err: ${e}`,
 	});
 	expect(handler(Result.ok(3))).toBe("val: 3");
-	expect(handler(Result.err("x"))).toBe("err: x");
+	expect(handler(Result.error("x"))).toBe("err: x");
 });
 
 // ---------------------------------------------------------------------------
@@ -247,7 +247,7 @@ test("Result.getOrElse returns value for Ok", () => {
 
 test("Result.getOrElse returns default for Err", () => {
 	const result = pipe(
-		Result.err("error"),
+		Result.error("error"),
 		Result.getOrElse(() => 0),
 	);
 	expect(result).toBe(0);
@@ -255,7 +255,7 @@ test("Result.getOrElse returns default for Err", () => {
 
 test("Result.getOrElse widens return type to A | B when default is a different type", () => {
 	const result = pipe(
-		Result.err("error"),
+		Result.error("error"),
 		Result.getOrElse(() => null),
 	);
 	expect(result).toBeNull();
@@ -288,7 +288,7 @@ test("Result.tap executes side effect on Ok and returns original", () => {
 test("Result.tap does not execute side effect on Err", () => {
 	let called = false;
 	const result = pipe(
-		Result.err("error"),
+		Result.error("error"),
 		Result.tap((_n: number) => {
 			called = true;
 		}),
@@ -316,7 +316,7 @@ test("Result.recover returns original Ok without calling fallback", () => {
 
 test("Result.recover provides fallback for Err", () => {
 	const result = pipe(
-		Result.err("error"),
+		Result.error("error"),
 		Result.recover((_e) => Result.ok(99)),
 	);
 	expect(result).toEqual({ kind: "Ok", value: 99 });
@@ -324,7 +324,7 @@ test("Result.recover provides fallback for Err", () => {
 
 test("Result.recover widens to Result<E, A | B> when fallback returns a different type", () => {
 	const result = pipe(
-		Result.err("error"),
+		Result.error("error"),
 		Result.recover((_e) => Result.ok("recovered")),
 	);
 	expect(result).toEqual({ kind: "Ok", value: "recovered" });
@@ -340,7 +340,7 @@ test("Result.recover preserves Ok typed as Result<E, A | B>", () => {
 
 test("Result.recover passes the error to the fallback", () => {
 	const result = pipe(
-		Result.err("original error"),
+		Result.error("original error"),
 		Result.recover((e) => Result.ok(`handled: ${e}`)),
 	);
 	expect(result).toEqual({ kind: "Ok", value: "handled: original error" });
@@ -354,7 +354,7 @@ test(
 	"Result.recoverUnless recovers when predicate returns false",
 	() => {
 		const result = pipe(
-			Result.err("recoverable"),
+			Result.error("recoverable"),
 			Result.recoverUnless(
 				(e) => e === "fatal",
 				() => Result.ok(42),
@@ -368,7 +368,7 @@ test(
 	"Result.recoverUnless does NOT recover when predicate returns true",
 	() => {
 		const result = pipe(
-			Result.err("fatal"),
+			Result.error("fatal"),
 			Result.recoverUnless(
 				(e) => e === "fatal",
 				() => Result.ok(42),
@@ -393,7 +393,7 @@ test(
 	"Result.recoverUnless widens to Result<E, A | B> when fallback returns a different type",
 	() => {
 		const result = pipe(
-			Result.err("recoverable"),
+			Result.error("recoverable"),
 			Result.recoverUnless((e) => e === "fatal", () => Result.ok("recovered")),
 		);
 		expect(result).toEqual({ kind: "Ok", value: "recovered" });
@@ -405,7 +405,7 @@ test(
 	() => {
 		const err = new Error("recoverable");
 		const result = pipe(
-			Result.err(err),
+			Result.error(err),
 			Result.recoverUnless((e) => e.message === "fatal", () => Result.ok(0)),
 		);
 		expect(result).toEqual({ kind: "Ok", value: 0 });
@@ -428,7 +428,7 @@ test("Result.ap applies Ok function to Ok value", () => {
 
 test("Result.ap returns Err when function is Err", () => {
 	const result = pipe(
-		Result.err("fn error"),
+		Result.error("fn error"),
 		Result.ap(Result.ok(5)),
 	);
 	expect(result).toEqual({ kind: "Error", error: "fn error" });
@@ -437,15 +437,15 @@ test("Result.ap returns Err when function is Err", () => {
 test("Result.ap returns Err when value is Err", () => {
 	const result = pipe(
 		Result.ok<(n: number) => number>((n) => n * 2),
-		Result.ap(Result.err("val error")),
+		Result.ap(Result.error("val error")),
 	);
 	expect(result).toEqual({ kind: "Error", error: "val error" });
 });
 
 test("Result.ap returns first Err when both are Err", () => {
 	const result = pipe(
-		Result.err("fn error"),
-		Result.ap(Result.err("val error")),
+		Result.error("fn error"),
+		Result.ap(Result.error("val error")),
 	);
 	expect(result).toEqual({ kind: "Error", error: "fn error" });
 });
@@ -460,7 +460,7 @@ test("Result.toMaybe converts Ok to Some", () => {
 });
 
 test("Result.toMaybe converts Err to None", () => {
-	const result = Result.toMaybe(Result.err("oops"));
+	const result = Result.toMaybe(Result.error("oops"));
 	expect(result).toEqual({ kind: "None" });
 });
 
@@ -469,19 +469,19 @@ test("Result.toMaybe converts Err to None", () => {
 // ---------------------------------------------------------------------------
 
 test("Result composes well in a pipe chain", () => {
-	const divide = (a: number, b: number) => b === 0 ? Result.err("Division by zero") : Result.ok(a / b);
+	const divide = (a: number, b: number) => b === 0 ? Result.error("Division by zero") : Result.ok(a / b);
 
 	const result = pipe(
 		divide(10, 2),
 		Result.map((n: number) => n * 3),
-		Result.chain((n: number) => n > 10 ? Result.ok(n) : (Result.err("Too small"))),
+		Result.chain((n: number) => n > 10 ? Result.ok(n) : (Result.error("Too small"))),
 		Result.getOrElse(() => 0),
 	);
 	expect(result).toBe(15);
 });
 
 test("Result pipe short-circuits on Err", () => {
-	const divide = (a: number, b: number) => b === 0 ? Result.err("Division by zero") : Result.ok(a / b);
+	const divide = (a: number, b: number) => b === 0 ? Result.error("Division by zero") : Result.ok(a / b);
 
 	const result = pipe(
 		divide(10, 0),
@@ -498,7 +498,7 @@ test("Result pipe short-circuits on Err", () => {
 test("Result.tapError calls side effect with error value on Err", () => {
 	let captured: string | undefined;
 	pipe(
-		Result.err("oops"),
+		Result.error("oops"),
 		Result.tapError((e) => {
 			captured = e;
 		}),
@@ -518,7 +518,7 @@ test("Result.tapError does not call side effect on Ok", () => {
 });
 
 test("Result.tapError returns original Err unchanged", () => {
-	const r = Result.err("oops");
+	const r = Result.error("oops");
 	expect(pipe(r, Result.tapError(() => {}))).toEqual(r);
 });
 
@@ -537,18 +537,18 @@ test("Result.fromPredicate returns Ok when predicate passes", () => {
 
 test("Result.fromPredicate returns Err when predicate fails", () => {
 	expect(pipe(-1, Result.fromPredicate(n => n > 0, n => `${n} is not positive`))).toEqual(
-		Result.err("-1 is not positive"),
+		Result.error("-1 is not positive"),
 	);
 });
 
 test("Result.fromPredicate returns Err for boundary value", () => {
-	expect(pipe(0, Result.fromPredicate(n => n > 0, () => "must be positive"))).toEqual(Result.err("must be positive"));
+	expect(pipe(0, Result.fromPredicate(n => n > 0, () => "must be positive"))).toEqual(Result.error("must be positive"));
 });
 
 test("Result.fromPredicate works with string predicates", () => {
 	const nonEmpty = Result.fromPredicate((s: string) => s.length > 0, () => "empty string");
 	expect(pipe("hi", nonEmpty)).toEqual(Result.ok("hi"));
-	expect(pipe("", nonEmpty)).toEqual(Result.err("empty string"));
+	expect(pipe("", nonEmpty)).toEqual(Result.error("empty string"));
 });
 
 test("Result.fromPredicate composes in pipe with chain", () => {
@@ -557,5 +557,5 @@ test("Result.fromPredicate composes in pipe with chain", () => {
 		Result.fromPredicate((n: number) => n >= 0, n => `${n} is negative`),
 		Result.map(n => n * 2),
 	);
-	expect(result).toEqual(Result.err("-5 is negative"));
+	expect(result).toEqual(Result.error("-5 is negative"));
 });

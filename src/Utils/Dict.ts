@@ -325,6 +325,29 @@ export namespace Dict {
 		return result;
 	};
 
+	/**
+	 * Applies `f` to each value. Entries where `f` returns `None` are removed; entries where
+	 * `f` returns `Some` are kept with the unwrapped value. Combines map and filter in one pass.
+	 *
+	 * @example
+	 * ```ts
+	 * const parse = (s: string): Maybe<number> => {
+	 *     const n = Number(s);
+	 *     return isNaN(n) ? Maybe.none() : Maybe.some(n);
+	 * };
+	 * Dict.filterMap(parse)(Dict.fromRecord({ a: "1", b: "two", c: "3" }));
+	 * // ReadonlyMap { "a" => 1, "c" => 3 }
+	 * ```
+	 */
+	export const filterMap = <A, B>(f: (a: A) => Maybe<B>) => <K>(m: ReadonlyMap<K, A>): ReadonlyMap<K, B> => {
+		const result = new globalThis.Map<K, B>();
+		for (const [key, value] of m) {
+			const mapped = f(value);
+			if (mapped.kind === "Some") result.set(key, mapped.value);
+		}
+		return result;
+	};
+
 	// ---------------------------------------------------------------------------
 	// Combine
 	// ---------------------------------------------------------------------------

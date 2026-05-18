@@ -16,17 +16,17 @@ Combining checks inline is fine for a single call site, but it doesn't scale:
 ```ts
 // To reuse this later you have to extract and name it yourself every time
 const eligible = users.filter(
-	u => u.age >= 18 && u.subscription === "active" && !u.banned,
+  u => u.age >= 18 && u.subscription === "active" && !u.banned,
 );
 
 // Negating requires wrapping the whole expression
 const ineligible = users.filter(
-	u => !(u.age >= 18 && u.subscription === "active" && !u.banned),
+  u => !(u.age >= 18 && u.subscription === "active" && !u.banned),
 );
 
 // Adapting to a different type means rewriting the check
 const eligibleOrders = orders.filter(
-	o => o.customer.age >= 18 && o.customer.subscription === "active" && !o.customer.banned,
+  o => o.customer.age >= 18 && o.customer.subscription === "active" && !o.customer.banned,
 );
 ```
 
@@ -90,8 +90,8 @@ const isAdult: Predicate<number> = (age) => age >= 18;
 const isSenior: Predicate<number> = (age) => age >= 65;
 
 const isWorkingAge: Predicate<number> = pipe(
-	isAdult,
-	Predicate.and(Predicate.not(isSenior)),
+  isAdult,
+  Predicate.and(Predicate.not(isSenior)),
 );
 
 isWorkingAge(30); // true
@@ -103,9 +103,9 @@ Building up a chain of checks reads left to right in `pipe`:
 
 ```ts
 const isValidPassword: Predicate<string> = pipe(
-	(s: string) => s.length >= 8,
-	Predicate.and(s => /[A-Z]/.test(s)),
-	Predicate.and(s => /[0-9]/.test(s)),
+  (s: string) => s.length >= 8,
+  Predicate.and(s => /[A-Z]/.test(s)),
+  Predicate.and(s => /[0-9]/.test(s)),
 );
 ```
 
@@ -122,18 +122,18 @@ const isAffordable: Predicate<number> = (price) => price < 50;
 const isInStock: Predicate<boolean> = (b) => b;
 
 const isAffordableProduct: Predicate<Product> = pipe(
-	isAffordable,
-	Predicate.using((p: Product) => p.price),
+  isAffordable,
+  Predicate.using((p: Product) => p.price),
 );
 
 const isAvailableProduct: Predicate<Product> = pipe(
-	isInStock,
-	Predicate.using((p: Product) => p.inStock),
+  isInStock,
+  Predicate.using((p: Product) => p.inStock),
 );
 
 const canBuyNow: Predicate<Product> = pipe(
-	isAffordableProduct,
-	Predicate.and(isAvailableProduct),
+  isAffordableProduct,
+  Predicate.and(isAvailableProduct),
 );
 ```
 
@@ -147,9 +147,9 @@ type Order = { customer: { tier: string; }; };
 
 const isPremiumTier: Predicate<string> = (tier) => tier === "premium";
 const isPremiumOrder: Predicate<Order> = pipe(
-	isPremiumTier,
-	Predicate.using((c: { tier: string; }) => c.tier),
-	Predicate.using((o: Order) => o.customer),
+  isPremiumTier,
+  Predicate.using((c: { tier: string; }) => c.tier),
+  Predicate.using((o: Order) => o.customer),
 );
 ```
 
@@ -160,10 +160,10 @@ must pass) are cleaner than chaining `and`/`or`.
 
 ```ts
 const contentRules: Predicate<string>[] = [
-	(s) => s.length > 0,
-	(s) => s.length <= 500,
-	(s) => !/<script/i.test(s),
-	(s) => !s.includes("\0"),
+  (s) => s.length > 0,
+  (s) => s.length <= 500,
+  (s) => !/<script/i.test(s),
+  (s) => !s.includes("\0"),
 ];
 
 const isSafeContent = Predicate.all(contentRules);
@@ -177,10 +177,10 @@ isSafeContent("<script>...</script>"); // false — rejected pattern
 
 ```ts
 const allowedExtensions: Predicate<string>[] = [
-	(name) => name.endsWith(".jpg"),
-	(name) => name.endsWith(".jpeg"),
-	(name) => name.endsWith(".png"),
-	(name) => name.endsWith(".webp"),
+  (name) => name.endsWith(".jpg"),
+  (name) => name.endsWith(".jpeg"),
+  (name) => name.endsWith(".png"),
+  (name) => name.endsWith(".webp"),
 ];
 
 const isAcceptedImage = Predicate.any(allowedExtensions);
@@ -200,8 +200,8 @@ When you need to combine a type guard with plain predicates, convert it first:
 const isString: Refinement<unknown, string> = Refinement.make((x) => typeof x === "string");
 
 const isShortString: Predicate<unknown> = pipe(
-	Predicate.fromRefinement(isString),
-	Predicate.and((x) => (x as string).length < 20),
+  Predicate.fromRefinement(isString),
+  Predicate.and((x) => (x as string).length < 20),
 );
 
 isShortString("hello"); // true

@@ -424,7 +424,7 @@ export namespace Arr {
 	 * ```ts
 	 * pipe(
 	 *   [1, 2, 3],
-	 *   Arr.traverseResult(n => n > 0 ? Result.ok(n) : Result.err("negative"))
+	 *   Arr.traverseResult(n => n > 0 ? Result.ok(n) : Result.error("negative"))
 	 * ); // Ok([1, 2, 3])
 	 * ```
 	 */
@@ -510,7 +510,7 @@ export namespace Arr {
 				for (const a of data) {
 					// eslint-disable-next-line no-await-in-loop
 					const r = await Deferred.toPromise(f(a)());
-					if (Result.isErr(r)) return r;
+					if (Result.isError(r)) return r;
 					result.push(r.value);
 				}
 				return Result.ok(result);
