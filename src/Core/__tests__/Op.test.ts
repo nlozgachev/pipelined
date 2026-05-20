@@ -159,6 +159,44 @@ test("Op.isNil returns true only for Nil", () => {
 	expect(Op.isNil(e)).toBe(false);
 });
 
+test("Op.isIdle returns true only for Idle state", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "restartable" });
+	expect(Op.isIdle(manager.state)).toBe(true);
+	const run = manager.run(1);
+	expect(Op.isIdle(manager.state)).toBe(false);
+	await run;
+});
+
+test("Op.isQueued returns true only for Queued state", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "queue" });
+	manager.run(1);
+	manager.run(2);
+	expect(Op.isQueued(manager.state)).toBe(true);
+	expect(Op.isOk(manager.state)).toBe(false);
+	expect(Op.isIdle(manager.state)).toBe(false);
+	manager.abort();
+	await new Promise((r) => setTimeout(r, 50));
+});
+
+test("Op.isRetrying returns true only for Retrying state", async () => {
+	let attempt = 0;
+	const op = Op.create(
+		(_signal) => (_: number) => {
+			attempt++;
+			if (attempt < 2) return Promise.reject(new Error("fail"));
+			return Promise.resolve(42);
+		},
+		(e) => String(e),
+	);
+	const manager = Op.interpret(op, { strategy: "restartable", retry: { attempts: 2, backoff: () => 0 } });
+	let sawRetrying = false;
+	manager.subscribe((s) => {
+		if (Op.isRetrying(s)) sawRetrying = true;
+	});
+	await manager.run(1);
+	expect(sawRetrying).toBe(true);
+});
+
 // ---------------------------------------------------------------------------
 // match
 // ---------------------------------------------------------------------------
@@ -2044,6 +2082,186 @@ test("manager.poll stop handle cancels future runs", async () => {
 	// Wait long enough for what would have been 2+ more intervals
 	await new Promise((r) => setTimeout(r, 150));
 	expect(runCount).toBe(countAfterStop);
+});
+
+test("manager.reset works for exclusive strategy", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "exclusive" });
+	await manager.run(1);
+	manager.reset();
+	expect(Op.isIdle(manager.state)).toBe(true);
+});
+
+test("manager.reset works for queue strategy", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "queue" });
+	await manager.run(1);
+	manager.reset();
+	expect(Op.isIdle(manager.state)).toBe(true);
+});
+
+test("manager.reset works for buffered strategy", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "buffered" });
+	await manager.run(1);
+	manager.reset();
+	expect(Op.isIdle(manager.state)).toBe(true);
+});
+
+test("manager.reset works for debounced strategy", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "debounced", ms: 10 });
+	await manager.run(1);
+	manager.reset();
+	expect(Op.isIdle(manager.state)).toBe(true);
+});
+
+test("manager.reset works for throttled strategy", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "throttled", ms: 10 });
+	await manager.run(1);
+	manager.reset();
+	expect(Op.isIdle(manager.state)).toBe(true);
+});
+
+test("manager.reset works for concurrent strategy", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "concurrent", n: 2 });
+	await manager.run(1);
+	manager.reset();
+	expect(Op.isIdle(manager.state)).toBe(true);
+});
+
+test("manager.reset works for once strategy", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "once" });
+	await manager.run(1);
+	manager.reset();
+	expect(Op.isIdle(manager.state)).toBe(true);
+});
+
+test("manager.poll works for exclusive strategy", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "exclusive" });
+	const stop = manager.poll(1, { interval: 10000 });
+	await new Promise<void>((resolve) => {
+		const unsub = manager.subscribe((s) => {
+			if (Op.isOk(s)) {
+				unsub();
+				resolve();
+			}
+		});
+	});
+	stop();
+	expect(Op.isOk(manager.state)).toBe(true);
+});
+
+test("manager.poll works for once strategy", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "once" });
+	const stop = manager.poll(1, { interval: 10000 });
+	await new Promise<void>((resolve) => {
+		const unsub = manager.subscribe((s) => {
+			if (Op.isOk(s)) {
+				unsub();
+				resolve();
+			}
+		});
+	});
+	stop();
+	expect(Op.isOk(manager.state)).toBe(true);
+});
+
+test("manager.poll works for queue strategy", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "queue" });
+	const stop = manager.poll(1, { interval: 10000 });
+	await new Promise<void>((resolve) => {
+		const unsub = manager.subscribe((s) => {
+			if (Op.isOk(s)) {
+				unsub?.();
+				resolve();
+			}
+		});
+	});
+	stop();
+	expect(Op.isOk(manager.state)).toBe(true);
+});
+
+test("manager.poll works for buffered strategy", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "buffered" });
+	const stop = manager.poll(1, { interval: 10000 });
+	await new Promise<void>((resolve) => {
+		const unsub = manager.subscribe((s) => {
+			if (Op.isOk(s)) {
+				unsub?.();
+				resolve();
+			}
+		});
+	});
+	stop();
+	expect(Op.isOk(manager.state)).toBe(true);
+});
+
+test("manager.poll works for debounced strategy", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "debounced", ms: 0 });
+	const stop = manager.poll(1, { interval: 10000 });
+	await new Promise<void>((resolve) => {
+		const unsub = manager.subscribe((s) => {
+			if (Op.isOk(s)) {
+				unsub?.();
+				resolve();
+			}
+		});
+	});
+	stop();
+	expect(Op.isOk(manager.state)).toBe(true);
+});
+
+test("manager.poll works for concurrent strategy", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "concurrent", n: 2 });
+	const stop = manager.poll(1, { interval: 10000 });
+	await new Promise<void>((resolve) => {
+		const unsub = manager.subscribe((s) => {
+			if (Op.isOk(s)) {
+				unsub?.();
+				resolve();
+			}
+		});
+	});
+	stop();
+	expect(Op.isOk(manager.state)).toBe(true);
+});
+
+test("manager.poll works for throttled strategy", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "throttled", ms: 10000 });
+	const stop = manager.poll(1, { interval: 10000 });
+	await new Promise<void>((resolve) => {
+		const unsub = manager.subscribe((s) => {
+			if (Op.isOk(s)) {
+				unsub();
+				resolve();
+			}
+		});
+	});
+	stop();
+	expect(Op.isOk(manager.state)).toBe(true);
+});
+
+test("keyed manager.reset clears all per-key state", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "keyed", key: (n: number) => n });
+	await manager.run(1);
+	await manager.run(2);
+	expect(manager.state.size).toBe(2);
+	manager.reset();
+	expect(manager.state.size).toBe(0);
+});
+
+test("keyed manager.poll runs immediately and can be stopped", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "keyed", key: (n: number) => n });
+	const stop = manager.poll(1, { interval: 10000 });
+	await new Promise<void>((resolve) => {
+		// oxlint-disable-next-line prefer-const -- TDZ: subscribe fires immediately, const would crash
+		let unsub: () => void;
+		unsub = manager.subscribe((m) => {
+			if (m.size > 0) {
+				unsub?.();
+				resolve();
+			}
+		});
+	});
+	stop();
+	expect(manager.state.size).toBeGreaterThan(0);
 });
 
 // ---------------------------------------------------------------------------

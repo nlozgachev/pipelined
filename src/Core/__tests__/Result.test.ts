@@ -559,3 +559,35 @@ test("Result.fromPredicate composes in pipe with chain", () => {
 	);
 	expect(result).toEqual(Result.error("-5 is negative"));
 });
+
+// ---------------------------------------------------------------------------
+// Type inference
+// ---------------------------------------------------------------------------
+
+test("Result.map — type-safe return type on mapped function output", () => {
+	const r: Result<string, number> = Result.ok(42);
+	const mapped = Result.map<string, number, string>((n: number) => String(n))(r);
+	expect(mapped).toEqual({ kind: "Ok", value: "42" });
+});
+
+test("Result.mapError — type-safe return type on mapped error output", () => {
+	const r: Result<string, number> = Result.error("oops");
+	const mapped = Result.mapError<string, number, number>((e: string) => e.length)(r);
+	expect(mapped).toEqual({ kind: "Error", error: 4 });
+});
+
+test("Result.getOrElse — type-safe widening to A | B", () => {
+	const r: Result<string, number> = Result.error("e");
+	const fn = Result.getOrElse<string, number, null>((): null => null);
+	const result = fn(r);
+	expect(result).toBeNull();
+});
+
+test("Result.fold — type-safe return type from both branches", () => {
+	const r: Result<string, number> = Result.ok(1);
+	const result = Result.fold<string, number, string>(
+		(e: string): string => `err:${e}`,
+		(n: number): string => `ok:${n}`,
+	)(r);
+	expect(result).toBe("ok:1");
+});

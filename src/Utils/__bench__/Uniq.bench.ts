@@ -1,9 +1,22 @@
+import * as fc from "fast-check";
 import { pipe } from "#composition/pipe.ts";
 import { bench, describe } from "vitest";
 import { Uniq } from "../Uniq.ts";
 
 const data100 = Array.from({ length: 100 }, (_, i) => i);
 const data10k = Array.from({ length: 10_000 }, (_, i) => i);
+
+// varied fixtures — generated once at module load, used across bench groups
+const [variedData100] = fc.sample(
+	fc.array(fc.integer({ min: 0, max: 200 }), { minLength: 100, maxLength: 100 }),
+	1,
+);
+const [variedData10k] = fc.sample(
+	fc.array(fc.integer({ min: 0, max: 20_000 }), { minLength: 10_000, maxLength: 10_000 }),
+	1,
+);
+const variedSet100 = Uniq.fromArray(variedData100);
+const variedSet10k = Uniq.fromArray(variedData10k);
 
 const set100 = Uniq.fromArray(data100);
 const set10k = Uniq.fromArray(data10k);
@@ -248,5 +261,65 @@ describe("uniq-insert-10k-existing", () => {
 	bench("native insert existing 10k", () => {
 		const result = new globalThis.Set(set10k);
 		result.add(500);
+	});
+});
+
+// =============================================================================
+// varied fixtures (fast-check generated, non-sequential with duplicates)
+// =============================================================================
+
+describe("uniq-fromArray-varied-100", () => {
+	bench("Uniq.fromArray varied 100", () => {
+		Uniq.fromArray(variedData100);
+	});
+	bench("native new Set varied 100", () => {
+		void new globalThis.Set(variedData100);
+	});
+});
+
+describe("uniq-has-varied-100", () => {
+	bench("Uniq.has varied 100 (present)", () => {
+		pipe(variedSet100, Uniq.has(variedData100[50]));
+	});
+	bench("native set.has varied 100 (present)", () => {
+		variedSet100.has(variedData100[50]);
+	});
+});
+
+describe("uniq-has-varied-100-miss", () => {
+	bench("Uniq.has varied 100 (absent)", () => {
+		pipe(variedSet100, Uniq.has(9999));
+	});
+	bench("native set.has varied 100 (absent)", () => {
+		variedSet100.has(9999);
+	});
+});
+
+describe("uniq-fromArray-varied-10k", () => {
+	bench("Uniq.fromArray varied 10k", () => {
+		Uniq.fromArray(variedData10k);
+	});
+	bench("native new Set varied 10k", () => {
+		void new globalThis.Set(variedData10k);
+	});
+});
+
+describe("uniq-filter-varied-10k", () => {
+	bench("Uniq.filter varied 10k", () => {
+		pipe(variedSet10k, Uniq.filter((n) => n % 2 === 0));
+	});
+	bench("native filter loop varied 10k", () => {
+		const result = new globalThis.Set<number>();
+		for (const item of variedSet10k) if (item % 2 === 0) result.add(item);
+	});
+});
+
+describe("uniq-map-varied-10k", () => {
+	bench("Uniq.map varied 10k", () => {
+		pipe(variedSet10k, Uniq.map((n) => n * 2));
+	});
+	bench("native map loop varied 10k", () => {
+		const result = new globalThis.Set<number>();
+		for (const item of variedSet10k) result.add(item * 2);
 	});
 });

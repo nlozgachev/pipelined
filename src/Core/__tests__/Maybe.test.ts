@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Maybe } from "../Maybe.ts";
 import { Result } from "../Result.ts";
@@ -512,4 +512,34 @@ test("Maybe.fromPredicate works with string predicates", () => {
 test("Maybe.fromPredicate composes in pipe", () => {
 	expect(pipe(18, Maybe.fromPredicate((n: number) => n >= 18))).toEqual(Maybe.some(18));
 	expect(pipe(17, Maybe.fromPredicate((n: number) => n >= 18))).toEqual(Maybe.none());
+});
+
+// ---------------------------------------------------------------------------
+// Type inference
+// ---------------------------------------------------------------------------
+
+test("Maybe.map — return type reflects mapped function output", () => {
+	const r: Maybe<number> = Maybe.some(42);
+	const mapped = Maybe.map((n: number) => String(n))(r);
+	expectTypeOf(mapped).toEqualTypeOf<Maybe<string>>();
+});
+
+test("Maybe.chain — collapses nested Maybe", () => {
+	const r: Maybe<number> = Maybe.some(42);
+	const chained = Maybe.chain((n: number) => Maybe.some(String(n)))(r);
+	expectTypeOf(chained).toEqualTypeOf<Maybe<string>>();
+});
+
+test("Maybe.getOrElse — widens return type to A | B", () => {
+	const val = pipe(Maybe.some("hello"), Maybe.getOrElse((): null => null));
+	expectTypeOf(val).toEqualTypeOf<string | null>();
+});
+
+test("Maybe.fold — return type matches branch return types", () => {
+	const r: Maybe<number> = Maybe.some(42);
+	const folded = Maybe.fold(
+		(): string => "none",
+		(n: number): string => String(n),
+	)(r);
+	expectTypeOf(folded).toBeString();
 });

@@ -1,3 +1,4 @@
+import * as fc from "fast-check";
 import { pipe } from "#composition/pipe.ts";
 import { Maybe } from "#core/Maybe.ts";
 import { bench, describe } from "vitest";
@@ -5,6 +6,18 @@ import { Dict } from "../Dict.ts";
 
 const makeDict = (n: number): ReadonlyMap<string, number> =>
 	Dict.fromEntries(Array.from({ length: n }, (_, i) => [`key${i}`, i]));
+
+// varied fixtures — generated once at module load, non-sequential keys and values
+const [variedEntries100] = fc.sample(
+	fc.array(fc.tuple(fc.string({ minLength: 1, maxLength: 10 }), fc.integer()), { minLength: 100, maxLength: 100 }),
+	1,
+) as [[string, number][]];
+const [variedEntries10k] = fc.sample(
+	fc.array(fc.tuple(fc.string({ minLength: 1, maxLength: 10 }), fc.integer()), { minLength: 10_000, maxLength: 10_000 }),
+	1,
+) as [[string, number][]];
+const variedDict100 = Dict.fromEntries(variedEntries100);
+const variedDict10k = Dict.fromEntries(variedEntries10k);
 
 const dict100 = makeDict(100);
 const dict10k = makeDict(10_000);
@@ -283,5 +296,43 @@ describe("dict-groupBy-approaches-10k", () => {
 	});
 	bench("native Map.groupBy 10k", () => {
 		globalThis.Map.groupBy(data10k, (n) => n % 10);
+	});
+});
+
+// =============================================================================
+// varied fixtures (fast-check generated, non-sequential string keys)
+// =============================================================================
+
+describe("dict-lookup-varied-100-hit", () => {
+	bench("Dict.lookup varied 100 (hit)", () => {
+		pipe(variedDict100, Dict.lookup(variedEntries100[50][0]));
+	});
+	bench("native map.get varied 100 (hit)", () => {
+		const v = variedDict100.get(variedEntries100[50][0]);
+		const result = v !== undefined ? { kind: "Some" as const, value: v } : { kind: "None" as const };
+		void result;
+	});
+});
+
+describe("dict-lookup-varied-100-miss", () => {
+	bench("Dict.lookup varied 100 (miss)", () => {
+		pipe(variedDict100, Dict.lookup("__missing__"));
+	});
+	bench("native map.get varied 100 (miss)", () => {
+		const v = variedDict100.get("__missing__");
+		const result = v !== undefined ? { kind: "Some" as const, value: v } : { kind: "None" as const };
+		void result;
+	});
+});
+
+describe("dict-filter-varied-10k", () => {
+	bench("Dict.filter varied 10k", () => {
+		pipe(variedDict10k, Dict.filter((n) => n % 2 === 0));
+	});
+	bench("native filter loop varied 10k", () => {
+		const result = new globalThis.Map<string, number>();
+		for (const [k, v] of variedDict10k) {
+			if (v % 2 === 0) result.set(k, v);
+		}
 	});
 });

@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Result } from "../Result.ts";
 import { Validation } from "../Validation.ts";
@@ -691,4 +691,29 @@ test("Validation composes well in a pipe chain", () => {
 		Validation.getOrElse(() => "unknown"),
 	);
 	expect(result).toBe("Alice");
+});
+
+// ---------------------------------------------------------------------------
+// Type inference
+// ---------------------------------------------------------------------------
+
+test("Validation.map — return type reflects mapped function output", () => {
+	const v: Validation<string, number> = Validation.valid(42);
+	const mapped = Validation.map((n: number) => String(n))(v);
+	expectTypeOf(mapped).toEqualTypeOf<Validation<string, string>>();
+});
+
+test("Validation.getOrElse — widens return type to A | B", () => {
+	const v = Validation.valid<string, string>("hello");
+	const val = pipe(v, Validation.getOrElse((): null => null));
+	expectTypeOf(val).toEqualTypeOf<string | null>();
+});
+
+test("Validation.fold — return type matches branch return types", () => {
+	const v: Validation<string, number> = Validation.valid(1);
+	const folded = Validation.fold(
+		(errors: readonly string[]): string => errors.join(","),
+		(n: number): string => String(n),
+	)(v);
+	expectTypeOf(folded).toBeString();
 });
