@@ -844,27 +844,6 @@ export namespace Op {
 			if (isOk(state)) f(state.value);
 		});
 
-	/**
-	 * Wires multiple source-handler pairs, returning a combined cleanup function.
-	 * When any source reaches `OpOk`, its corresponding handler is called.
-	 *
-	 * @example
-	 * ```ts
-	 * const stop = Op.wireAll(
-	 *   [userManager, (u) => render(u)],
-	 *   [settingsManager, (s) => applySettings(s)],
-	 * );
-	 * // ... later
-	 * stop(); // removes all subscriptions
-	 * ```
-	 */
-	export const wireAll = <I, E, A, S extends State<E, A>>(
-		...pairs: Array<[Manager<I, E, A, S>, (a: A) => void]>
-	): () => void => {
-		const cleanups = pairs.map(([source, f]) => wire(source, f));
-		return () => cleanups.forEach((c) => c());
-	};
-
 	// -------------------------------------------------------------------------
 	// Op.interpret — single entry point for managed execution
 	// -------------------------------------------------------------------------

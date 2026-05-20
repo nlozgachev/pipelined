@@ -2295,26 +2295,3 @@ test("Op.wire stop handle removes the subscription", async () => {
 	expect(received).toEqual([]);
 });
 
-// ---------------------------------------------------------------------------
-// wireAll
-// ---------------------------------------------------------------------------
-
-test("Op.wireAll wires multiple source-handler pairs and returns combined cleanup", async () => {
-	const a = Op.interpret(delayedOp(), { strategy: "restartable" });
-	const b = Op.interpret(delayedOp(), { strategy: "restartable" });
-	const receivedA: number[] = [];
-	const receivedB: number[] = [];
-	const stop = Op.wireAll(
-		[a, (n) => receivedA.push(n as number)],
-		[b, (n) => receivedB.push(n as number)],
-	);
-	await a.run(1);
-	await b.run(2);
-	expect(receivedA).toEqual([1]);
-	expect(receivedB).toEqual([2]);
-	stop();
-	await a.run(10);
-	await b.run(20);
-	expect(receivedA).toEqual([1]);
-	expect(receivedB).toEqual([2]);
-});

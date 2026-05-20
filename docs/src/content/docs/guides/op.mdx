@@ -38,6 +38,25 @@ signal in the outer closure and thread it through to cancellable APIs like `fetc
 mapper converts any thrown value into a typed error — it is never called when the operation is
 aborted; aborted operations produce `Nil` instead.
 
+If the async work lives in a standalone function, pass the signal as an explicit argument rather
+than inlining the fetch:
+
+```ts
+async function searchUsers(query: string, signal: AbortSignal): Promise<User[]> {
+  const r = await fetch(`/users?q=${query}`, { signal });
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return r.json();
+}
+
+const searchUsersOp = Op.create(
+  (signal) => (query: string) => searchUsers(query, signal),
+  (e) => new ApiError(e),
+);
+```
+
+The factory shape stays the same — `(signal) => (input) => Promise<A>`. The signal reaches the
+function as an argument instead of being captured in an inline closure.
+
 <Aside type="caution">
 `Op` is designed primarily for network requests. The signal is not optional plumbing: it is how every strategy tears down work it no
 longer needs. Always pass it through. If you choose to ignore it, that is a deliberate trade-off:
@@ -118,7 +137,7 @@ without setting up a subscriber.
 ## The three outcomes
 
 When `run()` settles, three things can happen: you get a value, you get an error, or nothing
-happens — the call was cancelled, dropped, or replaced. These map to `Ok<A>`, `Err<E>`, and
+happens — the call was cancelled, dropped, or replaced. These map to `Ok<A>`, `Error<E>`, and
 `Nil`.
 
 `Ok` and `Err` are straightforward. `Nil` is where it gets specific — the `reason` field says
@@ -295,7 +314,7 @@ const handleResize = Op.interpret(computeLayout, {
   trailing: true,
 });
 // On burst: leading fires instantly; last call during cooldown fires at cooldown end.
-// Calls replaced in the buffer resolve to ReplacedNil; the leading fires → Ok.
+// Calls replaced in the buffer resolve to EvictedNil; the leading fires → Ok.
 ```
 
 ### Concurrent — bounded parallelism
@@ -374,7 +393,7 @@ never occur:
 const manager = Op.interpret(searchUsers, { strategy: "restartable" });
 
 manager.subscribe((state) => {
-  // state: Idle | Pending | Ok<User[]> | Err<ApiError> | Nil
+  // state: Idle | Pending | Ok<User[]> | Error<ApiError> | Nil
   if (Op.isIdle(state))    return;
   if (Op.isPending(state)) showSpinner();
   if (Op.isOk(state))      render(state.value);   // no unwrapping needed
@@ -396,10 +415,10 @@ const state = useSyncExternalStore(
 );
 ```
 
-One thing to watch out for: subscribing while the manager is already running fires the callback
+One thing to watch out for: subscribing while the manager is not idle fires the callback
 immediately with the current state — useful for attaching UI components after setup, but it means
-`subscribe` is not a no-op even when called mid-flight. Subscribing before the first `run()` does
-not fire until something actually happens.
+`subscribe` is not a no-op even when called after an operation completes. Subscribing before the
+first `run()` does not fire until something actually happens.
 
 `abort()` resolves every outstanding `run()` Deferred — including invocations waiting in a queue
 — to `AbortedNil`. Resolution is asynchronous (the Deferred settles on the next microtask tick);
@@ -549,11 +568,11 @@ type does not include it:
 ```ts
 // No retry — Retrying is not in the subscriber type
 const m1 = Op.interpret(op, { strategy: "restartable" });
-// m1.subscribe: (state: Idle | Pending | Ok<A> | Err<E> | Nil) => void
+// m1.subscribe: (state: Idle | Pending | Ok<A> | Error<E> | Nil) => void
 
 // Retry present — Retrying is added
 const m2 = Op.interpret(op, { strategy: "restartable", retry: { attempts: 3 } });
-// m2.subscribe: (state: Idle | Pending | Retrying<E> | Ok<A> | Err<E> | Nil) => void
+// m2.subscribe: (state: Idle | Pending | Retrying<E> | Ok<A> | Error<E> | Nil) => void
 ```
 
 The `timeout` wraps the entire retry sequence — one deadline for all attempts. If the deadline
@@ -584,7 +603,7 @@ import { pipe } from "@nlozgachev/pipelined/composition";
 
 // Use in a subscriber
 manager.subscribe((state) => {
-  if (state.kind !== "Ok" && state.kind !== "Err" && state.kind !== "Nil") return;
+  if (!Op.isOk(state) && !Op.isError(state) && !Op.isNil(state)) return;
   const result = pipe(
     state,
     Op.toResult(() => new ApiError("cancelled")),
@@ -608,16 +627,6 @@ typical use is to trigger a downstream manager:
 const stopWire = Op.wire(searchManager, (results) => displayManager.run(results));
 // Later:
 stopWire();
-```
-
-`Op.wireAll` wires multiple source-handler pairs and returns a single cleanup:
-
-```ts
-const stop = Op.wireAll(
-  [searchManager, (results) => displayManager.run(results)],
-  [displayManager, (rendered) => analyticsManager.run(rendered)],
-);
-stop(); // removes all subscriptions at once
 ```
 
 Wire is intentionally minimal — it triggers a handler on each `Ok`, nothing more. For
