@@ -111,6 +111,16 @@ export namespace Str {
 	export const toLowerCase = (s: string): string => s.toLowerCase();
 
 	/**
+	 * Converts the first character of a string to uppercase.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe("hello", Str.capitalize); // "Hello"
+	 * ```
+	 */
+	export const capitalize = (s: string): string => s.length === 0 ? "" : s.charAt(0).toUpperCase() + s.slice(1);
+
+	/**
 	 * Splits a string into lines, normalising `\r\n` and `\r` line endings.
 	 *
 	 * @example

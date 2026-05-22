@@ -196,4 +196,67 @@ export namespace Num {
 	 */
 	export const remainder = (divisor: number) => (n: number): Maybe<number> =>
 		divisor === 0 ? Maybe.none() : Maybe.some(n % divisor);
+
+	/**
+	 * Computes the sum of a list of numbers. Returns `0` if the list is empty.
+	 *
+	 * @example
+	 * ```ts
+	 * Num.sum([1, 2, 3]); // 6
+	 * Num.sum([]);        // 0
+	 * ```
+	 */
+	export const sum = (ns: readonly number[]): number => {
+		let result = 0;
+		for (let i = 0; i < ns.length; i++) result += ns[i];
+		return result;
+	};
+
+	/**
+	 * Computes the mean of a list of numbers. Returns `None` if the list is empty.
+	 *
+	 * @example
+	 * ```ts
+	 * Num.mean([1, 2, 3]); // Some(2)
+	 * Num.mean([]);        // None
+	 * ```
+	 */
+	export const mean = (ns: readonly number[]): Maybe<number> =>
+		ns.length === 0 ? Maybe.none() : Maybe.some(sum(ns) / ns.length);
+
+	/**
+	 * Computes the minimum of a list of numbers. Returns `None` if the list is empty.
+	 *
+	 * @example
+	 * ```ts
+	 * Num.min([5, 1, 3]); // Some(1)
+	 * Num.min([]);        // None
+	 * ```
+	 */
+	export const min = (ns: readonly number[]): Maybe<number> => {
+		if (ns.length === 0) return Maybe.none();
+		let [result] = ns;
+		for (let i = 1; i < ns.length; i++) {
+			if (ns[i] < result) result = ns[i];
+		}
+		return Maybe.some(result);
+	};
+
+	/**
+	 * Computes the maximum of a list of numbers. Returns `None` if the list is empty.
+	 *
+	 * @example
+	 * ```ts
+	 * Num.max([1, 5, 3]); // Some(5)
+	 * Num.max([]);        // None
+	 * ```
+	 */
+	export const max = (ns: readonly number[]): Maybe<number> => {
+		if (ns.length === 0) return Maybe.none();
+		let [result] = ns;
+		for (let i = 1; i < ns.length; i++) {
+			if (ns[i] > result) result = ns[i];
+		}
+		return Maybe.some(result);
+	};
 }

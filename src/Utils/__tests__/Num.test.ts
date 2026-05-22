@@ -251,6 +251,70 @@ test("Num.remainder composes with Arr.filterMap", () => {
 });
 
 // ---------------------------------------------------------------------------
+// sum
+// ---------------------------------------------------------------------------
+
+test("Num.sum computes the sum of a list of numbers", () => {
+	expect(Num.sum([1, 2, 3])).toBe(6);
+	expect(Num.sum([-1, 2, -3.5])).toBe(-2.5);
+});
+
+test("Num.sum returns 0 for an empty array", () => {
+	expect(Num.sum([])).toBe(0);
+});
+
+// ---------------------------------------------------------------------------
+// mean
+// ---------------------------------------------------------------------------
+
+test("Num.mean computes the mean of a list of numbers", () => {
+	expect(Num.mean([1, 2, 3])).toEqual(Maybe.some(2));
+	expect(Num.mean([1.5, 2.5, 5])).toEqual(Maybe.some(3));
+});
+
+test("Num.mean returns None for an empty array", () => {
+	expect(Num.mean([])).toEqual(Maybe.none());
+});
+
+// ---------------------------------------------------------------------------
+// min
+// ---------------------------------------------------------------------------
+
+test("Num.min computes the minimum of a list of numbers", () => {
+	expect(Num.min([5, 1, 3])).toEqual(Maybe.some(1));
+	expect(Num.min([-1.5, -5, -3])).toEqual(Maybe.some(-5));
+});
+
+test("Num.min returns None for an empty array", () => {
+	expect(Num.min([])).toEqual(Maybe.none());
+});
+
+// ---------------------------------------------------------------------------
+// max
+// ---------------------------------------------------------------------------
+
+test("Num.max computes the maximum of a list of numbers", () => {
+	expect(Num.max([1, 5, 3])).toEqual(Maybe.some(5));
+	expect(Num.max([-1.5, -5, -3])).toEqual(Maybe.some(-1.5));
+});
+
+test("Num.max returns None for an empty array", () => {
+	expect(Num.max([])).toEqual(Maybe.none());
+});
+
+// ---------------------------------------------------------------------------
+// collection folding pipe composition
+// ---------------------------------------------------------------------------
+
+test("Num folding composes in a pipe", () => {
+	const result = pipe(
+		Num.range(1, 5),
+		Num.sum,
+	);
+	expect(result).toBe(15);
+});
+
+// ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 

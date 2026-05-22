@@ -92,6 +92,34 @@ test("Str.toLowerCase converts all characters to lowercase", () => {
 });
 
 // ---------------------------------------------------------------------------
+// capitalize
+// ---------------------------------------------------------------------------
+
+test("Str.capitalize converts the first character to uppercase", () => {
+	expect(pipe("hello", Str.capitalize)).toBe("Hello");
+});
+
+test("Str.capitalize leaves already capitalized strings unchanged", () => {
+	expect(pipe("Hello", Str.capitalize)).toBe("Hello");
+});
+
+test("Str.capitalize leaves the rest of the string untouched", () => {
+	expect(pipe("hELLO", Str.capitalize)).toBe("HELLO");
+});
+
+test("Str.capitalize handles single-character strings", () => {
+	expect(pipe("a", Str.capitalize)).toBe("A");
+});
+
+test("Str.capitalize handles empty strings", () => {
+	expect(pipe("", Str.capitalize)).toBe("");
+});
+
+test("Str.capitalize composes in a pipe", () => {
+	expect(pipe("  hello  ", Str.trim, Str.capitalize)).toBe("Hello");
+});
+
+// ---------------------------------------------------------------------------
 // lines
 // ---------------------------------------------------------------------------
 
