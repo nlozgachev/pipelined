@@ -38,7 +38,9 @@ Ordering.date(new Date("2024-01-01"), new Date("2025-01-01")); // negative
 `Ordering.reverse` flips the direction of any comparator:
 
 ```ts
-import { Arr, Ordering, pipe } from "@nlozgachev/pipelined/core";
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Ordering } from "@nlozgachev/pipelined/core";
+import { Arr } from "@nlozgachev/pipelined/utils";
 
 pipe([3, 1, 4, 1, 5], Arr.sortWith(Ordering.reverse(Ordering.number)));
 // [5, 4, 3, 1, 1]
@@ -76,7 +78,9 @@ pipe(products, Arr.sortWith(byPrice)); // cheapest first
 original:
 
 ```ts
-import { Arr, Ordering, pipe } from "@nlozgachev/pipelined/core";
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Ordering } from "@nlozgachev/pipelined/core";
+import { Arr } from "@nlozgachev/pipelined/utils";
 
 type User = { name: string; age: number };
 const byAgeThenName = pipe(

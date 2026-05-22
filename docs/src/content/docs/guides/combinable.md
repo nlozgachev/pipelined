@@ -51,7 +51,8 @@ Combinable.array<number>().combine([3, 4])([1, 2]); // [1, 2, 3, 4]
 starting point and `combine` as the operation:
 
 ```ts
-import { Combinable, pipe } from "@nlozgachev/pipelined/core";
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Combinable } from "@nlozgachev/pipelined/core";
 
 pipe(["hello", ", ", "world"], Combinable.fold(Combinable.string)); // "hello, world"
 pipe([1, 2, 3, 4, 5], Combinable.fold(Combinable.sum));            // 15
@@ -66,7 +67,8 @@ element — combining with `None` on either side leaves the other value unchange
 combine their inner values using the inner `Combinable`:
 
 ```ts
-import { Combinable, Maybe, pipe } from "@nlozgachev/pipelined/core";
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Combinable, Maybe } from "@nlozgachev/pipelined/core";
 
 const c = Combinable.maybe(Combinable.sum);
 

@@ -15,7 +15,8 @@ JavaScript's built-in access functions silently return `undefined` when an eleme
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
-import { Arr, Maybe } from "@nlozgachev/pipelined/core";
+import { Maybe } from "@nlozgachev/pipelined/core";
+import { Arr } from "@nlozgachev/pipelined/utils";
 
 Arr.head([1, 2, 3]); // Some(1)
 Arr.head([]); // None

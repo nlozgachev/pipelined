@@ -24,7 +24,7 @@ first call to `Lazy.evaluate` — and the result is cached for every call after 
 Use `Lazy.from` to wrap any synchronous thunk:
 
 ```ts
-import { Lazy, pipe } from "@nlozgachev/pipelined/core";
+import { Lazy } from "@nlozgachev/pipelined/core";
 
 const config = Lazy.from(() => parseConfig(rawInput));
 ```

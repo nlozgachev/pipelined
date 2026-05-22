@@ -13,7 +13,8 @@ them in pipelines: data-last, curried, and returning `Maybe` wherever a key migh
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
-import { Maybe, Rec } from "@nlozgachev/pipelined/core";
+import { Maybe } from "@nlozgachev/pipelined/core";
+import { Rec } from "@nlozgachev/pipelined/utils";
 
 const settings = { theme: "dark", lang: "en" };
 

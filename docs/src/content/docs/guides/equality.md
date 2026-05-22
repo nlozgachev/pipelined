@@ -48,7 +48,8 @@ field to compare. Read it left-to-right: start with the inner equality (how to c
 extracted value), then apply `.by` (how to get that value from the outer type):
 
 ```ts
-import { Equality, pipe } from "@nlozgachev/pipelined/core";
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Equality } from "@nlozgachev/pipelined/core";
 
 type Product = { id: string; name: string; price: number };
 
@@ -79,7 +80,9 @@ exact({ name: "Alice", role: "admin" }, { name: "Alice", role: "user" });  // fa
 equality) or `Arr.uniqBy` (key extraction), `uniqWith` accepts any equality check:
 
 ```ts
-import { Arr, Equality, pipe } from "@nlozgachev/pipelined/core";
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Equality } from "@nlozgachev/pipelined/core";
+import { Arr } from "@nlozgachev/pipelined/utils";
 
 type Event = { userId: string; type: string };
 const byUserAndType = pipe(
