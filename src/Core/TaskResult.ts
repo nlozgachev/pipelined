@@ -1,4 +1,5 @@
 import { Deferred } from "./Deferred.ts";
+import { Maybe } from "./Maybe.ts";
 import { Result } from "./Result.ts";
 import { Task } from "./Task.ts";
 
@@ -27,6 +28,40 @@ export namespace TaskResult {
 	 * Creates a failed TaskResult with the given error.
 	 */
 	export const err = <E, A>(error: E): TaskResult<E, A> => Task.resolve(Result.error(error));
+
+	/**
+	 * Creates a TaskResult from a nullable value.
+	 * Returns Ok if the value is not null or undefined, error from onNull otherwise.
+	 */
+	export const fromNullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskResult<E, A> =>
+		Task.resolve(value === null || value === undefined ? Result.error(onNull()) : Result.ok(value));
+
+	/**
+	 * Creates a TaskResult from a Maybe.
+	 * Some becomes Ok, None becomes error from onNone.
+	 */
+	export const fromMaybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): TaskResult<E, A> =>
+		Task.resolve(Maybe.isNone(maybe) ? Result.error(onNone()) : Result.ok(maybe.value));
+
+	/**
+	 * Lifts a Result into a TaskResult.
+	 */
+	export const fromResult = <E, A>(result: Result<E, A>): TaskResult<E, A> => Task.resolve(result);
+
+	/**
+	 * Wraps a Promise-returning function of any arguments, returning a new function
+	 * that catches rejections and returns a TaskResult.
+	 */
+	export const fromThrowable = <Args extends readonly unknown[], A, E>(
+		f: (...args: Args) => Promise<A>,
+		onError: (e: unknown) => E,
+	) =>
+	(...args: Args): TaskResult<E, A> =>
+		Task.from(() =>
+			f(...args)
+				.then(Result.ok)
+				.catch((e) => Result.error(onError(e)))
+		);
 
 	/**
 	 * Creates a TaskResult from a function that may throw.

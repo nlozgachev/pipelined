@@ -1,5 +1,6 @@
 import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import { Maybe } from "../Maybe.ts";
 import { Result } from "../Result.ts";
 import { Validation } from "../Validation.ts";
 
@@ -716,4 +717,33 @@ test("Validation.fold — return type matches branch return types", () => {
 		(n: number): string => String(n),
 	)(v);
 	expectTypeOf(folded).toBeString();
+});
+
+// --- fromNullable ---
+
+test("Validation.fromNullable returns Valid for non-null values", () => {
+	const result = Validation.fromNullable(() => "is null")(42);
+	expect(result).toEqual(Validation.valid(42));
+});
+
+test("Validation.fromNullable returns Invalid for null", () => {
+	const result = Validation.fromNullable(() => "is null")(null);
+	expect(result).toEqual(Validation.invalid("is null"));
+});
+
+test("Validation.fromNullable returns Invalid for undefined", () => {
+	const result = Validation.fromNullable(() => "is null")(undefined);
+	expect(result).toEqual(Validation.invalid("is null"));
+});
+
+// --- fromMaybe ---
+
+test("Validation.fromMaybe returns Valid for Some", () => {
+	const result = Validation.fromMaybe(() => "is none")(Maybe.some(42));
+	expect(result).toEqual(Validation.valid(42));
+});
+
+test("Validation.fromMaybe returns Invalid for None", () => {
+	const result = Validation.fromMaybe(() => "is none")(Maybe.none());
+	expect(result).toEqual(Validation.invalid("is none"));
 });

@@ -1,5 +1,6 @@
 import { pipe } from "#composition/pipe.ts";
 import { Maybe } from "#core/Maybe.ts";
+import { Result } from "#core/Result.ts";
 import { expect, test } from "vitest";
 import { Str } from "../Str.ts";
 
@@ -355,4 +356,34 @@ test("Str pipe composition - trim then split then toUpperCase each word", () => 
 		(words) => words.map(Str.toUpperCase),
 	);
 	expect(result).toEqual(["HELLO", "WORLD"]);
+});
+
+// ---------------------------------------------------------------------------
+// parseJson
+// ---------------------------------------------------------------------------
+
+test("Str.parseJson returns Ok for valid JSON object", () => {
+	const result = Str.parseJson('{"name":"Alice","age":30}');
+	expect(result).toEqual(Result.ok({ name: "Alice", age: 30 }));
+});
+
+test("Str.parseJson returns Ok for valid JSON array", () => {
+	const result = Str.parseJson("[1,2,3]");
+	expect(result).toEqual(Result.ok([1, 2, 3]));
+});
+
+test("Str.parseJson returns Ok for valid JSON primitives", () => {
+	expect(Str.parseJson('"hello"')).toEqual(Result.ok("hello"));
+	expect(Str.parseJson("42")).toEqual(Result.ok(42));
+});
+
+test("Str.parseJson returns Error with SyntaxError for invalid JSON", () => {
+	const result = Str.parseJson("{not json}");
+	const error = Result.fold((e: unknown) => e, () => null)(result);
+	expect(error).toBeInstanceOf(SyntaxError);
+});
+
+test("Str.parseJson returns Ok for empty object", () => {
+	const result = Str.parseJson("{}");
+	expect(result).toEqual(Result.ok({}));
 });

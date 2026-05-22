@@ -210,6 +210,73 @@ export namespace Arr {
 		};
 
 	/**
+	 * Narrows a list of Maybe values down to a list of their underlying values,
+	 * discarding all None instances.
+	 *
+	 * @example
+	 * ```ts
+	 * Arr.compact([Maybe.some(1), Maybe.none(), Maybe.some(3)]); // [1, 3]
+	 * ```
+	 */
+	export const compact = <A>(data: readonly Maybe<A>[]): readonly A[] => {
+		const result: A[] = [];
+		for (const item of data) {
+			if (item.kind === "Some") {
+				result.push(item.value);
+			}
+		}
+		return result;
+	};
+
+	/**
+	 * Separates an array of Result values into two separate lists of errors and successes.
+	 * Returns a tuple containing `[errors, successes]`.
+	 *
+	 * @example
+	 * ```ts
+	 * Arr.separate([Result.ok(1), Result.error("bad"), Result.ok(3)]); // [["bad"], [1, 3]]
+	 * ```
+	 */
+	export const separate = <E, A>(data: readonly Result<E, A>[]): readonly [readonly E[], readonly A[]] => {
+		const errors: E[] = [];
+		const successes: A[] = [];
+		for (const item of data) {
+			if (item.kind === "Ok") {
+				successes.push(item.value);
+			} else {
+				errors.push(item.error);
+			}
+		}
+		return [errors, successes];
+	};
+
+	/**
+	 * Maps each element to a Result, and separates the results into a tuple of failures and successes.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   [1, 2, 3, 4],
+	 *   Arr.partitionMap(n => n % 2 === 0 ? Result.ok(n) : Result.error(`odd: ${n}`))
+	 * ); // [["odd: 1", "odd: 3"], [2, 4]]
+	 * ```
+	 */
+	export const partitionMap =
+		<A, E, B>(f: (a: A) => Result<E, B>) => (data: readonly A[]): readonly [readonly E[], readonly B[]] => {
+			const errors: E[] = [];
+			const successes: B[] = [];
+			for (const item of data) {
+				const mapped = f(item);
+				if (mapped.kind === "Ok") {
+					successes.push(mapped.value);
+				} else {
+					errors.push(mapped.error);
+				}
+			}
+			return [errors, successes];
+		};
+
+	/**
 	 * Groups elements by a key function.
 	 *
 	 * @example

@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import { Maybe } from "../Maybe.ts";
 import { Result } from "../Result.ts";
 
 // ---------------------------------------------------------------------------
@@ -590,4 +591,51 @@ test("Result.fold — type-safe return type from both branches", () => {
 		(n: number): string => `ok:${n}`,
 	)(r);
 	expect(result).toBe("ok:1");
+});
+
+// --- fromNullable ---
+
+test("Result.fromNullable returns Ok for non-null values", () => {
+	const result = Result.fromNullable(() => "is null")(42);
+	expect(result).toEqual(Result.ok(42));
+});
+
+test("Result.fromNullable returns Err for null", () => {
+	const result = Result.fromNullable(() => "is null")(null);
+	expect(result).toEqual(Result.error("is null"));
+});
+
+test("Result.fromNullable returns Err for undefined", () => {
+	const result = Result.fromNullable(() => "is null")(undefined);
+	expect(result).toEqual(Result.error("is null"));
+});
+
+// --- fromMaybe ---
+
+test("Result.fromMaybe returns Ok for Some", () => {
+	const result = Result.fromMaybe(() => "is none")(Maybe.some(42));
+	expect(result).toEqual(Result.ok(42));
+});
+
+test("Result.fromMaybe returns Err for None", () => {
+	const result = Result.fromMaybe(() => "is none")(Maybe.none());
+	expect(result).toEqual(Result.error("is none"));
+});
+
+// --- fromThrowable ---
+
+test("Result.fromThrowable creates a safe function that returns Ok when it succeeds", () => {
+	const parse = Result.fromThrowable(
+		(s: string) => JSON.parse(s),
+		(e) => `error: ${(e as Error).message}`,
+	);
+	expect(parse('{"a":1}')).toEqual(Result.ok({ a: 1 }));
+});
+
+test("Result.fromThrowable creates a safe function that returns Err when it throws", () => {
+	const parse = Result.fromThrowable(
+		(s: string) => JSON.parse(s),
+		() => "parse error",
+	);
+	expect(parse("invalid")).toEqual(Result.error("parse error"));
 });

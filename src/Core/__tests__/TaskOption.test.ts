@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Maybe } from "../Maybe.ts";
+import { Result } from "../Result.ts";
 import { Task } from "../Task.ts";
 import { TaskMaybe } from "../TaskMaybe.ts";
 
@@ -390,4 +391,33 @@ test("TaskMaybe pipe short-circuits on None", async () => {
 		TaskMaybe.getOrElse(() => 0),
 	)();
 	expect(result).toBe(0);
+});
+
+// --- fromNullable ---
+
+test("TaskMaybe.fromNullable returns Some for non-null value", async () => {
+	const result = await TaskMaybe.fromNullable(42)();
+	expect(result).toEqual(Maybe.some(42));
+});
+
+test("TaskMaybe.fromNullable returns None for null", async () => {
+	const result = await TaskMaybe.fromNullable(null)();
+	expect(result).toEqual(Maybe.none());
+});
+
+test("TaskMaybe.fromNullable returns None for undefined", async () => {
+	const result = await TaskMaybe.fromNullable(undefined)();
+	expect(result).toEqual(Maybe.none());
+});
+
+// --- fromResult ---
+
+test("TaskMaybe.fromResult returns Some for Ok", async () => {
+	const result = await TaskMaybe.fromResult(Result.ok(42))();
+	expect(result).toEqual(Maybe.some(42));
+});
+
+test("TaskMaybe.fromResult returns None for Error", async () => {
+	const result = await TaskMaybe.fromResult(Result.error("bad"))();
+	expect(result).toEqual(Maybe.none());
 });

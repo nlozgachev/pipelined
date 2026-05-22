@@ -209,6 +209,59 @@ export namespace Result {
 	(a: A): Result<E, A> => pred(a) ? ok(a) : error(onFalse(a));
 
 	/**
+	 * Creates a Result from a nullable value.
+	 * Returns Ok if the value is not null or undefined, error from onNull otherwise.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(null, Result.fromNullable(() => "is null")); // Error("is null")
+	 * pipe(42, Result.fromNullable(() => "is null"));   // Ok(42)
+	 * ```
+	 */
+	export const fromNullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): Result<E, A> =>
+		value === null || value === undefined ? error(onNull()) : ok(value);
+
+	/**
+	 * Creates a Result from a Maybe.
+	 * Some becomes Ok, None becomes error from onNone.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Maybe.none(), Result.fromMaybe(() => "is none")); // Error("is none")
+	 * pipe(Maybe.some(42), Result.fromMaybe(() => "is none")); // Ok(42)
+	 * ```
+	 */
+	export const fromMaybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): Result<E, A> =>
+		Maybe.isNone(maybe) ? error(onNone()) : ok(maybe.value);
+
+	/**
+	 * Wraps a throwing function of any arguments, returning a new function
+	 * that catches errors and returns a Result.
+	 *
+	 * @example
+	 * ```ts
+	 * const safeParse = Result.fromThrowable(
+	 *   (s: string) => JSON.parse(s),
+	 *   (e) => new Error(`Parse error: ${e}`)
+	 * );
+	 *
+	 * safeParse('{"a":1}'); // Ok({ a: 1 })
+	 * safeParse('invalid');  // Error(Error)
+	 * ```
+	 */
+	export const fromThrowable = <Args extends readonly unknown[], A, E>(
+		f: (...args: Args) => A,
+		onError: (e: unknown) => E,
+	) =>
+	(...args: Args): Result<E, A> => {
+		try {
+			return ok(f(...args));
+		} catch (e) {
+			return error(onError(e));
+		}
+	};
+
+	/**
 	 * Recovers from an error by providing a fallback Result.
 	 * The fallback can produce a different success type, widening the result to `Result<E, A | B>`.
 	 */

@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Deferred } from "../Deferred.ts";
+import { Maybe } from "../Maybe.ts";
 import { Result } from "../Result.ts";
 import { TaskResult } from "../TaskResult.ts";
 
@@ -618,4 +619,65 @@ test("TaskResult.run composes naturally at the end of a pipe chain", async () =>
 		TaskResult.run(),
 	);
 	expect(result).toEqual({ kind: "Ok", value: 20 });
+});
+
+// --- fromNullable ---
+
+test("TaskResult.fromNullable returns Ok for non-null value", async () => {
+	const result = await TaskResult.fromNullable(() => "is null")(42)();
+	expect(result).toEqual(Result.ok(42));
+});
+
+test("TaskResult.fromNullable returns Err for null", async () => {
+	const result = await TaskResult.fromNullable(() => "is null")(null)();
+	expect(result).toEqual(Result.error("is null"));
+});
+
+test("TaskResult.fromNullable returns Err for undefined", async () => {
+	const result = await TaskResult.fromNullable(() => "is null")(undefined)();
+	expect(result).toEqual(Result.error("is null"));
+});
+
+// --- fromMaybe ---
+
+test("TaskResult.fromMaybe returns Ok for Some", async () => {
+	const result = await TaskResult.fromMaybe(() => "is none")(Maybe.some(42))();
+	expect(result).toEqual(Result.ok(42));
+});
+
+test("TaskResult.fromMaybe returns Err for None", async () => {
+	const result = await TaskResult.fromMaybe(() => "is none")(Maybe.none())();
+	expect(result).toEqual(Result.error("is none"));
+});
+
+// --- fromResult ---
+
+test("TaskResult.fromResult returns Ok for Ok", async () => {
+	const result = await TaskResult.fromResult(Result.ok(42))();
+	expect(result).toEqual(Result.ok(42));
+});
+
+test("TaskResult.fromResult returns Err for Err", async () => {
+	const result = await TaskResult.fromResult(Result.error("bad"))();
+	expect(result).toEqual(Result.error("bad"));
+});
+
+// --- fromThrowable ---
+
+test("TaskResult.fromThrowable returns Ok when it succeeds", async () => {
+	const parse = TaskResult.fromThrowable(
+		(s: string) => Promise.resolve(JSON.parse(s)),
+		() => "parse error",
+	);
+	const result = await parse('{"a":1}')();
+	expect(result).toEqual(Result.ok({ a: 1 }));
+});
+
+test("TaskResult.fromThrowable returns Err when it throws", async () => {
+	const fetch = TaskResult.fromThrowable(
+		(_url: string) => Promise.reject(new Error("network error")),
+		(e) => (e as Error).message,
+	);
+	const result = await fetch("/api")();
+	expect(result).toEqual(Result.error("network error"));
 });

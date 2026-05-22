@@ -105,6 +105,34 @@ export namespace Validation {
 	(a: A): Validation<E, A> => pred(a) ? valid(a) : invalid(onFalse(a));
 
 	/**
+	 * Creates a Validation from a nullable value.
+	 * If the value is null or undefined, returns Invalid with the error from onNull.
+	 * Otherwise, returns Valid.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(null, Validation.fromNullable(() => "is null")); // Invalid(["is null"])
+	 * pipe(42, Validation.fromNullable(() => "is null"));   // Valid(42)
+	 * ```
+	 */
+	export const fromNullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): Validation<E, A> =>
+		value === null || value === undefined ? invalid(onNull()) : valid(value);
+
+	/**
+	 * Creates a Validation from a Maybe.
+	 * If the Maybe is None, returns Invalid with the error from onNone.
+	 * Otherwise, returns Valid.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Maybe.none(), Validation.fromMaybe(() => "is none")); // Invalid(["is none"])
+	 * pipe(Maybe.some(42), Validation.fromMaybe(() => "is none")); // Valid(42)
+	 * ```
+	 */
+	export const fromMaybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): Validation<E, A> =>
+		Maybe.isNone(maybe) ? invalid(onNone()) : valid(maybe.value);
+
+	/**
 	 * Transforms the success value inside a Validation.
 	 *
 	 * @example

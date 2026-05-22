@@ -1,6 +1,8 @@
 import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Deferred } from "../Deferred.ts";
+import { Maybe } from "../Maybe.ts";
+import { Result } from "../Result.ts";
 import { TaskValidation } from "../TaskValidation.ts";
 import { Validation } from "../Validation.ts";
 
@@ -473,4 +475,45 @@ test("TaskValidation.productAll propagates the AbortSignal down to all validatio
 
 	expect(signal1).toBe(controller.signal);
 	expect(signal2).toBe(controller.signal);
+});
+
+// --- fromNullable ---
+
+test("TaskValidation.fromNullable returns Valid for non-null value", async () => {
+	const result = await TaskValidation.fromNullable(() => "is null")(42)();
+	expect(result).toEqual(Validation.valid(42));
+});
+
+test("TaskValidation.fromNullable returns Invalid for null", async () => {
+	const result = await TaskValidation.fromNullable(() => "is null")(null)();
+	expect(result).toEqual(Validation.invalid("is null"));
+});
+
+test("TaskValidation.fromNullable returns Invalid for undefined", async () => {
+	const result = await TaskValidation.fromNullable(() => "is null")(undefined)();
+	expect(result).toEqual(Validation.invalid("is null"));
+});
+
+// --- fromMaybe ---
+
+test("TaskValidation.fromMaybe returns Valid for Some", async () => {
+	const result = await TaskValidation.fromMaybe(() => "is none")(Maybe.some(42))();
+	expect(result).toEqual(Validation.valid(42));
+});
+
+test("TaskValidation.fromMaybe returns Invalid for None", async () => {
+	const result = await TaskValidation.fromMaybe(() => "is none")(Maybe.none())();
+	expect(result).toEqual(Validation.invalid("is none"));
+});
+
+// --- fromResult ---
+
+test("TaskValidation.fromResult returns Valid for Ok", async () => {
+	const result = await TaskValidation.fromResult(Result.ok(42))();
+	expect(result).toEqual(Validation.valid(42));
+});
+
+test("TaskValidation.fromResult returns Invalid for Err", async () => {
+	const result = await TaskValidation.fromResult(Result.error("bad"))();
+	expect(result).toEqual(Validation.invalid("bad"));
 });

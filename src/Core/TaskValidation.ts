@@ -1,5 +1,7 @@
 import { NonEmptyList } from "#types/NonEmptyList.ts";
 import { Deferred } from "./Deferred.ts";
+import { Maybe } from "./Maybe.ts";
+import { Result } from "./Result.ts";
 import { Task } from "./Task.ts";
 import { Validation } from "./Validation.ts";
 
@@ -50,6 +52,28 @@ export namespace TaskValidation {
 	export const fromValidation = <E, A>(
 		validation: Validation<E, A>,
 	): TaskValidation<E, A> => Task.resolve(validation);
+
+	/**
+	 * Creates a TaskValidation from a nullable value.
+	 * If the value is null or undefined, returns Invalid with the error from onNull.
+	 * Otherwise, returns Valid.
+	 */
+	export const fromNullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskValidation<E, A> =>
+		Task.resolve(value === null || value === undefined ? Validation.invalid(onNull()) : Validation.valid(value));
+
+	/**
+	 * Creates a TaskValidation from a Maybe.
+	 * Some becomes Valid, None becomes Invalid with the error from onNone.
+	 */
+	export const fromMaybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): TaskValidation<E, A> =>
+		Task.resolve(Maybe.isNone(maybe) ? Validation.invalid(onNone()) : Validation.valid(maybe.value));
+
+	/**
+	 * Creates a TaskValidation from a Result.
+	 * Ok becomes Valid, Error(e) becomes Invalid([e]).
+	 */
+	export const fromResult = <E, A>(result: Result<E, A>): TaskValidation<E, A> =>
+		Task.resolve(Validation.fromResult(result));
 
 	/**
 	 * Creates a TaskValidation from a Promise-returning function.

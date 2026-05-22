@@ -853,3 +853,65 @@ test("Task.repeatUntil resolves early with the last value if aborted", async () 
 	const result = await repeated(controller.signal);
 	expect(result).toBe(2);
 });
+
+// ---------------------------------------------------------------------------
+// sequence
+// ---------------------------------------------------------------------------
+
+test("Task.sequence runs tasks concurrently and collects results", async () => {
+	const order: number[] = [];
+	const t1 = Task.from<number>(
+		() =>
+			new Promise((r) =>
+				setTimeout(() => {
+					order.push(1);
+					r(1);
+				}, 30)
+			),
+	);
+	const t2 = Task.from<number>(
+		() =>
+			new Promise((r) =>
+				setTimeout(() => {
+					order.push(2);
+					r(2);
+				}, 10)
+			),
+	);
+	const t3 = Task.from<number>(
+		() =>
+			new Promise((r) =>
+				setTimeout(() => {
+					order.push(3);
+					r(3);
+				}, 20)
+			),
+	);
+
+	const result = await Task.sequence([t1, t2, t3])();
+
+	// Results are in input order despite different completion times
+	expect(result).toEqual([1, 2, 3]);
+	// Execution order proves concurrency — fastest finishes first
+	expect(order).toEqual([2, 3, 1]);
+});
+
+test("Task.sequence returns empty array for empty input", async () => {
+	const result = await Task.sequence([])();
+	expect(result).toEqual([]);
+});
+
+test("Task.sequence forwards the AbortSignal to all tasks", async () => {
+	const controller = new AbortController();
+	const signals: Array<AbortSignal | undefined> = [];
+
+	const makeTask = () =>
+		Task.from<number>((signal) => {
+			signals.push(signal);
+			return Promise.resolve(1);
+		});
+
+	await Task.sequence([makeTask(), makeTask(), makeTask()])(controller.signal);
+
+	expect(signals).toEqual([controller.signal, controller.signal, controller.signal]);
+});

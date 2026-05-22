@@ -1,5 +1,6 @@
 import { Deferred } from "./Deferred.ts";
 import { Maybe } from "./Maybe.ts";
+import { Result } from "./Result.ts";
 import { Task } from "./Task.ts";
 import { TaskResult } from "./TaskResult.ts";
 
@@ -36,6 +37,18 @@ export namespace TaskMaybe {
 	 * Lifts an Option into a TaskMaybe.
 	 */
 	export const fromMaybe = <A>(option: Maybe<A>): TaskMaybe<A> => Task.resolve(option);
+
+	/**
+	 * Creates a TaskMaybe from a nullable value.
+	 * Returns Some if the value is not null or undefined, None otherwise.
+	 */
+	export const fromNullable = <A>(value: A | null | undefined): TaskMaybe<A> => Task.resolve(Maybe.fromNullable(value));
+
+	/**
+	 * Creates a TaskMaybe from a Result.
+	 * Ok becomes Some, Error becomes None (the error value is discarded).
+	 */
+	export const fromResult = <E, A>(result: Result<E, A>): TaskMaybe<A> => Task.resolve(Result.toMaybe(result));
 
 	/**
 	 * Lifts a Task into a TaskMaybe by wrapping its result in Some.

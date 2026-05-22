@@ -105,6 +105,7 @@ export default defineConfig({
 						{ label: "Optional — nullable paths", slug: "guides/optional" },
 						{ label: "Reader — deferred dependencies", slug: "guides/reader" },
 						{ label: "Brand — distinguishing values", slug: "guides/brand" },
+						{ label: "Duration — type-safe time", slug: "guides/duration" },
 						{
 							label: "Refinement — type predicates",
 							slug: "guides/refinement",

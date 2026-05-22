@@ -1266,3 +1266,75 @@ test("sortWith - does not mutate the original array", () => {
 test("sortWith - returns empty array for empty input", () => {
 	expect(pipe([] as number[], Arr.sortWith(Ordering.number))).toEqual([]);
 });
+
+// =============================================================================
+// compact
+// =============================================================================
+
+test("Arr.compact extracts values from Some and discards None", () => {
+	const input = [Maybe.some(1), Maybe.none(), Maybe.some(2), Maybe.none(), Maybe.some(3)];
+	expect(Arr.compact(input)).toEqual([1, 2, 3]);
+});
+
+test("Arr.compact returns empty array for all None", () => {
+	const input = [Maybe.none(), Maybe.none(), Maybe.none()];
+	expect(Arr.compact(input)).toEqual([]);
+});
+
+test("Arr.compact returns all values when no None present", () => {
+	const input = [Maybe.some("a"), Maybe.some("b"), Maybe.some("c")];
+	expect(Arr.compact(input)).toEqual(["a", "b", "c"]);
+});
+
+// =============================================================================
+// separate
+// =============================================================================
+
+test("Arr.separate splits Results into errors and successes", () => {
+	const input = [Result.ok(1), Result.error("bad"), Result.ok(2), Result.error("worse")];
+	expect(Arr.separate(input)).toEqual([["bad", "worse"], [1, 2]]);
+});
+
+test("Arr.separate returns empty arrays for empty input", () => {
+	expect(Arr.separate([])).toEqual([[], []]);
+});
+
+test("Arr.separate returns only errors when all are Error", () => {
+	const input = [Result.error("a"), Result.error("b")];
+	expect(Arr.separate(input)).toEqual([["a", "b"], []]);
+});
+
+test("Arr.separate returns only successes when all are Ok", () => {
+	const input = [Result.ok(1), Result.ok(2), Result.ok(3)];
+	expect(Arr.separate(input)).toEqual([[], [1, 2, 3]]);
+});
+
+// =============================================================================
+// partitionMap
+// =============================================================================
+
+test("Arr.partitionMap maps and separates in one pass", () => {
+	const classify = (n: number): Result<string, number> =>
+		n > 0 ? Result.ok(n * 10) : Result.error(`${n} is not positive`);
+	const result = pipe([1, -2, 3, -4], Arr.partitionMap(classify));
+	expect(result).toEqual([["-2 is not positive", "-4 is not positive"], [10, 30]]);
+});
+
+test("Arr.partitionMap returns empty arrays for empty input", () => {
+	const result = pipe(
+		[] as number[],
+		Arr.partitionMap((n) => Result.ok(n)),
+	);
+	expect(result).toEqual([[], []]);
+});
+
+test("Arr.partitionMap composes in pipe", () => {
+	const result = pipe(
+		["1", "abc", "3", "def"],
+		Arr.partitionMap((s) => {
+			const n = Number(s);
+			return isNaN(n) ? Result.error(s) : Result.ok(n);
+		}),
+	);
+	expect(result).toEqual([["abc", "def"], [1, 3]]);
+});

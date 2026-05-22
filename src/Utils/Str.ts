@@ -1,4 +1,5 @@
 import { Maybe } from "#core/Maybe.ts";
+import { Result } from "#core/Result.ts";
 
 /**
  * String utilities. All transformation functions are data-last and curried so they
@@ -242,5 +243,22 @@ export namespace Str {
 			const n = parseFloat(s);
 			return isNaN(n) ? Maybe.none() : Maybe.some(n);
 		},
+	};
+
+	/**
+	 * Safely parses a JSON string, returning a `Result<SyntaxError, unknown>`.
+	 *
+	 * @example
+	 * ```ts
+	 * Str.parseJson('{"a": 1}'); // Ok({ a: 1 })
+	 * Str.parseJson('invalid');  // Error(SyntaxError)
+	 * ```
+	 */
+	export const parseJson = (s: string): Result<SyntaxError, unknown> => {
+		try {
+			return Result.ok(JSON.parse(s));
+		} catch (e) {
+			return Result.error(e as SyntaxError);
+		}
 	};
 }
