@@ -277,8 +277,8 @@ processing that stops at the first error, use `traverseTaskResult` instead:
 ```ts
 pipe(
   userIds,
-  Arr.traverseTask((id) => fetchUser(id)),
-)(); // Promise<User[]> — all fetches run in parallel
+  Arr.traverseTask((id) => loadUser(id)),
+)(); // Promise<User[]> — all tasks run in parallel
 ```
 
 **`traverseTaskResult`** — maps to `TaskResult` and runs sequentially, short-circuiting on the

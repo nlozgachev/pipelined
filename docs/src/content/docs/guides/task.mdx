@@ -189,7 +189,7 @@ next call starts fresh:
 
 ```ts
 const { task: searchUsers, abort } = Task.abortable(
-  (signal) => fetch(`/users?q=${query}`, { signal }).then((r) => r.json()),
+  (signal) => searchLocalIndex(query, signal),
 );
 
 // User types quickly — each keystroke cancels the previous request

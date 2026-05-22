@@ -209,12 +209,12 @@ can produce a different success type, widening the result to `Result<E, A | B>`:
 
 ```ts
 pipe(
-  fetchFromPrimary(url),
+  readFromPrimaryDisk(path),
   Result.recover((e) => {
     console.warn("Primary failed:", e);
-    return fetchFromFallback(url);
+    return readFromFallbackDisk(path);
   }),
-  Result.getOrElse(() => cachedValue),
+  Result.getOrElse(() => defaultContent),
 );
 ```
 

@@ -25,7 +25,7 @@ const updated = user.address
   : user; // do nothing if address isn't there
 ```
 
-`Optional<S, A>` closes that gap. It is a path through your data that accepts the path might
+`Optional<S, A>` closes that gap. It describes a path through your data that accepts the path might
 not reach anything. Reads return `Maybe<A>` instead of `A`. Writes and modifications are
 no-ops when the path finds nothing — no conditional required.
 
@@ -179,7 +179,11 @@ pipe(
 );
 ```
 
-## Lens vs Optional — when to use which
+## When to use Optional
+
+Use `Optional` when you need to read, write, or modify deep nested structures where some of the keys or paths might be absent (e.g., optional properties declared with `?` or array elements by index). While standard optional chaining (`user.address?.city`) only supports read-only operations, an `Optional` acts as a two-way path supporting updates and modifications without nesting manual conditionals.
+
+To decide between a lens and an optional, follow this guide:
 
 | Situation                                      | Use                                         |
 | ---------------------------------------------- | ------------------------------------------- |
