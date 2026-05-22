@@ -122,6 +122,22 @@ export default defineConfig({
 							label: "Uniq — unique collection utilities",
 							slug: "guides/uniq",
 						},
+						{
+							label: "Lazy — memoized values",
+							slug: "guides/lazy",
+						},
+						{
+							label: "Equality — custom equality",
+							slug: "guides/equality",
+						},
+						{
+							label: "Ordering — typed comparators",
+							slug: "guides/ordering",
+						},
+						{
+							label: "Combinable — combining values",
+							slug: "guides/combinable",
+						},
 					],
 				},
 				{

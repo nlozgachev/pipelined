@@ -9,7 +9,7 @@ as data-last curried functions, plus two safe parsers that return `Maybe` instea
 
 ## Transforming case
 
-`Str.toUpperCase` and `Str.toLowerCase` are direct data-last wrappers — pass them to `pipe` or
+`Str.toUpperCase`, `Str.toLowerCase`, and `Str.capitalize` are direct data-last wrappers — pass them to `pipe` or
 `Arr.map`:
 
 ```ts
@@ -18,8 +18,9 @@ import { Arr, Str } from "@nlozgachev/pipelined/utils";
 
 pipe("hello", Str.toUpperCase); // "HELLO"
 pipe("WORLD", Str.toLowerCase); // "world"
+pipe("hello world", Str.capitalize); // "Hello world"
 
-pipe(["alice", "bob"], Arr.map(Str.toUpperCase)); // ["ALICE", "BOB"]
+pipe(["alice", "bob"], Arr.map(Str.capitalize)); // ["Alice", "Bob"]
 ```
 
 ## Cleaning input with `trim`

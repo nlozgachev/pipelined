@@ -117,6 +117,39 @@ pipe(
 ); // a clamped byte value, defaulting to 0 for bad input
 ```
 
+## Collection statistics and folding
+
+When working with arrays of numbers, you often need to calculate aggregate statistics. `Num` provides safe folds for sums, averages, and bounds that handle empty collections without throwing exceptions or returning raw `Infinity`/`-Infinity` values:
+
+- `Num.sum` computes the total sum of a collection. It returns `0` if the collection is empty.
+- `Num.mean` calculates the average. It returns `Maybe<number>` (`None` if the collection is empty, avoiding division by zero).
+- `Num.min` and `Num.max` find the smallest and largest values, respectively. They return `Maybe<number>` (`None` if the collection is empty, avoiding JavaScript's default `Infinity` fallbacks).
+
+```ts
+Num.sum([10, 20, 30]); // 60
+Num.sum([]);          // 0
+
+Num.mean([10, 20, 30]); // Some(20)
+Num.mean([]);          // None
+
+Num.min([5, 12, 3]); // Some(3)
+Num.min([]);        // None
+
+Num.max([5, 12, 3]); // Some(12)
+Num.max([]);        // None
+```
+
+These utilities fit perfectly in pipelines that process measurements, prices, or user scores:
+
+```ts
+const averageScore = pipe(
+  gameSessions,
+  Arr.map(session => session.score),
+  Num.mean,
+  Maybe.getOrElse(() => 0),
+); // safe average score, returning 0 if no sessions played
+```
+
 ## Composing it all
 
 `Num` functions are designed to appear as steps in a `pipe` chain alongside `Arr` operations.
@@ -127,10 +160,11 @@ pipe(
   Num.range(1, 20), // [1 .. 20]
   Arr.map(Num.multiply(3)), // [3, 6, 9, ..., 60]
   Arr.filter(Num.between(10, 40)),
-  Arr.reduce(0, Num.add), // sums all values — Num.add(acc)(val) = acc + val
-); // 10+12+15+18+21+24+27+30+33+36+39 = ?
+  Num.sum,
+); // sums all values in the filtered range
 ```
 
+```
 ## When to use Num
 
 Use `Num` when:
@@ -145,3 +179,4 @@ Keep using plain arithmetic operators when:
 
 - The expression is a one-off inside a function body where readability is not improved by naming
 - You don't need to compose the operation in a pipeline
+```
