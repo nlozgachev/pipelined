@@ -1270,7 +1270,7 @@ test("sortWith - returns empty array for empty input", () => {
 test("sortWith - falls back to sort when toSorted is unavailable", () => {
 	const original = Array.prototype.toSorted;
 	// Simulate a runtime without Array.prototype.toSorted.
-	delete (Array.prototype as { toSorted?: unknown }).toSorted;
+	delete (Array.prototype as { toSorted?: unknown; }).toSorted;
 	try {
 		const data = [3, 1, 2];
 		const result = pipe(data, Arr.sortWith(Ordering.number));
