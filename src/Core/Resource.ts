@@ -90,13 +90,16 @@ export namespace Resource {
 	 * ```
 	 */
 	export const use = <E, A, B>(f: (a: A) => TaskResult<E, B>) => (resource: Resource<E, A>): TaskResult<E, B> =>
-		Task.from(() =>
-			Deferred.toPromise(resource.acquire()).then(async (acquired) => {
+		Task.from((signal) =>
+			Deferred.toPromise(resource.acquire(signal)).then(async (acquired) => {
 				if (Result.isError(acquired)) return acquired as Result<E, B>;
 				const a = acquired.value;
-				const usageResult = await Deferred.toPromise(f(a)());
-				await Deferred.toPromise(resource.release(a)());
-				return usageResult;
+				try {
+					const usageResult = await Deferred.toPromise(f(a)(signal));
+					return usageResult;
+				} finally {
+					await Deferred.toPromise(resource.release(a)(signal));
+				}
 			})
 		);
 
@@ -121,14 +124,14 @@ export namespace Resource {
 		resourceA: Resource<E, A>,
 		resourceB: Resource<E, B>,
 	): Resource<E, readonly [A, B]> => ({
-		acquire: Task.from(() =>
-			Deferred.toPromise(resourceA.acquire()).then(async (acquiredA) => {
+		acquire: Task.from((signal) =>
+			Deferred.toPromise(resourceA.acquire(signal)).then(async (acquiredA) => {
 				if (Result.isError(acquiredA)) return acquiredA as Result<E, readonly [A, B]>;
 				const a = acquiredA.value;
 
-				const acquiredB = await Deferred.toPromise(resourceB.acquire());
+				const acquiredB = await Deferred.toPromise(resourceB.acquire(signal));
 				if (Result.isError(acquiredB)) {
-					await Deferred.toPromise(resourceA.release(a)());
+					await Deferred.toPromise(resourceA.release(a)(signal));
 					return acquiredB as Result<E, readonly [A, B]>;
 				}
 
@@ -136,6 +139,8 @@ export namespace Resource {
 			})
 		),
 		release: ([a, b]) =>
-			Task.from(() => Deferred.toPromise(resourceB.release(b)()).then(() => Deferred.toPromise(resourceA.release(a)()))),
+			Task.from((signal) =>
+				Deferred.toPromise(resourceB.release(b)(signal)).then(() => Deferred.toPromise(resourceA.release(a)(signal)))
+			),
 	});
 }

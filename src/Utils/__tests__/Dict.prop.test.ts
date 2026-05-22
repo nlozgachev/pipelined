@@ -1,6 +1,6 @@
+import { Maybe } from "#core/Maybe.ts";
 import fc from "fast-check";
 import { expect, test } from "vitest";
-import { Maybe } from "#core/Maybe.ts";
 import { Dict } from "../Dict.ts";
 
 // ---------------------------------------------------------------------------

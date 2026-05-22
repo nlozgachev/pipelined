@@ -9,28 +9,32 @@ The library is split into four entry points. Each is independently importable.
 
 import from `@nlozgachev/pipelined/core`
 
-| Type                                                    | Description                                                                       |
-| ------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| [Maybe](/api/core/type-aliases/maybe)                   | A value that may or may not exist. Replaces `T \| null \| undefined`.             |
-| [Result](/api/core/type-aliases/result)                 | An operation that succeeds with a value or fails with an error.                   |
-| [Op](/api/core/type-aliases/op)                         | A reusable async operation with typed outcomes and managed execution.             |
-| [Validation](/api/core/type-aliases/validation)         | Like Result, but accumulates all errors instead of stopping at the first.         |
-| [Task](/api/core/type-aliases/task)                     | A lazy, infallible async operation.                                               |
-| [TaskResult](/api/core/type-aliases/taskresult)         | A lazy async operation that can fail.                                             |
-| [TaskMaybe](/api/core/type-aliases/taskoption)          | A lazy async operation that may return nothing.                                   |
-| [TaskValidation](/api/core/type-aliases/taskvalidation) | A lazy async operation that accumulates errors.                                   |
-| [RemoteData](/api/core/type-aliases/remotedata)         | The four states of a data fetch: NotAsked, Loading, Failure, Success.             |
-| [Deferred](/api/core/type-aliases/deferred)             | A minimal async value that always resolves — no rejection handling needed.        |
-| [These](/api/core/type-aliases/these)                   | An inclusive-OR: holds a first value, a second value, or both simultaneously.     |
-| [Tuple](/api/core/type-aliases/tuple)                   | A typed pair where both values are always present.                                |
-| [Lens](/api/core/type-aliases/lens)                     | Focus on and immutably update a required nested field.                            |
-| [Optional](/api/core/type-aliases/optional)             | Focus on and update an optional nested field or array index.                      |
-| [Reader](/api/core/type-aliases/reader)                 | Computations that read from a shared environment without threading it everywhere. |
-| [State](/api/core/type-aliases/state)                   | Thread mutable state through a pipeline without explicit passing.                 |
-| [Logged](/api/core/type-aliases/logged)                 | A value paired with an accumulated log; thread logs through a pipeline.           |
-| [Predicate](/api/core/type-aliases/predicate)           | Composable boolean checks; combine with `and`, `or`, `not`.                       |
-| [Refinement](/api/core/type-aliases/refinement)         | Type predicates with runtime validation; narrows a broad type to a specific one.  |
-| [Resource](/api/core/type-aliases/resource)             | Safe acquire-use-release lifecycle; guarantees cleanup even when errors occur.    |
+| Type                                                    | Description                                                                             |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [Maybe](/api/core/type-aliases/maybe)                   | A value that may or may not exist. Replaces `T \| null \| undefined`.                   |
+| [Result](/api/core/type-aliases/result)                 | An operation that succeeds with a value or fails with an error.                         |
+| [Op](/api/core/type-aliases/op)                         | A reusable async operation with typed outcomes and managed execution.                   |
+| [Validation](/api/core/type-aliases/validation)         | Like Result, but accumulates all errors instead of stopping at the first.               |
+| [Task](/api/core/type-aliases/task)                     | A lazy, infallible async operation.                                                     |
+| [TaskResult](/api/core/type-aliases/taskresult)         | A lazy async operation that can fail.                                                   |
+| [TaskMaybe](/api/core/type-aliases/taskoption)          | A lazy async operation that may return nothing.                                         |
+| [TaskValidation](/api/core/type-aliases/taskvalidation) | A lazy async operation that accumulates errors.                                         |
+| [RemoteData](/api/core/type-aliases/remotedata)         | The four states of a data fetch: NotAsked, Loading, Failure, Success.                   |
+| [Deferred](/api/core/type-aliases/deferred)             | A minimal async value that always resolves — no rejection handling needed.              |
+| [These](/api/core/type-aliases/these)                   | An inclusive-OR: holds a first value, a second value, or both simultaneously.           |
+| [Tuple](/api/core/type-aliases/tuple)                   | A typed pair where both values are always present.                                      |
+| [Lens](/api/core/type-aliases/lens)                     | Focus on and immutably update a required nested field.                                  |
+| [Optional](/api/core/type-aliases/optional)             | Focus on and update an optional nested field or array index.                            |
+| [Reader](/api/core/type-aliases/reader)                 | Computations that read from a shared environment without threading it everywhere.       |
+| [State](/api/core/type-aliases/state)                   | Thread mutable state through a pipeline without explicit passing.                       |
+| [Logged](/api/core/type-aliases/logged)                 | A value paired with an accumulated log; thread logs through a pipeline.                 |
+| [Predicate](/api/core/type-aliases/predicate)           | Composable boolean checks; combine with `and`, `or`, `not`.                             |
+| [Refinement](/api/core/type-aliases/refinement)         | Type predicates with runtime validation; narrows a broad type to a specific one.        |
+| [Resource](/api/core/type-aliases/resource)             | Safe acquire-use-release lifecycle; guarantees cleanup even when errors occur.          |
+| [Lazy](/api/core/type-aliases/lazy)                     | Synchronous memoized thunk — runs once, caches the result for subsequent calls.         |
+| [Equality](/api/core/type-aliases/equality)             | Composable equality checks; adapt to fields with `by`, combine with `and`.              |
+| [Ordering](/api/core/type-aliases/ordering)             | Composable sort comparators; chain with `thenBy`, flip with `reverse`, adapt with `by`. |
+| [Combinable](/api/core/type-aliases/combinable)         | Monoid algebra — fold collections and combine values with a neutral starting point.     |
 
 ## Utils
 
@@ -58,15 +62,20 @@ import from `@nlozgachev/pipelined/types`
 
 import from `@nlozgachev/pipelined/composition`
 
-| Function                                        | Description                                                                  |
-| ----------------------------------------------- | ---------------------------------------------------------------------------- |
-| [pipe](/api/composition/functions/pipe)         | Pass a value through a sequence of functions, left to right.                 |
-| [flow](/api/composition/functions/flow)         | Compose functions into a reusable pipeline.                                  |
-| [compose](/api/composition/functions/compose)   | Compose functions right to left.                                             |
-| [tap](/api/composition/functions/tap)           | Run a side effect without breaking the pipeline.                             |
-| [curry](/api/composition/functions/curry)       | Convert a multi-argument function into a chain of single-argument functions. |
-| [memoize](/api/composition/functions/memoize)   | Cache function results by argument.                                          |
-| [identity](/api/composition/functions/identity) | Return the argument unchanged.                                               |
-| [constant](/api/composition/functions/constant) | Return a function that always returns the same value.                        |
-| [not](/api/composition/functions/not)           | Negate a predicate function.                                                 |
-| [once](/api/composition/functions/once)         | Call a function at most once; return the cached result thereafter.           |
+| Function                                        | Description                                                                                 |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| [pipe](/api/composition/functions/pipe)         | Pass a value through a sequence of functions, left to right.                                |
+| [flow](/api/composition/functions/flow)         | Compose functions into a reusable pipeline.                                                 |
+| [compose](/api/composition/functions/compose)   | Compose functions right to left.                                                            |
+| [tap](/api/composition/functions/tap)           | Run a side effect without breaking the pipeline.                                            |
+| [curry](/api/composition/functions/curry)       | Convert a multi-argument function into a chain of single-argument functions.                |
+| [memoize](/api/composition/functions/memoize)   | Cache function results by argument.                                                         |
+| [identity](/api/composition/functions/identity) | Return the argument unchanged.                                                              |
+| [constant](/api/composition/functions/constant) | Return a function that always returns the same value.                                       |
+| [not](/api/composition/functions/not)           | Negate a predicate function.                                                                |
+| [once](/api/composition/functions/once)         | Call a function at most once; return the cached result thereafter.                          |
+| [uncurry](/api/composition/functions/uncurry)   | Convert a curried function to accept a tuple/list of arguments.                             |
+| [flip](/api/composition/functions/flip)         | Reverse the order of the first two arguments of a function.                                 |
+| [converge](/api/composition/functions/converge) | Apply a list of unary functions to a value, combining results with a binary/n-ary function. |
+| [juxt](/api/composition/functions/juxt)         | Apply multiple functions to the same arguments, returning an array of results.              |
+| [on](/api/composition/functions/on)             | Transform two arguments with a unary function, then apply them to a binary function.        |

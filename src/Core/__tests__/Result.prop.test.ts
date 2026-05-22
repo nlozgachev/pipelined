@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { expect, expectTypeOf, test } from "vitest";
 import { Maybe } from "../Maybe.ts";
-import { Result, Ok } from "../Result.ts";
+import { Ok, Result } from "../Result.ts";
 
 // ---------------------------------------------------------------------------
 // Arbitraries
@@ -60,8 +60,7 @@ test("Result.mapError — identity law on error value", () => {
 test("Result.chain — left identity", () => {
 	fc.assert(
 		fc.property(fc.integer(), (a) => {
-			const f = (x: number): Result<string, string> =>
-				x > 0 ? Result.ok(String(x)) : Result.error("non-positive");
+			const f = (x: number): Result<string, string> => x > 0 ? Result.ok(String(x)) : Result.error("non-positive");
 			expect(Result.chain(f)(Result.ok(a))).toEqual(f(a));
 		}),
 	);
@@ -78,10 +77,8 @@ test("Result.chain — right identity", () => {
 test("Result.chain — associativity", () => {
 	fc.assert(
 		fc.property(arbResult, fc.integer(), (r, threshold) => {
-			const f = (x: number): Result<string, number> =>
-				x > 0 ? Result.ok(x * 2) : Result.error("non-positive");
-			const g = (x: number): Result<string, number> =>
-				x > threshold ? Result.ok(x + 1) : Result.error("too small");
+			const f = (x: number): Result<string, number> => x > 0 ? Result.ok(x * 2) : Result.error("non-positive");
+			const g = (x: number): Result<string, number> => x > threshold ? Result.ok(x + 1) : Result.error("too small");
 			expect(Result.chain(f)(Result.chain(g)(r))).toEqual(
 				Result.chain((x: number) => Result.chain(f)(g(x)))(r),
 			);

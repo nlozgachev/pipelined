@@ -45,17 +45,18 @@ export namespace TaskMaybe {
 	/**
 	 * Creates a TaskMaybe from a Promise-returning function.
 	 * Returns Some if the promise resolves, None if it rejects.
+	 * The factory optionally receives an `AbortSignal` forwarded from the call site.
 	 *
 	 * @example
 	 * ```ts
-	 * const fetchUser = TaskMaybe.tryCatch(() =>
-	 *   fetch("/user/1").then(r => r.json())
+	 * const fetchUser = TaskMaybe.tryCatch((signal) =>
+	 *   fetch("/user/1", { signal }).then(r => r.json())
 	 * );
 	 * ```
 	 */
-	export const tryCatch = <A>(f: () => Promise<A>): TaskMaybe<A> =>
-		Task.from(() =>
-			f()
+	export const tryCatch = <A>(f: (signal?: AbortSignal) => Promise<A>): TaskMaybe<A> =>
+		Task.from((signal) =>
+			f(signal)
 				.then(Maybe.some)
 				.catch(() => Maybe.none())
 		);
@@ -85,10 +86,10 @@ export namespace TaskMaybe {
 	 * Both Tasks run in parallel.
 	 */
 	export const ap = <A>(arg: TaskMaybe<A>) => <B>(data: TaskMaybe<(a: A) => B>): TaskMaybe<B> =>
-		Task.from(() =>
+		Task.from((signal) =>
 			Promise.all([
-				Deferred.toPromise(data()),
-				Deferred.toPromise(arg()),
+				Deferred.toPromise(data(signal)),
+				Deferred.toPromise(arg(signal)),
 			]).then(([of_, oa]) => Maybe.ap(oa)(of_))
 		);
 

@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import { Deferred } from "../Deferred.ts";
 import { TaskValidation } from "../TaskValidation.ts";
 import { Validation } from "../Validation.ts";
 
@@ -78,6 +79,20 @@ test("TaskValidation.tryCatch catches async throws", async () => {
 	).toEqual({ kind: "Invalid", errors: ["bang"] });
 });
 
+test("TaskValidation.tryCatch receives the AbortSignal from the call site", async () => {
+	let receivedSignal: AbortSignal | undefined;
+	const task = TaskValidation.tryCatch(
+		(signal) => {
+			receivedSignal = signal;
+			return Promise.resolve(42);
+		},
+		(e) => String(e),
+	);
+	const controller = new AbortController();
+	await task(controller.signal);
+	expect(receivedSignal).toBe(controller.signal);
+});
+
 // ---------------------------------------------------------------------------
 // map
 // ---------------------------------------------------------------------------
@@ -143,6 +158,30 @@ test("TaskValidation.ap collects errors from both sides simultaneously", async (
 		TaskValidation.ap(TaskValidation.invalid<string, number>("bad arg")),
 	)();
 	expect(result).toEqual({ kind: "Invalid", errors: ["bad fn", "bad arg"] });
+});
+
+test("TaskValidation.ap propagates the AbortSignal down to both sides", async () => {
+	let signalLeft: AbortSignal | undefined;
+	let signalRight: AbortSignal | undefined;
+
+	const left: TaskValidation<string, (n: number) => number> = (signal) => {
+		signalLeft = signal;
+		return Deferred.fromPromise(Promise.resolve(Validation.valid((n: number) => n * 3)));
+	};
+	const right: TaskValidation<string, number> = (signal) => {
+		signalRight = signal;
+		return Deferred.fromPromise(Promise.resolve(Validation.valid(4)));
+	};
+
+	const controller = new AbortController();
+	const result = await pipe(
+		left,
+		TaskValidation.ap(right),
+	)(controller.signal);
+
+	expect(result).toEqual({ kind: "Valid", value: 12 });
+	expect(signalLeft).toBe(controller.signal);
+	expect(signalRight).toBe(controller.signal);
 });
 
 // ---------------------------------------------------------------------------
@@ -394,4 +433,44 @@ test("TaskValidation.productAll with single element returns singleton array", as
 		TaskValidation.valid<string, number>(42),
 	])();
 	expect(result).toEqual({ kind: "Valid", value: [42] });
+});
+
+test("TaskValidation.product propagates the AbortSignal down to both validation tasks", async () => {
+	let signalFirst: AbortSignal | undefined;
+	let signalSecond: AbortSignal | undefined;
+
+	const first: TaskValidation<string, string> = (signal) => {
+		signalFirst = signal;
+		return Deferred.fromPromise(Promise.resolve(Validation.valid("alice")));
+	};
+	const second: TaskValidation<string, number> = (signal) => {
+		signalSecond = signal;
+		return Deferred.fromPromise(Promise.resolve(Validation.valid(30)));
+	};
+
+	const controller = new AbortController();
+	await TaskValidation.product(first, second)(controller.signal);
+
+	expect(signalFirst).toBe(controller.signal);
+	expect(signalSecond).toBe(controller.signal);
+});
+
+test("TaskValidation.productAll propagates the AbortSignal down to all validations", async () => {
+	let signal1: AbortSignal | undefined;
+	let signal2: AbortSignal | undefined;
+
+	const t1: TaskValidation<string, number> = (signal) => {
+		signal1 = signal;
+		return Deferred.fromPromise(Promise.resolve(Validation.valid(1)));
+	};
+	const t2: TaskValidation<string, number> = (signal) => {
+		signal2 = signal;
+		return Deferred.fromPromise(Promise.resolve(Validation.valid(2)));
+	};
+
+	const controller = new AbortController();
+	await TaskValidation.productAll([t1, t2])(controller.signal);
+
+	expect(signal1).toBe(controller.signal);
+	expect(signal2).toBe(controller.signal);
 });

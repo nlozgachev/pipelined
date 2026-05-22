@@ -3,14 +3,14 @@ import { Maybe } from "#core/Maybe.ts";
 import { Result } from "#core/Result.ts";
 import { bench, describe } from "vitest";
 
-type MaybeVal = { kind: "Some"; value: number } | { kind: "None" };
+type MaybeVal = { kind: "Some"; value: number; } | { kind: "None"; };
 
 // =============================================================================
 // Scenario 1: Happy-path Maybe chain (5 steps)
 // =============================================================================
 
 describe("pipeline-maybe-happy", () => {
-	bench("pipe + Maybe ops", () => {
+	bench("1. (current) pipe + Maybe ops", () => {
 		void pipe(
 			Maybe.some(42),
 			Maybe.map(x => x * 2),
@@ -20,7 +20,7 @@ describe("pipeline-maybe-happy", () => {
 		);
 	});
 
-	bench("manual inline", () => {
+	bench("2. manual inline", () => {
 		const s1 = { kind: "Some" as const, value: 42 };
 		const s2 = s1.kind === "Some" ? { kind: "Some" as const, value: s1.value * 2 } : s1;
 		const s3 = s2.kind === "Some" ? (s2.value > 0 ? s2 : { kind: "None" as const }) : s2;
@@ -34,7 +34,7 @@ describe("pipeline-maybe-happy", () => {
 // =============================================================================
 
 describe("pipeline-maybe-short-circuit", () => {
-	bench("pipe + Maybe ops", () => {
+	bench("1. (current) pipe + Maybe ops", () => {
 		void pipe(
 			Maybe.none() as Maybe<number>,
 			Maybe.map(x => x * 2),
@@ -44,7 +44,7 @@ describe("pipeline-maybe-short-circuit", () => {
 		);
 	});
 
-	bench("manual inline", () => {
+	bench("2. manual inline", () => {
 		// Cast to MaybeVal at each step so TypeScript does not narrow the "Some"
 		// branch away — the shape mirrors what the pipe version checks at runtime.
 		const s1 = { kind: "None" } as MaybeVal;
@@ -60,7 +60,7 @@ describe("pipeline-maybe-short-circuit", () => {
 // =============================================================================
 
 describe("pipeline-result-ok", () => {
-	bench("pipe + Result ops", () => {
+	bench("1. (current) pipe + Result ops", () => {
 		void pipe(
 			Result.ok(42),
 			Result.map(x => x * 2),
@@ -69,7 +69,7 @@ describe("pipeline-result-ok", () => {
 		);
 	});
 
-	bench("manual inline", () => {
+	bench("2. manual inline", () => {
 		const r1 = { kind: "Ok" as const, value: 42 };
 		const r2 = r1.kind === "Ok" ? { kind: "Ok" as const, value: r1.value * 2 } : r1;
 		const r3 = r2.kind === "Ok" ? { kind: "Ok" as const, value: r2.value + 1 } : r2;

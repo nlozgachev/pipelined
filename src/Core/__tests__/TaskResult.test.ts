@@ -491,6 +491,66 @@ test("TaskResult.fold receives the transformed error from a prior mapError", asy
 });
 
 // ---------------------------------------------------------------------------
+// ap
+// ---------------------------------------------------------------------------
+
+test("TaskResult.ap applies Ok function to Ok value", async () => {
+	const result = await pipe(
+		TaskResult.ok<string, (n: number) => number>((n) => n * 3),
+		TaskResult.ap(TaskResult.ok<string, number>(4)),
+	)();
+	expect(result).toEqual({ kind: "Ok", value: 12 });
+});
+
+test("TaskResult.ap propagates the error if function is Error", async () => {
+	const result = await pipe(
+		TaskResult.err<string, (n: number) => number>("error fn"),
+		TaskResult.ap(TaskResult.ok<string, number>(4)),
+	)();
+	expect(result).toEqual({ kind: "Error", error: "error fn" });
+});
+
+test("TaskResult.ap propagates the error if value is Error", async () => {
+	const result = await pipe(
+		TaskResult.ok<string, (n: number) => number>((n) => n * 3),
+		TaskResult.ap(TaskResult.err<string, number>("error val")),
+	)();
+	expect(result).toEqual({ kind: "Error", error: "error val" });
+});
+
+test("TaskResult.ap propagates the first error if both are Error", async () => {
+	const result = await pipe(
+		TaskResult.err<string, (n: number) => number>("error fn"),
+		TaskResult.ap(TaskResult.err<string, number>("error val")),
+	)();
+	expect(result).toEqual({ kind: "Error", error: "error fn" });
+});
+
+test("TaskResult.ap propagates the AbortSignal down to both sides in parallel", async () => {
+	let signalLeft: AbortSignal | undefined;
+	let signalRight: AbortSignal | undefined;
+
+	const left: TaskResult<string, (n: number) => number> = (signal) => {
+		signalLeft = signal;
+		return Deferred.fromPromise(Promise.resolve(Result.ok((n: number) => n * 3)));
+	};
+	const right: TaskResult<string, number> = (signal) => {
+		signalRight = signal;
+		return Deferred.fromPromise(Promise.resolve(Result.ok(4)));
+	};
+
+	const controller = new AbortController();
+	const result = await pipe(
+		left,
+		TaskResult.ap(right),
+	)(controller.signal);
+
+	expect(result).toEqual({ kind: "Ok", value: 12 });
+	expect(signalLeft).toBe(controller.signal);
+	expect(signalRight).toBe(controller.signal);
+});
+
+// ---------------------------------------------------------------------------
 // tapError
 // ---------------------------------------------------------------------------
 

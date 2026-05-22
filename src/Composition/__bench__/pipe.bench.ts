@@ -3,24 +3,24 @@ import { pipe } from "../pipe.ts";
 import { add1, bytesPerCall, direct10, direct3, direct5, double, halve, n, negate, square } from "./fixtures.ts";
 
 describe("pipe-3-steps", () => {
-	bench("pipe 3 steps", () => {
+	bench("1. (current) pipe 3 steps", () => {
 		pipe(n, add1, double, negate);
 	});
-	bench("direct 3 steps", direct3);
+	bench("2. direct 3 steps", direct3);
 });
 
 describe("pipe-5-steps", () => {
-	bench("pipe 5 steps", () => {
+	bench("1. (current) pipe 5 steps", () => {
 		pipe(n, add1, double, negate, square, halve);
 	});
-	bench("direct 5 steps", direct5);
+	bench("2. direct 5 steps", direct5);
 });
 
 describe("pipe-10-steps", () => {
-	bench("pipe 10 steps", () => {
+	bench("1. (current) pipe 10 steps", () => {
 		pipe(n, add1, double, negate, square, halve, add1, double, negate, square, halve);
 	});
-	bench("direct 10 steps", direct10);
+	bench("2. direct 10 steps", direct10);
 });
 
 // =============================================================================

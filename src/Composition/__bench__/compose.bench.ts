@@ -8,24 +8,24 @@ const compose5 = compose(halve, square, negate, double, add1);
 const compose10 = compose(halve, square, negate, double, add1, halve, square, negate, double, add1);
 
 describe("compose-3-steps", () => {
-	bench("compose 3 steps", () => {
+	bench("1. (current) compose 3 steps", () => {
 		compose3(n);
 	});
-	bench("direct 3 steps", direct3);
+	bench("2. direct 3 steps", direct3);
 });
 
 describe("compose-5-steps", () => {
-	bench("compose 5 steps", () => {
+	bench("1. (current) compose 5 steps", () => {
 		compose5(n);
 	});
-	bench("direct 5 steps", direct5);
+	bench("2. direct 5 steps", direct5);
 });
 
 describe("compose-10-steps", () => {
-	bench("compose 10 steps", () => {
+	bench("1. (current) compose 10 steps", () => {
 		compose10(n);
 	});
-	bench("direct 10 steps", direct10);
+	bench("2. direct 10 steps", direct10);
 });
 
 // =============================================================================

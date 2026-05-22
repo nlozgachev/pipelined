@@ -197,12 +197,27 @@ export namespace Task {
 	export const delay = (ms: number) => <A>(data: Task<A>): Task<A> =>
 		from(
 			(signal) =>
-				new Promise<A>((resolve) =>
-					setTimeout(
-						() => toPromise(data, signal).then(resolve),
-						ms,
-					)
-				),
+				new Promise<A>((resolve) => {
+					let timerId: ReturnType<typeof setTimeout> | undefined = undefined;
+					const onAbort = () => {
+						if (timerId !== undefined) {
+							clearTimeout(timerId);
+						}
+						resolve(toPromise(data, signal));
+					};
+
+					if (signal) {
+						if (signal.aborted) {
+							return resolve(toPromise(data, signal));
+						}
+						signal.addEventListener("abort", onAbort, { once: true });
+					}
+
+					timerId = setTimeout(() => {
+						signal?.removeEventListener("abort", onAbort);
+						resolve(toPromise(data, signal));
+					}, ms);
+				}),
 		);
 
 	/**
@@ -222,14 +237,35 @@ export namespace Task {
 			const { times, delay: ms } = options;
 			if (times <= 0) return Promise.resolve([]);
 			const results: A[] = [];
-			const wait = (): Promise<void> =>
-				ms !== undefined && ms > 0 ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve();
-			const run = (left: number): Promise<A[]> =>
-				toPromise(task, signal).then((a) => {
+			const wait = (): Promise<void> => {
+				if (signal?.aborted) return Promise.resolve();
+				return new Promise((r) => {
+					let timerId: ReturnType<typeof setTimeout> | undefined = undefined;
+					const onAbort = () => {
+						if (timerId !== undefined) {
+							clearTimeout(timerId);
+						}
+						r();
+					};
+					if (signal) {
+						signal.addEventListener("abort", onAbort, { once: true });
+					}
+					timerId = setTimeout(() => {
+						signal?.removeEventListener("abort", onAbort);
+						r();
+					}, ms || 0);
+				});
+			};
+			const run = (left: number): Promise<A[]> => {
+				if (signal?.aborted) {
+					return Promise.resolve(results);
+				}
+				return toPromise(task, signal).then((a) => {
 					results.push(a);
-					if (left <= 1) return results;
+					if (left <= 1 || signal?.aborted) return results;
 					return wait().then(() => run(left - 1));
 				});
+			};
 			return run(times);
 		});
 
@@ -251,14 +287,36 @@ export namespace Task {
 		<A>(options: { when: (a: A) => boolean; delay?: number; maxAttempts?: number; }) => (task: Task<A>): Task<A> =>
 			from((signal) => {
 				const { when: predicate, delay: ms, maxAttempts } = options;
-				const wait = (): Promise<void> =>
-					ms !== undefined && ms > 0 ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve();
-				const run = (attempt: number): Promise<A> =>
-					toPromise(task, signal).then((a) => {
+				const wait = (): Promise<void> => {
+					if (signal?.aborted) return Promise.resolve();
+					return new Promise((r) => {
+						let timerId: ReturnType<typeof setTimeout> | undefined = undefined;
+						const onAbort = () => {
+							if (timerId !== undefined) {
+								clearTimeout(timerId);
+							}
+							r();
+						};
+						if (signal) {
+							signal.addEventListener("abort", onAbort, { once: true });
+						}
+						timerId = setTimeout(() => {
+							signal?.removeEventListener("abort", onAbort);
+							r();
+						}, ms || 0);
+					});
+				};
+				const run = (attempt: number, lastValue?: A): Promise<A> => {
+					if (signal?.aborted && lastValue !== undefined) {
+						return Promise.resolve(lastValue);
+					}
+					return toPromise(task, signal).then((a) => {
 						if (predicate(a)) return a;
 						if (maxAttempts !== undefined && attempt >= maxAttempts) return a;
-						return wait().then(() => run(attempt + 1));
+						if (signal?.aborted) return a;
+						return wait().then(() => run(attempt + 1, a));
 					});
+				};
 				return run(1);
 			});
 
@@ -297,6 +355,9 @@ export namespace Task {
 		from(async (signal) => {
 			const results: A[] = [];
 			for (const task of tasks) {
+				if (signal?.aborted) {
+					break;
+				}
 				// eslint-disable-next-line no-await-in-loop
 				results.push(await toPromise(task, signal));
 			}
@@ -321,21 +382,37 @@ export namespace Task {
 	export const timeout = <E>(ms: number, onTimeout: () => E) => <A>(task: Task<A>): Task<Result<E, A>> =>
 		from((outerSignal) => {
 			const controller = new AbortController();
-			const onOuterAbort = () => controller.abort();
-			outerSignal?.addEventListener("abort", onOuterAbort, { once: true });
+			let timerId: ReturnType<typeof setTimeout> | undefined;
 
-			let timerId: ReturnType<typeof setTimeout>;
+			const cleanUp = () => {
+				if (timerId !== undefined) {
+					clearTimeout(timerId);
+				}
+				outerSignal?.removeEventListener("abort", onOuterAbort);
+			};
+
+			const onOuterAbort = () => {
+				cleanUp();
+				controller.abort();
+			};
+
+			if (outerSignal) {
+				if (outerSignal.aborted) {
+					controller.abort();
+				} else {
+					outerSignal.addEventListener("abort", onOuterAbort, { once: true });
+				}
+			}
 
 			return Promise.race([
 				toPromise(task, controller.signal).then((a): Result<E, A> => {
-					clearTimeout(timerId);
-					outerSignal?.removeEventListener("abort", onOuterAbort);
+					cleanUp();
 					return Result.ok(a);
 				}),
 				new Promise<Result<E, A>>((resolve) => {
 					timerId = setTimeout(() => {
 						controller.abort();
-						outerSignal?.removeEventListener("abort", onOuterAbort);
+						cleanUp();
 						resolve(Result.error(onTimeout()));
 					}, ms);
 				}),

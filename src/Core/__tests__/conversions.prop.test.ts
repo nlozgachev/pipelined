@@ -1,9 +1,9 @@
 import fc from "fast-check";
 import { expect, test } from "vitest";
 import { Maybe } from "../Maybe.ts";
-import { Result, Ok as ResultOk } from "../Result.ts";
-import { Validation } from "../Validation.ts";
 import { RemoteData } from "../RemoteData.ts";
+import { Ok as ResultOk, Result } from "../Result.ts";
+import { Validation } from "../Validation.ts";
 
 // ---------------------------------------------------------------------------
 // Arbitraries
@@ -82,7 +82,7 @@ test("Validation.fromResult — Error becomes Invalid with single error", () => 
 		fc.property(fc.string(), (e) => {
 			const v = Validation.fromResult(Result.error(e));
 			expect(Validation.isInvalid(v)).toBe(true);
-			const invalid = v as unknown as { errors: string[] };
+			const invalid = v as unknown as { errors: string[]; };
 			expect(invalid.errors).toHaveLength(1);
 			expect(invalid.errors[0]).toBe(e);
 		}),
@@ -104,7 +104,7 @@ test("Validation.toResult → Validation.fromResult — Valid round-trip", () =>
 test("Validation.toMaybe — Valid maps to Some", () => {
 	fc.assert(
 		fc.property(arbValid, (v) => {
-			expect(Validation.toMaybe(v)).toEqual(Maybe.some((v as { value: number }).value));
+			expect(Validation.toMaybe(v)).toEqual(Maybe.some((v as { value: number; }).value));
 		}),
 	);
 });

@@ -62,6 +62,17 @@ test("TaskMaybe.tryCatch returns None when Promise rejects", async () => {
 	expect(await TaskMaybe.tryCatch(() => Promise.reject(new Error("boom")))()).toEqual({ kind: "None" });
 });
 
+test("TaskMaybe.tryCatch receives the AbortSignal from the call site", async () => {
+	let receivedSignal: AbortSignal | undefined;
+	const task = TaskMaybe.tryCatch((signal) => {
+		receivedSignal = signal;
+		return Promise.resolve(42);
+	});
+	const controller = new AbortController();
+	await task(controller.signal);
+	expect(receivedSignal).toBe(controller.signal);
+});
+
 // ---------------------------------------------------------------------------
 // map
 // ---------------------------------------------------------------------------
@@ -169,6 +180,27 @@ test("TaskMaybe.ap returns None when argument is None", async () => {
 			TaskMaybe.ap(TaskMaybe.none<number>()),
 		)(),
 	).toEqual({ kind: "None" });
+});
+
+test("TaskMaybe.ap propagates the AbortSignal to both sides", async () => {
+	const controller = new AbortController();
+	let signal1: AbortSignal | undefined;
+	let signal2: AbortSignal | undefined;
+
+	const fnTask = Task.from((signal) => {
+		signal1 = signal;
+		return Promise.resolve(Maybe.some((n: number) => n * 3));
+	});
+
+	const argTask = Task.from((signal) => {
+		signal2 = signal;
+		return Promise.resolve(Maybe.some(4));
+	});
+
+	await pipe(fnTask, TaskMaybe.ap(argTask))(controller.signal);
+
+	expect(signal1).toBe(controller.signal);
+	expect(signal2).toBe(controller.signal);
 });
 
 // ---------------------------------------------------------------------------

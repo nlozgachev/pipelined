@@ -128,6 +128,18 @@ export namespace TaskResult {
 		Task.map(Result.tapError<E, A>(f))(data);
 
 	/**
+	 * Applies a function wrapped in a TaskResult to a value wrapped in a TaskResult.
+	 * Both Tasks run in parallel.
+	 */
+	export const ap = <E, A>(arg: TaskResult<E, A>) => <B>(data: TaskResult<E, (a: A) => B>): TaskResult<E, B> =>
+		Task.from((signal) =>
+			Promise.all([
+				Deferred.toPromise(data(signal)),
+				Deferred.toPromise(arg(signal)),
+			]).then(([of_, oa]) => Result.ap(oa)(of_))
+		);
+
+	/**
 	 * Executes a `TaskResult` with an optional signal, returning `Promise<Result<E, A>>`.
 	 * Use as a terminal step in a `pipe` chain.
 	 *

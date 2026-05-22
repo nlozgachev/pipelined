@@ -54,22 +54,23 @@ export namespace TaskValidation {
 	/**
 	 * Creates a TaskValidation from a Promise-returning function.
 	 * Catches any errors and transforms them using the onError function.
+	 * The factory optionally receives an `AbortSignal` forwarded from the call site.
 	 *
 	 * @example
 	 * ```ts
 	 * const fetchUser = (id: string): TaskValidation<string, User> =>
 	 *   TaskValidation.tryCatch(
-	 *     () => fetch(`/users/${id}`).then(r => r.json()),
+	 *     (signal) => fetch(`/users/${id}`, { signal }).then(r => r.json()),
 	 *     e => `Failed to fetch user: ${e}`
 	 *   );
 	 * ```
 	 */
 	export const tryCatch = <E, A>(
-		f: () => Promise<A>,
+		f: (signal?: AbortSignal) => Promise<A>,
 		onError: (e: unknown) => E,
 	): TaskValidation<E, A> =>
-		Task.from(() =>
-			f()
+		Task.from((signal) =>
+			f(signal)
 				.then(Validation.valid<E, A>)
 				.catch((e) => Validation.invalid(onError(e)))
 		);
@@ -96,10 +97,10 @@ export namespace TaskValidation {
 	 */
 	export const ap =
 		<E, A>(arg: TaskValidation<E, A>) => <B>(data: TaskValidation<E, (a: A) => B>): TaskValidation<E, B> =>
-			Task.from(() =>
+			Task.from((signal) =>
 				Promise.all([
-					Deferred.toPromise(data()),
-					Deferred.toPromise(arg()),
+					Deferred.toPromise(data(signal)),
+					Deferred.toPromise(arg(signal)),
 				]).then(([vf, va]) => Validation.ap(va)(vf))
 			);
 
@@ -175,10 +176,10 @@ export namespace TaskValidation {
 		first: TaskValidation<E, A>,
 		second: TaskValidation<E, B>,
 	): TaskValidation<E, readonly [A, B]> =>
-		Task.from(() =>
+		Task.from((signal) =>
 			Promise.all([
-				Deferred.toPromise(first()),
-				Deferred.toPromise(second()),
+				Deferred.toPromise(first(signal)),
+				Deferred.toPromise(second(signal)),
 			]).then(([va, vb]) => Validation.product(va, vb))
 		);
 
@@ -199,8 +200,8 @@ export namespace TaskValidation {
 	export const productAll = <E, A>(
 		data: NonEmptyList<TaskValidation<E, A>>,
 	): TaskValidation<E, readonly A[]> =>
-		Task.from(() =>
-			Promise.all(data.map((t) => Deferred.toPromise(t())))
+		Task.from((signal) =>
+			Promise.all(data.map((t) => Deferred.toPromise(t(signal))))
 				.then((results) => Validation.productAll(results as unknown as NonEmptyList<Validation<E, A>>))
 		);
 }

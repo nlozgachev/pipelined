@@ -1,5 +1,7 @@
 import { pipe } from "#composition/pipe.ts";
+import { Equality } from "#core/Equality.ts";
 import { Maybe } from "#core/Maybe.ts";
+import { Ordering } from "#core/Ordering.ts";
 import { Result } from "#core/Result.ts";
 import { Task } from "#core/Task.ts";
 import { expect, test } from "vitest";
@@ -547,6 +549,15 @@ test("flatten - with empty subarrays", () => {
 test("flatten - empty outer array", () => {
 	const result = Arr.flatten([] as number[][]);
 	expect(result).toEqual([]);
+});
+
+test("flatten - call stack safety (handles very large number of sub-arrays)", () => {
+	const size = 70000;
+	const data = Array.from({ length: size }, (_, i) => [i]);
+	const result = Arr.flatten(data);
+	expect(result).toHaveLength(size);
+	expect(result[0]).toBe(0);
+	expect(result[size - 1]).toBe(size - 1);
 });
 
 test("flatMap - maps and flattens", () => {
@@ -1209,4 +1220,49 @@ test("pipe composition - flatMap, uniq, sortBy", () => {
 		Arr.sortBy((a, b) => a - b),
 	);
 	expect(result).toEqual([1, 2, 3, 4]);
+});
+
+// =============================================================================
+// uniqWith
+// =============================================================================
+
+test("uniqWith - removes duplicates using custom equality", () => {
+	type Point = { x: number; y: number; };
+	const eqPoint: Equality<Point> = (a, b) => a.x === b.x && a.y === b.y;
+	const result = pipe(
+		[{ x: 1, y: 1 }, { x: 2, y: 2 }, { x: 1, y: 1 }, { x: 3, y: 3 }] as Point[],
+		Arr.uniqWith(eqPoint),
+	);
+	expect(result).toEqual([{ x: 1, y: 1 }, { x: 2, y: 2 }, { x: 3, y: 3 }]);
+});
+
+test("uniqWith - preserves order of first occurrences", () => {
+	const eqMod3: Equality<number> = (a, b) => a % 3 === b % 3;
+	expect(pipe([1, 4, 2, 5, 3], Arr.uniqWith(eqMod3))).toEqual([1, 2, 3]);
+});
+
+test("uniqWith - returns empty array for empty input", () => {
+	expect(pipe([] as number[], Arr.uniqWith(Equality.number))).toEqual([]);
+});
+
+// =============================================================================
+// sortWith
+// =============================================================================
+
+test("sortWith - sorts ascending with Ordering.number", () => {
+	expect(pipe([3, 1, 2], Arr.sortWith(Ordering.number))).toEqual([1, 2, 3]);
+});
+
+test("sortWith - sorts descending with Ordering.reverse", () => {
+	expect(pipe([3, 1, 2], Arr.sortWith(Ordering.reverse(Ordering.number)))).toEqual([3, 2, 1]);
+});
+
+test("sortWith - does not mutate the original array", () => {
+	const original = [3, 1, 2];
+	pipe(original, Arr.sortWith(Ordering.number));
+	expect(original).toEqual([3, 1, 2]);
+});
+
+test("sortWith - returns empty array for empty input", () => {
+	expect(pipe([] as number[], Arr.sortWith(Ordering.number))).toEqual([]);
 });

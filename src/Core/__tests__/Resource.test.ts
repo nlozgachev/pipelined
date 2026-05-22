@@ -262,3 +262,81 @@ test("Resource.use works with fromTask resource", async () => {
 	expect(result).toEqual({ kind: "Ok", value: "used: handle" });
 	expect(released).toBe(true);
 });
+
+// ---------------------------------------------------------------------------
+// abort propagation
+// ---------------------------------------------------------------------------
+
+test("Resource.use propagates the AbortSignal down to acquire, f, and release", async () => {
+	let acquireSignal: AbortSignal | undefined;
+	let fSignal: AbortSignal | undefined;
+	let releaseSignal: AbortSignal | undefined;
+
+	const resource = Resource.make(
+		(signal) => {
+			acquireSignal = signal;
+			return TaskResult.ok<string, number>(42)(signal);
+		},
+		(_n) => (signal) => {
+			releaseSignal = signal;
+			return Task.resolve(undefined as void)(signal);
+		},
+	);
+
+	const controller = new AbortController();
+	const result = await pipe(
+		resource,
+		Resource.use((n) => (signal) => {
+			fSignal = signal;
+			return TaskResult.ok<string, string>(`val: ${n}`)(signal);
+		}),
+	)(controller.signal);
+
+	expect(result).toEqual({ kind: "Ok", value: "val: 42" });
+	expect(acquireSignal).toBe(controller.signal);
+	expect(fSignal).toBe(controller.signal);
+	expect(releaseSignal).toBe(controller.signal);
+});
+
+test("Resource.combine propagates the AbortSignal down to both sub-acquisitions and sub-releases", async () => {
+	let acquireASignal: AbortSignal | undefined;
+	let acquireBSignal: AbortSignal | undefined;
+	let releaseASignal: AbortSignal | undefined;
+	let releaseBSignal: AbortSignal | undefined;
+
+	const resourceA = Resource.make(
+		(signal) => {
+			acquireASignal = signal;
+			return TaskResult.ok<string, string>("A")(signal);
+		},
+		(_s) => (signal) => {
+			releaseASignal = signal;
+			return Task.resolve(undefined as void)(signal);
+		},
+	);
+
+	const resourceB = Resource.make(
+		(signal) => {
+			acquireBSignal = signal;
+			return TaskResult.ok<string, string>("B")(signal);
+		},
+		(_s) => (signal) => {
+			releaseBSignal = signal;
+			return Task.resolve(undefined as void)(signal);
+		},
+	);
+
+	const controller = new AbortController();
+	const combined = Resource.combine(resourceA, resourceB);
+
+	const result = await pipe(
+		combined,
+		Resource.use(([a, b]) => TaskResult.ok<string, string>(`${a}+${b}`)),
+	)(controller.signal);
+
+	expect(result).toEqual({ kind: "Ok", value: "A+B" });
+	expect(acquireASignal).toBe(controller.signal);
+	expect(acquireBSignal).toBe(controller.signal);
+	expect(releaseASignal).toBe(controller.signal);
+	expect(releaseBSignal).toBe(controller.signal);
+});

@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { expect, expectTypeOf, test } from "vitest";
-import { Validation, Valid } from "../Validation.ts";
+import { Valid, Validation } from "../Validation.ts";
 
 // ---------------------------------------------------------------------------
 // Arbitraries
@@ -63,7 +63,7 @@ test("Validation.ap — Invalid(f) + Invalid(a) accumulates both error lists", (
 			const va: Validation<string, number> = Validation.invalid(e2);
 			const result = Validation.ap(va)(vf);
 			expect(Validation.isInvalid(result)).toBe(true);
-			const invalid = result as unknown as { errors: string[] };
+			const invalid = result as unknown as { errors: string[]; };
 			expect(invalid.errors).toContain(e1);
 			expect(invalid.errors).toContain(e2);
 		}),
@@ -158,7 +158,7 @@ test("Validation.fromPredicate — always-false gives Invalid via onFalse", () =
 		fc.property(fc.integer(), (n) => {
 			const result = Validation.fromPredicate((_: number) => false, (x) => `bad:${x}`)(n);
 			expect(Validation.isInvalid(result)).toBe(true);
-			const invalid = result as unknown as { errors: string[] };
+			const invalid = result as unknown as { errors: string[]; };
 			expect(invalid.errors[0]).toBe(`bad:${n}`);
 		}),
 	);
@@ -186,7 +186,7 @@ test("Validation.product — at least one Invalid produces Invalid with accumula
 				Validation.invalid(e2) as Validation<string, string>,
 			);
 			expect(Validation.isInvalid(result)).toBe(true);
-			const invalid = result as unknown as { errors: string[] };
+			const invalid = result as unknown as { errors: string[]; };
 			expect(invalid.errors).toHaveLength(2);
 		}),
 	);

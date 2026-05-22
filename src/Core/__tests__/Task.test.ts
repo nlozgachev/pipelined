@@ -364,6 +364,29 @@ test("Task.sequential with a single Task returns single-element array", async ()
 	expect(result).toEqual([99]);
 });
 
+test("Task.sequential short-circuits early when the signal is aborted", async () => {
+	const order: number[] = [];
+	const controller = new AbortController();
+
+	const makeTask = (n: number) =>
+		Task.from<number>(() => {
+			order.push(n);
+			if (n === 2) {
+				controller.abort();
+			}
+			return Promise.resolve(n);
+		});
+
+	const result = await Task.sequential([
+		makeTask(1),
+		makeTask(2),
+		makeTask(3),
+	])(controller.signal);
+
+	expect(order).toEqual([1, 2]);
+	expect(result).toEqual([1, 2]);
+});
+
 // ---------------------------------------------------------------------------
 // timeout
 // ---------------------------------------------------------------------------
@@ -778,4 +801,55 @@ test("Task.run passes the signal to the task", async () => {
 test("Task.run works without a signal", async () => {
 	const task: Task<string> = () => Deferred.fromPromise(Promise.resolve("ok"));
 	expect(await pipe(task, Task.run())).toBe("ok");
+});
+
+// ---------------------------------------------------------------------------
+// AbortSignal responsiveness for delay, repeat, repeatUntil
+// ---------------------------------------------------------------------------
+
+test("Task.delay resolves early when the signal is aborted", async () => {
+	const start = Date.now();
+	const controller = new AbortController();
+
+	const task = pipe(Task.resolve(42), Task.delay(500));
+
+	setTimeout(() => controller.abort(), 10);
+
+	const result = await task(controller.signal);
+	const elapsed = Date.now() - start;
+
+	expect(result).toBe(42);
+	expect(elapsed).toBeLessThan(100);
+});
+
+test("Task.repeat resolves early with accumulated results if aborted", async () => {
+	const controller = new AbortController();
+	let count = 0;
+	const task = Task.from(() => {
+		count++;
+		return Promise.resolve(count);
+	});
+
+	const repeated = pipe(task, Task.repeat({ times: 5, delay: 50 }));
+
+	setTimeout(() => controller.abort(), 75);
+
+	const result = await repeated(controller.signal);
+	expect(result).toEqual([1, 2]);
+});
+
+test("Task.repeatUntil resolves early with the last value if aborted", async () => {
+	const controller = new AbortController();
+	let count = 0;
+	const task = Task.from(() => {
+		count++;
+		return Promise.resolve(count);
+	});
+
+	const repeated = pipe(task, Task.repeatUntil({ when: (n) => n === 5, delay: 50 }));
+
+	setTimeout(() => controller.abort(), 75);
+
+	const result = await repeated(controller.signal);
+	expect(result).toBe(2);
 });

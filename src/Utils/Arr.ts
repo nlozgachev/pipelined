@@ -1,5 +1,7 @@
 import { Deferred } from "#core/Deferred.ts";
+import { Equality } from "#core/Equality.ts";
 import { Maybe } from "#core/Maybe.ts";
+import { Ordering } from "#core/Ordering.ts";
 import { Result } from "#core/Result.ts";
 import { Task } from "#core/Task.ts";
 import { isNonEmptyList, NonEmptyList } from "#types/NonEmptyList.ts";
@@ -265,7 +267,34 @@ export namespace Arr {
 	};
 
 	/**
+	 * Removes duplicate elements using a custom equality check.
+	 * Preserves the order of first occurrences. Complements `uniq` (reference equality)
+	 * and `uniqBy` (key extraction).
+	 *
+	 * @example
+	 * ```ts
+	 * type Point = { x: number; y: number };
+	 * const eqPoint: Equality<Point> = (a, b) => a.x === b.x && a.y === b.y;
+	 *
+	 * pipe(
+	 *   [{ x: 1, y: 1 }, { x: 2, y: 2 }, { x: 1, y: 1 }],
+	 *   Arr.uniqWith(eqPoint),
+	 * ); // [{ x: 1, y: 1 }, { x: 2, y: 2 }]
+	 * ```
+	 */
+	export const uniqWith = <A>(eq: Equality<A>) => (data: readonly A[]): readonly A[] => {
+		const result: A[] = [];
+		for (const a of data) {
+			if (!result.some((x) => eq(x, a))) {
+				result.push(a);
+			}
+		}
+		return result;
+	};
+
+	/**
 	 * Sorts an array using a comparison function. Returns a new array.
+	 * To sort with a typed `Ordering<A>`, prefer `Arr.sortWith`.
 	 *
 	 * @example
 	 * ```ts
@@ -276,6 +305,24 @@ export namespace Arr {
 		const arr = data as A[];
 		if (typeof arr.toSorted === "function") return arr.toSorted(compare);
 		return [...data].sort(compare);
+	};
+
+	/**
+	 * Sorts an array using an `Ordering<A>`. Returns a new array without mutating the original.
+	 * Use this over `sortBy` when you have a typed `Ordering<A>` from the `Ordering` module.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe([3, 1, 2], Arr.sortWith(Ordering.number)); // [1, 2, 3]
+	 *
+	 * const byPrice = pipe(Ordering.number, Ordering.by((p: Product) => p.price));
+	 * pipe(products, Arr.sortWith(byPrice));
+	 * ```
+	 */
+	export const sortWith = <A>(ord: Ordering<A>) => (data: readonly A[]): readonly A[] => {
+		const arr = data as A[];
+		if (typeof arr.toSorted === "function") return arr.toSorted(ord);
+		return [...data].sort(ord);
 	};
 
 	// --- Combine ---
@@ -357,7 +404,23 @@ export namespace Arr {
 	 * Arr.flatten([[1, 2], [3], [4, 5]]); // [1, 2, 3, 4, 5]
 	 * ```
 	 */
-	export const flatten = <A>(data: readonly (readonly A[])[]): readonly A[] => ([] as A[]).concat(...data);
+	export const flatten = <A>(data: readonly (readonly A[])[]): readonly A[] => {
+		let totalLen = 0;
+		const outerLen = data.length;
+		for (let i = 0; i < outerLen; i++) {
+			totalLen += data[i].length;
+		}
+		const result = new Array<A>(totalLen);
+		let idx = 0;
+		for (let i = 0; i < outerLen; i++) {
+			const chunk = data[i];
+			const innerLen = chunk.length;
+			for (let j = 0; j < innerLen; j++) {
+				result[idx++] = chunk[j];
+			}
+		}
+		return result;
+	};
 
 	/**
 	 * Maps each element to an array and flattens the result.

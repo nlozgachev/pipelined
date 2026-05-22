@@ -2294,4 +2294,3 @@ test("Op.wire stop handle removes the subscription", async () => {
 	await source.run(1);
 	expect(received).toEqual([]);
 });
-
