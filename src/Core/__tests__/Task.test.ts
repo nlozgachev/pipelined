@@ -321,6 +321,56 @@ test("Task.race starts all Tasks immediately (parallel, not sequential)", async 
 	expect(elapsed).toBeLessThan(45); // would be ~50ms if sequential
 });
 
+test("Task.race with empty array returns a Task that never resolves", () => {
+	const task = Task.race<number>([]);
+	expectTypeOf(task).toBeFunction();
+	// Invoke to cover the never-resolving branch; it is intentionally not awaited.
+	const deferred = task();
+	expect(deferred).toBeDefined();
+});
+
+test("Task.race aborts all subtasks when an already-aborted outer signal is passed", async () => {
+	const controller = new AbortController();
+	controller.abort();
+	const seen: AbortSignal[] = [];
+	const makeTask = (n: number) =>
+		Task.from<number>((signal) => {
+			if (signal) seen.push(signal);
+			return new Promise<number>((r) => {
+				const id = setTimeout(() => r(n), 500);
+				signal?.addEventListener("abort", () => {
+					clearTimeout(id);
+					r(n);
+				});
+			});
+		});
+	const result = await Task.race([makeTask(1), makeTask(2)])(controller.signal);
+	expect([1, 2]).toContain(result);
+	expect(seen).toHaveLength(2);
+	expect(seen.every((s) => s.aborted)).toBe(true);
+});
+
+test("Task.race aborts remaining subtasks when the outer signal aborts mid-flight", async () => {
+	const controller = new AbortController();
+	const seen: AbortSignal[] = [];
+	const makeTask = (n: number) =>
+		Task.from<number>((signal) => {
+			if (signal) seen.push(signal);
+			return new Promise<number>((r) => {
+				const id = setTimeout(() => r(n), 500);
+				signal?.addEventListener("abort", () => {
+					clearTimeout(id);
+					r(n);
+				});
+			});
+		});
+	const running = Task.race([makeTask(1), makeTask(2)])(controller.signal);
+	setTimeout(() => controller.abort(), 10);
+	const result = await running;
+	expect([1, 2]).toContain(result);
+	expect(seen.every((s) => s.aborted)).toBe(true);
+});
+
 // ---------------------------------------------------------------------------
 // sequential
 // ---------------------------------------------------------------------------
@@ -550,6 +600,22 @@ test("Task.repeatUntil stops after maxAttempts even if predicate never holds", a
 	)();
 	expect(result).toBe(3);
 	expect(count).toBe(3);
+});
+
+test("Task.repeatUntil stops when the signal aborts during a run", async () => {
+	const controller = new AbortController();
+	let count = 0;
+	const task = Task.from(() => {
+		count++;
+		if (count === 2) controller.abort();
+		return Promise.resolve(count);
+	});
+	const result = await pipe(
+		task,
+		Task.repeatUntil({ when: (n) => n > 100 }),
+	)(controller.signal);
+	expect(result).toBe(2);
+	expect(count).toBe(2);
 });
 
 // ---------------------------------------------------------------------------
@@ -852,6 +918,28 @@ test("Task.repeatUntil resolves early with the last value if aborted", async () 
 
 	const result = await repeated(controller.signal);
 	expect(result).toBe(2);
+});
+
+test("Task.delay resolves immediately when the signal is already aborted", async () => {
+	const controller = new AbortController();
+	controller.abort();
+	const start = Date.now();
+	const result = await pipe(Task.resolve(42), Task.delay(500))(controller.signal);
+	expect(result).toBe(42);
+	expect(Date.now() - start).toBeLessThan(100);
+});
+
+test("Task.timeout aborts the inner task when the outer signal is already aborted", async () => {
+	const controller = new AbortController();
+	controller.abort();
+	let innerSignal: AbortSignal | undefined;
+	const task = Task.from((signal) => {
+		innerSignal = signal;
+		return Promise.resolve(42);
+	});
+	const result = await pipe(task, Task.timeout(500, () => "timed out"))(controller.signal);
+	expect(innerSignal?.aborted).toBe(true);
+	expect(result).toEqual({ kind: "Ok", value: 42 });
 });
 
 // ---------------------------------------------------------------------------

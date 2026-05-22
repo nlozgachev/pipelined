@@ -40,7 +40,7 @@ export default defineConfig({
 					nav: [
 						{
 							label: "Docs",
-							href: "/getting-started/installation",
+							href: "/basics/installation",
 						},
 					],
 				}),
@@ -66,67 +66,104 @@ export default defineConfig({
 			],
 			sidebar: [
 				{
-					label: "Getting Started",
+					label: "The basics",
+					collapsed: false,
 					items: [
-						{ label: "Installation", slug: "getting-started/installation" },
+						{ label: "Installation", slug: "basics/installation" },
 						{
 							label: "Thinking in pipelines",
-							slug: "getting-started/pipelines",
+							slug: "basics/pipelines",
 						},
 						{
 							label: "What you will learn",
-							slug: "getting-started/overview",
+							slug: "basics/overview",
+						},
+						{
+							label: "Composition utilities",
+							slug: "basics/composition",
 						},
 					],
 				},
 				{
-					label: "Guides",
+					label: "Errors & absence",
+					collapsed: false,
 					items: [
-						{ label: "Composition utilities", slug: "guides/composition" },
 						{ label: "Maybe — absent values", slug: "guides/maybe" },
 						{ label: "Result — handling failures", slug: "guides/result" },
+						{
+							label: "Validation — collecting errors",
+							slug: "guides/validation",
+						},
+						{ label: "These — inclusive OR", slug: "guides/these" },
+					],
+				},
+				{
+					label: "Async",
+					collapsed: false,
+					items: [
+						{ label: "Task — lazy async", slug: "guides/task" },
 						{
 							label: "Deferred — infallible async values",
 							slug: "guides/deferred",
 						},
 						{ label: "Op — managed async operations", slug: "guides/op" },
 						{
-							label: "Validation — collecting errors",
-							slug: "guides/validation",
-						},
-						{ label: "Task — lazy async", slug: "guides/task" },
-						{
 							label: "RemoteData — loading states",
 							slug: "guides/remote-data",
 						},
-						{ label: "These — inclusive OR", slug: "guides/these" },
-						{ label: "Tuple — typed pairs", slug: "guides/tuple" },
+						{
+							label: "Resource — safe acquire-release",
+							slug: "guides/resource",
+						},
+					],
+				},
+				{
+					label: "State & context",
+					collapsed: false,
+					items: [
+						{
+							label: "Reader — deferred dependencies",
+							slug: "guides/reader",
+						},
+						{ label: "State — threading state", slug: "guides/state" },
+						{ label: "Logged — values with logs", slug: "guides/logged" },
+					],
+				},
+				{
+					label: "Nested data",
+					collapsed: false,
+					items: [
 						{ label: "Lens — nested updates", slug: "guides/lens" },
-						{ label: "Optional — nullable paths", slug: "guides/optional" },
-						{ label: "Reader — deferred dependencies", slug: "guides/reader" },
-						{ label: "Brand — distinguishing values", slug: "guides/brand" },
+						{
+							label: "Optional — nullable paths",
+							slug: "guides/optional",
+						},
+						{ label: "Tuple — typed pairs", slug: "guides/tuple" },
+					],
+				},
+				{
+					label: "Type safety",
+					collapsed: false,
+					items: [
+						{
+							label: "Brand — distinguishing values",
+							slug: "guides/brand",
+						},
 						{ label: "Duration — type-safe time", slug: "guides/duration" },
 						{
 							label: "Refinement — type predicates",
 							slug: "guides/refinement",
 						},
-						{ label: "Predicate — boolean checks", slug: "guides/predicate" },
-						{ label: "Resource — safe acquire-release", slug: "guides/resource" },
-						{ label: "State — threading state", slug: "guides/state" },
-						{ label: "Logged — values with logs", slug: "guides/logged" },
-						{ label: "Arr — array utilities", slug: "guides/arr" },
-						{ label: "Rec — record utilities", slug: "guides/rec" },
-						{ label: "Num — number utilities", slug: "guides/num" },
-						{ label: "Str — string utilities", slug: "guides/str" },
-						{ label: "Dict — dictionary utilities", slug: "guides/dict" },
 						{
-							label: "Uniq — unique collection utilities",
-							slug: "guides/uniq",
+							label: "Predicate — boolean checks",
+							slug: "guides/predicate",
 						},
-						{
-							label: "Lazy — memoized values",
-							slug: "guides/lazy",
-						},
+					],
+				},
+				{
+					label: "Comparing & combining",
+					collapsed: false,
+					items: [
 						{
 							label: "Equality — custom equality",
 							slug: "guides/equality",
@@ -139,8 +176,25 @@ export default defineConfig({
 							label: "Combinable — combining values",
 							slug: "guides/combinable",
 						},
+						{ label: "Lazy — memoized values", slug: "guides/lazy" },
 					],
 				},
+				{
+					label: "Collection utilities",
+					collapsed: false,
+					items: [
+						{ label: "Arr — array utilities", slug: "guides/arr" },
+						{ label: "Str — string utilities", slug: "guides/str" },
+						{ label: "Num — number utilities", slug: "guides/num" },
+						{ label: "Rec — record utilities", slug: "guides/rec" },
+						{ label: "Dict — dictionary utilities", slug: "guides/dict" },
+						{
+							label: "Uniq — unique collection utilities",
+							slug: "guides/uniq",
+						},
+					],
+				},
+
 				{
 					label: "Appendix",
 					items: [

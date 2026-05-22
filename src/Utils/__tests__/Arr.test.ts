@@ -1267,6 +1267,21 @@ test("sortWith - returns empty array for empty input", () => {
 	expect(pipe([] as number[], Arr.sortWith(Ordering.number))).toEqual([]);
 });
 
+test("sortWith - falls back to sort when toSorted is unavailable", () => {
+	const original = Array.prototype.toSorted;
+	// Simulate a runtime without Array.prototype.toSorted.
+	delete (Array.prototype as { toSorted?: unknown }).toSorted;
+	try {
+		const data = [3, 1, 2];
+		const result = pipe(data, Arr.sortWith(Ordering.number));
+		expect(result).toEqual([1, 2, 3]);
+		expect(data).toEqual([3, 1, 2]);
+	} finally {
+		// oxlint-disable-next-line no-extend-native
+		Array.prototype.toSorted = original;
+	}
+});
+
 // =============================================================================
 // compact
 // =============================================================================

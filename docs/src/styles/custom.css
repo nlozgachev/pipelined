@@ -14,4 +14,8 @@
   .content-panel li > ul {
     margin-left: 1.4rem;
   }
+
+ .sl-markdown-content, sl-sidebar-state-persist > ul {
+    padding-bottom: 16vh;
+  }
 }
