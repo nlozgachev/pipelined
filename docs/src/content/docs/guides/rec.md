@@ -1,98 +1,114 @@
 ---
-title: Rec — record utilities
-description: Work with records in a pipeline — data-last utilities with Maybe-returning key lookup.
+title: Rec — Record Utilities
+description: Work with plain JavaScript objects as key-value records immutably and safely inside pipelines, using data-last utilities with type-safe key lookup.
 ---
 
-Plain JavaScript objects used as maps — `Record<string, A>` — are one of the most common data
-structures in any TypeScript codebase. `Rec` is a small collection of utilities for working with
-them in pipelines: data-last, curried, and returning `Maybe` wherever a key might not exist.
+Plain JavaScript objects serving as dictionaries — typed as `Record<string, A>` — are the most
+ubiquitous data structures in any TypeScript application. We use them for configurations, lookup
+tables, and serialized payloads.
 
-## Safe lookup
+However, working with records in functional pipelines introduces two common points of friction:
 
-`Rec.lookup` retrieves a value by key and returns `Maybe` to make the absence explicit:
+1. **They are data-first**: Modifying objects natively forces us to write verbose, inline spreads
+   inside our `pipe` chains: `(obj) => ({ ...obj, key: value })`.
+2. **They are unsafe**: Accessing a missing key via bracket notation (`obj[key]`) silently returns
+   `undefined` at runtime, bypassing the type system and causing errors downstream.
+
+`Rec` solves both issues. It provides a small, highly optimized collection of **data-last**, curried
+utilities designed to compose cleanly in pipelines, returning explicit `Maybe` values for safe,
+crash-free key lookups.
+
+---
+
+## Safe Key Lookup
+
+`Rec.lookup` retrieves the value associated with a key, wrapping it in a `Maybe` container to make
+key absence explicit in your types:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 import { Maybe } from "@nlozgachev/pipelined/core";
 import { Rec } from "@nlozgachev/pipelined/utils";
 
-const settings = { theme: "dark", lang: "en" };
+const settings = { theme: "dark", language: "en" };
 
 pipe(settings, Rec.lookup("theme")); // Some("dark")
-pipe(settings, Rec.lookup("font")); // None — not undefined
+pipe(settings, Rec.lookup("font"));  // None (not undefined)
 ```
 
-This composes naturally with `Maybe` operations:
+This integrates naturally with other pipelines:
 
 ```ts
-pipe(
-  config,
-  Rec.lookup("timeout"), // Maybe<string>
-  Maybe.chain(parseNumber), // Maybe<number>
-  Maybe.getOrElse(() => 30_000),
+const serverTimeout = pipe(
+  configPayload,
+  Rec.lookup("timeout"),
+  Maybe.map((s) => Number(s)),
+  Maybe.filter((n) => !isNaN(n)),
+  Maybe.getOrElse(() => 30000), // Secure fallback
 );
 ```
 
-`Rec.lookup` always returns `Maybe` — if you need the raw `undefined` for interop with code that
-expects it, plain `obj[key]` is still there.
+---
 
-## Transforming values
+## Transforming Values
 
-`map` is the most common operation — most record transformations are just "apply this function to
-every value". Reach for `mapWithKey` when the key matters in the transformation.
-
-**`map`** transforms every value in a record, preserving keys:
+`Rec.map` transforms every value inside a record, returning a new record with the original keys
+preserved:
 
 ```ts
-pipe({ a: 1, b: 2, c: 3 }, Rec.map((n) => n * 10));
-// { a: 10, b: 20, c: 30 }
+pipe({ a: 1, b: 2 }, Rec.map((n) => n * 10)); // { a: 10, b: 20 }
 ```
 
-**`mapWithKey`** receives both key and value:
+If the transformation requires the key as well as the value, `Rec.mapWithKey` passes both to your
+callback:
 
 ```ts
-pipe({ a: 1, b: 2 }, Rec.mapWithKey((key, val) => `${key}=${val}`));
-// { a: "a=1", b: "b=2" }
+pipe({ a: 1, b: 2 }, Rec.mapWithKey((key, value) => `${key}_${value}`));
+// { a: "a_1", b: "b_2" }
 ```
 
-## Filtering
+---
 
-**`filter`** keeps entries where the predicate passes:
+## Filtering Values
 
-```ts
-pipe({ a: 1, b: 2, c: 3 }, Rec.filter((n) => n > 1));
-// { b: 2, c: 3 }
-```
-
-**`filterWithKey`** receives both key and value:
+- `Rec.filter` keeps only the entries whose values satisfy a predicate.
+- `Rec.filterWithKey` passes both the key and the value to the predicate:
 
 ```ts
+// Keep only values greater than 1:
+pipe({ a: 1, b: 2, c: 3 }, Rec.filter((n) => n > 1)); // { b: 2, c: 3 }
+
+// Keep values where the key matches a specific prefix and value is non-zero:
 pipe(
   { a: 1, b: 0, c: 3 },
-  Rec.filterWithKey((key, val) => key !== "a" && val > 0),
+  Rec.filterWithKey((key, value) => key !== "a" && value > 0),
 ); // { c: 3 }
 ```
 
-## Picking and omitting keys
+---
 
-**`pick`** returns a new record with only the specified keys:
+## Picking and Omitting Keys
+
+- `Rec.pick` returns a new record containing only the specified keys.
+- `Rec.omit` returns a new record with the specified keys removed.
+
+Both utilities are fully **type-safe**. `pick` returns a precise `Pick<A, K>` type and `omit`
+returns a precise `Omit<A, K>` type, ensuring the compiler tracks exactly which properties survive
+the pipeline:
 
 ```ts
-pipe({ a: 1, b: 2, c: 3 }, Rec.pick("a", "c")); // { a: 1, c: 3 }
+const baseProfile = { id: "123", name: "Alice", email: "alice@example.com" };
+
+const summary = pipe(baseProfile, Rec.pick("id", "name")); // { id: "123", name: "Alice" }
+const publicView = pipe(baseProfile, Rec.omit("email"));   // { id: "123", name: "Alice" }
 ```
 
-**`omit`** returns a new record with the specified keys removed:
+---
 
-```ts
-pipe({ a: 1, b: 2, c: 3 }, Rec.omit("b")); // { a: 1, c: 3 }
-```
+## Merging Records
 
-Both are type-safe: `pick` returns `Pick<A, K>` and `omit` returns `Omit<A, K>`, so the resulting
-type reflects exactly which keys are present.
-
-## Merging
-
-**`merge`** combines two records. Keys in the second record take precedence over the first:
+`Rec.merge` combines two records, returning a fresh object. Keys present in the second record
+override those in the first record, behaving identically to standard object spreads:
 
 ```ts
 pipe(
@@ -101,66 +117,65 @@ pipe(
 ); // { a: 1, b: 99, c: 3 }
 ```
 
-## Keys, values, and entries
+---
+
+## Keys, Values, and Entries
+
+`Rec` provides utilities to extract arrays of keys, values, or entries:
 
 ```ts
-const rec = { x: 10, y: 20 };
+const coordinates = { x: 10, y: 20 };
 
-Rec.keys(rec); // ["x", "y"]
-Rec.values(rec); // [10, 20]
-Rec.entries(rec); // [["x", 10], ["y", 20]]
+Rec.keys(coordinates);    // ["x", "y"]
+Rec.values(coordinates);  // [10, 20]
+Rec.entries(coordinates); // [["x", 10], ["y", 20]]
 ```
 
-**`fromEntries`** is the inverse — builds a record from key-value pairs:
+`Rec.fromEntries` is the inverse constructor, building a record from an array of key-value pairs:
 
 ```ts
 Rec.fromEntries([["a", 1], ["b", 2]]); // { a: 1, b: 2 }
 ```
 
-`entries` and `fromEntries` pair well when you want to transform both keys and values by converting
-to entries, mapping, and converting back:
+You can pair `entries` and `fromEntries` to easily perform structural record mappings:
 
 ```ts
-pipe(
-  { firstName: "Alice", lastName: "Smith" },
+// Upper-casing all keys in a record:
+const rawInput = { firstName: "Alice", lastName: "Smith" };
+
+const parsed = pipe(
+  rawInput,
   Rec.entries,
-  (entries) => entries.map(([k, v]) => [k.toUpperCase(), v] as const),
+  (entries) => entries.map(([key, value]) => [key.toUpperCase(), value] as const),
   Rec.fromEntries,
 ); // { FIRSTNAME: "Alice", LASTNAME: "Smith" }
 ```
 
-## Inspecting size
+---
+
+## Sizing and Verification
 
 ```ts
-Rec.isEmpty({ a: 1 }); // false
-Rec.isEmpty({}); // true
+Rec.isEmpty({});         // true
+Rec.isEmpty({ a: 1 });   // false
+
 Rec.size({ a: 1, b: 2 }); // 2
 ```
 
-## Combining with pipe
-
-Because all `Rec` functions are curried and data-last, they chain naturally:
-
-```ts
-const result = pipe(
-  rawConfig,
-  Rec.filter((v) => v !== null),
-  Rec.mapWithKey((key, val) => `${key}: ${val}`),
-  Rec.omit("debug", "internal"),
-);
-```
-
-Each step produces a new record — no mutation, no intermediate variables.
+---
 
 ## When to use Rec
 
-Use `Rec` when:
+### Use Rec when:
 
-- You're transforming or filtering a `Record<string, A>` and want the step to compose in `pipe`
-- You need `Maybe`-returning key lookup instead of `undefined`
-- You're picking or omitting keys and want the resulting type to reflect exactly what's present
+- **Operating inside pipelines**: You are transforming, filtering, or merging records point-free
+  inside `pipe` chains.
+- **You require type-safe picks or omits**: You want the compiler to statically track exactly which
+  properties exist after keys are picked or omitted.
+- **Safe key retrieval is required**: You want to avoid accidental `undefined` runtime crashes by
+  capturing key absence as a `Maybe` container.
 
-Keep using plain object operations when:
+### Keep using standard object notation when:
 
-- The operation is a one-liner in a function body where `obj[key]` or spread is already clear
-- You don't need the result to compose in a pipeline
+- **The operation is a simple, local one-liner**: Inside a narrow function body where standard
+  dot-notation `obj.key` or spreads `{ ...obj }` are already clear and require no composition.

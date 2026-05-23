@@ -1,189 +1,253 @@
 ---
-title: These — inclusive OR
-description: Hold a first value, a second value, or both simultaneously — without implying success or failure.
+title: These — Inclusive OR
+description: Model inclusive-OR scenarios where you have a first value, a second value, or both coexisting simultaneously.
 ---
 
-Most operations produce one of two outcomes. `These<A, B>` is for the cases where both can exist at
-once. Where `Result<E, A>` is either an error *or* a value, `These<A, B>` has three variants:
+In software modeling, we typically combine types in two common ways.
 
-- `First(a)` — only a first value
-- `Second(b)` — only a second value
-- `Both(a, b)` — both a first and a second value simultaneously
+The first is when **both** values must always be present. We do this every day using standard
+objects or tuples:
 
-Neither side carries a success or failure connotation. `These` is a neutral inclusive-OR pair: any
-combination is valid, and neither side is privileged.
+```ts
+type User = { name: string; age: number }; // both must be present
+```
 
-## When two sides coexist
+The second is when we have **one value or the other, but never both**. We do this using standard
+union types or `Result<E, A>`:
 
-Some operations naturally produce two pieces of information at once:
+```ts
+type Status = "active" | "inactive"; // one or the other
+```
 
-- Parsing a number from a string with extra whitespace: the number is valid, and the input was
-  malformed
-- A migration that completed with some rows skipped
-- A computation that produced a result alongside a diagnostic notice
+But what about the inclusive-OR? What if you need to represent a situation where you might have
+value A, you might have value B, or you might have both coexisting simultaneously?
 
-In these cases, discarding either piece loses information. `Both` holds them together.
+This is the purpose of `These<A, B>`. It is the structural representation of the inclusive-OR,
+offering three distinct variants:
 
-## Creating These values
+- `First(a)` — only the first value is present.
+- `Second(b)` — only the second value is present.
+- `Both(a, b)` — both the first and second values are present.
+
+```mermaid
+flowchart TD
+    Start[Data Presence Check] --> Choice{What is present?}
+    Choice -->|Only A| First[First A]
+    Choice -->|Only B| Second[Second B]
+    Choice -->|Both A and B| Both[Both A B]
+```
+
+`These` is a neutral, structural domain-modeling type. It does not carry any success, failure, or
+implicit error connotations. Neither side is privileged.
+
+---
+
+## Structural Modeling: Domain Examples
+
+### 1. Contact Information
+
+Suppose you are designing a notification service that requires contact details. A user can register
+their email address `A`, their phone number `B`, or both `Both(A, B)`. Representing this with
+standard union types or optional fields is fragile because it permits the invalid state of having
+neither.
+
+With `These`, the type system enforces that at least one contact channel is present:
 
 ```ts
 import { These } from "@nlozgachev/pipelined/core";
 
-These.first(42); // First — only a first value
-These.second("bad input"); // Second — only a second value
-These.both(42, "trimmed"); // Both — first and second simultaneously
+type ContactDetails = These<EmailAddress, PhoneNumber>;
+
+const emailOnly = These.first(email);       // Email only
+const phoneOnly = These.second(phone);      // Phone only
+const both = These.both(email, phone);      // Both channels available
 ```
 
-A typical use: a parser that's lenient but records what it fixed:
+### 2. Local and Remote Synchronization
+
+Suppose you are building a database synchronizer that reconciles local and remote changes. When
+comparing records, three outcomes are structurally possible:
+
+- Only local changes exist: `First(local)`
+- Only remote changes exist: `Second(remote)`
+- Both local and remote changes exist and must be merged: `Both(local, remote)`
+
+```ts
+interface UserRecord { id: string; name: string }
+
+const reconcile = (local: UserRecord | null, remote: UserRecord | null): These<UserRecord, UserRecord> => {
+  if (local && !remote) return These.first(local);
+  if (!local && remote) return These.second(remote);
+  if (local && remote)  return These.both(local, remote);
+  throw new Error("Cannot reconcile when both sources are empty");
+};
+```
+
+---
+
+## Transforming Values
+
+Because `These` carries two distinct type parameters, we can map over either or both sides
+independently.
+
+### Mapping the first side with `mapFirst`
+
+`mapFirst` transforms the value inside a `First` or a `Both` container, leaving `Second` entirely
+untouched:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 
-const parseNumber = (s: string): These<number, string> => {
-  const trimmed = s.trim();
-  const n = parseFloat(trimmed);
-  if (isNaN(n)) return These.second("Not a number");
-  if (s !== trimmed) return These.both(n, "Leading/trailing whitespace trimmed");
-  return These.first(n);
-};
+const formatEmail = (email: EmailAddress) => email.toLowerCase();
 
-parseNumber("  42  "); // Both(42, "Leading/trailing whitespace trimmed")
-parseNumber("42"); // First(42)
-parseNumber("abc"); // Second("Not a number")
+pipe(These.first(email), These.mapFirst(formatEmail));      // First(formattedEmail)
+pipe(These.both(email, phone), These.mapFirst(formatEmail)); // Both(formattedEmail, phone)
+pipe(These.second(phone), These.mapFirst(formatEmail));     // Second(phone)
 ```
 
-## Transforming values
+### Mapping the second side with `mapSecond`
 
-`mapFirst` transforms the first value in `First` and `Both`, leaving `Second` untouched:
+`mapSecond` transforms the value inside a `Second` or a `Both` container, leaving `First` untouched:
 
 ```ts
-pipe(These.first(5), These.mapFirst((n) => n * 2)); // First(10)
-pipe(These.both(5, "warn"), These.mapFirst((n) => n * 2)); // Both(10, "warn")
-pipe(These.second("warn"), These.mapFirst((n) => n * 2)); // Second("warn")
+const formatPhone = (phone: PhoneNumber) => phone.trim();
+
+pipe(These.second(phone), These.mapSecond(formatPhone));  // Second(formattedPhone)
+pipe(These.both(email, phone), These.mapSecond(formatPhone)); // Both(email, formattedPhone)
 ```
 
-`mapSecond` transforms the second value in `Second` and `Both`, leaving `First` untouched:
+### Mapping both sides with `mapBoth`
 
-```ts
-pipe(These.second("warn"), These.mapSecond((e) => e.toUpperCase())); // Second("WARN")
-pipe(These.both(5, "warn"), These.mapSecond((e) => e.toUpperCase())); // Both(5, "WARN")
-```
-
-`mapBoth` transforms both sides at once:
+`mapBoth` allows you to transform both paths simultaneously:
 
 ```ts
 pipe(
-  These.both(5, "warn"),
-  These.mapBoth(
-    (n) => n * 2,
-    (e) => e.toUpperCase(),
-  ),
-); // Both(10, "WARN")
+  These.both(email, phone),
+  These.mapBoth(formatEmail, formatPhone),
+); // Both(formattedEmail, formattedPhone)
 ```
 
-## Chaining
+---
+
+## Chaining Transformations
+
+Chaining operations over a `These` requires careful attention to what should happen to coexisting
+values.
 
 `chainFirst` passes the first value to the next step, leaving `Second` unchanged. When the input is
-`Both`, the second value is dropped — the step produces whatever `f` returns, which may be `First`,
-`Second`, or `Both`. If you need the second value to survive the chain, either include it in the
-return value of `f` or use `mapBoth` to transform both sides without chaining:
+a `Both` variant, the coexisting second value is dropped, and the pipeline yields whatever the next
+step returns:
 
 ```ts
-const double = (n: number): These<number, string> => These.first(n * 2);
+const lookupEmailMetaData = (email: string): These<EmailMeta, PhoneNumber> => 
+  These.first(fetchMetadata(email));
 
-pipe(These.first(5), These.chainFirst(double)); // First(10)
-pipe(These.both(5, "warn"), These.chainFirst(double)); // First(10) — "warn" discarded
-pipe(These.second("warn"), These.chainFirst(double)); // Second("warn") — no first to chain
-```
-
-`chainSecond` is the symmetric operation on the second side:
-
-```ts
-const shout = (s: string): These<number, string> => These.second(s.toUpperCase());
-
-pipe(These.second("warn"), These.chainSecond(shout)); // Second("WARN")
-pipe(These.both(5, "warn"), These.chainSecond(shout)); // Second("WARN")
-pipe(These.first(5), These.chainSecond(shout)); // First(5)
-```
-
-## Extracting values
-
-**`match`** — handle all three cases. `fold` is the positional form if you'd rather not name them:
-
-```ts
 pipe(
-  result,
+  These.both("alice@example.com", "+15550199"),
+  These.chainFirst(lookupEmailMetaData),
+); // First(EmailMeta) — phone number is discarded
+```
+
+If you need the second value to survive the chain, you must use pure maps rather than monadic
+chains.
+
+`chainSecond` performs the symmetric operation, chaining over the second value while leaving `First`
+unchanged:
+
+```ts
+const validatePhone = (phone: string): These<EmailAddress, PhoneMeta> => ...
+```
+
+---
+
+## Extracting Values
+
+When you reach the boundary of your pipeline, you must unpack `These` into standard TypeScript
+primitives.
+
+### Exhaustive matching with `match` and `fold`
+
+`match` requires you to handle all three possible variants explicitly, ensuring that coexisting
+values are never accidentally lost:
+
+```ts
+const notificationTarget = pipe(
+  contactDetails,
   These.match({
-    first: (value) => `First: ${value}`,
-    second: (note) => `Second: ${note}`,
-    both: (value, note) => `Both — ${value} / ${note}`,
+    first: (email) => `Send email to ${email}`,
+    second: (phone) => `Send SMS to ${phone}`,
+    both: (email, phone) => `Send email to ${email} and SMS to ${phone}`,
   }),
 );
 ```
 
-**`getFirstOrElse`** — returns the first value from `First` or `Both`, or a fallback for `Second`.
-The fallback can be a different type, widening the result to `A | C`:
+For positional callbacks, `fold` provides an un-named positional mapping alternative.
+
+### Safe fallbacks with `getFirstOrElse` and `getSecondOrElse`
+
+If you only want to extract one side of the container and provide a fallback if it is absent:
 
 ```ts
-pipe(These.first(5), These.getFirstOrElse(0)); // 5
-pipe(These.both(5, "warn"), These.getFirstOrElse(0)); // 5
-pipe(These.second("warn"), These.getFirstOrElse(0)); // 0
-pipe(These.second("warn"), These.getFirstOrElse(null)); // null — typed as number | null
+// Extract the email (available in First or Both), or fallback
+pipe(These.second(phone), These.getFirstOrElse(() => defaultEmail)); // defaultEmail
+
+// Extract the phone (available in Second or Both), or fallback
+pipe(These.first(email), These.getSecondOrElse(() => defaultPhone)); // defaultPhone
 ```
 
-**`getSecondOrElse`** — symmetric: returns the second value or a fallback for `First`. The fallback
-can be a different type, widening the result to `B | D`:
+---
+
+## Direct Inspection: Type Guards
+
+To check which variant is active without unpacking the full structure, `These` provides several type
+guards:
 
 ```ts
-pipe(These.second("warn"), These.getSecondOrElse("none")); // "warn"
-pipe(These.both(5, "warn"), These.getSecondOrElse("none")); // "warn"
-pipe(These.first(5), These.getSecondOrElse("none")); // "none"
-pipe(These.first(5), These.getSecondOrElse(null)); // null — typed as string | null
+These.isFirst(value);  // true if First only
+These.isSecond(value); // true if Second only
+These.isBoth(value);   // true if Both
+
+These.hasFirst(value);  // true if First or Both
+These.hasSecond(value); // true if Second or Both
 ```
 
-## Type guards
-
-For checking the variant directly:
-
-```ts
-These.isFirst(t); // true if First only
-These.isSecond(t); // true if Second only
-These.isBoth(t); // true if Both
-
-These.hasFirst(t); // true if First or Both
-These.hasSecond(t); // true if Second or Both
-```
+---
 
 ## Utilities
 
-**`swap`** — flips first and second roles:
+### Flipping roles: swap
+
+`swap` reverses the first and second values of the container:
 
 ```ts
-These.swap(These.first(5)); // Second(5)
-These.swap(These.second("warn")); // First("warn")
-These.swap(These.both(5, "warn")); // Both("warn", 5)
+These.swap(These.first(email));         // Second(email)
+These.swap(These.both(email, phone));   // Both(phone, email)
 ```
 
-**`tap`** — run a side effect on the first value without changing the These:
+### Peeking with tap
+
+`tap` allows you to execute a side-effectful callback on the first value of a `First` or `Both`
+container, leaving the original `These` unchanged:
 
 ```ts
-pipe(These.first(5), These.tap(console.log)); // logs 5, returns First(5)
+pipe(
+  These.both(email, phone),
+  These.tap((e) => console.log(`Sending system check to ${e}`)),
+);
 ```
+
+---
 
 ## When to use These
 
-Use `These` when:
+### Use These when:
 
-- An operation can produce two pieces of information simultaneously
-- You need to carry two independent values — where either or both may be present — through a
-  pipeline
-- Neither side represents a "primary" success or failure path; both are equally valid
+- **Modeling an inclusive-OR relation**: You have two independent values of different types where
+  *any combination is possible and valid*, and neither side represents an error or an exception.
+- **Reconciling dual sources**: Synchronizing records between two independent data sources (like
+  local and remote databases) where edits can exist in either or both.
 
-`These` is the less commonly reached-for type in the family. When you find yourself wanting to carry
-two independent pieces of data where any combination is possible, that's the signal to reach for it.
-If you're unsure whether you need it, you probably don't — reach for `Result` or `Maybe` first and
-only switch to `These` when one of those would lose information you need to keep.
+### Keep using Result instead when:
 
-One thing to watch out for: `chainFirst` on a `Both` does not carry the second value forward — the
-result of `f` is returned directly. If you need the second value preserved through a chain, `Both`
-is not a transparent container for it.
+- **The states are mutually exclusive**: The operation represents a strict success-or-failure
+  outcome. If an error occurs, there is no useful success data to preserve.

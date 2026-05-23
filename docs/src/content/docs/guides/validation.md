@@ -1,18 +1,19 @@
 ---
-title: Validation — collecting errors
-description: Run all checks and collect every failure instead of stopping at the first one.
+title: Validation — Accumulating Errors
+description: Collect all validation failures in one pass, ensuring a complete overview of errors rather than failing fast on the first one.
 ---
 
-If you've ever fixed a validation error on a form, resubmitted, and been told about a *different*
-error — you've felt the frustration of validation that stops at the first failure.
-`Validation<E, A>` runs all checks and collects every failure in one pass. Users see everything
-wrong at once, not one problem at a time.
+We have all experienced a frustrating user interface pattern: you fill out a long form, hit submit,
+and are presented with a red validation error indicating your password is too short. You fix it,
+submit again, only to be told that your email address is malformed. You fix that, submit once more,
+and receive a third warning about your postal code.
 
-## The problem with short-circuiting
-
-When validating a form, `Result`'s behavior is unhelpful:
+This trial-and-error cycle is the direct result of a design choice in our code. When we use standard
+`try/catch` blocks, conditional guards, or `Result` containers to validate input, we are using a
+**fail-fast** model. This model short-circuits at the very first failure:
 
 ```ts
+// Result-based short-circuiting:
 pipe(
   validateName(form.name),
   Result.chain(() => validateEmail(form.email)),
@@ -20,140 +21,123 @@ pipe(
 );
 ```
 
-If `validateName` fails, the pipeline stops. The user sees one error, fixes it, submits again, and
-sees the next one. You want to show all three errors at once.
+If `validateName` fails, the execution stops. The subsequent checks for `email` and `age` are never
+even evaluated. While this short-circuiting behavior is correct for sequential operations where step
+B depends on the success of step A, it is highly unhelpful for validating independent data fields in
+forms, API payloads, or configuration files.
 
-## The Validation approach
+`Validation<E, A>` is a data structure designed specifically to address this problem. It represents
+either a `Passed<A>` success or a `Failed<E>` failure containing a list of accumulated errors.
+Instead of short-circuiting, it runs all checks independently and merges all errors together.
 
-`Validation` accumulates errors across independent checks. When you combine two failed validations,
-both error lists are merged:
-
-```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Validation } from "@nlozgachev/pipelined/core";
-
-const validateName = (name: string): Validation<string, string> =>
-  name.length > 0
-    ? Validation.passed(name)
-    : Validation.failed("Name is required");
-
-const validateAge = (age: number): Validation<string, number> =>
-  age >= 0
-    ? Validation.passed(age)
-    : Validation.failed("Age must be non-negative");
-```
-
-Running both checks with `ap` collects all failures:
-
-```ts
-pipe(
-  Validation.passed((name: string) => (age: number) => ({ name, age })),
-  Validation.ap(validateName("")),
-  Validation.ap(validateAge(-1)),
-);
-// Failed(["Name is required", "Age must be non-negative"])
-```
-
-If both pass, you get the assembled value:
-
-```ts
-pipe(
-  Validation.passed((name: string) => (age: number) => ({ name, age })),
-  Validation.ap(validateName("Alice")),
-  Validation.ap(validateAge(30)),
-);
-// Passed({ name: "Alice", age: 30 })
-```
+---
 
 ## Creating Validations
 
+To begin validating, we lift our data checks into the `Validation` context:
+
 ```ts
-Validation.passed(42); // Passed(42)
-Validation.failed("too short"); // Failed(["too short"]) — single error
-Validation.failedAll(["too short", "missing digits"]); // Failed([...]) — multiple errors
+import { Validation } from "@nlozgachev/pipelined/core";
+
+// Representing a successful validation check
+const pass = Validation.passed("Alice"); // Validation<never, string>
+
+// Representing a single failure
+const fail = Validation.failed("Username must be at least 3 characters"); // Validation<string, never>
 ```
 
-`failed` wraps a single error in a list. `failedAll` accepts a `NonEmptyList` directly, useful when
-you already have a collection of errors.
+Under the hood, all failures in `Validation` are collected inside a `NonEmptyList` (a type-safe
+array guaranteed to contain at least one element). When you call `Validation.failed(err)`, the
+library automatically wraps your error in a list container.
 
-`fromPredicate` builds a `Validation` from a condition check — useful when validating a single field
-against a rule:
+If you already have an array of errors and want to lift it directly, you can use `failedAll`:
 
 ```ts
-const validateLength = Validation.fromPredicate(
+const multipleFails = Validation.failedAll([
+  "Email is malformed",
+  "Email domain is not allowed",
+]);
+```
+
+### Constructing checks with `fromPredicate`
+
+You can build reusable, rule-specific validation checkers using `fromPredicate`:
+
+```ts
+const validatePasswordLength = Validation.fromPredicate(
   (s: string) => s.length >= 8,
-  (s) => `"${s}" must be at least 8 characters`,
+  (s) => `Password of length ${s.length} is too short (minimum 8 characters)`,
 );
-
-validateLength("hi"); // Failed(['"hi" must be at least 8 characters'])
-validateLength("longpassword"); // Passed("longpassword")
 ```
 
-The second argument receives the original value, so error messages can include the bad input.
-`fromPredicate` composes naturally with `ap` and `product` — create one validator per rule, then
-combine them.
+The second argument receives the original input, allowing you to format descriptive, clear feedback
+for your users.
 
-## How `ap` accumulates errors
+---
 
-`ap` is what sets `Validation` apart from `Result`. The pattern is: start with your constructor
-function wrapped in `Validation.passed`, then apply each validated argument with `ap`:
+## The Accumulation Pattern: ap
+
+What makes `Validation` structurally different from `Result` is how we combine multiple independent
+checks.
+
+The primary tool for this is `ap` (short for *apply*). The pattern begins by wrapping a curried
+constructor function in `passed`, and then applying each validated argument one-by-one:
 
 ```ts
-// Constructor: (field1) => (field2) => (field3) => result
-const build = (email: string) => (password: string) => (age: number) => ({
+import { pipe } from "@nlozgachev/pipelined/composition";
+
+// A constructor function representing our valid target structure
+const createUser = (name: string) => (email: string) => (age: number) => ({
+  name,
   email,
-  password,
   age,
 });
 
-pipe(
-  Validation.passed(build),
-  Validation.ap(validateEmail(form.email)), // applies first arg
-  Validation.ap(validatePassword(form.password)), // applies second arg
-  Validation.ap(validateAge(form.age)), // applies third arg
+const result = pipe(
+  Validation.passed(createUser),
+  Validation.ap(validateName(form.name)),   // Applies name check
+  Validation.ap(validateEmail(form.email)), // Applies email check
+  Validation.ap(validateAge(form.age)),     // Applies age check
 );
 ```
 
-Each `ap` step:
+Let's dissect what happens when this pipeline executes. Each `ap` step inspects both sides:
 
-- If both sides are passed, applies the function to the value
-- If either side is failed, merges both error lists into a single `Failed`
+- If both the function and the argument have passed, the argument value is applied to the function.
+- If either the function or the argument has failed, the errors are gathered.
+- If *both* have failed, their respective error lists are merged.
 
-The key property: all `ap` steps run regardless of prior failures. This is what allows all errors to
-be collected.
+Because each argument is validated independently before being combined, all validation checks are
+guaranteed to run, and every failure is gathered into a single consolidated `Failed` container.
 
-The `ap` pattern looks unusual at first. A simpler read: you're lifting a curried constructor and
-applying each validated argument one by one. If the constructor shape feels awkward, `productAll`
-often expresses the same intent more directly — pass a list of validations, get back a list of
-passed values.
+---
 
-## Combining two validations with `product`
+## Alternative Combinators: product and productAll
 
-`product` takes two independent validations and combines them into a single `Validation` holding a
-tuple of both values. If either fails, errors from both sides are merged:
+If the curried `ap` pattern feels unfamiliar or syntactically complex, `Validation` provides
+simpler, array-based alternatives.
+
+### Combining two checks with `product`
+
+`product` takes two independent validations and merges them into a single `Validation` carrying a
+tuple of both values:
 
 ```ts
-Validation.product(
-  Validation.passed("alice"),
-  Validation.passed(30),
-); // Passed(["alice", 30])
-
-Validation.product(
-  Validation.failed("Name required"),
-  Validation.failed("Age must be >= 0"),
-); // Failed(["Name required", "Age must be >= 0"])
+const combined = Validation.product(
+  validateName(form.name),
+  validateAge(form.age),
+); // Passed([name, age]) or Failed([nameErrors..., ageErrors...])
 ```
 
-This is the binary building block for combining two independent checks when you want both values
-afterwards.
+If either validation has failed, the errors from both sides are collected and merged.
 
-## Combining many validations with `productAll`
+### Combining many checks with `productAll`
 
-`productAll` takes a non-empty list of validations, runs all of them, and either collects all values
-or accumulates all errors:
+`productAll` accepts an array of validations, runs all of them, and returns either a `Passed` tuple
+containing all successfully validated values, or a `Failed` list containing every accumulated error:
 
 ```ts
-Validation.productAll([
+const formValidation = Validation.productAll([
   validateName(form.name),
   validateEmail(form.email),
   validateAge(form.age),
@@ -162,183 +146,172 @@ Validation.productAll([
 // Failed([...all errors]) — if any fail
 ```
 
-Because the input is a `NonEmptyList`, the empty-array case is a compile-time error — the return
-type is always `Validation<E, readonly A[]>` with no `undefined`.
+Because `productAll` expects a `NonEmptyList` (a non-empty array) of validations, you are guaranteed
+to receive a compiled result carrying a type-safe array of values, completely avoiding the
+possibility of empty array inputs or undefined states at compile time.
 
-## Transforming values with `map`
+---
 
-`map` transforms the passed value, leaving `Failed` untouched:
+## Transforming values
+
+You can transform the success value inside a `Passed` container without worrying about the failure
+branch using `map`:
 
 ```ts
 pipe(
-  Validation.passed(5),
-  Validation.map((n) => n * 2),
-); // Passed(10)
-pipe(
-  Validation.failed("oops"),
-  Validation.map((n) => n * 2),
-); // Failed(["oops"])
+  validateAge(input),
+  Validation.map((age) => age * 365), // Converts age in years to age in days
+);
 ```
+
+If the validation has failed, `map` does nothing and lets the accumulated errors propagate.
+
+---
 
 ## Extracting the value
 
-**`getOrElse`** — provide a fallback as a thunk `() => B`, called only when the result is `Failed`.
-The fallback can be a different type, widening the result to the union of both:
+Once all checks have run and the errors have been accumulated, you must exit the `Validation`
+context at the edge of your pipeline.
 
-```ts
-pipe(Validation.passed(5), Validation.getOrElse(() => 0)); // 5
-pipe(Validation.failed("oops"), Validation.getOrElse(() => 0)); // 0
-pipe(Validation.failed("oops"), Validation.getOrElse(() => null)); // null — typed as number | null
-```
+### Safe fallbacks with `getOrElse`
 
-**`match`** — handle each case explicitly. The failed handler receives the full error list. `fold`
-is the positional form — failed handler first, passed handler second:
+`getOrElse` extracts the validated value from a `Passed` container, or returns a safe fallback value
+if the validations failed:
 
 ```ts
 pipe(
-  validation,
+  formValidation,
+  Validation.getOrElse(() => defaultUserData),
+);
+```
+
+As with other modules in this library, `getOrElse` expects a function (a thunk) to defer evaluating
+the fallback value, saving execution costs if the validation checks pass successfully.
+
+### Exhaustive matching with `match` and `fold`
+
+To drive distinct UI rendering or business branches based on the outcome, you can analyze both cases
+using `match` or `fold`:
+
+```ts
+// Named cases using match
+const view = pipe(
+  formValidation,
   Validation.match({
-    passed: (value) => renderSuccess(value),
-    failed: (errors) => renderErrors(errors), // errors: NonEmptyList<string>
+    passed: (data) => renderSuccessDashboard(data),
+    failed: (errors) => renderErrorList(errors), // errors is NonEmptyList<E>
+  }),
+);
+
+// Positional callbacks using fold (failed handler first)
+const status = pipe(
+  formValidation,
+  Validation.fold(
+    (errors) => `Failed with ${errors.length} errors`,
+    (data) => `Success: user ${data[0]} verified`,
+  ),
+);
+```
+
+---
+
+## Side effects with tapError
+
+When you want to log or inspect validation failures mid-pipeline without altering the validation
+flow, you can use `tapError`. It executes a side-effectful callback only if the validation has
+failed, passing the full list of accumulated errors:
+
+```ts
+pipe(
+  formValidation,
+  Validation.tapError((errors) => {
+    logger.warn(`Form validation failed with ${errors.length} errors`, { errors });
   }),
 );
 ```
 
-## Recovering from Failed
+---
 
-`recover` provides a fallback `Validation` when the result is `Failed`. The fallback receives the
-accumulated error list, so you can inspect which errors occurred and decide how to recover:
+## Fallback strategies: recover
+
+`recover` provides a fallback `Validation` when validation has failed. It passes the accumulated
+error list to your fallback function, allowing you to inspect what went wrong and decide how to
+recover dynamically:
 
 ```ts
 pipe(
-  validateConfig(input),
+  validatePayload(input),
   Validation.recover((errors) => {
-    console.warn("Validation failed:", errors);
-    return Validation.passed(defaultConfig);
+    console.warn("Payload validation failed. Using default configuration.", errors);
+    return Validation.passed(defaultPayload);
   }),
 );
 ```
 
-When the input is already `Passed`, the fallback is never called:
+---
+
+## Interoperability and Hand-offs
+
+Because software systems use a variety of modeling types, you can translate `Validation` to and from
+other modules.
+
+### Discarding errors to Maybe
+
+If you only care about obtaining a valid value and do not need to report the reasons for failure,
+you can downgrade the `Validation` to a `Maybe` using `toMaybe`:
 
 ```ts
-pipe(
-  Validation.passed(42),
-  Validation.recover((_errors) => Validation.passed(0)),
-); // Passed(42) — fallback skipped
+const maybeValidData = Validation.toMaybe(formValidation); // Some(data) or None
 ```
 
-## Observing errors without changing them
+### Bridging from Result
 
-`tapError` runs a side effect on the error list when the result is `Failed`, then passes the
-`Validation` through unchanged. Use it to log or report failures mid-pipeline:
+When incorporating an operation that throws or fail-fast checks (like a `Result` parser) into an
+accumulating validation flow, you can lift it using `fromResult`:
 
 ```ts
-pipe(
-  Validation.productAll([validateName(form.name), validateEmail(form.email)]),
-  Validation.tapError((errors) => logger.warn("Validation failed", { errors })),
-  Validation.match({
-    passed: (data) => save(data),
-    failed: (errors) => renderErrors(errors),
-  }),
-);
+const emailCheck = Validation.fromResult(parseEmail(input)); // Passed(email) or Failed([err])
 ```
 
-`tapError` receives the full `NonEmptyList<E>` — all accumulated errors, not just the first. When
-the result is `Passed`, `tapError` is a no-op and the value passes through.
+The single error from the `Err` is wrapped in a type-safe `NonEmptyList` automatically.
 
-## Extracting the value as Maybe
+### Sequencing actions by converting to Result
 
-`toMaybe` extracts the validated value as `Some` and silently discards the errors as `None`. Use it
-when the errors have already been collected or reported and all you need is the value to continue:
+`Validation` is outstanding for running parallel, independent checks. However, once you have
+established that the data is 100% valid, you typically need to run sequential side effects that can
+fail (like saving to a database, sending a request, or writing to disk).
 
-```ts
-Validation.toMaybe(Validation.passed(42)); // Some(42)
-Validation.toMaybe(Validation.failed("bad input")); // None
-```
-
-This pairs naturally with `Maybe.getOrElse` when a fallback value is acceptable if validation fails.
-
-## Converting from Result
-
-`fromResult` wraps a `Result` in a `Validation`. `Ok(a)` becomes `Passed(a)`; `Err(e)` becomes
-`Failed([e])`. Use it when bridging code that short-circuits on the first error into a pipeline that
-accumulates all errors:
-
-```ts
-Validation.fromResult(Result.ok(42)); // Passed(42)
-Validation.fromResult(Result.err("bad")); // Failed(["bad"])
-```
-
-The single error is placed in a one-element list so the result is a valid `Validation<E, A>`
-regardless of how many errors the downstream code expects.
-
-## Converting to Result
-
-When you've finished collecting errors and want to feed the result into a pipeline that uses
-`Result`, `toResult` does the conversion in one step: `Passed` becomes `Ok`, `Failed` becomes `Err`
-with the full error list:
+For this, you should hand off execution to a `Result` pipeline using `toResult`:
 
 ```ts
 pipe(
   Validation.productAll([validateName(form.name), validateEmail(form.email)]),
-  Validation.toResult,
-  Result.chain(saveUser),
+  Validation.toResult, // Passed becomes Ok, Failed becomes Err([errors...])
+  Result.chain((data) => db.saveUser(data)), // Sequential, fail-fast side effect
   Result.getOrElse(() => null),
 );
 ```
 
-The `Err` carries `NonEmptyList<E>` — every error that was collected — so downstream error handling
-has the full picture. This is the natural handoff point from `Validation` (run all checks) to
-`Result` (sequence the side effects).
+This hand-off represents a highly common, elegant pattern in production applications: use
+`Validation` to gather all input friction, convert to `Result` once the data is clean, and use
+`Result.chain` to sequence sequential database or network actions.
 
-## How it compares to Result
-
-**Result — stops at first error**
-
-```mermaid
-sequenceDiagram
-  participant P as your code
-  participant N as check name
-  participant E as check email
-  participant A as check age
-
-  P->>N: name = ""
-  N-->>P: Err("Name required")
-  Note over E,A: never called
-```
-
-**Validation — all checks run**
-
-```mermaid
-sequenceDiagram
-  participant P as your code
-  participant N as check name
-  participant E as check email
-  participant A as check age
-
-  P->>N: name = ""
-  N-->>P: Failed("Name required")
-  P->>E: email = "bad"
-  E-->>P: Failed("Invalid email")
-  P->>A: age = -1
-  A-->>P: Failed("Age must be >= 0")
-  Note over P: Failed(["Name required", "Invalid email", "Age must be >= 0"])
-```
+---
 
 ## When to use Validation vs Result
 
-Use `Validation` when:
+### Use Validation when:
 
-- You're validating multiple independent fields and want all errors at once
-- The consumer of your output (e.g., a form UI) needs the complete list of what went wrong
+- **Checks are independent**: Validating form fields, structural payload parsing, or configuration
+  sheets.
+- **You need comprehensive feedback**: You want to display all errors at once to a user or log them
+  all to an audit sheet.
+- **The combinations are parallel**: You are fanning out data to multiple checkers simultaneously.
 
-Use `Result` when:
+### Use Result when:
 
-- Each step depends on the previous one succeeding — convert to `Result` and use `Result.chain` for
-  dependent validation, then convert back
-- You want to fail fast and stop processing as soon as something goes wrong
-- The operation isn't about validation — it's about control flow
-
-In practice, many real-world scenarios mix both: use `Validation` to check individual fields, then
-use `Result` to sequence the side effects once the data is known to be valid.
+- **Checks are dependent**: Validating step B requires step A to have succeeded (e.g. validating an
+  address requires the user record to have been successfully fetched first).
+- **You want to fail-fast**: Halting execution immediately at the first sign of friction is the
+  desired control flow behavior.
+- **The operation is a side effect**: Writing files, connecting to networks, or querying databases.

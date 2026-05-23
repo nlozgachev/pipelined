@@ -1,154 +1,137 @@
 ---
-title: Performance & benchmarks
-description: Why wrapping native data types with a friendlier API requires ongoing benchmarking, and how custom implementations beat native methods without touching the public API.
+title: Performance and benchmarks
+description: The overhead of functional composition in TypeScript, and how targeted compiler and engine optimizations keep pipelined performant.
 ---
 
-The types in `pipelined/core` — `Maybe`, `Result`, `Task`, `RemoteData` — replace patterns that
-don't have a built-in equivalent in JavaScript. There is no native "absent value that propagates
-through transformations" or "typed failure channel". The overhead of introducing them is the cost of
-abstraction over nothing.
+In software systems, abstractions always carry a cost.
 
-The utilities in `pipelined/utils` are different. `Arr`, `Rec`, `Num`, `Str`, `Dict`, and `Uniq`
-wrap things JavaScript already does — iterating arrays, looking up keys, parsing numbers, splitting
-strings. Every method has a native counterpart one call away. The gap between the pipelined version
-and the plain JavaScript version is visible and measurable.
+For the core structures of this library — `Maybe`, `Result`, `Task`, and `RemoteData` — that cost is
+the price of representing context. Because JavaScript has no built-in equivalent to a typed failure
+channel or an absent value that propagates through transformations, wrapping data in these types
+represents the cost of introducing an abstraction where none existed.
 
-That proximity is what makes benchmarking necessary. It is also what creates the opportunity to do
-better than the native equivalent — not by magic, but because the library controls the
-implementation and can choose strategies that the language's built-in methods cannot.
+For the utility modules — `Arr`, `Rec`, `Dict`, `Num`, `Str`, and `Uniq` — the equation is
+different. These modules wrap operations that JavaScript engines already perform natively: iterating
+arrays, traversing object keys, parsing numbers, and splitting strings. Every function has a native
+counterpart that is a single instruction away. When choosing to use these utilities, the performance
+difference is visible and measurable.
 
-## What the gap is
+This proximity is why benchmarking is necessary. It is also what creates the opportunity to match or
+even exceed the speed of native equivalents. Because this library controls its implementations, it
+can employ optimization strategies tailored to specific operations — strategies that the language's
+generic built-in methods are structurally prevented from using.
 
-When you write:
+## The performance cost of composition
 
-```ts
-pipe(users, Arr.filter(u => u.active));
-```
+When writing code like `pipe(users, Arr.filter(active))` instead of the native
+`users.filter(active)`, the end result is identical, but the execution path is not. The pipelined
+version introduces an extra layer of function allocation: `Arr.filter` returns a curried function,
+which then receives the array, and only then executes the iteration.
 
-instead of:
+In simple pipelines, modern JavaScript engines (such as V8) optimize this closure overhead away
+through inlining. However, in complex pipelines where operations compound across thousands of
+elements, JIT compilers can struggle to optimize the extra function calls, resulting in measurable
+overhead.
 
-```ts
-users.filter(u => u.active);
-```
+The design goal of these utilities is to make sequential pipe compositions feel completely natural
+without imposing a performance penalty that would force a developer to revert to native methods. A
+small overhead is the acceptable cost of composability and data-last currying. A large overhead —
+one that makes a reasonable developer hesitate — is a structural flaw.
 
-the result is identical, but the path to get there is not. The pipelined version goes through an
-extra function call — `Arr.filter` returns a curried function, that function receives the array, and
-then the implementation runs. In the simplest cases the JIT sees through this quickly. In other
-cases — particularly where the overhead compounds across thousands of elements — it does not. And in
-some cases, the implementation inside that extra call is faster than the native method it would
-otherwise delegate to.
+## Defining acceptable overhead
 
-The goal of the utilities is to make this:
+The practical threshold is that the library should not be measurably slower than idiomatic native
+JavaScript implementations on real-world input sizes. Every operation is benchmarked at two sizes:
+100 elements, representing typical application data, and 10,000 elements, exposing per-element
+overhead that compounds at scale.
 
-```ts
-pipe(
-  rawData,
-  Rec.filter(isActive),
-  Rec.mapKeys(toSnakeCase),
-  Rec.map(formatValue),
-);
-```
+Operations that remain within roughly 10% to 15% of the native baseline are considered to be at
+parity. This small delta represents the structural cost of composability, which is the primary
+reason to use the library. When operations exceed this boundary, they are analyzed and optimized.
 
-feel as natural as chaining methods, without making it meaningfully slower. A small overhead is the
-expected cost of composability and data-last currying. A large overhead — one that would make a
-reasonable developer reach back for the native equivalent — is a bug.
+## Optimization strategies
 
-## What "acceptable" looks like
+The simplest way to implement a utility like `Arr.filter` is to delegate directly to the native
+method. In practice, however, this is often the slowest approach. In V8 benchmarks, native
+`.filter()` takes roughly 75 microseconds for 10,000 elements, whereas a manual index loop with
+direct pushes performs the same operation in only 19 microseconds. The native method carries
+significant engine callback-dispatch overhead that a direct, low-level loop bypasses.
 
-The practical threshold is: pipelined should not be measurably slower than an idiomatic native
-implementation on real-world input sizes. Each operation is measured at 100 and 10 000 elements —
-the smaller size represents typical application data; the larger exposes per-element overhead that
-only compounds at scale.
+To close this performance gap, the library employs several targeting strategies across its modules.
 
-Operations that stay within roughly 10–15% of the native baseline at that scale are considered
-within noise. The cost is the cost of composability, and composability is the point.
+One highly effective technique is pre-allocation. When the final size of an array is known before
+iteration begins — as with `Arr.map`, `Arr.scan`, `Arr.zip`, `Arr.traverse`, or `Num.range` —
+allocating the exact capacity upfront using `new Array(size)` avoids runtime resizing. Direct slot
+assignment is far faster than growing an array dynamically. A dynamic push-based loop on 10,000
+numbers takes roughly 24 microseconds, while the pre-allocated equivalent runs in about 10
+microseconds.
 
-Operations that exceed that threshold by a significant margin are worth examining.
+A second strategy is replacing native callbacks with direct index loops. Standard methods like
+`.filter()`, `.every()`, and `.some()` carry high callback-dispatch overhead. Replacing them
+internally with simple `for` loops and inlining the checks completely eliminates this overhead. For
+instance, replacing the native `.every()` method drops execution time from 43 microseconds to just 6
+microseconds.
 
-## How implementations are kept fast
+A third optimization involves record and dictionary iteration. Standard operations like
+`Object.entries` allocate a nested `[key, value]` array for every key in the object, which creates
+significant memory pressure when scaled. For operations that read both keys and values
+unconditionally — such as `Rec.map` — calling `Object.keys` and `Object.values` separately to
+produce flat arrays avoids this tuple allocation, yielding a faster run. For conditional filtering,
+the cost is dominated by branching, making a plain `for...of Object.entries` loop more effective.
+The library matches the iteration strategy to the specific access pattern of the operation.
 
-The simplest implementation of `Arr.filter` is one line — delegate to the native method:
+Finally, optimization requires knowing when to yield to the native engine. Contiguous memory copies
+like `.slice()` — which powers `take`, `drop`, and `splitAt` — are implemented directly in V8's C++
+layer. A pure JavaScript loop writing element by element is roughly five to seven times slower than
+this native operation. Where the runtime engine possesses a structural advantage that no JavaScript
+loop can match, the library delegates directly to the native implementation.
 
-```ts
-data.filter(predicate);
-```
+## Running the benchmarks
 
-That is also, in practice, the slowest option. Benchmarks showed `.filter()` taking 75 µs for 10 000
-elements; a manual index loop with `push` performs the same operation in 19 µs. The native method
-carries overhead that a direct loop does not — the difference is not theoretical.
+The benchmark suite compares every utility operation directly against its equivalent, hand-written
+native implementation. The benchmarks live in the respective `__bench__` directories of each module.
+They run both variants with identical inputs, measure the execution time per iteration, and report
+the relative speed ratio.
 
-This pattern repeats across the library. Several techniques appear wherever the benchmarks show a
-real gap:
-
-**Pre-allocation.** When the output length is known before the loop, `new Array<T>(n)` reserves the
-exact capacity upfront. Writing `result[i] = value` is then a direct slot write, with no
-re-allocation. A push-based loop on 10 000 numbers runs in ~24 µs; the pre-allocated equivalent runs
-in ~10 µs. `Arr.map`, `Arr.scan`, `Arr.zip`, `Arr.traverse`, and `Num.range` all use this.
-
-**Direct index loops over native methods.** `.filter()`, `.every()`, `.some()`, and `.flatMap()` all
-carry callback-dispatch overhead that cannot be avoided through the native API. Replacing them with
-`for (let i = 0; i < n; i++)` loops and inlining the check eliminates that overhead entirely.
-`Arr.every` dropped from 42 µs to ~6 µs. `Arr.filter` dropped from 75 µs to 19 µs.
-
-**Choosing the right record iteration strategy.** `Object.entries` allocates a `[key, value]` pair
-per entry, which adds up across many keys. For operations that unconditionally read both key and
-value — like `Rec.map` — calling `Object.keys` and `Object.values` separately produces two flat
-arrays and avoids the pair allocation, which is measurably faster at small sizes. For conditional
-operations like `Rec.filter` and `Rec.compact`, the pair allocation is dominated by the branching
-cost at 10 000 keys, and a plain `for...of Object.entries` loop performs at parity or better. The
-right approach depends on the access pattern, not a single rule.
-
-**Knowing when not to replace native.** `.slice()` — used in `take`, `drop`, and `splitAt` — is a
-contiguous memory copy implemented in V8's C++ layer. A JavaScript loop writing element by element
-is 5–7× slower. When the native method has a structural advantage that no JS loop can match, the
-implementation keeps it.
-
-And yes, the difference is invisible to callers, visible only in the numbers.
-
-## The benchmarks
-
-The benchmarks live in `__bench__` directories and compare each pipelined operation directly against
-an equivalent hand-written native implementation. Each group runs both versions with identical
-input, measures the time per iteration, and reports the ratio.
-
-To run them:
+To execute the benchmarks, run the following command:
 
 ```sh
 pnpm bench
 ```
 
-Each benchmark group compares the pipelined operation directly against its native equivalent. Vitest
-reports the ratio between the fastest variant and the others, so the summary reads as "X is Yx
-faster than Z". Many operations now run faster than their native counterpart — not because the
-library is doing less, but because it can choose a better strategy for the specific operation.
+Vitest reports the ratio between the fastest variant and the others, displaying the relative
+performance as a multiplier. Many operations run faster than their native counterparts because the
+library employs highly optimized iteration patterns tailored specifically to the semantics of each
+function.
 
-## Benchmark environment
+## Measurement environment
 
-The numbers in this documentation were collected on the following setup:
+The performance metrics in this documentation were collected using the following environment:
 
-|                |                        |
-| -------------- | ---------------------- |
-| **CPU**        | Apple M1 Pro (aarch64) |
-| **OS**         | macOS (darwin)         |
-| **Node.js**    | 24                     |
-| **V8**         | 13.6.233.17            |
-| **TypeScript** | 5.9.3                  |
+| Platform Component | Environment Detail     |
+| :----------------- | :--------------------- |
+| **CPU**            | Apple M1 Pro (aarch64) |
+| **OS**             | macOS (darwin)         |
+| **Node.js**        | 24                     |
+| **V8 Engine**      | 13.6.233.17            |
+| **TypeScript**     | 5.9.3                  |
 
-Results on other hardware or runtime versions will differ. x86 machines may show different ratios
-because V8's JIT strategies and memory layout characteristics vary by architecture. The relative
-order of approaches tends to be stable; the exact multipliers do not.
+Ratios and absolute numbers will vary depending on hardware, architecture, and runtime engines. For
+example, x86 architectures may yield different relative ratios than ARM-based systems due to
+variations in JIT compiler optimization strategies and memory layout characteristics. However, the
+relative order of performance strategies remains stable.
 
-## What the benchmarks are not
+## Limitations of micro-benchmarks
 
-They are not a performance contract. The numbers shift between V8 versions, and machine
-architectures. What they measure is the *relationship* between pipelined and native — and that
-relationship is what matters.
+Micro-benchmarks are not a performance guarantee, nor do they represent a production contract.
+Performance characteristics change between V8 versions and across system architectures. These
+measurements are valuable because they show the *relationship* between `pipelined` operations and
+their native counterparts, ensuring the library does not introduce silent bottlenecks.
 
-They are also not a guarantee that every use of the library is fast. Benchmarks measure isolated
-operations on arrays of numbers and records of strings. Real code does more: it allocates
-intermediate objects, traverses trees, reaches across abstraction boundaries. If performance matters
-in a specific context, measure that specific context.
+Furthermore, isolated benchmarks measure pure data transformations on contiguous memory. Real-world
+applications perform complex tasks: allocating intermediate states, traversing deep object graphs,
+and interacting with network or filesystem boundaries.
 
-The benchmarks exist so that writing expressive, composable code over arrays and records does not
-require thinking about whether the library is getting in the way. It should not be. When it is, that
-is what gets fixed.
+The benchmark suite exists to ensure that writing elegant, composable code does not require worrying
+about whether the library is introducing structural overhead. In cases where the library does
+introduce a bottleneck, that bottleneck is treated as a bug and is resolved.

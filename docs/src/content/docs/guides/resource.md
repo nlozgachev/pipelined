@@ -1,140 +1,169 @@
 ---
-title: Resource — safe acquire-release lifecycle
-description: Guarantee that connections, file handles, and other managed objects are always cleaned up, even when errors occur.
+title: Resource — Safe Lifecycle Management
+description: Guarantee that database connections, file handles, and locks are always safely closed and cleaned up, even when runtime errors occur.
 ---
 
-You open a database connection, run a query, and close the connection afterward. Then one day the
-query throws an error, the `close()` call is skipped, and the connection lingers. You add a
-`try/finally` block. Then another path grows around it, and another, and now cleanup logic is
-scattered across every function that touches the database.
+A very common sequence in software development is the acquire-use-release lifecycle. You open a
+database connection, run a series of queries, and close the connection. Or you open a file handle,
+read its contents, and close the handle when done.
 
-`Resource<E, A>` solves this structurally. You describe *how to open something* and *how to close
-it* once, and `Resource.use` guarantees the close step always runs — whether the work succeeds or
-fails.
+This sequence is simple, until an error occurs. If a query throws a runtime exception, the close
+instruction is skipped, causing a connection leak that will eventually crash the server.
 
-## The structure of a Resource
+To fix this, we typically introduce defensive blocks:
 
-A Resource holds two things: an `acquire` step that opens the resource (a `TaskResult` that may
-fail), and a `release` function that closes it (a `Task` that always succeeds). You build one and
-run it with `Resource.use`.
+```ts
+const connection = await openConnection();
+try {
+  await runQueries(connection);
+} finally {
+  await connection.close();
+}
+```
+
+This works for a single resource within a narrow scope. But as applications grow, we find ourselves
+composing multiple resources — like a database connection and a cache socket. Managing nested
+`try/finally` blocks is extremely fragile, and passing a resource across multiple function
+boundaries makes it very easy to forget who holds the responsibility to clean it up.
+
+`Resource<E, A>` solves this structurally by implementing the **bracket pattern**. It packages the
+potentially fallible `acquire` step (a `TaskResult`) and the infallible `release` step (a `Task`)
+into a single, cohesive data structure.
+
+```mermaid
+flowchart TD
+    Start([Resource.use]) --> Acquire[Run Acquire Task]
+    Acquire -->|Success| Work[Run Work Function]
+    Acquire -->|Failure| FailExit([Return Acquire Error])
+
+    Work -->|Succeeds or Fails| Release[Run Release Task]
+    Release --> WorkExit([Return Work Result])
+```
+
+By describing *how to open* and *how to close* a resource once, we delegate the execution safety to
+the library. `Resource.use` guarantees that the cleanup step is always executed, whether the work
+succeeds or fails.
+
+---
+
+## Creating a Resource
+
+We define a resource by supplying the actions to open and close it.
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 import { Resource, Task, TaskResult } from "@nlozgachev/pipelined/core";
-```
 
-```mermaid
-flowchart TB
-  A([Resource.use]) --> B[acquire]
-  B -->|"Ok — resource opened"| C[run your work function]
-  B -->|"Err — acquire failed"| Z([return Err, nothing to release])
-  C -->|"work succeeds"| D[release]
-  C -->|"work fails"| D
-  D --> E([return work result])
-```
-
-The key guarantee is in the two right-hand paths: `release` runs whether the work succeeded or
-failed. The only case where `release` is skipped is when `acquire` itself failed — there is nothing
-to clean up.
-
-## Creating a Resource with `make`
-
-`Resource.make` takes the acquire step and the release function:
-
-```ts
 const dbResource = Resource.make(
   TaskResult.tryCatch(
-    () => openConnection({ host: "db.internal", port: 5432 }),
-    (e) => new Error(`Could not connect: ${e}`),
+    () => openConnection({ host: "db.local" }),
+    (error) => new Error(`DB connection failed: ${error}`),
   ),
-  (conn) => Task.from(() => conn.close()),
+  (connection) => Task.from(() => connection.close()),
 );
 ```
 
-The release function receives the same value that `acquire` produced. When the connection is no
-longer needed, `Resource.use` will call `conn.close()` with that exact connection — whether the work
-succeeded or returned an error.
+The release callback receives the exact value produced by the acquisition step. Even if a query
+fails midway, the manager will execute `connection.close()` automatically.
 
-## Creating from an infallible acquire
+### Resources that cannot fail
 
-When the acquire step cannot fail — an in-memory structure, a timer, or a simple counter — use
-`Resource.fromTask`:
+If acquiring the resource is guaranteed to succeed — such as acquiring an in-memory lock or starting
+a local timer — we can use `fromTask` to skip error mapping:
 
 ```ts
 const lockResource = Resource.fromTask<never, Lock>(
-  Task.from(() => Promise.resolve(acquireLock("export-job"))),
+  Task.from(() => Promise.resolve(acquireLock("process_orders"))),
   (lock) => Task.from(() => Promise.resolve(lock.release())),
 );
 ```
 
-The type parameter `<never, Lock>` makes the error type explicit. Since acquisition cannot fail,
-`never` signals there is no error path.
+The error parameter is typed as `never` to formally declare to the compiler that this resource is
+structurally incapable of failing to acquire.
 
-## Running work with `use`
+---
 
-`Resource.use` takes a function that receives the acquired value and returns a `TaskResult`. It
-acquires the resource, runs your function, then releases the resource — always, in that order.
+## Running Actions with use
+
+To perform work with our resource, we pass our operational logic to `Resource.use`. The work
+function receives the acquired value and must return a `TaskResult`:
 
 ```ts
-const rows = await pipe(
+const products = await pipe(
   dbResource,
-  Resource.use((conn) =>
+  Resource.use((connection) =>
     TaskResult.tryCatch(
-      () => conn.query("SELECT id, name FROM products WHERE active = true"),
-      (e) => new Error(`Query failed: ${e}`),
+      () => connection.query("SELECT * FROM products"),
+      (error) => new Error(`Query failed: ${error}`),
     )
   ),
-)();
+)(); // Resolves to Result<Error, Product[]>
 ```
 
-If `openConnection` fails, the function is never called and `close` is never called — there is
-nothing to clean up. If the query fails, `close` is still called with the connection that was
-opened.
+Let's trace the execution:
 
-## Composing two resources with `combine`
+1. `dbResource` executes its `acquire` task. If this fails, the execution stops and yields the
+   acquisition error.
+2. If successful, the active connection is passed to the query function.
+3. Whether the query succeeds or fails, the `release` task (`connection.close()`) is immediately
+   executed.
+4. The final result of the query (an `Ok` or `Err`) is returned.
 
-When a piece of work needs two resources — a database connection and a cache client, say — use
-`Resource.combine` to acquire both and present them as a pair:
+---
+
+## Composing Multiple Resources
+
+When an operation requires multiple distinct resources to execute — for instance, a database
+connection and a Redis cache client — we can combine them into a single, unified resource.
+
+### Parallel acquisition with `combine`
+
+`Resource.combine` aggregates two resources, presenting them as a single resource carrying a tuple
+of both values:
 
 ```ts
-const combined = Resource.combine(dbResource, cacheResource);
+const combinedResource = Resource.combine(dbResource, cacheResource);
 
 const result = await pipe(
-  combined,
-  Resource.use(([conn, cache]) =>
+  combinedResource,
+  Resource.use(([connection, cache]) =>
     TaskResult.tryCatch(
       async () => {
-        const cached = await cache.get("user:42");
+        const cached = await cache.get("profile_123");
         if (cached) return cached;
-        const row = await conn.query("SELECT * FROM users WHERE id = 42");
-        await cache.set("user:42", row, 300);
-        return row;
+
+        const user = await connection.query("SELECT * FROM users WHERE id = 123");
+        await cache.set("profile_123", user);
+        return user;
       },
-      (e) => new Error(`Lookup failed: ${e}`),
+      (error) => new Error(`Database lookup failed: ${error}`),
     )
   ),
 )();
 ```
 
-Resources are released in reverse acquisition order: the cache client is released before the
-database connection. If acquiring the cache client fails after the database connection is already
-open, the database connection is closed immediately before the error is returned.
+When combining resources, the release tasks are executed in **reverse acquisition order**: the cache
+is released first, and the database is released second.
 
-## Nesting resources
+If the database is successfully opened but the cache client fails to acquire, the manager
+immediately releases the database connection and returns the cache acquisition error. Your system is
+guaranteed never to leak a connection mid-setup.
 
-For more complex compositions, you can nest `Resource.use` calls. Each `use` manages its own
-acquire-release lifecycle independently:
+### Sequential nesting
+
+For complex workflows where a second resource depends directly on the value of the first (e.g.
+initiating a transaction on an active connection), you can nest `Resource.use` calls:
 
 ```ts
 const result = await pipe(
   dbResource,
-  Resource.use((conn) =>
+  Resource.use((connection) =>
     pipe(
-      transactionResource(conn),
-      Resource.use((tx) =>
+      transactionResource(connection),
+      Resource.use((transaction) =>
         TaskResult.tryCatch(
-          () => insertOrder(tx, order),
-          (e) => new Error(`Insert failed: ${e}`),
+          () => executeDatabaseWrite(transaction, orderData),
+          (error) => new Error(`Write failed: ${error}`),
         )
       ),
     )
@@ -142,22 +171,26 @@ const result = await pipe(
 )();
 ```
 
-The transaction is released (committed or rolled back) before the connection is released.
+The transaction resource will release (commit or roll back) before the database connection is
+closed.
+
+---
 
 ## When to use Resource
 
-Use `Resource` when:
+### Use Resource when:
 
-- Opening and closing database connections, file handles, or network sockets
-- Acquiring and releasing locks around a critical section
-- Starting and stopping background workers tied to a request's lifetime
-- Any pattern where cleanup must run even when errors occur, and you want that guarantee to be
-  structurally enforced rather than relying on every caller to remember `try/finally`
+- **Managing active assets**: Opening and closing file descriptors, network sockets, or database
+  pools.
+- **Acquiring locks**: Coordinating concurrency where a critical section must acquire and release a
+  mutex.
+- **Tying lifetimes**: Starting and stopping background worker threads or child processes associated
+  with a request's lifetime.
+- **Composing cleanups**: You want the assurance that multiple async resources are safely torn down
+  in reverse order without writing nested, complex error-handling blocks.
 
-A sign you need `Resource`: you find yourself writing the same `try/finally` block in multiple
-functions, or a function takes both an open resource and has a close obligation that callers must
-remember to fulfil.
+### Keep using try/finally when:
 
-Keep using `try/finally` directly when you are working with a single synchronous operation inside a
-narrow scope and the resource never leaves the function. `Resource` pays off when cleanup is async,
-when multiple resources compose, or when the acquire step can itself fail.
+- **The scope is strictly local and synchronous**: Inside a simple, short function where a
+  synchronous resource is opened and immediately closed on the next line, and never leaves the
+  function body.

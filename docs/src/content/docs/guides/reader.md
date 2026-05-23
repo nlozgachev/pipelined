@@ -1,247 +1,241 @@
 ---
-title: Reader — deferred dependencies
-description: Model computations that depend on a shared environment, supplied once at the boundary.
+title: Reader — Shared Contexts
+description: Model computations that read from a shared environment, eliminating parameter drilling and making dependency injection clean and testable.
 ---
 
-Some values belong to the pipeline, not to any individual function — a database connection, an API
-config, a locale. Yet they end up threaded through every signature as an extra parameter, repeated
-at every call site, cluttering code that doesn't actually use them. `Reader<R, A>` lets you describe
-a computation that needs an environment `R` to produce `A`, compose it freely, and supply `R` once
-at the edge of your program.
+In software architecture, certain values belong to the context of a pipeline rather than to any
+single, individual function. A database connection pool, a global API configuration, a user's
+language locale, or a feature flag sheet are typical examples.
 
-## The problem with parameter drilling
-
-When multiple functions in a pipeline all need the same input, that input ends up in every signature
-even when most functions only forward it:
+When we build pipelines, these values frequently end up threaded through every single function
+signature as an extra parameter:
 
 ```ts
-function buildUrl(config: ApiConfig, path: string): string {
+function formatUrl(config: ApiConfig, path: string): string {
   return `${config.baseUrl}${path}`;
 }
 
-function withApiKey(config: ApiConfig, url: string): string {
+function addApiKey(config: ApiConfig, url: string): string {
   return `${url}?key=${config.apiKey}`;
 }
 
-function endpoint(config: ApiConfig, path: string): string {
-  return withApiKey(config, buildUrl(config, path));
+function getEndpoint(config: ApiConfig, path: string): string {
+  return addApiKey(config, formatUrl(config, path));
 }
 ```
 
-`endpoint` doesn't use `config` for anything other than passing it along. As pipelines deepen, this
-pattern becomes noise — every signature carries a parameter that belongs to the pipeline, not the
-function.
+Notice the structural duplication. The intermediate function `getEndpoint` does not use the `config`
+object for any internal logic; it accepts it only to forward it to the next step. As pipelines
+deepen, this **parameter drilling** introduces noise, clutters type signatures, and makes
+refactoring extremely difficult.
 
-## The Reader approach
+We often try to solve this by importing a global singleton or creating a shared state. But this
+couples our modules to a specific instance, making it impossible to test them in isolation or run
+them against different configurations (e.g. test vs. production contexts).
 
-With Reader, each function returns a description of the computation it intends to perform, rather
-than accepting the dependency as an argument. The pipeline is built first, and the dependency flows
-through automatically when it is supplied once at the end:
+`Reader<R, A>` solves this structurally. It represents a computation that requires a shared
+environment `R` to produce a value `A`:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Reader } from "@nlozgachev/pipelined/core";
-
-type ApiConfig = { baseUrl: string; apiKey: string; };
-
-const buildUrl = (path: string): Reader<ApiConfig, string> =>
-  Reader.asks((c) => `${c.baseUrl}${path}`);
-
-const withApiKey = (url: string): Reader<ApiConfig, string> =>
-  Reader.asks((c) => `${url}?key=${c.apiKey}`);
-
-const endpoint = (path: string): Reader<ApiConfig, string> =>
-  pipe(buildUrl(path), Reader.chain(withApiKey));
-
-pipe(endpoint("/users"), Reader.run(apiConfig));
-// "https://api.example.com/users?key=secret"
+type Reader<R, A> = (environment: R) => A;
 ```
 
-No function accepts `apiConfig` directly. Each step declares what it reads from the configuration,
-the composition wires it together, and `Reader.run` injects the value once.
+With `Reader`, our functions do not accept dependencies as direct arguments. Instead, they return a
+description of a computation waiting for its context. The pipeline is built as a pure, inactive
+blueprint, and the environment is supplied once at the boundary of our program.
+
+---
 
 ## Creating Readers
 
-**`Reader.asks`** is the primary constructor. It builds a Reader that projects a value from `R`:
+To describe how we want to read from our context, we use the constructors of `Reader`:
 
 ```ts
+import { Reader } from "@nlozgachev/pipelined/core";
+
+interface ApiConfig {
+  baseUrl: string;
+  apiKey: string;
+}
+
+// Projecting specific values from the environment
 const getBaseUrl: Reader<ApiConfig, string> = Reader.asks((c) => c.baseUrl);
 const getApiKey: Reader<ApiConfig, string> = Reader.asks((c) => c.apiKey);
 ```
 
-`Reader.ask` returns the entire `R` unchanged — useful when something downstream needs the full
-config. `Reader.resolve` lifts a plain value that needs nothing from `R`. Both come up occasionally;
-`asks` covers most cases.
+`Reader.asks` is the primary constructor. It takes a selector function that projects a value from
+the environment. If a step requires the entire environment, you can use `Reader.ask()`. If you want
+to lift a static value that does not depend on the environment at all, you can use
+`Reader.resolve(value)`.
 
-## Transforming with `map`
+---
 
-`map` transforms the value a Reader produces. The environment passes through unchanged.
+## Transforming and Sequencing
 
-Consider locale-aware formatting, where rendering an amount correctly depends on the display context
-— but that context is not a property of the amount itself:
+Once our computations are represented as `Reader` values, we can compose them linearly.
+
+### Transforming values with `map`
+
+`map` transforms the value produced by a Reader, leaving the environment path completely untouched.
+
+Consider locale-aware formatting, where rendering a price depends on a shared context that is not a
+property of the price value itself:
 
 ```ts
-type Locale = { symbol: string; separator: string; };
+import { pipe } from "@nlozgachev/pipelined/composition";
 
-const formatCents = (cents: number): Reader<Locale, string> =>
+interface LocaleConfig {
+  symbol: string;
+  decimalSeparator: string;
+}
+
+const formatPrice = (cents: number): Reader<LocaleConfig, string> =>
   Reader.asks(
-    (locale) => `${locale.symbol}${(cents / 100).toFixed(2).replace(".", locale.separator)}`,
+    (locale) => `${locale.symbol}${(cents / 100).toFixed(2).replace(".", locale.decimalSeparator)}`,
   );
 
-const labeledAmount = (label: string, cents: number): Reader<Locale, string> =>
+const renderPriceTag = (label: string, cents: number): Reader<LocaleConfig, string> =>
   pipe(
-    formatCents(cents),
-    Reader.map((amount) => `${label}: ${amount}`),
+    formatPrice(cents),
+    Reader.map((price) => `${label}: ${price}`),
   );
 
-const usd: Locale = { symbol: "$", separator: "." };
-const eur: Locale = { symbol: "€", separator: "," };
+const usdLocale: LocaleConfig = { symbol: "$", decimalSeparator: "." };
+const eurLocale: LocaleConfig = { symbol: "€", decimalSeparator: "," };
 
-pipe(labeledAmount("Total", 1999), Reader.run(usd)); // "Total: $19.99"
-pipe(labeledAmount("Total", 1999), Reader.run(eur)); // "Total: €19,99"
+pipe(renderPriceTag("Total", 1999), Reader.run(usdLocale)); // "Total: $19.99"
+pipe(renderPriceTag("Total", 1999), Reader.run(eurLocale)); // "Total: €19,99"
 ```
 
-The same Reader, two different environments. `R` is the rendering context; the amounts are ordinary
-arguments.
+The same pipeline runs against two different environments. The locale configuration is injected once
+at the very end of our execution.
 
-## Sequencing with `chain`
+### Sequencing dependencies with `chain`
 
-`chain` sequences two Readers where the second depends on the output of the first. Both receive the
-same `R`:
+When a transformation step itself requires the environment, we use `chain` to sequence them
+together. Both steps automatically receive the same shared context:
 
 ```ts
-const formatSummary = (subtotal: number, tax: number): Reader<Locale, string> =>
+const buildEndpoint = (path: string): Reader<ApiConfig, string> =>
   pipe(
-    labeledAmount("Subtotal", subtotal),
-    Reader.chain((sub) =>
-      pipe(
-        labeledAmount("Tax", tax),
-        Reader.map((t) => `${sub}\n${t}`),
-      )
-    ),
+    Reader.asks((c: ApiConfig) => `${c.baseUrl}${path}`),
+    Reader.chain((url) => Reader.asks((c) => `${url}?key=${c.apiKey}`)),
   );
-
-pipe(formatSummary(1999, 160), Reader.run(usd));
-// "Subtotal: $19.99\nTax: $1.60"
 ```
 
-Each step reads from the locale independently. `chain` threads the environment through without any
-step having to accept or forward it explicitly.
+The environment is threaded through the pipeline automatically. No intermediate step is forced to
+accept or forward the `ApiConfig` explicitly.
 
-## Adapting environments with `local`
+---
 
-Different parts of a program often need different slices of the total environment. `local` adapts a
-Reader that expects a narrow type to work inside a broader one, by providing the extraction
-function:
+## Adapting Contexts: local
+
+In large systems, different modules expect different context slices. A database helper only needs
+database credentials, whereas a logger only needs an output stream.
+
+`Reader.local` allows you to adapt a Reader expecting a narrow environment so that it can operate
+inside a broader one, by supplying a mapping function:
 
 ```ts
-type DbConfig = { host: string; port: number; };
-type AppEnv = { db: DbConfig; api: ApiConfig; };
+interface DbConfig { host: string }
+interface LoggerConfig { level: string }
+interface AppEnv { db: DbConfig; log: LoggerConfig }
 
-// This Reader knows only about DbConfig
-const connectionString: Reader<DbConfig, string> = Reader.asks(
-  (db) => `postgres://${db.host}:${db.port}/myapp`,
+// This Reader only knows about DbConfig
+const dbConnectionString: Reader<DbConfig, string> = Reader.asks(
+  (db) => `postgres://${db.host}:5432/db`,
 );
 
-// This Reader knows only about ApiConfig
-const authHeader: Reader<ApiConfig, string> = Reader.asks(
-  (api) => `Bearer ${api.apiKey}`,
+// This Reader only knows about LoggerConfig
+const activeLogLevel: Reader<LoggerConfig, string> = Reader.asks(
+  (log) => `Log level: ${log.level}`,
 );
 
-// Widen each to AppEnv by telling it where to find its slice
-const diagnostics: Reader<AppEnv, string> = pipe(
-  connectionString,
+// Lift both into the broader AppEnv
+const systemDiagnostics: Reader<AppEnv, string> = pipe(
+  dbConnectionString,
   Reader.local((env: AppEnv) => env.db),
-  Reader.chain((conn) =>
+  Reader.chain((connStr) =>
     pipe(
-      authHeader,
-      Reader.local((env: AppEnv) => env.api),
-      Reader.map((auth) => `db=${conn}  auth=${auth}`),
+      activeLogLevel,
+      Reader.local((env: AppEnv) => env.log),
+      Reader.map((level) => `${connStr} | ${level}`),
     )
   ),
 );
-
-pipe(
-  diagnostics,
-  Reader.run({
-    db: { host: "localhost", port: 5432 },
-    api: { baseUrl: "...", apiKey: "secret" },
-  }),
-);
-// "db=postgres://localhost:5432/myapp  auth=Bearer secret"
 ```
 
-`connectionString` and `authHeader` are independently useful Readers with narrow, precise
-requirements. `local` lifts them into `AppEnv` without changing their implementations. Library
-functions declare only what they need; application code composes them using `local`.
+This represents an elegant, modular design pattern. Your individual domain helpers declare only the
+narrow context they actually require. When composing the main application, you use `local` to map
+the global environment into these modular slices.
 
-## Applying wrapped functions with `ap`
+---
 
-`ap` applies a function wrapped in a Reader to a value wrapped in a Reader. Both Readers see the
-same environment. This is useful when you need to combine the outputs of multiple dependent
-computations:
+## Combining Computations: ap
+
+`ap` applies a function wrapped inside a Reader to a value wrapped inside a Reader. Both operations
+receive the same environment:
 
 ```ts
-const multiply = (a: number) => (b: number) => a * b;
+const calculateTotal = (tax: number) => (price: number) => price + tax;
 
-const firstNumber: Reader<Config, number> = Reader.asks((c) => c.multiplier);
-const secondNumber: Reader<Config, number> = Reader.asks((c) => c.offset);
+const productPrice: Reader<ApiConfig, number> = Reader.asks((c) => c.defaultPrice);
+const productTax: Reader<ApiConfig, number> = Reader.asks((c) => c.defaultTax);
 
-const product: Reader<Config, number> = pipe(
-  Reader.resolve(multiply),
-  Reader.ap(firstNumber),
-  Reader.ap(secondNumber),
+const total: Reader<ApiConfig, number> = pipe(
+  Reader.resolve(calculateTotal),
+  Reader.ap(productTax),
+  Reader.ap(productPrice),
 );
-
-pipe(product, Reader.run({ multiplier: 3, offset: 5 })); // 15
 ```
 
-`ap` sequences applications where the function and value both depend on the environment.
+---
 
-## Side effects with `tap`
+## Peeking into pipelines: tap
 
-`tap` runs a side effect on the produced value and returns it unchanged — useful for logging in the
-middle of a pipeline:
+To perform a side effect — such as logging a value or executing an assertion — mid-pipeline without
+altering the flow, you can use `tap`:
 
 ```ts
 pipe(
-  buildUrl("/users"),
-  Reader.tap((url) => console.log("Requesting:", url)),
-  Reader.chain(withApiKey),
-  Reader.run(apiConfig),
+  buildEndpoint("/users"),
+  Reader.tap((url) => console.log(`Configured request target: ${url}`)),
+  Reader.run(configInstance),
 );
 ```
 
-## Running with `run`
+---
 
-`Reader.run` executes a Reader by supplying the environment. It is the data-last equivalent of
-calling the function directly:
+## Injecting the environment at the edge: run
+
+To execute a Reader, we pass it the environment context using `Reader.run`. This is the data-last
+equivalent of invoking the function directly:
 
 ```ts
-// These are equivalent
-pipe(endpoint("/users"), Reader.run(apiConfig));
-endpoint("/users")(apiConfig);
+// These two invocations are equivalent:
+pipe(buildEndpoint("/users"), Reader.run(apiConfig));
+buildEndpoint("/users")(apiConfig);
 ```
 
-`Reader.run` fits naturally at the end of a `pipe` chain. Call it once, at the point in your program
-where the environment is available.
+`Reader.run` is typically called once, at the outer boundary of your application where your startup
+dependencies and environment variables are resolved.
 
-Reader is for values fixed at startup — API config, locale, database connections. If a value updates
-at runtime, it isn't a Reader; pass it explicitly.
+---
 
 ## When to use Reader
 
-Use Reader when:
+### Use Reader when:
 
-- Multiple steps in a pipeline all need the same input and you want to avoid threading it through
-  every function signature
-- You want to compose functions with narrow, precise requirements into a broader context using
-  `local`
-- You want to run the same pipeline against different inputs — different locales, test vs.
-  production config, different strategies — without changing the pipeline itself
+- **You suffer from parameter drilling**: Multiple nested functions require access to the same
+  context configuration, and you want to clean up their type signatures.
+- **You want clean dependency injection**: You are building modular components with narrow
+  environment dependencies and want to compose them using `local`.
+- **You run different environments**: You need to run the same business pipeline against production
+  configs, local mocks, or test environments.
 
-Keep passing arguments directly when:
+### Keep passing arguments directly when:
 
-- Only one or two functions need the value — the overhead of Reader is not worth it
-- The value changes between calls in a way that belongs in the function signature, not the
-  environment
+- **The dependency is localized**: Only one or two functions need the value, and the drilling
+  overhead is negligible.
+- **The value is dynamic**: The value changes frequently between calls (if a value alters during
+  execution, it belongs in the function argument channel, not the environment context).

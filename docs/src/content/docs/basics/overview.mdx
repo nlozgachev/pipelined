@@ -1,31 +1,30 @@
 ---
-title: What you will learn
-description: The situations every TypeScript application encounters, and the types that name them.
+title: Designing with states
+description: The situations every TypeScript application encounters, and the data structures that name them.
 ---
 
-TypeScript has excellent types for everything except the states your application is actually in.
-You get `null`, `try/catch`, and `Promise` — the mechanisms — but no standard way to carry the
-surrounding state as a typed value. So every project invents its own conventions, and every new
-developer learns them from context.
+TypeScript is an exceptional language for describing the shape of data, but it leaves a notable gap when it comes to describing the *states* our applications are actually in. 
 
-**pipelined** gives those situations names. Here is what they are.
+We are provided with excellent low-level primitives: `null` and `undefined` for absence, `try/catch` blocks for errors, and `Promise` for asynchronous operations. These are mechanisms, not models. Because the language does not provide first-class structures to carry the semantic meaning of these states, every project is forced to invent its own ad-hoc conventions.
 
-## A value that may not be present — `Maybe<A>`
+**pipelined** gives these common programming situations names. By representing these states as data structures rather than keywords or language constructs, we make them explicit, composable, and visible in our types.
 
-Optional chaining propagates absence through a chain of property reads. It just doesn't give that
-absence a name you can pass around, map over, or convert to a typed failure without breaking out
-of the chain.
+---
 
-`Maybe<A>` is either `Some<A>` (a value is present) or `None` (it isn't). Operations like `map`,
-`chain`, and `getOrElse` skip the absent case automatically, so you describe what to do with the
-value without checking for its absence at every step:
+## A value that may not be present
+
+We spend a significant amount of our day querying databases, searching maps, and checking configurations for values that might not be there. In standard TypeScript, we represent this with `T | null` or `T | undefined`. 
+
+This is easy to write, but it forces the caller of a function to immediately stop and write conditional logic. If they forget, strict mode may warn them, but the checking logic itself remains intertwined with the happy path of the program.
+
+`Maybe<A>` is a data structure representing this choice: it is either `Some<A>` (a value is present) or `None` (it is not). Transformations on a `Maybe` automatically bypass the absent case, allowing us to describe our logic linearly:
 
 ```ts
-import { Maybe } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Maybe } from "@nlozgachev/pipelined/core";
 
-pipe(
-  users.get(id),                     // User | undefined
+const city = pipe(
+  users.get(userId),                 // User | undefined
   Maybe.fromNullable,                // Maybe<User>
   Maybe.map((u) => u.address),       // Maybe<Address>
   Maybe.map((a) => a.city),          // Maybe<string>
@@ -33,43 +32,41 @@ pipe(
 );
 ```
 
-If any step produces `None`, the rest are skipped and `getOrElse` provides the fallback. Full
-guide: [Maybe — absent values](/guides/maybe).
+If any step produces a `None`, the subsequent steps are skipped and `getOrElse` provides the fallback. The presence check is decoupled from the business logic.
 
-## An operation that can fail — `Result<E, A>`
+---
 
-TypeScript's `unknown` error type is accurate. It tells you exactly what you know about the error,
-which is nothing. There is also nothing in a function's return type to tell callers it can throw,
-so failures propagate as unhandled exceptions and `try/catch` accumulates at call sites.
+## An operation that can fail
 
-`Result<E, A>` is either `Ok<A>` (success) or `Err<E>` (a typed failure). The error type is in
-the signature:
+Exceptions in JavaScript are wild. They can be thrown by any statement, and their type is always `unknown`. Nothing in a function’s signature indicates to the caller that it might throw, leading to unhandled runtime failures or defensive `try/catch` blocks cluttering our code.
+
+`Result<E, A>` models a synchronous operation that can fail. It is either `Ok<A>` (representing success) or `Err<E>` (a typed failure). By returning a `Result`, we bring the error into the type signature itself, forcing the compiler to verify that the failure is handled.
 
 ```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
 import { Result } from "@nlozgachev/pipelined/core";
 
 const parseId = (raw: string): Result<string, number> => {
   const n = Number(raw);
-  return isNaN(n) ? Result.err("not a number") : Result.ok(n);
+  return isNaN(n) ? Result.err("Input is not a valid number") : Result.ok(n);
 };
 
-pipe(
+const route = pipe(
   parseId(input),
   Result.map((id) => `/users/${id}`),
   Result.getOrElse(() => "/users/unknown"),
 );
 ```
 
-Full guide: [Result — handling failures](/guides/result).
+---
 
-## Collecting every failure — `Validation<E, A>`
+## Collecting multiple failures
 
-Your form shows one error at a time. Whether that was a product decision or a side effect of using
-`Result` for validation is sometimes hard to say — `Result` stops at the first error by design,
-which is correct for sequential operations and wrong for forms.
+When we validate a complex data structure—like a registration form—we often want to present the user with a list of all errors. 
 
-`Validation<E, A>` is either `Passed<A>` or `Failed<E>`. When you combine two
-`Validation` values, their errors accumulate rather than short-circuit:
+If we use a standard `Result` or `try/catch` pattern, the program short-circuits at the very first failure. This is correct for sequential business logic, but frustrating for user interfaces where displaying only one error at a time forces a slow, trial-and-error cycle of form submission.
+
+`Validation<E, A>` is a data structure designed specifically to accumulate errors. It is either `Passed<A>` or `Failed<E>`. When we combine multiple validation values, their failures accumulate instead of short-circuiting:
 
 ```ts
 import { Validation } from "@nlozgachev/pipelined/core";
@@ -81,64 +78,69 @@ const validateAge = (n: number): Validation<string, number> =>
   n >= 0 ? Validation.passed(n) : Validation.failed("Age must be non-negative");
 ```
 
-If both fields are failed, both errors come back in one result. Full guide:
-[Validation — collecting errors](/guides/validation).
+If both fields are invalid, both validation errors are gathered and returned together, enabling clean, comprehensive user feedback.
 
-## Async operations with typed errors — `TaskResult<E, A>`
+---
 
-`try/catch` around `async/await` keeps errors untyped — callers can't tell from the return type
-whether a function can fail. `TaskResult<E, A>` is a lazy async operation — nothing runs until
-called — with a typed error on the left and the result on the right:
+## Asynchronous operations with typed errors
+
+An asynchronous operation in standard JavaScript is represented by a `Promise`. Promises are eager—they begin executing the moment they are created—and they can reject with any value.
+
+`TaskResult<E, A>` is a lazy, infallible blueprint for an asynchronous operation that eventually yields a `Result<E, A>`. Because it is lazy, nothing runs until we explicitly invoke it. Because it is infallible at the promise level, the outer `Task` always resolves successfully, carrying our typed `Result` inside.
 
 ```ts
-import { TaskResult } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { TaskResult } from "@nlozgachev/pipelined/core";
 
 const fetchUser = (id: string): TaskResult<string, User> =>
   TaskResult.tryCatch(
     (signal) => fetch(`/users/${id}`, { signal }).then((r) => r.json()),
-    (e) => `Fetch failed: ${e}`,
+    (e) => `Network failure: ${e}`,
   );
 
-const name = pipe(
+const greeting = pipe(
   fetchUser("42"),
-  TaskResult.map((user) => user.name),
-  TaskResult.getOrElse(() => "Unknown"),
+  TaskResult.map((user) => `Hello, ${user.name}`),
+  TaskResult.getOrElse(() => "Welcome, guest"),
 );
 
-const result = await name();
-// string — never throws
+// Execution is deferred. Nothing has run yet.
+const result = await greeting(); // "Hello, Alice" (never throws)
 ```
 
-Full guide: [Task — lazy async](/guides/task).
+---
 
-## The four states of a data fetch — `RemoteData<E, A>`
+## The four states of a data fetch
 
-`isLoading: true` and `data: User | null` can technically both be set at the same time. Whether
-that has happened in your codebase is your business. The deeper problem is that some states have
-no name at all — "we haven't asked yet" is just `data: null` with `isLoading: false`, which is
-identical to "we asked and got nothing."
+Consider how we typically model a data-fetching operation in UI state:
 
-`RemoteData<E, A>` has exactly four constructors: `NotAsked`, `Loading`, `Failure<E>`, and
-`Success<A>`. Pattern matching is exhaustive:
+```ts
+interface State {
+  isLoading: boolean;
+  data: User | null;
+  error: Error | null;
+}
+```
+
+This model is fragile. It permits invalid combinations: `isLoading` could be `true` while `data` is present, or both `error` and `data` could be `null` simultaneously. Furthermore, the state of "we haven't requested the data yet" is indistinguishable from "we requested it and found nothing."
+
+`RemoteData<E, A>` represents these states explicitly. It is a union of exactly four constructors: `NotAsked`, `Loading`, `Failure<E>`, and `Success<A>`. The compiler enforces that every state is accounted for:
 
 ```ts
 import { RemoteData } from "@nlozgachev/pipelined/core";
 
-RemoteData.match({
+const renderUI = RemoteData.match({
   notAsked: () => renderPlaceholder(),
   loading:  () => renderSpinner(),
-  failure:  (err) => renderError(err.message),
+  failure:  (err) => renderError(err),
   success:  (user) => renderProfile(user),
-})(userState);
+});
 ```
 
-Full guide: [RemoteData — loading states](/guides/remote-data).
+---
 
-## What comes next
+## The journey ahead
 
-The guides cover each type in depth — all operations, composition patterns, and when to use one
-type over another. If you already know the problem you're facing, go directly to the relevant guide.
+These structures are not abstract mathematical exercises. They are simple, practical designs that bring clarity to standard programming patterns.
 
-For the mechanics of building pipelines — `pipe`, `flow`, and the data-last convention that makes
-them work — start with [Thinking in pipelines](/basics/pipelines).
+To understand how to sequence these transformations linearly, read [Thinking in pipelines](/basics/pipelines), which covers the mechanics of `pipe`, `flow`, and the data-last design that enables them. If you already have a specific problem to solve, you can head directly to the in-depth guides for each module.

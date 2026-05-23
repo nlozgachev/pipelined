@@ -1,145 +1,176 @@
 ---
-title: Tuple — typed pairs
-description: Carry two values together through a pipeline and transform either or both sides without destructuring.
+title: Tuple — Typed Pairs
+description: Couple two related values together to carry and transform either or both sides through a pipeline.
 ---
 
-Some values always come in pairs: a product name and its price, a city and its population, a
-configuration key and its current value. `Tuple<A, B>` is a typed alias for `readonly [A, B]`. Both
-values are always present. The library provides data-last operations for transforming either or both
-sides, consuming the pair into a single value, and composing these steps cleanly in a pipeline.
+We frequently encounter data that naturally belongs together in pairs: a configuration key and its
+value, a product SKU and its price, or a coordinate of latitude and longitude.
 
-## Creating a pair
+In standard JavaScript and TypeScript, we represent these associations using either small object
+literals or native two-element arrays (tuples). However, when we need to transform only one side of
+a pair within a functional pipeline — such as converting a price from cents to dollars while
+preserving the SKU — we are forced to write verbose destructuring and reconstruction code:
+
+```ts
+const adjustPrice = ([sku, priceCents]: [string, number]): [string, number] => [
+  sku,
+  priceCents * 1.2 // Apply tax to the second element
+];
+```
+
+This inline destructuring introduces visual noise, forces us to declare temporary local variables,
+and breaks the clean flow of point-free composition.
+
+`Tuple` treats typed pairs (`readonly [A, B]`) as first-class, unified containers. It provides
+data-last operations to transform either side independently, modify both sides at once, or collapse
+the pair into a single value, ensuring that paired values travel cleanly through pipelines.
+
+## The problem with manual tuple destructuring
+
+Suppose we are building a localization system that formats currency amounts based on a user's
+locale. We represent this as a pair of `[locale, cents]`:
+
+```ts
+const userSelection: [string, number] = ["en-US", 4999];
+```
+
+If we want to apply a discount to the cents, convert them to a decimal amount, and then format them
+using the native `Intl.NumberFormat` API, an imperative implementation must constantly unpack and
+pack the pair:
+
+```ts
+function formatUserSelection(pair: [string, number]): string {
+  const [locale, cents] = pair;
+  const discountedCents = cents * 0.9;
+  const dollars = discountedCents / 100;
+
+  return new Intl.NumberFormat(locale, { style: "currency", currency: "USD" })
+    .format(dollars);
+}
+```
+
+While functional programming encourages us to compose small, single-responsibility steps, manual
+array destructuring forces us to manage the internal indices of the array at each stage, leading to
+rigid code that is difficult to refactor.
+
+## The shift to first-class pairs
+
+A `Tuple<A, B>` is a structural alias for a `readonly [A, B]` array. Because it is a plain
+TypeScript tuple under the hood, any native two-element array is automatically a valid `Tuple`.
+
+`Tuple` provides dedicated, pure operations that manipulate this structure without requiring us to
+unpack it manually until the very end of the pipeline.
+
+```mermaid
+flowchart LR
+    A["Tuple(A, B)"] --> B["mapFirst(f)"]
+    B --> C["Tuple(A2, B)"]
+    C --> D["mapSecond(g)"]
+    D --> E["Tuple(A2, B2)"]
+    E --> F["fold(h)"]
+    F --> G["Final Value"]
+```
+
+## Creating pairs
+
+To lift two distinct values into a typed pair, we use `Tuple.make`:
 
 ```ts
 import { Tuple } from "@nlozgachev/pipelined/core";
 
-Tuple.make("Paris", 2_161_000); // ["Paris", 2161000]
-Tuple.make("tax_rate", 0.21); // ["tax_rate", 0.21]
+const entry = Tuple.make("timeout_seconds", 30); // readonly [string, number]
 ```
 
-If you already have a `readonly [A, B]` value — from `Arr.zip`, `Arr.splitAt`, or a native tuple
-literal — it is already a valid `Tuple<A, B>`. You don't need to call `make` to convert it.
+Any standard two-element array (such as those returned by `Object.entries()`, `Arr.zip`, or
+`Arr.splitAt`) is already structurally compatible with `Tuple` and requires no constructor wrapping.
 
-## Reading the values
+## Reading and swapping elements
 
-`first` and `second` extract a value from a pair. They are useful as the last step in a pipeline or
-when you only need one side:
+We can extract elements from a pair using `Tuple.first` and `Tuple.second`, or reverse their order
+using `Tuple.swap`:
+
+```ts
+const pair = Tuple.make("port", 8080);
+
+Tuple.first(pair);  // "port"
+Tuple.second(pair); // 8080
+
+// Swap positions: [A, B] -> [B, A]
+const swapped = Tuple.swap(pair); // [8080, "port"]
+```
+
+## Transforming one or both sides
+
+`Tuple` allows us to apply mapping functions to either element independently without affecting the
+other, or to transform both elements simultaneously:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 
-const entry = Tuple.make("alice", 980);
+const userScore = Tuple.make("alice", 980);
 
-Tuple.first(entry); // "alice"
-Tuple.second(entry); // 980
-
-pipe(entry, Tuple.second); // 980
-```
-
-## Transforming one side
-
-`mapFirst` and `mapSecond` apply a function to one element and return a new pair with the other
-element unchanged.
-
-```ts
-pipe(
-  Tuple.make("alice", 980),
-  Tuple.mapFirst((name) => name.toUpperCase()),
+const updatedScore = pipe(
+  userScore,
+  // 1. Transform the first element (name to uppercase)
+  Tuple.mapFirst(name => name.toUpperCase()),
   // ["ALICE", 980]
-  Tuple.mapSecond((score) => score + 20),
+
+  // 2. Transform the second element (increment score)
+  Tuple.mapSecond(score => score + 20)
   // ["ALICE", 1000]
 );
-```
 
-A realistic example — formatting a localised price:
-
-```ts
-const formatPrice = (locale: string, amountCents: number): string =>
-  (amountCents / 100).toLocaleString(locale, { style: "currency", currency: "EUR" });
-
-pipe(
-  Tuple.make("fr-FR", 1299),
-  Tuple.mapSecond((cents) => cents * 1.2), // apply VAT in cents
-  Tuple.fold(formatPrice), // "15,59 €"
-);
-```
-
-## Transforming both sides at once
-
-`mapBoth` applies two functions — one per side — in a single step:
-
-```ts
-pipe(
-  Tuple.make("product-a", 4999),
+// 3. Transform both elements at the same time
+const scaledScore = pipe(
+  userScore,
   Tuple.mapBoth(
-    (sku) => sku.toUpperCase(),
-    (priceCents) => priceCents / 100,
-  ),
-  // ["PRODUCT-A", 49.99]
-);
+    name => `@${name}`,
+    score => score * 10
+  )
+); // ["@alice", 9800]
 ```
 
-## Consuming the pair
+## Collapsing a pair into a single value
 
-`fold` collapses both values into one by applying a binary function. It is usually the final step in
-a pipeline:
+When we reach the edge of our pipeline and need to consume both values to produce a single result,
+we use `Tuple.fold`. It applies a binary function that merges the two elements:
 
 ```ts
-pipe(
-  Tuple.make("Alice", 100),
-  Tuple.mapSecond((score) => score * 1.1),
-  Tuple.fold((name, score) => `${name}: ${score.toFixed(0)} pts`),
-); // "Alice: 110 pts"
+const localizedPrice = pipe(
+  Tuple.make("fr-FR", 1299),
+  Tuple.mapSecond(cents => cents / 100), // convert to Euros
+  Tuple.fold((locale, euros) =>
+    new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" }).format(euros)
+  )
+); // "12,99 €"
 ```
 
-## Swapping the two sides
+## Side effects and conversion
 
-`swap` reverses the pair: `[A, B]` becomes `[B, A]`. Useful when a downstream function expects the
-elements in the opposite order:
+If we need to inspect the values inside a pipeline without altering them (e.g. for logging), we can
+use `Tuple.tap`. When interfacing with APIs that do not support tuple types, we can convert the pair
+to a plain array using `Tuple.toArray`:
 
 ```ts
-Tuple.swap(Tuple.make("key", 42)); // [42, "key"]
-
-// Swap the pair before passing to a function that expects (score, name)
-pipe(
-  Tuple.make("Bob", 77),
-  Tuple.swap,
-  Tuple.fold((score: number, name: string) => `${name} scored ${score}`),
-); // "Bob scored 77"
+const loggedPair = pipe(
+  Tuple.make("debug_flag", true),
+  Tuple.tap((key, val) => console.log(`Config: ${key} is ${val}`)),
+  Tuple.toArray
+); // logs "Config: debug_flag is true", returns ["debug_flag", true]
 ```
 
-## Converting to an array
+## When to use Tuple vs native destructuring
 
-`toArray` converts the pair to a `readonly (A | B)[]`. The elements stay in order:
+### Use Tuple when
 
-```ts
-Tuple.toArray(Tuple.make("hello", 42)); // ["hello", 42]
-```
+- Two values travel together as a single unit through a multi-step functional pipeline.
+- You need to perform conditional or sequential maps on either side of the pair using curried
+  operations in `pipe`.
+- You are consuming the output of array zip operations (`Arr.zip`) and need to project or merge the
+  resulting pairs.
+- You want to transition cleanly from a pair to a single collapsed value using `fold`.
 
-## Observing values without changing them
+### Use native destructuring when
 
-`tap` runs a side effect on both values and returns the pair unchanged. Use it for logging or
-debugging in the middle of a pipeline:
-
-```ts
-pipe(
-  Tuple.make("Paris", 2_161_000),
-  Tuple.tap((city, pop) => console.log(`Processing: ${city} (${pop})`)),
-  Tuple.mapSecond((pop) => pop / 1_000_000),
-  Tuple.fold((city, popM) => `${city}: ${popM.toFixed(1)}M`),
-); // logs "Processing: Paris (2161000)", returns "Paris: 2.2M"
-```
-
-## When to use Tuple
-
-Use `Tuple` when:
-
-- Two values always belong together and travel as a unit through a pipeline
-- You want to transform one or both sides without destructuring at each step
-- You are working with output from `Arr.zip` or `Arr.splitAt` and need to manipulate the pair
-- `fold` provides a clean final step to collapse the pair into a single result
-
-Keep using native tuple destructuring when the pair is short-lived and the transformation is a
-single expression — `const [a, b] = pair; return f(a, b);` is perfectly clear for simple cases.
-`Tuple` earns its place in longer pipelines where the pair passes through several steps before being
-consumed.
+- The scope of the pair is local, short-lived, and you are only performing a single operation on the
+  values. For example, `const [x, y] = coordinates; return x + y;` is simple and direct.

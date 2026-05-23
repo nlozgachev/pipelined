@@ -1,285 +1,260 @@
 ---
-title: RemoteData — loading states
-description: Model the four states of a data fetch explicitly instead of juggling boolean flags.
+title: RemoteData — Loading States
+description: Explicitly model the four states of an asynchronous data lifecycle, replacing conflicting boolean flags with type-safe state transitions.
 ---
 
-Every async data fetch has exactly four moments: before it starts, while it's loading, when it
-fails, and when it succeeds. That's the whole picture. But it's common to spread these four states
-across separate variables that can get out of sync and produce combinations that shouldn't exist.
-`RemoteData<E, A>` gives each state a name and keeps them mutually exclusive — only one is active at
-any given time.
+Every asynchronous data-fetching lifecycle has exactly four distinct phases: before the request
+begins, while the request is in flight, when the request fails, and when the request succeeds.
+
+In typical applications, we attempt to model these phases by distributing them across several
+independent variables:
+
+```ts
+const [data, setData] = useState<User | null>(null);
+const [isLoading, setIsLoading] = useState(false);
+const [error, setError] = useState<Error | null>(null);
+```
+
+While this flag-based model is familiar, it is structurally fragile. Because these variables are
+independent, they permit combinations of states that make no logical sense in the real world. For
+example, your types allow `isLoading` to be `true` while `error` is present, or both `data` and
+`error` to be `null` simultaneously.
+
+Furthermore, this flag soup fails to name the "before it starts" state. "We haven't asked for the
+data yet" is represented by `data: null`, `isLoading: false`, and `error: null`, which is identical
+to the representation of "we requested it and found nothing."
+
+`RemoteData<E, A>` solves this by modeling these lifecycles as a single, explicit data structure
+containing four mutually exclusive states: `NotAsked`, `Loading`, `Failure<E>`, and `Success<A>`.
 
 ```mermaid
 stateDiagram-v2
   direction TB
   [*] --> NotAsked
-  NotAsked --> Loading : fetch starts
+  NotAsked --> Loading : request starts
   Loading --> Success : data arrives
-  Loading --> Failure : request fails
+  Loading --> Failure : network fails
   Failure --> Loading : retry
   Success --> Loading : refresh
 ```
 
-## The problem with flag soup
+By packaging our loading state into a single, cohesive type, we ensure that our application can only
+ever represent valid states.
 
-A typical approach to loading states looks like this:
+---
+
+## Creating RemoteData
+
+To track a lifecycle, we transition our state through the explicit constructors of `RemoteData`:
 
 ```ts
-const [data, setData] = useState<User | null>(null);
-const [loading, setLoading] = useState(false);
-const [error, setError] = useState<string | null>(null);
+import { RemoteData } from "@nlozgachev/pipelined/core";
+
+type UserState = RemoteData<string, User>;
+
+// 1. Initial idle state before any action
+let state: UserState = RemoteData.notAsked();
+
+// 2. An API request is initiated
+state = RemoteData.loading();
+
+// 3. The network times out
+state = RemoteData.failure("Request timed out");
+
+// 4. A successful reload brings data
+state = RemoteData.success(activeUser);
 ```
 
-Three separate pieces of state, but they're not actually independent — only certain combinations are
-meaningful. The type allows `loading: true` and `error: "timeout"` at the same time, which is
-contradictory. Nothing prevents you from forgetting to reset `error` when a new request starts, or
-showing stale data while `loading` is true.
+---
 
-## The RemoteData approach
+## Exhaustive Rendering with match
 
-`RemoteData` makes the states explicit and mutually exclusive. There's one value with one state at a
-time:
+The primary benefit of `RemoteData` is that it makes your rendering and consumption logic safe. When
+you unpack the data, `match` requires you to handle all four branches explicitly. If you forget one,
+the compiler will refuse to build your application:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
-import { RemoteData } from "@nlozgachev/pipelined/core";
 
-type State = RemoteData<string, User>;
-
-// State transitions:
-let state: State = RemoteData.notAsked(); // before the user triggers a fetch
-state = RemoteData.loading(); // request in flight
-state = RemoteData.failure("Timed out"); // request failed
-state = RemoteData.success(user); // request succeeded
-```
-
-Each state is represented once, and they can't overlap. The type system prevents you from combining
-them incorrectly.
-
-```mermaid
-sequenceDiagram
-  participant U as user action
-  participant C as your component
-  participant S as server
-
-  C->>C: notAsked
-  U->>C: click "Load"
-  C->>C: loading
-  C->>S: fetch /users/123
-  alt success
-    S-->>C: 200 OK { name: "Alice" }
-    C->>C: success(user)
-  else failure
-    S-->>C: 404 Not Found
-    C->>C: failure("Not found")
-  end
-```
-
-## Creating RemoteData values
-
-```ts
-RemoteData.notAsked(); // NotAsked — no fetch triggered yet
-RemoteData.loading(); // Loading  — fetch in progress
-RemoteData.failure("Not found"); // Failure  — fetch failed with an error
-RemoteData.success(user); // Success  — fetch succeeded with a value
-```
-
-## Rendering all four states with `match`
-
-`match` is the primary way to consume a `RemoteData`. It requires a handler for every state, so the
-compiler ensures you've covered all cases:
-
-```ts
-const message = pipe(
-  userData,
+const uiMessage = pipe(
+  userDataState,
   RemoteData.match({
-    notAsked: () => "Click to load",
-    loading: () => "Loading...",
-    failure: (err) => `Failed: ${err}`,
-    success: (user) => `Hello, ${user.name}`,
+    notAsked: () => "Click the button to load your profile",
+    loading:  () => "Retrieving data...",
+    failure:  (error) => `Could not load profile: ${error}`,
+    success:  (user) => `Welcome back, ${user.name}`,
   }),
 );
 ```
 
-Because all four branches are required, there's no way to accidentally skip the loading state or
-forget to handle errors. The type checker will tell you if a case is missing. `fold` is the
-positional form — failure, notAsked, loading, success — if you'd rather not name the cases.
+Because the compiler enforces that every branch is defined, you can never accidentally skip the
+loading spinner or forget to handle a network failure.
 
-## Transforming the success value with `map`
+If you prefer positional callbacks rather than named object fields, you can use `fold`. The
+arguments are positional in the order: `failure`, `notAsked`, `loading`, `success`.
 
-`map` transforms the value inside `Success`, leaving all other states unchanged:
+---
 
-```ts
-pipe(
-  RemoteData.success(5),
-  RemoteData.map((n) => n * 2),
-); // Success(10)
-pipe(
-  RemoteData.loading(),
-  RemoteData.map((n) => n * 2),
-); // Loading
-pipe(
-  RemoteData.failure("!"),
-  RemoteData.map((n) => n * 2),
-); // Failure("!")
-pipe(
-  RemoteData.notAsked(),
-  RemoteData.map((n) => n * 2),
-); // NotAsked
-```
+## Transforming States in Flight
 
-This lets you transform data as part of a pipeline without breaking out of the `RemoteData` context:
+We do not have to immediately unpack `RemoteData` to work with it. We can describe transformations
+on our successful values while they are still managed within their lifecycle context.
+
+### Pure transformations with `map`
+
+`map` applies a transformation to the value inside a `Success` container, leaving `NotAsked`,
+`Loading`, and `Failure` entirely untouched:
 
 ```ts
-const userName = pipe(
-  userData, // RemoteData<string, User>
-  RemoteData.map((u) => u.name), // RemoteData<string, string>
-  RemoteData.getOrElse(() => "Unknown"),
+const userDisplayName = pipe(
+  userDataState,
+  RemoteData.map((user) => user.name.toUpperCase()),
 );
 ```
 
-## Transforming errors with `mapError`
+If the state is `Loading`, it remains `Loading` after the `map`. The transformation is only executed
+if the data has successfully arrived, allowing us to describe what should happen to the value
+without worrying about whether it is loading or failed.
 
-`mapError` transforms the error inside `Failure`, leaving other states unchanged:
+### Standardizing errors with `mapError`
 
-```ts
-pipe(
-  RemoteData.failure("connection refused"),
-  RemoteData.mapError((e) => ({ code: 503, message: e })),
-); // Failure({ code: 503, message: "connection refused" })
-```
-
-Useful for normalizing error types from different sources before they reach your rendering logic.
-
-## Chaining dependent fetches
-
-`chain` sequences a second fetch that depends on the result of the first. If the current state is
-`Success`, it passes the value to the function and returns whatever that produces. All other states
-pass through:
+`mapError` applies a transformation to the error inside a `Failure` container, leaving all other
+states untouched. This is useful for translating low-level API error objects into user-friendly
+message strings:
 
 ```ts
-pipe(
-  userData, // RemoteData<string, User>
-  RemoteData.chain((user) => fetchUserPosts(user.id)), // RemoteData<string, Post[]>
+const cleanState = pipe(
+  userDataState,
+  RemoteData.mapError((apiErr) => apiErr.message),
 );
 ```
 
-If `userData` is `Loading`, `Failure`, or `NotAsked`, the chain step is skipped and that state
-propagates.
+---
 
-## Recovering from failures
+## Chaining Dependent Requests
 
-`recover` provides a fallback `RemoteData` when the current state is `Failure`. Unlike
-`Result.recover`, it receives the error value so you can use it in the recovery logic. The fallback
-can produce a different success type, widening the result to `RemoteData<E, A | B>`:
+Often, one asynchronous fetch depends on the result of another — for instance, we must fetch a
+user's record before we can fetch their associated posts.
+
+For this, we use `chain`. If the current state is `Success`, `chain` passes the value to your next
+fetch function and returns its result. If the state is `Loading`, `Failure`, or `NotAsked`, the step
+is skipped and that state propagates automatically:
 
 ```ts
-pipe(
-  fetchFromPrimary(url),
-  RemoteData.recover((err) => {
-    console.warn("Primary failed:", err);
-    return fetchFromFallback(url);
-  }),
+const userPostsState = pipe(
+  userDataState,
+  RemoteData.chain((user) => fetchPostsForUser(user.id)), // returns RemoteData
 );
 ```
 
-## Observing failures without changing state
+---
 
-`tapError` runs a side effect when the current state is `Failure`, then passes the `RemoteData`
-through unchanged. Use it to log or report errors without interrupting the pipeline:
+## Validating outcomes: filter
+
+Sometimes a fetch succeeds, but the data does not satisfy our business constraints (e.g., a
+retrieved price list is empty). We can use `filter` to convert a `Success` into a `Failure` based on
+a condition:
 
 ```ts
-pipe(
-  userData,
-  RemoteData.tapError((err) => analytics.track("fetch_failed", { reason: err })),
-  RemoteData.match({
-    notAsked: () => null,
-    loading: () => <Spinner />,
-    failure: (err) => <ErrorMessage error={err} />,
-    success: (user) => <UserCard user={user} />,
-  }),
+const verifiedPrice = pipe(
+  priceFetchState,
+  RemoteData.filter(
+    (price) => price > 0,
+    (price) => `Price of ${price} is invalid. Price must be positive.`,
+  ),
 );
 ```
 
-For any state other than `Failure`, `tapError` is a no-op and the value passes through.
+If the fetch succeeded with `-1`, the state is converted to `Failure("-1 is invalid...")`. If the
+state was `Loading`, the check is bypassed.
 
-## Filtering a successful value
-
-`RemoteData.filter` tests a `Success` value against a predicate. When the predicate fails, the
-`Success` becomes a `Failure` — you supply the error. All other states pass through unchanged:
-
-```ts
-RemoteData.filter(n => n > 0, n => `${n} is not a positive price`)(RemoteData.success(9.99));
-// Success(9.99)
-
-RemoteData.filter(n => n > 0, n => `${n} is not a positive price`)(RemoteData.success(-1));
-// Failure("-1 is not a positive price")
-
-RemoteData.filter(n => n > 0, () => "invalid")(RemoteData.loading());
-// Loading — passes through unchanged
-```
-
-This is useful when additional constraints apply after a fetch succeeds — for example, checking that
-a list is non-empty or that a fetched value falls within an expected range.
+---
 
 ## Extracting the value
 
-**`getOrElse`** — returns the success value or a default thunk `() => B` for any other state. The
-thunk is only called when the value is not `Success`. The default can be a different type, widening
-the result to the union of both:
+When you simply need to extract the success value or supply a fallback if the data is loading,
+absent, or failed, you can use `getOrElse`:
 
 ```ts
-pipe(RemoteData.success(5), RemoteData.getOrElse(() => 0)); // 5
-pipe(RemoteData.loading(), RemoteData.getOrElse(() => 0)); // 0
-pipe(RemoteData.failure("!"), RemoteData.getOrElse(() => 0)); // 0
-pipe(RemoteData.loading(), RemoteData.getOrElse(() => null)); // null — typed as number | null
+const theme = pipe(
+  themeFetchState,
+  RemoteData.getOrElse(() => "light-theme"),
+);
 ```
 
-## Converting to other types
+---
 
-When you need to work with a part of the system that uses `Maybe` or `Result`, you can convert.
-`toMaybe` maps `Success` to `Some` and everything else to `None`. `toResult` maps `Success` to `Ok`
-and `Failure` to `Err`; `NotAsked` and `Loading` both become `Err` using a fallback you provide —
-they're both "not yet succeeded":
+## Side effects with tapError
+
+To log network errors or trigger analytic alerts mid-pipeline, you can use `tapError`. It executes
+your side effect only if the current state is a `Failure`, passing the error through:
 
 ```ts
-RemoteData.toMaybe(RemoteData.success(42)); // Some(42)
-RemoteData.toMaybe(RemoteData.loading()); // None
-
 pipe(
-  RemoteData.success(42),
-  RemoteData.toResult(() => "not loaded yet"),
-); // Ok(42)
-
-pipe(
-  RemoteData.loading(),
-  RemoteData.toResult(() => "not loaded yet"),
-); // Err("not loaded yet")
+  userDataState,
+  RemoteData.tapError((err) => {
+    logger.error("User profile fetch failed", { error: err });
+  }),
+);
 ```
 
-If you need to distinguish `NotAsked` from `Loading` after conversion, keep using `RemoteData`
-directly — both states collapse into `Err` and the distinction is lost.
+---
 
-The reverse conversion — going from a `Result` into a `RemoteData` — is just as common. When a
-`TaskResult` resolves, you get a `Result<E, A>` and typically want to store it as `RemoteData` in
-component state. `fromResult` does this in one step: `Ok` becomes `Success`, `Err` becomes
-`Failure`:
+## Interoperability at boundaries
+
+`RemoteData` works beautifully in UI states, but low-level API utilities usually communicate using
+`Maybe` or `Result` types. You can convert between them at system boundaries.
+
+### Downgrading to Maybe or Result
+
+To discard all error and loading information, you can convert to `Maybe` using `toMaybe`. Only
+`Success` becomes a `Some`:
 
 ```ts
-const result = await TaskResult.tryCatch(fetchUser, String)();
-setState(RemoteData.fromResult(result)); // Success(user) or Failure(msg)
+const maybeUser = RemoteData.toMaybe(userDataState); // Some(user) or None
 ```
 
-Without `fromResult` you'd write a manual `match` or `fold` just to map the two cases — which is
-boilerplate that belongs in the library, not your component.
+To convert to a `Result`, you must provide a fallback error to represent what should happen if the
+data is not yet loaded:
+
+```ts
+const resultUser = pipe(
+  userDataState,
+  RemoteData.toResult(() => "Data has not loaded yet"),
+); // Ok(user) or Err("Data has not loaded yet")
+```
+
+### Storing async outcomes with `fromResult`
+
+When you trigger an asynchronous operation (e.g. using a `TaskResult`), you obtain a standard
+`Result<E, A>` when it resolves. Storing this directly into your component's state as `RemoteData`
+is highly common.
+
+Instead of writing a verbose manual match block, you can use `fromResult` to lift the `Result` into
+the `RemoteData` lifecycle:
+
+```ts
+// In your async execution block:
+const result = await fetchUserProfileTask();
+
+// Passed directly to state:
+setDataState(RemoteData.fromResult(result)); // Success(user) or Failure(error)
+```
+
+---
 
 ## When to use RemoteData
 
-Use `RemoteData` when:
+### Use RemoteData when:
 
-- You're displaying fetched data in a UI and need to handle all loading states explicitly
-- You want the type system to prevent invalid state combinations like simultaneous loading and error
-- You want a single value in state instead of three separate flags
+- **You are driving a UI**: You need to render different elements for loading spinners, error
+  messages, idle states, and actual content.
+- **You value state safety**: You want the compiler to prevent invalid states, like having stale
+  data displayed while showing a contradictory error banner.
+- **You want unified state**: Juggling three or four different state flags in your components makes
+  the rendering code hard to read and trace.
 
-It's also useful outside UI contexts — any time you're tracking the lifecycle of an async operation
-and need to distinguish "hasn't started" from "in progress" from "done".
+### Keep using simple flags when:
+
+- **The lifecycle has no idle or failed states**: For very simple local computations that are either
+  immediately present or not (use `Maybe` or plain optional chaining instead).

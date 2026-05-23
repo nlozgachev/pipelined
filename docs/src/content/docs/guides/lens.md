@@ -1,254 +1,232 @@
 ---
-title: Lens — nested updates
-description: Focus on a required field in nested data — read, set, and modify immutably without spread chains.
+title: Lens — Nested Updates
+description: Focus on a required field in nested data structures to read, set, and modify values immutably.
 ---
 
-The most direct way to update a nested field is to just assign to it:
+Managing nested state is one of the most common sources of complexity in frontend and backend
+applications. When our data structures grow beyond simple flat objects, updating a single deeply
+nested field becomes surprisingly difficult to do safely and cleanly.
+
+In standard JavaScript, we are faced with a frustrating choice: mutate the data structure in place
+and risk unpredictable side effects, or write verbose, fragile chains of nested object spreads to
+perform an immutable update.
+
+`Lens` offers a elegant alternative by treating the path to a nested field as a first-class,
+reusable value. A lens acts as a telescope focused on a specific part of a larger structure,
+allowing us to read, overwrite, or modify that part immutably without manually traversing the
+nesting every time.
+
+## The problem with deep nesting and mutation
+
+Consider an application configuration that manages database connections and connection pools:
 
 ```ts
-user.address.city = "Hamburg";
-```
-
-That works. Until it doesn't.
-
-## The problem with mutation
-
-Objects in JavaScript are passed by reference. When you pass an object to a function, the function
-receives the same object in memory — not a copy. Any mutation inside that function affects every
-part of your code that holds a reference to it:
-
-```ts
-function relocate(user: User) {
-  user.address.city = "Hamburg"; // silently changes the caller's object too
-}
-
-const user = { name: "Alice", address: { city: "Berlin" } };
-relocate(user);
-console.log(user.address.city); // "Hamburg" — the original changed
-```
-
-This is usually fine in small scripts. It becomes a source of subtle bugs as code grows:
-
-- **UI frameworks like React** compare old and new state to decide what to re-render. If you mutate
-  state in place, the reference stays the same, and React sees no change — the component doesn't
-  update.
-- **Multiple components or functions** holding a reference to the same object will all see the
-  mutation. An unrelated part of the app can be broken by a change it never asked for.
-- **Testing** becomes harder when functions silently change their inputs — you have to inspect the
-  argument after the call, not just the return value.
-
-The standard fix is to never mutate shared objects — instead, produce a new object with the change
-applied. This is what the spread operator (`...`) was designed for.
-
-## Why spread — and why it's painful
-
-The spread pattern is the right idea: make a copy with one field changed, leave everything else
-untouched, return the new object:
-
-```ts
-const updated = { ...user, name: "Bob" }; // shallow copy with name replaced
-```
-
-The problem is that spread is shallow. Changing a field one level down means copying every
-intermediate object along the path:
-
-```ts
-const updated = {
-  ...user,
-  address: {
-    ...user.address,
-    city: "Hamburg",
-  },
+type AppConfig = {
+  env: string;
+  database: {
+    host: string;
+    port: number;
+    pool: {
+      min: number;
+      max: number;
+    };
+  };
 };
-```
 
-Two levels deep, two spreads. Three levels deep:
-
-```ts
-const updated = {
-  ...user,
-  address: {
-    ...user.address,
-    location: {
-      ...user.address.location,
-      city: "Hamburg",
+const config: AppConfig = {
+  env: "production",
+  database: {
+    host: "db.local",
+    port: 5432,
+    pool: {
+      min: 2,
+      max: 10,
     },
   },
 };
 ```
 
-This is correct — but verbose, fragile to refactors, and has to be repeated every time you need the
-same update from a different place in the code. Most teams end up writing one-off helper functions
-for each update path, each one just wrapping a spread chain with a different field name at the end.
+If we need to adjust the maximum pool size, the most direct approach is mutation:
 
-## The Lens approach
+```ts
+config.database.pool.max = 20;
+```
 
-A `Lens<S, A>` is a reusable description of a path through a structure. It knows how to read a value
-at that path (`get`) and how to produce an updated copy with a new value at that path (`set`). You
-define the path once; the spread chain is generated for you:
+While simple, this mutation modifies the object in place. If another part of our application holds a
+reference to `config`, or if a state management system (such as React) relies on reference changes
+to trigger updates, this silent modification bypasses those mechanisms. It also makes tracking down
+when and where a value changed exceptionally difficult, as the change leaves no trace in the call
+stack.
+
+To update the configuration immutably using native JavaScript, we must copy every level of nesting:
+
+```ts
+const updatedConfig = {
+  ...config,
+  database: {
+    ...config.database,
+    pool: {
+      ...config.database.pool,
+      max: 20,
+    },
+  },
+};
+```
+
+This spread pattern is syntactically heavy, error-prone, and tightly coupled to the exact shape of
+our data. If we rename `database` or add another layer, we have to rewrite every spread chain
+throughout our codebase.
+
+## The shift to first-class paths
+
+A `Lens<S, A>` separates the description of *where* a value lives from *what* we do with it. A lens
+is defined by two pure functions:
+
+- A getter to extract the focused value `A` from the outer structure `S`.
+- A setter to return a new outer structure `S` with the focused value `A` replaced.
+
+```mermaid
+flowchart TD
+    S["Outer Structure (S)"] -- "get" --> A["Focused Value (A)"]
+    A -- "set(newValue)" --> S2["New Outer Structure (S)"]
+```
+
+By defining this path once as a standalone variable, we can reuse it to read, write, and modify the
+target field across our application.
+
+## Creating lenses
+
+The simplest way to create a lens is with `Lens.prop`, which focuses on a single property of an
+object. The double-parenthesis syntax (`prop<Source>()("key")`) allows TypeScript to autocomplete
+keys and enforce type safety:
+
+```ts
+import { Lens } from "@nlozgachev/pipelined/core";
+
+// Focus on the database property of AppConfig
+const databaseLens = Lens.prop<AppConfig>()("database");
+
+// Focus on the pool property of DatabaseConfig
+type DatabaseConfig = AppConfig["database"];
+const poolLens = Lens.prop<DatabaseConfig>()("pool");
+```
+
+For custom paths — such as navigating a non-standard data structure or mapping values on the fly —
+we can define a lens manually using `Lens.make`:
+
+```ts
+const coordinatesLens = Lens.make(
+  (point: [number, number]) => point[0], // Getter: focus on the X coordinate
+  (x) => (point) => [x, point[1]]        // Setter: return a new coordinate tuple
+);
+```
+
+## Reading and writing deep values
+
+Once we have a lens, we can use `Lens.get`, `Lens.set`, and `Lens.modify` to interact with our
+structure. These operations are curried and accept the data structure as their last argument, making
+them perfectly suited for `pipe`:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
-import { Lens } from "@nlozgachev/pipelined/core";
 
-const cityLens = pipe(
-  Lens.prop<User>()("address"),
-  Lens.andThen(Lens.prop<Address>()("city")),
+const maxLens = Lens.prop<AppConfig["database"]["pool"]>()("max");
+
+// 1. Reading a value
+const currentMax = pipe(config.database.pool, Lens.get(maxLens)); // 10
+
+// 2. Overwriting a value immutably
+const newPool = pipe(config.database.pool, Lens.set(maxLens)(20));
+// Returns a new pool object with max: 20
+
+// 3. Modifying a value with a function
+const doublePool = pipe(config.database.pool, Lens.modify(maxLens)(m => m * 2));
+// Returns a new pool object with max: 20
+```
+
+## Composing paths for deep updates
+
+Lenses are truly powerful because they compose. We can combine multiple shallow lenses into a single
+deep lens using `Lens.andThen`.
+
+This composition lets us build complex paths out of simple, reusable building blocks:
+
+```ts
+// Define the shallow lenses
+const database = Lens.prop<AppConfig>()("database");
+const pool = Lens.prop<AppConfig["database"]>()("pool");
+const max = Lens.prop<AppConfig["database"]["pool"]>()("max");
+
+// Compose them into a single deep lens
+const maxConnectionsLens = pipe(
+  database,
+  Lens.andThen(pool),
+  Lens.andThen(max)
 );
 
-pipe(user, Lens.get(cityLens)); // "Berlin"
-pipe(user, Lens.set(cityLens)("Hamburg")); // new User, city updated
-pipe(user, Lens.modify(cityLens)(c => c.toUpperCase())); // "BERLIN"
-```
+// Read the deeply nested value
+const currentMax = pipe(config, Lens.get(maxConnectionsLens)); // 10
 
-The original `user` is never changed. `set` and `modify` return a new object with the change
-applied. The path is defined once and works for reading, writing, and transforming equally.
-
-## Defining a path
-
-**`Lens.prop`** points at a single field of an object. Call it with the object type, then the field
-name:
-
-```ts
-const addressLens = Lens.prop<User>()("address"); // Lens<User, Address>
-const nameLens = Lens.prop<User>()("name"); // Lens<User, string>
-```
-
-The double-call (`<User>()("address")`) lets TypeScript know the object type upfront so it can offer
-autocomplete for valid field names at the second call.
-
-**`Lens.make`** defines a lens from an explicit getter and setter pair, for when the path isn't a
-simple property lookup:
-
-```ts
-const nameLens = Lens.make(
-  (user: User) => user.name,
-  (name) => (user) => ({ ...user, name }),
-);
-```
-
-## Reading and writing
-
-All three operations are data-last and work directly in a `pipe`:
-
-```ts
-pipe(user, Lens.get(nameLens)); // read the value
-pipe(user, Lens.set(nameLens)("Bob")); // replace with a new value
-pipe(user, Lens.modify(nameLens)(n => n.toUpperCase())); // apply a function
-```
-
-`modify` is the most useful in practice: it reads the current value, applies your function, and
-writes the result back — without reading the value separately first.
-
-## Composing paths with `andThen`
-
-Paths compose. `andThen` extends a lens one field further inward, so you build a deep path from a
-sequence of single-field steps:
-
-```ts
-const userCityLens = pipe(
-  Lens.prop<User>()("address"),
-  Lens.andThen(Lens.prop<Address>()("city")),
-);
-
-const userZipLens = pipe(
-  Lens.prop<User>()("address"),
-  Lens.andThen(Lens.prop<Address>()("zip")),
+// Update the deeply nested value immutably with one call
+const nextConfig = pipe(
+  config,
+  Lens.set(maxConnectionsLens)(50)
 );
 ```
 
-Each composed lens is a plain value you can store in a variable and reuse wherever you need it.
+Notice that the original `config` object remains completely unchanged. `nextConfig` is a new object
+where only the database, pool, and max property references have been updated — all other properties
+(like `env` or `database.host`) are shared by reference, ensuring excellent memory efficiency.
 
-Lens paths do not verify at runtime that the field exists — they trust the type. If the type says
-the field is always present but you've cast somewhere unsafely, you'll get `undefined` without a
-type error. Lens is only as sound as your types.
+## Reaching fields that might be absent
 
-## When the field might not be there
+A standard `Lens` assumes that the path is guaranteed to exist. If a property in our path is
+optional (e.g. `host?: string`) or we want to focus on an element of an array that might be empty,
+we must transition from a `Lens` to an `Optional`.
 
-`Lens` only works for fields that are always present. If the next field in your path is optional
-(`field?: string`) or you want to target an array element by index, you need `Optional` — the same
-idea, but the path might not reach anything.
-
-You can cross over with `Lens.andThenOptional`:
+We can compose a `Lens` with an `Optional` path using `Lens.andThenOptional` or convert a lens
+entirely with `Lens.toOptional`:
 
 ```ts
 import { Optional } from "@nlozgachev/pipelined/core";
 
-const userBioOpt = pipe(
-  Lens.prop<User>()("profile"),
-  Lens.andThenOptional(Optional.prop<Profile>()("bio")),
-); // Optional<User, string>
-```
+type UserProfile = {
+  name: string;
+  preferences?: {
+    theme?: string;
+  };
+};
 
-Or convert any lens to an Optional first with `Lens.toOptional`, then continue with
-`Optional.andThen`:
+const profileLens = Lens.prop<UserProfile>()("name");
+const preferencesOptional = Optional.prop<UserProfile>()("preferences");
 
-```ts
-pipe(
-  Lens.prop<User>()("address"),
+// Transition from guaranteed path (Lens) to optional path (Optional)
+const themeOptional = pipe(
+  Lens.prop<UserProfile>()("preferences"),
   Lens.toOptional,
-  Optional.andThen(Optional.prop<Address>()("landmark")),
-); // Optional<User, string>
-```
-
-See the [Optional guide](/guides/optional) for the full picture.
-
-## Compared to other approaches
-
-### Immer
-
-[Immer](https://immerjs.github.io/immer/) is the most popular alternative. It lets you write code
-that looks like mutation but produces a new immutable object under the hood:
-
-```ts
-import produce from "immer";
-
-const updated = produce(user, draft => {
-  draft.address.city = "Hamburg";
-});
-```
-
-This is a good solution and the right choice in many codebases — particularly if you're already
-using Redux Toolkit, which bundles Immer. The draft syntax is familiar and requires no learning
-curve beyond the `produce` wrapper.
-
-Where Lens differs is in **reusability**. In Immer, the path to the field (`draft.address.city`) is
-written inline each time. If you need the same update in five places, you write it five times, or
-extract a helper function yourself. A Lens is a typed value — you define the path once, name it, and
-pass it around:
-
-```ts
-// Defined once:
-const userCityLens = pipe(
-  Lens.prop<User>()("address"),
-  Lens.andThen(Lens.prop<Address>()("city")),
+  Optional.andThen(Optional.prop<{ theme?: string }>()("theme"))
 );
-
-// Used anywhere, including passed to other functions:
-const setCity = Lens.set(userCityLens);
-const readCity = Lens.get(userCityLens);
 ```
 
-Lens paths also compose — you can build a deep path from smaller paths that already exist, which is
-harder to achieve with Immer's draft approach. And because Lens has no runtime magic (Immer uses
-JavaScript `Proxy` internally, which has edge cases with certain class instances and circular
-references), the behaviour is always predictable.
+See the [Optional guide](/guides/optional) for details on navigating optional paths.
 
-If Immer already solves your problem and composable paths aren't something you need, stick with
-Immer. If you want paths as typed, reusable, composable values that work naturally in a `pipe`
-chain, Lens is worth the switch.
+## When to use Lens vs Standard JavaScript
 
-### structuredClone
+### Use Lens when
 
-`structuredClone(user)` creates a full deep copy, after which you can mutate freely. It works, but
-it copies the entire object tree on every call regardless of how small the change is, it fails on
-non-serializable values (functions, class instances, `Map`, `Set`), and the update path is still
-manual — you write the drill-down every time with no reusability. It's a useful browser built-in for
-specific situations, but not a scalable pattern for nested updates in application code.
+- You work with deeply nested data structures that must be updated immutably (e.g., in React state,
+  Redux stores, or pure domain services).
+- You want to reuse specific data paths across different parts of your application (such as reading
+  and writing to the same config path in validation, parsing, and UI forms).
+- You want to eliminate boilerplate spread syntax (`...`) and make deep updates highly readable and
+  refactor-safe.
+- You want to compose complex paths dynamically out of smaller, well-tested path segments.
 
-## When to use Lens
+### Use Standard JavaScript when
 
-Once you commit to not mutating shared objects — whether because you're working with React, a state
-management library, or just want predictable functions — you'll find yourself writing the same
-spread chains repeatedly. That's the signal. Lens turns each repeated spread chain into a named,
-composable path that you define once and use everywhere.
+- Your data structures are completely flat or only one level deep; plain object spreads
+  (`{ ...obj, key: value }`) are simple and carry no extra abstraction overhead.
+- You are working in a performance-critical loop where the allocation of intermediate functions and
+  setter closures would introduce unwanted CPU or garbage collection overhead.
+- You are working in an codebase where mutation is the accepted paradigm and side effects are
+  managed through other boundaries.

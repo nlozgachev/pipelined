@@ -1,5 +1,5 @@
 ---
-title: Design & influences
+title: Design and influences
 description: Where the ideas in pipelined come from, how the internals are structured, and why things are the way they are.
 ---
 
@@ -73,8 +73,15 @@ This library uses a simpler "concrete" representation instead. Each optic is a p
 `get` and `set` fields:
 
 ```ts
-type Lens<S, A> = { get: (s: S) => A; set: (a: A) => (s: S) => S; };
-type Optional<S, A> = { get: (s: S) => Maybe<A>; set: (a: A) => (s: S) => S; };
+type Lens<S, A> = {
+  get: (s: S) => A;
+  set: (a: A) => (s: S) => S;
+};
+
+type Optional<S, A> = {
+  get: (s: S) => Maybe<A>;
+  set: (a: A) => (s: S) => S;
+};
 ```
 
 The concrete form gives up uniform composition across the full hierarchy but gains implementation
@@ -89,26 +96,26 @@ Every core type in this library is a discriminated union — a union of object t
 distinguished by a literal `kind` field:
 
 ```ts
-type Maybe<A> = { kind: "Some"; value: A; } | { kind: "None"; };
+type Maybe<A> = { kind: "Some"; value: A } | { kind: "None" };
 
-type Result<E, A> = { kind: "Ok"; value: A; } | { kind: "Error"; error: E; };
+type Result<E, A> = { kind: "Ok"; value: A } | { kind: "Error"; error: E };
 
 type RemoteData<E, A> =
-  | { kind: "NotAsked"; }
-  | { kind: "Loading"; }
-  | { kind: "Failure"; error: E; }
-  | { kind: "Success"; value: A; };
+  | { kind: "NotAsked" }
+  | { kind: "Loading" }
+  | { kind: "Failure"; error: E }
+  | { kind: "Success"; value: A };
 ```
 
-This representation has several properties that make it well-suited for TypeScript:
-
-- **Exhaustiveness checking**: A `switch` or `match` over `kind` that handles every variant
-  satisfies the compiler. If a new variant is added to the type, every existing `match` becomes a
-  type error until the new case is handled.
-- **Transparency**: The structure is plain data. You can inspect it with `console.log`, serialize it
-  with `JSON.stringify`, and pattern-match it without any class machinery.
-- **No prototype chain**: There's nothing to inherit, override, or accidentally mutate. The
-  operations live in separate namespace modules, not on the objects themselves.
+This representation offers three key structural advantages within TypeScript. First, it enables
+reliable exhaustiveness checking. A `switch` or `match` expression over `kind` that accounts for
+every variant satisfies the compiler; if a new variant is later added to the type, every existing
+`match` instantly becomes a compile-time error until the new case is handled. Second, it yields
+complete operational transparency. Because the structures are plain, transparent data, they can be
+inspected easily with standard tools like `console.log`, serialized cleanly with `JSON.stringify`,
+and pattern-matched without any custom class instantiation machinery. Finally, it eliminates
+prototype chain complexity. Since there is nothing to inherit, override, or accidentally mutate,
+operations remain isolated in separate namespaces rather than coupled to the objects themselves.
 
 The alternative — class-based encoding — would use `instanceof` for dispatch and method definitions
 for operations. This has appeal, but it couples operations to types (adding a method means touching
@@ -120,10 +127,10 @@ ties the library to a specific instantiation model.
 The four types in `InternalTypes.ts` are the structural vocabulary of the entire library:
 
 ```ts
-type WithKind<K extends string> = { readonly kind: K; };
-type WithValue<T> = { readonly value: T; };
-type WithError<T> = { readonly error: T; };
-type WithErrors<T> = { readonly errors: NonEmptyList<T>; };
+type WithKind<K extends string> = { readonly kind: K };
+type WithValue<T> = { readonly value: T };
+type WithError<T> = { readonly error: T };
+type WithErrors<T> = { readonly errors: NonEmptyList<T> };
 ```
 
 These ensure that field names are consistent across every type in the library. The success payload
@@ -136,8 +143,7 @@ for `.value` to find the success payload. Sharing the field name is what makes t
 code duplication.
 
 `These` is the deliberate exception. Its two payloads — `TheseFirst`, `TheseSecond`, and `TheseBoth`
-— use `first` and `second` as field names rather than `value` and `error`. `These<A,
-B>` makes no
+— use `first` and `second` as field names rather than `value` and `error`. `These<A, B>` makes no
 claim about which side is "good" and which is "bad": it is a symmetric inclusive-OR, not a biased
 success/failure container. Importing the `value`/`error` convention would give it a directionality
 it doesn't have.
@@ -237,33 +243,43 @@ can call `errors[0]` or `errors.join(", ")` without defensive checks.
 
 ## What was deliberately left out
 
-**Typeclass names.** The library contains implementations of what Haskell calls `Functor` (`map`),
-`Monad` (`chain`), and `Applicative` (`ap`). These names don't appear in the API — the operations
-use names that describe what they do rather than the algebraic structure they belong to. The
-reasoning behind this is in [Why this exists](/motivation).
+### Typeclass names
 
-**A typeclass system.** fp-ts uses a `HKT` encoding to simulate higher-kinded types in TypeScript,
-which allows generic code over any type that implements a given typeclass. This library makes no
-attempt at that. The `map` on `Maybe` and the `map` on `Result` share a naming convention, not a
-shared interface. This is a real limitation — you can't write a function that works generically over
-"any type with a `map`" — but the tradeoff is a much simpler type system with no encoding overhead.
+The library contains implementations of what Haskell calls `Functor` (`map`), `Monad` (`chain`), and
+`Applicative` (`ap`). These names don't appear in the API — the operations use names that describe
+what they do rather than the algebraic structure they belong to. The reasoning behind this is in
+[Why this exists](/motivation).
 
-**Classes and `extends`.** Every type is plain data. There's no inheritance hierarchy and no
-`instanceof` checks in user-facing code.
+### A typeclass system
 
-**Runtime overhead for brands.** `Brand<K, T>` exists only as a compile-time phantom. At runtime, a
-branded value is exactly the underlying value — no wrapper object, no tag field, no extra
-allocation. The brand is erased entirely by the TypeScript compiler. `Brand.wrap` and `Brand.unwrap`
-are identity functions at runtime; their only job is to satisfy the type checker.
+fp-ts uses a `HKT` encoding to simulate higher-kinded types in TypeScript, which allows generic code
+over any type that implements a given typeclass. This library makes no attempt at that. The `map` on
+`Maybe` and the `map` on `Result` share a naming convention, not a shared interface. This is a real
+limitation — you can't write a function that works generically over "any type with a `map`" — but
+the tradeoff is a much simpler type system with no encoding overhead.
 
-**The full optics hierarchy.** `Lens` and `Optional` cover two points in a much larger optics space.
-The most practically useful omissions are `Prism` — which focuses into one variant of a union type
-(e.g. the inner value of `Some`, or the `Ok` case of a `Result`) — and `Traversal` — which focuses
-on multiple values simultaneously, useful for updating all elements of a nested array in one
-composed path. Both were left out because the concrete `{ get, set }` encoding doesn't compose them
-uniformly with `Lens` and `Optional` without additional per-combination composition functions,
-adding complexity proportional to the square of the number of optic types. In practice, `Lens` and
-`Optional` cover the cases that arise most often in everyday TypeScript code.
+### Classes and inheritance
+
+Every type is plain data. There's no inheritance hierarchy and no `instanceof` checks in user-facing
+code.
+
+### Runtime brand overhead
+
+`Brand<K, T>` exists only as a compile-time phantom. At runtime, a branded value is exactly the
+underlying value — no wrapper object, no tag field, no extra allocation. The brand is erased
+entirely by the TypeScript compiler. `Brand.wrap` and `Brand.unwrap` are identity functions at
+runtime; their only job is to satisfy the type checker.
+
+### The full optics hierarchy
+
+`Lens` and `Optional` cover two points in a much larger optics space. The most practically useful
+omissions are `Prism` — which focuses into one variant of a union type (e.g. the inner value of
+`Some`, or the `Ok` case of a `Result`) — and `Traversal` — which focuses on multiple values
+simultaneously, useful for updating all elements of a nested array in one composed path. Both were
+left out because the concrete `{ get, set }` encoding doesn't compose them uniformly with `Lens` and
+`Optional` without additional per-combination composition functions, adding complexity proportional
+to the square of the number of optic types. In practice, `Lens` and `Optional` cover the cases that
+arise most often in everyday TypeScript code.
 
 ## Acknowledgements
 

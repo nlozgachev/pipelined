@@ -1,112 +1,112 @@
 ---
-title: "State — threading state through pipelines"
-description: Computations that read and update a piece of state without passing it explicitly at every step.
+title: State — Stateful Computations
+description: Thread immutable state through a sequence of transformations cleanly, replacing local mutations and parameter drilling with pure state transitions.
 ---
 
-Pure functions don't mutate. Yet many real operations naturally require state: generating sequential
-IDs, building up a data structure one step at a time, simulating a counter or stack, threading
-configuration through a pipeline. The usual alternatives are to pass the state as an extra argument
-to every function, or to reach for a mutable variable. Neither is satisfying. `State<S, A>` offers a
-third option: describe the stateful computation as a value, then run it once at the end.
+One of the fundamental pillars of functional programming is that pure functions do not mutate state.
+Yet, many common programming tasks are inherently stateful. Generating sequential IDs, building up a
+complex graph node-by-node, simulating a stack machine, or compiling a shopping cart all require a
+way to track changes over time.
 
-## The problem with threading state manually
-
-When state must flow through several steps, the usual approaches either tangle the signature of
-every function or introduce shared mutation:
+To keep our functions pure, we are typically forced to thread the state manually:
 
 ```ts
-// Option 1 — explicit parameter threading
-// Every function must accept and return the counter, even when it's not the main concern
-function buildGraph(counter: number): [Graph, number] {
+// Threading state explicitly:
+function constructNodes(counter: number): [Node[], number] {
   const [nodeA, c1] = makeNode("root", counter);
   const [nodeB, c2] = makeNode("child", c1);
-  const [edge, c3] = makeEdge(nodeA, nodeB, c2);
-  return [{ nodes: [nodeA, nodeB], edges: [edge] }, c3];
+  return [[nodeA, nodeB], c2];
 }
+```
 
-// Option 2 — mutable variable
-// The counter is implicit; any function in scope can corrupt it
+This is extremely verbose. Every single function must accept the state as a parameter and return a
+tuple of the result and the updated state, even when the state is not the primary concern of that
+function. If you insert or remove a step, you must manually rewrite the variable assignments (`c1`,
+`c2`, etc.).
+
+The common alternative is to introduce a mutable variable:
+
+```ts
 let counter = 0;
 function nextId() {
   return counter++;
 }
 ```
 
-The first approach is verbose and breaks when you add or remove a step — every caller must be
-updated. The second replaces a typing burden with a correctness burden: nothing stops two functions
-from racing on the shared variable.
+While this eliminates the parameter noise, it introduces a correctness risk. The state is now shared
+globally within its scope. Any function can corrupt it, and testing it in isolation requires manual
+reset hooks.
 
-## What a State is
-
-Each step receives the current state and returns the next state alongside its result. There's no
-shared variable; the state flows through the chain explicitly, and nothing runs until you call
-`State.run` at the end:
+`State<S, A>` offers an elegant third path. It models a stateful computation as a pure, immutable
+function that takes an initial state `S` and returns a tuple of a result `A` and the new state `S`:
 
 ```ts
-type State<S, A> = (s: S) => readonly [A, S];
+type State<S, A> = (initialState: S) => readonly [A, S];
 ```
 
-The return tuple `[value, nextState]` makes the state transition explicit — no side effects, no
-mutation.
+By representing state transitions as a data structure rather than a series of mutable assignments,
+we compose stateful steps cleanly and execute them once at the boundary of our program.
 
-## Creating State computations
+---
 
-`State.get` reads the current state as the produced value; `State.modify` updates it. These are the
-two you'll reach for most often:
+## Creating State Operations
+
+To construct state transitions, we use the core constructors of `State`:
 
 ```ts
-const snapshot: State<string[], string[]> = State.get();
-State.run(["a", "b"])(snapshot); // [["a", "b"], ["a", "b"]]
+import { State } from "@nlozgachev/pipelined/core";
 
-const increment: State<number, undefined> = State.modify(n => n + 1);
-State.run(5)(increment); // [undefined, 6]
+// Reads the current state
+const snapshot = State.get<number>();
+
+// Modifies the state by applying a function
+const increment = State.modify((n: number) => n + 1);
+
+// Replaces the state entirely
+const overwrite = State.put(42);
 ```
 
-`State.gets` projects a field from the state — useful when your state is a record and you only need
-one piece. `State.put` replaces the state entirely. `State.resolve` lifts a plain value without
-touching state. These are less common; `get` and `modify` cover most cases.
+- `State.get` reads the current state, returning it as the produced value.
+- `State.modify` updates the state using a mapping function.
+- `State.put` overwrites the active state with a new value.
+- `State.gets` projects a specific slice from a structured state record.
+- `State.resolve` lifts a constant value into the `State` context without touching the state itself.
 
-## Transforming with `map`
+---
 
-`map` changes the value a computation produces without affecting the state transition:
+## Transforming and Sequencing
+
+We can compose our stateful blueprints point-free, allowing the state to flow through our
+transformations automatically.
+
+### Transforming values with `map`
+
+`map` transforms the produced result of a stateful step, leaving the underlying state transition
+completely unaffected:
 
 ```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+
 const stackSize: State<string[], number> = pipe(
   State.get<string[]>(),
-  State.map(stack => stack.length),
+  State.map((stack) => stack.length),
 );
-
-State.evaluate(["a", "b", "c"])(stackSize); // 3
 ```
 
-## Sequencing with `chain`
+### Sequencing transitions with `chain`
 
-`chain` is where State earns its keep. It threads the output state of one computation into the input
-of the next, so you can write a sequence of stateful steps without passing the state explicitly at
-each one:
-
-```ts
-const push = (item: string): State<string[], undefined> => State.modify(stack => [...stack, item]);
-
-const program = pipe(
-  push("first"),
-  State.chain(() => push("second")),
-  State.chain(() => push("third")),
-  State.chain(() => State.get<string[]>()),
-);
-
-State.evaluate([])(program); // ["first", "second", "third"]
-```
-
-Each call to `push` extends the stack in turn. The final `State.get` reads the accumulated result.
-
-Here is a more realistic example: building a shopping cart by chaining item additions:
+`chain` is the engine of the `State` container. It threads the output state of one step into the
+input state of the next step, allowing you to write a sequence of stateful operations without ever
+referencing the state variable explicitly:
 
 ```ts
-type Cart = { items: string[]; total: number; };
+interface Cart {
+  items: string[];
+  total: number;
+}
 
 const addItem = (name: string, price: number): State<Cart, undefined> =>
-  State.modify(cart => ({
+  State.modify((cart) => ({
     items: [...cart.items, name],
     total: cart.total + price,
   }));
@@ -117,52 +117,60 @@ const checkout = pipe(
   State.chain(() => addItem("juice", 2)),
   State.chain(() => State.gets((c: Cart) => c.total)),
 );
-
-State.evaluate({ items: [], total: 0 })(checkout); // 9
 ```
 
-## Running a State computation
+Notice the layout. We describe the addition of three items to the cart and read the final total. The
+intermediate cart state is threaded from step to step behind the scenes.
 
-Three runners extract results from a State:
+---
 
-`State.run` returns both the value and the final state as a tuple:
+## Extracting Results: The Runners
+
+`State` is lazy — defining a chain does not execute any transitions. To run the computation, we must
+pass it an initial state using one of three runner functions:
+
+### Full extraction with `run`
+
+`State.run` executes the transitions and returns a tuple containing both the final value and the
+final state:
 
 ```ts
-const [value, finalState] = State.run(0)(pipe(
-  State.modify<number>(n => n + 10),
-  State.chain(() => State.get<number>()),
-));
-// value = 10, finalState = 10
+const [value, finalState] = State.run({ items: [], total: 0 })(checkout);
+// value = 9, finalState = { items: ["coffee", "croissant", "juice"], total: 9 }
 ```
 
-`State.evaluate` returns only the produced value — use this when you care about the result but not
-the final state:
+### Reading outcomes with `evaluate`
+
+`State.evaluate` executes the transitions and returns **only the produced value**, discarding the
+final state:
 
 ```ts
-const total = State.evaluate({ items: [], total: 0 })(checkout); // 9
+const totalCost = State.evaluate({ items: [], total: 0 })(checkout); // 9
 ```
 
-`State.execute` returns only the final state — use this when you care about the side-effect on the
-state but not the value:
+### Reading state changes with `execute`
+
+`State.execute` executes the transitions and returns **only the final state**, discarding the
+produced value:
 
 ```ts
-const finalCart = State.execute({ items: [], total: 0 })(pipe(
-  addItem("coffee", 4),
-  State.chain(() => addItem("juice", 2)),
-));
-// { items: ["coffee", "juice"], total: 6 }
+const cartSnapshot = State.execute({ items: [], total: 0 })(checkout);
+// { items: ["coffee", "croissant", "juice"], total: 9 }
 ```
 
-## Generating sequential IDs
+---
 
-A common use case for State is generating unique integer IDs while building a data structure:
+## Practical Example: Unique ID Generation
+
+A classic use case for `State` is generating unique, sequential IDs while constructing an immutable
+data structure:
 
 ```ts
 type IdState = number;
 
-const nextId: State<IdState, number> = pipe(
+const generateId: State<IdState, number> = pipe(
   State.get<IdState>(),
-  State.chain(id =>
+  State.chain((id) =>
     pipe(
       State.put(id + 1),
       State.chain(() => State.resolve(id)),
@@ -171,40 +179,42 @@ const nextId: State<IdState, number> = pipe(
 );
 
 const buildNodes = pipe(
-  nextId,
-  State.chain(id1 =>
+  generateId,
+  State.chain((id1) =>
     pipe(
-      nextId,
-      State.chain(id2 =>
+      generateId,
+      State.chain((id2) =>
         State.resolve([
-          { id: id1, label: "root" },
-          { id: id2, label: "child" },
+          { id: id1, label: "parent_node" },
+          { id: id2, label: "child_node" },
         ])
-      ),
+      )
     )
   ),
 );
 
-State.evaluate(0)(buildNodes);
-// [{ id: 0, label: "root" }, { id: 1, label: "child" }]
+const nodes = State.evaluate(0)(buildNodes);
+// [{ id: 0, label: "parent_node" }, { id: 1, label: "child_node" }]
 ```
 
-The counter starts at 0 and is incremented by each call to `nextId`. The final value is the list of
-nodes — the counter itself is discarded.
+Each call to `generateId` reads the current integer, increments the counter in the state, and
+returns the original integer. The state flows through the sequence, ensuring that no two nodes
+receive duplicate IDs.
 
-If you build up a chain and forget to call `State.run` at the end, you have a function, not a value
-— nothing runs and no type error tells you why.
+---
 
 ## When to use State
 
-- You have a sequence of operations that need to read and update a shared piece of state without
-  passing it as an extra parameter to every function.
-- You want to model stateful algorithms (stack machines, counters, ID generators, config
-  accumulators) as pure pipelines.
-- You need a description of a stateful computation that you can pass around and run later with
-  different initial states.
+### Use State when:
 
-**Keep using plain variables when** the state is local to a single function body with no composition
-need — a simple `let count = 0; count++` is clearer than `State.modify(n => n + 1)` when there is
-nothing to compose. `State` earns its place when the stateful steps are themselves functions that
-you want to name, reuse, or pass around before running.
+- **Threading state is noisy**: You have a sequence of operations that need to read and update a
+  shared state, and passing it manually clutters your signatures.
+- **You require isolation**: You want to test stateful algorithms (such as compilers, parsers, or
+  status simulators) in pure isolation with predictable starting values.
+- **You value purity**: You want to avoid shared mutable variables and race conditions.
+
+### Keep using plain mutable variables when:
+
+- **The state is strictly local**: Inside a narrow function body where a simple
+  `let count = 0; count++` is clear, does not escape the function, and requires no external
+  composition.

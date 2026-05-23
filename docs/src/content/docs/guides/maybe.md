@@ -1,246 +1,390 @@
 ---
-title: Maybe — absent values
-description: Model values that may not exist without null checks scattered across your code.
+title: Maybe — Modeling Absence
+description: Treat the absence of a value as first-class data rather than a control flow problem.
 ---
 
-Absence is everywhere in real code. A user that might not be in the database, a config value that
-might not be set, a lookup that might come up empty. The usual answer is `T | null`, and then a null
-check at every call site — each one a reminder that something might not be there. `Maybe<A>` makes
-the absence part of the type itself, so the check happens once and composes cleanly with everything
-else.
+In modern software development, we spend a massive amount of time dealing with things that are not
+there. We query a database for a record that might have been deleted; we look up a key in a
+configuration file that might be missing; we search a list for an item that is not present.
 
-```mermaid
-flowchart TB
-  A([input]) --> B{has a value?}
-  B -->|"yes — Some"| C[run your transforms]
-  B -->|"no — None"| D[nothing runs]
-  C --> E{still has a value?}
-  E -->|yes| F[your result]
-  E -->|no| G[use fallback]
-  D --> G
-```
+In traditional TypeScript, we typically represent this nothingness with `null` or `undefined`. On
+the surface, this approach seems simple. But as systems grow, we find that it introduces a subtle,
+persistent friction: it intertwines the logic of *what* we want to do with a value and the defensive
+checking of *whether* that value even exists.
 
 ## The problem with null
 
-When a function returns `User | null`, nothing in the type system stops you from accessing `.name`
-without checking first. The compiler will warn you in strict mode, but the check lives in your code
-— and your code alone. Every caller has to remember to do it:
+Consider a simple, everyday snippet of TypeScript:
 
 ```ts
 const user = getUser(id);
-const name = user ? user.name : "Unknown"; // remember at every call site
+const name = user ? user.name : "Unknown";
 ```
 
-This scales poorly. The more values that might be absent, the more `if (x !== null)` checks you
-accumulate, often spread across different files and functions.
+On the surface, this is familiar and easy to write. But notice the implicit coupling. The caller of
+`getUser` cannot simply ask for the user's name; they must first stop, pivot their attention, and
+inspect the pointer. If they forget, strict mode might warn them, but the responsibility of the
+check still lives in the runtime flow of their code.
+
+When we have a pipeline of operations — say, taking a configuration setting, parsing it into a
+number, and then checking if it is within a valid range — this defensive checking must be repeated
+at every step. The happy path of our logic and the recovery path of handling absence are twisted
+together. They are complected.
+
+```ts
+const rawValue = config.get("timeout");
+let timeout = 1000; // default
+
+if (rawValue !== undefined && rawValue !== null) {
+  const parsed = parseInt(rawValue, 10);
+  if (!isNaN(parsed)) {
+    if (parsed > 0) {
+      timeout = parsed;
+    }
+  }
+}
+```
+
+This code is hard to read not because the math is complicated, but because the business logic
+(parsing and bounds validation) is constantly interrupted by guards against nothingness.
 
 ## The Maybe approach
 
-With `Maybe`, the absence is encoded in the type itself. You can't accidentally skip the check — the
-operations that work on an `Maybe` handle both cases for you:
+What if we could separate these concerns? What if absence was not a missing pointer or a blank
+space, but a first-class value in its own right? A value that carries its own rules for
+transformation.
+
+This is the purpose of `Maybe`. It is a data structure that represents a choice: either we have
+something (`Some`), or we have nothing (`None`).
+
+```mermaid
+flowchart TD
+    Input([Raw Data]) --> Choice{Is it null or undefined?}
+    Choice -->|No| Some[Some A]
+    Choice -->|Yes| None[None]
+
+    Some --> Transform[Apply Transformations]
+    None --> Skip[Skip Transformations]
+
+    Transform --> Edge[Extract with Default / Match]
+    Skip --> Edge
+```
+
+By representing absence as a data structure rather than a language keyword, we can write our
+transformations as if the value is always there. The data structure itself manages the control flow.
+We decouple the *what* from the *if*.
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 import { Maybe } from "@nlozgachev/pipelined/core";
 
-declare function getUser(id: string): Maybe<User>;
-
-const name = pipe(
-  getUser(id),
-  Maybe.map((user) => user.name), // only runs if user exists
-  Maybe.getOrElse(() => "Unknown"), // provides the fallback
-);
+export type Maybe<A> = Some<A> | None;
 ```
 
-The `map` step only executes if the value is `Some`. If `getUser` returns `None`, the `map` is
-skipped and `None` flows through to `getOrElse`, which then returns the fallback. You never wrote a
-conditional — the type enforced the handling.
+---
 
 ## Creating Maybe
 
+To work within this model, we must first lift our raw, potentially unsafe values into a `Maybe`
+context. This is the boundary where the messy real world meets our clean system.
+
 ```ts
-Maybe.some(42); // Some(42) — wrap a value
-Maybe.none(); // None     — explicit absence
-Maybe.fromNullable(value); // Some if non-null, None if null or undefined
+// Wrapping an existing value
+const five = Maybe.some(5); // Maybe<number>
+
+// Representing explicit absence
+const empty = Maybe.none(); // Maybe<never>
 ```
 
-`fromNullable` is the most common entry point when working with existing APIs that return `null` or
-`undefined`:
+In practice, you will rarely write `some` or `none` manually. Instead, you will ingest values coming
+from external interfaces — such as third-party libraries, DOM elements, or API payloads — which use
+`null` or `undefined`. For this, we use `fromNullable`:
 
 ```ts
-const setting = pipe(
-  config.get("theme"), // string | undefined
-  Maybe.fromNullable, // Maybe<string>
-  Maybe.getOrElse(() => "light"), // string
-);
+interface AppConfig {
+  theme?: "light" | "dark";
+}
+
+const config: AppConfig = {};
+
+const theme = Maybe.fromNullable(config.theme); // None
 ```
 
-## Transforming values with `map`
+---
 
-`map` transforms the value inside a `Some`, leaving `None` untouched:
+## Transforming values
+
+Once our data is wrapped inside a `Maybe`, we do not immediately unpack it. Instead, we describe how
+the value should change if it is present.
+
+### Pure transformations with `map`
+
+If we have a `Some`, `map` applies a function to the value inside and returns a new `Some` with the
+result. If we have a `None`, `map` does nothing and returns the `None` unchanged.
 
 ```ts
-pipe(
-  Maybe.some(5),
-  Maybe.map((n) => n * 2),
-); // Some(10)
-pipe(
-  Maybe.none(),
-  Maybe.map((n) => n * 2),
-); // None
+const double = (n: number) => n * 2;
+
+pipe(Maybe.some(5), Maybe.map(double)); // Some(10)
+pipe(Maybe.none(), Maybe.map(double));  // None
 ```
 
-You can chain multiple `map` calls — each one only runs if the previous step produced a `Some`:
+Consider how this simplifies deep record navigation. Imagine parsing a user profile to extract their
+avatar's filename:
 
 ```ts
-pipe(
-  Maybe.fromNullable(user),
-  Maybe.map((u) => u.address),
-  Maybe.map((a) => a.city),
-  Maybe.getOrElse(() => "Unknown city"),
-);
+interface User {
+  profile?: {
+    avatarUrl?: string;
+  };
+}
+
+const getAvatarFilename = (user: User): Maybe<string> =>
+  pipe(
+    Maybe.fromNullable(user.profile),
+    Maybe.map((p) => p.avatarUrl),
+    Maybe.map((url) => url.split("/").pop()),
+  );
 ```
 
-## Chaining with `chain`
+We do not write a single `if` statement. If `profile` is missing, the first `map` is skipped. If
+`avatarUrl` is missing, the second `map` is skipped. The pipeline remains perfectly linear, and we
+are guaranteed never to encounter a `TypeError: Cannot read properties of undefined`.
 
-When a transformation itself might produce an absent value, use `chain` instead of `map`. It
-prevents nesting `Maybe<Maybe<A>>`:
+### Nested pipelines with `chain`
+
+Sometimes, a transformation itself might return a `Maybe`. For example, we might want to take a
+string and parse it into an integer. The parsing operation is fallible — if the string is `"abc"`,
+there is no valid number to return.
+
+If we were to use `map` with a function that returns a `Maybe`, we would end up with a nested type:
+`Maybe<Maybe<number>>`. This is inconvenient to work with.
 
 ```ts
-const parseNumber = (s: string): Maybe<number> => {
+const parseInteger = (s: string): Maybe<number> => {
   const n = parseInt(s, 10);
   return isNaN(n) ? Maybe.none() : Maybe.some(n);
 };
 
-pipe(Maybe.some("42"), Maybe.chain(parseNumber)); // Some(42)
-pipe(Maybe.some("abc"), Maybe.chain(parseNumber)); // None
-pipe(Maybe.none(), Maybe.chain(parseNumber)); // None
+// Using map results in nesting:
+const nested = pipe(Maybe.some("42"), Maybe.map(parseInteger)); // Some(Some(42))
 ```
 
-Think of it as: `map` is for transformations that always succeed; `chain` is for transformations
-that might not.
-
-## Filtering
-
-`filter` turns a `Some` into `None` if the value doesn't satisfy a predicate:
+To resolve this, we use `chain`. It applies the transformation and flattens the nested structure,
+leaving us with a clean `Maybe<number>`.
 
 ```ts
-pipe(
-  Maybe.some(5),
-  Maybe.filter((n) => n > 3),
-); // Some(5)
-pipe(
-  Maybe.some(2),
-  Maybe.filter((n) => n > 3),
-); // None
+const flat = pipe(Maybe.some("42"), Maybe.chain(parseInteger)); // Some(42)
+const failed = pipe(Maybe.some("abc"), Maybe.chain(parseInteger)); // None
 ```
 
-This is useful for narrowing values within a pipeline without breaking out of the `Maybe` context.
+Think of `map` as a tool for transformations that are guaranteed to succeed once a value is present,
+and `chain` as a tool for transformations that themselves introduce the possibility of failure.
 
-If you find yourself calling `toNullable` early to continue processing, that's usually a signal to
-use `map` or `chain` instead — breaking out of `Maybe` too early means writing null checks again
-downstream.
+### Narrowing focus with `filter` and `fromPredicate`
 
-`fromPredicate` is the complement for when you're starting from a plain value rather than an
-existing `Maybe`. It wraps the value in `Some` if the predicate passes, or returns `None` if not:
+Sometimes a value exists, but it does not meet our business criteria. We can use `filter` to turn a
+`Some` into a `None` if it fails to satisfy a predicate.
 
 ```ts
-pipe(age, Maybe.fromPredicate((n) => n >= 18)); // Some(age) or None
-pipe("", Maybe.fromPredicate((s) => s.length > 0)); // None
-pipe("hello", Maybe.fromPredicate((s) => s.length > 0)); // Some("hello")
+const isEven = (n: number) => n % 2 === 0;
+
+pipe(Maybe.some(4), Maybe.filter(isEven)); // Some(4)
+pipe(Maybe.some(5), Maybe.filter(isEven)); // None
 ```
 
-Use `filter` when you already have a `Maybe`; use `fromPredicate` when you are starting from a plain
-value and a condition decides whether it should exist at all.
+If we are starting from a raw value rather than a `Maybe`, we can use `fromPredicate` to decide
+whether to wrap the value in `Some` or `None` right at the boundary:
+
+```ts
+const validateAge = (age: number): Maybe<number> =>
+  pipe(
+    age,
+    Maybe.fromPredicate((n) => n >= 18),
+  );
+```
+
+---
 
 ## Extracting the value
 
-At the edge of your pipeline, you need to get a plain value back. There are a few ways:
+Eventually, our pipeline must interface with the rest of our application — libraries that expect
+standard TypeScript primitives, UI frameworks, or database connectors. We must step out of our
+philosophical data structures and return a concrete value. We call this reaching the edge.
 
-**`getOrElse`** — provide a fallback as a thunk `() => B`. The thunk is only called when the Maybe
-is `None`, so expensive or side-effectful defaults are never computed unnecessarily. The fallback
-can be a different type, widening the result to the union of both:
+### Safe fallbacks with `getOrElse`
 
-```ts
-pipe(Maybe.some(5), Maybe.getOrElse(() => 0)); // 5
-pipe(Maybe.none(), Maybe.getOrElse(() => 0)); // 0
-pipe(Maybe.none(), Maybe.getOrElse(() => null)); // null — typed as number | null
-```
-
-**`match`** — handle each case explicitly, producing a value from either branch. `fold` is the
-positional form — none handler first, some handler second — if you'd rather not name the cases:
+The most common exit point is `getOrElse`. It extracts the value from a `Some`, or returns a
+fallback value if we have a `None`.
 
 ```ts
 pipe(
-  possiblyUser,
+  Maybe.some("admin"),
+  Maybe.getOrElse(() => "guest"),
+); // "admin"
+
+pipe(
+  Maybe.none(),
+  Maybe.getOrElse(() => "guest"),
+); // "guest"
+```
+
+Notice that `getOrElse` takes a function — a thunk — rather than a direct value. This is a
+deliberate design choice. If computing the fallback is expensive or triggers a side effect (such as
+writing to a log or generating a token), that computation is deferred. It is only executed if the
+value is actually absent.
+
+### Case analysis with `match` and `fold`
+
+When you need to perform different logic for both the success and failure cases, you can use `match`
+for a named object syntax, or `fold` for a positional, error-first syntax.
+
+```ts
+// Using match with named handlers
+const welcomeMessage = pipe(
+  maybeUser,
   Maybe.match({
-    some: (user) => `Welcome, ${user.name}`,
-    none: () => "Please log in",
+    some: (user) => `Welcome back, ${user.name}`,
+    none: () => "Please log in to continue",
   }),
+);
+
+// Using fold with positional arguments (none handler first)
+const statusString = pipe(
+  maybeUser,
+  Maybe.fold(
+    () => "Inactive",
+    (user) => `Active since ${user.createdAt}`,
+  ),
 );
 ```
 
-For interop with APIs that expect `null` or `undefined`, `toNullable` and `toUndefined` convert back
-at the boundary.
+### Interoperability with standard TypeScript
+
+If you are passing the result to an external library that expects standard `null` or `undefined`
+values, you can convert the `Maybe` back at the very end of your pipeline:
+
+```ts
+const nullable = Maybe.toNullable(maybeValue);   // T | null
+const undefinedVal = Maybe.toUndefined(maybeValue); // T | undefined
+```
+
+---
+
+## Side effects with tap
+
+Occasionally, you need to perform a side effect — such as writing a message to a log or updating a
+metric — without altering the data or breaking the flow of your pipeline. For this, we use `tap`.
+
+`tap` runs a side-effectful function on the value inside a `Some` and returns the original `Maybe`
+unchanged. If the `Maybe` is `None`, the function is ignored.
+
+```ts
+pipe(
+  Maybe.some("Configuration parsed successfully"),
+  Maybe.tap((msg) => console.log(msg)),
+  Maybe.map((msg) => msg.toUpperCase()),
+); // Logs message, then continues to produce Some("CONFIGURATION PARSED SUCCESSFULLY")
+```
+
+---
 
 ## Recovering from None
 
-`recover` provides a fallback `Maybe` when the current one is `None`. Unlike `getOrElse`, the
-fallback is itself an `Maybe` — useful when the fallback operation might also fail. The fallback can
-produce a different type, widening the result to `Maybe<A | B>`:
+When an operation fails to produce a value, we don't always want to settle for a static fallback.
+Often, we want to try a secondary, fallible strategy. For instance, if a config is not in our memory
+cache, we might want to look for it in the database.
+
+For this, we use `recover`. It takes a function that returns another `Maybe` when the current one is
+`None`.
 
 ```ts
-pipe(
-  Maybe.fromNullable(cache.get(key)),
-  Maybe.recover(() => Maybe.fromNullable(db.get(key))),
-  Maybe.getOrElse(() => defaultValue),
-);
+const getTheme = (userId: string): Maybe<string> =>
+  pipe(
+    Maybe.fromNullable(cache.get(`theme:${userId}`)),
+    Maybe.recover(() => Maybe.fromNullable(db.get(`theme:${userId}`))),
+    Maybe.getOrElse(() => "light"),
+  );
 ```
+
+If the cache hit succeeds, the database lookup is never evaluated. If the cache misses, we attempt
+the database lookup. Only if both fail do we settle for the fallback value `"light"`.
+
+---
 
 ## Converting to and from Result
 
-`Maybe` and `Result` are closely related — the difference is whether the absent case carries an
-error message. You can convert between them:
+A `Maybe` represents absence but does not tell you *why* the value is missing. Sometimes, absence is
+an error, and we need to attach a reason to it.
+
+We can transition from a `Maybe` to a `Result` using `toResult`. We provide a thunk that generates
+an error value if the `Maybe` is a `None`:
 
 ```ts
-// Maybe → Result: provide an error for the None case
-pipe(
-  Maybe.fromNullable(user),
-  Maybe.toResult(() => "User not found"),
-); // Result<string, User>
+import { Result } from "@nlozgachev/pipelined/core";
 
-// Result → Maybe: discard the error, keep only the success
-Maybe.fromResult(Result.err("oops")); // None
-Maybe.fromResult(Result.ok(42)); // Some(42)
+const parseEmail = (email: string): Maybe<string> =>
+  pipe(
+    email,
+    Maybe.fromPredicate((e) => e.includes("@")),
+  );
+
+const signup = (rawEmail: string) =>
+  pipe(
+    parseEmail(rawEmail),
+    Maybe.toResult(() => "Email address must contain an '@' symbol"),
+  ); // Result<string, string>
 ```
 
-```mermaid
-sequenceDiagram
-  participant P as your code
-  participant S1 as get address
-  participant S2 as get city
-  participant G as fallback
+Conversely, if we have a `Result` and want to discard the error context, we can downgrade it to a
+`Maybe` using `fromResult`:
 
-  P->>S1: Some(user)
-  S1->>S2: Some(address)
-  S2->>G: Some("London")
-  G-->>P: "London"
-
-  P->>S1: None
-  S1-->>S2: None — skipped
-  S2-->>G: None — skipped
-  G-->>P: "Unknown city"
+```ts
+const maybeValue = Maybe.fromResult(Result.err("An error occurred")); // None
 ```
+
+---
+
+## Composition in practice
+
+Let us look at how these elements fit together into a cohesive, structured pipeline. We will take a
+raw query parameter representing a page offset, validate it, apply pagination bounds, and return a
+clean offset index.
+
+```ts
+const getPageOffset = (rawOffset: string | undefined, pageSize: number): number =>
+  pipe(
+    Maybe.fromNullable(rawOffset),                     // Maybe<string>
+    Maybe.chain(parseInteger),                         // Maybe<number>
+    Maybe.filter((offset) => offset >= 0),             // Maybe<number>
+    Maybe.map((offset) => offset * pageSize),          // Maybe<number>
+    Maybe.getOrElse(() => 0),                          // number
+  );
+```
+
+Observe the flow. Every step is insulated. The parsing logic, the validation criteria, and the
+mathematical mapping are written in a straight, readable line, fully detached from the defensive
+logic of verifying the presence of `rawOffset`.
+
+---
 
 ## When to use Maybe vs null
 
-Use `Maybe` when:
+The introduction of `Maybe` into a codebase is a structural decision. It is not always the correct
+choice for every line of code.
 
-- You want absence to be visible in the type signature and composable through pipelines
-- Multiple operations in sequence might each fail to find a value
-- You want to use `map`, `chain`, and `filter` without manual null checks at every step
+### Use Maybe when:
 
-Keep returning `null` or `undefined` when:
+- **The pipeline is long**: You have multiple steps of transformations, filtering, and recovery that
+  could each result in absence.
+- **The type is public**: You want absence to be explicitly declared in your module signatures,
+  forcing callers to acknowledge it.
+- **You value composition**: You want to compose operations using `pipe` and clean, pure functions.
 
-- You're writing a small utility that only you consume and null is simpler
-- You're interfacing with code that expects null (use `toNullable` at the boundary)
+### Keep using null or undefined when:
+
+- **The scope is local**: Inside a small, internal function where a simple ternary or `??` operator
+  is easier to read and has zero performance overhead.
+- **The boundary expects it**: When writing low-level wrappers directly interfacing with large
+  third-party libraries (e.g., database drivers) that heavily rely on `null` returns. Convert to
+  `Maybe` only once the data passes this boundary.

@@ -1,17 +1,28 @@
 ---
-title: Arr — array utilities
-description: Work with arrays in a pipeline — data-last utilities that return Maybe instead of undefined.
+title: Arr — Array Utilities
+description: Work with collections linearly, replacing data-first array method chains and unsafe undefined values with pipeline-ready, type-safe array helpers.
 ---
 
-JavaScript arrays come with a full set of built-in methods, but they have two friction points in
-pipelines: they put the data first (making partial application awkward), and they return `undefined`
-when something isn't found. `Arr` is a collection of array utilities that address both: data-last
-functions that slot directly into `pipe`, and `Maybe` wherever something might be absent.
+JavaScript arrays feature an exceptionally rich, built-in set of methods. However, when we build
+structured pipelines, native array methods introduce two notable friction points:
 
-## Safe access
+1. **They are data-first**: Native methods reside directly on the array prototype. To sequence them
+   inside a `pipe` or `flow`, we must wrap them in noisy inline arrow functions:
+   `(items) => items.map(f)`.
+2. **They are unsafe**: Native lookup methods (like accessing index `[0]` or `.find()`) silently
+   return `undefined` when an element is absent or a search misses, shifting the burden of checking
+   back to our code.
 
-JavaScript's built-in access functions silently return `undefined` when an element doesn't exist.
-`Arr` makes the absence explicit:
+`Arr` solves both structural limitations. It is a comprehensive collection of **data-last**, curried
+utilities designed to slot directly into pipelines, returning explicit `Maybe` values the moment a
+search could result in absence.
+
+---
+
+## Safe Access: Bypassing Undefined
+
+Accessing indices directly in JavaScript can crash our programs or introduce silent, propagating
+`undefined` bugs. `Arr` provides safe, explicit boundary boundaries:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -19,304 +30,242 @@ import { Maybe } from "@nlozgachev/pipelined/core";
 import { Arr } from "@nlozgachev/pipelined/utils";
 
 Arr.head([1, 2, 3]); // Some(1)
-Arr.head([]); // None
+Arr.head([]);        // None
 
 Arr.last([1, 2, 3]); // Some(3)
-Arr.last([]); // None
+Arr.last([]);        // None
 
-Arr.tail([1, 2, 3]); // Some([2, 3]) — everything after the first
-Arr.tail([]); // None
-
-Arr.init([1, 2, 3]); // Some([1, 2]) — everything before the last
-Arr.init([]); // None
+Arr.tail([1, 2, 3]); // Some([2, 3]) (all elements except the first)
+Arr.init([1, 2, 3]); // Some([1, 2]) (all elements except the last)
 ```
 
-These compose naturally with `Maybe` operations:
+Because these returns are standard `Maybe` containers, they compose linearly without a single
+conditional guard:
 
 ```ts
-pipe(
-  users,
-  Arr.head, // Maybe<User>
-  Maybe.map((u) => u.displayName), // Maybe<string>
-  Maybe.getOrElse(() => "No users"),
+const leadUserName = pipe(
+  activeUsers,
+  Arr.head,
+  Maybe.map((u) => u.displayName),
+  Maybe.getOrElse(() => "No active users found"),
 );
 ```
 
-## Search
+---
 
-`findFirst`, `findLast`, and `findIndex` all return `Maybe` for the same reason — the element might
-not exist:
+## Searching and Filtering
+
+Searches are guaranteed to return safe optional values:
 
 ```ts
-pipe(
-  [1, 2, 3, 4],
-  Arr.findFirst((n) => n > 2),
-); // Some(3)
-pipe(
-  [1, 2, 3, 4],
-  Arr.findLast((n) => n > 2),
-); // Some(4)
-pipe(
-  [1, 2, 3, 4],
-  Arr.findIndex((n) => n > 2),
-); // Some(2)
+const numbers = [1, 2, 3, 4];
 
-pipe(
-  [1, 2],
-  Arr.findFirst((n) => n > 10),
-); // None
+pipe(numbers, Arr.findFirst((n) => n > 2)); // Some(3)
+pipe(numbers, Arr.findLast((n) => n > 2));  // Some(4)
+pipe(numbers, Arr.findIndex((n) => n > 2)); // Some(2)
+pipe(numbers, Arr.findFirst((n) => n > 10)); // None
 ```
 
-## Transforming
-
-The core transforms work exactly like their built-in counterparts, but curried for `pipe`:
+Standard transformation steps are curried and ready for pipe composition:
 
 ```ts
-pipe(
-  [1, 2, 3],
-  Arr.map((n) => n * 2),
-); // [2, 4, 6]
-pipe(
-  [1, 2, 3, 4],
-  Arr.filter((n) => n % 2 === 0),
-); // [2, 4]
-pipe([1, 2, 3], Arr.reverse); // [3, 2, 1]
+pipe([1, 2, 3], Arr.map((n) => n * 2));     // [2, 4, 6]
+pipe([1, 2, 3, 4], Arr.filter((n) => n % 2 === 0)); // [2, 4]
+pipe([1, 2, 3], Arr.reverse);               // [3, 2, 1]
 ```
 
-**`partition`** splits into two groups — those that pass the predicate and those that don't:
+### Partitioning and grouping
+
+- `partition` divides a collection into two groups: those that pass a predicate and those that fail.
+- `groupBy` maps elements into a record of non-empty lists grouped by a key function:
 
 ```ts
+// Splits into: [ [evens...], [odds...] ]
 const [evens, odds] = pipe(
   [1, 2, 3, 4, 5],
   Arr.partition((n) => n % 2 === 0),
-); // [[2, 4], [1, 3, 5]]
+);
+
+// Grouping by starting letter:
+const grouped = pipe(
+  ["apple", "avocado", "banana"],
+  Arr.groupBy((word) => word[0]),
+); // { a: ["apple", "avocado"], b: ["banana"] }
 ```
 
-**`groupBy`** groups elements by a key function, returning a record where each group is a
-`NonEmptyList`:
+### Deduplication and sorting
+
+- `uniq` filters duplicates using strict equality (`===`).
+- `uniqBy` filters duplicates by projecting a key.
+- `sortBy` sorts values immutably without mutating the source array:
 
 ```ts
-pipe(
-  ["apple", "avocado", "banana", "blueberry"],
-  Arr.groupBy((s) => s[0]),
-); // { a: ["apple", "avocado"], b: ["banana", "blueberry"] }
-```
+const unique = Arr.uniq([1, 2, 2, 3, 1]); // [1, 2, 3]
 
-**`uniq`** removes duplicates using strict equality; **`uniqBy`** removes duplicates by a key
-function:
-
-```ts
-Arr.uniq([1, 2, 2, 3, 1]); // [1, 2, 3]
-
-pipe(
-  [
-    { id: 1, name: "a" },
-    { id: 1, name: "b" },
-    { id: 2, name: "c" },
-  ],
-  Arr.uniqBy((x) => x.id),
-); // [{ id: 1, name: "a" }, { id: 2, name: "c" }]
-```
-
-**`sortBy`** sorts without mutating:
-
-```ts
-pipe(
-  [3, 1, 4, 1, 5],
+const sorted = pipe(
+  [3, 1, 4],
   Arr.sortBy((a, b) => a - b),
-); // [1, 1, 3, 4, 5]
+); // [1, 3, 4]
 ```
 
-**`flatMap`** and **`flatten`** for working with nested arrays:
+### FlatMap and Flatten
+
+For nested collections:
 
 ```ts
-pipe(
-  [1, 2, 3],
-  Arr.flatMap((n) => [n, n * 10]),
-); // [1, 10, 2, 20, 3, 30]
-Arr.flatten([[1, 2], [3], [4, 5]]); // [1, 2, 3, 4, 5]
+pipe([1, 2, 3], Arr.flatMap((n) => [n, n * 10])); // [1, 10, 2, 20, 3, 30]
+Arr.flatten([[1, 2], [3], [4, 5]]);              // [1, 2, 3, 4, 5]
 ```
 
-**`filterMap`** maps each element to a `Maybe` and collects only the `Some` values in a single pass
-— the combination of `map` and `filter` that comes up constantly when extracting structured data
-from arrays that may contain missing or invalid entries:
+---
+
+## The Map-Filter Superpower: filterMap
+
+We frequently need to map over a collection and filter out invalid or empty results. Writing this
+natively requires two complete array iterations:
 
 ```ts
-const parseNum = (s: string): Maybe<number> => {
+// Native multi-pass approach:
+const ids = rawStrings.map(parseId).filter(isSome).map(unwrap);
+```
+
+`filterMap` performs both mapping and filtering in a **single pass**, collecting only the successful
+`Some` values and discarding `None` states automatically:
+
+```ts
+const parseNumeric = (s: string): Maybe<number> => {
   const n = Number(s);
   return isNaN(n) ? Maybe.none() : Maybe.some(n);
 };
 
-pipe(["1", "abc", "3", "hello", "9"], Arr.filterMap(parseNum)); // [1, 3, 9]
+const numbers = pipe(
+  ["1", "invalid_text", "3", "hello", "9"],
+  Arr.filterMap(parseNumeric),
+); // [1, 3, 9] (single pass, perfectly typed as number[])
 ```
 
-You could write this as `Arr.map(parseNum)` followed by `Arr.filter(isSome)` followed by unwrapping
-— but that's three passes and requires manual type annotation at each step. `filterMap` handles it
-in one.
+---
 
-## Slicing
+## Index Slicing and Modification
 
 ```ts
 pipe([1, 2, 3, 4], Arr.take(2)); // [1, 2]
 pipe([1, 2, 3, 4], Arr.drop(2)); // [3, 4]
 
-pipe(
-  [1, 2, 3, 1],
-  Arr.takeWhile((n) => n < 3),
-); // [1, 2]
-pipe(
-  [1, 2, 3, 1],
-  Arr.dropWhile((n) => n < 3),
-); // [3, 1]
+pipe([1, 2, 3, 1], Arr.takeWhile((n) => n < 3)); // [1, 2]
+pipe([1, 2, 3, 1], Arr.dropWhile((n) => n < 3)); // [3, 1]
 ```
 
-## Modifying by index
+### Safe modifications
 
-**`insertAt`** returns a new array with an item inserted before the element at a given index.
-Negative indices are clamped to 0; indices beyond the array length append to the end:
+Unlike direct mutations or bracket insertions, these return a fresh, structurally copied array,
+preserving immutability:
+
+- `insertAt` places an item at a given index (negative clamp to `0`, overflow appends).
+- `removeAt` removes the element at an index (out of bounds returns the original array unchanged).
 
 ```ts
 pipe([1, 2, 3], Arr.insertAt(1, 99)); // [1, 99, 2, 3]
-pipe([1, 2, 3], Arr.insertAt(0, 99)); // [99, 1, 2, 3]
-pipe([1, 2, 3], Arr.insertAt(3, 99)); // [1, 2, 3, 99]
+pipe([1, 2, 3], Arr.removeAt(1));     // [1, 3]
 ```
 
-**`removeAt`** returns a new array with the element at the given index removed. If the index is out
-of bounds the original array is returned unchanged:
+---
+
+## Combinations and Folds
+
+- `zip` pairs elements from two arrays, terminating at the length of the shorter array.
+- `zipWith` combines elements using a custom function.
+- `intersperse` injects a separator between every element.
+- `chunksOf` splits an array into fixed-size chunks.
+- `reduce` folds a collection from the left.
 
 ```ts
-pipe([1, 2, 3], Arr.removeAt(1)); // [1, 3]
-pipe([1, 2, 3], Arr.removeAt(5)); // [1, 2, 3]
+pipe([1, 2], Arr.zip(["a", "b"]));          // [[1, "a"], [2, "b"]]
+pipe([1, 2, 3], Arr.intersperse(0));         // [1, 0, 2, 0, 3]
+pipe([1, 2, 3, 4, 5], Arr.chunksOf(2));     // [[1, 2], [3, 4], [5]]
 ```
 
-## Combining arrays
+---
 
-**`zip`** pairs elements from two arrays, stopping at the shorter one:
+## Traversal across Contexts: traverse and sequence
 
-```ts
-pipe([1, 2, 3], Arr.zip(["a", "b"])); // [[1, "a"], [2, "b"]]
-```
+When you map an array using an operation that can fail or runs asynchronously, you end up with an
+array of containers, such as `Array<Maybe<A>>` or `Array<Result<E, A>>`.
 
-**`zipWith`** combines elements with a function:
+This is highly inconvenient. Typically, we want to flip this structure inside out: if *all*
+operations passed, we want `Maybe<Array<A>>` or `Result<E, Array<A>>`. If a single check failed, we
+want the entire pipeline to fail.
 
-```ts
-pipe(
-  [1, 2, 3],
-  Arr.zipWith((a, b) => `${a}${b}`)(["a", "b"]),
-); // ["1a", "2b"]
-```
+The `traverse` family executes this inside-out flip automatically during the mapping stage.
 
-**`intersperse`** inserts a separator between every element:
+### Safe traversal with `traverse` (Maybe)
 
-```ts
-pipe([1, 2, 3], Arr.intersperse(0)); // [1, 0, 2, 0, 3]
-```
-
-**`chunksOf`** splits into fixed-size chunks:
-
-```ts
-pipe([1, 2, 3, 4, 5], Arr.chunksOf(2)); // [[1, 2], [3, 4], [5]]
-```
-
-**`reduce`** folds from the left:
+Maps each element to a `Maybe` and flattens it. If a single element yields `None`, the entire result
+resolves to `None`:
 
 ```ts
 pipe(
-  [1, 2, 3, 4],
-  Arr.reduce(0, (acc, n) => acc + n),
-); // 10
-```
+  ["1", "2", "3"],
+  Arr.traverse(parseNumeric),
+); // Some([1, 2, 3])
 
-## Predicates
-
-```ts
 pipe(
-  [1, 2, 3],
-  Arr.some((n) => n > 2),
-); // true
-pipe(
-  [1, 2, 3],
-  Arr.every((n) => n > 0),
-); // true
-Arr.isNonEmpty([]); // false
-Arr.isNonEmpty([1, 2]); // true (also narrows to NonEmptyList)
+  ["1", "invalid_text", "3"],
+  Arr.traverse(parseNumeric),
+); // None (the entire check short-circuits)
 ```
 
-## Traversing across types
+### Safe error traversal with `traverseResult` (Result)
 
-The `traverse` family maps each element to a typed container and collects the results. For most
-cases, `traverseResult` is what you want — it stops at the first failure and tells you what went
-wrong. Use `traverse` when working with `Maybe`; use `traverseTask` when the operations are
-independent and can run in parallel.
-
-**`traverse`** — maps to `Maybe`, returns `None` if any element fails:
+Maps elements to `Result`, returning `Ok` only if every element succeeded, or the first `Err`
+encountered:
 
 ```ts
-const parseNum = (s: string): Maybe<number> => {
-  const n = Number(s);
-  return isNaN(n) ? Maybe.none() : Maybe.some(n);
-};
+const validateAge = (age: number): Result<string, number> =>
+  age >= 18 ? Result.ok(age) : Result.err(`Age ${age} is underage`);
 
-pipe(["1", "2", "3"], Arr.traverse(parseNum)); // Some([1, 2, 3])
-pipe(["1", "x", "3"], Arr.traverse(parseNum)); // None
+pipe([20, 25, 30], Arr.traverseResult(validateAge)); // Ok([20, 25, 30])
+pipe([20, 16, 30], Arr.traverseResult(validateAge)); // Err("Age 16 is underage")
 ```
 
-**`traverseResult`** — maps to `Result`, returns the first `Err` if any element fails:
+### Asynchronous traversal with `traverseTask` and `traverseTaskResult`
+
+- `traverseTask` runs all async tasks in **parallel**, resolving to a `Task<A[]>` once all complete.
+- `traverseTaskResult` runs tasks **sequentially**, short-circuiting on the first `Err` encountered.
 
 ```ts
-const validatePositive = (n: number): Result<string, number> =>
-  n > 0 ? Result.ok(n) : Result.err("not positive");
-
-pipe([1, 2, 3], Arr.traverseResult(validatePositive)); // Ok([1, 2, 3])
-pipe([1, -1, 3], Arr.traverseResult(validatePositive)); // Err("not positive")
-```
-
-**`traverseTask`** — maps to `Task` and runs all in parallel. Note: if you need sequential
-processing that stops at the first error, use `traverseTaskResult` instead:
-
-```ts
+// Parallel user profile fetch:
 pipe(
   userIds,
-  Arr.traverseTask((id) => loadUser(id)),
-)(); // Promise<User[]> — all tasks run in parallel
+  Arr.traverseTask((id) => fetchUserTask(id)),
+)(); // Promise<User[]> (all requests execute simultaneously)
 ```
 
-**`traverseTaskResult`** — maps to `TaskResult` and runs sequentially, short-circuiting on the first
-`Err`:
+### Flipping existing structures: `sequence`
+
+If you *already* have an array of containers, you can flip them using `sequence`, `sequenceResult`,
+`sequenceTask`, or `sequenceTaskResult` directly without mapping:
 
 ```ts
-const validate = (id: string): TaskResult<string, User> =>
-  TaskResult.tryCatch(
-    () => fetch(`/users/${id}`).then((r) => r.json()),
-    (e) => `Failed to load ${id}: ${e}`,
-  );
-
-pipe(
-  ["u1", "u2", "u3"],
-  Arr.traverseTaskResult(validate),
-)(); // TaskResult<string, User[]> — stops at the first failure
-```
-
-**`sequence`**, **`sequenceResult`**, **`sequenceTask`**, **`sequenceTaskResult`** — shorthand for
-when you already have an array of containers and want to flip `Array<Maybe<A>>` into
-`Maybe<Array<A>>`:
-
-```ts
+// Array<Maybe<number>> → Maybe<Array<number>>
 Arr.sequence([Maybe.some(1), Maybe.some(2)]); // Some([1, 2])
-Arr.sequence([Maybe.some(1), Maybe.none()]); // None
+Arr.sequence([Maybe.some(1), Maybe.none()]);   // None
 ```
+
+---
 
 ## When to use Arr
 
-Use `Arr` when:
+### Use Arr when:
 
-- You're composing array operations inside a `pipe` chain and want to avoid data-first method calls
-- You need `Maybe`-returning access functions (`head`, `last`, `findFirst`) instead of `undefined`
-- You're mapping or filtering and want the step to read as a named operation rather than an inline
-  arrow function
-- You need to traverse an array with a fallible or async operation and collect the results
+- **Operating inside pipelines**: You are sequencing steps point-free inside `pipe` or `flow` chains
+  and want to avoid noisy data-first method wrappers.
+- **Accessing indices safely**: You want to avoid runtime `undefined` crashes and explicitly capture
+  absence via `Maybe`.
+- **Flipping async collections**: You need to traverse an array with fallible or asynchronous steps,
+  mapping `Array<TaskResult<E, A>>` to `TaskResult<E, A[]>` cleanly.
 
-Keep using the native array methods when:
+### Keep using native array methods when:
 
-- The operation is a one-liner in a function body where `.map()` or `.filter()` is already clear
-- You don't need the result to compose in a pipeline
+- **Writing simple local logic**: Inside a single, self-contained function body where structural
+  pipelining is not utilized, and basic `.map()` or `.filter()` chains are already clear.

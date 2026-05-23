@@ -1,22 +1,20 @@
 ---
-title: Deferred — infallible async values
-description: Model infallible async values that support await but structurally exclude rejection and chaining.
+title: Deferred — Infallible Async Values
+description: Model asynchronous computations that are guaranteed to resolve successfully, structurally excluding rejection and chaining at the type level.
 ---
 
-`Deferred<A>` is a minimal async value. Like a Promise, it represents a computation that will
-eventually produce an `A`. Unlike a Promise, it cannot reject, cannot be chained, and has no
-`.catch()` or `.finally()`. Those restrictions are not missing features — they are the type-level
-proof that the computation will always succeed.
+In JavaScript, `Promise<A>` is the universal container for any asynchronous value. While highly
+convenient, a Promise is structurally over-specified for operations that are **infallible** —
+computations that are guaranteed to resolve successfully, such as reading an in-memory cache,
+applying a pure transformation, or looking up config defaults.
 
-## Why Promise is too broad
+By exposing `.catch()` and `.finally()`, a `Promise` always implies that rejection is a possibility.
+For infallible computations, this is a design mismatch. It forces callers to either ignore the
+theoretical possibility of failure or write unnecessary, dead error-handling code that will never be
+executed.
 
-`Promise<A>` always exposes `.then()`, `.catch()`, and `.finally()`. That API implies that a
-rejection is possible. For computations that are genuinely infallible — in-memory lookups, pure
-transformations, cached reads — this is a lie the type cannot retract. A caller can always write
-`.catch(handleError)` and the type system offers no objection, even when the rejection will never
-arrive.
-
-`Deferred` solves this with two structural choices working together:
+`Deferred<A>` solves this mismatch. It represents an asynchronous value that will eventually resolve
+to an `A`, but it is structurally incapable of rejecting:
 
 ```ts
 type Deferred<A> = {
@@ -25,74 +23,83 @@ type Deferred<A> = {
 };
 ```
 
-The `[_deferred]` field is a phantom unique symbol — it carries `A` nominally so that only values
-produced by `Deferred.fromPromise` satisfy the type. A plain object `{ then: ... }` does not. This
-prevents accidental structural compatibility.
+Two deliberate design choices make `Deferred` work:
 
-The `.then()` accepts only a fulfillment callback — no rejection handler — and returns `void` rather
-than a new thenable. There is no second parameter to pass, so chaining and error handling are
-excluded by construction. The type says exactly what is true: this will resolve, and only that.
+1. **Nominal Safety**: The `[_deferred]` property is a phantom unique symbol. It carries the type
+   parameter `A` nominally, ensuring that only genuine values produced by `Deferred` satisfy the
+   type. A plain, raw `{ then: ... }` object cannot bypass the type check.
+2. **No Chaining or Rejection**: The `.then()` method accepts only a single fulfillment callback. It
+   returns `void` rather than a new thenable. There is no second parameter to pass a rejection
+   handler, and no chainable return value. Rejection and chaining are excluded by construction.
 
-## Wrapping a Promise with `fromPromise`
+---
 
-`Deferred.fromPromise` is the only constructor. It takes a Promise you know will not reject and
-wraps it into a `Deferred`:
+## Wrapping Promises with fromPromise
+
+`Deferred.fromPromise` is the gateway constructor. It wraps a standard `Promise` that you are
+confident will never reject, lifting it into the infallible `Deferred` type:
 
 ```ts
 import { Deferred } from "@nlozgachev/pipelined/core";
 
-const d: Deferred<number> = Deferred.fromPromise(Promise.resolve(42));
+// Wrapping a guaranteed cache lookup
+const themeState: Deferred<string> = Deferred.fromPromise(
+  prefsCache.getOrDefault("theme", "dark"),
+);
 ```
 
-`fromPromise` trusts you that the Promise won't reject. If it does, that rejection becomes an
-unhandled error — the same as a rejected Promise with no `.catch()`. Only wrap Promises you're
-confident about.
+When you call `fromPromise`, you are asserting to the compiler that the underlying Promise is
+infallible. If the Promise does reject, that rejection behaves exactly like an unhandled Promise
+rejection at runtime. Only wrap Promises that are guaranteed to succeed, such as those that have
+already resolved their errors using defaults or fallback strategies.
 
-The wrapped Promise should be genuinely infallible — a scheduled pure computation, an in-memory
-read, or a cache lookup where a miss returns a default:
-
-```ts
-const settings = Deferred.fromPromise(prefsCache.getOrDefault("theme", "light"));
-const reading = await settings; // string — always resolves
-```
+---
 
 ## Awaiting a Deferred
 
-`await` works on any object with a compatible `.then()` method, and `Deferred` qualifies. The
-JavaScript runtime calls `.then(resolve)` on it internally, so the protocol is identical to awaiting
-a Promise:
+Because the JavaScript runtime evaluates `await` by looking for any object with a compatible
+`.then()` method, `Deferred` qualifies as a standard thenable. The runtime calls `.then(resolve)` on
+it internally, making `await` behave identically to awaiting a standard Promise:
 
 ```ts
-const d = Deferred.fromPromise(configStore.get("locale"));
-const locale: string = await d;
+const theme: string = await themeState; // Resolves to string safely
 ```
 
-TypeScript infers the result type correctly: `await d` where `d: Deferred<A>` gives you `A`.
+TypeScript understands this protocol and infers the correct type `A` from any `Deferred<A>`
+automatically.
 
-## Converting to a Promise with `toPromise`
+---
 
-When a third-party API requires an explicit `Promise<A>` — not just something awaitable — use
-`Deferred.toPromise` to convert:
+## Interoperability: toPromise
+
+If you need to pass a `Deferred` value to an external library or a third-party API that strictly
+checks `instanceof Promise` rather than accepting generic thenables, you can convert it using
+`toPromise`:
 
 ```ts
-const d = Deferred.fromPromise(sessionStore.get("userId"));
-const p: Promise<string> = Deferred.toPromise(d);
+const userSession = Deferred.fromPromise(sessionStore.get("userId"));
+
+// Convert back for library interop
+const sessionPromise: Promise<string> = Deferred.toPromise(userSession);
 ```
 
-The resulting Promise always resolves. It inherits the infallibility of the `Deferred` it came from.
+The resulting `Promise` is guaranteed to resolve, inheriting the structural infallibility of the
+original `Deferred`.
+
+---
 
 ## When to use Deferred
 
-Use `Deferred` when:
+### Use Deferred when:
 
-- You want the return type of a function to document that it is infallible — not just "it probably
-  won't reject", but structurally cannot
-- A downstream API expects a thenable and you want to prevent callers from attaching `.catch()`
-  handlers that will never fire
-- You need to convert a `Deferred` to an explicit `Promise` for interop with code that checks
-  `instanceof Promise`
+- **The async work cannot fail**: You want the function signature to explicitly document that a task
+  is infallible, preventing callers from writing dead error-handling branches.
+- **You want to restrict chaining**: You want to pass an async value to a consumer and structurally
+  prevent them from attaching `.catch()` or `.then()` chains.
 
-Keep using `Promise` directly when:
+### Keep using standard Promises when:
 
-- The computation can genuinely fail — model that with `Result` or let the Promise reject
-- You need `.catch()`, `.finally()`, or chainable `.then()` — those exist on Promise for a reason
+- **The task can genuinely fail**: The operation could time out or lose connection, and you want to
+  let the Promise reject or model it using a `Result` type.
+- **You require chaining**: You need to chain multiple `.then()` or `.finally()` blocks directly on
+  the async handle.

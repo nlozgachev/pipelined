@@ -1,201 +1,171 @@
 ---
-title: "Logged — values with accumulated logs"
-description: Pair computations with a log that builds up automatically as you chain steps.
+title: Logged — Accumulated Logs
+description: Pair computations with a log that accumulates automatically as you chain transformations, keeping logging pure, testable, and side-effect-free.
 ---
 
-Many operations need to record what they did: an audit trail of decisions in a rules engine, a debug
-trace of transformations in a data pipeline, a sequence of validation messages collected alongside a
-processed value. The usual approach threads an array through every function as an extra parameter.
-`Logged<W, A>` does that threading automatically: each step in a pipeline declares its own log
-entries, and they are concatenated in order without any manual bookkeeping.
+Many systems require a record of how a computation arrived at its result: an audit trail of
+decisions made by a complex business rules engine, a diagnostic trace of steps inside a data
+transformation pipeline, or warning notices gathered during validation.
 
-## The problem with threading a log manually
-
-The straightforward approach passes a log array into every function and returns a new one alongside
-the result:
+If we want to keep our code pure and testable, we typically resort to threading a log array
+manually:
 
 ```ts
-function normalise(s: string, log: string[]): [string, string[]] {
-  const result = s.trim().toLowerCase();
-  return [result, [...log, `normalise: "${s}" → "${result}"`]];
+// Manual log threading:
+function formatUsername(username: string, log: string[]): [string, string[]] {
+  const result = username.trim().toLowerCase();
+  return [result, [...log, `Normalized: ${username} to ${result}`]];
 }
-
-function truncate(max: number, s: string, log: string[]): [string, string[]] {
-  const result = s.slice(0, max);
-  return [result, [...log, `truncate(${max}): "${s}" → "${result}"`]];
-}
-
-const [step1, log1] = normalise("  Hello  ", []);
-const [step2, log2] = truncate(5, step1, log1);
-// step2 = "hello", log2 = [...]
 ```
 
-Every function receives the log as a parameter and returns it as part of its result. Adding a new
-step means threading it through manually. Removing a step means adjusting every caller. And the log
-array has nothing to do with what the functions are actually computing — it's just noise in every
-signature.
+This is incredibly noisy. Every single function in the chain must accept the log as a parameter and
+forward it, even when the function's core mathematical logic has nothing to do with logging. If you
+add or remove a transformation step, you must manually adjust all variable threads.
 
-## What a Logged is
+The typical alternative is to inject a logging framework and call side effects (like `console.log`)
+directly mid-function. While this removes parameter noise, it introduces global side effects. Our
+functions are no longer pure; they cannot be tested in isolation without mocking the global output
+stream, and we cannot programmatically inspect the logs to assert on business rules.
 
-Each step can append entries to the log as it computes its value. The entries concatenate in order,
-and the log is just data — no console output, no side effects. You decide what to do with it at the
-edge of the program:
+`Logged<W, A>` offers a clean, functional alternative. It is a simple data structure that pairs a
+value `A` with an accumulated read-only array of log entries `W`:
 
 ```ts
-type Logged<W, A> = { readonly value: A; readonly log: ReadonlyArray<W>; };
+type Logged<W, A> = {
+  readonly value: A;
+  readonly log: ReadonlyArray<W>;
+};
 ```
 
-## Creating a Logged value
+Logging is decoupled from execution. The log is treated purely as immutable data. We build our
+pipeline step-by-step, letting the logs accumulate automatically, and decide what to do with them
+once at the boundary of our program.
 
-`Logged.make` wraps a value with an empty log:
+---
+
+## Creating Logged Values
+
+To begin logging, we lift our values into `Logged` using its core constructors:
 
 ```ts
-const start: Logged<string, number> = Logged.make(0);
-// { value: 0, log: [] }
+import { Logged } from "@nlozgachev/pipelined/core";
+
+// Lifting a raw value with an empty log
+const start = Logged.make(0); // { value: 0, log: [] }
+
+// Logging a single entry with an empty value
+const note = Logged.tell("Initializing calculations"); 
+// { value: undefined, log: ["Initializing calculations"] }
 ```
 
-`Logged.tell` records a single entry with no meaningful value. It is the atomic logging operation:
+`Logged.tell` represents the atomic logging block. It writes a single log entry and returns
+`undefined` as its value, ready to be sequenced into a pipeline.
+
+---
+
+## Transforming and Sequencing
+
+We can transform the values inside `Logged` and sequence multiple logging steps point-free.
+
+### Transforming values with `map`
+
+`map` transforms the underlying value of a `Logged` container, leaving any accumulated log entries
+completely untouched:
 
 ```ts
-const entry: Logged<string, undefined> = Logged.tell("processing started");
-// { value: undefined, log: ["processing started"] }
-```
+import { pipe } from "@nlozgachev/pipelined/composition";
 
-The log entries accumulate left-to-right in the same order the steps execute. If you log from
-parallel branches, the order between branches is not defined.
-
-## Transforming with `map`
-
-`map` changes the value without touching the log:
-
-```ts
 const doubled = pipe(
   Logged.make<string, number>(5),
-  Logged.map(n => n * 2),
-);
-// { value: 10, log: [] }
+  Logged.map((n) => n * 2),
+); // { value: 10, log: [] }
 ```
 
-Any log entries already present are carried forward unchanged:
+### Sequencing logs with `chain`
 
-```ts
-const result: Logged<string, number> = { value: 3, log: ["loaded"] };
-const bigger = pipe(result, Logged.map(n => n + 1));
-// { value: 4, log: ["loaded"] }
-```
-
-## Sequencing with `chain`
-
-`chain` is the key operation. It passes the value of one `Logged` to a function that returns another
-`Logged`, and automatically concatenates both logs:
+`chain` is the key combinator for `Logged`. It passes the value of the current `Logged` container to
+your next step, executes the step, and automatically concatenates the log arrays from both steps in
+order:
 
 ```ts
 const program = pipe(
   Logged.make<string, number>(1),
-  Logged.chain(n => pipe(Logged.tell("incremented"), Logged.map(() => n + 1))),
-  Logged.chain(n => pipe(Logged.tell("doubled"), Logged.map(() => n * 2))),
+  Logged.chain((n) => pipe(Logged.tell("Incremented value"), Logged.map(() => n + 1))),
+  Logged.chain((n) => pipe(Logged.tell("Doubled value"), Logged.map(() => n * 2))),
 );
 
-Logged.run(program); // [4, ["incremented", "doubled"]]
+const [value, log] = Logged.run(program);
+// value = 4, log = ["Incremented value", "Doubled value"]
 ```
 
-No function in the chain touches the log from a previous step — the concatenation is handled by
-`chain` itself. Each step only declares its own entries.
+The intermediate log arrays are stitched together by `chain` itself. Each individual step only
+declares its own log entry, fully isolated from the history of the pipeline.
 
-## A rules engine example
+---
 
-Suppose you are applying a sequence of business rules to a discount calculation. Each rule may apply
-a modifier and should record its reasoning:
+## Practical Example: A Business Rules Engine
+
+Consider a discount calculator that applies a series of promotional codes. To audit decisions, each
+rule must record its reasoning:
 
 ```ts
-type Rule = (price: number) => Logged<string, number>;
+type DiscountRule = (price: number) => Logged<string, number>;
 
-const memberDiscount: Rule = (price) =>
+const applyMemberPromo: DiscountRule = (price) =>
   price > 100
-    ? pipe(Logged.tell("member discount: -10%"), Logged.map(() => price * 0.9))
-    : pipe(Logged.tell("member discount: not applicable"), Logged.map(() => price));
+    ? pipe(Logged.tell("Member discount: -10% applied"), Logged.map(() => price * 0.9))
+    : pipe(Logged.tell("Member discount: threshold not met"), Logged.map(() => price));
 
-const bulkDiscount: Rule = (price) =>
+const applyBulkPromo: DiscountRule = (price) =>
   price > 200
-    ? pipe(Logged.tell("bulk discount: -5%"), Logged.map(() => price * 0.95))
-    : pipe(Logged.tell("bulk discount: not applicable"), Logged.map(() => price));
+    ? pipe(Logged.tell("Bulk discount: -5% applied"), Logged.map(() => price * 0.95))
+    : pipe(Logged.tell("Bulk discount: threshold not met"), Logged.map(() => price));
 
-const applyRules = (basePrice: number): Logged<string, number> =>
+const calculateTotal = (basePrice: number): Logged<string, number> =>
   pipe(
     Logged.make<string, number>(basePrice),
-    Logged.chain(memberDiscount),
-    Logged.chain(bulkDiscount),
+    Logged.chain(applyMemberPromo),
+    Logged.chain(applyBulkPromo),
   );
 
-const [finalPrice, auditTrail] = Logged.run(applyRules(250));
+const [finalPrice, auditTrail] = Logged.run(calculateTotal(250));
 // finalPrice ≈ 213.75
-// auditTrail = ["member discount: -10%", "bulk discount: -5%"]
+// auditTrail = ["Member discount: -10% applied", "Bulk discount: -5% applied"]
 ```
 
-The audit trail builds automatically. Neither `memberDiscount` nor `bulkDiscount` knows about the
-other's log entries — `chain` stitches them together.
+The promotional rules remain completely independent. Neither `applyMemberPromo` nor `applyBulkPromo`
+has any knowledge of the other's existence or log records. The audit trail is built automatically
+during sequencing.
 
-## A transformation pipeline with debug trace
+---
 
-In a data transformation pipeline you often want to know what each step produced without wiring in
-actual logging infrastructure:
+## Extracting Results with run
+
+`Logged.run` unpacks the container and returns the value and accumulated log as a standard tuple:
 
 ```ts
-const normalise = (s: string): Logged<string, string> => {
-  const result = s.trim().toLowerCase();
-  return pipe(
-    Logged.tell(`normalise: "${s}" → "${result}"`),
-    Logged.map(() => result),
-  );
-};
+const [result, logs] = Logged.run(program);
 
-const truncate = (max: number) => (s: string): Logged<string, string> => {
-  const result = s.slice(0, max);
-  return pipe(
-    Logged.tell(`truncate(${max}): "${s}" → "${result}"`),
-    Logged.map(() => result),
-  );
-};
-
-const processSlug = (raw: string): Logged<string, string> =>
-  pipe(
-    Logged.make<string, string>(raw),
-    Logged.chain(normalise),
-    Logged.chain(truncate(20)),
-  );
-
-const [slug, trace] = Logged.run(processSlug("  Hello World Foo Bar  "));
-// slug  = "hello world foo bar"
-// trace = [
-//   'normalise: "  Hello World Foo Bar  " → "hello world foo bar"',
-//   'truncate(20): "hello world foo bar" → "hello world foo bar"',
-// ]
+// Dispatch logs programmatically at your system boundary:
+logs.forEach((message) => logger.info(message));
 ```
 
-## Extracting results with `run`
+By calling `run` at the boundary of your system, you can choose to write the logs to an external
+database, return them to the client, or filter them, keeping your operational code 100% pure.
 
-`Logged.run` returns the value and log as a tuple `[value, log]`. Call it at the boundary where you
-want to act on the results — emit the log to a monitoring system, return both to the caller, or
-discard one:
-
-```ts
-const [value, log] = Logged.run(program);
-log.forEach(entry => auditService.record(entry));
-return value;
-```
+---
 
 ## When to use Logged
 
-- You want a computation to produce both a result and a record of what happened, without threading a
-  log array through every function signature.
-- You are building a rules engine, validation pipeline, or data transformation where each step
-  should declare its own reasoning and the final caller collects the full trace.
-- You want pure, testable logging — the log is just data, there are no side effects until you
-  explicitly emit it.
+### Use Logged when:
 
-**Keep using plain logging calls when** the output is purely for human debugging during development
-and you don't need to inspect, assert on, or forward the log programmatically. `Logged` is most
-valuable when the log itself is a first-class output that callers need to process, not just a side
-channel.
-</content>
-</invoke>
+- **The log is an essential output**: You are building rules engines, payload validators, or data
+  migrators where the audit trail or warnings log must be returned to the caller or database.
+- **You require pure, testable traces**: You want to assert on log traces programmatically in unit
+  tests without setting up global console mocks or capturing standard output.
+
+### Keep using standard logging libraries when:
+
+- **Logs are purely for development diagnostics**: You are writing generic debugging logs that only
+  humans will read in development, and the trace has no first-class programmatic value in
+  production.

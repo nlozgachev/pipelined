@@ -1,650 +1,364 @@
 ---
-title: Op — managed async operations
-description: Separate what an async operation does from how it runs — nine concurrency strategies with typed outcomes, retry, and timeout built in.
+title: Op — Managing Async Operations
+description: Separate what an asynchronous operation does from how it executes, configuring concurrency, timeouts, and retries in a single pure blueprint.
 ---
+
 import { Aside } from '@astrojs/starlight/components'
 
-You're building a search input. The user types and a fetch fires on every keystroke. Three requests
-leave in flight simultaneously. The first one to land overwrites the result, even if it's stale.
-You know the fix: cancel the previous request when a new one starts. You solve it once — then
-reimplement it everywhere. But that behaviour ends up tangled into the component, the fetch call,
-and a useRef keeping track of the controller.
+Asynchronous coordination is one of the most persistent sources of accidental complexity in modern application development. 
 
-`Op<I, E, A>` separates the problem into two independent pieces:
+Consider a standard search-as-you-type autocomplete input. A user types rapidly, firing three search queries in rapid succession. Because of internet latency, the first network request takes longer to resolve than the third. When the first request eventually lands last, it overwrites the newer search results with stale data. 
 
-- **What** to do: encoded once in the `Op` via `Op.create`.
-- **How** to run it: chosen at `Op.interpret` time — restartable, exclusive, queued, buffered,
-  debounced, throttled, concurrent, or keyed — with retry and timeout available on top.
+We know how to fix this: we must cancel the outstanding in-flight request whenever a new search is triggered. But implementing this usually complects our codebase. The cancellation logic—juggling `AbortController` instances, keeping track of active requests with `useRef` handles, and writing cleanup hooks—becomes tangled directly into our UI components and raw network calls.
+
+`Op<I, E, A>` solves this by cleanly separating these concerns:
+
+*   **What to do**: The core async work is defined once, in isolation, using `Op.create`.
+*   **How to run it**: The concurrency, retry, and timeout strategies are configured later using `Op.interpret`.
+
+By decoupling the *description* of the asynchronous work from its *execution strategy*, we write clean, testable logic and change how it runs without modifying a single line of business code.
+
+---
 
 ## Creating an Op
 
-`Op.create` wraps an async factory and an error mapper:
+To define our async task, we use `Op.create`. It takes an asynchronous factory function and an error mapper:
 
 ```ts
 import { Op } from "@nlozgachev/pipelined/core";
 
-const searchUsers = Op.create(
-  (signal) => (query: string) =>
-    fetch(`/users?q=${query}`, { signal }).then((r) => {
-      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-      return r.json() as Promise<User[]>;
+interface User { id: string; name: string }
+class ApiError extends Error { constructor(public reason: unknown) { super() } }
+
+const fetchUser = Op.create(
+  (signal) => (id: string) =>
+    fetch(`/users/${id}`, { signal }).then((r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json() as Promise<User>;
     }),
-  (e) => new ApiError(e),
+  (error) => new ApiError(error),
 );
 ```
 
-The factory receives an `AbortSignal` and returns a function that takes the input. Capture the
-signal in the outer closure and thread it through to cancellable APIs like `fetch`. The error
-mapper converts any thrown value into a typed error — it is never called when the operation is
-aborted; aborted operations produce `Nil` instead.
+The factory function receives an `AbortSignal` and returns a function waiting for your input value. Threading the signal through to cancellable operations (like `fetch`) is critical.
 
-If the async work lives in a standalone function, pass the signal as an explicit argument rather
-than inlining the fetch:
+If your asynchronous function is defined elsewhere, you can pass the signal as an argument instead of capturing it inside an inline closure:
 
 ```ts
-async function searchUsers(query: string, signal: AbortSignal): Promise<User[]> {
-  const r = await fetch(`/users?q=${query}`, { signal });
-  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-  return r.json();
+async function getUserData(id: string, signal: AbortSignal): Promise<User> {
+  const response = await fetch(`/users/${id}`, { signal });
+  return response.json();
 }
 
-const searchUsersOp = Op.create(
-  (signal) => (query: string) => searchUsers(query, signal),
-  (e) => new ApiError(e),
+const fetchUserOp = Op.create(
+  (signal) => (id: string) => getUserData(id, signal),
+  (error) => new ApiError(error),
 );
 ```
 
-The factory shape stays the same — `(signal) => (input) => Promise<A>`. The signal reaches the
-function as an argument instead of being captured in an inline closure.
-
 <Aside type="caution">
-`Op` is designed primarily for network requests. The signal is not optional plumbing: it is how every strategy tears down work it no
-longer needs. Always pass it through. If you choose to ignore it, that is a deliberate trade-off:
-the operation will run to completion and emit `Ok` even after the strategy has replaced or dropped
-it, producing stale state.
+The `AbortSignal` is not optional boilerplate. It is the exact handle that every concurrency strategy uses to tear down obsolete or cancelled operations. If you choose to ignore the signal, the underlying factory operation will continue to run to completion and resolve, producing stale side effects and waste network bandwidth.
 </Aside>
 
-Calling `create` doesn't run anything. It just defines how to run it later — nothing executes
-until `Op.interpret` is called.
+Defining an `Op` does not run anything. It is a pure blueprint—nothing executes until we interpret the blueprint and trigger it.
 
-## Lifting a plain async function
+### Lifting plain async functions with `lift`
 
-`Op.lift` creates an `Op` from a plain async function without a custom error mapping.
-Rejections are captured as `Err<unknown>`. Use it for quick wiring where a typed error
-channel is not needed:
+If you are writing a quick utility or do not require a typed error channel, you can lift a plain async function using `Op.lift`. Any rejection is captured as `Err<unknown>` automatically:
 
 ```ts
-const search = Op.interpret(
+const quickSearch = Op.interpret(
   Op.lift((query: string, signal) =>
-    fetch(`/search?q=${query}`, { signal }).then(r => r.json()),
+    fetch(`/search?q=${query}`, { signal }).then((r) => r.json()),
   ),
   { strategy: "restartable" },
 );
 ```
 
-When you need a typed error — to pattern-match on a specific failure — use `Op.create` instead.
+---
 
-## The full lifecycle
+## The Asynchronous Lifecycle
 
-Four steps take you from a raw `fetch` to a component that reacts to loading, success, and error
-without any `useRef` or manual cancellation:
-
-```ts
-import { Op } from "@nlozgachev/pipelined/core";
-
-// 1. create — describe the async work once
-const fetchUser = Op.create(
-  (signal) => (id: string) =>
-    fetch(`/users/${id}`, { signal }).then((r) => {
-      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-      return r.json() as Promise<User>;
-    }),
-  (e) => new ApiError(e),
-);
-
-// 2. interpret — choose a concurrency strategy
-const getUser = Op.interpret(fetchUser, { strategy: "once" });
-
-// 3. subscribe — react to every state transition
-getUser.subscribe((state) => {
-  if (Op.isPending(state)) showSpinner();
-  if (Op.isOk(state))      render(state.value);
-  if (Op.isErr(state))     showError(state.error);
-  if (Op.isNil(state))     resetUI();
-});
-
-// 4. run — trigger the operation; await its per-invocation outcome
-const outcome = await getUser.run(userId);
-```
+Four steps take you from a raw, uncancellable fetch to a managed UI flow:
 
 ```mermaid
-flowchart TB
-  A["Op.create()\ndescribe the work once"] --> B["Op.interpret()\nchoose a strategy"]
-  B --> C["manager.subscribe()\nreact to state changes"]
-  C --> D["manager.run()\ntrigger the operation"]
-  D --> E{outcome}
-  E -->|success| F[Ok]
-  E -->|failure| G[Err]
-  E -->|"cancelled / dropped"| H[Nil]
+flowchart TD
+    A[1. Op.create] -->|Describe the work once| B[2. Op.interpret]
+    B -->|Select a concurrency strategy| C[3. manager.subscribe]
+    C -->|Listen to loading and outcome states| D[4. manager.run]
+    D -->|Execute execution| E{Outcome}
+    E -->|Success| Ok[Ok A]
+    E -->|Failure| Err[Err E]
+    E -->|Cancelled or Dropped| Nil[Nil reason]
 ```
 
-`create` and `interpret` are called once, usually at module or component setup time.
-`subscribe` registers a listener before the first `run()`. `run` is called wherever the
-trigger lives — a button click, a mount hook, a route change. It returns a `Deferred` that
-resolves to the outcome of that specific invocation, letting you `await` the result inline
-without setting up a subscriber.
-
-## The three outcomes
-
-When `run()` settles, three things can happen: you get a value, you get an error, or nothing
-happens — the call was cancelled, dropped, or replaced. These map to `Ok<A>`, `Err<E>`, and
-`Nil`.
-
-`Ok` and `Err` are straightforward. `Nil` is where it gets specific — the `reason` field says
-exactly what happened:
-
-- `"aborted"` — `abort()` was called explicitly.
-- `"dropped"` — the call was silently ignored because the strategy had no capacity.
-- `"replaced"` — a newer `run()` cancelled this one while it was already running.
-- `"evicted"` — a newer `run()` took this slot before it started; the factory was never called.
-
-`Nil.reason` means you never need external tracking to distinguish a cancellation from a capacity
-drop. Code that cares can just read the field.
-
-Constructors (`Op.ok`, `Op.err`, `Op.nil`) and guards (`Op.isOk`, `Op.isErr`, `Op.isNil`) are in
-the API reference.
-
-## Handling results
-
-Most of the time you'll branch directly on the outcome:
+1.  **Create**: Describe the core async task once.
+2.  **Interpret**: Choose a concurrency and lifecycle strategy, returning a manager.
+3.  **Subscribe**: Attach listeners to react to loading states and outcomes.
+4.  **Run**: Trigger the operation with an input value.
 
 ```ts
-const outcome = await search.run(query);
+// 2. Choose our strategy
+const userManager = Op.interpret(fetchUserOp, { strategy: "exclusive" });
+
+// 3. Listen to transitions
+userManager.subscribe((state) => {
+  if (Op.isPending(state)) showSpinner();
+  if (Op.isOk(state))      renderProfile(state.value);
+  if (Op.isErr(state))     showError(state.error);
+});
+
+// 4. Trigger execution
+userManager.run("user_123");
+```
+
+---
+
+## The Three Outcomes: Ok, Err, and Nil
+
+Every time you call `run()`, the invocation eventually settles into one of three outcomes: `Ok<A>`, `Err<E>`, or `Nil`.
+
+`Ok` and `Err` represent standard success and failure. `Nil` is introduced to model situations where an invocation did not complete because the concurrency strategy cancelled, dropped, or bypassed it.
+
+To help you diagnose what happened, the `Nil` variant carries a precise `reason`:
+
+*   `"aborted"` — `abort()` was called explicitly on the manager.
+*   `"dropped"` — the invocation was ignored because the strategy was busy and had no remaining capacity.
+*   `"replaced"` — a newer `run()` call executed, cancelling this in-flight invocation.
+*   `"evicted"` — the invocation was removed from a waiting queue or buffer before it even started executing.
+
+### Unpacking outcomes
+
+You can unpack invocation outcomes using direct type guards:
+
+```ts
+const outcome = await userManager.run("user_123");
 
 if (Op.isOk(outcome)) {
-  render(outcome.value);
+  console.log("Value:", outcome.value);
 } else if (Op.isErr(outcome)) {
-  showError(outcome.error.message);
+  console.error("Error:", outcome.error);
 } else {
-  // Nil — call was cancelled, dropped, or replaced
-  resetSearch();
+  console.log("Operation skipped:", outcome.reason); // "aborted", "dropped", etc.
 }
 ```
 
-If you prefer chaining, `map` transforms the success value and passes `Err` and `Nil` through
-unchanged:
-
-```ts
-pipe(
-  outcome,
-  Op.map((users) => users.filter((u) => u.active)),
-);
-```
-
-`match` is useful when you want to branch and produce a single value in one step:
+Alternatively, you can transform values inside `Ok` using `map`, or perform comprehensive case mapping using `match` or `fold`:
 
 ```ts
 Op.match({
-  ok:  (users) => render(users),
-  err: (e)   => showError(e.message),
-  nil: ()      => resetSearch(),
+  ok:  (user) => renderDashboard(user),
+  err: (err)  => renderAlert(err),
+  nil: (nil)  => console.log(`Skipped: ${nil.reason}`),
 })(outcome);
 ```
 
-`mapError`, `chain`, `tap`, `recover`, and `fold` follow the same shape — they're in the API
-reference.
+---
 
-## Choosing a concurrency strategy
+## Choosing a Concurrency Strategy
 
-The strategy determines what happens when `run()` is called while another invocation is already
-in-flight — get this wrong and stale results can land after newer ones, or a form can submit
-twice.
+The execution strategy dictates what happens when `run()` is triggered while an existing operation is already in flight. Choosing the correct strategy ensures that race conditions and duplicate submissions are mathematically impossible.
 
-Not sure which strategy to pick? Four questions narrow it down:
+Use this simple breakdown to select a strategy:
 
-- **One-shot**, runs exactly once → `once`
-- **Multiple independent keys** (one slot per user, per row, per ID)? → `keyed`
-- **Multiple simultaneous operations** at once? → `concurrent`
-- **One at a time** — what happens when a new call arrives while busy?
-  - Cancel the current one → `restartable`
-  - Ignore the new one → `exclusive`
-  - Run all in order → `queue`
-  - Finish current, hold only the latest pending → `buffered`
-- **Delay or rate-limit calls?**
-  - Wait for quiet before starting → `debounced`
-  - Fire now, then enforce a cooldown → `throttled`
+*   **Only run once** (e.g. initial page setup) $\rightarrow$ `once`
+*   **Segment by input key** (e.g. independently load different rows) $\rightarrow$ `keyed`
+*   **Run multiple operations in parallel** (e.g. bulk file uploads) $\rightarrow$ `concurrent`
+*   **Run one-at-a-time**:
+    *   *Cancel* the active one and restart $\rightarrow$ `restartable`
+    *   *Ignore* the new one until the active completes $\rightarrow$ `exclusive`
+    *   *Queue* all calls and run them in order $\rightarrow$ `queue`
+    *   *Buffer* calls, keeping only the latest pending one $\rightarrow$ `buffered`
+*   **Rate-limit or delay calls**:
+    *   Wait for the user to stop typing $\rightarrow$ `debounced`
+    *   Fire immediately, then enforce a cooldown $\rightarrow$ `throttled`
 
-If you're unsure, start with `restartable` for user input and `exclusive` for actions.
+---
 
-```mermaid
-flowchart TB
-  A[new call arrives] --> B{already running?}
-  B -->|no| C[starts immediately]
-  B -->|yes| D{what should happen?}
-  D -->|cancel current, start new| E[restartable]
-  D -->|ignore the new call| F[exclusive]
-  D -->|run all of them| G{how many at once?}
-  G -->|unlimited| H[concurrent]
-  G -->|one at a time in order| I[queue]
-  G -->|current + latest pending| J[buffered]
-  A --> K{need a delay?}
-  K -->|wait for user to stop| L[debounced]
-  K -->|fire now then cooldown| M[throttled]
-  A --> N{one time only?}
-  N -->|yes| O[once]
-  A --> P{one slot per item?}
-  P -->|yes| Q[keyed]
-```
+## Concurrency Strategy Reference
 
-| Situation | Strategy |
-| --- | --- |
-| Search input / autocomplete | `restartable` |
-| Form submit / payment | `exclusive` |
-| Autosave / background sync | `buffered` |
-| Sequential job pipeline | `queue` |
-| Typing / resize pause | `debounced` |
-| Scroll handler / rate limit | `throttled` |
-| Parallel uploads / connection pool | `concurrent` |
-| Per-item data fetch | `keyed` |
-| Initial data load | `once` |
+| Strategy | Description & Common Use Cases |
+| :--- | :--- |
+| `once` | Fires exactly once. Only the first `run()` executes. All subsequent calls resolve immediately to `DroppedNil`. State is permanently cached once the first call finishes. Use for initial data load or system initialization. |
+| `restartable` | New calls immediately cancel any active in-flight request. Only the latest result ever completes. Use for autocomplete inputs, search boxes, and active tab navigation. |
+| `exclusive` | New calls are ignored while an operation is in flight. The active request always runs to completion. Use for form submissions and payment checkouts. |
+| `queue` | Calls are queued and run sequentially in the order they were submitted. Use for sequential file processing or transactional steps. |
+| `buffered` | Maintains exactly 1 active slot + 1 waiting slot. A new call replaces whatever is in the waiting slot. Use for auto-save pipelines. |
+| `debounced` | Waits for a quiet period of N milliseconds before starting. Resets on every new call. Use for live validations and window resizing. |
+| `throttled` | Fires immediately on the first call, then ignores new calls for N milliseconds. Supports an optional trailing edge. Use for scroll listeners and rate-limited actions. |
+| `concurrent` | Runs up to N operations in parallel. If all slots are full, you can choose to `"queue"` or `"drop"` subsequent requests. Use for bounded uploaders and connection pools. |
+| `keyed` | Multiplexes state per input key, running keys in parallel while applying a local sub-strategy (like `restartable` or `exclusive`) to identical keys. Use for per-row dashboard loading. |
 
-Many strategies intentionally drop or replace calls — not every `run()` produces an `Ok` or `Err`.
-If every invocation must run, use `queue` or `concurrent` with `overflow: "queue"`.
+---
 
-`Op.interpret` returns a manager with three methods: `run(input)` fires the operation and returns
-a `Deferred` for that specific invocation's outcome (`Ok`, `Err`, or `Nil`); `subscribe(cb)` is
-called on every state transition; `abort()` cancels in-flight work and clears any queue. The
-`Deferred` type is narrowed by strategy — a `restartable` manager can only produce `ReplacedNil`,
-not `DroppedNil`, so TypeScript catches incorrect `Nil` handling at compile time.
+## In-Depth Concurrency Mechanics
+
+### Cooldowns with `throttled`
+
+`throttled` fires immediately on the first leading-edge call and locks out subsequent executions for a cooldown window. By adding `trailing: true`, you can ensure that the last call made during the cooldown period fires once at the trailing edge of the window:
 
 ```ts
-// Load once on mount — further run() calls return DroppedNil immediately
-const getUser = Op.interpret(fetchUser, { strategy: "once" });
-getUser.subscribe((state) => {
-  if (Op.isPending(state)) showSpinner();
-  if (Op.isOk(state))      render(state.value);
-});
-getUser.run(userId);
+import { Duration } from "@nlozgachev/pipelined/composition";
 
-// Search: only the latest result matters
-const search = Op.interpret(searchUsers, { strategy: "restartable" });
-
-// Auto-save: commit current write fully; take only the latest pending edit next
-const save = Op.interpret(saveDocument, { strategy: "buffered" });
-
-// Live validation: wait for the user to stop typing
-const validate = Op.interpret(validateForm, { strategy: "debounced", duration: Duration.milliseconds(300) });
-```
-
-Full strategy reference:
-
-| Strategy | Behaviour |
-| --- | --- |
-| `once` | Fires exactly once. Only the first `run()` executes; all subsequent calls resolve immediately to `DroppedNil`. State is permanently set after the operation completes. Use for initial data load, one-time setup. |
-| `restartable` | New call cancels the in-flight one. Only the latest result matters. Use for search, autocomplete, navigation. |
-| `exclusive` | New calls while in-flight are silently dropped. In-flight always completes. Use for form submission. |
-| `queue` | Calls run in submission order. All calls eventually execute. Use for ordered processing. |
-| `buffered` | 1 in-flight + 1 waiting slot. Newer calls replace the waiting slot. In-flight never cancelled. Use for auto-save. |
-| `debounced` | Waits N ms of quiet before starting. Resets on every new call. Use for live search, resize handlers. |
-| `throttled` | Fires immediately on the first call, then ignores calls for N ms (leading-only). With `trailing: true`, the last call during the cooldown fires once more at the trailing edge. Use for scroll handlers, rate-limited actions. |
-| `concurrent` | Up to N operations in-flight simultaneously. Overflow policy is configurable: `"drop"` returns `DroppedNil` immediately; `"queue"` waits for a slot. Use for file upload managers, connection pools. |
-| `keyed` | Per-input-key slots. Different keys run in parallel; same key follows a configurable `perKey` sub-strategy. `state` is a `ReadonlyMap` of each key's last known state. Use for per-item data fetching. |
-
-### Throttled — fire and cooldown
-
-`throttled` fires immediately on the first call, then ignores calls for the duration of the cooldown.
-Unlike `debounced`, which _waits_ for quiet, `throttled` acts on the _leading edge_
-and then enforces a cooldown.
-
-```ts
-// Rate-limit a button: responds instantly, then locks out for 2 s
-const submitOrder = Op.interpret(placeOrder, { strategy: "throttled", duration: Duration.seconds(2) });
-submitOrder.run(cart); // fires immediately → Ok
-submitOrder.run(cart); // during cooldown → DroppedNil
-```
-
-Add `trailing: true` to fire once more at the end of the cooldown with the most recent input.
-This is useful for scroll or resize handlers where you want an immediate response _and_ a final
-update when the burst ends:
-
-```ts
-const handleResize = Op.interpret(computeLayout, {
+const handleResize = Op.interpret(computeLayoutOp, {
   strategy: "throttled",
   duration: Duration.milliseconds(100),
   trailing: true,
 });
-// On burst: leading fires instantly; last call during cooldown fires at cooldown end.
-// Calls replaced in the buffer resolve to EvictedNil; the leading fires → Ok.
 ```
 
-### Concurrent — bounded parallelism
+This guarantees an immediate initial visual response and a final layout calculation once the user stops resizing.
 
-`concurrent` allows up to `n` operations in-flight simultaneously. What happens beyond that is
-controlled by `overflow`:
+### Parallelism with `concurrent`
+
+`concurrent` runs up to `n` operations simultaneously. When the capacity is exhausted, the `overflow` policy determines what happens:
 
 ```ts
-// Upload at most 3 files at a time; queue the rest
-const upload = Op.interpret(uploadFile, {
+// Queue up to 10 file uploads in order
+const uploadManager = Op.interpret(uploadFileOp, {
   strategy: "concurrent",
   n: 3,
   overflow: "queue",
 });
-
-// Cap at 3; drop any call that arrives when all slots are busy
-const fetchPreview = Op.interpret(generatePreview, {
-  strategy: "concurrent",
-  n: 3,
-  overflow: "drop",
-});
 ```
 
-With `overflow: "queue"`, callers see a `Queued` state with a `position` field while waiting
-for a slot. With `overflow: "drop"`, excess calls resolve to `DroppedNil` immediately.
-`abort()` cancels all in-flight operations and empties the queue.
+With `overflow: "queue"`, subsequent callers see a `Queued` state carrying a `position` number. With `overflow: "drop"`, excess requests are rejected with `DroppedNil` immediately.
 
-### Keyed — per-input deduplication
+### Segmented execution with `keyed`
 
-Every other strategy maintains a single state machine — one `Pending`, one `Ok`, one subscriber
-event at a time. `keyed` is different: it manages an independent state machine per key. The
-`state` property is a map of N machines, and each subscriber callback receives a fresh snapshot
-of the entire map. Think of it as N managers multiplexed through one API, not one manager that
-happens to track keys.
+`keyed` manages an independent state machine for every key extracted from your input. 
 
-`keyed` maintains one independent execution slot per key. A `key` function extracts the key
-from each input; different keys run in parallel; the same key follows the `perKey`
-sub-strategy.
+Unlike other strategies that hold a single state, `manager.state` on a `keyed` manager is a `ReadonlyMap` of keys to states, and the subscriber receives a fresh map snapshot on every state change:
 
 ```ts
-const fetchUser = Op.interpret(getUserOp, {
+const userProfileManager = Op.interpret(fetchUserOp, {
   strategy: "keyed",
-  key: (input) => input.userId,
-  perKey: "exclusive", // or "restartable"
+  key: (user) => user.id,
+  perKey: "exclusive",
 });
 
-fetchUser.run({ userId: "a", ...rest }); // slot "a" starts
-fetchUser.run({ userId: "b", ...rest }); // slot "b" starts in parallel
-fetchUser.run({ userId: "a", ...rest }); // slot "a" busy — DroppedNil (exclusive)
-                                         // or cancels and restarts (restartable)
-```
-
-`manager.state` is a `ReadonlyMap` of each key's last known state. The subscriber receives a
-fresh snapshot on every transition:
-
-```ts
-fetchUser.subscribe((map) => {
+userProfileManager.subscribe((map) => {
   for (const [userId, state] of map) {
-    if (Op.isPending(state)) showSpinner(userId);
-    if (Op.isOk(state))      renderUser(userId, state.value);
-    if (Op.isErr(state))     showError(userId, state.error);
+    if (Op.isPending(state)) showRowSpinner(userId);
+    if (Op.isOk(state))      renderRow(userId, state.value);
   }
 });
+
+userProfileManager.run({ id: "user_a" }); // Starts slot 'user_a'
+userProfileManager.run({ id: "user_b" }); // Starts slot 'user_b' in parallel
 ```
 
-`abort(key)` cancels a specific key; `abort()` cancels all. Keys remain in the map with their
-last terminal state — `Ok`, `Err`, or `Nil` — until a new `run()` updates them.
+---
 
-## Subscribing to state
+## State Subscriptions and UI Integration
 
-The subscriber receives every state transition. The `S` type parameter is narrowed to only the
-states reachable for the chosen strategy — TypeScript will reject handlers for states that can
-never occur:
+The manager returned by `Op.interpret` maintains the active state machine. You can subscribe to it to drive UI updates or synchronously read the current state:
 
 ```ts
 const manager = Op.interpret(searchUsers, { strategy: "restartable" });
 
 manager.subscribe((state) => {
-  // state: Idle | Pending | Ok<User[]> | Err<ApiError> | Nil
-  if (Op.isIdle(state))    return;
   if (Op.isPending(state)) showSpinner();
-  if (Op.isOk(state))      render(state.value);   // no unwrapping needed
-  if (Op.isErr(state))     showError(state.error);
-  if (Op.isNil(state))     resetSearch();
+  if (Op.isOk(state))      renderList(state.value);
+  if (Op.isNil(state))     clearUI();
 });
-
-manager.run(query);
 ```
 
-`manager.state` is always readable synchronously — useful for frameworks that need the current
-value outside the subscription cycle:
+The `manager.state` property is always available for synchronous reads, making it simple to bind to UI frameworks:
 
 ```ts
-// React
+// React Integration
 const state = useSyncExternalStore(
-  (cb) => manager.subscribe(cb),
+  (onStoreChange) => manager.subscribe(onStoreChange),
   () => manager.state,
 );
 ```
 
-One thing to watch out for: subscribing while the manager is not idle fires the callback
-immediately with the current state — useful for attaching UI components after setup, but it means
-`subscribe` is not a no-op even when called after an operation completes. Subscribing before the
-first `run()` does not fire until something actually happens.
+To return a manager to `Idle` without cancelling active in-flight requests, use `manager.reset()`. To trigger repeated executions on a timed loop, use `manager.poll(input, { interval })`.
 
-`abort()` resolves every outstanding `run()` Deferred — including invocations waiting in a queue
-— to `AbortedNil`. Resolution is asynchronous (the Deferred settles on the next microtask tick);
-no Deferred hangs indefinitely. The manager's state transitions to the appropriate terminal `Nil`
-as each one settles.
+---
 
-## Resetting manager state
+## Per-Invocation Awaiting
 
-`manager.reset()` returns the manager to `Idle` without cancelling any in-flight operation.
-Use it to clear displayed results or dismiss an error state without affecting a pending request:
+Every time you invoke `manager.run(input)`, it returns a `Deferred` value that resolves to the specific outcome of that invocation. This allows you to `await` outcomes inline inside sequential, imperative flows:
 
 ```ts
-if (userNavigatesAway) {
-  manager.reset(); // clears Ok/Err state — UI resets to initial state
+const outcome = await checkoutManager.run(cartData);
+
+if (Op.isOk(outcome)) {
+  navigateTo("/receipt");
+} else if (Op.isErr(outcome)) {
+  renderAlert(outcome.error.message);
 }
 ```
 
-## Polling on an interval
-
-`manager.poll(input, { interval })` runs the operation immediately, then every `interval`
-milliseconds. It returns a stop handle:
+You can coordinate multiple runs in parallel using `Op.all` or `Op.race` without managing manual promise plumbing:
 
 ```ts
-// Poll a job status endpoint every 5 seconds
-const stopPolling = statusManager.poll(jobId, { interval: 5000 });
-
-// Stop when the job completes or the component unmounts
-statusManager.subscribe(state => {
-  if (Op.isOk(state) && state.value.status === "done") stopPolling();
-});
-```
-
-## Per-invocation results
-
-Every `run()` call returns a `Deferred` that resolves to the outcome of that specific invocation.
-This lets you `await` a result inline — useful for imperative flows, sequential composition, and
-testing.
-
-```ts
-// Sequential: submit, then navigate on success
-const result = await submit.run(formData);
-
-if (Op.isOk(result)) {
-  router.push("/success");
-} else if (Op.isErr(result)) {
-  showError(result.error.message);
-} else {
-  // Nil — invocation did not produce a value
-  // result.reason is "aborted", "dropped", or "replaced"
-  console.log("invocation did not complete:", result.reason);
-}
-```
-
-`Op.all` and `Op.race` work across multiple invocations without manual `Promise` plumbing:
-
-```ts
-// Parallel: fire two searches and wait for both
-const [usersResult, postsResult] = await Op.all([
-  searchUsers.run(query),
-  searchPosts.run(query),
-]);
-
-// Race: take whichever finishes first
-const first = await Op.race([
-  fetchFromPrimary.run(id),
-  fetchFromFallback.run(id),
+const [profile, settings] = await Op.all([
+  fetchProfile.run(userId),
+  fetchSettings.run(userId),
 ]);
 ```
 
-Each outcome in the array corresponds directly to its invocation. `Nil` is a valid outcome — the
-strategy may have dropped or replaced the call.
+---
 
-The Nil reasons each strategy can produce:
+## Retry and Timeout Policies
 
-| Strategy | Nil reasons |
-| --- | --- |
-| `once` | `"aborted"`, `"dropped"` |
-| `restartable` | `"aborted"`, `"replaced"` |
-| `exclusive` | `"aborted"`, `"dropped"` |
-| `queue` | `"aborted"` only |
-| `buffered` | `"aborted"`, `"evicted"` |
-| `debounced` | `"aborted"`, `"evicted"` |
-| `throttled` | `"aborted"`, `"dropped"`, `"evicted"` |
-| `concurrent` | `"aborted"`, `"dropped"` with `overflow: "drop"` |
-| `keyed` | `"aborted"`, `"dropped"` with `perKey: "exclusive"`, `"replaced"` with `perKey: "restartable"` |
-
-State is shared across all callers; outcomes are private to the caller of that specific `run()`.
-A subscriber always sees the latest state — it does not receive separate events for each
-invocation. Code that needs per-invocation results should `await run()` directly:
+Retries and timeouts are configured once at interpretation time, removing operational noise from your core async actions.
 
 ```ts
-const search = Op.interpret(searchUsers, { strategy: "restartable" });
-
-const p = search.run("fo");   // Deferred for this specific call
-const q = search.run("foo");  // cancels "fo", starts fresh
-
-await p; // ReplacedNil — this invocation was replaced
-await q; // Ok(results)  — this invocation completed
-
-// Subscriber saw: Pending → Pending → Ok
-// p's Deferred and the subscriber's view are consistent but not the same thing.
-```
-
-```mermaid
-sequenceDiagram
-  participant IN as Initiator
-  participant SUB as Subscriber
-  participant M as Manager
-  participant RT as Request Target
-
-  Note over M: Idle
-  IN->>M: run("fo")
-  M->>RT: fetch /search?q=fo
-  M-->>SUB: Pending
-  IN->>M: run("foo")
-  M-->>SUB: Pending
-  M->>RT: abort "fo"
-  RT-->>M: aborted
-  M-->>IN: p → ReplacedNil
-  M->>RT: fetch /search?q=foo
-  RT-->>M: results
-  M-->>IN: q → Ok(results)
-  M-->>SUB: Ok(results)
-```
-
-## Retry and timeout
-
-Both are options on `Op.interpret`, not decorators applied to the factory. Set them once when
-creating the manager — they apply to every `run()` call automatically.
-
-Retry can be interrupted by a new call — this is usually what you want. When `restartable`
-cancels a running operation mid-retry, the retry loop stops immediately and the original
-invocation resolves to `ReplacedNil`.
-
-```ts
-const submit = Op.interpret(submitOrder, {
+const paymentManager = Op.interpret(submitPaymentOp, {
   strategy: "exclusive",
-  retry: { attempts: 3, backoff: (n) => Duration.milliseconds(n * 500), when: (e) => e.isRetryable },
-  timeout: { duration: Duration.seconds(10), onTimeout: () => new ApiError("timed out") },
+  retry: {
+    attempts: 3,
+    backoff: (attempt) => Duration.milliseconds(attempt * 500),
+    when: (error) => error.isNetworkTimeout,
+  },
+  timeout: {
+    duration: Duration.seconds(10),
+    onTimeout: () => new ApiError("Transaction timed out"),
+  },
 });
 ```
 
-When `retry` is present, the manager emits `Retrying` between attempts — and the subscriber type
-expands to include it. A manager without a retry policy cannot produce `Retrying` states, so the
-type does not include it:
+If a retry policy is active, the manager's state automatically expands to include a `Retrying` state between attempts, enabling you to display "Retrying lookup (attempt 2)..." cleanly in the UI.
+
+---
+
+## Outcome Conversions
+
+At boundaries, you can map an `Outcome` back to other library primitives.
+
+`toResult` maps `Ok` to `Ok` and `Err` to `Err`. Because `Result` has no concept of cancellations, you must provide a fallback error to represent `Nil` states:
 
 ```ts
-// No retry — Retrying is not in the subscriber type
-const m1 = Op.interpret(op, { strategy: "restartable" });
-// m1.subscribe: (state: Idle | Pending | Ok<A> | Err<E> | Nil) => void
-
-// Retry present — Retrying is added
-const m2 = Op.interpret(op, { strategy: "restartable", retry: { attempts: 3 } });
-// m2.subscribe: (state: Idle | Pending | Retrying<E> | Ok<A> | Err<E> | Nil) => void
+const resultOutcome = pipe(
+  outcome,
+  Op.toResult(() => new ApiError("Request was cancelled")),
+); // Result<ApiError, A>
 ```
 
-The `timeout` wraps the entire retry sequence — one deadline for all attempts. If the deadline
-fires mid-retry, the subscriber receives `Err(onTimeout())` and retrying stops. Adding `timeout`
-does not change the subscriber type: it produces `Err`, which is already part of every state
-union.
+`toMaybe` maps `Ok` to `Some` and maps both `Err` and `Nil` states to `None`:
 
 ```ts
-const search = Op.interpret(searchUsers, {
-  strategy: "restartable",
-  retry: { attempts: 3, backoff: Duration.milliseconds(500) },
-});
-
-const p = search.run("fo");   // starts; attempt 1 fails, backoff running
-search.run("foo");             // replaces: p resolves to ReplacedNil immediately
-                               // retry loop for "fo" stops — no more attempts
-                               // "foo" starts fresh with a full retry budget
+const maybeOutcome = Op.toMaybe(outcome); // Some(A) or None
 ```
 
-## Converting outcomes
-
-`Op.toResult` and `Op.toMaybe` convert an `Outcome` to the library's other success/failure types.
-`Nil` must be mapped to an error for `toResult` (since `Result` has no nil concept), and becomes
-`None` for `toMaybe`:
+To wire the success of one manager directly to the invocation of another, use `Op.wire`:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-
-// Use in a subscriber
-manager.subscribe((state) => {
-  if (!Op.isOk(state) && !Op.isErr(state) && !Op.isNil(state)) return;
-  const result = pipe(
-    state,
-    Op.toResult(() => new ApiError("cancelled")),
-  );
-  // result: Result<ApiError, User[]>
-});
+const stopWire = Op.wire(searchManager, (users) => loggingManager.run(users));
 ```
 
-`Op.getOrElse` extracts the value with a fallback for `Err` and `Nil`:
-
-```ts
-const users = Op.getOrElse(() => [] as User[])(outcome);
-```
-
-## Wiring managers together
-
-`Op.wire` subscribes to a manager and calls a handler whenever it reaches `Ok`. The
-typical use is to trigger a downstream manager:
-
-```ts
-const stopWire = Op.wire(searchManager, (results) => displayManager.run(results));
-// Later:
-stopWire();
-```
-
-Wire is intentionally minimal — it triggers a handler on each `Ok`, nothing more. For
-unified loading states across multiple managers or cancellation propagation, compose
-managers at the Op level with `Op.create` using `TaskResult` pipelines.
+---
 
 ## When to use Op
 
-- You need a one-shot async result that runs exactly once — use `strategy: "once"`.
-- You need a UI component to react to async state transitions (loading, error, success) without
-  coordinating across multiple `useRef` and `useState` calls.
-- You need a specific concurrency strategy: cancel old requests, drop duplicates, queue work in
-  order, or debounce rapid inputs.
-- You want to rate-limit an action with an immediate first response — use `strategy: "throttled"`.
-- You need bounded parallelism (upload N files at a time, pool N connections) — use
-  `strategy: "concurrent"`.
-- You need per-item deduplication (one in-flight fetch per user ID, per row) — use
-  `strategy: "keyed"`.
-- You want retry and timeout configured once, not scattered across every call site.
-- You need the current state readable synchronously for framework integrations like
-  `useSyncExternalStore` or Svelte stores.
+### Use Op when:
+*   **You need UI state bindings**: You want safe loading spinners, errors, and success elements without managing contradictory boolean flags.
+*   **You need specific concurrency rules**: You must cancel old requests, block duplicate checkout submissions, rate-limit rapid clicks, or rate-limit uploads.
+*   **You want simple retry policies**: You want backoff retries and global timeouts defined as a declarative blueprint.
+
+### Keep using simple Tasks or Promises when:
+*   **The operation is a simple script**: Low-level backend cron jobs, build scripts, or internal database migrations where concurrency strategies and UI subscriptions are not applicable.

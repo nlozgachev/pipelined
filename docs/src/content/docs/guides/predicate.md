@@ -1,88 +1,80 @@
 ---
-title: "Predicate — composable boolean checks"
-description: First-class boolean functions with not, and, or, using, and Refinement interop.
+title: Predicate — Composable Logic
+description: Represent boolean checks as first-class, composable functions, combining, negating, and adapting them to richer data structures point-free.
 ---
 
-When you reach for `Array.filter`, `if` branches, or access-control gates, you are writing
-predicates. Usually they are anonymous inline functions: `n => n > 0`, `u => u.role === "admin"`.
-They work, but they don't *compose*. You can't take two boolean functions and combine them into a
-third without writing a new function by hand each time. `Predicate<A>` makes boolean checks
-first-class values you can name, reuse, negate, combine, and adapt to new types.
+Boolean checks are the structural foundation of control flow. We write them everywhere: inside
+`Array.prototype.filter` callbacks, authorization gates, and conditional branch guards.
 
-## The problem with ad-hoc boolean functions
-
-Combining checks inline is fine for a single call site, but it doesn't scale:
+Typically, we write them as ad-hoc, inline lambda functions:
 
 ```ts
-// To reuse this later you have to extract and name it yourself every time
-const eligible = users.filter(
-  u => u.age >= 18 && u.subscription === "active" && !u.banned,
-);
-
-// Negating requires wrapping the whole expression
-const ineligible = users.filter(
-  u => !(u.age >= 18 && u.subscription === "active" && !u.banned),
-);
-
-// Adapting to a different type means rewriting the check
-const eligibleOrders = orders.filter(
-  o => o.customer.age >= 18 && o.customer.subscription === "active" && !o.customer.banned,
+const activeAdultUsers = users.filter(
+  (u) => u.age >= 18 && u.status === "active" && !u.banned,
 );
 ```
 
-Each variation is a one-off. There's no way to name the "is eligible" concept once and reuse it,
-negate it, or lift it to work on `Order` as well as `User`.
+While this works, it is entirely un-composable. If we need to negate this rule — for instance, to
+find ineligible users — we are forced to wrap the entire block in `!(...)`. If we want to adapt this
+exact check to operate on an `Order` (e.g., verifying if the customer placing the order is an active
+adult) rather than a raw `User`, we must duplicate and rewrite the logic from scratch.
 
-## The Predicate type
+Our domain rules become scattered, hard to test in isolation, and tightly coupled to specific object
+shapes.
+
+`Predicate<A>` solves this. It is a simple type alias for a function that accepts an input `A` and
+returns a `boolean`:
 
 ```ts
 type Predicate<A> = (a: A) => boolean;
 ```
 
-A `Predicate<A>` is just a typed alias for a boolean function. No wrapper, no allocation — the
-namespace provides utilities for combining and adapting these functions.
+By representing boolean checks as first-class values, we can name them, negate them, combine them,
+and adapt them to new shapes point-free.
 
-## Predicate vs Refinement — when to use which
+---
 
-`Refinement<A, B>` and `Predicate<A>` are closely related: every `Refinement<A, B>` is a
-`Predicate<A>`. The difference is what they tell the compiler:
+## Predicate vs Refinement: How they compare
 
-|                    | Compile-time effect                              | Use when                                                          |
-| ------------------ | ------------------------------------------------ | ----------------------------------------------------------------- |
-| `Predicate<A>`     | None — TypeScript still sees `A` after the check | You only need the boolean result and don't require type narrowing |
-| `Refinement<A, B>` | Narrows to `B` in the `true` branch              | You need TypeScript to track the stricter type                    |
+`Predicate<A>` and `Refinement<A, B>` are closely related. In fact, every `Refinement` is
+structurally a `Predicate`. However, they serve different purposes in your design:
 
-In short: reach for `Refinement` when compile-time narrowing matters (e.g. `isString`, `isUser`),
-and for `Predicate` when you just need the boolean (e.g. `isAdult`, `isExpired`, `hasPermission`). A
-key advantage of `Predicate` is `using` — it can adapt checks to any input shape, which `Refinement`
-cannot express cleanly.
+| Type                   | Type System Behavior                                                | Primary Use Case                                                                                 |
+| :--------------------- | :------------------------------------------------------------------ | :----------------------------------------------------------------------------------------------- |
+| **`Predicate<A>`**     | None. The type remains `A` after the check has evaluated to `true`. | Standard domain checks where type narrowing is not needed (e.g., `isAdult`, `isAffordable`).     |
+| **`Refinement<A, B>`** | Nrows the type to `B` inside successful conditional branches.       | Type guards where you must assert a stricter type safety boundary (e.g., `isString`, `isEmail`). |
 
-Convert a `Refinement` to a `Predicate` with `Predicate.fromRefinement` when you want to compose a
-narrowing check alongside plain predicates in `and`, `or`, or `all`.
+`Predicate` has a major structural superpower: the `using` operator. It allows you to adapt simple
+primitive checks to work on rich, deeply nested domain objects, which is extremely difficult to
+express cleanly with `Refinement`.
 
-## Negating with `not`
+If you need to mix a type guard into a simple boolean chain, you can lift it using
+`Predicate.fromRefinement`.
 
-`not` inverts a predicate. The result is still a `Predicate<A>` with no type-level side effects, so
-there is no `Exclude<A, B>` complexity.
+---
+
+## Negating logic with `not`
+
+`not` inverts a predicate, returning a new `Predicate<A>` without any complex type-casting overhead:
 
 ```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Predicate } from "@nlozgachev/pipelined/core";
+
 const isExpired: Predicate<Date> = (d) => d < new Date();
-const isActive: Predicate<Date> = Predicate.not(isExpired);
+const isActive: Predicate<Date> = pipe(isExpired, Predicate.not);
 
 isActive(new Date("2099-01-01")); // true
 isActive(new Date("2000-01-01")); // false
 ```
 
-`not` works as a direct transformer in `pipe`:
-
-```ts
-const isActive = pipe(isExpired, Predicate.not);
-```
+---
 
 ## Combining with `and` and `or`
 
-`and` and `or` are data-last, composing two predicates over the same input type. Both short-circuit:
-`and` stops as soon as the first check fails, `or` stops as soon as the first check passes.
+`and` and `or` allow you to combine two predicates over the same input type. Both combinators
+**short-circuit** naturally at runtime: `and` stops evaluating the moment a check fails, while `or`
+stops the moment a check succeeds.
 
 ```ts
 const isAdult: Predicate<number> = (age) => age >= 18;
@@ -90,36 +82,45 @@ const isSenior: Predicate<number> = (age) => age >= 65;
 
 const isWorkingAge: Predicate<number> = pipe(
   isAdult,
-  Predicate.and(Predicate.not(isSenior)),
+  Predicate.and(pipe(isSenior, Predicate.not)),
 );
 
 isWorkingAge(30); // true
-isWorkingAge(15); // false — too young
-isWorkingAge(70); // false — retired
+isWorkingAge(15); // false (too young)
+isWorkingAge(70); // false (retired)
 ```
 
-Building up a chain of checks reads left to right in `pipe`:
+By chaining `and` in a `pipe`, you describe complex rules as a highly readable checklist:
 
 ```ts
 const isValidPassword: Predicate<string> = pipe(
   (s: string) => s.length >= 8,
-  Predicate.and(s => /[A-Z]/.test(s)),
-  Predicate.and(s => /[0-9]/.test(s)),
+  Predicate.and((s) => /[A-Z]/.test(s)),
+  Predicate.and((s) => /[0-9]/.test(s)),
 );
 ```
 
-## Adapting the input type with `using`
+---
 
-`using` is what distinguishes `Predicate` from a plain function. It lifts a `Predicate<A>` to a
-`Predicate<B>` by providing a function `B → A` that extracts the relevant part of `B`. The check
-itself doesn't change — only the type it operates on does.
+## Adapting context: using
+
+`using` is the most powerful operator in the `Predicate` toolbox. It allows you to lift a
+`Predicate<A>` to a `Predicate<B>` by providing a mapping function `B => A`.
+
+This allows you to define core, atomic rules on primitive types, and project them onto rich domain
+objects without rewriting the logic:
 
 ```ts
-type Product = { name: string; price: number; inStock: boolean; };
+interface Product {
+  name: string;
+  price: number;
+  inStock: boolean;
+}
 
 const isAffordable: Predicate<number> = (price) => price < 50;
-const isInStock: Predicate<boolean> = (b) => b;
+const isInStock: Predicate<boolean> = (stock) => stock;
 
+// Lift primitive checks to operate on Product:
 const isAffordableProduct: Predicate<Product> = pipe(
   isAffordable,
   Predicate.using((p: Product) => p.price),
@@ -130,98 +131,69 @@ const isAvailableProduct: Predicate<Product> = pipe(
   Predicate.using((p: Product) => p.inStock),
 );
 
-const canBuyNow: Predicate<Product> = pipe(
+// Combine the lifted predicates:
+const canPurchaseNow: Predicate<Product> = pipe(
   isAffordableProduct,
   Predicate.and(isAvailableProduct),
 );
 ```
 
-The same base predicates (`isAffordable`, `isInStock`) are reused across different contexts — you
-don't rewrite them for each type that contains a price or a stock flag.
+By writing your rules once on `number` and `boolean`, you keep the core math independent of your
+data models. You can reuse `isAffordable` for checking an `Order`, a `ShippingFee`, or a `TaxRate`
+simply by mapping the input with `using`.
 
-`using` chains are also useful when your data is nested:
+---
 
-```ts
-type Order = { customer: { tier: string; }; };
+## Variable-Length Lists: all and any
 
-const isPremiumTier: Predicate<string> = (tier) => tier === "premium";
-const isPremiumOrder: Predicate<Order> = pipe(
-  isPremiumTier,
-  Predicate.using((c: { tier: string; }) => c.tier),
-  Predicate.using((o: Order) => o.customer),
-);
-```
+When combining a dynamic list of conditions, chaining `and`/`or` can become tedious. For this, we
+use `all` and `any`.
 
-## Combining many checks with `all` and `any`
-
-When you have an array of checks to apply, `all` (every check must pass) and `any` (at least one
-must pass) are cleaner than chaining `and`/`or`.
+`all` constructs a single predicate that requires every check in the array to pass:
 
 ```ts
-const contentRules: Predicate<string>[] = [
-  (s) => s.length > 0,
-  (s) => s.length <= 500,
-  (s) => !/<script/i.test(s),
-  (s) => !s.includes("\0"),
+const uploadRules: Predicate<File>[] = [
+  (file) => file.size <= 5_000_000,
+  (file) => file.name.endsWith(".png"),
+  (file) => !file.name.includes("draft"),
 ];
 
-const isSafeContent = Predicate.all(contentRules);
+const isValidUpload = Predicate.all(uploadRules);
 
-isSafeContent("Hello world"); // true
-isSafeContent(""); // false — too short
-isSafeContent("<script>...</script>"); // false — rejected pattern
+isValidUpload(activeFile); // Returns true only if all three rules pass
 ```
 
-`any` is useful for allowing a set of alternative conditions:
+`any` constructs a predicate that passes if at least one check in the array succeeds:
 
 ```ts
-const allowedExtensions: Predicate<string>[] = [
-  (name) => name.endsWith(".jpg"),
-  (name) => name.endsWith(".jpeg"),
+const allowedImageFormats: Predicate<string>[] = [
   (name) => name.endsWith(".png"),
+  (name) => name.endsWith(".jpg"),
   (name) => name.endsWith(".webp"),
 ];
 
-const isAcceptedImage = Predicate.any(allowedExtensions);
-
-isAcceptedImage("banner.png"); // true
-isAcceptedImage("script.exe"); // false
+const isSupportedImage = Predicate.any(allowedImageFormats);
 ```
 
-Both `all` and `any` short-circuit internally (`Array.every` and `Array.some`) so predicates that
-come later in the array are skipped once the result is determined.
+Both combinators short-circuit internally (using `Array.prototype.every` and
+`Array.prototype.some`), ensuring that downstream checks are skipped as soon as the outcome is
+determined.
 
-## Bridging from Refinement with `fromRefinement`
-
-When you need to combine a type guard with plain predicates, convert it first:
-
-```ts
-const isString: Refinement<unknown, string> = Refinement.make((x) => typeof x === "string");
-
-const isShortString: Predicate<unknown> = pipe(
-  Predicate.fromRefinement(isString),
-  Predicate.and((x) => (x as string).length < 20),
-);
-
-isShortString("hello"); // true
-isShortString(42); // false — not a string
-isShortString("a very long string that exceeds the limit"); // false — too long
-```
-
-This is a one-way conversion: once you have a `Predicate`, the narrowing information is gone. If you
-need the narrowed type downstream, keep the value as a `Refinement` and use `Refinement.toFilter` or
-`Refinement.toResult` instead. A common mistake is converting too early and then casting
-(`x as string`) to get back the type information you just discarded.
+---
 
 ## When to use Predicate
 
-- You need to negate, combine, or pass around boolean checks as values, and you don't require
-  compile-time type narrowing.
-- You want to lift a check from a primitive type (number, string) to a richer domain type (`User`,
-  `Product`, `Order`) using `using`.
-- You have a variable-length list of conditions to apply uniformly with `all` or `any`.
-- You want to mix a type guard (`Refinement`) with plain checks in a single composition.
+### Use Predicate when:
 
-**Keep using a `Refinement<A, B>` when** the narrowed type needs to flow into subsequent operations
-— for example when you want `Maybe<NonEmptyString>` from `toFilter`, or `Result<E, ValidEmail>` from
-`toResult`. `Predicate` discards that information; `Refinement` preserves it.
+- **Combining simple checks**: You want to negate (`not`), intersect (`and`), or branch (`or`)
+  boolean checks point-free without writing manual arrow wrappers.
+- **Reusing primitive checks**: You want to define atomic logic on `string` or `number` and project
+  it onto deeply nested records using `using`.
+- **Aggregating rules**: You have a variable-length list of validation checks that must all pass
+  (`all`) or of which at least one must pass (`any`).
+
+### Keep using Refinement when:
+
+- **Type narrowing is required**: You are asserting system boundaries (e.g. confirming that an
+  `unknown` payload is a `User` or that a `string` is a branded `Email`), and subsequent pipeline
+  steps require the narrowed type.

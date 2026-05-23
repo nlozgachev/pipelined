@@ -1,67 +1,109 @@
 ---
-title: Duration -- type-safe time
-description: A branded numeric type for durations, preventing unit-mismatch bugs at compile time.
+title: Duration — Type-Safe Time
+description: A branded, compile-time type-safe representation of time quantities to prevent unit-mismatch bugs.
 ---
 
-A function expects milliseconds. You pass seconds. The timer fires a thousand times too fast, the
-animation stutters, or a timeout expires instantly. The values are all plain `number`, so TypeScript
-has no way to flag the mistake. `Duration` wraps a `number` in a compile-time brand that makes the
-unit explicit and the conversions safe.
+Time is one of the most common dimensions modeled in software systems. We constantly configure
+request timeouts, token expirations, cache lifetimes, and execution delays.
 
-## The problem with raw numbers
+In standard JavaScript and TypeScript, time is almost universally modeled as a raw `number`
+representing milliseconds. However, a generic `number` carries no explicit unit information at the
+type level. It is incredibly easy to pass a value in seconds to an API that expects milliseconds,
+causing timers to fire a thousand times too fast, or connecting clients to time out instantly.
+
+Because both values are structurally just `number`, TypeScript cannot flag these unit-mismatch
+errors. The error only surfaces at runtime — often under specific, intermittent network conditions.
+
+`Duration` solves this problem by wrapping time quantities in a compile-time type brand. This makes
+the intended unit explicit, provides safe mathematical conversions, and prevents raw, un-branded
+numbers from being passed to time-sensitive operations.
+
+## The problem with primitive numbers for time
+
+Consider a typical background worker that retries failed requests with a customizable timeout and
+delay:
 
 ```ts
-function delay(ms: number): Promise<void> { ... }
+// What unit is expected here? Seconds? Milliseconds?
+function configureTimeout(timeout: number, retryDelay: number) {
+  // ...
+}
 
-const timeout = 5; // seconds? milliseconds? minutes?
-delay(timeout);    // compiles, probably wrong
+const defaultTimeout = 30; // Seconds?
+const defaultRetry = 500;  // Milliseconds?
+
+configureTimeout(defaultTimeout, defaultRetry);
 ```
 
-Both `timeout` and `ms` are `number`. Nothing prevents you from passing a value in the wrong unit.
-The bug surfaces at runtime -- often intermittently, depending on how far off the scale is.
+Nothing prevents a developer from swapping these arguments or passing the wrong scale. The compiler
+happily accepts `configureTimeout(30, 500)`, even if the function internally treats both arguments
+as milliseconds (making the timeout a practically instant 30 milliseconds).
 
-## Creating a Duration
+To fix this defensively, developers often append unit suffixes to variable names (e.g.,
+`timeoutMs`), but this is a convention that relies entirely on human memory and is easily bypassed.
 
-Every constructor returns a `Duration` whose internal representation is always milliseconds. You
-never need to think about the internal unit -- just pick the constructor that matches your intent:
+## The shift to branded time quantities
+
+`Duration` changes this by raising time from a generic primitive to a distinct, branded type. At
+runtime, a `Duration` is represented purely as a standard number of milliseconds, carrying **zero
+runtime overhead**.
+
+At compile time, however, the nominal type brand prevents it from being mixed with generic numbers
+or other units.
+
+```mermaid
+flowchart TD
+    A["Raw Number (1000)"] -- "Duration.seconds" --> B["Duration (1000ms, Branded)"]
+    B -- "Passed to Task.delay" --> C["Safe, Type-Checked Delay"]
+    A -- "Passed to Task.delay" --> D["Compile Error"]
+```
+
+## Creating Durations
+
+We construct a `Duration` by calling the constructor that matches our mental model of the time
+quantity. The internal representation is normalized to milliseconds automatically:
 
 ```ts
 import { Duration } from "@nlozgachev/pipelined/types";
 
 const halfSecond  = Duration.milliseconds(500);
-const twoSeconds  = Duration.seconds(2);
-const fiveMinutes = Duration.minutes(5);
-const oneHour     = Duration.hours(1);
-const oneDay      = Duration.days(1);
+const threeSeconds = Duration.seconds(3);
+const tenMinutes   = Duration.minutes(10);
+const twelveHours  = Duration.hours(12);
+const oneDay       = Duration.days(1);
 ```
 
-Because `Duration` is a branded `number`, TypeScript will reject a raw `number` where a `Duration`
-is expected:
+Once branded, TypeScript will reject any attempt to pass a raw number where a `Duration` is
+expected:
 
 ```ts
-declare function sleep(d: Duration): Promise<void>;
+declare function sleep(duration: Duration): Promise<void>;
 
-sleep(1000);                      // Type error -- number is not Duration
-sleep(Duration.milliseconds(1000)); // OK
+// @ts-expect-error: Argument of type 'number' is not assignable to parameter of type 'Duration'
+sleep(1000);
+
+// Correct usage:
+sleep(Duration.seconds(1));
 ```
 
-## Reading a Duration
+## Converting Durations back to primitives
 
-Unwrappers convert a `Duration` back to a plain `number` in the unit you choose:
+When interfacing with third-party libraries, native browser APIs, or database drivers that require
+plain numbers, we unwrap the `Duration` into the specific unit we need:
 
 ```ts
-const d = Duration.minutes(1.5);
+const duration = Duration.minutes(1.5);
 
-Duration.toMilliseconds(d); // 90000
-Duration.toSeconds(d);      // 90
-Duration.toMinutes(d);      // 1.5
-Duration.toHours(d);        // 0.025
-Duration.toDays(d);         // ~0.00104
+Duration.toMilliseconds(duration); // 90000
+Duration.toSeconds(duration);      // 90
+Duration.toMinutes(duration);      // 1.5
+Duration.toHours(duration);        // 0.025
 ```
 
-## Arithmetic
+## Curried time arithmetic
 
-`add` and `subtract` are curried and data-last, so they compose naturally in `pipe`:
+We can perform arithmetic on durations. `Duration.add` and `Duration.subtract` are curried,
+data-last operations that allow us to adjust time quantities cleanly inside a `pipe`:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -69,61 +111,58 @@ import { pipe } from "@nlozgachev/pipelined/composition";
 const requestTimeout = Duration.seconds(30);
 const networkLatency = Duration.milliseconds(200);
 
-const total    = pipe(requestTimeout, Duration.add(networkLatency));
-const adjusted = pipe(total, Duration.subtract(Duration.seconds(5)));
+// Add network latency and subtract a safety margin
+const adjustedTimeout = pipe(
+  requestTimeout,
+  Duration.add(networkLatency),
+  Duration.subtract(Duration.seconds(5))
+);
 
-Duration.toSeconds(total);    // 30.2
-Duration.toSeconds(adjusted); // 25.2
+Duration.toSeconds(adjustedTimeout); // 25.2
 ```
 
-## Composing with Task
+## Deep integration with asynchronous APIs
 
-`Task.delay`, `Task.timeout`, `Task.repeat`, and `Task.repeatUntil` all accept `number | Duration`.
-When you pass a `Duration`, the intent is self-documenting and the compiler guards against unit
-errors:
+Within the `pipelined` ecosystem, all core time-sensitive operations strictly require `Duration`
+types rather than raw numbers. This guarantees that delays, repeating poll tasks, and timeouts are
+safe by default:
 
 ```ts
 import { Task } from "@nlozgachev/pipelined/core";
 
-pipe(
-  Task.resolve("ready"),
-  Task.delay(Duration.seconds(1))    // clear: one second
+// 1. Delaying execution
+const delayedTask = pipe(
+  Task.resolve("data"),
+  Task.delay(Duration.seconds(2))
 );
 
-pipe(
-  slowComputation,
-  Task.timeout(Duration.seconds(5), () => "timed out")
+// 2. Setting a computation timeout
+const guardedTask = pipe(
+  fetchLargeDataset,
+  Task.timeout(Duration.seconds(10), () => "timeout_error")
 );
 
-pipe(
-  pollSensor,
-  Task.repeat({ times: 10, delay: Duration.milliseconds(500) })
+// 3. Scheduling a recurring poll
+const pollingTask = pipe(
+  checkQueueStatus,
+  Task.repeat({ times: 5, delay: Duration.milliseconds(500) })
 );
-```
-
-## Pipe composition
-
-```ts
-const retryDelay  = Duration.seconds(1);
-const maxDuration = Duration.minutes(2);
-
-const budget = pipe(
-  maxDuration,
-  Duration.subtract(Duration.seconds(10)),   // leave a margin
-  Duration.add(retryDelay),                  // account for one retry
-);
-
-Duration.toSeconds(budget); // 111
 ```
 
 ## When to use Duration
 
-Reach for `Duration` whenever a function accepts a time value:
+### Use Duration when
 
-- **Timeouts and delays** -- `Task.delay`, `Task.timeout`, HTTP timeouts, animation durations.
-- **Interval configuration** -- polling periods, debounce windows, rate-limit buckets.
-- **Domain modelling** -- subscription periods, cache TTLs, SLA thresholds.
+- You are writing or configuring time-based logic — such as debounces, throttling, retry backoffs,
+  connection timeouts, or cache TTL policies.
+- You want to eliminate ambiguous time parameters (e.g. `timeout: number`) from your internal APIs
+  and prevent caller-side unit errors.
+- You are using core `pipelined` time utilities like `Task.delay`, `Task.timeout`, or `Op`
+  schedules, which enforce `Duration` at the compiler level.
 
-If your function currently takes `ms: number`, switching to `ms: number | Duration` is backward
-compatible -- existing callers that pass a raw number still work, while new callers can opt into the
-branded version for stronger guarantees.
+### Use raw numbers when
+
+- You are writing low-level utility functions that interface directly with raw, un-branded system
+  timestamps (such as `Date.now()`).
+- You are optimizing performance-critical rendering frames or real-time simulation loops where the
+  instantiation of intermediate branded types would introduce garbage collection overhead.

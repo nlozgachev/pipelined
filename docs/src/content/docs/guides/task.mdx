@@ -1,424 +1,308 @@
 ---
-title: Task — lazy async
-description: Model lazy async computations that are guaranteed to succeed — nothing runs until called.
+title: Task — Lazy Asynchronous Work
+description: Model asynchronous operations as lazy, infallible blueprints that only execute when explicitly called.
 ---
 
 import { Aside } from '@astrojs/starlight/components'
 
-Promises are JavaScript's built-in tool for async work, but they have two quirks that make them
-hard to compose. They start immediately when created, so you can't build a pipeline and hand it
-around before any work begins. And they can reject, leaking failure as an untyped exception that
-callers have no way to anticipate from the return type alone. `Task<A>` solves both.
+In modern JavaScript, asynchronous operations are modeled using `Promise` objects. Promises are highly convenient runtime constructs, but they have two specific design characteristics that make them challenging to compose cleanly:
 
-## The problems with Promises
+1.  **Promises are eager**: The moment a Promise is created, the underlying work starts executing.
+2.  **Promises are fallible**: A Promise can reject, throwing an untyped exception that bypasses the static type system.
 
-**Promises are eager.** A Promise starts the moment it's created:
+Because a Promise is eager, you cannot build a pipeline of asynchronous transformations and pass it around as a pure, inactive description before any work actually begins. By the time you have the Promise in hand, the network request is already in flight.
 
 ```ts
-const p = new Promise<void>((resolve) => setTimeout(resolve, 5000));
-// the 5-second countdown is already running
+// Eager execution: the timer starts immediately
+const delayPromise = new Promise<void>((resolve) => setTimeout(resolve, 5000));
 ```
 
-You can't build a pipeline of async steps and pass it around before any work begins — by the time
-you have the Promise in hand, the work is already underway.
+Because Promises can reject, failure leaks out as an untyped runtime exception. This forces you to write defensive `try/catch` blocks at call sites, and makes it impossible to tell from a function's type signature whether it can fail.
 
-**Promises can reject.** Failure leaks out as an untyped exception rather than as a typed value.
-This forces `try/catch` at every call site and makes it impossible to tell from a function's return
-type whether it can fail.
-
-## The Task approach
-
-A `Task<A>` is a zero-argument function that returns a `Deferred<A>`:
+`Task<A>` solves both problems. A `Task` is simply a zero-argument function that returns a `Deferred<A>`:
 
 ```ts
 type Task<A> = () => Deferred<A>;
 ```
 
-`Deferred<A>` is a minimal async value: it supports `await` but has no `.catch()`, `.finally()`, or
-chainable `.then()`. This reinforces the infallibility guarantee at the type level — there is simply
-no way to register a rejection handler on a `Deferred`.
+`Deferred<A>` is a minimal, infallible asynchronous value. It supports `await` but has no `.catch()` or `.finally()` methods. At the type level, a `Deferred` value is guaranteed never to reject.
 
-This addresses both problems with Promises. The function wrapper makes it lazy — nothing runs until
-you call it. And by treating Tasks as always-succeeding computations, failure is pushed into the
-type: `TaskResult<E, A>` is `Task<Result<E, A>>`, so it's impossible to overlook.
-
-<Aside type="note" title="Task is always infallible">
-A `Task<A>` always resolves — it never rejects. There is no `.catch()`, no rejection handler, and
-no `fail` constructor. If an operation can fail, use `TaskResult<E, A>` instead, which keeps the
-failure as a typed value rather than an unhandled exception.
-</Aside>
+By wrapping our async work in a function, we make it **lazy**—nothing runs until you explicitly invoke the Task. And by treating the core `Task` as infallible, we force all possible failures into the data channel: `TaskResult<E, A>` is a `Task` yielding a `Result<E, A>`, making failures impossible to overlook.
 
 ```ts
 import { Task } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
 
-const getTimestamp: Task<number> = Task.resolve(Date.now());
+const getTimestamp = Task.resolve(Date.now()); // Task<number>
 
-// Nothing has happened yet. getTimestamp is just a description.
-
-const pipeline = pipe(
+// 1. Describe the pipeline — nothing executes
+const formattedTime = pipe(
   getTimestamp,
   Task.map((ts) => new Date(ts).toISOString()),
-);
+); // Task<string>
 
-// Still nothing. pipeline is a new Task<string>.
-
-const result = await pipeline(); // NOW it runs
+// 2. Explicitly execute the pipeline at the edge of your app
+const timeString = await formattedTime(); // The work starts here
 ```
 
-The pipeline is built first, then executed once by calling it. You can pass it around, compose it
-further, or call it multiple times.
+---
 
 ## Creating Tasks
 
+We lift asynchronous values into a `Task` context depending on whether they are already resolved or require evaluation:
+
 ```ts
-Task.resolve(42); // Task that resolves to 42 immediately
-Task.from(() => Promise.resolve(Date.now())); // Task from any Promise-returning function
+// Resolving immediately
+const constantTask = Task.resolve(42); // Task<number>
+
+// Wrapping a Promise-returning function
+const fetchTimestamp = Task.from(() => Promise.resolve(Date.now())); // Task<number>
 ```
 
-`Task.from` is an explicit alias for writing `() => somePromise()`. It's mainly useful for clarity:
+`Task.from` is a clear, explicit alias for wrapping a promise factory `() => Promise<A>`. It serves as the primary gateway for lifting standard async library calls into our functional system.
+
+---
+
+## Transforming and Sequencing
+
+We can transform and chain our asynchronous blueprints while they are still in their lazy, unexecuted state.
+
+### Transforming values with `map`
+
+`map` describes how the resolved value should change once the Task eventually runs, returning a new `Task` without triggering any execution:
 
 ```ts
-const getTimestamp: Task<number> = Task.from(() => Promise.resolve(Date.now()));
-```
+const double = (n: number) => n * 2;
 
-## Transforming with `map`
-
-`map` transforms the resolved value without running the Task:
-
-```ts
-pipe(
+const doubledTask = pipe(
   Task.resolve(5),
-  Task.map((n) => n * 2),
-)(); // Promise resolving to 10
+  Task.map(double),
+); // Task<number>
+
+const result = await doubledTask(); // 10
 ```
 
-Chaining maps builds a description of the transformation; the actual async work happens when you
-call the result.
+### Sequential chains with `chain`
 
-## Sequencing with `chain`
-
-`chain` sequences two async operations where the second depends on the result of the first:
+When a transformation itself returns another `Task`, we use `chain` to execute them sequentially and flatten the resulting context:
 
 ```ts
-const readUserId: Task<string> = () => Promise.resolve(session.userId);
+const getSessionUserId = (): Task<string> => Task.resolve("user_abc");
 
-const loadPreferences =
-  (userId: string): Task<Preferences> =>
-  () =>
-    Promise.resolve(prefsCache.get(userId));
+const fetchUserPreferences = (userId: string): Task<Preferences> =>
+  Task.from(() => preferencesService.get(userId));
 
-const userPrefs: Task<Preferences> = pipe(
-  readUserId,
-  Task.chain(loadPreferences),
-);
+const userPrefs = pipe(
+  getSessionUserId(),
+  Task.chain(fetchUserPreferences),
+); // Task<Preferences>
 
-await userPrefs(); // reads user ID, then loads their preferences
+const prefs = await userPrefs(); // Fetches userId first, then fetches preferences
 ```
 
-Each step waits for the previous one to resolve before starting.
+---
 
-## Running Tasks in parallel with `all`
+## Concurrency Controls
 
-`Task.all` takes an array of Tasks and runs them simultaneously, collecting all results:
+Unlike raw Promises, which require manual coordination using `Promise.all` or `Promise.race`, `Task` provides clean, functional combinators for parallel, raced, or sequential execution.
+
+### Parallel execution with `all`
+
+`Task.all` runs an array of Tasks simultaneously and collects all results into a typed tuple:
 
 ```ts
-const [config, locale, theme] = await Task.all([
-  loadConfig,
-  detectLocale,
-  () => loadTheme(userId),
+const [config, user] = await Task.all([
+  loadConfigTask,
+  fetchUserTask,
 ])();
 ```
 
-The return type is inferred from the input tuple — if you pass `[Task<Config>, Task<string>]`, you
-get back `Task<[Config, string]>`.
+The return type is structurally matched to your input: passing `[Task<Config>, Task<User>]` yields a `Task<[Config, User]>` tuple.
 
-Easy mix-up: `all` runs every task simultaneously. If tasks must not overlap or order matters, use
-`sequential` instead.
+### Raced execution with `race`
 
-## Racing Tasks with `race`
-
-`Task.race` starts all Tasks simultaneously and resolves as soon as the first one completes. The
-others are abandoned — their results are ignored.
+`Task.race` starts multiple Tasks simultaneously and resolves with the outcome of whichever Task completes first, abandoning the remaining in-flight tasks:
 
 ```ts
-const primary  = Task.from(() => fetchFromPrimaryRegion(id));
-const fallback = Task.from(() => fetchFromFallbackRegion(id));
+const fastestFetch = Task.race([
+  fetchFromPrimaryRegion,
+  fetchFromSecondaryRegion,
+]);
 
-const fastest = Task.race([primary, fallback]);
-const data = await fastest(); // whichever responds first
+const data = await fastestFetch(); // Whichever region responds first
 ```
 
-This is useful for hedged requests: fire the same request at multiple endpoints and accept the first
-response, reducing tail latency.
+### Sequential queueing with `sequential`
 
-## Running Tasks one at a time with `sequential`
-
-When order matters or tasks must not overlap, `Task.sequential` runs each Task only after the
-previous one resolves, collecting all results in an array:
+When execution order matters, or when running tasks in parallel would trigger race conditions or overload resources, `Task.sequential` executes each Task in submission order:
 
 ```ts
-const steps = [
-  Task.from(() => acquireLock(resourceId)),
-  Task.from(() => processResource(resourceId)),
-  Task.from(() => releaseLock(resourceId)),
-];
-
-const results = await Task.sequential(steps)();
-// results[0] = lock handle, results[1] = processed value, results[2] = release confirmation
+const results = await Task.sequential([
+  () => acquireLock(resourceId),
+  () => processPayload(resourceId),
+  () => releaseLock(resourceId),
+])();
 ```
 
-`Task.sequential` is the counterpart to `Task.all`: use `all` when tasks are independent and can
-overlap, and `sequential` when each step must complete before the next begins.
+---
 
-## Delaying execution
+## Operational Utilities
 
-`Task.delay` adds a pause before the Task runs:
+### Delayed execution with `delay`
+
+`Task.delay` introduces a timed pause before the Task executes:
 
 ```ts
-pipe(Task.resolve("ping"), Task.delay(1000))(); // resolves to "ping" after 1 second
+const delayedGreeting = pipe(
+  Task.resolve("Hello"),
+  Task.delay(1000), // Delays for 1 second
+);
 ```
 
-Useful for debouncing or rate limiting.
+### Standard cancellation with `abortable`
 
-## Cancelling in-flight work with `abortable`
-
-`Task.abortable` wraps a factory function that receives an `AbortSignal` and returns a `Task` plus
-a shared `abort` handle. Calling `abort()` cancels whichever call is currently in flight, and the
-next call starts fresh:
+`Task.abortable` wraps a promise factory, yielding a managed `Task` alongside a shared `abort` function. Invoking `abort()` immediately cancels any active, in-flight execution:
 
 ```ts
-const { task: searchUsers, abort } = Task.abortable(
-  (signal) => searchLocalIndex(query, signal),
+const { task: searchIndex, abort } = Task.abortable(
+  (signal) => fetchSearchResults(query, signal),
 );
 
-// User types quickly — each keystroke cancels the previous request
-input.addEventListener("input", async (e) => {
-  abort(); // cancel whatever is in flight
-  const results = await searchUsers();
+// If user types rapidly:
+input.addEventListener("input", async () => {
+  abort(); // Cancel the active search request
+  const results = await searchIndex(); // Start a fresh search
 });
 ```
 
-If you call `task()` while a previous call is still running, the previous call is aborted
-automatically — you don't need to call `abort()` manually before each invocation. Both the explicit
-`abort()` and an outer `AbortSignal` passed to `task(signal)` are respected.
+Calling `task()` while a previous invocation is still active will automatically abort the previous run.
 
-## Running a task in a pipe chain
+### Ending pipelines with `run`
 
-`Task.run` executes a task at the end of a `pipe` chain. Without it, a composed task needs
-to be called with `task(signal)` outside the pipe — which splits the composition in two. `Task.run`
-closes the pipe naturally:
-
-```ts
-const result = await pipe(
-  loadConfig,
-  Task.map(config => config.apiUrl),
-  Task.run(),
-);
-```
-
-Pass a signal to cancel the task from outside:
+When composing inline pipelines, `Task.run` allows you to execute the Task at the terminal end of the `pipe` chain, accepting an optional `AbortSignal` for external cancellation:
 
 ```ts
 const controller = new AbortController();
-const result = await pipe(
-  loadConfig,
-  Task.map(config => config.apiUrl),
+
+const configUrl = await pipe(
+  loadConfigTask,
+  Task.map((cfg) => cfg.apiUrl),
   Task.run(controller.signal),
 );
 ```
 
-## Repeating Tasks
+---
 
-`repeat` and `repeatUntil` run a Task multiple times unconditionally — useful for scheduled polling
-or heartbeats, not error recovery. This fits naturally with Task's guarantee that it never fails.
+## Polling and Repetition
 
-`Task.repeat` runs a Task a fixed number of times and collects every result:
+`Task` provides built-in utilities to repeat executing a task, designed naturally around the guarantee that Tasks are infallible.
 
-```ts
-pipe(pollSensor, Task.repeat({ times: 5, delay: 1000 }))(); // Task<readonly Reading[]> — 5 readings, one per second
-```
-
-`Task.repeatUntil` keeps running until the result satisfies a predicate, then returns it. This is
-the natural shape for polling:
+`repeat` executes a Task a fixed number of times, collecting all outcomes:
 
 ```ts
-pipe(
-  checkDeploymentStatus,
-  Task.repeatUntil({ when: (s) => s === "ready", delay: 2000 }),
-)(); // checks every 2s until the deployment is ready
+const readings = await pipe(
+  readSensorTask,
+  Task.repeat({ times: 5, delay: 1000 }), // Reads 5 times, waiting 1s between reads
+)();
 ```
 
-To avoid polling indefinitely, pass `maxAttempts`. When the limit is reached the last result is
-returned regardless of whether the predicate passed:
+`repeatUntil` polls a Task repeatedly on an interval until the returned value satisfies a predicate:
 
 ```ts
-pipe(
-  checkDeploymentStatus,
-  Task.repeatUntil({ when: (s) => s === "ready", delay: 2000, maxAttempts: 10 }),
-)(); // gives up after 10 checks
+const readyState = await pipe(
+  checkStatusTask,
+  Task.repeatUntil({
+    when: (status) => status === "COMPLETED",
+    delay: 2000,
+    maxAttempts: 10, // Avoid infinite loops
+  }),
+)();
 ```
 
-Both accept an optional `delay` (in ms) inserted between runs. The delay is not applied after the
-final run.
+---
 
-## The Task family
+## The Task Family
 
-`Task<A>` is for async operations that always succeed. When failure is possible, use the specialised
-variants — for most async work that can fail, `TaskResult` is what you want:
+While `Task<A>` is excellent for operations that never fail, typical real-world async tasks involve network or database requests that can yield errors. For these, we use specialized variants within the Task family.
 
-**`TaskResult<E, A>`** — an async operation that can fail with a typed error. It's
-`Task<Result<E, A>>` under the hood:
+### TaskResult
+
+`TaskResult<E, A>` represents a fallible async task, equivalent to `Task<Result<E, A>>` under the hood. It serves as the primary tool for most asynchronous applications:
 
 ```ts
 import { TaskResult } from "@nlozgachev/pipelined/core";
 
-const fetchUser = (id: string): TaskResult<string, User> =>
+const fetchProfile = (userId: string): TaskResult<string, User> =>
   TaskResult.tryCatch(
-    (signal) => fetch(`/users/${id}`, { signal }).then((r) => r.json()),
-    (e) => `Fetch failed: ${e}`,
+    (signal) => fetch(`/users/${userId}`, { signal }).then((r) => r.json()),
+    (error) => `Could not fetch user: ${error}`,
   );
 
-const name = pipe(
-  fetchUser("123"),
+const userDisplayName = pipe(
+  fetchProfile("123"),
   TaskResult.map((user) => user.name),
-  TaskResult.getOrElse(() => "Unknown"),
+  TaskResult.getOrElse(() => "Guest User"),
 );
 
-await name(); // "Alice" or "Unknown"
+const name = await userDisplayName(); // Returns a string safely (never throws)
 ```
 
-### Cancelling a multi-step chain
+### Cancellation propagation in TaskResult chains
 
-`TaskResult.chain` forwards the call-site signal to each inner step automatically. A single
-`AbortController` at the call site reaches whichever request is currently in flight — no extra
-wiring at each step:
+When sequencing multiple `TaskResult` steps, `TaskResult.chain` propagates the abort signal down the line automatically. An abort triggered at the call site immediately cancels whichever step is currently in flight:
 
 ```ts
-const fetchReport = (id: string): TaskResult<string, Report> =>
+const fetchReport = (reportId: string): TaskResult<string, Report> =>
   pipe(
-    TaskResult.tryCatch(
-      (signal) => fetch(`/reports/${id}/start`, { signal }).then((r) => r.json()),
-      String,
-    ),
-    TaskResult.chain((step1) =>
-      TaskResult.tryCatch(
-        (signal) => fetch(step1.nextUrl, { signal }).then((r) => r.json()),
-        String,
-      )
-    ),
-    TaskResult.chain((step2) =>
-      TaskResult.tryCatch(
-        (signal) => fetch(step2.dataUrl, { signal }).then((r) => r.json()),
-        String,
-      )
-    ),
+    TaskResult.tryCatch((sig) => initiateJob(reportId, sig), String),
+    TaskResult.chain((job) => TaskResult.tryCatch((sig) => checkJobStatus(job.id, sig), String)),
+    TaskResult.chain((status) => TaskResult.tryCatch((sig) => downloadData(status.url, sig), String)),
   );
 
 const controller = new AbortController();
-const result = await fetchReport(id)(controller.signal);
-// controller.abort() at any point cancels the step currently in flight
-// and the chain stops — no subsequent requests are made
+const result = await fetchReport("report_42")(controller.signal);
+
+// Invoking controller.abort() at any point will cancel the active request
+// and instantly stop the chain, preventing subsequent network calls.
 ```
 
-You can add as many `chain` steps as the transaction requires. The signal propagates through all
-of them without any extra wiring.
+### TaskMaybe
 
-### Running a TaskResult in a pipe chain
-
-`TaskResult.run` is the terminal step for a `TaskResult` pipe chain. It executes the task
-and returns `Promise<Result<E, A>>`:
-
-```ts
-const controller = new AbortController();
-const result = await pipe(
-  fetchUser("42"),
-  TaskResult.chain(user => fetchPosts(user.id)),
-  TaskResult.run(controller.signal),
-);
-
-if (Result.isOk(result)) render(result.value);
-else showError(result.error);
-```
-
-The signal threads through all tasks in the chain — abort at any point and whichever request
-is in flight is cancelled immediately.
-
-**`TaskMaybe<A>`** — an async operation that may return nothing. It's `Task<Maybe<A>>`:
+`TaskMaybe<A>` represents an asynchronous operation that may yield nothing, equivalent to `Task<Maybe<A>>`:
 
 ```ts
 import { TaskMaybe } from "@nlozgachev/pipelined/core";
 
-const findUser = (id: string): TaskMaybe<User> =>
+const lookupUser = (id: string): TaskMaybe<User> =>
   TaskMaybe.tryCatch(() => db.users.findById(id));
-
-const displayName = pipe(
-  findUser("123"),
-  TaskMaybe.map((user) => user.name),
-  TaskMaybe.getOrElse(() => "Guest"),
-);
-
-await displayName();
 ```
 
-`TaskMaybe.tryCatch` catches any rejection and converts it to `None` — useful when you treat a
-failed lookup the same as a missing value.
+---
 
-**`TaskValidation<E, A>`** — an async operation that accumulates errors. Used for async validation
-where all checks should run regardless of individual failures.
+## Running Tasks at boundaries
 
-`TaskResult` and `TaskMaybe` follow the same API conventions as their synchronous counterparts
-(`map`, `chain`, `match`, `getOrElse`, `recover`). `TaskValidation` mirrors `Validation` —
-`ap` instead of `chain` for error accumulation, plus `product` and `productAll` for combining
-independent async validations. If you've used `Result`, `TaskResult` will be immediately familiar.
-
-## Running a Task
-
-A Task is just a function. To run it, call it — calling returns a `Deferred<A>`, which you can
-`await` directly:
+Because a `Task` is simply a function, you run it by invoking it. Invoking a `Task<A>` yields a `Deferred<A>`, which is highly compatible with the standard `Promise` ecosystem. You can `await` it directly within any standard `async/await` block:
 
 ```ts
-const task: Task<number> = Task.resolve(42);
-const result: number = await task();
+const value = await fetchProfile("123")(); // Ok(user) or Err(error)
 ```
 
-For `TaskResult` and `TaskMaybe`, the result is a wrapped value:
+If you are interfacing with external libraries or frameworks that strictly require a standard `Promise` instance, you can convert the `Deferred` value using `Deferred.toPromise`:
 
 ```ts
-const taskResult: TaskResult<string, number> = TaskResult.ok(42);
-const result: Result<string, number> = await taskResult(); // Ok(42)
+import { Deferred } from "@nlozgachev/pipelined/core";
+
+const profilePromise = Deferred.toPromise(fetchProfile("123")()); // Promise<Result<string, User>>
 ```
 
-Most of the time you'll call the pipeline at one point — the outer boundary where your application
-produces a final result or triggers a side effect.
-
-When you need an explicit `Promise<A>` — for example, to pass to a third-party API that requires
-one — convert the `Deferred` with `Deferred.toPromise`:
-
-```ts
-import { Deferred, Task } from "@nlozgachev/pipelined/core";
-
-const p: Promise<number> = Deferred.toPromise(task());
-```
-
-This is the only case where you need to reach for `Deferred` directly. Everywhere inside a `pipe`
-chain, `await task()` is all you need.
+---
 
 ## When to use Task vs async/await
 
-Use `Task` when:
+### Use Task when:
+*   **You need composition**: You want to define, combine, or delay asynchronous steps point-free inside `pipe` chains before triggering execution.
+*   **You need concurrency controls**: You require parallel, raced, or ordered sequential queues (`Task.all`, `Task.race`, `Task.sequential`).
+*   **You want typed errors**: You want compiler-enforced error handling via `TaskResult` rather than catching untyped exceptions in standard `async/await` blocks.
 
-- You want to build a pipeline of async steps that you can compose, pass around, or delay before
-  executing
-- You need parallel execution via `Task.all`, first-wins via `Task.race`, or ordered execution via `Task.sequential`
-- You want typed error handling with `TaskResult` instead of try/catch around async functions
-
-Keep using `async/await` directly when:
-
-- The operation is a one-liner with no composition needed
-- You're inside a function body and the imperative style is clearer
-- You're working with code that isn't pipeline-oriented
-
-The two styles interoperate freely. `Task.from(() => someAsyncFunction())` wraps any async function
-into a Task, and `await task()` integrates back into any async/await context — the `Deferred` that
-`task()` returns is thenable, so the runtime handles it exactly like a Promise.
+### Keep using async/await when:
+*   **Operations are standalone**: Simple, linear scripts or internal functions where functional composition and pipelining add zero architectural value.

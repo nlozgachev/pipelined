@@ -1,166 +1,151 @@
 ---
-title: Brand — distinguishing values
-description: Make the type system distinguish values that share the same underlying type.
+title: Brand — Distinguishing Values
+description: Use compile-time phantom tags to distinguish between primitive values that share the same underlying type, preventing semantic bugs at zero runtime cost.
 ---
 
-TypeScript's structural typing is usually a strength — types that look the same are treated the
-same, without ceremony. For primitive values like IDs and codes, though, it can work against you:
-every `string` is interchangeable with every other `string`, so a `CustomerId` and a `UserId` are
-compatible even when they shouldn't be. `Brand<K, T>` uses a phantom type to make them distinct at
-compile time, with no runtime cost.
+TypeScript’s type system is built on **structural typing**. If two types have the same shape, they
+are treated as compatible and fully interchangeable.
 
-## The problem with structural typing
+Usually, this structural compatibility is a major strength — it allows us to compose objects and
+interfaces with minimal ceremony. However, when working with primitive values like identifiers,
+measurement units, or validated strings, structural typing can work against us.
 
-TypeScript uses structural typing: two types are compatible if they have the same shape. For
-primitives, this means every `string` is interchangeable with every other `string`:
+In standard TypeScript, every `string` is structurally compatible with every other `string`.
+Consider this everyday scenario:
 
 ```ts
 function getUser(id: string): User { ... }
 function getProduct(id: string): Product { ... }
 
-const customerId = "c-99";
-getUser(customerId); // no error — it's just a string
+const customerId = "cust_99";
+getUser(customerId); // Compiles with zero errors
 ```
 
-The function signature says `string`. TypeScript sees a `string`. It compiles. But `customerId` is
-semantically wrong here — the function expects a user ID, not a customer ID. The bug is invisible to
-the type system.
+The compiler sees a `string`, receives a `string`, and remains silent. Yet, passing a customer
+identifier to a function expecting a user identifier is a clear semantic bug. The type system has
+failed to capture our design intent because `string` is too permissive.
 
-## The Brand approach
-
-`Brand` adds a phantom tag to a type — a marker that exists only at compile time, with zero runtime
-overhead. The underlying value is still a plain `string`, but TypeScript now treats `UserId` and
-`CustomerId` as distinct:
+`Brand<K, T>` solves this. It adds a compile-time **phantom tag** `K` to a primitive type `T`. It
+allows us to overlay a nominal (named) type system on top of TypeScript’s structural one:
 
 ```ts
 import { Brand } from "@nlozgachev/pipelined/types";
 
 type UserId     = Brand<"UserId",     string>;
 type CustomerId = Brand<"CustomerId", string>;
+```
 
+The underlying values remain plain JavaScript strings, but the compiler now treats `UserId` and
+`CustomerId` as completely distinct, incompatible types.
+
+---
+
+## Creating and Wrapping Brands
+
+To lift a raw primitive value into a branded context, we first declare a wrapping constructor using
+`Brand.wrap`:
+
+```ts
 const toUserId     = Brand.wrap<"UserId",     string>();
 const toCustomerId = Brand.wrap<"CustomerId", string>();
 
-function getUser(id: UserId): User { ... }
-
-const uid = toUserId("u-42");
-const cid = toCustomerId("c-99");
-
-getUser(uid); // ✓
-getUser(cid); // TypeError: Argument of type 'CustomerId' is not assignable to parameter of type 'UserId'
+const uid = toUserId("usr_42");    // Typed as UserId
+const cid = toCustomerId("cust_99"); // Typed as CustomerId
 ```
 
-The type error happens at the call site, not at runtime. The values themselves are unchanged — `uid`
-is still just the string `"u-42"`.
-
-## Creating a brand
+At the compile level, passing a `CustomerId` to a function expecting a `UserId` will now trigger a
+static type error:
 
 ```ts
-type UserId = Brand<"UserId", string>;
+function getUserProfile(id: UserId): User { ... }
 
-const toUserId = Brand.wrap<"UserId", string>();
+getUserProfile(uid); // ✓ Compiles successfully
+getUserProfile(cid); // ✗ Static Type Error: CustomerId is not assignable to UserId
 ```
 
-`Brand.wrap<K, T>()` returns a constructor. Calling that constructor wraps a value of type `T` in
-the brand:
+This error is resolved entirely at compile time.
+
+---
+
+## Unwrapping Values
+
+Because `Brand<K, T>` structurally extends the underlying type `T`, any branded value is naturally
+assignable back to its raw type without requiring any conversion:
 
 ```ts
-const id: UserId = toUserId("u-42"); // UserId
+const id: UserId = toUserId("usr_42");
+const rawString: string = id; // Compiles successfully — UserId extends string
 ```
 
-The convention is to name the constructor `to<TypeName>` — `toUserId`, `toPositiveNumber`,
-`toEmailAddress`. This makes it clear that the constructor is performing a conceptual cast, not just
-a rename.
-
-## Unwrapping
-
-Because `Brand<K, T>` extends `T`, branded values are assignable to the underlying type without any
-conversion:
+If you prefer to make this unwrapping explicit in your code to document your boundary transitions,
+you can use `Brand.unwrap`:
 
 ```ts
-const id: UserId = toUserId("u-42");
-const raw: string = id; // works — UserId extends string
+const rawString: string = Brand.unwrap(id); // "usr_42"
 ```
 
-If you need to be explicit, `Brand.unwrap` does the same thing while making the intent clear in the
-code:
+---
+
+## Zero Runtime Cost
+
+The brand tag exists solely for the benefit of the TypeScript compiler. The compiled JavaScript
+output contains no wrapper objects, no class instantiations, and no tag fields on the actual values.
+
+`Brand.wrap` and `Brand.unwrap` compile directly down to identity functions: `x => x`. They incur
+**zero runtime memory allocation** and zero CPU overhead.
+
+---
+
+## Structural Integrity: Smart Constructors
+
+Branding becomes exceptionally powerful when combined with validation to build **Smart
+Constructors**.
+
+A standard brand constructor like `toUserId` is unchecked — it trusts you to supply a valid string.
+For branded types that must enforce invariants (such as a valid email address, a non-empty string,
+or a positive integer), we wrap the brand creator in a validation function:
 
 ```ts
-const raw: string = Brand.unwrap(id); // "u-42"
-```
+import { Maybe } from "@nlozgachev/pipelined/core";
 
-## Zero runtime cost
-
-The brand is entirely erased by the TypeScript compiler. At runtime, `Brand.wrap` and `Brand.unwrap`
-are identity functions — they return the value unchanged. No wrapper object, no extra allocation, no
-tag field in the actual value. The only thing that exists is the compile-time phantom type.
-
-## Common use cases
-
-**Distinct ID types** — prevent mixing IDs that share the same underlying type:
-
-```ts
-type UserId = Brand<"UserId", string>;
-type ProductId = Brand<"ProductId", string>;
-type OrderId = Brand<"OrderId", string>;
-```
-
-**Validated strings** — encode that a string has passed a check:
-
-```ts
-type Email = Brand<"Email", string>;
-type Slug = Brand<"Slug", string>;
-type NonEmpty = Brand<"NonEmpty", string>;
-```
-
-**Units of measurement** — prevent adding metres to kilograms:
-
-```ts
-type Metres = Brand<"Metres", number>;
-type Kilograms = Brand<"Kilograms", number>;
-type Seconds = Brand<"Seconds", number>;
-```
-
-**Sanitised values** — mark strings that have been escaped or sanitised:
-
-```ts
-type SafeHtml = Brand<"SafeHtml", string>;
-```
-
-## Smart constructors
-
-`Brand.wrap` returns an unchecked constructor — it trusts you to provide a valid value. For brands
-that carry invariants (like "this string is a valid email"), wrap the constructor in a function that
-validates first:
-
-```ts
-type Email = Brand<"Email", string>;
+export type Email = Brand<"Email", string>;
 
 const toEmail = Brand.wrap<"Email", string>();
 
-const parseEmail = (s: string): Maybe<Email> =>
+// The only public entryway to create an Email value:
+export const parseEmail = (s: string): Maybe<Email> =>
   s.includes("@") ? Maybe.some(toEmail(s)) : Maybe.none();
 ```
 
-Now the only way to get an `Email` value is through `parseEmail`, which enforces the invariant. Any
-function accepting `Email` knows it has already been validated — it doesn't need to re-check.
+By hiding the raw `toEmail` constructor and only exporting `parseEmail`, we guarantee that **it is
+structurally impossible to instantiate an `Email` type that has not passed validation**.
 
-This pattern — a private raw constructor paired with a public validated one — is called a smart
-constructor. The brand is what makes it work: without it, nothing stops someone from passing a raw
-`string` directly.
+Downstream functions that accept the `Email` type can trust it completely, bypassing redundant
+validation checks:
+
+```ts
+// No need to check for "@" here; the type Email guarantees it has passed parseEmail
+function sendInvoice(email: Email) {
+  smtp.send(Brand.unwrap(email));
+}
+```
+
+---
 
 ## When to use Brand
 
-Reach for `Brand` when you want the type system to distinguish between primitive values that share
-the same underlying type. It is particularly valuable for:
+### Use Brand when:
 
-- **Domain identifiers** — separating `UserId`, `ProductId`, and `OrderId` so they cannot be mixed
-  up.
-- **Validated inputs** — representing strings that have already passed validation, like `Email` or
-  `Slug`.
-- **Units and metrics** — distinguishing between `Seconds` and `Metres` to prevent logic errors.
+- **Preventing identifier mixing**: You want to distinguish between `UserId`, `OrderId`, and
+  `ProductId` to prevent query mismatches.
+- **Enforcing validation invariants**: You want to lock down validated domains like `Email`, `Slug`,
+  or `SecureHtml` using smart constructors.
+- **Distinguishing metrics**: You want to prevent arithmetic errors by separating units like
+  `Seconds`, `Meters`, or `Kilograms`.
 
-Do not use `Brand` if structural compatibility is actually what you want, or if you are wrapping
-complex objects where a simple interface or class type-safety is already sufficient. Since branding
-is a compile-time-only feature with zero runtime overhead, it is best kept for primitive type safety
-where raw types like `string` or `number` are too permissive.
+### Keep using raw types when:
+
+- **Structural compatibility is desired**: You are modeling objects where structural compatibility
+  is the intended architectural behavior.
+- **Working with complex structures**: You are wrapping rich object models that already carry
+  sufficient type distinction through their interface structures.
