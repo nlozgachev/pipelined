@@ -103,7 +103,7 @@ const message = pipe(
 
 Because all four branches are required, there's no way to accidentally skip the loading state or
 forget to handle errors. The type checker will tell you if a case is missing. `fold` is the
-positional form — notAsked, loading, failure, success — if you'd rather not name the cases.
+positional form — failure, notAsked, loading, success — if you'd rather not name the cases.
 
 ## Transforming the success value with `map`
 

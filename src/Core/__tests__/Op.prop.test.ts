@@ -84,7 +84,7 @@ test("Op.tap — always returns the identical outcome reference", () => {
 
 test("Op.fold — handles all outcome kinds without throwing", () => {
 	fc.assert(fc.property(arbOutcome, (o) => {
-		const result = Op.fold((e: string) => `err:${e}`, (v: number) => `ok:${v}`, () => "nil")(o);
+		const result = Op.fold((e: string) => `err:${e}`, () => "nil", (v: number) => `ok:${v}`)(o);
 		expectTypeOf(result).toBeString();
 	}));
 });

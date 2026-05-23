@@ -661,19 +661,19 @@ export namespace Op {
 
 	/**
 	 * Eliminates an Outcome with positional handlers.
-	 * Order: `onErr`, `onOk`, `onNil` — mirrors `Result.fold` for the first two.
+	 * Order: `onErr`, `onNil`, `onOk` — mirrors `Result.fold` for the first and last cases.
 	 *
 	 * @example
 	 * ```ts
 	 * Op.fold(
 	 *   (e) => `error: ${e.message}`,
-	 *   (v) => `value: ${v}`,
 	 *   ()  => "nothing",
+	 *   (v) => `value: ${v}`,
 	 * )(outcome);
 	 * ```
 	 */
 	export const fold =
-		<E, A, B>(onErr: (e: E) => B, onOk: (a: A) => B, onNil: () => B) => (outcome: Outcome<E, A>): B => {
+		<E, A, B>(onErr: (e: E) => B, onNil: () => B, onOk: (a: A) => B) => (outcome: Outcome<E, A>): B => {
 			if (outcome.kind === "OpOk") { return onOk(outcome.value); }
 			if (outcome.kind === "OpErr") { return onErr(outcome.error); }
 			return onNil();

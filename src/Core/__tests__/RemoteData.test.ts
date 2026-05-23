@@ -190,9 +190,9 @@ test("remoteData.ap returns Loading when function is Loading and arg is Success"
 
 test("remoteData.fold handles all four cases", () => {
 	const handler = RemoteData.fold<string, number, string>(
+		(e) => `error: ${e}`,
 		() => "not asked",
 		() => "loading",
-		(e) => `error: ${e}`,
 		(v) => `value: ${v}`,
 	);
 

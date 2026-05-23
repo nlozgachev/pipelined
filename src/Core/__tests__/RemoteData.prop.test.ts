@@ -70,9 +70,9 @@ test("remoteData.getOrElse — returns fallback on non-Success", () => {
 test("remoteData.fold — handles all four variants without throwing", () => {
 	fc.assert(fc.property(arbRemoteData, (rd) => {
 		const result = RemoteData.fold(
+			(e: string) => `failure:${e}`,
 			() => "notAsked",
 			() => "loading",
-			(e: string) => `failure:${e}`,
 			(v: number) => `success:${v}`,
 		)(rd);
 		expectTypeOf(result).toBeString();

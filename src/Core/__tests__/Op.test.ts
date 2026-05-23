@@ -212,7 +212,7 @@ test("Op.match handles Nil", () => {
 // ---------------------------------------------------------------------------
 
 test("Op.fold handles all three cases", () => {
-	const fold = Op.fold((e: string) => `err:${e}`, (v: number) => `ok:${v}`, () => "nil");
+	const fold = Op.fold((e: string) => `err:${e}`, () => "nil", (v: number) => `ok:${v}`);
 	expect(fold(Op.ok(3))).toBe("ok:3");
 	expect(fold(Op.err("x"))).toBe("err:x");
 	expect(fold(Op.nil("aborted"))).toBe("nil");

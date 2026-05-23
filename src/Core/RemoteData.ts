@@ -142,26 +142,26 @@ export namespace RemoteData {
 	 * pipe(
 	 *   userData,
 	 *   RemoteData.fold(
+	 *     e => `Error: ${e}`,
 	 *     () => "Not asked",
 	 *     () => "Loading...",
-	 *     e => `Error: ${e}`,
 	 *     value => `Got: ${value}`
 	 *   )
 	 * );
 	 * ```
 	 */
 	export const fold =
-		<E, A, B>(onNotAsked: () => B, onLoading: () => B, onFailure: (e: E) => B, onSuccess: (a: A) => B) =>
+		<E, A, B>(onFailure: (e: E) => B, onNotAsked: () => B, onLoading: () => B, onSuccess: (a: A) => B) =>
 		(data: RemoteData<E, A>): B => {
 			switch (data.kind) {
+				case "Failure": {
+					return onFailure(data.error);
+				}
 				case "NotAsked": {
 					return onNotAsked();
 				}
 				case "Loading": {
 					return onLoading();
-				}
-				case "Failure": {
-					return onFailure(data.error);
 				}
 				case "Success": {
 					return onSuccess(data.value);
