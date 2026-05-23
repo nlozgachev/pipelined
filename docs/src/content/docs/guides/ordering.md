@@ -8,8 +8,8 @@ when you need to sort by multiple fields, reverse a sort, or extract a field fro
 Each variation requires writing a new comparator from scratch, and there is no way to compose two
 existing comparators into a third without re-implementing the tiebreaker logic every time.
 
-`Ordering<A>` makes comparators first-class values: built-in instances for common types,
-combinators to reverse or chain them, and field extraction to adapt them to structured data.
+`Ordering<A>` makes comparators first-class values: built-in instances for common types, combinators
+to reverse or chain them, and field extraction to adapt them to structured data.
 
 ## The Ordering type
 
@@ -18,9 +18,9 @@ type Ordering<A> = (a: A, b: A) => number;
 ```
 
 An `Ordering<A>` is a function that returns a negative number when `a` comes before `b`, a positive
-number when `a` comes after `b`, and `0` when they are equal. This is the same shape as the
-callback accepted by `Array.prototype.sort`, so any `Ordering<A>` works directly anywhere a
-comparator is expected.
+number when `a` comes after `b`, and `0` when they are equal. This is the same shape as the callback
+accepted by `Array.prototype.sort`, so any `Ordering<A>` works directly anywhere a comparator is
+expected.
 
 ## Built-in instances
 
@@ -62,8 +62,8 @@ pipe(employees, Arr.sortWith(pipe(byDept, Ordering.thenBy(bySalary))));
 
 ## Extracting a field
 
-`Ordering.by` adapts an ordering for type `A` into an ordering for type `B` by extracting the
-field to compare:
+`Ordering.by` adapts an ordering for type `A` into an ordering for type `B` by extracting the field
+to compare:
 
 ```ts
 type Product = { name: string; price: number };

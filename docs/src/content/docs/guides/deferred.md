@@ -59,8 +59,8 @@ const reading = await settings; // string — always resolves
 ## Awaiting a Deferred
 
 `await` works on any object with a compatible `.then()` method, and `Deferred` qualifies. The
-JavaScript runtime calls `.then(resolve)` on it internally, so the protocol is identical to
-awaiting a Promise:
+JavaScript runtime calls `.then(resolve)` on it internally, so the protocol is identical to awaiting
+a Promise:
 
 ```ts
 const d = Deferred.fromPromise(configStore.get("locale"));

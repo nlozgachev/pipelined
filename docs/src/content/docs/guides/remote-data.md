@@ -205,9 +205,8 @@ For any state other than `Failure`, `tapError` is a no-op and the value passes t
 
 ## Filtering a successful value
 
-`RemoteData.filter` tests a `Success` value against a predicate. When the predicate fails,
-the `Success` becomes a `Failure` — you supply the error. All other states pass through
-unchanged:
+`RemoteData.filter` tests a `Success` value against a predicate. When the predicate fails, the
+`Success` becomes a `Failure` — you supply the error. All other states pass through unchanged:
 
 ```ts
 RemoteData.filter(n => n > 0, n => `${n} is not a positive price`)(RemoteData.success(9.99));
@@ -220,8 +219,8 @@ RemoteData.filter(n => n > 0, () => "invalid")(RemoteData.loading());
 // Loading — passes through unchanged
 ```
 
-This is useful when additional constraints apply after a fetch succeeds — for example,
-checking that a list is non-empty or that a fetched value falls within an expected range.
+This is useful when additional constraints apply after a fetch succeeds — for example, checking that
+a list is non-empty or that a fetched value falls within an expected range.
 
 ## Extracting the value
 
@@ -239,9 +238,9 @@ pipe(RemoteData.loading(), RemoteData.getOrElse(() => null)); // null — typed 
 ## Converting to other types
 
 When you need to work with a part of the system that uses `Maybe` or `Result`, you can convert.
-`toMaybe` maps `Success` to `Some` and everything else to `None`. `toResult` maps `Success` to
-`Ok` and `Failure` to `Err`; `NotAsked` and `Loading` both become `Err` using a fallback you
-provide — they're both "not yet succeeded":
+`toMaybe` maps `Success` to `Some` and everything else to `None`. `toResult` maps `Success` to `Ok`
+and `Failure` to `Err`; `NotAsked` and `Loading` both become `Err` using a fallback you provide —
+they're both "not yet succeeded":
 
 ```ts
 RemoteData.toMaybe(RemoteData.success(42)); // Some(42)

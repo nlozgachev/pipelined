@@ -53,8 +53,8 @@ The guides are not API documentation. For that, there's the API reference.
 The guides are about understanding why each type exists — what problem it solves, what it replaces,
 and why that replacement is better than the alternative. Each one starts with the status quo: how
 people typically handle absent values, failures, async operations, or loading states. Then it shows
-what breaks. Then it introduces a type that encodes the problem more honestly, and walks through what
-you can do with it.
+what breaks. Then it introduces a type that encodes the problem more honestly, and walks through
+what you can do with it.
 
 The intent is that after reading a guide, you understand the concept — not just the API. And
 understanding the concept means you'll recognise it in code that doesn't use this library. You'll

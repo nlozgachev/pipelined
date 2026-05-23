@@ -50,7 +50,7 @@ import { Result } from "@nlozgachev/pipelined/core";
 
 const parseId = (raw: string): Result<string, number> => {
   const n = Number(raw);
-  return isNaN(n) ? Result.error("not a number") : Result.ok(n);
+  return isNaN(n) ? Result.err("not a number") : Result.ok(n);
 };
 
 pipe(
@@ -68,20 +68,20 @@ Your form shows one error at a time. Whether that was a product decision or a si
 `Result` for validation is sometimes hard to say — `Result` stops at the first error by design,
 which is correct for sequential operations and wrong for forms.
 
-`Validation<E, A>` is either `Valid<A>` or `Invalid<NonEmptyList<E>>`. When you combine two
+`Validation<E, A>` is either `Passed<A>` or `Failed<E>`. When you combine two
 `Validation` values, their errors accumulate rather than short-circuit:
 
 ```ts
 import { Validation } from "@nlozgachev/pipelined/core";
 
 const validateName = (s: string): Validation<string, string> =>
-  s.trim() ? Validation.valid(s.trim()) : Validation.invalid("Name is required");
+  s.trim() ? Validation.passed(s.trim()) : Validation.failed("Name is required");
 
 const validateAge = (n: number): Validation<string, number> =>
-  n >= 0 ? Validation.valid(n) : Validation.invalid("Age must be non-negative");
+  n >= 0 ? Validation.passed(n) : Validation.failed("Age must be non-negative");
 ```
 
-If both fields are invalid, both errors come back in one result. Full guide:
+If both fields are failed, both errors come back in one result. Full guide:
 [Validation — collecting errors](/guides/validation).
 
 ## Async operations with typed errors — `TaskResult<E, A>`

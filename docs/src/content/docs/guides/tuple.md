@@ -3,7 +3,10 @@ title: Tuple — typed pairs
 description: Carry two values together through a pipeline and transform either or both sides without destructuring.
 ---
 
-Some values always come in pairs: a product name and its price, a city and its population, a configuration key and its current value. `Tuple<A, B>` is a typed alias for `readonly [A, B]`. Both values are always present. The library provides data-last operations for transforming either or both sides, consuming the pair into a single value, and composing these steps cleanly in a pipeline.
+Some values always come in pairs: a product name and its price, a city and its population, a
+configuration key and its current value. `Tuple<A, B>` is a typed alias for `readonly [A, B]`. Both
+values are always present. The library provides data-last operations for transforming either or both
+sides, consuming the pair into a single value, and composing these steps cleanly in a pipeline.
 
 ## Creating a pair
 
@@ -19,8 +22,8 @@ literal — it is already a valid `Tuple<A, B>`. You don't need to call `make` t
 
 ## Reading the values
 
-`first` and `second` extract a value from a pair. They are useful as the last step in a pipeline
-or when you only need one side:
+`first` and `second` extract a value from a pair. They are useful as the last step in a pipeline or
+when you only need one side:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -78,8 +81,8 @@ pipe(
 
 ## Consuming the pair
 
-`fold` collapses both values into one by applying a binary function. It is usually the final step
-in a pipeline:
+`fold` collapses both values into one by applying a binary function. It is usually the final step in
+a pipeline:
 
 ```ts
 pipe(
@@ -91,8 +94,8 @@ pipe(
 
 ## Swapping the two sides
 
-`swap` reverses the pair: `[A, B]` becomes `[B, A]`. Useful when a downstream function expects
-the elements in the opposite order:
+`swap` reverses the pair: `[A, B]` becomes `[B, A]`. Useful when a downstream function expects the
+elements in the opposite order:
 
 ```ts
 Tuple.swap(Tuple.make("key", 42)); // [42, "key"]
@@ -138,5 +141,5 @@ Use `Tuple` when:
 
 Keep using native tuple destructuring when the pair is short-lived and the transformation is a
 single expression — `const [a, b] = pair; return f(a, b);` is perfectly clear for simple cases.
-`Tuple` earns its place in longer pipelines where the pair passes through several steps before
-being consumed.
+`Tuple` earns its place in longer pipelines where the pair passes through several steps before being
+consumed.

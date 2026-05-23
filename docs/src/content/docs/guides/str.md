@@ -3,14 +3,14 @@ title: Str — string utilities
 description: Data-last string operations and safe parsers — designed to compose with pipe.
 ---
 
-JavaScript's `String` prototype has a rich set of methods, but they're all data-first: you call
-them on the string itself, which doesn't compose inside `pipe`. `Str` provides the same operations
-as data-last curried functions, plus two safe parsers that return `Maybe` instead of `NaN`.
+JavaScript's `String` prototype has a rich set of methods, but they're all data-first: you call them
+on the string itself, which doesn't compose inside `pipe`. `Str` provides the same operations as
+data-last curried functions, plus two safe parsers that return `Maybe` instead of `NaN`.
 
 ## Transforming case
 
-`Str.toUpperCase`, `Str.toLowerCase`, and `Str.capitalize` are direct data-last wrappers — pass them to `pipe` or
-`Arr.map`:
+`Str.toUpperCase`, `Str.toLowerCase`, and `Str.capitalize` are direct data-last wrappers — pass them
+to `pipe` or `Arr.map`:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -82,8 +82,8 @@ flip the argument order.
 
 ## Predicates for filtering
 
-`Str.includes`, `Str.startsWith`, and `Str.endsWith` are curried predicates that work directly
-with `Arr.filter`:
+`Str.includes`, `Str.startsWith`, and `Str.endsWith` are curried predicates that work directly with
+`Arr.filter`:
 
 ```ts
 const logLines = [
@@ -98,8 +98,8 @@ pipe(logLines, Arr.filter(Str.startsWith("[ERROR]")));
 
 ## Safe number parsing
 
-Parsing a number with `Number(s)` or `parseInt` returns `NaN` on failure, which propagates
-silently. `Str.parse.int` and `Str.parse.float` return `Maybe<number>` instead:
+Parsing a number with `Number(s)` or `parseInt` returns `NaN` on failure, which propagates silently.
+`Str.parse.int` and `Str.parse.float` return `Maybe<number>` instead:
 
 ```ts
 Str.parse.int("42"); // Some(42)
@@ -111,8 +111,8 @@ Str.parse.float("3.14"); // Some(3.14)
 Str.parse.float("abc"); // None
 ```
 
-`Str.parse.int("3.7")` returns `Some(3)` — it truncates like `parseInt`, not like `parseFloat`.
-If you need the decimal, use `Str.parse.float`.
+`Str.parse.int("3.7")` returns `Some(3)` — it truncates like `parseInt`, not like `parseFloat`. If
+you need the decimal, use `Str.parse.float`.
 
 This integrates with the `Maybe` API for safe fallback handling:
 

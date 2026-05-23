@@ -65,7 +65,7 @@ through unchanged to `getOrElse`, which provides the fallback. No try/catch. No 
 
 ```ts
 Result.ok(42); // Ok(42)  — a successful result
-Result.error("not found"); // Err("not found") — a failure
+Result.err("not found"); // Err("not found") — a failure
 ```
 
 The error type in `Result<E, A>` can be anything — a string, a discriminated union, an Error object.
@@ -117,7 +117,7 @@ pipe(
   Result.map((n) => n * 2),
 ); // Ok(10)
 pipe(
-  Result.error("oops"),
+  Result.err("oops"),
   Result.map((n) => n * 2),
 ); // Err("oops")
 ```
@@ -140,7 +140,7 @@ pipe(
 
 ```ts
 pipe(
-  Result.error("connection refused"),
+  Result.err("connection refused"),
   Result.mapError((e) => ({ code: 503, message: e })),
 ); // Err({ code: 503, message: "connection refused" })
 ```
@@ -155,11 +155,11 @@ When a transformation might itself fail, use `chain` instead of `map`. It preven
 
 ```ts
 const validatePositive = (n: number): Result<string, number> =>
-  n > 0 ? Result.ok(n) : Result.error("Must be positive");
+  n > 0 ? Result.ok(n) : Result.err("Must be positive");
 
 pipe(Result.ok(5), Result.chain(validatePositive)); // Ok(5)
 pipe(Result.ok(-1), Result.chain(validatePositive)); // Err("Must be positive")
-pipe(Result.error("parse failed"), Result.chain(validatePositive)); // Err("parse failed")
+pipe(Result.err("parse failed"), Result.chain(validatePositive)); // Err("parse failed")
 ```
 
 A typical pipeline chains multiple steps that can each fail independently:
@@ -178,14 +178,14 @@ If any step returns `Err`, subsequent steps are skipped and the error propagates
 
 ## Extracting the value
 
-**`getOrElse`** — provide a fallback as a thunk `() => B`. The thunk is only called when the
-Result is `Err`, so expensive or side-effectful defaults are never computed unnecessarily. The
-fallback can be a different type, widening the result to the union of both:
+**`getOrElse`** — provide a fallback as a thunk `() => B`. The thunk is only called when the Result
+is `Err`, so expensive or side-effectful defaults are never computed unnecessarily. The fallback can
+be a different type, widening the result to the union of both:
 
 ```ts
 pipe(Result.ok(5), Result.getOrElse(() => 0)); // 5
-pipe(Result.error("oops"), Result.getOrElse(() => 0)); // 0
-pipe(Result.error("oops"), Result.getOrElse(() => null)); // null — typed as number | null
+pipe(Result.err("oops"), Result.getOrElse(() => 0)); // 0
+pipe(Result.err("oops"), Result.getOrElse(() => null)); // null — typed as number | null
 ```
 
 **`match`** — handle each case explicitly. `fold` is the positional form of the same thing — error
@@ -204,8 +204,8 @@ pipe(
 ## Recovering from errors
 
 `recover` provides a fallback `Result` when the current one is `Err`. Unlike `getOrElse`, the
-fallback is itself a `Result` — useful when the recovery operation might also fail. The fallback
-can produce a different success type, widening the result to `Result<E, A | B>`:
+fallback is itself a `Result` — useful when the recovery operation might also fail. The fallback can
+produce a different success type, widening the result to `Result<E, A | B>`:
 
 ```ts
 pipe(
@@ -231,8 +231,8 @@ pipe(
 ## Observing values without changing them
 
 Sometimes you want to log, report, or track something in the middle of a pipeline without
-interrupting the flow. `tap` runs a side effect on the success value and passes the `Result`
-through unchanged:
+interrupting the flow. `tap` runs a side effect on the success value and passes the `Result` through
+unchanged:
 
 ```ts
 pipe(
@@ -263,7 +263,7 @@ When you only care about whether an operation succeeded — not why it failed �
 
 ```ts
 Result.toMaybe(Result.ok(42)); // Some(42)
-Result.toMaybe(Result.error("oops")); // None
+Result.toMaybe(Result.err("oops")); // None
 ```
 
 The error is discarded. Use this at boundaries where you want to fall back to `Maybe`-based logic.

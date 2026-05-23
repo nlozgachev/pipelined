@@ -8,8 +8,8 @@ query throws an error, the `close()` call is skipped, and the connection lingers
 `try/finally` block. Then another path grows around it, and another, and now cleanup logic is
 scattered across every function that touches the database.
 
-`Resource<E, A>` solves this structurally. You describe _how to open something_ and _how to close
-it_ once, and `Resource.use` guarantees the close step always runs — whether the work succeeds or
+`Resource<E, A>` solves this structurally. You describe *how to open something* and *how to close
+it* once, and `Resource.use` guarantees the close step always runs — whether the work succeeds or
 fails.
 
 ## The structure of a Resource
@@ -34,8 +34,8 @@ flowchart TB
 ```
 
 The key guarantee is in the two right-hand paths: `release` runs whether the work succeeded or
-failed. The only case where `release` is skipped is when `acquire` itself failed — there is
-nothing to clean up.
+failed. The only case where `release` is skipped is when `acquire` itself failed — there is nothing
+to clean up.
 
 ## Creating a Resource with `make`
 
@@ -52,8 +52,8 @@ const dbResource = Resource.make(
 ```
 
 The release function receives the same value that `acquire` produced. When the connection is no
-longer needed, `Resource.use` will call `conn.close()` with that exact connection — whether the
-work succeeded or returned an error.
+longer needed, `Resource.use` will call `conn.close()` with that exact connection — whether the work
+succeeded or returned an error.
 
 ## Creating from an infallible acquire
 
@@ -158,6 +158,6 @@ A sign you need `Resource`: you find yourself writing the same `try/finally` blo
 functions, or a function takes both an open resource and has a close obligation that callers must
 remember to fulfil.
 
-Keep using `try/finally` directly when you are working with a single synchronous operation inside
-a narrow scope and the resource never leaves the function. `Resource` pays off when cleanup is
-async, when multiple resources compose, or when the acquire step can itself fail.
+Keep using `try/finally` directly when you are working with a single synchronous operation inside a
+narrow scope and the resource never leaves the function. `Resource` pays off when cleanup is async,
+when multiple resources compose, or when the acquire step can itself fail.

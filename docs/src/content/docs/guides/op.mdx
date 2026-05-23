@@ -109,7 +109,7 @@ const getUser = Op.interpret(fetchUser, { strategy: "once" });
 getUser.subscribe((state) => {
   if (Op.isPending(state)) showSpinner();
   if (Op.isOk(state))      render(state.value);
-  if (Op.isError(state))     showError(state.error);
+  if (Op.isErr(state))     showError(state.error);
   if (Op.isNil(state))     resetUI();
 });
 
@@ -137,7 +137,7 @@ without setting up a subscriber.
 ## The three outcomes
 
 When `run()` settles, three things can happen: you get a value, you get an error, or nothing
-happens — the call was cancelled, dropped, or replaced. These map to `Ok<A>`, `Error<E>`, and
+happens — the call was cancelled, dropped, or replaced. These map to `Ok<A>`, `Err<E>`, and
 `Nil`.
 
 `Ok` and `Err` are straightforward. `Nil` is where it gets specific — the `reason` field says
@@ -151,7 +151,7 @@ exactly what happened:
 `Nil.reason` means you never need external tracking to distinguish a cancellation from a capacity
 drop. Code that cares can just read the field.
 
-Constructors (`Op.ok`, `Op.error`, `Op.nil`) and guards (`Op.isOk`, `Op.isError`, `Op.isNil`) are in
+Constructors (`Op.ok`, `Op.err`, `Op.nil`) and guards (`Op.isOk`, `Op.isErr`, `Op.isNil`) are in
 the API reference.
 
 ## Handling results
@@ -163,7 +163,7 @@ const outcome = await search.run(query);
 
 if (Op.isOk(outcome)) {
   render(outcome.value);
-} else if (Op.isError(outcome)) {
+} else if (Op.isErr(outcome)) {
   showError(outcome.error.message);
 } else {
   // Nil — call was cancelled, dropped, or replaced
@@ -186,7 +186,7 @@ pipe(
 ```ts
 Op.match({
   ok:  (users) => render(users),
-  error: (e)   => showError(e.message),
+  err: (e)   => showError(e.message),
   nil: ()      => resetSearch(),
 })(outcome);
 ```
@@ -273,7 +273,7 @@ const search = Op.interpret(searchUsers, { strategy: "restartable" });
 const save = Op.interpret(saveDocument, { strategy: "buffered" });
 
 // Live validation: wait for the user to stop typing
-const validate = Op.interpret(validateForm, { strategy: "debounced", ms: 300 });
+const validate = Op.interpret(validateForm, { strategy: "debounced", duration: Duration.milliseconds(300) });
 ```
 
 Full strategy reference:
@@ -292,13 +292,13 @@ Full strategy reference:
 
 ### Throttled — fire and cooldown
 
-`throttled` fires immediately on the first call, then ignores calls for the next `ms`
-milliseconds. Unlike `debounced`, which _waits_ for quiet, `throttled` acts on the _leading edge_
+`throttled` fires immediately on the first call, then ignores calls for the duration of the cooldown.
+Unlike `debounced`, which _waits_ for quiet, `throttled` acts on the _leading edge_
 and then enforces a cooldown.
 
 ```ts
 // Rate-limit a button: responds instantly, then locks out for 2 s
-const submitOrder = Op.interpret(placeOrder, { strategy: "throttled", ms: 2_000 });
+const submitOrder = Op.interpret(placeOrder, { strategy: "throttled", duration: Duration.seconds(2) });
 submitOrder.run(cart); // fires immediately → Ok
 submitOrder.run(cart); // during cooldown → DroppedNil
 ```
@@ -310,7 +310,7 @@ update when the burst ends:
 ```ts
 const handleResize = Op.interpret(computeLayout, {
   strategy: "throttled",
-  ms: 100,
+  duration: Duration.milliseconds(100),
   trailing: true,
 });
 // On burst: leading fires instantly; last call during cooldown fires at cooldown end.
@@ -375,7 +375,7 @@ fetchUser.subscribe((map) => {
   for (const [userId, state] of map) {
     if (Op.isPending(state)) showSpinner(userId);
     if (Op.isOk(state))      renderUser(userId, state.value);
-    if (Op.isError(state))     showError(userId, state.error);
+    if (Op.isErr(state))     showError(userId, state.error);
   }
 });
 ```
@@ -393,11 +393,11 @@ never occur:
 const manager = Op.interpret(searchUsers, { strategy: "restartable" });
 
 manager.subscribe((state) => {
-  // state: Idle | Pending | Ok<User[]> | Error<ApiError> | Nil
+  // state: Idle | Pending | Ok<User[]> | Err<ApiError> | Nil
   if (Op.isIdle(state))    return;
   if (Op.isPending(state)) showSpinner();
   if (Op.isOk(state))      render(state.value);   // no unwrapping needed
-  if (Op.isError(state))     showError(state.error);
+  if (Op.isErr(state))     showError(state.error);
   if (Op.isNil(state))     resetSearch();
 });
 
@@ -463,7 +463,7 @@ const result = await submit.run(formData);
 
 if (Op.isOk(result)) {
   router.push("/success");
-} else if (Op.isError(result)) {
+} else if (Op.isErr(result)) {
   showError(result.error.message);
 } else {
   // Nil — invocation did not produce a value
@@ -556,8 +556,8 @@ invocation resolves to `ReplacedNil`.
 ```ts
 const submit = Op.interpret(submitOrder, {
   strategy: "exclusive",
-  retry: { attempts: 3, backoff: (n) => n * 500, when: (e) => e.isRetryable },
-  timeout: { ms: 10_000, onTimeout: () => new ApiError("timed out") },
+  retry: { attempts: 3, backoff: (n) => Duration.milliseconds(n * 500), when: (e) => e.isRetryable },
+  timeout: { duration: Duration.seconds(10), onTimeout: () => new ApiError("timed out") },
 });
 ```
 
@@ -568,11 +568,11 @@ type does not include it:
 ```ts
 // No retry — Retrying is not in the subscriber type
 const m1 = Op.interpret(op, { strategy: "restartable" });
-// m1.subscribe: (state: Idle | Pending | Ok<A> | Error<E> | Nil) => void
+// m1.subscribe: (state: Idle | Pending | Ok<A> | Err<E> | Nil) => void
 
 // Retry present — Retrying is added
 const m2 = Op.interpret(op, { strategy: "restartable", retry: { attempts: 3 } });
-// m2.subscribe: (state: Idle | Pending | Retrying<E> | Ok<A> | Error<E> | Nil) => void
+// m2.subscribe: (state: Idle | Pending | Retrying<E> | Ok<A> | Err<E> | Nil) => void
 ```
 
 The `timeout` wraps the entire retry sequence — one deadline for all attempts. If the deadline
@@ -583,7 +583,7 @@ union.
 ```ts
 const search = Op.interpret(searchUsers, {
   strategy: "restartable",
-  retry: { attempts: 3, backoff: 500 },
+  retry: { attempts: 3, backoff: Duration.milliseconds(500) },
 });
 
 const p = search.run("fo");   // starts; attempt 1 fails, backoff running
@@ -603,7 +603,7 @@ import { pipe } from "@nlozgachev/pipelined/composition";
 
 // Use in a subscriber
 manager.subscribe((state) => {
-  if (!Op.isOk(state) && !Op.isError(state) && !Op.isNil(state)) return;
+  if (!Op.isOk(state) && !Op.isErr(state) && !Op.isNil(state)) return;
   const result = pipe(
     state,
     Op.toResult(() => new ApiError("cancelled")),

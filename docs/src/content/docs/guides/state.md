@@ -6,8 +6,8 @@ description: Computations that read and update a piece of state without passing 
 Pure functions don't mutate. Yet many real operations naturally require state: generating sequential
 IDs, building up a data structure one step at a time, simulating a counter or stack, threading
 configuration through a pipeline. The usual alternatives are to pass the state as an extra argument
-to every function, or to reach for a mutable variable. Neither is satisfying. `State<S, A>` offers
-a third option: describe the stateful computation as a value, then run it once at the end.
+to every function, or to reach for a mutable variable. Neither is satisfying. `State<S, A>` offers a
+third option: describe the stateful computation as a value, then run it once at the end.
 
 ## The problem with threading state manually
 
@@ -51,8 +51,8 @@ mutation.
 
 ## Creating State computations
 
-`State.get` reads the current state as the produced value; `State.modify` updates it. These are
-the two you'll reach for most often:
+`State.get` reads the current state as the produced value; `State.modify` updates it. These are the
+two you'll reach for most often:
 
 ```ts
 const snapshot: State<string[], string[]> = State.get();
@@ -81,9 +81,9 @@ State.evaluate(["a", "b", "c"])(stackSize); // 3
 
 ## Sequencing with `chain`
 
-`chain` is where State earns its keep. It threads the output state of one computation into the
-input of the next, so you can write a sequence of stateful steps without passing the state
-explicitly at each one:
+`chain` is where State earns its keep. It threads the output state of one computation into the input
+of the next, so you can write a sequence of stateful steps without passing the state explicitly at
+each one:
 
 ```ts
 const push = (item: string): State<string[], undefined> => State.modify(stack => [...stack, item]);
@@ -192,8 +192,8 @@ State.evaluate(0)(buildNodes);
 The counter starts at 0 and is incremented by each call to `nextId`. The final value is the list of
 nodes — the counter itself is discarded.
 
-If you build up a chain and forget to call `State.run` at the end, you have a function, not a
-value — nothing runs and no type error tells you why.
+If you build up a chain and forget to call `State.run` at the end, you have a function, not a value
+— nothing runs and no type error tells you why.
 
 ## When to use State
 

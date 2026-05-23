@@ -90,5 +90,5 @@ want to name and reuse the combining operation rather than passing `reduce` call
 site. The most common cases are summing numeric fields, concatenating strings or arrays, folding
 boolean flags, and merging optional values.
 
-If you need to combine values of two different types (`A` and `B` into `C`), `Combinable` is not
-the right fit — use `Arr.reduce` directly.
+If you need to combine values of two different types (`A` and `B` into `C`), `Combinable` is not the
+right fit — use `Arr.reduce` directly.

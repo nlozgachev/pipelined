@@ -16,8 +16,8 @@ TypeScript's `?.` operator lets you safely read through a path that might not ex
 const city = user.address?.city; // string | undefined
 ```
 
-But `?.` is read-only. The moment you want to update something at the end of that path,
-it stops working. There is no `?.=` operator. You are back to writing spreads with conditionals:
+But `?.` is read-only. The moment you want to update something at the end of that path, it stops
+working. There is no `?.=` operator. You are back to writing spreads with conditionals:
 
 ```ts
 const updated = user.address
@@ -26,8 +26,8 @@ const updated = user.address
 ```
 
 `Optional<S, A>` closes that gap. It describes a path through your data that accepts the path might
-not reach anything. Reads return `Maybe<A>` instead of `A`. Writes and modifications are
-no-ops when the path finds nothing — no conditional required.
+not reach anything. Reads return `Maybe<A>` instead of `A`. Writes and modifications are no-ops when
+the path finds nothing — no conditional required.
 
 ## The Optional approach
 
@@ -48,9 +48,8 @@ No conditional. The absent case is handled by the Optional itself.
 
 ## Defining an optional path
 
-**`Optional.prop`** points at an optional field — one declared with `?` in its type. Required
-fields belong to `Lens.prop`; `Optional.prop` only accepts keys where the value might be
-`undefined`:
+**`Optional.prop`** points at an optional field — one declared with `?` in its type. Required fields
+belong to `Lens.prop`; `Optional.prop` only accepts keys where the value might be `undefined`:
 
 ```ts
 type Profile = { username: string; bio?: string; };
@@ -111,9 +110,9 @@ pipe(
 
 ## Writing
 
-`Optional.set` always produces a new object — it never mutates. For optional properties, it
-inserts the value whether or not the field was there before. For array indices, it is a no-op
-when the index is out of bounds:
+`Optional.set` always produces a new object — it never mutates. For optional properties, it inserts
+the value whether or not the field was there before. For array indices, it is a no-op when the index
+is out of bounds:
 
 ```ts
 // Optional field — inserts even when previously absent:
@@ -137,14 +136,14 @@ pipe(profile, Optional.modify(bioOpt)(s => s.trim()));
 // trims the bio if present, returns profile unchanged if absent
 ```
 
-One thing to watch out for: `Optional.set` on an absent optional field _inserts_ the value — it
+One thing to watch out for: `Optional.set` on an absent optional field *inserts* the value — it
 doesn't skip the write just because the field wasn't there. If you want to update only when the
 field already exists, use `modify` instead.
 
 ## Composing paths
 
-`Optional.andThen` extends a path by another optional step. If either step finds nothing, the
-whole path returns `None` for reads and does nothing for writes:
+`Optional.andThen` extends a path by another optional step. If either step finds nothing, the whole
+path returns `None` for reads and does nothing for writes:
 
 ```ts
 type City = { name: string; landmark?: string; };
@@ -168,8 +167,8 @@ const capitalNameOpt = pipe(
 
 ## Starting from a Lens
 
-A path often begins through required fields and then reaches an optional one. Convert the `Lens`
-to an `Optional` with `Lens.toOptional` and continue from there:
+A path often begins through required fields and then reaches an optional one. Convert the `Lens` to
+an `Optional` with `Lens.toOptional` and continue from there:
 
 ```ts
 pipe(
@@ -181,7 +180,11 @@ pipe(
 
 ## When to use Optional
 
-Use `Optional` when you need to read, write, or modify deep nested structures where some of the keys or paths might be absent (e.g., optional properties declared with `?` or array elements by index). While standard optional chaining (`user.address?.city`) only supports read-only operations, an `Optional` acts as a two-way path supporting updates and modifications without nesting manual conditionals.
+Use `Optional` when you need to read, write, or modify deep nested structures where some of the keys
+or paths might be absent (e.g., optional properties declared with `?` or array elements by index).
+While standard optional chaining (`user.address?.city`) only supports read-only operations, an
+`Optional` acts as a two-way path supporting updates and modifications without nesting manual
+conditionals.
 
 To decide between a lens and an optional, follow this guide:
 

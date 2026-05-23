@@ -9,9 +9,9 @@ selection. For primitive values, `===` works fine. For objects and arrays, it do
 with identical fields are not `===` to each other, and `===` on arrays compares references, not
 contents.
 
-You can write `JSON.stringify(a) === JSON.stringify(b)` or inline field comparisons, but those
-do not compose — you cannot combine two equality checks into one, or adapt a string equality into
-an object-field equality without rewriting it from scratch. `Equality<A>` makes equality checks
+You can write `JSON.stringify(a) === JSON.stringify(b)` or inline field comparisons, but those do
+not compose — you cannot combine two equality checks into one, or adapt a string equality into an
+object-field equality without rewriting it from scratch. `Equality<A>` makes equality checks
 first-class values you can build, name, combine, and reuse.
 
 ## The Equality type
@@ -43,9 +43,9 @@ eqNumbers([1, 2], [1, 2, 3]);    // false
 
 ## Comparing by a field
 
-`Equality.by` adapts an equality for type `A` into an equality for type `B` by extracting the
-field to compare. Read it left-to-right: start with the inner equality (how to compare the
-extracted value), then apply `.by` (how to get that value from the outer type):
+`Equality.by` adapts an equality for type `A` into an equality for type `B` by extracting the field
+to compare. Read it left-to-right: start with the inner equality (how to compare the extracted
+value), then apply `.by` (how to get that value from the outer type):
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -76,8 +76,8 @@ exact({ name: "Alice", role: "admin" }, { name: "Alice", role: "user" });  // fa
 
 ## Deduplicating with custom equality
 
-`Arr.uniqWith` uses an `Equality<A>` to deduplicate an array. Unlike `Arr.uniq` (reference
-equality) or `Arr.uniqBy` (key extraction), `uniqWith` accepts any equality check:
+`Arr.uniqWith` uses an `Equality<A>` to deduplicate an array. Unlike `Arr.uniq` (reference equality)
+or `Arr.uniqBy` (key extraction), `uniqWith` accepts any equality check:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -98,8 +98,8 @@ pipe(
 
 ## When to use Equality
 
-Use `Equality<A>` when you need to compare structured values — objects, arrays, or records — and
-the built-in `===` comparison is insufficient or impossible to compose. The most common cases are
+Use `Equality<A>` when you need to compare structured values — objects, arrays, or records — and the
+built-in `===` comparison is insufficient or impossible to compose. The most common cases are
 deduplication with `Arr.uniqWith`, diffing form state, and checking membership for complex types.
 
 For comparisons that also carry ordering (less-than / greater-than), use `Ordering<A>`.

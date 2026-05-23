@@ -3,15 +3,15 @@ title: These — inclusive OR
 description: Hold a first value, a second value, or both simultaneously — without implying success or failure.
 ---
 
-Most operations produce one of two outcomes. `These<A, B>` is for the cases where both can exist
-at once. Where `Result<E, A>` is either an error _or_ a value, `These<A, B>` has three variants:
+Most operations produce one of two outcomes. `These<A, B>` is for the cases where both can exist at
+once. Where `Result<E, A>` is either an error *or* a value, `These<A, B>` has three variants:
 
 - `First(a)` — only a first value
 - `Second(b)` — only a second value
 - `Both(a, b)` — both a first and a second value simultaneously
 
-Neither side carries a success or failure connotation. `These` is a neutral inclusive-OR pair:
-any combination is valid, and neither side is privileged.
+Neither side carries a success or failure connotation. `These` is a neutral inclusive-OR pair: any
+combination is valid, and neither side is privileged.
 
 ## When two sides coexist
 
@@ -83,10 +83,10 @@ pipe(
 
 ## Chaining
 
-`chainFirst` passes the first value to the next step, leaving `Second` unchanged. When the input
-is `Both`, the second value is dropped — the step produces whatever `f` returns, which may be
-`First`, `Second`, or `Both`. If you need the second value to survive the chain, either include it
-in the return value of `f` or use `mapBoth` to transform both sides without chaining:
+`chainFirst` passes the first value to the next step, leaving `Second` unchanged. When the input is
+`Both`, the second value is dropped — the step produces whatever `f` returns, which may be `First`,
+`Second`, or `Both`. If you need the second value to survive the chain, either include it in the
+return value of `f` or use `mapBoth` to transform both sides without chaining:
 
 ```ts
 const double = (n: number): These<number, string> => These.first(n * 2);
@@ -179,10 +179,10 @@ Use `These` when:
   pipeline
 - Neither side represents a "primary" success or failure path; both are equally valid
 
-`These` is the less commonly reached-for type in the family. When you find yourself wanting to
-carry two independent pieces of data where any combination is possible, that's the signal to
-reach for it. If you're unsure whether you need it, you probably don't — reach for `Result` or
-`Maybe` first and only switch to `These` when one of those would lose information you need to keep.
+`These` is the less commonly reached-for type in the family. When you find yourself wanting to carry
+two independent pieces of data where any combination is possible, that's the signal to reach for it.
+If you're unsure whether you need it, you probably don't — reach for `Result` or `Maybe` first and
+only switch to `These` when one of those would lose information you need to keep.
 
 One thing to watch out for: `chainFirst` on a `Both` does not carry the second value forward — the
 result of `f` is returned directly. If you need the second value preserved through a chain, `Both`

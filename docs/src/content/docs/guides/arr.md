@@ -137,9 +137,9 @@ pipe(
 Arr.flatten([[1, 2], [3], [4, 5]]); // [1, 2, 3, 4, 5]
 ```
 
-**`filterMap`** maps each element to a `Maybe` and collects only the `Some` values in a single
-pass — the combination of `map` and `filter` that comes up constantly when extracting structured
-data from arrays that may contain missing or invalid entries:
+**`filterMap`** maps each element to a `Maybe` and collects only the `Some` values in a single pass
+— the combination of `map` and `filter` that comes up constantly when extracting structured data
+from arrays that may contain missing or invalid entries:
 
 ```ts
 const parseNum = (s: string): Maybe<number> => {
@@ -181,8 +181,8 @@ pipe([1, 2, 3], Arr.insertAt(0, 99)); // [99, 1, 2, 3]
 pipe([1, 2, 3], Arr.insertAt(3, 99)); // [1, 2, 3, 99]
 ```
 
-**`removeAt`** returns a new array with the element at the given index removed. If the index is
-out of bounds the original array is returned unchanged:
+**`removeAt`** returns a new array with the element at the given index removed. If the index is out
+of bounds the original array is returned unchanged:
 
 ```ts
 pipe([1, 2, 3], Arr.removeAt(1)); // [1, 3]
@@ -265,7 +265,7 @@ pipe(["1", "x", "3"], Arr.traverse(parseNum)); // None
 
 ```ts
 const validatePositive = (n: number): Result<string, number> =>
-  n > 0 ? Result.ok(n) : Result.error("not positive");
+  n > 0 ? Result.ok(n) : Result.err("not positive");
 
 pipe([1, 2, 3], Arr.traverseResult(validatePositive)); // Ok([1, 2, 3])
 pipe([1, -1, 3], Arr.traverseResult(validatePositive)); // Err("not positive")
@@ -281,8 +281,8 @@ pipe(
 )(); // Promise<User[]> — all tasks run in parallel
 ```
 
-**`traverseTaskResult`** — maps to `TaskResult` and runs sequentially, short-circuiting on the
-first `Err`:
+**`traverseTaskResult`** — maps to `TaskResult` and runs sequentially, short-circuiting on the first
+`Err`:
 
 ```ts
 const validate = (id: string): TaskResult<string, User> =>

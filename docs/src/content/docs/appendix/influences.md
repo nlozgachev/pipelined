@@ -12,16 +12,16 @@ book.
 
 ### Haskell
 
-Most of the core types in this library descend, in some form, from Haskell.
-`Either` became `Result`, and the `IO` type — a lazy, composable wrapper around side effects —
-inspired `Task`. The naming convention of `map` and `chain` follows Haskell's vocabulary (translated
-from `fmap` and `>>=` into names that describe what they do rather than where they come from).
-`fold` is an eliminator — it collapses a type by providing a handler for each case — corresponding
-to Haskell's `maybe :: b -> (a -> b) -> Maybe a -> b` and `either :: (a -> c) -> (b -> c) -> Either a b -> c`.
+Most of the core types in this library descend, in some form, from Haskell. `Either` became
+`Result`, and the `IO` type — a lazy, composable wrapper around side effects — inspired `Task`. The
+naming convention of `map` and `chain` follows Haskell's vocabulary (translated from `fmap` and
+`>>=` into names that describe what they do rather than where they come from). `fold` is an
+eliminator — it collapses a type by providing a handler for each case — corresponding to Haskell's
+`maybe :: b -> (a -> b) -> Maybe a -> b` and `either :: (a -> c) -> (b -> c) -> Either a b -> c`.
 
-`These` comes from a Haskell library of the same name. It represents the
-inclusive-OR case: a value that can carry an error, a result, or both simultaneously — which neither
-`Either` nor a tuple cleanly expresses.
+`These` comes from a Haskell library of the same name. It represents the inclusive-OR case: a value
+that can carry an error, a result, or both simultaneously — which neither `Either` nor a tuple
+cleanly expresses.
 
 ### Elm
 
@@ -44,11 +44,12 @@ failure are practical, not academic.
 
 ### fp-ts
 
-The most direct TypeScript ancestor is fp-ts by Giulio Canti — a comprehensive, rigorous encoding
-of functional programming in TypeScript that covered every major typeclass, used `pipe` as its
-composition primitive, and followed the data-last convention throughout. fp-ts is no longer under active feature development — its author joined the [Effect](https://effect.website/)
-organisation, and Effect-TS is positioned as the successor to fp-ts; that's now where new
-development in this space happens.
+The most direct TypeScript ancestor is fp-ts by Giulio Canti — a comprehensive, rigorous encoding of
+functional programming in TypeScript that covered every major typeclass, used `pipe` as its
+composition primitive, and followed the data-last convention throughout. fp-ts is no longer under
+active feature development — its author joined the [Effect](https://effect.website/) organisation,
+and Effect-TS is positioned as the successor to fp-ts; that's now where new development in this
+space happens.
 
 This library borrows several things from fp-ts directly: the `pipe` and `flow` functions, the
 data-last convention, and the pattern of defining each type as a TypeScript type alias alongside a
@@ -64,10 +65,9 @@ package is the canonical implementation.
 The `lens` package defines a full optics hierarchy — `Iso`, `Prism`, `Lens`, `Traversal`, `Fold`,
 `Getter`, `Setter` — and unifies them using the van Laarhoven encoding: an optic is a polymorphic
 higher-order function over `Functor`/`Applicative`/etc., and composition is ordinary function
-composition. This encoding is elegant, but it relies
-on higher-kinded types — and while TypeScript can approximate those through HKT encoding tricks
-(as fp-ts demonstrates), this library deliberately avoids that approach for the same reasons
-described in the typeclass section below.
+composition. This encoding is elegant, but it relies on higher-kinded types — and while TypeScript
+can approximate those through HKT encoding tricks (as fp-ts demonstrates), this library deliberately
+avoids that approach for the same reasons described in the typeclass section below.
 
 This library uses a simpler "concrete" representation instead. Each optic is a plain record with
 `get` and `set` fields:
@@ -135,11 +135,12 @@ This consistency matters at runtime too: `Maybe.map` and `Result.map` and `Remot
 for `.value` to find the success payload. Sharing the field name is what makes this uniform without
 code duplication.
 
-`These` is the deliberate exception. Its two payloads — `TheseFirst`, `TheseSecond`, and
-`TheseBoth` — use `first` and `second` as field names rather than `value` and `error`. `These<A,
-B>` makes no claim about which side is "good" and which is "bad": it is a symmetric inclusive-OR,
-not a biased success/failure container. Importing the `value`/`error` convention would give it a
-directionality it doesn't have.
+`These` is the deliberate exception. Its two payloads — `TheseFirst`, `TheseSecond`, and `TheseBoth`
+— use `first` and `second` as field names rather than `value` and `error`. `These<A,
+B>` makes no
+claim about which side is "good" and which is "bad": it is a symmetric inclusive-OR, not a biased
+success/failure container. Importing the `value`/`error` convention would give it a directionality
+it doesn't have.
 
 ### The namespace pattern
 
@@ -255,14 +256,14 @@ branded value is exactly the underlying value — no wrapper object, no tag fiel
 allocation. The brand is erased entirely by the TypeScript compiler. `Brand.wrap` and `Brand.unwrap`
 are identity functions at runtime; their only job is to satisfy the type checker.
 
-**The full optics hierarchy.** `Lens` and `Optional` cover two points in a much larger optics
-space. The most practically useful omissions are `Prism` — which focuses into one variant of a
-union type (e.g. the inner value of `Some`, or the `Ok` case of a `Result`) — and `Traversal` —
-which focuses on multiple values simultaneously, useful for updating all elements of a nested array
-in one composed path. Both were left out because the concrete `{ get, set }` encoding doesn't
-compose them uniformly with `Lens` and `Optional` without additional per-combination composition
-functions, adding complexity proportional to the square of the number of optic types. In practice,
-`Lens` and `Optional` cover the cases that arise most often in everyday TypeScript code.
+**The full optics hierarchy.** `Lens` and `Optional` cover two points in a much larger optics space.
+The most practically useful omissions are `Prism` — which focuses into one variant of a union type
+(e.g. the inner value of `Some`, or the `Ok` case of a `Result`) — and `Traversal` — which focuses
+on multiple values simultaneously, useful for updating all elements of a nested array in one
+composed path. Both were left out because the concrete `{ get, set }` encoding doesn't compose them
+uniformly with `Lens` and `Optional` without additional per-combination composition functions,
+adding complexity proportional to the square of the number of optic types. In practice, `Lens` and
+`Optional` cover the cases that arise most often in everyday TypeScript code.
 
 ## Acknowledgements
 
@@ -275,10 +276,10 @@ faithfully in TypeScript.
 Particular thanks to Giulio Canti, whose fp-ts library is the clearest demonstration that typed
 functional programming is practical in TypeScript — and whose source code taught me more about the
 language than any tutorial. To Kris Jenkins, for naming `RemoteData` and making the case so clearly
-that the pattern spread beyond Elm. To Edward Kmett for the `lens` library and the optics tradition that `Lens` and `Optional` descend
-from. To the Haskell community more broadly — for `These` and for an enormous body
-of work that keeps the ecosystem moving forward. And to the TypeScript team, for building a type
-system expressive enough that most of these ideas can be encoded at all.
+that the pattern spread beyond Elm. To Edward Kmett for the `lens` library and the optics tradition
+that `Lens` and `Optional` descend from. To the Haskell community more broadly — for `These` and for
+an enormous body of work that keeps the ecosystem moving forward. And to the TypeScript team, for
+building a type system expressive enough that most of these ideas can be encoded at all.
 
 If you've read this far, thank you for your curiosity. Whether you found the library useful, built
 something interesting with it, spotted something wrong, or just wanted to understand how the pieces

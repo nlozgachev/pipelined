@@ -5,7 +5,7 @@ description: First-class boolean functions with not, and, or, using, and Refinem
 
 When you reach for `Array.filter`, `if` branches, or access-control gates, you are writing
 predicates. Usually they are anonymous inline functions: `n => n > 0`, `u => u.role === "admin"`.
-They work, but they don't _compose_. You can't take two boolean functions and combine them into a
+They work, but they don't *compose*. You can't take two boolean functions and combine them into a
 third without writing a new function by hand each time. `Predicate<A>` makes boolean checks
 first-class values you can name, reuse, negate, combine, and adapt to new types.
 
@@ -53,17 +53,17 @@ namespace provides utilities for combining and adapting these functions.
 | `Refinement<A, B>` | Narrows to `B` in the `true` branch              | You need TypeScript to track the stricter type                    |
 
 In short: reach for `Refinement` when compile-time narrowing matters (e.g. `isString`, `isUser`),
-and for `Predicate` when you just need the boolean (e.g. `isAdult`, `isExpired`, `hasPermission`).
-A key advantage of `Predicate` is `using` — it can adapt checks to any input shape, which
-`Refinement` cannot express cleanly.
+and for `Predicate` when you just need the boolean (e.g. `isAdult`, `isExpired`, `hasPermission`). A
+key advantage of `Predicate` is `using` — it can adapt checks to any input shape, which `Refinement`
+cannot express cleanly.
 
 Convert a `Refinement` to a `Predicate` with `Predicate.fromRefinement` when you want to compose a
 narrowing check alongside plain predicates in `and`, `or`, or `all`.
 
 ## Negating with `not`
 
-`not` inverts a predicate. The result is still a `Predicate<A>` with no type-level side effects,
-so there is no `Exclude<A, B>` complexity.
+`not` inverts a predicate. The result is still a `Predicate<A>` with no type-level side effects, so
+there is no `Exclude<A, B>` complexity.
 
 ```ts
 const isExpired: Predicate<Date> = (d) => d < new Date();
@@ -81,9 +81,8 @@ const isActive = pipe(isExpired, Predicate.not);
 
 ## Combining with `and` and `or`
 
-`and` and `or` are data-last, composing two predicates over the same input type. Both
-short-circuit: `and` stops as soon as the first check fails, `or` stops as soon as the first check
-passes.
+`and` and `or` are data-last, composing two predicates over the same input type. Both short-circuit:
+`and` stops as soon as the first check fails, `or` stops as soon as the first check passes.
 
 ```ts
 const isAdult: Predicate<number> = (age) => age >= 18;
@@ -111,9 +110,9 @@ const isValidPassword: Predicate<string> = pipe(
 
 ## Adapting the input type with `using`
 
-`using` is what distinguishes `Predicate` from a plain function. It lifts a `Predicate<A>`
-to a `Predicate<B>` by providing a function `B → A` that extracts the relevant part of `B`.
-The check itself doesn't change — only the type it operates on does.
+`using` is what distinguishes `Predicate` from a plain function. It lifts a `Predicate<A>` to a
+`Predicate<B>` by providing a function `B → A` that extracts the relevant part of `B`. The check
+itself doesn't change — only the type it operates on does.
 
 ```ts
 type Product = { name: string; price: number; inStock: boolean; };
@@ -209,20 +208,20 @@ isShortString(42); // false — not a string
 isShortString("a very long string that exceeds the limit"); // false — too long
 ```
 
-This is a one-way conversion: once you have a `Predicate`, the narrowing information is gone. If
-you need the narrowed type downstream, keep the value as a `Refinement` and use
-`Refinement.toFilter` or `Refinement.toResult` instead. A common mistake is converting too early
-and then casting (`x as string`) to get back the type information you just discarded.
+This is a one-way conversion: once you have a `Predicate`, the narrowing information is gone. If you
+need the narrowed type downstream, keep the value as a `Refinement` and use `Refinement.toFilter` or
+`Refinement.toResult` instead. A common mistake is converting too early and then casting
+(`x as string`) to get back the type information you just discarded.
 
 ## When to use Predicate
 
 - You need to negate, combine, or pass around boolean checks as values, and you don't require
   compile-time type narrowing.
-- You want to lift a check from a primitive type (number, string) to a richer domain type
-  (`User`, `Product`, `Order`) using `using`.
+- You want to lift a check from a primitive type (number, string) to a richer domain type (`User`,
+  `Product`, `Order`) using `using`.
 - You have a variable-length list of conditions to apply uniformly with `all` or `any`.
 - You want to mix a type guard (`Refinement`) with plain checks in a single composition.
 
 **Keep using a `Refinement<A, B>` when** the narrowed type needs to flow into subsequent operations
-— for example when you want `Maybe<NonEmptyString>` from `toFilter`, or `Result<E, ValidEmail>`
-from `toResult`. `Predicate` discards that information; `Refinement` preserves it.
+— for example when you want `Maybe<NonEmptyString>` from `toFilter`, or `Result<E, ValidEmail>` from
+`toResult`. `Predicate` discards that information; `Refinement` preserves it.

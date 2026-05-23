@@ -36,8 +36,8 @@ accumulate, often spread across different files and functions.
 
 ## The Maybe approach
 
-With `Maybe`, the absence is encoded in the type itself. You can't accidentally skip the check —
-the operations that work on an `Maybe` handle both cases for you:
+With `Maybe`, the absence is encoded in the type itself. You can't accidentally skip the check — the
+operations that work on an `Maybe` handle both cases for you:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -150,16 +150,16 @@ pipe("", Maybe.fromPredicate((s) => s.length > 0)); // None
 pipe("hello", Maybe.fromPredicate((s) => s.length > 0)); // Some("hello")
 ```
 
-Use `filter` when you already have a `Maybe`; use `fromPredicate` when you are starting from a
-plain value and a condition decides whether it should exist at all.
+Use `filter` when you already have a `Maybe`; use `fromPredicate` when you are starting from a plain
+value and a condition decides whether it should exist at all.
 
 ## Extracting the value
 
 At the edge of your pipeline, you need to get a plain value back. There are a few ways:
 
-**`getOrElse`** — provide a fallback as a thunk `() => B`. The thunk is only called when the
-Maybe is `None`, so expensive or side-effectful defaults are never computed unnecessarily. The
-fallback can be a different type, widening the result to the union of both:
+**`getOrElse`** — provide a fallback as a thunk `() => B`. The thunk is only called when the Maybe
+is `None`, so expensive or side-effectful defaults are never computed unnecessarily. The fallback
+can be a different type, widening the result to the union of both:
 
 ```ts
 pipe(Maybe.some(5), Maybe.getOrElse(() => 0)); // 5
@@ -180,14 +180,14 @@ pipe(
 );
 ```
 
-For interop with APIs that expect `null` or `undefined`, `toNullable` and `toUndefined` convert
-back at the boundary.
+For interop with APIs that expect `null` or `undefined`, `toNullable` and `toUndefined` convert back
+at the boundary.
 
 ## Recovering from None
 
 `recover` provides a fallback `Maybe` when the current one is `None`. Unlike `getOrElse`, the
-fallback is itself an `Maybe` — useful when the fallback operation might also fail. The fallback
-can produce a different type, widening the result to `Maybe<A | B>`:
+fallback is itself an `Maybe` — useful when the fallback operation might also fail. The fallback can
+produce a different type, widening the result to `Maybe<A | B>`:
 
 ```ts
 pipe(
@@ -210,7 +210,7 @@ pipe(
 ); // Result<string, User>
 
 // Result → Maybe: discard the error, keep only the success
-Maybe.fromResult(Result.error("oops")); // None
+Maybe.fromResult(Result.err("oops")); // None
 Maybe.fromResult(Result.ok(42)); // Some(42)
 ```
 

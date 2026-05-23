@@ -70,15 +70,15 @@ const getApiKey: Reader<ApiConfig, string> = Reader.asks((c) => c.apiKey);
 ```
 
 `Reader.ask` returns the entire `R` unchanged — useful when something downstream needs the full
-config. `Reader.resolve` lifts a plain value that needs nothing from `R`. Both come up
-occasionally; `asks` covers most cases.
+config. `Reader.resolve` lifts a plain value that needs nothing from `R`. Both come up occasionally;
+`asks` covers most cases.
 
 ## Transforming with `map`
 
 `map` transforms the value a Reader produces. The environment passes through unchanged.
 
-Consider locale-aware formatting, where rendering an amount correctly depends on the display
-context — but that context is not a property of the amount itself:
+Consider locale-aware formatting, where rendering an amount correctly depends on the display context
+— but that context is not a property of the amount itself:
 
 ```ts
 type Locale = { symbol: string; separator: string; };
@@ -131,7 +131,8 @@ step having to accept or forward it explicitly.
 ## Adapting environments with `local`
 
 Different parts of a program often need different slices of the total environment. `local` adapts a
-Reader that expects a narrow type to work inside a broader one, by providing the extraction function:
+Reader that expects a narrow type to work inside a broader one, by providing the extraction
+function:
 
 ```ts
 type DbConfig = { host: string; port: number; };
@@ -222,11 +223,11 @@ pipe(endpoint("/users"), Reader.run(apiConfig));
 endpoint("/users")(apiConfig);
 ```
 
-`Reader.run` fits naturally at the end of a `pipe` chain. Call it once, at the point in your
-program where the environment is available.
+`Reader.run` fits naturally at the end of a `pipe` chain. Call it once, at the point in your program
+where the environment is available.
 
-Reader is for values fixed at startup — API config, locale, database connections. If a value
-updates at runtime, it isn't a Reader; pass it explicitly.
+Reader is for values fixed at startup — API config, locale, database connections. If a value updates
+at runtime, it isn't a Reader; pass it explicitly.
 
 ## When to use Reader
 

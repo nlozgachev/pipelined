@@ -3,10 +3,10 @@ title: Dict — dictionary utilities
 description: Pure, composable operations for key-value maps — lookup returns Maybe, every operation returns a new map.
 ---
 
-You reach for a `Map` when you need to associate values with keys that aren't strings, or when
-you want insertion-order iteration guaranteed, or when you're working with a large collection
-where key membership checks matter. The native `Map` API gives you this, but it's mutation-based
-and doesn't compose with `pipe`.
+You reach for a `Map` when you need to associate values with keys that aren't strings, or when you
+want insertion-order iteration guaranteed, or when you're working with a large collection where key
+membership checks matter. The native `Map` API gives you this, but it's mutation-based and doesn't
+compose with `pipe`.
 
 `Dict` wraps `ReadonlyMap<K, V>` with a set of pure, data-last functions that do.
 
@@ -14,8 +14,8 @@ and doesn't compose with `pipe`.
 
 The three main constructors cover the common cases. `Dict.empty()` starts you with nothing.
 `Dict.fromEntries` converts an array of key-value pairs — the same format you'd use with
-`Object.fromEntries`, but for maps with any key type. `Dict.fromRecord` imports a plain object
-when you already have one:
+`Object.fromEntries`, but for maps with any key type. `Dict.fromRecord` imports a plain object when
+you already have one:
 
 ```ts
 import { Dict } from "@nlozgachev/pipelined/utils";
@@ -30,8 +30,8 @@ const byId = Dict.fromEntries([
 const scores = Dict.fromRecord({ alice: 85, bob: 92, carol: 74 });
 ```
 
-`Dict.singleton` is useful when you're building up a map incrementally and want a typed
-starting point with one known entry.
+`Dict.singleton` is useful when you're building up a map incrementally and want a typed starting
+point with one known entry.
 
 ## Looking up values safely
 
@@ -49,8 +49,8 @@ pipe(config, Dict.lookup("timeout")); // Some(5000)
 pipe(config, Dict.lookup("missing")); // None
 ```
 
-When you only need a boolean, `Dict.has` is the right tool — it avoids allocating an `Maybe`
-for what is essentially a membership test:
+When you only need a boolean, `Dict.has` is the right tool — it avoids allocating an `Maybe` for
+what is essentially a membership test:
 
 ```ts
 pipe(config, Dict.has("retries")); // true
@@ -94,9 +94,9 @@ pipe(
 
 ## Mapping and filtering in one pass
 
-`Dict.filterMap` applies a function that returns `Maybe` to each value. Entries where the
-function returns `None` are removed; entries where it returns `Some` are kept with the
-unwrapped value — all in one pass:
+`Dict.filterMap` applies a function that returns `Maybe` to each value. Entries where the function
+returns `None` are removed; entries where it returns `Some` are kept with the unwrapped value — all
+in one pass:
 
 ```ts
 const parse = (s: string): Maybe<number> => {
@@ -108,9 +108,8 @@ Dict.filterMap(parse)(Dict.fromRecord({ a: "1", b: "two", c: "3" }));
 // ReadonlyMap { "a" => 1, "c" => 3 }
 ```
 
-This is more efficient than `Dict.map(f)` followed by `Dict.compact` when the mapping
-and the filtering are naturally coupled — you avoid building an intermediate
-`ReadonlyMap<K, Maybe<V>>`.
+This is more efficient than `Dict.map(f)` followed by `Dict.compact` when the mapping and the
+filtering are naturally coupled — you avoid building an intermediate `ReadonlyMap<K, Maybe<V>>`.
 
 ## Modifying individual entries
 
@@ -128,8 +127,8 @@ pipe(base, Dict.remove("likes"));
 ```
 
 For the common pattern of incrementing a counter or initialising a value on first access,
-`Dict.upsert` provides a single operation. It calls your function with `Some(currentValue)` if
-the key exists, or `None` if it doesn't:
+`Dict.upsert` provides a single operation. It calls your function with `Some(currentValue)` if the
+key exists, or `None` if it doesn't:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -157,8 +156,8 @@ pipe(defaults, Dict.union(overrides));
 // ReadonlyMap { "timeout" => 10000, "retries" => 3, "debug" => true }
 ```
 
-`Dict.intersection` keeps only the keys that appear in both dictionaries, taking values from
-the left. `Dict.difference` removes from the left any keys that appear in the right:
+`Dict.intersection` keeps only the keys that appear in both dictionaries, taking values from the
+left. `Dict.difference` removes from the left any keys that appear in the right:
 
 ```ts
 const allUsers = Dict.fromRecord({ alice: "admin", bob: "editor", carol: "viewer" });
@@ -174,8 +173,8 @@ pipe(allUsers, Dict.difference(removedIds));
 
 ## Removing absent values with compact
 
-When you build a dictionary from fallible lookups — mapping over IDs that might not exist — you
-end up with `ReadonlyMap<K, Maybe<V>>`. `Dict.compact` collapses that into `ReadonlyMap<K, V>`:
+When you build a dictionary from fallible lookups — mapping over IDs that might not exist — you end
+up with `ReadonlyMap<K, Maybe<V>>`. `Dict.compact` collapses that into `ReadonlyMap<K, V>`:
 
 ```ts
 import { Maybe } from "@nlozgachev/pipelined/core";
@@ -192,8 +191,8 @@ Dict.compact(profileMap);
 
 ## Folding and converting
 
-`Dict.reduce` collapses the dictionary to a single value. `Dict.toRecord` converts a
-string-keyed dictionary back to a plain object when you need to pass it to code that expects one:
+`Dict.reduce` collapses the dictionary to a single value. `Dict.toRecord` converts a string-keyed
+dictionary back to a plain object when you need to pass it to code that expects one:
 
 ```ts
 // Sum all values

@@ -151,10 +151,16 @@ constructor. The brand is what makes it work: without it, nothing stops someone 
 
 ## When to use Brand
 
-Reach for `Brand` when you want the type system to distinguish between primitive values that share the same underlying type. It is particularly valuable for:
+Reach for `Brand` when you want the type system to distinguish between primitive values that share
+the same underlying type. It is particularly valuable for:
 
-- **Domain identifiers** — separating `UserId`, `ProductId`, and `OrderId` so they cannot be mixed up.
-- **Validated inputs** — representing strings that have already passed validation, like `Email` or `Slug`.
+- **Domain identifiers** — separating `UserId`, `ProductId`, and `OrderId` so they cannot be mixed
+  up.
+- **Validated inputs** — representing strings that have already passed validation, like `Email` or
+  `Slug`.
 - **Units and metrics** — distinguishing between `Seconds` and `Metres` to prevent logic errors.
 
-Do not use `Brand` if structural compatibility is actually what you want, or if you are wrapping complex objects where a simple interface or class type-safety is already sufficient. Since branding is a compile-time-only feature with zero runtime overhead, it is best kept for primitive type safety where raw types like `string` or `number` are too permissive.
+Do not use `Brand` if structural compatibility is actually what you want, or if you are wrapping
+complex objects where a simple interface or class type-safety is already sufficient. Since branding
+is a compile-time-only feature with zero runtime overhead, it is best kept for primitive type safety
+where raw types like `string` or `number` are too permissive.

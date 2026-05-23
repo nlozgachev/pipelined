@@ -3,11 +3,11 @@ title: "Logged — values with accumulated logs"
 description: Pair computations with a log that builds up automatically as you chain steps.
 ---
 
-Many operations need to record what they did: an audit trail of decisions in a rules engine, a
-debug trace of transformations in a data pipeline, a sequence of validation messages collected
-alongside a processed value. The usual approach threads an array through every function as an extra
-parameter. `Logged<W, A>` does that threading automatically: each step in a pipeline declares its
-own log entries, and they are concatenated in order without any manual bookkeeping.
+Many operations need to record what they did: an audit trail of decisions in a rules engine, a debug
+trace of transformations in a data pipeline, a sequence of validation messages collected alongside a
+processed value. The usual approach threads an array through every function as an extra parameter.
+`Logged<W, A>` does that threading automatically: each step in a pipeline declares its own log
+entries, and they are concatenated in order without any manual bookkeeping.
 
 ## The problem with threading a log manually
 
@@ -31,9 +31,9 @@ const [step2, log2] = truncate(5, step1, log1);
 ```
 
 Every function receives the log as a parameter and returns it as part of its result. Adding a new
-step means threading it through manually. Removing a step means adjusting every caller. And the
-log array has nothing to do with what the functions are actually computing — it's just noise in
-every signature.
+step means threading it through manually. Removing a step means adjusting every caller. And the log
+array has nothing to do with what the functions are actually computing — it's just noise in every
+signature.
 
 ## What a Logged is
 
@@ -86,8 +86,8 @@ const bigger = pipe(result, Logged.map(n => n + 1));
 
 ## Sequencing with `chain`
 
-`chain` is the key operation. It passes the value of one `Logged` to a function that returns
-another `Logged`, and automatically concatenates both logs:
+`chain` is the key operation. It passes the value of one `Logged` to a function that returns another
+`Logged`, and automatically concatenates both logs:
 
 ```ts
 const program = pipe(
@@ -104,8 +104,8 @@ No function in the chain touches the log from a previous step — the concatenat
 
 ## A rules engine example
 
-Suppose you are applying a sequence of business rules to a discount calculation. Each rule may
-apply a modifier and should record its reasoning:
+Suppose you are applying a sequence of business rules to a discount calculation. Each rule may apply
+a modifier and should record its reasoning:
 
 ```ts
 type Rule = (price: number) => Logged<string, number>;
@@ -174,8 +174,8 @@ const [slug, trace] = Logged.run(processSlug("  Hello World Foo Bar  "));
 
 ## Extracting results with `run`
 
-`Logged.run` returns the value and log as a tuple `[value, log]`. Call it at the boundary where
-you want to act on the results — emit the log to a monitoring system, return both to the caller, or
+`Logged.run` returns the value and log as a tuple `[value, log]`. Call it at the boundary where you
+want to act on the results — emit the log to a monitoring system, return both to the caller, or
 discard one:
 
 ```ts
@@ -186,8 +186,8 @@ return value;
 
 ## When to use Logged
 
-- You want a computation to produce both a result and a record of what happened, without threading
-  a log array through every function signature.
+- You want a computation to produce both a result and a record of what happened, without threading a
+  log array through every function signature.
 - You are building a rules engine, validation pipeline, or data transformation where each step
   should declare its own reasoning and the final caller collects the full trace.
 - You want pure, testable logging — the log is just data, there are no side effects until you
@@ -195,7 +195,7 @@ return value;
 
 **Keep using plain logging calls when** the output is purely for human debugging during development
 and you don't need to inspect, assert on, or forward the log programmatically. `Logged` is most
-valuable when the log itself is a first-class output that callers need to process, not just a
-side channel.
+valuable when the log itself is a first-class output that callers need to process, not just a side
+channel.
 </content>
 </invoke>

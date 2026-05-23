@@ -4,14 +4,14 @@ description: Curried arithmetic, clamping, range generation, and safe parsing �
 ---
 
 Working with numbers in a pipeline usually means scattering anonymous arrow functions everywhere:
-`Arr.map(n => n * 2)`, `Arr.filter(n => n >= 0 && n <= 100)`. `Num` replaces these with
-composable, named operations that read naturally inside `pipe`.
+`Arr.map(n => n * 2)`, `Arr.filter(n => n >= 0 && n <= 100)`. `Num` replaces these with composable,
+named operations that read naturally inside `pipe`.
 
 ## Generating number ranges
 
-`Num.range` produces an array of numbers from `from` to `to` (both inclusive), with an
-optional `step`. When the step does not land exactly on `to`, the sequence stops at the last
-value that does not exceed it:
+`Num.range` produces an array of numbers from `from` to `to` (both inclusive), with an optional
+`step`. When the step does not land exactly on `to`, the sequence stops at the last value that does
+not exceed it:
 
 ```ts
 import { Num } from "@nlozgachev/pipelined/utils";
@@ -43,8 +43,8 @@ pipe([10, 20, 30], Arr.map(Num.subtract(5))); // [5, 15, 25]
 `subtract(b)(a)` = `a - b`, so it reads as "subtract `b`" — natural for transforming arrays of
 values.
 
-`divide` and `remainder` return `Maybe<number>` rather than a plain number, because dividing by
-zero has no valid result. A `None` signals the invalid input; a `Some` holds the result:
+`divide` and `remainder` return `Maybe<number>` rather than a plain number, because dividing by zero
+has no valid result. A `None` signals the invalid input; a `Some` holds the result:
 
 ```ts
 import { Maybe } from "@nlozgachev/pipelined/core";
@@ -74,13 +74,13 @@ pipe(-5, Num.clamp(0, 100)); // 0
 pipe(42, Num.clamp(0, 100)); // 42
 ```
 
-A common use case is normalising user input — ensuring a slider value stays within the allowed
-range before sending it to an API.
+A common use case is normalising user input — ensuring a slider value stays within the allowed range
+before sending it to an API.
 
 ## Checking membership with `between`
 
-`Num.between` is a predicate that returns `true` when the value falls within `[min, max]`
-(inclusive on both ends). It composes directly with `Arr.filter`:
+`Num.between` is a predicate that returns `true` when the value falls within `[min, max]` (inclusive
+on both ends). It composes directly with `Arr.filter`:
 
 ```ts
 pipe(
@@ -119,11 +119,16 @@ pipe(
 
 ## Collection statistics and folding
 
-When working with arrays of numbers, you often need to calculate aggregate statistics. `Num` provides safe folds for sums, averages, and bounds that handle empty collections without throwing exceptions or returning raw `Infinity`/`-Infinity` values:
+When working with arrays of numbers, you often need to calculate aggregate statistics. `Num`
+provides safe folds for sums, averages, and bounds that handle empty collections without throwing
+exceptions or returning raw `Infinity`/`-Infinity` values:
 
 - `Num.sum` computes the total sum of a collection. It returns `0` if the collection is empty.
-- `Num.mean` calculates the average. It returns `Maybe<number>` (`None` if the collection is empty, avoiding division by zero).
-- `Num.min` and `Num.max` find the smallest and largest values, respectively. They return `Maybe<number>` (`None` if the collection is empty, avoiding JavaScript's default `Infinity` fallbacks).
+- `Num.mean` calculates the average. It returns `Maybe<number>` (`None` if the collection is empty,
+  avoiding division by zero).
+- `Num.min` and `Num.max` find the smallest and largest values, respectively. They return
+  `Maybe<number>` (`None` if the collection is empty, avoiding JavaScript's default `Infinity`
+  fallbacks).
 
 ```ts
 Num.sum([10, 20, 30]); // 60
@@ -152,8 +157,8 @@ const averageScore = pipe(
 
 ## Composing it all
 
-`Num` functions are designed to appear as steps in a `pipe` chain alongside `Arr` operations.
-Here, a range of integers is scaled, filtered to a sub-range, and summed:
+`Num` functions are designed to appear as steps in a `pipe` chain alongside `Arr` operations. Here,
+a range of integers is scaled, filtered to a sub-range, and summed:
 
 ```ts
 pipe(

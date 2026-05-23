@@ -22,9 +22,8 @@ The bug surfaces at runtime -- often intermittently, depending on how far off th
 
 ## Creating a Duration
 
-Every constructor returns a `Duration` whose internal representation is always milliseconds.
-You never need to think about the internal unit -- just pick the constructor that matches your
-intent:
+Every constructor returns a `Duration` whose internal representation is always milliseconds. You
+never need to think about the internal unit -- just pick the constructor that matches your intent:
 
 ```ts
 import { Duration } from "@nlozgachev/pipelined/types";
@@ -79,9 +78,9 @@ Duration.toSeconds(adjusted); // 25.2
 
 ## Composing with Task
 
-`Task.delay`, `Task.timeout`, `Task.repeat`, and `Task.repeatUntil` all accept
-`number | Duration`. When you pass a `Duration`, the intent is self-documenting and the compiler
-guards against unit errors:
+`Task.delay`, `Task.timeout`, `Task.repeat`, and `Task.repeatUntil` all accept `number | Duration`.
+When you pass a `Duration`, the intent is self-documenting and the compiler guards against unit
+errors:
 
 ```ts
 import { Task } from "@nlozgachev/pipelined/core";
@@ -126,5 +125,5 @@ Reach for `Duration` whenever a function accepts a time value:
 - **Domain modelling** -- subscription periods, cache TTLs, SLA thresholds.
 
 If your function currently takes `ms: number`, switching to `ms: number | Duration` is backward
-compatible -- existing callers that pass a raw number still work, while new callers can opt into
-the branded version for stronger guarantees.
+compatible -- existing callers that pass a raw number still work, while new callers can opt into the
+branded version for stronger guarantees.
