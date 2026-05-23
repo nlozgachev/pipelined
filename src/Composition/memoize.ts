@@ -24,10 +24,7 @@
  * );
  * ```
  */
-export const memoize = <A, B>(
-	f: (a: A) => B,
-	keyFn: (a: A) => unknown = (a) => a,
-): (a: A) => B => {
+export const memoize = <A, B>(f: (a: A) => B, keyFn: (a: A) => unknown = (a) => a): (a: A) => B => {
 	const cache = new Map<unknown, B>();
 
 	return (a: A): B => {

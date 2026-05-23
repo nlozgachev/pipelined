@@ -8,20 +8,13 @@ test("flow - single function wraps it", () => {
 });
 
 test("flow - two functions execute left-to-right", () => {
-	const addOneThenDouble = flow(
-		(n: number) => n + 1,
-		(n: number) => n * 2,
-	);
+	const addOneThenDouble = flow((n: number) => n + 1, (n: number) => n * 2);
 	// 5 + 1 = 6, 6 * 2 = 12
 	expect(addOneThenDouble(5)).toBe(12);
 });
 
 test("flow - three functions execute left-to-right", () => {
-	const fn = flow(
-		(n: number) => n + 1,
-		(n: number) => n * 2,
-		(n: number) => `Result: ${n}`,
-	);
+	const fn = flow((n: number) => n + 1, (n: number) => n * 2, (n: number) => `Result: ${n}`);
 	expect(fn(5)).toBe("Result: 12");
 });
 
@@ -41,14 +34,14 @@ test("flow - left-to-right order confirmed", () => {
 	};
 
 	flow(a, b, c)("");
-	expect(log).toEqual(["a", "b", "c"]);
+	expect(log).toStrictEqual(["a", "b", "c"]);
 });
 
 test("flow - reusability of created function", () => {
 	const process = flow(
 		(s: string) => s.trim(),
 		(s: string) => s.toLowerCase(),
-		(s: string) => s.replace(/\s+/g, "-"),
+		(s: string) => s.replaceAll(/\s+/g, "-"),
 	);
 
 	expect(process("  Hello World  ")).toBe("hello-world");
@@ -57,18 +50,12 @@ test("flow - reusability of created function", () => {
 });
 
 test("flow - multi-argument first function", () => {
-	const add = flow(
-		(a: number, b: number) => a + b,
-		(sum: number) => sum * 10,
-	);
+	const add = flow((a: number, b: number) => a + b, (sum: number) => sum * 10);
 	expect(add(3, 4)).toBe(70);
 });
 
 test("flow - multi-argument first function with three args", () => {
-	const fn = flow(
-		(a: number, b: number, c: number) => a + b + c,
-		(sum: number) => `Sum: ${sum}`,
-	);
+	const fn = flow((a: number, b: number, c: number) => a + b + c, (sum: number) => `Sum: ${sum}`);
 	expect(fn(1, 2, 3)).toBe("Sum: 6");
 });
 
@@ -87,21 +74,14 @@ test("flow - integration with Maybe", () => {
 });
 
 test("flow - can be used as argument to higher-order functions", () => {
-	const transform = flow(
-		(n: number) => n * 2,
-		(n: number) => n + 1,
-	);
+	const transform = flow((n: number) => n * 2, (n: number) => n + 1);
 
 	const results = [1, 2, 3].map(transform);
-	expect(results).toEqual([3, 5, 7]);
+	expect(results).toStrictEqual([3, 5, 7]);
 });
 
 test("flow - type transformation across functions", () => {
-	const fn = flow(
-		(n: number) => String(n),
-		(s: string) => s.length,
-		(len: number) => len > 1,
-	);
+	const fn = flow((n: number) => String(n), (s: string) => s.length, (len: number) => len > 1);
 	expect(fn(5)).toBe(false);
 	expect(fn(10)).toBe(true);
 });
@@ -148,11 +128,7 @@ test("flow - zero functions returns the first argument unchanged", () => {
 	// The typed overloads don't expose flow() with no arguments, but the
 	// underlying implementation has a defensive guard: if no functions are
 	// provided, return the first argument as-is.
-	const identity = (
-		flow as (
-			...fns: Array<(...a: unknown[]) => unknown>
-		) => (...a: unknown[]) => unknown
-	)();
+	const identity = (flow as (...fns: Array<(...a: unknown[]) => unknown>) => (...a: unknown[]) => unknown)();
 	expect(identity(42)).toBe(42);
 	expect(identity("hello")).toBe("hello");
 });

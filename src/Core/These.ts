@@ -38,6 +38,7 @@ export namespace These {
 	 * These.first(42); // { kind: "First", first: 42 }
 	 * ```
 	 */
+	// eslint-disable-next-line no-shadow
 	export const first = <A>(value: A): TheseFirst<A> => ({ kind: "First", first: value });
 
 	/**
@@ -48,6 +49,7 @@ export namespace These {
 	 * These.second("warning"); // { kind: "Second", second: "warning" }
 	 * ```
 	 */
+	// eslint-disable-next-line no-shadow
 	export const second = <B>(value: B): TheseSecond<B> => ({ kind: "Second", second: value });
 
 	/**
@@ -58,11 +60,7 @@ export namespace These {
 	 * These.both(42, "Deprecated API used"); // { kind: "Both", first: 42, second: "Deprecated API used" }
 	 * ```
 	 */
-	export const both = <A, B>(first: A, second: B): TheseBoth<A, B> => ({
-		kind: "Both",
-		first,
-		second,
-	});
+	export const both = <A, B>(f: A, s: B): TheseBoth<A, B> => ({ kind: "Both", first: f, second: s });
 
 	/**
 	 * Type guard — checks if a These holds only a first value.
@@ -82,16 +80,14 @@ export namespace These {
 	/**
 	 * Returns true if the These contains a first value (First or Both).
 	 */
-	export const hasFirst = <A, B>(
-		data: These<A, B>,
-	): data is TheseFirst<A> | TheseBoth<A, B> => data.kind === "First" || data.kind === "Both";
+	export const hasFirst = <A, B>(data: These<A, B>): data is TheseFirst<A> | TheseBoth<A, B> =>
+		data.kind === "First" || data.kind === "Both";
 
 	/**
 	 * Returns true if the These contains a second value (Second or Both).
 	 */
-	export const hasSecond = <A, B>(
-		data: These<A, B>,
-	): data is TheseSecond<B> | TheseBoth<A, B> => data.kind === "Second" || data.kind === "Both";
+	export const hasSecond = <A, B>(data: These<A, B>): data is TheseSecond<B> | TheseBoth<A, B> =>
+		data.kind === "Second" || data.kind === "Both";
 
 	/**
 	 * Transforms the first value, leaving the second unchanged.
@@ -104,8 +100,8 @@ export namespace These {
 	 * ```
 	 */
 	export const mapFirst = <A, C>(f: (a: A) => C) => <B>(data: These<A, B>): These<C, B> => {
-		if (isSecond(data)) return data;
-		if (isFirst(data)) return first(f(data.first));
+		if (isSecond(data)) { return data; }
+		if (isFirst(data)) { return first(f(data.first)); }
 		return both(f(data.first), data.second);
 	};
 
@@ -119,8 +115,8 @@ export namespace These {
 	 * ```
 	 */
 	export const mapSecond = <B, D>(f: (b: B) => D) => <A>(data: These<A, B>): These<A, D> => {
-		if (isFirst(data)) return data;
-		if (isSecond(data)) return second(f(data.second));
+		if (isFirst(data)) { return data; }
+		if (isSecond(data)) { return second(f(data.second)); }
 		return both(data.first, f(data.second));
 	};
 
@@ -135,14 +131,12 @@ export namespace These {
 	 * ); // Both(10, "WARN")
 	 * ```
 	 */
-	export const mapBoth = <A, C, B, D>(onFirst: (a: A) => C, onSecond: (b: B) => D) =>
-	(
-		data: These<A, B>,
-	): These<C, D> => {
-		if (isSecond(data)) return second(onSecond(data.second));
-		if (isFirst(data)) return first(onFirst(data.first));
-		return both(onFirst(data.first), onSecond(data.second));
-	};
+	export const mapBoth =
+		<A, C, B, D>(onFirst: (a: A) => C, onSecond: (b: B) => D) => (data: These<A, B>): These<C, D> => {
+			if (isSecond(data)) { return second(onSecond(data.second)); }
+			if (isFirst(data)) { return first(onFirst(data.first)); }
+			return both(onFirst(data.first), onSecond(data.second));
+		};
 
 	/**
 	 * Chains These computations by passing the first value to f.
@@ -158,7 +152,7 @@ export namespace These {
 	 * ```
 	 */
 	export const chainFirst = <A, B, C>(f: (a: A) => These<C, B>) => (data: These<A, B>): These<C, B> => {
-		if (isSecond(data)) return data;
+		if (isSecond(data)) { return data; }
 		return f(data.first);
 	};
 
@@ -176,7 +170,7 @@ export namespace These {
 	 * ```
 	 */
 	export const chainSecond = <A, B, D>(f: (b: B) => These<A, D>) => (data: These<A, B>): These<A, D> => {
-		if (isFirst(data)) return data;
+		if (isFirst(data)) { return data; }
 		return f(data.second);
 	};
 
@@ -195,16 +189,12 @@ export namespace These {
 	 * );
 	 * ```
 	 */
-	export const fold = <A, B, C>(
-		onFirst: (a: A) => C,
-		onSecond: (b: B) => C,
-		onBoth: (a: A, b: B) => C,
-	) =>
-	(data: These<A, B>): C => {
-		if (isSecond(data)) return onSecond(data.second);
-		if (isFirst(data)) return onFirst(data.first);
-		return onBoth(data.first, data.second);
-	};
+	export const fold =
+		<A, B, C>(onFirst: (a: A) => C, onSecond: (b: B) => C, onBoth: (a: A, b: B) => C) => (data: These<A, B>): C => {
+			if (isSecond(data)) { return onSecond(data.second); }
+			if (isFirst(data)) { return onFirst(data.first); }
+			return onBoth(data.first, data.second);
+		};
 
 	/**
 	 * Pattern matches on a These, returning the result of the matching case.
@@ -221,16 +211,12 @@ export namespace These {
 	 * );
 	 * ```
 	 */
-	export const match = <A, B, C>(cases: {
-		first: (a: A) => C;
-		second: (b: B) => C;
-		both: (a: A, b: B) => C;
-	}) =>
-	(data: These<A, B>): C => {
-		if (isSecond(data)) return cases.second(data.second);
-		if (isFirst(data)) return cases.first(data.first);
-		return cases.both(data.first, data.second);
-	};
+	export const match =
+		<A, B, C>(cases: { first: (a: A) => C; second: (b: B) => C; both: (a: A, b: B) => C; }) => (data: These<A, B>): C => {
+			if (isSecond(data)) { return cases.second(data.second); }
+			if (isFirst(data)) { return cases.first(data.first); }
+			return cases.both(data.first, data.second);
+		};
 
 	/**
 	 * Returns the first value, or a default if the These has no first value.
@@ -272,7 +258,7 @@ export namespace These {
 	 * ```
 	 */
 	export const tap = <A>(f: (a: A) => void) => <B>(data: These<A, B>): These<A, B> => {
-		if (hasFirst(data)) f(data.first);
+		if (hasFirst(data)) { f(data.first); }
 		return data;
 	};
 
@@ -290,8 +276,8 @@ export namespace These {
 	 * ```
 	 */
 	export const swap = <A, B>(data: These<A, B>): These<B, A> => {
-		if (isSecond(data)) return first(data.second);
-		if (isFirst(data)) return second(data.first);
+		if (isSecond(data)) { return first(data.second); }
+		if (isFirst(data)) { return second(data.first); }
 		return both(data.second, data.first);
 	};
 }

@@ -4,8 +4,8 @@ import { Maybe } from "./Maybe.ts";
 import { Result } from "./Result.ts";
 
 /**
- * Validation represents a value that is either valid with a success value,
- * or invalid with accumulated errors.
+ * Validation represents a value that is either passed with a success value,
+ * or failed with accumulated errors.
  * Unlike Result, Validation can accumulate multiple errors instead of short-circuiting.
  *
  * Use Validation when you need to collect all errors (e.g., form validation).
@@ -14,78 +14,69 @@ import { Result } from "./Result.ts";
  * @example
  * ```ts
  * const validateName = (name: string): Validation<string, string> =>
- *   name.length > 0 ? Validation.valid(name) : Validation.invalid("Name is required");
+ *   name.length > 0 ? Validation.passed(name) : Validation.failed("Name is required");
  *
  * const validateAge = (age: number): Validation<string, number> =>
- *   age >= 0 ? Validation.valid(age) : Validation.invalid("Age must be positive");
+ *   age >= 0 ? Validation.passed(age) : Validation.failed("Age must be positive");
  *
  * // Accumulates all errors using ap
  * pipe(
- *   Validation.valid((name: string) => (age: number) => ({ name, age })),
+ *   Validation.passed((name: string) => (age: number) => ({ name, age })),
  *   Validation.ap(validateName("")),
  *   Validation.ap(validateAge(-1))
  * );
- * // Invalid(["Name is required", "Age must be positive"])
+ * // Failed(["Name is required", "Age must be positive"])
  * ```
  */
-export type Validation<E, A> = Valid<A> | Invalid<E>;
+export type Validation<E, A> = Passed<A> | Failed<E>;
 
-export type Valid<A> = WithKind<"Valid"> & WithValue<A>;
-export type Invalid<E> = WithKind<"Invalid"> & WithErrors<E>;
+export type Passed<A> = WithKind<"Passed"> & WithValue<A>;
+export type Failed<E> = WithKind<"Failed"> & WithErrors<E>;
 
 export namespace Validation {
 	/**
-	 * Wraps a value in a valid Validation.
+	 * Wraps a value in a passed Validation.
 	 *
 	 * @example
 	 * ```ts
-	 * Validation.valid(42); // Valid(42)
+	 * Validation.passed(42); // Passed(42)
 	 * ```
 	 */
-	export const valid = <E, A>(value: A): Validation<E, A> => ({
-		kind: "Valid",
-		value,
-	});
+	export const passed = <E, A>(value: A): Validation<E, A> => ({ kind: "Passed", value });
 
 	/**
-	 * Creates an invalid Validation from a single error.
+	 * Creates a failed Validation from a single error.
 	 *
 	 * @example
 	 * ```ts
-	 * Validation.invalid("Invalid input");
+	 * Validation.failed("Invalid input");
 	 * ```
 	 */
-	export const invalid = <E>(error: E): Invalid<E> => ({
-		kind: "Invalid",
-		errors: [error],
-	});
+	export const failed = <E>(error: E): Failed<E> => ({ kind: "Failed", errors: [error] });
 
 	/**
-	 * Creates an invalid Validation from multiple errors.
+	 * Creates a failed Validation from multiple errors.
 	 *
 	 * @example
 	 * ```ts
-	 * Validation.invalidAll(["Invalid input"]);
+	 * Validation.failedAll(["Invalid input"]);
 	 * ```
 	 */
-	export const invalidAll = <E>(errors: NonEmptyList<E>): Invalid<E> => ({
-		kind: "Invalid",
-		errors,
-	});
+	export const failedAll = <E>(errors: NonEmptyList<E>): Failed<E> => ({ kind: "Failed", errors });
 
 	/**
-	 * Type guard that checks if a Validation is valid.
+	 * Type guard that checks if a Validation is passed.
 	 */
-	export const isValid = <E, A>(data: Validation<E, A>): data is Valid<A> => data.kind === "Valid";
+	export const isPassed = <E, A>(data: Validation<E, A>): data is Passed<A> => data.kind === "Passed";
 
 	/**
-	 * Type guard that checks if a Validation is invalid.
+	 * Type guard that checks if a Validation is failed.
 	 */
-	export const isInvalid = <E, A>(data: Validation<E, A>): data is Invalid<E> => data.kind === "Invalid";
+	export const isFailed = <E, A>(data: Validation<E, A>): data is Failed<E> => data.kind === "Failed";
 
 	/**
 	 * Creates a Validation from a predicate applied to a value.
-	 * Returns Valid if the predicate passes, Invalid from `onFalse` otherwise.
+	 * Returns Passed if the predicate passes, Failed from `onFalse` otherwise.
 	 *
 	 * @example
 	 * ```ts
@@ -94,55 +85,63 @@ export namespace Validation {
 	 *   () => "Name is required"
 	 * );
 	 *
-	 * validateName("Alice"); // Valid("Alice")
-	 * validateName("");      // Invalid(["Name is required"])
+	 * validateName("Alice"); // Passed("Alice")
+	 * validateName("");      // Failed(["Name is required"])
 	 * ```
 	 */
-	export const fromPredicate = <E, A>(
-		pred: (a: A) => boolean,
-		onFalse: (a: A) => E,
-	) =>
-	(a: A): Validation<E, A> => pred(a) ? valid(a) : invalid(onFalse(a));
+	export const fromPredicate = <E, A>(pred: (a: A) => boolean, onFalse: (a: A) => E) => (a: A): Validation<E, A> =>
+		pred(a) ? passed(a) : failed(onFalse(a));
 
 	/**
 	 * Creates a Validation from a nullable value.
-	 * If the value is null or undefined, returns Invalid with the error from onNull.
-	 * Otherwise, returns Valid.
+	 * If the value is null or undefined, returns Failed with the error from onNull.
+	 * Otherwise, returns Passed.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(null, Validation.fromNullable(() => "is null")); // Invalid(["is null"])
-	 * pipe(42, Validation.fromNullable(() => "is null"));   // Valid(42)
+	 * pipe(null, Validation.fromNullable(() => "is null")); // Failed(["is null"])
+	 * pipe(42, Validation.fromNullable(() => "is null"));   // Passed(42)
 	 * ```
 	 */
 	export const fromNullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): Validation<E, A> =>
-		value === null || value === undefined ? invalid(onNull()) : valid(value);
+		value === null || value === undefined ? failed(onNull()) : passed(value);
 
 	/**
 	 * Creates a Validation from a Maybe.
-	 * If the Maybe is None, returns Invalid with the error from onNone.
-	 * Otherwise, returns Valid.
+	 * If the Maybe is None, returns Failed with the error from onNone.
+	 * Otherwise, returns Passed.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Maybe.none(), Validation.fromMaybe(() => "is none")); // Invalid(["is none"])
-	 * pipe(Maybe.some(42), Validation.fromMaybe(() => "is none")); // Valid(42)
+	 * pipe(Maybe.none(), Validation.fromMaybe(() => "is none")); // Failed(["is none"])
+	 * pipe(Maybe.some(42), Validation.fromMaybe(() => "is none")); // Passed(42)
 	 * ```
 	 */
 	export const fromMaybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): Validation<E, A> =>
-		Maybe.isNone(maybe) ? invalid(onNone()) : valid(maybe.value);
+		Maybe.isNone(maybe) ? failed(onNone()) : passed(maybe.value);
 
 	/**
 	 * Transforms the success value inside a Validation.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Validation.valid(5), Validation.map(n => n * 2)); // Valid(10)
-	 * pipe(Validation.invalid("oops"), Validation.map(n => n * 2)); // Invalid(["oops"])
+	 * pipe(Validation.passed(5), Validation.map(n => n * 2)); // Passed(10)
+	 * pipe(Validation.failed("oops"), Validation.map(n => n * 2)); // Failed(["oops"])
 	 * ```
 	 */
 	export const map = <A, B>(f: (a: A) => B) => <E>(data: Validation<E, A>): Validation<E, B> =>
-		isValid(data) ? valid(f(data.value)) : data;
+		isPassed(data) ? passed(f(data.value)) : data;
+
+	/**
+	 * Transforms the error list inside a Validation.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Validation.failed("oops"), Validation.mapError(e => e.toUpperCase())); // Failed(["OOPS"])
+	 * ```
+	 */
+	export const mapError = <E, F, A>(f: (e: E) => F) => (data: Validation<E, A>): Validation<F, A> =>
+		isFailed(data) ? failedAll(data.errors.map(f) as unknown as NonEmptyList<F>) : data;
 
 	/**
 	 * Applies a function wrapped in a Validation to a value wrapped in a Validation.
@@ -152,25 +151,22 @@ export namespace Validation {
 	 * ```ts
 	 * const add = (a: number) => (b: number) => a + b;
 	 * pipe(
-	 *   Validation.valid(add),
-	 *   Validation.ap(Validation.valid(5)),
-	 *   Validation.ap(Validation.valid(3))
-	 * ); // Valid(8)
+	 *   Validation.passed(add),
+	 *   Validation.ap(Validation.passed(5)),
+	 *   Validation.ap(Validation.passed(3))
+	 * ); // Passed(8)
 	 *
 	 * pipe(
-	 *   Validation.valid(add),
-	 *   Validation.ap(Validation.invalid<string, number>("bad a")),
-	 *   Validation.ap(Validation.invalid<string, number>("bad b"))
-	 * ); // Invalid(["bad a", "bad b"])
+	 *   Validation.passed(add),
+	 *   Validation.ap(Validation.failed<string, number>("bad a")),
+	 *   Validation.ap(Validation.failed<string, number>("bad b"))
+	 * ); // Failed(["bad a", "bad b"])
 	 * ```
 	 */
 	export const ap = <E, A>(arg: Validation<E, A>) => <B>(data: Validation<E, (a: A) => B>): Validation<E, B> => {
-		if (isValid(data) && isValid(arg)) return valid(data.value(arg.value));
-		const errors = [
-			...(isInvalid(data) ? data.errors : []),
-			...(isInvalid(arg) ? arg.errors : []),
-		] as NonEmptyList<E>;
-		return invalidAll(errors);
+		if (isPassed(data) && isPassed(arg)) { return passed(data.value(arg.value)); }
+		const errors = [...(isFailed(data) ? data.errors : []), ...(isFailed(arg) ? arg.errors : [])] as NonEmptyList<E>;
+		return failedAll(errors);
 	};
 
 	/**
@@ -179,7 +175,7 @@ export namespace Validation {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Validation.valid(42),
+	 *   Validation.passed(42),
 	 *   Validation.fold(
 	 *     errors => `Errors: ${errors.join(", ")}`,
 	 *     value => `Value: ${value}`
@@ -187,11 +183,9 @@ export namespace Validation {
 	 * );
 	 * ```
 	 */
-	export const fold = <E, A, B>(
-		onInvalid: (errors: NonEmptyList<E>) => B,
-		onValid: (a: A) => B,
-	) =>
-	(data: Validation<E, A>): B => isValid(data) ? onValid(data.value) : onInvalid(data.errors);
+	export const fold =
+		<E, A, B>(onFailed: (errors: NonEmptyList<E>) => B, onPassed: (a: A) => B) => (data: Validation<E, A>): B =>
+			isPassed(data) ? onPassed(data.value) : onFailed(data.errors);
 
 	/**
 	 * Pattern matches on a Validation, returning the result of the matching case.
@@ -201,31 +195,29 @@ export namespace Validation {
 	 * pipe(
 	 *   validation,
 	 *   Validation.match({
-	 *     valid: value => `Got ${value}`,
-	 *     invalid: errors => `Failed: ${errors.join(", ")}`
+	 *     passed: value => `Got ${value}`,
+	 *     failed: errors => `Failed: ${errors.join(", ")}`
 	 *   })
 	 * );
 	 * ```
 	 */
-	export const match = <E, A, B>(cases: {
-		valid: (a: A) => B;
-		invalid: (errors: NonEmptyList<E>) => B;
-	}) =>
-	(data: Validation<E, A>): B => isValid(data) ? cases.valid(data.value) : cases.invalid(data.errors);
+	export const match =
+		<E, A, B>(cases: { passed: (a: A) => B; failed: (errors: NonEmptyList<E>) => B; }) => (data: Validation<E, A>): B =>
+			isPassed(data) ? cases.passed(data.value) : cases.failed(data.errors);
 
 	/**
-	 * Returns the success value or a default value if the Validation is invalid.
+	 * Returns the success value or a default value if the Validation is failed.
 	 * The default can be a different type, widening the result to `A | B`.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Validation.valid(5), Validation.getOrElse(() => 0)); // 5
-	 * pipe(Validation.invalid("oops"), Validation.getOrElse(() => 0)); // 0
-	 * pipe(Validation.invalid("oops"), Validation.getOrElse(() => null)); // null — typed as number | null
+	 * pipe(Validation.passed(5), Validation.getOrElse(() => 0)); // 5
+	 * pipe(Validation.failed("oops"), Validation.getOrElse(() => 0)); // 0
+	 * pipe(Validation.failed("oops"), Validation.getOrElse(() => null)); // null — typed as number | null
 	 * ```
 	 */
 	export const getOrElse = <E, A, B>(defaultValue: () => B) => (data: Validation<E, A>): A | B =>
-		isValid(data) ? data.value : defaultValue();
+		isPassed(data) ? data.value : defaultValue();
 
 	/**
 	 * Executes a side effect on the success value without changing the Validation.
@@ -233,14 +225,14 @@ export namespace Validation {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Validation.valid(5),
+	 *   Validation.passed(5),
 	 *   Validation.tap(n => console.log("Value:", n)),
 	 *   Validation.map(n => n * 2)
 	 * );
 	 * ```
 	 */
 	export const tap = <E, A>(f: (a: A) => void) => (data: Validation<E, A>): Validation<E, A> => {
-		if (isValid(data)) f(data.value);
+		if (isPassed(data)) { f(data.value); }
 		return data;
 	};
 
@@ -251,117 +243,118 @@ export namespace Validation {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Validation.invalid("Name required"),
+	 *   Validation.failed("Name required"),
 	 *   Validation.tapError(errors => console.error("validation failed:", errors)),
 	 *   Validation.map(toUser)
 	 * );
 	 * ```
 	 */
 	export const tapError = <E, A>(f: (errors: NonEmptyList<E>) => void) => (data: Validation<E, A>): Validation<E, A> => {
-		if (isInvalid(data)) f(data.errors);
+		if (isFailed(data)) { f(data.errors); }
 		return data;
 	};
 
 	/**
-	 * Recovers from an Invalid state by providing a fallback Validation.
+	 * Recovers from a Failed state by providing a fallback Validation.
 	 * The fallback receives the accumulated error list so callers can inspect which errors occurred.
 	 * The fallback can produce a different success type, widening the result to `Validation<E, A | B>`.
 	 */
 	export const recover =
 		<E, A, B>(fallback: (errors: NonEmptyList<E>) => Validation<E, B>) =>
-		(data: Validation<E, A>): Validation<E, A | B> => isValid(data) ? data : fallback(data.errors);
+		(data: Validation<E, A>): Validation<E, A | B> => isPassed(data) ? data : fallback(data.errors);
 
 	/**
-	 * Recovers from an Invalid state unless `isBlocked` returns true for any of the accumulated errors.
+	 * Recovers from a Failed state unless `isBlocked` returns true for any of the accumulated errors.
 	 * The fallback can produce a different success type, widening the result to `Validation<E, A | B>`.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Validation.invalid("field-error"),
-	 *   Validation.recoverUnless(e => e === "fatal", () => Validation.valid(0))
-	 * ); // Valid(0)
+	 *   Validation.failed("field-error"),
+	 *   Validation.recoverUnless(e => e === "fatal", () => Validation.passed(0))
+	 * ); // Passed(0)
 	 * ```
 	 */
 	export const recoverUnless =
 		<E, A, B>(isBlocked: (e: E) => boolean, fallback: () => Validation<E, B>) =>
-		(data: Validation<E, A>): Validation<E, A | B> => isInvalid(data) && !data.errors.some(isBlocked) ? fallback() : data;
+		(data: Validation<E, A>): Validation<E, A | B> => isFailed(data) && !data.errors.some(isBlocked) ? fallback() : data;
 
 	/**
 	 * Converts a Validation to a Result.
-	 * Valid becomes Ok, Invalid becomes Err with the accumulated error list.
+	 * Passed becomes Ok, Failed becomes Err with the accumulated error list.
 	 *
 	 * @example
 	 * ```ts
-	 * Validation.toResult(Validation.valid(42));        // Ok(42)
-	 * Validation.toResult(Validation.invalid("oops"));  // Err(["oops"])
+	 * Validation.toResult(Validation.passed(42));        // Ok(42)
+	 * Validation.toResult(Validation.failed("oops"));  // Err(["oops"])
 	 * ```
 	 */
 	export const toResult = <E, A>(data: Validation<E, A>): Result<NonEmptyList<E>, A> =>
-		isValid(data) ? Result.ok(data.value) : Result.error(data.errors);
+		isPassed(data) ? Result.ok(data.value) : Result.err(data.errors);
 
 	/**
-	 * Converts a Validation to a Maybe. `Valid` becomes `Some`; `Invalid` becomes `None`
+	 * Converts a Validation to a Maybe. `Passed` becomes `Some`; `Failed` becomes `None`
 	 * (errors are discarded).
 	 *
 	 * @example
 	 * ```ts
-	 * Validation.toMaybe(Validation.valid(42));       // Some(42)
-	 * Validation.toMaybe(Validation.invalid("bad"));  // None
+	 * Validation.toMaybe(Validation.passed(42));       // Some(42)
+	 * Validation.toMaybe(Validation.failed("bad"));  // None
 	 * ```
 	 */
 	export const toMaybe = <E, A>(data: Validation<E, A>): Maybe<A> =>
-		isValid(data) ? Maybe.some(data.value) : Maybe.none();
+		isPassed(data) ? Maybe.some(data.value) : Maybe.none();
 
 	/**
-	 * Converts a `Result` to a `Validation`. `Ok` becomes `Valid`; `Err(e)` becomes `Invalid([e])`.
+	 * Converts a `Result` to a `Validation`. `Ok` becomes `Passed`; `Err(e)` becomes `Failed([e])`.
 	 *
 	 * Useful when bridging from error-short-circuiting `Result` pipelines into
 	 * error-accumulating `Validation` pipelines.
 	 *
 	 * @example
 	 * ```ts
-	 * Validation.fromResult(Result.ok(42));       // Valid(42)
-	 * Validation.fromResult(Result.error("bad"));   // Invalid(["bad"])
+	 * Validation.fromResult(Result.ok(42));       // Passed(42)
+	 * Validation.fromResult(Result.err("bad"));   // Failed(["bad"])
 	 * ```
 	 */
 	export const fromResult = <E, A>(data: Result<E, A>): Validation<E, A> =>
-		data.kind === "Ok" ? valid(data.value) : invalid(data.error);
+		data.kind === "Ok" ? passed(data.value) : failed(data.error);
 
 	/**
 	 * Combines two independent Validation instances into a tuple.
-	 * If both are Valid, returns Valid with both values as a tuple.
-	 * If either is Invalid, accumulates errors from both sides.
+	 * If both are Passed, returns Passed with both values as a tuple.
+	 * If either is Failed, accumulates errors from both sides.
 	 *
 	 * @example
 	 * ```ts
 	 * Validation.product(
-	 *   Validation.valid("alice"),
-	 *   Validation.valid(30)
-	 * ); // Valid(["alice", 30])
+	 *   Validation.passed("alice"),
+	 *   Validation.passed(30)
+	 * ); // Passed(["alice", 30])
 	 *
 	 * Validation.product(
-	 *   Validation.invalid("Name required"),
-	 *   Validation.invalid("Age must be >= 0")
-	 * ); // Invalid(["Name required", "Age must be >= 0"])
+	 *   Validation.failed("Name required"),
+	 *   Validation.failed("Age must be >= 0")
+	 * ); // Failed(["Name required", "Age must be >= 0"])
 	 * ```
 	 */
 	export const product = <E, A, B>(
 		first: Validation<E, A>,
 		second: Validation<E, B>,
 	): Validation<E, readonly [A, B]> => {
-		if (isValid(first) && isValid(second)) return valid([first.value, second.value]);
-		const errors = [
-			...(isInvalid(first) ? first.errors : []),
-			...(isInvalid(second) ? second.errors : []),
-		] as NonEmptyList<E>;
-		return invalidAll(errors);
+		if (isPassed(first) && isPassed(second)) {
+			return passed([first.value, second.value]);
+		}
+		const errors = [...(isFailed(first) ? first.errors : []), ...(isFailed(second) ? second.errors : [])] as NonEmptyList<
+			E
+		>;
+		return failedAll(errors);
 	};
 
 	/**
 	 * Combines a non-empty list of Validation instances, accumulating all errors.
-	 * If all are Valid, returns Valid with all values collected into an array.
-	 * If any are Invalid, returns Invalid with all accumulated errors.
+	 * If all are Passed, returns Passed with all values collected into an array.
+	 * If any are Failed, returns Failed with all accumulated errors.
 	 *
 	 * @example
 	 * ```ts
@@ -370,18 +363,16 @@ export namespace Validation {
 	 *   validateEmail(email),
 	 *   validateAge(age)
 	 * ]);
-	 * // Valid([name, email, age]) or Invalid([...all errors])
+	 * // Passed([name, email, age]) or Failed([...all errors])
 	 * ```
 	 */
-	export const productAll = <E, A>(
-		data: NonEmptyList<Validation<E, A>>,
-	): Validation<E, readonly A[]> => {
+	export const productAll = <E, A>(data: NonEmptyList<Validation<E, A>>): Validation<E, readonly A[]> => {
 		const values: A[] = [];
 		const errors: E[] = [];
 		for (const v of data) {
-			if (isValid(v)) values.push(v.value);
-			else errors.push(...v.errors);
+			if (isPassed(v)) { values.push(v.value); }
+			else { errors.push(...v.errors); }
 		}
-		return errors.length > 0 ? invalidAll(errors as unknown as NonEmptyList<E>) : valid(values);
+		return errors.length > 0 ? failedAll(errors as unknown as NonEmptyList<E>) : passed(values);
 	};
 }

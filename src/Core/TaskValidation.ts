@@ -14,63 +14,60 @@ import { Validation } from "./Validation.ts";
  * ```ts
  * const validateName = (name: string): TaskValidation<string, string> =>
  *   name.length > 0
- *     ? TaskValidation.valid(name)
- *     : TaskValidation.invalid("Name is required");
+ *     ? TaskValidation.passed(name)
+ *     : TaskValidation.failed("Name is required");
  *
  * // Accumulate errors from multiple async validations using ap
  * pipe(
- *   TaskValidation.valid((name: string) => (age: number) => ({ name, age })),
+ *   TaskValidation.passed((name: string) => (age: number) => ({ name, age })),
  *   TaskValidation.ap(validateName("")),
  *   TaskValidation.ap(validateAge(-1))
  * )();
- * // Invalid(["Name is required", "Age must be positive"])
+ * // Failed(["Name is required", "Age must be positive"])
  * ```
  */
 export type TaskValidation<E, A> = Task<Validation<E, A>>;
 
 export namespace TaskValidation {
 	/**
-	 * Wraps a value in a valid TaskValidation.
+	 * Wraps a value in a passed TaskValidation.
 	 */
-	export const valid = <E, A>(value: A): TaskValidation<E, A> => Task.resolve(Validation.valid(value));
+	export const passed = <E, A>(value: A): TaskValidation<E, A> => Task.resolve(Validation.passed(value));
 
 	/**
 	 * Creates a failed TaskValidation with a single error.
 	 */
-	export const invalid = <E, A>(error: E): TaskValidation<E, A> => Task.resolve(Validation.invalid(error));
+	export const failed = <E, A>(error: E): TaskValidation<E, A> => Task.resolve(Validation.failed(error));
 
 	/**
-	 * Creates an invalid TaskValidation from multiple errors.
+	 * Creates a failed TaskValidation from multiple errors.
 	 */
-	export const invalidAll = <E, A>(
-		errors: NonEmptyList<E>,
-	): TaskValidation<E, A> => Task.resolve(Validation.invalidAll(errors));
+	export const failedAll = <E, A>(errors: NonEmptyList<E>): TaskValidation<E, A> =>
+		Task.resolve(Validation.failedAll(errors));
 
 	/**
 	 * Lifts a Validation into a TaskValidation.
 	 */
-	export const fromValidation = <E, A>(
-		validation: Validation<E, A>,
-	): TaskValidation<E, A> => Task.resolve(validation);
+	export const fromValidation = <E, A>(validation: Validation<E, A>): TaskValidation<E, A> => Task.resolve(validation);
 
 	/**
 	 * Creates a TaskValidation from a nullable value.
-	 * If the value is null or undefined, returns Invalid with the error from onNull.
-	 * Otherwise, returns Valid.
+	 * If the value is null or undefined, returns Failed with the error from onNull.
+	 * Otherwise, returns Passed.
 	 */
 	export const fromNullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskValidation<E, A> =>
-		Task.resolve(value === null || value === undefined ? Validation.invalid(onNull()) : Validation.valid(value));
+		Task.resolve(value === null || value === undefined ? Validation.failed(onNull()) : Validation.passed(value));
 
 	/**
 	 * Creates a TaskValidation from a Maybe.
-	 * Some becomes Valid, None becomes Invalid with the error from onNone.
+	 * Some becomes Passed, None becomes Failed with the error from onNone.
 	 */
 	export const fromMaybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): TaskValidation<E, A> =>
-		Task.resolve(Maybe.isNone(maybe) ? Validation.invalid(onNone()) : Validation.valid(maybe.value));
+		Task.resolve(Maybe.isNone(maybe) ? Validation.failed(onNone()) : Validation.passed(maybe.value));
 
 	/**
 	 * Creates a TaskValidation from a Result.
-	 * Ok becomes Valid, Error(e) becomes Invalid([e]).
+	 * Ok becomes Passed, Err(e) becomes Failed([e]).
 	 */
 	export const fromResult = <E, A>(result: Result<E, A>): TaskValidation<E, A> =>
 		Task.resolve(Validation.fromResult(result));
@@ -93,11 +90,7 @@ export namespace TaskValidation {
 		f: (signal?: AbortSignal) => Promise<A>,
 		onError: (e: unknown) => E,
 	): TaskValidation<E, A> =>
-		Task.from((signal) =>
-			f(signal)
-				.then(Validation.valid<E, A>)
-				.catch((e) => Validation.invalid(onError(e)))
-		);
+		Task.from((signal) => f(signal).then(Validation.passed<E, A>).catch((error) => Validation.failed(onError(error))));
 
 	/**
 	 * Transforms the success value inside a TaskValidation.
@@ -113,7 +106,7 @@ export namespace TaskValidation {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   TaskValidation.valid((name: string) => (age: number) => ({ name, age })),
+	 *   TaskValidation.passed((name: string) => (age: number) => ({ name, age })),
 	 *   TaskValidation.ap(validateName(name)),
 	 *   TaskValidation.ap(validateAge(age))
 	 * )();
@@ -122,20 +115,17 @@ export namespace TaskValidation {
 	export const ap =
 		<E, A>(arg: TaskValidation<E, A>) => <B>(data: TaskValidation<E, (a: A) => B>): TaskValidation<E, B> =>
 			Task.from((signal) =>
-				Promise.all([
-					Deferred.toPromise(data(signal)),
-					Deferred.toPromise(arg(signal)),
-				]).then(([vf, va]) => Validation.ap(va)(vf))
+				Promise.all([Deferred.toPromise(data(signal)), Deferred.toPromise(arg(signal))]).then(([vf, va]) =>
+					Validation.ap(va)(vf)
+				)
 			);
 
 	/**
 	 * Extracts a value from a TaskValidation by providing handlers for both cases.
 	 */
-	export const fold = <E, A, B>(
-		onInvalid: (errors: NonEmptyList<E>) => B,
-		onValid: (a: A) => B,
-	) =>
-	(data: TaskValidation<E, A>): Task<B> => Task.map(Validation.fold<E, A, B>(onInvalid, onValid))(data);
+	export const fold =
+		<E, A, B>(onFailed: (errors: NonEmptyList<E>) => B, onPassed: (a: A) => B) => (data: TaskValidation<E, A>): Task<B> =>
+			Task.map(Validation.fold<E, A, B>(onFailed, onPassed))(data);
 
 	/**
 	 * Pattern matches on a TaskValidation, returning a Task of the result.
@@ -145,20 +135,18 @@ export namespace TaskValidation {
 	 * pipe(
 	 *   validateForm(input),
 	 *   TaskValidation.match({
-	 *     valid: data => save(data),
-	 *     invalid: errors => showErrors(errors)
+	 *     passed: data => save(data),
+	 *     failed: errors => showErrors(errors)
 	 *   })
 	 * )();
 	 * ```
 	 */
-	export const match = <E, A, B>(cases: {
-		valid: (a: A) => B;
-		invalid: (errors: NonEmptyList<E>) => B;
-	}) =>
-	(data: TaskValidation<E, A>): Task<B> => Task.map(Validation.match<E, A, B>(cases))(data);
+	export const match =
+		<E, A, B>(cases: { passed: (a: A) => B; failed: (errors: NonEmptyList<E>) => B; }) =>
+		(data: TaskValidation<E, A>): Task<B> => Task.map(Validation.match<E, A, B>(cases))(data);
 
 	/**
-	 * Returns the success value or a default value if the TaskValidation is invalid.
+	 * Returns the success value or a default value if the TaskValidation is failed.
 	 * The default can be a different type, widening the result to `Task<A | B>`.
 	 */
 	export const getOrElse = <E, A, B>(defaultValue: () => B) => (data: TaskValidation<E, A>): Task<A | B> =>
@@ -172,7 +160,7 @@ export namespace TaskValidation {
 		Task.map(Validation.tap<E, A>(f))(data);
 
 	/**
-	 * Recovers from an Invalid state by providing a fallback TaskValidation.
+	 * Recovers from a Failed state by providing a fallback TaskValidation.
 	 * The fallback receives the accumulated error list so callers can inspect which errors occurred.
 	 * The fallback can produce a different success type, widening the result to `TaskValidation<E, A | B>`.
 	 */
@@ -180,12 +168,12 @@ export namespace TaskValidation {
 		<E, A, B>(fallback: (errors: NonEmptyList<E>) => TaskValidation<E, B>) =>
 		(data: TaskValidation<E, A>): TaskValidation<E, A | B> =>
 			Task.chain((validation: Validation<E, A>) =>
-				Validation.isValid(validation) ? Task.resolve(validation as Validation<E, A | B>) : fallback(validation.errors)
+				Validation.isPassed(validation) ? Task.resolve(validation as Validation<E, A | B>) : fallback(validation.errors)
 			)(data);
 
 	/**
 	 * Runs two TaskValidations concurrently and combines their results into a tuple.
-	 * If both are Valid, returns Valid with both values. If either fails, accumulates
+	 * If both are Passed, returns Passed with both values. If either fails, accumulates
 	 * errors from both sides.
 	 *
 	 * @example
@@ -193,7 +181,7 @@ export namespace TaskValidation {
 	 * await TaskValidation.product(
 	 *   validateName(form.name),
 	 *   validateAge(form.age),
-	 * )(); // Valid(["Alice", 30]) or Invalid([...errors])
+	 * )(); // Passed(["Alice", 30]) or Failed([...errors])
 	 * ```
 	 */
 	export const product = <E, A, B>(
@@ -201,16 +189,15 @@ export namespace TaskValidation {
 		second: TaskValidation<E, B>,
 	): TaskValidation<E, readonly [A, B]> =>
 		Task.from((signal) =>
-			Promise.all([
-				Deferred.toPromise(first(signal)),
-				Deferred.toPromise(second(signal)),
-			]).then(([va, vb]) => Validation.product(va, vb))
+			Promise.all([Deferred.toPromise(first(signal)), Deferred.toPromise(second(signal))]).then(([va, vb]) =>
+				Validation.product(va, vb)
+			)
 		);
 
 	/**
 	 * Runs all TaskValidations concurrently and collects results.
-	 * If all are Valid, returns Valid with all values as an array.
-	 * If any fail, returns Invalid with all accumulated errors.
+	 * If all are Passed, returns Passed with all values as an array.
+	 * If any fail, returns Failed with all accumulated errors.
 	 *
 	 * @example
 	 * ```ts
@@ -218,14 +205,13 @@ export namespace TaskValidation {
 	 *   validateName(form.name),
 	 *   validateEmail(form.email),
 	 *   validateAge(form.age),
-	 * ])(); // Valid([name, email, age]) or Invalid([...all errors])
+	 * ])(); // Passed([name, email, age]) or Failed([...all errors])
 	 * ```
 	 */
-	export const productAll = <E, A>(
-		data: NonEmptyList<TaskValidation<E, A>>,
-	): TaskValidation<E, readonly A[]> =>
+	export const productAll = <E, A>(data: NonEmptyList<TaskValidation<E, A>>): TaskValidation<E, readonly A[]> =>
 		Task.from((signal) =>
-			Promise.all(data.map((t) => Deferred.toPromise(t(signal))))
-				.then((results) => Validation.productAll(results as unknown as NonEmptyList<Validation<E, A>>))
+			Promise.all(data.map((t) => Deferred.toPromise(t(signal)))).then((results) =>
+				Validation.productAll(results as unknown as NonEmptyList<Validation<E, A>>)
+			)
 		);
 }

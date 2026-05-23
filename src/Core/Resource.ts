@@ -31,10 +31,7 @@ import { TaskResult } from "./TaskResult.ts";
  * // conn.close() is called whether queryUser succeeds or fails
  * ```
  */
-export type Resource<E, A> = {
-	readonly acquire: TaskResult<E, A>;
-	readonly release: (a: A) => Task<void>;
-};
+export type Resource<E, A> = { readonly acquire: TaskResult<E, A>; readonly release: (a: A) => Task<void>; };
 
 export namespace Resource {
 	/**
@@ -48,10 +45,10 @@ export namespace Resource {
 	 * );
 	 * ```
 	 */
-	export const make = <E, A>(
-		acquire: TaskResult<E, A>,
-		release: (a: A) => Task<void>,
-	): Resource<E, A> => ({ acquire, release });
+	export const make = <E, A>(acquire: TaskResult<E, A>, release: (a: A) => Task<void>): Resource<E, A> => ({
+		acquire,
+		release,
+	});
 
 	/**
 	 * Creates a Resource from an acquire operation that cannot fail.
@@ -66,10 +63,7 @@ export namespace Resource {
 	 * );
 	 * ```
 	 */
-	export const fromTask = <E, A>(
-		acquire: Task<A>,
-		release: (a: A) => Task<void>,
-	): Resource<E, A> => ({
+	export const fromTask = <E, A>(acquire: Task<A>, release: (a: A) => Task<void>): Resource<E, A> => ({
 		acquire: Task.map((a: A): Result<E, A> => Result.ok(a))(acquire),
 		release,
 	});
@@ -92,7 +86,7 @@ export namespace Resource {
 	export const use = <E, A, B>(f: (a: A) => TaskResult<E, B>) => (resource: Resource<E, A>): TaskResult<E, B> =>
 		Task.from((signal) =>
 			Deferred.toPromise(resource.acquire(signal)).then(async (acquired) => {
-				if (Result.isError(acquired)) return acquired as Result<E, B>;
+				if (Result.isErr(acquired)) { return acquired as Result<E, B>; }
 				const a = acquired.value;
 				try {
 					const usageResult = await Deferred.toPromise(f(a)(signal));
@@ -126,11 +120,13 @@ export namespace Resource {
 	): Resource<E, readonly [A, B]> => ({
 		acquire: Task.from((signal) =>
 			Deferred.toPromise(resourceA.acquire(signal)).then(async (acquiredA) => {
-				if (Result.isError(acquiredA)) return acquiredA as Result<E, readonly [A, B]>;
+				if (Result.isErr(acquiredA)) {
+					return acquiredA as Result<E, readonly [A, B]>;
+				}
 				const a = acquiredA.value;
 
 				const acquiredB = await Deferred.toPromise(resourceB.acquire(signal));
-				if (Result.isError(acquiredB)) {
+				if (Result.isErr(acquiredB)) {
 					await Deferred.toPromise(resourceA.release(a)(signal));
 					return acquiredB as Result<E, readonly [A, B]>;
 				}

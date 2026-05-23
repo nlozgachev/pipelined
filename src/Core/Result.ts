@@ -2,13 +2,13 @@ import { WithError, WithKind, WithValue } from "./InternalTypes.ts";
 import { Maybe } from "./Maybe.ts";
 
 /**
- * Result represents a value that can be one of two types: a success (Ok) or a failure (Error).
+ * Result represents a value that can be one of two types: a success (Ok) or a failure (Err).
  * Use Result when an operation can fail with a meaningful error value.
  *
  * @example
  * ```ts
  * const divide = (a: number, b: number): Result<string, number> =>
- *   b === 0 ? Result.error("Division by zero") : Result.ok(a / b);
+ *   b === 0 ? Result.err("Division by zero") : Result.ok(a / b);
  *
  * pipe(
  *   divide(10, 2),
@@ -17,10 +17,10 @@ import { Maybe } from "./Maybe.ts";
  * ); // 10
  * ```
  */
-export type Result<E, A> = Ok<A> | Error<E>;
+export type Result<E, A> = Ok<A> | Err<E>;
 
 export type Ok<A> = WithKind<"Ok"> & WithValue<A>;
-export type Error<E> = WithKind<"Error"> & WithError<E>;
+export type Err<E> = WithKind<"Err"> & WithError<E>;
 
 export namespace Result {
 	/**
@@ -31,20 +31,20 @@ export namespace Result {
 	/**
 	 * Creates a failed Result with the given error.
 	 */
-	export const error = <E>(e: E): Error<E> => ({ kind: "Error", error: e });
+	export const err = <E>(e: E): Err<E> => ({ kind: "Err", error: e });
 
 	/**
-	 * Type guard that checks if an Result is Ok.
+	 * Type guard that checks if a Result is Ok.
 	 */
 	export const isOk = <E, A>(data: Result<E, A>): data is Ok<A> => data.kind === "Ok";
 
 	/**
-	 * Type guard that checks if an Result is Error.
+	 * Type guard that checks if a Result is Err.
 	 */
-	export const isError = <E, A>(data: Result<E, A>): data is Error<E> => data.kind === "Error";
+	export const isErr = <E, A>(data: Result<E, A>): data is Err<E> => data.kind === "Err";
 
 	/**
-	 * Creates an Result from a function that may throw.
+	 * Creates a Result from a function that may throw.
 	 * Catches any errors and transforms them using the onError function.
 	 *
 	 * @example
@@ -56,39 +56,36 @@ export namespace Result {
 	 *   );
 	 * ```
 	 */
-	export const tryCatch = <E, A>(
-		f: () => A,
-		onError: (e: unknown) => E,
-	): Result<E, A> => {
+	export const tryCatch = <E, A>(f: () => A, onError: (e: unknown) => E): Result<E, A> => {
 		try {
 			return ok(f());
-		} catch (e) {
-			return error(onError(e));
+		} catch (error) {
+			return err(onError(error));
 		}
 	};
 
 	/**
-	 * Transforms the success value inside an Result.
+	 * Transforms the success value inside a Result.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(Result.ok(5), Result.map(n => n * 2)); // Ok(10)
-	 * pipe(Result.error("error"), Result.map(n => n * 2)); // Error("error")
+	 * pipe(Result.err("error"), Result.map(n => n * 2)); // Err("error")
 	 * ```
 	 */
 	export const map = <E, A, B>(f: (a: A) => B) => (data: Result<E, A>): Result<E, B> =>
 		isOk(data) ? ok(f(data.value)) : data;
 
 	/**
-	 * Transforms the error value inside an Result.
+	 * Transforms the error value inside a Result.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Result.error("oops"), Result.mapError(e => e.toUpperCase())); // Error("OOPS")
+	 * pipe(Result.err("oops"), Result.mapError(e => e.toUpperCase())); // Err("OOPS")
 	 * ```
 	 */
 	export const mapError = <E, F, A>(f: (e: E) => F) => (data: Result<E, A>): Result<F, A> =>
-		isError(data) ? error(f(data.error)) : data;
+		isErr(data) ? err(f(data.error)) : data;
 
 	/**
 	 * Chains Result computations. If the first is Ok, passes the value to f.
@@ -97,17 +94,17 @@ export namespace Result {
 	 * @example
 	 * ```ts
 	 * const validatePositive = (n: number): Result<string, number> =>
-	 *   n > 0 ? Result.ok(n) : Result.error("Must be positive");
+	 *   n > 0 ? Result.ok(n) : Result.err("Must be positive");
 	 *
 	 * pipe(Result.ok(5), Result.chain(validatePositive)); // Ok(5)
-	 * pipe(Result.ok(-1), Result.chain(validatePositive)); // Error("Must be positive")
+	 * pipe(Result.ok(-1), Result.chain(validatePositive)); // Err("Must be positive")
 	 * ```
 	 */
 	export const chain = <E, A, B>(f: (a: A) => Result<E, B>) => (data: Result<E, A>): Result<E, B> =>
 		isOk(data) ? f(data.value) : data;
 
 	/**
-	 * Extracts the value from an Result by providing handlers for both cases.
+	 * Extracts the value from a Result by providing handlers for both cases.
 	 *
 	 * @example
 	 * ```ts
@@ -121,7 +118,7 @@ export namespace Result {
 	 * ```
 	 */
 	export const fold = <E, A, B>(onErr: (e: E) => B, onOk: (a: A) => B) => (data: Result<E, A>): B =>
-		isOk(data) ? onOk(data.value) : onErr((data as Error<E>).error);
+		isOk(data) ? onOk(data.value) : onErr((data as Err<E>).error);
 
 	/**
 	 * Pattern matches on a Result, returning the result of the matching case.
@@ -138,7 +135,7 @@ export namespace Result {
 	 * ```
 	 */
 	export const match = <E, A, B>(cases: { ok: (a: A) => B; err: (e: E) => B; }) => (data: Result<E, A>): B =>
-		isOk(data) ? cases.ok(data.value) : cases.err((data as Error<E>).error);
+		isOk(data) ? cases.ok(data.value) : cases.err((data as Err<E>).error);
 
 	/**
 	 * Returns the success value or a default value if the Result is an error.
@@ -148,8 +145,8 @@ export namespace Result {
 	 * @example
 	 * ```ts
 	 * pipe(Result.ok(5), Result.getOrElse(() => 0)); // 5
-	 * pipe(Result.error("error"), Result.getOrElse(() => 0)); // 0
-	 * pipe(Result.error("error"), Result.getOrElse(() => null)); // null — typed as number | null
+	 * pipe(Result.err("error"), Result.getOrElse(() => 0)); // 0
+	 * pipe(Result.err("error"), Result.getOrElse(() => null)); // null — typed as number | null
 	 * ```
 	 */
 	export const getOrElse = <E, A, B>(defaultValue: () => B) => (data: Result<E, A>): A | B =>
@@ -169,7 +166,7 @@ export namespace Result {
 	 * ```
 	 */
 	export const tap = <E, A>(f: (a: A) => void) => (data: Result<E, A>): Result<E, A> => {
-		if (isOk(data)) f(data.value);
+		if (isOk(data)) { f(data.value); }
 		return data;
 	};
 
@@ -180,14 +177,14 @@ export namespace Result {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Result.error("not found"),
+	 *   Result.err("not found"),
 	 *   Result.tapError(e => console.error("validation failed:", e)),
 	 *   Result.chain(save),
 	 * )
 	 * ```
 	 */
 	export const tapError = <E, A>(f: (e: E) => void) => (data: Result<E, A>): Result<E, A> => {
-		if (isError(data)) f(data.error);
+		if (isErr(data)) { f(data.error); }
 		return data;
 	};
 
@@ -198,15 +195,12 @@ export namespace Result {
 	 * @example
 	 * ```ts
 	 * pipe(5, Result.fromPredicate(n => n > 0, n => `${n} is not positive`));  // Ok(5)
-	 * pipe(-1, Result.fromPredicate(n => n > 0, n => `${n} is not positive`)); // Error("-1 is not positive")
-	 * pipe("", Result.fromPredicate(s => s.length > 0, () => "empty string")); // Error("empty string")
+	 * pipe(-1, Result.fromPredicate(n => n > 0, n => `${n} is not positive`)); // Err("-1 is not positive")
+	 * pipe("", Result.fromPredicate(s => s.length > 0, () => "empty string")); // Err("empty string")
 	 * ```
 	 */
-	export const fromPredicate = <E, A>(
-		pred: (a: A) => boolean,
-		onFalse: (a: A) => E,
-	) =>
-	(a: A): Result<E, A> => pred(a) ? ok(a) : error(onFalse(a));
+	export const fromPredicate = <E, A>(pred: (a: A) => boolean, onFalse: (a: A) => E) => (a: A): Result<E, A> =>
+		pred(a) ? ok(a) : err(onFalse(a));
 
 	/**
 	 * Creates a Result from a nullable value.
@@ -214,12 +208,12 @@ export namespace Result {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(null, Result.fromNullable(() => "is null")); // Error("is null")
+	 * pipe(null, Result.fromNullable(() => "is null")); // Err("is null")
 	 * pipe(42, Result.fromNullable(() => "is null"));   // Ok(42)
 	 * ```
 	 */
 	export const fromNullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): Result<E, A> =>
-		value === null || value === undefined ? error(onNull()) : ok(value);
+		value === null || value === undefined ? err(onNull()) : ok(value);
 
 	/**
 	 * Creates a Result from a Maybe.
@@ -227,12 +221,12 @@ export namespace Result {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Maybe.none(), Result.fromMaybe(() => "is none")); // Error("is none")
+	 * pipe(Maybe.none(), Result.fromMaybe(() => "is none")); // Err("is none")
 	 * pipe(Maybe.some(42), Result.fromMaybe(() => "is none")); // Ok(42)
 	 * ```
 	 */
 	export const fromMaybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): Result<E, A> =>
-		Maybe.isNone(maybe) ? error(onNone()) : ok(maybe.value);
+		Maybe.isNone(maybe) ? err(onNone()) : ok(maybe.value);
 
 	/**
 	 * Wraps a throwing function of any arguments, returning a new function
@@ -246,27 +240,25 @@ export namespace Result {
 	 * );
 	 *
 	 * safeParse('{"a":1}'); // Ok({ a: 1 })
-	 * safeParse('invalid');  // Error(Error)
+	 * safeParse('invalid');  // Err(Error)
 	 * ```
 	 */
-	export const fromThrowable = <Args extends readonly unknown[], A, E>(
-		f: (...args: Args) => A,
-		onError: (e: unknown) => E,
-	) =>
-	(...args: Args): Result<E, A> => {
-		try {
-			return ok(f(...args));
-		} catch (e) {
-			return error(onError(e));
-		}
-	};
+	export const fromThrowable =
+		<Args extends readonly unknown[], A, E>(f: (...args: Args) => A, onError: (e: unknown) => E) =>
+		(...args: Args): Result<E, A> => {
+			try {
+				return ok(f(...args));
+			} catch (error) {
+				return err(onError(error));
+			}
+		};
 
 	/**
 	 * Recovers from an error by providing a fallback Result.
 	 * The fallback can produce a different success type, widening the result to `Result<E, A | B>`.
 	 */
 	export const recover = <E, A, B>(fallback: (e: E) => Result<E, B>) => (data: Result<E, A>): Result<E, A | B> =>
-		isOk(data) ? data : fallback((data as Error<E>).error);
+		isOk(data) ? data : fallback((data as Err<E>).error);
 
 	/**
 	 * Recovers from an error unless the predicate `isBlocked` returns true for that error.
@@ -275,29 +267,29 @@ export namespace Result {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Result.error(new Error("not found")),
+	 *   Result.err(new Error("not found")),
 	 *   Result.recoverUnless(e => e.message === "fatal", () => Result.ok(0))
 	 * ); // Ok(0)
 	 * ```
 	 */
 	export const recoverUnless =
 		<E, A, B>(isBlocked: (e: E) => boolean, fallback: () => Result<E, B>) => (data: Result<E, A>): Result<E, A | B> =>
-			isError(data) && !isBlocked(data.error) ? fallback() : data;
+			isErr(data) && !isBlocked(data.error) ? fallback() : data;
 
 	/**
-	 * Converts a Result to an Maybe.
+	 * Converts a Result to a Maybe.
 	 * Ok becomes Some, Err becomes None (the error is discarded).
 	 *
 	 * @example
 	 * ```ts
 	 * Result.toMaybe(Result.ok(42)); // Some(42)
-	 * Result.toMaybe(Result.error("oops")); // None
+	 * Result.toMaybe(Result.err("oops")); // None
 	 * ```
 	 */
 	export const toMaybe = <E, A>(data: Result<E, A>): Maybe<A> => isOk(data) ? Maybe.some(data.value) : Maybe.none();
 
 	/**
-	 * Applies a function wrapped in an Result to a value wrapped in an Result.
+	 * Applies a function wrapped in a Result to a value wrapped in a Result.
 	 *
 	 * @example
 	 * ```ts
@@ -310,5 +302,5 @@ export namespace Result {
 	 * ```
 	 */
 	export const ap = <E, A>(arg: Result<E, A>) => <B>(data: Result<E, (a: A) => B>): Result<E, B> =>
-		isOk(data) && isOk(arg) ? ok(data.value(arg.value)) : isError(data) ? data : (arg as Error<E>);
+		isOk(data) && isOk(arg) ? ok(data.value(arg.value)) : (isErr(data) ? data : (arg as Err<E>));
 }

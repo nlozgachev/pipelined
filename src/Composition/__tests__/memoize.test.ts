@@ -52,13 +52,10 @@ test("memoize - caches string arguments", () => {
 
 test("memoize - custom key function", () => {
 	let callCount = 0;
-	const getLabel = memoize(
-		(opts: { id: number; label: string; }) => {
-			callCount++;
-			return opts.label.toUpperCase();
-		},
-		(opts) => opts.id,
-	);
+	const getLabel = memoize((opts: { id: number; label: string; }) => {
+		callCount++;
+		return opts.label.toUpperCase();
+	}, (opts) => opts.id);
 
 	expect(getLabel({ id: 1, label: "hello" })).toBe("HELLO");
 	expect(callCount).toBe(1);
@@ -106,7 +103,7 @@ test("memoize - caches undefined and null results", () => {
 	let callCountA = 0;
 	const fnA = memoize((_n: number) => {
 		callCountA++;
-		return undefined;
+		return;
 	});
 
 	expect(fnA(1)).toBeUndefined();

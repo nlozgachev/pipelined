@@ -7,14 +7,13 @@ import { Result } from "./Result.ts";
  *
  * @example
  * ```ts
- * const findUser = (id: string): Maybe<User> =>
- *   users.has(id) ? Maybe.some(users.get(id)!) : Maybe.none();
+ * const user = { name: "Alice", email: Maybe.some("alice@example.com") };
  *
  * pipe(
- *   findUser("123"),
- *   Maybe.map(user => user.name),
- *   Maybe.getOrElse(() => "Unknown")
- * );
+ *   user.email,
+ *   Maybe.map(email => email.toUpperCase()),
+ *   Maybe.getOrElse(() => "NO EMAIL")
+ * ); // "ALICE@EXAMPLE.COM"
  * ```
  */
 export type Maybe<T> = Some<T> | None;
@@ -84,7 +83,7 @@ export namespace Maybe {
 	export const fromPredicate = <A>(pred: (a: A) => boolean) => (a: A): Maybe<A> => pred(a) ? some(a) : none();
 
 	/**
-	 * Converts an Maybe to a Result.
+	 * Converts a Maybe to a Result.
 	 * Some becomes Ok, None becomes Err with the provided error.
 	 *
 	 * @example
@@ -101,16 +100,16 @@ export namespace Maybe {
 	 * ```
 	 */
 	export const toResult = <E>(onNone: () => E) => <A>(data: Maybe<A>): Result<E, A> =>
-		isSome(data) ? Result.ok(data.value) : Result.error(onNone());
+		isSome(data) ? Result.ok(data.value) : Result.err(onNone());
 
 	/**
-	 * Creates an Maybe from a Result.
+	 * Creates a Maybe from a Result.
 	 * Ok becomes Some, Err becomes None (the error is discarded).
 	 *
 	 * @example
 	 * ```ts
 	 * Maybe.fromResult(Result.ok(42)); // Some(42)
-	 * Maybe.fromResult(Result.error("oops")); // None
+	 * Maybe.fromResult(Result.err("oops")); // None
 	 * ```
 	 */
 	export const fromResult = <E, A>(data: Result<E, A>): Maybe<A> => Result.isOk(data) ? some(data.value) : none();
@@ -179,7 +178,7 @@ export namespace Maybe {
 		isSome(data) ? cases.some(data.value) : cases.none();
 
 	/**
-	 * Returns the value inside an Maybe, or a default value if None.
+	 * Returns the value inside a Maybe, or a default value if None.
 	 * The default is a thunk `() => B` — evaluated only when the Maybe is None.
 	 * The default can be a different type, widening the result to `A | B`.
 	 *
@@ -207,7 +206,7 @@ export namespace Maybe {
 	 * ```
 	 */
 	export const tap = <A>(f: (a: A) => void) => (data: Maybe<A>): Maybe<A> => {
-		if (isSome(data)) f(data.value);
+		if (isSome(data)) { f(data.value); }
 		return data;
 	};
 

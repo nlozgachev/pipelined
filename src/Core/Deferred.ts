@@ -19,10 +19,7 @@ declare const _deferred: unique symbol;
  * // value === 42
  * ```
  */
-export type Deferred<A> = {
-	readonly [_deferred]: A;
-	readonly then: (onfulfilled: (value: A) => unknown) => void;
-};
+export type Deferred<A> = { readonly [_deferred]: A; readonly then: (onfulfilled: (value: A) => unknown) => void; };
 
 export namespace Deferred {
 	/**

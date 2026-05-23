@@ -11,7 +11,7 @@ import { TaskResult } from "../TaskResult.ts";
 
 test("TaskResult.ok creates a Task that resolves to Ok", async () => {
 	const result = await TaskResult.ok<string, number>(42)();
-	expect(result).toEqual({ kind: "Ok", value: 42 });
+	expect(result).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
 // ---------------------------------------------------------------------------
@@ -20,7 +20,7 @@ test("TaskResult.ok creates a Task that resolves to Ok", async () => {
 
 test("TaskResult.err creates a Task that resolves to Err", async () => {
 	const result = await TaskResult.err<string, number>("error")();
-	expect(result).toEqual({ kind: "Error", error: "error" });
+	expect(result).toStrictEqual({ kind: "Err", error: "error" });
 });
 
 // ---------------------------------------------------------------------------
@@ -28,61 +28,43 @@ test("TaskResult.err creates a Task that resolves to Err", async () => {
 // ---------------------------------------------------------------------------
 
 test("TaskResult.tryCatch returns Ok when Promise resolves", async () => {
-	const result = await TaskResult.tryCatch(
-		() => Promise.resolve(42),
-		(e) => `Error: ${e}`,
-	)();
-	expect(result).toEqual({ kind: "Ok", value: 42 });
+	const result = await TaskResult.tryCatch(() => Promise.resolve(42), (e) => `Error: ${e}`)();
+	expect(result).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
 test("TaskResult.tryCatch returns Err when Promise rejects", async () => {
-	const result = await TaskResult.tryCatch(
-		() => Promise.reject(new Error("boom")),
-		(e) => (e as Error).message,
-	)();
-	expect(result).toEqual({ kind: "Error", error: "boom" });
+	const result = await TaskResult.tryCatch(() => Promise.reject(new Error("boom")), (e) => (e as Error).message)();
+	expect(result).toStrictEqual({ kind: "Err", error: "boom" });
 });
 
-test(
-	"TaskResult.tryCatch catches synchronous throws in async functions",
-	async () => {
-		const result = await TaskResult.tryCatch(
-			// oxlint-disable-next-line require-await
-			async () => {
-				throw new Error("sync throw");
-			},
-			(e) => (e as Error).message,
-		)();
-		expect(result).toEqual({ kind: "Error", error: "sync throw" });
-	},
-);
+test("taskResult.tryCatch catches synchronous throws in async functions", async () => {
+	const result = await TaskResult.tryCatch(
+		// oxlint-disable-next-line require-await
+		async () => {
+			throw new Error("sync throw");
+		},
+		(e) => (e as Error).message,
+	)();
+	expect(result).toStrictEqual({ kind: "Err", error: "sync throw" });
+});
 
 // ---------------------------------------------------------------------------
 // map
 // ---------------------------------------------------------------------------
 
 test("TaskResult.map transforms Ok value", async () => {
-	const result = await pipe(
-		TaskResult.ok<string, number>(5),
-		TaskResult.map((n: number) => n * 2),
-	)();
-	expect(result).toEqual({ kind: "Ok", value: 10 });
+	const result = await pipe(TaskResult.ok<string, number>(5), TaskResult.map((n: number) => n * 2))();
+	expect(result).toStrictEqual({ kind: "Ok", value: 10 });
 });
 
 test("TaskResult.map passes through Err unchanged", async () => {
-	const result = await pipe(
-		TaskResult.err<string, number>("error"),
-		TaskResult.map((n: number) => n * 2),
-	)();
-	expect(result).toEqual({ kind: "Error", error: "error" });
+	const result = await pipe(TaskResult.err<string, number>("error"), TaskResult.map((n: number) => n * 2))();
+	expect(result).toStrictEqual({ kind: "Err", error: "error" });
 });
 
 test("TaskResult.map can change the value type", async () => {
-	const result = await pipe(
-		TaskResult.ok<string, number>(42),
-		TaskResult.map((n: number) => `num: ${n}`),
-	)();
-	expect(result).toEqual({ kind: "Ok", value: "num: 42" });
+	const result = await pipe(TaskResult.ok<string, number>(42), TaskResult.map((n: number) => `num: ${n}`))();
+	expect(result).toStrictEqual({ kind: "Ok", value: "num: 42" });
 });
 
 // ---------------------------------------------------------------------------
@@ -94,15 +76,12 @@ test("TaskResult.mapError transforms Err value", async () => {
 		TaskResult.err<string, number>("oops"),
 		TaskResult.mapError((e: string) => e.toUpperCase()),
 	)();
-	expect(result).toEqual({ kind: "Error", error: "OOPS" });
+	expect(result).toStrictEqual({ kind: "Err", error: "OOPS" });
 });
 
 test("TaskResult.mapError passes through Ok unchanged", async () => {
-	const result = await pipe(
-		TaskResult.ok<string, number>(5),
-		TaskResult.mapError((e: string) => e.toUpperCase()),
-	)();
-	expect(result).toEqual({ kind: "Ok", value: 5 });
+	const result = await pipe(TaskResult.ok<string, number>(5), TaskResult.mapError((e: string) => e.toUpperCase()))();
+	expect(result).toStrictEqual({ kind: "Ok", value: 5 });
 });
 
 // ---------------------------------------------------------------------------
@@ -113,42 +92,30 @@ test("TaskResult.chain applies function when Ok", async () => {
 	const validatePositive = (n: number): TaskResult<string, number> =>
 		n > 0 ? TaskResult.ok(n) : TaskResult.err("Must be positive");
 
-	const result = await pipe(
-		TaskResult.ok<string, number>(5),
-		TaskResult.chain(validatePositive),
-	)();
-	expect(result).toEqual({ kind: "Ok", value: 5 });
+	const result = await pipe(TaskResult.ok<string, number>(5), TaskResult.chain(validatePositive))();
+	expect(result).toStrictEqual({ kind: "Ok", value: 5 });
 });
 
-test(
-	"TaskResult.chain returns Err when function returns Err",
-	async () => {
-		const validatePositive = (n: number): TaskResult<string, number> =>
-			n > 0 ? TaskResult.ok(n) : TaskResult.err("Must be positive");
+test("taskResult.chain returns Err when function returns Err", async () => {
+	const validatePositive = (n: number): TaskResult<string, number> =>
+		n > 0 ? TaskResult.ok(n) : TaskResult.err("Must be positive");
 
-		const result = await pipe(
-			TaskResult.ok<string, number>(-1),
-			TaskResult.chain(validatePositive),
-		)();
-		expect(result).toEqual({ kind: "Error", error: "Must be positive" });
-	},
-);
+	const result = await pipe(TaskResult.ok<string, number>(-1), TaskResult.chain(validatePositive))();
+	expect(result).toStrictEqual({ kind: "Err", error: "Must be positive" });
+});
 
-test(
-	"TaskResult.chain propagates Err without calling function",
-	async () => {
-		let called = false;
-		const result = await pipe(
-			TaskResult.err<string, number>("error"),
-			TaskResult.chain((_n: number) => {
-				called = true;
-				return TaskResult.ok<string, number>(_n);
-			}),
-		)();
-		expect(called).toBe(false);
-		expect(result).toEqual({ kind: "Error", error: "error" });
-	},
-);
+test("taskResult.chain propagates Err without calling function", async () => {
+	let called = false;
+	const result = await pipe(
+		TaskResult.err<string, number>("error"),
+		TaskResult.chain((_n: number) => {
+			called = true;
+			return TaskResult.ok<string, number>(_n);
+		}),
+	)();
+	expect(called).toBe(false);
+	expect(result).toStrictEqual({ kind: "Err", error: "error" });
+});
 
 test("TaskResult.chain composes multiple async steps", async () => {
 	const result = await pipe(
@@ -156,7 +123,7 @@ test("TaskResult.chain composes multiple async steps", async () => {
 		TaskResult.chain((n: number) => TaskResult.ok<string, number>(n + 1)),
 		TaskResult.chain((n: number) => TaskResult.ok<string, number>(n * 10)),
 	)();
-	expect(result).toEqual({ kind: "Ok", value: 20 });
+	expect(result).toStrictEqual({ kind: "Ok", value: 20 });
 });
 
 // ---------------------------------------------------------------------------
@@ -166,10 +133,7 @@ test("TaskResult.chain composes multiple async steps", async () => {
 test("TaskResult.fold calls onOk for Ok", async () => {
 	const result = await pipe(
 		TaskResult.ok<string, number>(5),
-		TaskResult.fold(
-			(e: string) => `Error: ${e}`,
-			(n: number) => `Value: ${n}`,
-		),
+		TaskResult.fold((e: string) => `Error: ${e}`, (n: number) => `Value: ${n}`),
 	)();
 	expect(result).toBe("Value: 5");
 });
@@ -177,10 +141,7 @@ test("TaskResult.fold calls onOk for Ok", async () => {
 test("TaskResult.fold calls onErr for Err", async () => {
 	const result = await pipe(
 		TaskResult.err<string, number>("bad"),
-		TaskResult.fold(
-			(e: string) => `Error: ${e}`,
-			(n: number) => `Value: ${n}`,
-		),
+		TaskResult.fold((e: string) => `Error: ${e}`, (n: number) => `Value: ${n}`),
 	)();
 	expect(result).toBe("Error: bad");
 });
@@ -192,10 +153,7 @@ test("TaskResult.fold calls onErr for Err", async () => {
 test("TaskResult.match calls ok handler for Ok", async () => {
 	const result = await pipe(
 		TaskResult.ok<string, number>(5),
-		TaskResult.match({
-			ok: (n: number) => `got ${n}`,
-			err: (e: string) => `failed: ${e}`,
-		}),
+		TaskResult.match({ ok: (n: number) => `got ${n}`, err: (e: string) => `failed: ${e}` }),
 	)();
 	expect(result).toBe("got 5");
 });
@@ -203,123 +161,87 @@ test("TaskResult.match calls ok handler for Ok", async () => {
 test("TaskResult.match calls err handler for Err", async () => {
 	const result = await pipe(
 		TaskResult.err<string, number>("bad"),
-		TaskResult.match({
-			ok: (n: number) => `got ${n}`,
-			err: (e: string) => `failed: ${e}`,
-		}),
+		TaskResult.match({ ok: (n: number) => `got ${n}`, err: (e: string) => `failed: ${e}` }),
 	)();
 	expect(result).toBe("failed: bad");
 });
 
-test(
-	"TaskResult.match is data-last (returns a function first)",
-	async () => {
-		const handler = TaskResult.match<string, number, string>({
-			ok: (n) => `val: ${n}`,
-			err: (e) => `err: ${e}`,
-		});
-		const okResult = await handler(TaskResult.ok<string, number>(3))();
-		expect(okResult).toBe("val: 3");
-		const errResult = await handler(TaskResult.err<string, number>("x"))();
-		expect(errResult).toBe("err: x");
-	},
-);
+test("taskResult.match is data-last (returns a function first)", async () => {
+	const handler = TaskResult.match<string, number, string>({ ok: (n) => `val: ${n}`, err: (e) => `err: ${e}` });
+	const okResult = await handler(TaskResult.ok<string, number>(3))();
+	expect(okResult).toBe("val: 3");
+	const errResult = await handler(TaskResult.err<string, number>("x"))();
+	expect(errResult).toBe("err: x");
+});
 
 // ---------------------------------------------------------------------------
 // recover
 // ---------------------------------------------------------------------------
 
-test(
-	"TaskResult.recover returns original Ok without calling fallback",
-	async () => {
-		let called = false;
-		const result = await pipe(
-			TaskResult.ok<string, number>(5),
-			TaskResult.recover((_e: string) => {
-				called = true;
-				return TaskResult.ok<string, number>(99);
-			}),
-		)();
-		expect(called).toBe(false);
-		expect(result).toEqual({ kind: "Ok", value: 5 });
-	},
-);
+test("taskResult.recover returns original Ok without calling fallback", async () => {
+	let called = false;
+	const result = await pipe(
+		TaskResult.ok<string, number>(5),
+		TaskResult.recover((_e: string) => {
+			called = true;
+			return TaskResult.ok<string, number>(99);
+		}),
+	)();
+	expect(called).toBe(false);
+	expect(result).toStrictEqual({ kind: "Ok", value: 5 });
+});
 
 test("TaskResult.recover provides fallback for Err", async () => {
 	const result = await pipe(
 		TaskResult.err<string, number>("error"),
 		TaskResult.recover((_e: string) => TaskResult.ok<string, number>(99)),
 	)();
-	expect(result).toEqual({ kind: "Ok", value: 99 });
+	expect(result).toStrictEqual({ kind: "Ok", value: 99 });
 });
 
-test(
-	"TaskResult.recover widens to TaskResult<E, A | B> when fallback returns a different type",
-	async () => {
-		const result = await pipe(
-			TaskResult.err("error"),
-			TaskResult.recover((_e) => TaskResult.ok("recovered")),
-		)();
-		expect(result).toEqual({ kind: "Ok", value: "recovered" });
-	},
-);
+test("taskResult.recover widens to TaskResult<E, A | B> when fallback returns a different type", async () => {
+	const result = await pipe(TaskResult.err("error"), TaskResult.recover((_e) => TaskResult.ok("recovered")))();
+	expect(result).toStrictEqual({ kind: "Ok", value: "recovered" });
+});
 
 test("TaskResult.recover preserves Ok typed as TaskResult<E, A | B>", async () => {
-	const result = await pipe(
-		TaskResult.ok(5),
-		TaskResult.recover((_e) => TaskResult.ok("recovered")),
-	)();
-	expect(result).toEqual({ kind: "Ok", value: 5 });
+	const result = await pipe(TaskResult.ok(5), TaskResult.recover((_e) => TaskResult.ok("recovered")))();
+	expect(result).toStrictEqual({ kind: "Ok", value: 5 });
 });
 
-test(
-	"TaskResult.recover passes the error to the fallback function",
-	async () => {
-		let receivedError = "";
-		await pipe(
-			TaskResult.err<string, number>("original error"),
-			TaskResult.recover((e: string) => {
-				receivedError = e;
-				return TaskResult.ok<string, number>(0);
-			}),
-		)();
-		expect(receivedError).toBe("original error");
-	},
-);
+test("taskResult.recover passes the error to the fallback function", async () => {
+	let receivedError = "";
+	await pipe(
+		TaskResult.err<string, number>("original error"),
+		TaskResult.recover((e: string) => {
+			receivedError = e;
+			return TaskResult.ok<string, number>(0);
+		}),
+	)();
+	expect(receivedError).toBe("original error");
+});
 
 // ---------------------------------------------------------------------------
 // getOrElse
 // ---------------------------------------------------------------------------
 
 test("TaskResult.getOrElse returns value for Ok", async () => {
-	const result = await pipe(
-		TaskResult.ok<string, number>(5),
-		TaskResult.getOrElse(() => 0),
-	)();
+	const result = await pipe(TaskResult.ok<string, number>(5), TaskResult.getOrElse(() => 0))();
 	expect(result).toBe(5);
 });
 
 test("TaskResult.getOrElse returns default for Err", async () => {
-	const result = await pipe(
-		TaskResult.err<string, number>("error"),
-		TaskResult.getOrElse(() => 0),
-	)();
+	const result = await pipe(TaskResult.err<string, number>("error"), TaskResult.getOrElse(() => 0))();
 	expect(result).toBe(0);
 });
 
 test("TaskResult.getOrElse widens return type to A | B when default is a different type", async () => {
-	const result = await pipe(
-		TaskResult.err("error"),
-		TaskResult.getOrElse(() => null),
-	)();
+	const result = await pipe(TaskResult.err("error"), TaskResult.getOrElse(() => null))();
 	expect(result).toBeNull();
 });
 
 test("TaskResult.getOrElse returns Ok value typed as A | B when Ok", async () => {
-	const result = await pipe(
-		TaskResult.ok(5),
-		TaskResult.getOrElse(() => null),
-	)();
+	const result = await pipe(TaskResult.ok(5), TaskResult.getOrElse(() => null))();
 	expect(result).toBe(5);
 });
 
@@ -327,20 +249,17 @@ test("TaskResult.getOrElse returns Ok value typed as A | B when Ok", async () =>
 // tap
 // ---------------------------------------------------------------------------
 
-test(
-	"TaskResult.tap executes side effect on Ok and returns original",
-	async () => {
-		let sideEffect = 0;
-		const result = await pipe(
-			TaskResult.ok<string, number>(5),
-			TaskResult.tap((n: number) => {
-				sideEffect = n;
-			}),
-		)();
-		expect(sideEffect).toBe(5);
-		expect(result).toEqual({ kind: "Ok", value: 5 });
-	},
-);
+test("taskResult.tap executes side effect on Ok and returns original", async () => {
+	let sideEffect = 0;
+	const result = await pipe(
+		TaskResult.ok<string, number>(5),
+		TaskResult.tap((n: number) => {
+			sideEffect = n;
+		}),
+	)();
+	expect(sideEffect).toBe(5);
+	expect(result).toStrictEqual({ kind: "Ok", value: 5 });
+});
 
 test("TaskResult.tap does not execute side effect on Err", async () => {
 	let called = false;
@@ -351,14 +270,14 @@ test("TaskResult.tap does not execute side effect on Err", async () => {
 		}),
 	)();
 	expect(called).toBe(false);
-	expect(result).toEqual({ kind: "Error", error: "error" });
+	expect(result).toStrictEqual({ kind: "Err", error: "error" });
 });
 
 // ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("TaskResult composes well in a pipe chain", async () => {
+test("taskResult composes well in a pipe chain", async () => {
 	const result = await pipe(
 		TaskResult.ok<string, number>(5),
 		TaskResult.map((n: number) => n * 2),
@@ -370,7 +289,7 @@ test("TaskResult composes well in a pipe chain", async () => {
 	expect(result).toBe(10);
 });
 
-test("TaskResult pipe short-circuits on Err", async () => {
+test("taskResult pipe short-circuits on Err", async () => {
 	const result = await pipe(
 		TaskResult.ok<string, number>(2),
 		TaskResult.map((n: number) => n * 2),
@@ -382,12 +301,9 @@ test("TaskResult pipe short-circuits on Err", async () => {
 	expect(result).toBe(0);
 });
 
-test("TaskResult tryCatch integrates with pipe chain", async () => {
+test("taskResult tryCatch integrates with pipe chain", async () => {
 	const result = await pipe(
-		TaskResult.tryCatch(
-			() => Promise.resolve(42),
-			(e) => `Error: ${e}`,
-		),
+		TaskResult.tryCatch(() => Promise.resolve(42), (e) => `Error: ${e}`),
 		TaskResult.map((n: number) => n + 8),
 		TaskResult.getOrElse(() => 0),
 	)();
@@ -419,21 +335,16 @@ test("TaskResult.recover value flows into subsequent map steps", async () => {
 		TaskResult.recover((_e: string) => TaskResult.ok<string, number>(0)),
 		TaskResult.map((n: number) => n + 1),
 	)();
-	expect(result).toEqual({ kind: "Ok", value: 1 });
+	expect(result).toStrictEqual({ kind: "Ok", value: 1 });
 });
 
 test("TaskResult.mapError normalizes the error type before recover acts on it", async () => {
 	type ApiError = { code: number; msg: string; };
 	const result = await pipe(
-		TaskResult.tryCatch(
-			() => Promise.reject(new Error("service unavailable")),
-			(e) => (e as Error).message,
-		),
+		TaskResult.tryCatch(() => Promise.reject(new Error("service unavailable")), (e) => (e as Error).message),
 		TaskResult.mapError((msg: string): ApiError => ({ code: 503, msg })),
 		TaskResult.recover((e: ApiError) =>
-			e.code >= 500
-				? TaskResult.ok<ApiError, string>("cached")
-				: TaskResult.err<ApiError, string>(e)
+			e.code >= 500 ? TaskResult.ok<ApiError, string>("cached") : TaskResult.err<ApiError, string>(e)
 		),
 		TaskResult.getOrElse(() => "none"),
 	)();
@@ -448,8 +359,8 @@ test("TaskResult.tap runs its side effect at the correct point in the chain", as
 		TaskResult.chain((n: number) => TaskResult.ok<string, number>(n * 2)),
 		TaskResult.map((n: number) => n + 1),
 	)();
-	expect(result).toEqual({ kind: "Ok", value: 11 });
-	expect(log).toEqual([5]); // tap sees the pre-chain value
+	expect(result).toStrictEqual({ kind: "Ok", value: 11 });
+	expect(log).toStrictEqual([5]); // tap sees the pre-chain value
 });
 
 test("TaskResult.match handles the ok path at the end of a composed chain", async () => {
@@ -478,15 +389,9 @@ test("TaskResult.match handles the err path at the end of a composed chain", asy
 
 test("TaskResult.fold receives the transformed error from a prior mapError", async () => {
 	const result = await pipe(
-		TaskResult.tryCatch(
-			() => Promise.reject(new Error("boom")),
-			(e: unknown) => (e as Error).message,
-		),
+		TaskResult.tryCatch(() => Promise.reject(new Error("boom")), (e: unknown) => (e as Error).message),
 		TaskResult.mapError((msg: string) => msg.toUpperCase()),
-		TaskResult.fold(
-			(e: string) => `error: ${e}`,
-			(_: number) => "ok",
-		),
+		TaskResult.fold((e: string) => `error: ${e}`, (_: number) => "ok"),
 	)();
 	expect(result).toBe("error: BOOM");
 });
@@ -500,7 +405,7 @@ test("TaskResult.ap applies Ok function to Ok value", async () => {
 		TaskResult.ok<string, (n: number) => number>((n) => n * 3),
 		TaskResult.ap(TaskResult.ok<string, number>(4)),
 	)();
-	expect(result).toEqual({ kind: "Ok", value: 12 });
+	expect(result).toStrictEqual({ kind: "Ok", value: 12 });
 });
 
 test("TaskResult.ap propagates the error if function is Error", async () => {
@@ -508,7 +413,7 @@ test("TaskResult.ap propagates the error if function is Error", async () => {
 		TaskResult.err<string, (n: number) => number>("error fn"),
 		TaskResult.ap(TaskResult.ok<string, number>(4)),
 	)();
-	expect(result).toEqual({ kind: "Error", error: "error fn" });
+	expect(result).toStrictEqual({ kind: "Err", error: "error fn" });
 });
 
 test("TaskResult.ap propagates the error if value is Error", async () => {
@@ -516,7 +421,7 @@ test("TaskResult.ap propagates the error if value is Error", async () => {
 		TaskResult.ok<string, (n: number) => number>((n) => n * 3),
 		TaskResult.ap(TaskResult.err<string, number>("error val")),
 	)();
-	expect(result).toEqual({ kind: "Error", error: "error val" });
+	expect(result).toStrictEqual({ kind: "Err", error: "error val" });
 });
 
 test("TaskResult.ap propagates the first error if both are Error", async () => {
@@ -524,7 +429,7 @@ test("TaskResult.ap propagates the first error if both are Error", async () => {
 		TaskResult.err<string, (n: number) => number>("error fn"),
 		TaskResult.ap(TaskResult.err<string, number>("error val")),
 	)();
-	expect(result).toEqual({ kind: "Error", error: "error fn" });
+	expect(result).toStrictEqual({ kind: "Err", error: "error fn" });
 });
 
 test("TaskResult.ap propagates the AbortSignal down to both sides in parallel", async () => {
@@ -541,12 +446,9 @@ test("TaskResult.ap propagates the AbortSignal down to both sides in parallel", 
 	};
 
 	const controller = new AbortController();
-	const result = await pipe(
-		left,
-		TaskResult.ap(right),
-	)(controller.signal);
+	const result = await pipe(left, TaskResult.ap(right))(controller.signal);
 
-	expect(result).toEqual({ kind: "Ok", value: 12 });
+	expect(result).toStrictEqual({ kind: "Ok", value: 12 });
 	expect(signalLeft).toBe(controller.signal);
 	expect(signalRight).toBe(controller.signal);
 });
@@ -579,12 +481,12 @@ test("TaskResult.tapError does not call side effect on Ok", async () => {
 
 test("TaskResult.tapError returns original Err result unchanged", async () => {
 	const result = await pipe(TaskResult.err<string, number>("oops"), TaskResult.tapError(() => {}))();
-	expect(result).toEqual({ kind: "Error", error: "oops" });
+	expect(result).toStrictEqual({ kind: "Err", error: "oops" });
 });
 
 test("TaskResult.tapError returns original Ok result unchanged", async () => {
 	const result = await pipe(TaskResult.ok<string, number>(42), TaskResult.tapError(() => {}))();
-	expect(result).toEqual({ kind: "Ok", value: 42 });
+	expect(result).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
 // ---------------------------------------------------------------------------
@@ -593,7 +495,7 @@ test("TaskResult.tapError returns original Ok result unchanged", async () => {
 
 test("TaskResult.run executes the task and returns the Result", async () => {
 	const result = await pipe(TaskResult.ok<string, number>(42), TaskResult.run());
-	expect(result).toEqual({ kind: "Ok", value: 42 });
+	expect(result).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
 test("TaskResult.run passes the signal to the task", async () => {
@@ -607,70 +509,53 @@ test("TaskResult.run passes the signal to the task", async () => {
 	expect(receivedSignal).toBe(controller.signal);
 });
 
-test("TaskResult.run works without a signal", async () => {
-	const result = await pipe(TaskResult.err<string, number>("boom"), TaskResult.run());
-	expect(result).toEqual({ kind: "Error", error: "boom" });
-});
-
-test("TaskResult.run composes naturally at the end of a pipe chain", async () => {
-	const result = await pipe(
-		TaskResult.ok<string, number>(10),
-		TaskResult.map((n) => n * 2),
-		TaskResult.run(),
-	);
-	expect(result).toEqual({ kind: "Ok", value: 20 });
-});
-
 // --- fromNullable ---
 
 test("TaskResult.fromNullable returns Ok for non-null value", async () => {
 	const result = await TaskResult.fromNullable(() => "is null")(42)();
-	expect(result).toEqual(Result.ok(42));
+	expect(result).toStrictEqual(Result.ok(42));
 });
 
 test("TaskResult.fromNullable returns Err for null", async () => {
 	const result = await TaskResult.fromNullable(() => "is null")(null)();
-	expect(result).toEqual(Result.error("is null"));
+	expect(result).toStrictEqual(Result.err("is null"));
 });
 
 test("TaskResult.fromNullable returns Err for undefined", async () => {
 	const result = await TaskResult.fromNullable(() => "is null")(undefined)();
-	expect(result).toEqual(Result.error("is null"));
+	expect(result).toStrictEqual(Result.err("is null"));
 });
 
 // --- fromMaybe ---
 
 test("TaskResult.fromMaybe returns Ok for Some", async () => {
 	const result = await TaskResult.fromMaybe(() => "is none")(Maybe.some(42))();
-	expect(result).toEqual(Result.ok(42));
+	expect(result).toStrictEqual(Result.ok(42));
 });
 
 test("TaskResult.fromMaybe returns Err for None", async () => {
 	const result = await TaskResult.fromMaybe(() => "is none")(Maybe.none())();
-	expect(result).toEqual(Result.error("is none"));
+	expect(result).toStrictEqual(Result.err("is none"));
 });
 
 // --- fromResult ---
 
 test("TaskResult.fromResult returns Ok for Ok", async () => {
 	const result = await TaskResult.fromResult(Result.ok(42))();
-	expect(result).toEqual(Result.ok(42));
+	expect(result).toStrictEqual(Result.ok(42));
 });
 
 test("TaskResult.fromResult returns Err for Err", async () => {
-	const result = await TaskResult.fromResult(Result.error("bad"))();
-	expect(result).toEqual(Result.error("bad"));
+	const result = await TaskResult.fromResult(Result.err("bad"))();
+	expect(result).toStrictEqual(Result.err("bad"));
 });
 
 // --- fromThrowable ---
 
 test("TaskResult.fromThrowable returns Ok when it succeeds", async () => {
-	const parse = TaskResult.fromThrowable(
-		(s: string) => Promise.resolve(JSON.parse(s)),
-		() => "parse error",
-	);
+	const parse = TaskResult.fromThrowable((s: string) => Promise.resolve(JSON.parse(s)), () => "parse error");
 	const result = await parse('{"a":1}')();
-	expect(result).toEqual(Result.ok({ a: 1 }));
+	expect(result).toStrictEqual(Result.ok({ a: 1 }));
 });
 
 test("TaskResult.fromThrowable returns Err when it throws", async () => {
@@ -679,5 +564,5 @@ test("TaskResult.fromThrowable returns Err when it throws", async () => {
 		(e) => (e as Error).message,
 	);
 	const result = await fetch("/api")();
-	expect(result).toEqual(Result.error("network error"));
+	expect(result).toStrictEqual(Result.err("network error"));
 });

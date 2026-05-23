@@ -10,7 +10,7 @@ import { TaskMaybe } from "../TaskMaybe.ts";
 // ---------------------------------------------------------------------------
 
 test("TaskMaybe.some creates a Task that resolves to Some", async () => {
-	expect(await TaskMaybe.some(42)()).toEqual({ kind: "Some", value: 42 });
+	await expect(TaskMaybe.some(42)()).resolves.toStrictEqual({ kind: "Some", value: 42 });
 });
 
 // ---------------------------------------------------------------------------
@@ -18,7 +18,7 @@ test("TaskMaybe.some creates a Task that resolves to Some", async () => {
 // ---------------------------------------------------------------------------
 
 test("TaskMaybe.none creates a Task that resolves to None", async () => {
-	expect(await TaskMaybe.none()()).toEqual({ kind: "None" });
+	await expect(TaskMaybe.none()()).resolves.toStrictEqual({ kind: "None" });
 });
 
 // ---------------------------------------------------------------------------
@@ -26,14 +26,11 @@ test("TaskMaybe.none creates a Task that resolves to None", async () => {
 // ---------------------------------------------------------------------------
 
 test("TaskMaybe.fromMaybe lifts Some into a Task", async () => {
-	expect(await TaskMaybe.fromMaybe(Maybe.some(10))()).toEqual({
-		kind: "Some",
-		value: 10,
-	});
+	await expect(TaskMaybe.fromMaybe(Maybe.some(10))()).resolves.toStrictEqual({ kind: "Some", value: 10 });
 });
 
 test("TaskMaybe.fromMaybe lifts None into a Task", async () => {
-	expect(await TaskMaybe.fromMaybe(Maybe.none())()).toEqual({ kind: "None" });
+	await expect(TaskMaybe.fromMaybe(Maybe.none())()).resolves.toStrictEqual({ kind: "None" });
 });
 
 // ---------------------------------------------------------------------------
@@ -42,25 +39,19 @@ test("TaskMaybe.fromMaybe lifts None into a Task", async () => {
 
 test("TaskMaybe.fromTask wraps a Task result in Some", async () => {
 	const task = Task.resolve(5);
-	expect(await TaskMaybe.fromTask(task)()).toEqual({ kind: "Some", value: 5 });
+	await expect(TaskMaybe.fromTask(task)()).resolves.toStrictEqual({ kind: "Some", value: 5 });
 });
 
 // ---------------------------------------------------------------------------
 // tryCatch
 // ---------------------------------------------------------------------------
 
-test(
-	"TaskMaybe.tryCatch returns Some when Promise resolves",
-	async () => {
-		expect(await TaskMaybe.tryCatch(() => Promise.resolve(99))()).toEqual({
-			kind: "Some",
-			value: 99,
-		});
-	},
-);
+test("taskMaybe.tryCatch returns Some when Promise resolves", async () => {
+	await expect(TaskMaybe.tryCatch(() => Promise.resolve(99))()).resolves.toStrictEqual({ kind: "Some", value: 99 });
+});
 
 test("TaskMaybe.tryCatch returns None when Promise rejects", async () => {
-	expect(await TaskMaybe.tryCatch(() => Promise.reject(new Error("boom")))()).toEqual({ kind: "None" });
+	await expect(TaskMaybe.tryCatch(() => Promise.reject(new Error("boom")))()).resolves.toStrictEqual({ kind: "None" });
 });
 
 test("TaskMaybe.tryCatch receives the AbortSignal from the call site", async () => {
@@ -79,30 +70,23 @@ test("TaskMaybe.tryCatch receives the AbortSignal from the call site", async () 
 // ---------------------------------------------------------------------------
 
 test("TaskMaybe.map transforms Some value", async () => {
-	expect(
-		await pipe(
-			TaskMaybe.some(5),
-			TaskMaybe.map((n: number) => n * 2),
-		)(),
-	).toEqual({ kind: "Some", value: 10 });
+	await expect(pipe(TaskMaybe.some(5), TaskMaybe.map((n: number) => n * 2))()).resolves.toStrictEqual({
+		kind: "Some",
+		value: 10,
+	});
 });
 
 test("TaskMaybe.map passes through None unchanged", async () => {
-	expect(
-		await pipe(
-			TaskMaybe.none<number>(),
-			TaskMaybe.map((n: number) => n * 2),
-		)(),
-	).toEqual({ kind: "None" });
+	await expect(pipe(TaskMaybe.none<number>(), TaskMaybe.map((n: number) => n * 2))()).resolves.toStrictEqual({
+		kind: "None",
+	});
 });
 
 test("TaskMaybe.map can change the value type", async () => {
-	expect(
-		await pipe(
-			TaskMaybe.some(7),
-			TaskMaybe.map((n: number) => `val:${n}`),
-		)(),
-	).toEqual({ kind: "Some", value: "val:7" });
+	await expect(pipe(TaskMaybe.some(7), TaskMaybe.map((n: number) => `val:${n}`))()).resolves.toStrictEqual({
+		kind: "Some",
+		value: "val:7",
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -110,39 +94,27 @@ test("TaskMaybe.map can change the value type", async () => {
 // ---------------------------------------------------------------------------
 
 test("TaskMaybe.chain applies function when Some", async () => {
-	const result = await pipe(
-		TaskMaybe.some(5),
-		TaskMaybe.chain((n: number) => TaskMaybe.some(n * 2)),
-	)();
-	expect(result).toEqual({ kind: "Some", value: 10 });
+	const result = await pipe(TaskMaybe.some(5), TaskMaybe.chain((n: number) => TaskMaybe.some(n * 2)))();
+	expect(result).toStrictEqual({ kind: "Some", value: 10 });
 });
 
-test(
-	"TaskMaybe.chain propagates None without calling function",
-	async () => {
-		let called = false;
-		await pipe(
-			TaskMaybe.none<number>(),
-			TaskMaybe.chain((_n: number) => {
-				called = true;
-				return TaskMaybe.some(_n);
-			}),
-		)();
-		expect(called).toBe(false);
-	},
-);
+test("taskMaybe.chain propagates None without calling function", async () => {
+	let called = false;
+	await pipe(
+		TaskMaybe.none<number>(),
+		TaskMaybe.chain((_n: number) => {
+			called = true;
+			return TaskMaybe.some(_n);
+		}),
+	)();
+	expect(called).toBe(false);
+});
 
-test(
-	"TaskMaybe.chain returns None when function returns None",
-	async () => {
-		expect(
-			await pipe(
-				TaskMaybe.some(5),
-				TaskMaybe.chain((_n: number) => TaskMaybe.none()),
-			)(),
-		).toEqual({ kind: "None" });
-	},
-);
+test("taskMaybe.chain returns None when function returns None", async () => {
+	await expect(pipe(TaskMaybe.some(5), TaskMaybe.chain((_n: number) => TaskMaybe.none()))()).resolves.toStrictEqual({
+		kind: "None",
+	});
+});
 
 test("TaskMaybe.chain composes multiple async steps", async () => {
 	const result = await pipe(
@@ -150,7 +122,7 @@ test("TaskMaybe.chain composes multiple async steps", async () => {
 		TaskMaybe.chain((n: number) => TaskMaybe.some(n + 1)),
 		TaskMaybe.chain((n: number) => TaskMaybe.some(n * 10)),
 	)();
-	expect(result).toEqual({ kind: "Some", value: 20 });
+	expect(result).toStrictEqual({ kind: "Some", value: 20 });
 });
 
 // ---------------------------------------------------------------------------
@@ -158,29 +130,19 @@ test("TaskMaybe.chain composes multiple async steps", async () => {
 // ---------------------------------------------------------------------------
 
 test("TaskMaybe.ap applies Some function to Some value", async () => {
-	const result = await pipe(
-		TaskMaybe.some((n: number) => n * 3),
-		TaskMaybe.ap(TaskMaybe.some(4)),
-	)();
-	expect(result).toEqual({ kind: "Some", value: 12 });
+	const result = await pipe(TaskMaybe.some((n: number) => n * 3), TaskMaybe.ap(TaskMaybe.some(4)))();
+	expect(result).toStrictEqual({ kind: "Some", value: 12 });
 });
 
 test("TaskMaybe.ap returns None when function is None", async () => {
-	expect(
-		await pipe(
-			TaskMaybe.none<(n: number) => number>(),
-			TaskMaybe.ap(TaskMaybe.some(4)),
-		)(),
-	).toEqual({ kind: "None" });
+	await expect(pipe(TaskMaybe.none<(n: number) => number>(), TaskMaybe.ap(TaskMaybe.some(4)))()).resolves.toStrictEqual({
+		kind: "None",
+	});
 });
 
 test("TaskMaybe.ap returns None when argument is None", async () => {
-	expect(
-		await pipe(
-			TaskMaybe.some((n: number) => n * 3),
-			TaskMaybe.ap(TaskMaybe.none<number>()),
-		)(),
-	).toEqual({ kind: "None" });
+	await expect(pipe(TaskMaybe.some((n: number) => n * 3), TaskMaybe.ap(TaskMaybe.none<number>()))()).resolves
+		.toStrictEqual({ kind: "None" });
 });
 
 test("TaskMaybe.ap propagates the AbortSignal to both sides", async () => {
@@ -209,27 +171,13 @@ test("TaskMaybe.ap propagates the AbortSignal to both sides", async () => {
 // ---------------------------------------------------------------------------
 
 test("TaskMaybe.fold calls onSome for Some", async () => {
-	expect(
-		await pipe(
-			TaskMaybe.some(5),
-			TaskMaybe.fold(
-				() => "none",
-				(n: number) => `some:${n}`,
-			),
-		)(),
-	).toBe("some:5");
+	await expect(pipe(TaskMaybe.some(5), TaskMaybe.fold(() => "none", (n: number) => `some:${n}`))()).resolves.toBe(
+		"some:5",
+	);
 });
 
 test("TaskMaybe.fold calls onNone for None", async () => {
-	expect(
-		await pipe(
-			TaskMaybe.none(),
-			TaskMaybe.fold(
-				() => "none",
-				(n: number) => `some:${n}`,
-			),
-		)(),
-	).toBe("none");
+	await expect(pipe(TaskMaybe.none(), TaskMaybe.fold(() => "none", (n: number) => `some:${n}`))()).resolves.toBe("none");
 });
 
 // ---------------------------------------------------------------------------
@@ -237,27 +185,13 @@ test("TaskMaybe.fold calls onNone for None", async () => {
 // ---------------------------------------------------------------------------
 
 test("TaskMaybe.match calls some handler for Some", async () => {
-	expect(
-		await pipe(
-			TaskMaybe.some(5),
-			TaskMaybe.match({
-				some: (n: number) => `got:${n}`,
-				none: () => "empty",
-			}),
-		)(),
-	).toBe("got:5");
+	await expect(pipe(TaskMaybe.some(5), TaskMaybe.match({ some: (n: number) => `got:${n}`, none: () => "empty" }))())
+		.resolves.toBe("got:5");
 });
 
 test("TaskMaybe.match calls none handler for None", async () => {
-	expect(
-		await pipe(
-			TaskMaybe.none(),
-			TaskMaybe.match({
-				some: (n: number) => `got:${n}`,
-				none: () => "empty",
-			}),
-		)(),
-	).toBe("empty");
+	await expect(pipe(TaskMaybe.none(), TaskMaybe.match({ some: (n: number) => `got:${n}`, none: () => "empty" }))())
+		.resolves.toBe("empty");
 });
 
 // ---------------------------------------------------------------------------
@@ -265,11 +199,11 @@ test("TaskMaybe.match calls none handler for None", async () => {
 // ---------------------------------------------------------------------------
 
 test("TaskMaybe.getOrElse returns value for Some", async () => {
-	expect(await pipe(TaskMaybe.some(5), TaskMaybe.getOrElse(() => 0))()).toBe(5);
+	await expect(pipe(TaskMaybe.some(5), TaskMaybe.getOrElse(() => 0))()).resolves.toBe(5);
 });
 
 test("TaskMaybe.getOrElse returns default for None", async () => {
-	expect(await pipe(TaskMaybe.none<number>(), TaskMaybe.getOrElse(() => 0))()).toBe(0);
+	await expect(pipe(TaskMaybe.none<number>(), TaskMaybe.getOrElse(() => 0))()).resolves.toBe(0);
 });
 
 test("TaskMaybe.getOrElse widens return type to A | B when default is a different type", async () => {
@@ -286,20 +220,17 @@ test("TaskMaybe.getOrElse returns Some value typed as A | B when Some", async ()
 // tap
 // ---------------------------------------------------------------------------
 
-test(
-	"TaskMaybe.tap executes side effect on Some and returns original",
-	async () => {
-		let seen = 0;
-		const result = await pipe(
-			TaskMaybe.some(5),
-			TaskMaybe.tap((n: number) => {
-				seen = n;
-			}),
-		)();
-		expect(seen).toBe(5);
-		expect(result).toEqual({ kind: "Some", value: 5 });
-	},
-);
+test("taskMaybe.tap executes side effect on Some and returns original", async () => {
+	let seen = 0;
+	const result = await pipe(
+		TaskMaybe.some(5),
+		TaskMaybe.tap((n: number) => {
+			seen = n;
+		}),
+	)();
+	expect(seen).toBe(5);
+	expect(result).toStrictEqual({ kind: "Some", value: 5 });
+});
 
 test("TaskMaybe.tap does not execute side effect on None", async () => {
 	let called = false;
@@ -317,30 +248,22 @@ test("TaskMaybe.tap does not execute side effect on None", async () => {
 // ---------------------------------------------------------------------------
 
 test("TaskMaybe.filter keeps Some when predicate passes", async () => {
-	expect(
-		await pipe(
-			TaskMaybe.some(5),
-			TaskMaybe.filter((n: number) => n > 3),
-		)(),
-	).toEqual({ kind: "Some", value: 5 });
+	await expect(pipe(TaskMaybe.some(5), TaskMaybe.filter((n: number) => n > 3))()).resolves.toStrictEqual({
+		kind: "Some",
+		value: 5,
+	});
 });
 
 test("TaskMaybe.filter returns None when predicate fails", async () => {
-	expect(
-		await pipe(
-			TaskMaybe.some(2),
-			TaskMaybe.filter((n: number) => n > 3),
-		)(),
-	).toEqual({ kind: "None" });
+	await expect(pipe(TaskMaybe.some(2), TaskMaybe.filter((n: number) => n > 3))()).resolves.toStrictEqual({
+		kind: "None",
+	});
 });
 
 test("TaskMaybe.filter passes through None unchanged", async () => {
-	expect(
-		await pipe(
-			TaskMaybe.none<number>(),
-			TaskMaybe.filter((_n) => true),
-		)(),
-	).toEqual({ kind: "None" });
+	await expect(pipe(TaskMaybe.none<number>(), TaskMaybe.filter((_n) => true))()).resolves.toStrictEqual({
+		kind: "None",
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -348,31 +271,24 @@ test("TaskMaybe.filter passes through None unchanged", async () => {
 // ---------------------------------------------------------------------------
 
 test("TaskMaybe.toTaskResult returns Ok for Some", async () => {
-	expect(
-		await pipe(
-			TaskMaybe.some(42),
-			TaskMaybe.toTaskResult(() => "missing"),
-		)(),
-	).toEqual({ kind: "Ok", value: 42 });
+	await expect(pipe(TaskMaybe.some(42), TaskMaybe.toTaskResult(() => "missing"))()).resolves.toStrictEqual({
+		kind: "Ok",
+		value: 42,
+	});
 });
 
-test(
-	"TaskMaybe.toTaskResult returns Err for None using onNone",
-	async () => {
-		expect(
-			await pipe(
-				TaskMaybe.none<number>(),
-				TaskMaybe.toTaskResult(() => "missing"),
-			)(),
-		).toEqual({ kind: "Error", error: "missing" });
-	},
-);
+test("taskMaybe.toTaskResult returns Err for None using onNone", async () => {
+	await expect(pipe(TaskMaybe.none<number>(), TaskMaybe.toTaskResult(() => "missing"))()).resolves.toStrictEqual({
+		kind: "Err",
+		error: "missing",
+	});
+});
 
 // ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("TaskMaybe composes well in a pipe chain", async () => {
+test("taskMaybe composes well in a pipe chain", async () => {
 	const result = await pipe(
 		TaskMaybe.some(5),
 		TaskMaybe.map((n: number) => n * 2),
@@ -383,7 +299,7 @@ test("TaskMaybe composes well in a pipe chain", async () => {
 	expect(result).toBe(11);
 });
 
-test("TaskMaybe pipe short-circuits on None", async () => {
+test("taskMaybe pipe short-circuits on None", async () => {
 	const result = await pipe(
 		TaskMaybe.some(2),
 		TaskMaybe.filter((n: number) => n > 5),
@@ -397,27 +313,27 @@ test("TaskMaybe pipe short-circuits on None", async () => {
 
 test("TaskMaybe.fromNullable returns Some for non-null value", async () => {
 	const result = await TaskMaybe.fromNullable(42)();
-	expect(result).toEqual(Maybe.some(42));
+	expect(result).toStrictEqual(Maybe.some(42));
 });
 
 test("TaskMaybe.fromNullable returns None for null", async () => {
 	const result = await TaskMaybe.fromNullable(null)();
-	expect(result).toEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.none());
 });
 
 test("TaskMaybe.fromNullable returns None for undefined", async () => {
 	const result = await TaskMaybe.fromNullable(undefined)();
-	expect(result).toEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.none());
 });
 
 // --- fromResult ---
 
 test("TaskMaybe.fromResult returns Some for Ok", async () => {
 	const result = await TaskMaybe.fromResult(Result.ok(42))();
-	expect(result).toEqual(Maybe.some(42));
+	expect(result).toStrictEqual(Maybe.some(42));
 });
 
 test("TaskMaybe.fromResult returns None for Error", async () => {
-	const result = await TaskMaybe.fromResult(Result.error("bad"))();
-	expect(result).toEqual(Maybe.none());
+	const result = await TaskMaybe.fromResult(Result.err("bad"))();
+	expect(result).toStrictEqual(Maybe.none());
 });

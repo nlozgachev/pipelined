@@ -9,13 +9,13 @@ import { Logged } from "../Logged.ts";
 test("Logged.make creates a Logged with an empty log", () => {
 	const result = Logged.make<string, number>(42);
 	expect(result.value).toBe(42);
-	expect(result.log).toEqual([]);
+	expect(result.log).toStrictEqual([]);
 });
 
 test("Logged.make works with string value", () => {
 	const result = Logged.make<string, string>("hello");
 	expect(result.value).toBe("hello");
-	expect(result.log).toEqual([]);
+	expect(result.log).toStrictEqual([]);
 });
 
 // ---------------------------------------------------------------------------
@@ -25,13 +25,13 @@ test("Logged.make works with string value", () => {
 test("Logged.tell creates a Logged with one log entry and undefined value", () => {
 	const result = Logged.tell("step A");
 	expect(result.value).toBeUndefined();
-	expect(result.log).toEqual(["step A"]);
+	expect(result.log).toStrictEqual(["step A"]);
 });
 
 test("Logged.tell with a number entry", () => {
 	const result = Logged.tell(42);
 	expect(result.value).toBeUndefined();
-	expect(result.log).toEqual([42]);
+	expect(result.log).toStrictEqual([42]);
 });
 
 // ---------------------------------------------------------------------------
@@ -47,7 +47,7 @@ test("Logged.map does not change the log", () => {
 	const initial: Logged<string, number> = { value: 5, log: ["existing"] };
 	const result = pipe(initial, Logged.map((n) => n + 1));
 	expect(result.value).toBe(6);
-	expect(result.log).toEqual(["existing"]);
+	expect(result.log).toStrictEqual(["existing"]);
 });
 
 test("Logged.map can change the value type", () => {
@@ -66,35 +66,26 @@ test("Logged.chain sequences computations and concatenates logs", () => {
 		Logged.chain((n) => pipe(Logged.tell("second"), Logged.map(() => n * 10))),
 	);
 	expect(result.value).toBe(20);
-	expect(result.log).toEqual(["first", "second"]);
+	expect(result.log).toStrictEqual(["first", "second"]);
 });
 
 test("Logged.chain passes the value to the next computation", () => {
-	const result = pipe(
-		Logged.make<string, number>(3),
-		Logged.chain((n) => Logged.make<string, number>(n * 7)),
-	);
+	const result = pipe(Logged.make<string, number>(3), Logged.chain((n) => Logged.make<string, number>(n * 7)));
 	expect(result.value).toBe(21);
-	expect(result.log).toEqual([]);
+	expect(result.log).toStrictEqual([]);
 });
 
 test("Logged.chain accumulates logs from both sides", () => {
 	const first: Logged<string, number> = { value: 5, log: ["first-log"] };
-	const result = pipe(
-		first,
-		Logged.chain((n) => ({ value: n + 1, log: ["second-log"] as ReadonlyArray<string> })),
-	);
+	const result = pipe(first, Logged.chain((n) => ({ value: n + 1, log: ["second-log"] as ReadonlyArray<string> })));
 	expect(result.value).toBe(6);
-	expect(result.log).toEqual(["first-log", "second-log"]);
+	expect(result.log).toStrictEqual(["first-log", "second-log"]);
 });
 
 test("Logged.chain with empty logs stays empty", () => {
-	const result = pipe(
-		Logged.make<string, number>(1),
-		Logged.chain((n) => Logged.make(n + 1)),
-	);
+	const result = pipe(Logged.make<string, number>(1), Logged.chain((n) => Logged.make(n + 1)));
 	expect(result.value).toBe(2);
-	expect(result.log).toEqual([]);
+	expect(result.log).toStrictEqual([]);
 });
 
 // ---------------------------------------------------------------------------
@@ -113,7 +104,7 @@ test("Logged.ap concatenates logs from function and argument", () => {
 	const arg: Logged<string, number> = { value: 5, log: ["arg"] };
 	const result = pipe(fn, Logged.ap(arg));
 	expect(result.value).toBe(10);
-	expect(result.log).toEqual(["fn", "arg"]);
+	expect(result.log).toStrictEqual(["fn", "arg"]);
 });
 
 // ---------------------------------------------------------------------------
@@ -131,7 +122,7 @@ test("Logged.tap runs a side effect without changing value or log", () => {
 	);
 	expect(captured).toBe(42);
 	expect(result.value).toBe(42);
-	expect(result.log).toEqual(["existing"]);
+	expect(result.log).toStrictEqual(["existing"]);
 });
 
 // ---------------------------------------------------------------------------
@@ -142,53 +133,44 @@ test("Logged.run returns [value, log] tuple", () => {
 	const input: Logged<string, number> = { value: 10, log: ["a", "b"] };
 	const [value, log] = Logged.run(input);
 	expect(value).toBe(10);
-	expect(log).toEqual(["a", "b"]);
+	expect(log).toStrictEqual(["a", "b"]);
 });
 
 test("Logged.run on a make-created Logged returns empty log", () => {
 	const [value, log] = Logged.run(Logged.make(99));
 	expect(value).toBe(99);
-	expect(log).toEqual([]);
+	expect(log).toStrictEqual([]);
 });
 
 // ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("Logged composes well in a pipe chain with tell and map", () => {
+test("logged composes well in a pipe chain with tell and map", () => {
 	const validated = (input: string): Logged<string, string> =>
-		input.length > 0 ? pipe(Logged.tell(`validated: "${input}"`), Logged.map(() => input.trim())) : pipe(
-			Logged.tell(`rejected: "${input}"`),
-			Logged.map(() => "(empty)"),
-		);
+		input.length > 0
+			? pipe(Logged.tell(`validated: "${input}"`), Logged.map(() => input.trim()))
+			: pipe(Logged.tell(`rejected: "${input}"`), Logged.map(() => "(empty)"));
 
 	const program = pipe(
 		Logged.make<string, string>(" hello "),
 		Logged.chain(validated),
-		Logged.chain((s) =>
-			pipe(
-				Logged.tell(`processed: "${s}"`),
-				Logged.map(() => s.toUpperCase()),
-			)
-		),
+		Logged.chain((s) => pipe(Logged.tell(`processed: "${s}"`), Logged.map(() => s.toUpperCase()))),
 	);
 
 	const [value, log] = Logged.run(program);
 	expect(value).toBe("HELLO");
-	expect(log).toEqual(['validated: " hello "', 'processed: "hello"']);
+	expect(log).toStrictEqual(['validated: " hello "', 'processed: "hello"']);
 });
 
-test("Logged logs accumulate across multiple chain steps", () => {
+test("logged logs accumulate across multiple chain steps", () => {
 	const steps = ["a", "b", "c"];
 	const program = steps.reduce(
 		(acc: Logged<string, number>, step) =>
-			pipe(
-				acc,
-				Logged.chain((n) => pipe(Logged.tell(step), Logged.map(() => n + 1))),
-			),
+			pipe(acc, Logged.chain((n) => pipe(Logged.tell(step), Logged.map(() => n + 1)))),
 		Logged.make<string, number>(0),
 	);
 	const [value, log] = Logged.run(program);
 	expect(value).toBe(3);
-	expect(log).toEqual(["a", "b", "c"]);
+	expect(log).toStrictEqual(["a", "b", "c"]);
 });

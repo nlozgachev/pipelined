@@ -19,9 +19,7 @@ type PositiveNumber = number & { readonly [_positive]: true; };
 type EvenNumber = number & { readonly [_even]: true; };
 
 const isNonEmpty: Refinement<string, NonEmptyString> = Refinement.make((s) => s.length > 0);
-const isTrimmed: Refinement<NonEmptyString, TrimmedString> = Refinement.make(
-	(s) => s === s.trim(),
-);
+const isTrimmed: Refinement<NonEmptyString, TrimmedString> = Refinement.make((s) => s === s.trim());
 const isPositive: Refinement<number, PositiveNumber> = Refinement.make((n) => n > 0);
 const isEven: Refinement<number, EvenNumber> = Refinement.make((n) => n % 2 === 0);
 
@@ -52,26 +50,17 @@ test("Refinement.make works as a type guard in conditional branches", () => {
 // ---------------------------------------------------------------------------
 
 test("Refinement.compose narrows A to C when both refinements pass", () => {
-	const isNonEmptyTrimmed: Refinement<string, TrimmedString> = pipe(
-		isNonEmpty,
-		Refinement.compose(isTrimmed),
-	);
+	const isNonEmptyTrimmed: Refinement<string, TrimmedString> = pipe(isNonEmpty, Refinement.compose(isTrimmed));
 	expect(isNonEmptyTrimmed("hello")).toBe(true);
 });
 
 test("Refinement.compose returns false when the first refinement fails", () => {
-	const isNonEmptyTrimmed: Refinement<string, TrimmedString> = pipe(
-		isNonEmpty,
-		Refinement.compose(isTrimmed),
-	);
+	const isNonEmptyTrimmed: Refinement<string, TrimmedString> = pipe(isNonEmpty, Refinement.compose(isTrimmed));
 	expect(isNonEmptyTrimmed("")).toBe(false);
 });
 
 test("Refinement.compose returns false when the second refinement fails", () => {
-	const isNonEmptyTrimmed: Refinement<string, TrimmedString> = pipe(
-		isNonEmpty,
-		Refinement.compose(isTrimmed),
-	);
+	const isNonEmptyTrimmed: Refinement<string, TrimmedString> = pipe(isNonEmpty, Refinement.compose(isTrimmed));
 	expect(isNonEmptyTrimmed("  spaces  ")).toBe(false);
 });
 
@@ -134,7 +123,7 @@ test("Refinement.toFilter returns Some when refinement passes", () => {
 });
 
 test("Refinement.toFilter returns None when refinement fails", () => {
-	expect(pipe("", Refinement.toFilter(isNonEmpty)) as Maybe<string>).toEqual({ kind: "None" });
+	expect(pipe("", Refinement.toFilter(isNonEmpty)) as Maybe<string>).toStrictEqual({ kind: "None" });
 });
 
 test("Refinement.toFilter works in a pipe chain with composed refinements", () => {
@@ -155,23 +144,22 @@ test("Refinement.toResult returns Ok when refinement passes", () => {
 });
 
 test("Refinement.toResult returns Err with onFail value when refinement fails", () => {
-	expect(pipe("", Refinement.toResult(isNonEmpty, (s) => `"${s}" is empty`)) as Result<string, string>).toEqual(
-		{ kind: "Error", error: '"" is empty' },
-	);
+	expect(pipe("", Refinement.toResult(isNonEmpty, (s) => `"${s}" is empty`)) as Result<string, string>).toStrictEqual({
+		kind: "Err",
+		error: '"" is empty',
+	});
 });
 
 test("Refinement.toResult passes the failing value to onFail", () => {
-	const result = pipe(
-		-5,
-		Refinement.toResult(isPositive, (n) => `${n} is not positive`),
-	) as Result<string, number>;
-	expect(result).toEqual({ kind: "Error", error: "-5 is not positive" });
+	const result = pipe(-5, Refinement.toResult(isPositive, (n) => `${n} is not positive`)) as Result<string, number>;
+	expect(result).toStrictEqual({ kind: "Err", error: "-5 is not positive" });
 });
 
 test("Refinement.toResult works in a pipe chain with composed refinements", () => {
 	const isPositiveEven = pipe(isPositive, Refinement.and(isEven));
 	expect(Result.isOk(pipe(4, Refinement.toResult(isPositiveEven, (n) => `${n} failed`)))).toBe(true);
-	expect(pipe(3, Refinement.toResult(isPositiveEven, (n) => `${n} failed`)) as Result<string, number>).toEqual(
-		{ kind: "Error", error: "3 failed" },
-	);
+	expect(pipe(3, Refinement.toResult(isPositiveEven, (n) => `${n} failed`)) as Result<string, number>).toStrictEqual({
+		kind: "Err",
+		error: "3 failed",
+	});
 });

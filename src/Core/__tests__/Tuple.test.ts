@@ -7,7 +7,7 @@ import { Tuple } from "../Tuple.ts";
 // ---------------------------------------------------------------------------
 
 test("Tuple.make creates a pair with both values", () => {
-	expect(Tuple.make("alice", 42)).toEqual(["alice", 42]);
+	expect(Tuple.make("alice", 42)).toStrictEqual(["alice", 42]);
 });
 
 test("Tuple.make values are accessible by index", () => {
@@ -41,7 +41,7 @@ test("Tuple.second works with pipe", () => {
 // ---------------------------------------------------------------------------
 
 test("Tuple.mapFirst transforms the first value", () => {
-	expect(pipe(Tuple.make("alice", 42), Tuple.mapFirst((s) => s.toUpperCase()))).toEqual(["ALICE", 42]);
+	expect(pipe(Tuple.make("alice", 42), Tuple.mapFirst((s) => s.toUpperCase()))).toStrictEqual(["ALICE", 42]);
 });
 
 test("Tuple.mapFirst leaves the second value unchanged", () => {
@@ -51,7 +51,7 @@ test("Tuple.mapFirst leaves the second value unchanged", () => {
 });
 
 test("Tuple.mapFirst can change the first value type", () => {
-	expect(pipe(Tuple.make(42, true), Tuple.mapFirst((n: number) => `num:${n}`))).toEqual(["num:42", true]);
+	expect(pipe(Tuple.make(42, true), Tuple.mapFirst((n: number) => `num:${n}`))).toStrictEqual(["num:42", true]);
 });
 
 // ---------------------------------------------------------------------------
@@ -59,7 +59,7 @@ test("Tuple.mapFirst can change the first value type", () => {
 // ---------------------------------------------------------------------------
 
 test("Tuple.mapSecond transforms the second value", () => {
-	expect(pipe(Tuple.make("alice", 42), Tuple.mapSecond((n: number) => n * 2))).toEqual(["alice", 84]);
+	expect(pipe(Tuple.make("alice", 42), Tuple.mapSecond((n: number) => n * 2))).toStrictEqual(["alice", 84]);
 });
 
 test("Tuple.mapSecond leaves the first value unchanged", () => {
@@ -69,7 +69,7 @@ test("Tuple.mapSecond leaves the first value unchanged", () => {
 });
 
 test("Tuple.mapSecond can change the second value type", () => {
-	expect(pipe(Tuple.make("key", 7), Tuple.mapSecond((n: number) => n > 5))).toEqual(["key", true]);
+	expect(pipe(Tuple.make("key", 7), Tuple.mapSecond((n: number) => n > 5))).toStrictEqual(["key", true]);
 });
 
 // ---------------------------------------------------------------------------
@@ -77,13 +77,8 @@ test("Tuple.mapSecond can change the second value type", () => {
 // ---------------------------------------------------------------------------
 
 test("Tuple.mapBoth transforms both values independently", () => {
-	expect(pipe(
-		Tuple.make("alice", 42),
-		Tuple.mapBoth(
-			(s: string) => s.toUpperCase(),
-			(n: number) => n * 2,
-		),
-	)).toEqual(["ALICE", 84]);
+	expect(pipe(Tuple.make("alice", 42), Tuple.mapBoth((s: string) => s.toUpperCase(), (n: number) => n * 2)))
+		.toStrictEqual(["ALICE", 84]);
 });
 
 test("Tuple.mapBoth calls both functions", () => {
@@ -91,26 +86,22 @@ test("Tuple.mapBoth calls both functions", () => {
 	let secondCalled = false;
 	pipe(
 		Tuple.make(1, 2),
-		Tuple.mapBoth(
-			(n: number) => {
-				firstCalled = true;
-				return n;
-			},
-			(n: number) => {
-				secondCalled = true;
-				return n;
-			},
-		),
+		Tuple.mapBoth((n: number) => {
+			firstCalled = true;
+			return n;
+		}, (n: number) => {
+			secondCalled = true;
+			return n;
+		}),
 	);
 	expect(firstCalled).toBe(true);
 	expect(secondCalled).toBe(true);
 });
 
 test("Tuple.mapBoth can change both value types", () => {
-	expect(pipe(Tuple.make(42, true), Tuple.mapBoth((n: number) => String(n), (b: boolean) => (b ? 1 : 0)))).toEqual([
-		"42",
-		1,
-	]);
+	expect(pipe(Tuple.make(42, true), Tuple.mapBoth((n: number) => String(n), (b: boolean) => (b ? 1 : 0)))).toStrictEqual(
+		["42", 1],
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -132,7 +123,7 @@ test("Tuple.fold receives first value as first argument and second as second", (
 			return 0;
 		}),
 	);
-	expect(args).toEqual([["x", 99]]);
+	expect(args).toStrictEqual([["x", 99]]);
 });
 
 // ---------------------------------------------------------------------------
@@ -140,16 +131,16 @@ test("Tuple.fold receives first value as first argument and second as second", (
 // ---------------------------------------------------------------------------
 
 test("Tuple.swap reverses the pair", () => {
-	expect(Tuple.swap(Tuple.make("key", 1))).toEqual([1, "key"]);
+	expect(Tuple.swap(Tuple.make("key", 1))).toStrictEqual([1, "key"]);
 });
 
 test("Tuple.swap is its own inverse", () => {
 	const t = Tuple.make("a", 42);
-	expect(Tuple.swap(Tuple.swap(t))).toEqual(t);
+	expect(Tuple.swap(Tuple.swap(t))).toStrictEqual(t);
 });
 
 test("Tuple.swap works with homogeneous pairs", () => {
-	expect(Tuple.swap(Tuple.make(1, 2))).toEqual([2, 1]);
+	expect(Tuple.swap(Tuple.make(1, 2))).toStrictEqual([2, 1]);
 });
 
 // ---------------------------------------------------------------------------
@@ -157,7 +148,7 @@ test("Tuple.swap works with homogeneous pairs", () => {
 // ---------------------------------------------------------------------------
 
 test("Tuple.toArray returns both elements in order", () => {
-	expect(Tuple.toArray(Tuple.make("hello", 42))).toEqual(["hello", 42]);
+	expect(Tuple.toArray(Tuple.make("hello", 42))).toStrictEqual(["hello", 42]);
 });
 
 test("Tuple.toArray returns a new array (not the original tuple)", () => {
@@ -187,20 +178,20 @@ test("Tuple.tap executes side effect with both values", () => {
 test("Tuple.tap returns the original tuple unchanged", () => {
 	const t = Tuple.make("alice", 42);
 	const result = pipe(t, Tuple.tap(() => {}));
-	expect(result).toEqual(t);
+	expect(result).toStrictEqual(t);
 });
 
 test("Tuple.tap does not mutate the tuple", () => {
 	const t = Tuple.make(1, 2);
 	pipe(t, Tuple.tap((_a, _b) => {}));
-	expect(t).toEqual([1, 2]);
+	expect(t).toStrictEqual([1, 2]);
 });
 
 // ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("Tuple composes well in a pipe chain", () => {
+test("tuple composes well in a pipe chain", () => {
 	const result = pipe(
 		Tuple.make("alice", 42),
 		Tuple.mapFirst((s: string) => s.toUpperCase()),
@@ -210,20 +201,17 @@ test("Tuple composes well in a pipe chain", () => {
 	expect(result).toBe("ALICE: 84");
 });
 
-test("Tuple pipe chain with mapBoth and swap", () => {
+test("tuple pipe chain with mapBoth and swap", () => {
 	const result = pipe(
 		Tuple.make(5, "hello"),
-		Tuple.mapBoth(
-			(n: number) => n + 1,
-			(s: string) => s.length,
-		),
+		Tuple.mapBoth((n: number) => n + 1, (s: string) => s.length),
 		Tuple.swap,
 		Tuple.fold((a: number, b: number) => a + b),
 	);
 	expect(result).toBe(11); // swap([6, 5]) = [5, 6], fold = 11
 });
 
-test("Tuple tap does not interrupt pipeline", () => {
+test("tuple tap does not interrupt pipeline", () => {
 	let logged = "";
 	const result = pipe(
 		Tuple.make("product", 9.99),

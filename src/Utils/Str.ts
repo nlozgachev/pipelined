@@ -251,14 +251,14 @@ export namespace Str {
 	 * @example
 	 * ```ts
 	 * Str.parseJson('{"a": 1}'); // Ok({ a: 1 })
-	 * Str.parseJson('invalid');  // Error(SyntaxError)
+	 * Str.parseJson('invalid');  // Err(SyntaxError)
 	 * ```
 	 */
 	export const parseJson = (s: string): Result<SyntaxError, unknown> => {
 		try {
 			return Result.ok(JSON.parse(s));
-		} catch (e) {
-			return Result.error(e as SyntaxError);
+		} catch (error) {
+			return Result.err(error as SyntaxError);
 		}
 	};
 }

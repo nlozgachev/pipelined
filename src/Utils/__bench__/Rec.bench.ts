@@ -9,12 +9,7 @@ const makeRec = (n: number): Record<string, number> =>
 const rec100 = makeRec(100);
 const rec10k = makeRec(10_000);
 const makeOptRec = (n: number): Record<string, Maybe<number>> =>
-	Object.fromEntries(
-		Array.from({ length: n }, (_, i) => [
-			`key${i}`,
-			i % 3 === 0 ? Maybe.none() : Maybe.some(i),
-		]),
-	);
+	Object.fromEntries(Array.from({ length: n }, (_, i) => [`key${i}`, i % 3 === 0 ? Maybe.none() : Maybe.some(i)]));
 const optRec100 = makeOptRec(100);
 const optRec10k = makeOptRec(10_000);
 const data10k = Array.from({ length: 10_000 }, (_, i) => i);
@@ -48,7 +43,7 @@ describe("rec-filter-10k", () => {
 	bench("2. native filter loop 10k", () => {
 		const result: Record<string, number> = {};
 		for (const [k, v] of Object.entries(rec10k)) {
-			if (v % 2 === 0) result[k] = v;
+			if (v % 2 === 0) { result[k] = v; }
 		}
 	});
 });
@@ -58,19 +53,19 @@ describe("rec-filter-approaches-10k", () => {
 		const m = new Map(Object.entries(rec10k));
 		const result: Record<string, number> = {};
 		m.forEach((v, k) => {
-			if (v % 2 === 0) result[k] = v;
+			if (v % 2 === 0) { result[k] = v; }
 		});
 	});
 	bench("2. Object.entries filter 10k (bitwise", () => {
 		const result: Record<string, number> = {};
 		for (const [k, v] of Object.entries(rec10k)) {
-			if ((v & 1) === 0) result[k] = v;
+			if ((v & 1) === 0) { result[k] = v; }
 		}
 	});
 	bench("3. Object.entries for-of filter 10k", () => {
 		const result: Record<string, number> = {};
 		for (const [k, v] of Object.entries(rec10k)) {
-			if (v % 2 === 0) result[k] = v;
+			if (v % 2 === 0) { result[k] = v; }
 		}
 	});
 	bench("4. keys+values index filter 10k", () => {
@@ -78,7 +73,7 @@ describe("rec-filter-approaches-10k", () => {
 		const keys = Object.keys(rec10k);
 		const vals = Object.values(rec10k);
 		for (let i = 0; i < keys.length; i++) {
-			if (vals[i] % 2 === 0) result[keys[i]] = vals[i];
+			if (vals[i] % 2 === 0) { result[keys[i]] = vals[i]; }
 		}
 	});
 });
@@ -90,7 +85,7 @@ describe("rec-compact-100", () => {
 	bench("2. native compact loop 100", () => {
 		const result: Record<string, number> = {};
 		for (const [k, v] of Object.entries(optRec100)) {
-			if (v.kind === "Some") result[k] = v.value;
+			if (v.kind === "Some") { result[k] = v.value; }
 		}
 	});
 });
@@ -102,7 +97,7 @@ describe("rec-compact-10k", () => {
 	bench("2. native compact loop 10k", () => {
 		const result: Record<string, number> = {};
 		for (const [k, v] of Object.entries(optRec10k)) {
-			if (v.kind === "Some") result[k] = v.value;
+			if (v.kind === "Some") { result[k] = v.value; }
 		}
 	});
 });
@@ -144,8 +139,8 @@ describe("rec-groupBy-approaches-10k", () => {
 		const result: Record<string, number[]> = {};
 		for (const n of data10k) {
 			const key = String(n % 10);
-			if (key in result) result[key].push(n);
-			else result[key] = [n];
+			if (key in result) { result[key].push(n); }
+			else { result[key] = [n]; }
 		}
 	});
 	bench("2. native Object.groupBy 10k", () => {

@@ -26,6 +26,4 @@ export type NonEmptyList<A> = readonly [A, ...A[]];
  * }
  * ```
  */
-export const isNonEmptyList = <A>(
-	list: readonly A[],
-): list is NonEmptyList<A> => list.length > 0;
+export const isNonEmptyList = <A>(list: readonly A[]): list is NonEmptyList<A> => list.length > 0;

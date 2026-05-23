@@ -21,10 +21,7 @@ import type { Optional } from "./Optional.ts";
  * pipe(user, Lens.modify(userCityLens)(c => c.toUpperCase())); // "BERLIN"
  * ```
  */
-export type Lens<S, A> = {
-	readonly get: (s: S) => A;
-	readonly set: (a: A) => (s: S) => S;
-};
+export type Lens<S, A> = { readonly get: (s: S) => A; readonly set: (a: A) => (s: S) => S; };
 
 export namespace Lens {
 	/**
@@ -38,10 +35,7 @@ export namespace Lens {
 	 * );
 	 * ```
 	 */
-	export const make = <S, A>(
-		get: (s: S) => A,
-		set: (a: A) => (s: S) => S,
-	): Lens<S, A> => ({ get, set });
+	export const make = <S, A>(get: (s: S) => A, set: (a: A) => (s: S) => S): Lens<S, A> => ({ get, set });
 
 	/**
 	 * Creates a Lens that focuses on a property of an object.
@@ -53,10 +47,7 @@ export namespace Lens {
 	 * ```
 	 */
 	export const prop = <S>() => <K extends keyof S>(key: K): Lens<S, S[K]> =>
-		make(
-			(s) => s[key],
-			(a) => (s) => ({ ...s, [key]: a } as S),
-		);
+		make((s) => s[key], (a) => (s) => ({ ...s, [key]: a } as S));
 
 	/**
 	 * Reads the focused value from a structure.
@@ -101,10 +92,7 @@ export namespace Lens {
 	 * ```
 	 */
 	export const andThen = <A, B>(inner: Lens<A, B>) => <S>(outer: Lens<S, A>): Lens<S, B> =>
-		make(
-			(s) => inner.get(outer.get(s)),
-			(b) => (s) => outer.set(inner.set(b)(outer.get(s)))(s),
-		);
+		make((s) => inner.get(outer.get(s)), (b) => (s) => outer.set(inner.set(b)(outer.get(s)))(s));
 
 	/**
 	 * Composes a Lens with an Optional, producing an Optional.

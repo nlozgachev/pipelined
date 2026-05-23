@@ -68,11 +68,7 @@ export namespace TaskMaybe {
 	 * ```
 	 */
 	export const tryCatch = <A>(f: (signal?: AbortSignal) => Promise<A>): TaskMaybe<A> =>
-		Task.from((signal) =>
-			f(signal)
-				.then(Maybe.some)
-				.catch(() => Maybe.none())
-		);
+		Task.from((signal) => f(signal).then(Maybe.some).catch(() => Maybe.none()));
 
 	/**
 	 * Transforms the value inside a TaskMaybe.
@@ -100,10 +96,9 @@ export namespace TaskMaybe {
 	 */
 	export const ap = <A>(arg: TaskMaybe<A>) => <B>(data: TaskMaybe<(a: A) => B>): TaskMaybe<B> =>
 		Task.from((signal) =>
-			Promise.all([
-				Deferred.toPromise(data(signal)),
-				Deferred.toPromise(arg(signal)),
-			]).then(([of_, oa]) => Maybe.ap(oa)(of_))
+			Promise.all([Deferred.toPromise(data(signal)), Deferred.toPromise(arg(signal))]).then(([of_, oa]) =>
+				Maybe.ap(oa)(of_)
+			)
 		);
 
 	/**

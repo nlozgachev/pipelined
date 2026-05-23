@@ -150,19 +150,12 @@ test("Predicate.using can be chained for nested extraction", () => {
 // ---------------------------------------------------------------------------
 
 test("Predicate.all returns true when all predicates pass", () => {
-	const checks: Predicate<string>[] = [
-		(s) => s.length > 0,
-		(s) => s.length <= 10,
-		(s) => !s.includes(" "),
-	];
+	const checks: Predicate<string>[] = [(s) => s.length > 0, (s) => s.length <= 10, (s) => !s.includes(" ")];
 	expect(Predicate.all(checks)("hello")).toBe(true);
 });
 
 test("Predicate.all returns false when one predicate fails", () => {
-	const checks: Predicate<string>[] = [
-		(s) => s.length > 0,
-		(s) => s.length <= 3,
-	];
+	const checks: Predicate<string>[] = [(s) => s.length > 0, (s) => s.length <= 3];
 	expect(Predicate.all(checks)("hello")).toBe(false); // too long
 });
 
@@ -172,13 +165,10 @@ test("Predicate.all returns true for an empty array", () => {
 
 test("Predicate.all returns false when first predicate fails", () => {
 	let secondCalled = false;
-	const checks: Predicate<number>[] = [
-		() => false,
-		() => {
-			secondCalled = true;
-			return true;
-		},
-	];
+	const checks: Predicate<number>[] = [() => false, () => {
+		secondCalled = true;
+		return true;
+	}];
 	Predicate.all(checks)(1);
 	expect(secondCalled).toBe(false); // short-circuits via Array.every
 });
@@ -188,18 +178,12 @@ test("Predicate.all returns false when first predicate fails", () => {
 // ---------------------------------------------------------------------------
 
 test("Predicate.any returns true when one predicate passes", () => {
-	const formats: Predicate<string>[] = [
-		(s) => s.endsWith(".jpg"),
-		(s) => s.endsWith(".png"),
-	];
+	const formats: Predicate<string>[] = [(s) => s.endsWith(".jpg"), (s) => s.endsWith(".png")];
 	expect(Predicate.any(formats)("photo.jpg")).toBe(true);
 });
 
 test("Predicate.any returns false when all predicates fail", () => {
-	const formats: Predicate<string>[] = [
-		(s) => s.endsWith(".jpg"),
-		(s) => s.endsWith(".png"),
-	];
+	const formats: Predicate<string>[] = [(s) => s.endsWith(".jpg"), (s) => s.endsWith(".png")];
 	expect(Predicate.any(formats)("photo.gif")).toBe(false);
 });
 
@@ -209,13 +193,10 @@ test("Predicate.any returns false for an empty array", () => {
 
 test("Predicate.any short-circuits when first predicate passes", () => {
 	let secondCalled = false;
-	const checks: Predicate<number>[] = [
-		() => true,
-		() => {
-			secondCalled = true;
-			return false;
-		},
-	];
+	const checks: Predicate<number>[] = [() => true, () => {
+		secondCalled = true;
+		return false;
+	}];
 	Predicate.any(checks)(1);
 	expect(secondCalled).toBe(false); // short-circuits via Array.some
 });
@@ -241,10 +222,7 @@ test("Predicate.fromRefinement returns false when refinement fails", () => {
 test("Predicate.fromRefinement result composes with and/or", () => {
 	type LongString = string & { readonly _tag: "Long"; };
 	const isLong: Refinement<string, LongString> = Refinement.make((s) => s.length >= 5);
-	const combined = pipe(
-		Predicate.fromRefinement(isLong),
-		Predicate.and(isNonEmpty),
-	);
+	const combined = pipe(Predicate.fromRefinement(isLong), Predicate.and(isNonEmpty));
 	expect(combined("hello world")).toBe(true);
 	expect(combined("hi")).toBe(false);
 	expect(combined("")).toBe(false);

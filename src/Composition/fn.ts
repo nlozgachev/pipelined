@@ -50,11 +50,9 @@ export const constVoid = (): void => {};
  * isPositiveEven(3); // false
  * ```
  */
-export const and = <A extends ReadonlyArray<unknown>>(
-	p1: (...args: A) => boolean,
-	p2: (...args: A) => boolean,
-) =>
-(...args: A): boolean => p1(...args) && p2(...args);
+export const and =
+	<A extends ReadonlyArray<unknown>>(p1: (...args: A) => boolean, p2: (...args: A) => boolean) =>
+	(...args: A): boolean => p1(...args) && p2(...args);
 
 /**
  * Combines two predicates with logical OR.
@@ -70,11 +68,9 @@ export const and = <A extends ReadonlyArray<unknown>>(
  * isNonPositive(1); // false
  * ```
  */
-export const or = <A extends ReadonlyArray<unknown>>(
-	p1: (...args: A) => boolean,
-	p2: (...args: A) => boolean,
-) =>
-(...args: A): boolean => p1(...args) || p2(...args);
+export const or =
+	<A extends ReadonlyArray<unknown>>(p1: (...args: A) => boolean, p2: (...args: A) => boolean) =>
+	(...args: A): boolean => p1(...args) || p2(...args);
 
 /**
  * Creates a function that executes at most once.

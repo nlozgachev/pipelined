@@ -12,9 +12,7 @@ test("Deferred.fromPromise resolves to the value of the Promise", async () => {
 });
 
 test("Deferred.fromPromise works with async resolution", async () => {
-	const d = Deferred.fromPromise(
-		new Promise<string>((resolve) => setTimeout(() => resolve("done"), 10)),
-	);
+	const d = Deferred.fromPromise(new Promise<string>((resolve) => setTimeout(() => resolve("done"), 10)));
 	const result = await d;
 	expect(result).toBe("done");
 });
@@ -37,7 +35,7 @@ test("Deferred.then calls the callback with the resolved value", async () => {
 // await
 // ---------------------------------------------------------------------------
 
-test("Deferred can be awaited in an async function", async () => {
+test("deferred can be awaited in an async function", async () => {
 	const result = await Deferred.fromPromise(Promise.resolve("hello"));
 	expect(result).toBe("hello");
 });

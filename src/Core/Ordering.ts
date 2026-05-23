@@ -25,7 +25,7 @@ export namespace Ordering {
 	 * Ordering.string("apple", "banana"); // negative
 	 * ```
 	 */
-	export const string: Ordering<string> = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+	export const string: Ordering<string> = (a, b) => (a < b ? -1 : (a > b ? 1 : 0));
 
 	/**
 	 * Numeric ordering. Equivalent to `(a, b) => a - b`.

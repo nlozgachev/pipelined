@@ -49,7 +49,7 @@ test("compose - right-to-left order confirmed", () => {
 	// b runs second: 15 * 2 = 30
 	// a runs third: 30 + 1 = 31
 	expect(result).toBe(31);
-	expect(log).toEqual(["c", "b", "a"]);
+	expect(log).toStrictEqual(["c", "b", "a"]);
 });
 
 test("compose - type transformation across functions", () => {
@@ -77,7 +77,7 @@ test("compose - integration with Result", () => {
 	const fn = compose(getOrDefault, doubleResult);
 
 	expect(fn(Result.ok<number>(5))).toBe(10);
-	expect(fn(Result.error("err") as Result<string, number>)).toBe(0);
+	expect(fn(Result.err("err") as Result<string, number>)).toBe(0);
 });
 
 // ---------------------------------------------------------------------------

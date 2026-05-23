@@ -47,7 +47,7 @@ test("tap - works in pipe", () => {
 	);
 
 	expect(result).toBe(11);
-	expect(log).toEqual([10, 11]);
+	expect(log).toStrictEqual([10, 11]);
 });
 
 test("tap - side effect does not influence the return value", () => {
@@ -68,7 +68,7 @@ test("tap - multiple taps in sequence", () => {
 	);
 
 	expect(result).toBe("HELLO!");
-	expect(effects).toEqual(["first: hello", "second: HELLO", "third: HELLO!"]);
+	expect(effects).toStrictEqual(["first: hello", "second: HELLO", "third: HELLO!"]);
 });
 
 test("tap - works with arrays", () => {

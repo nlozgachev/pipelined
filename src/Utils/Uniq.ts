@@ -100,9 +100,11 @@ export namespace Uniq {
 	 */
 	export const isSubsetOf = <A>(other: ReadonlySet<A>) => (s: ReadonlySet<A>): boolean => {
 		const set = s as Set<A>;
-		if (typeof set.isSubsetOf === "function") return set.isSubsetOf(other as Set<A>);
+		if (typeof set.isSubsetOf === "function") {
+			return set.isSubsetOf(other as Set<A>);
+		}
 		for (const item of s) {
-			if (!other.has(item)) return false;
+			if (!other.has(item)) { return false; }
 		}
 		return true;
 	};
@@ -122,7 +124,7 @@ export namespace Uniq {
 	 * ```
 	 */
 	export const insert = <A>(item: A) => (s: ReadonlySet<A>): ReadonlySet<A> => {
-		if (s.has(item)) return s;
+		if (s.has(item)) { return s; }
 		const result = new globalThis.Set(s);
 		result.add(item);
 		return result;
@@ -139,7 +141,7 @@ export namespace Uniq {
 	 * ```
 	 */
 	export const remove = <A>(item: A) => (s: ReadonlySet<A>): ReadonlySet<A> => {
-		if (!s.has(item)) return s;
+		if (!s.has(item)) { return s; }
 		const result = new globalThis.Set(s);
 		result.delete(item);
 		return result;
@@ -178,7 +180,7 @@ export namespace Uniq {
 	export const filter = <A>(predicate: (a: A) => boolean) => (s: ReadonlySet<A>): ReadonlySet<A> => {
 		const result = new globalThis.Set<A>();
 		for (const item of s) {
-			if (predicate(item)) result.add(item);
+			if (predicate(item)) { result.add(item); }
 		}
 		return result;
 	};
@@ -198,9 +200,9 @@ export namespace Uniq {
 	 */
 	export const union = <A>(other: ReadonlySet<A>) => (s: ReadonlySet<A>): ReadonlySet<A> => {
 		const set = s as Set<A>;
-		if (typeof set.union === "function") return set.union(other as Set<A>);
+		if (typeof set.union === "function") { return set.union(other as Set<A>); }
 		const result = new globalThis.Set(s);
-		for (const item of other) result.add(item);
+		for (const item of other) { result.add(item); }
 		return result;
 	};
 
@@ -215,9 +217,11 @@ export namespace Uniq {
 	 */
 	export const intersection = <A>(other: ReadonlySet<A>) => (s: ReadonlySet<A>): ReadonlySet<A> => {
 		const set = s as Set<A>;
-		if (typeof set.intersection === "function") return set.intersection(other as Set<A>);
+		if (typeof set.intersection === "function") {
+			return set.intersection(other as Set<A>);
+		}
 		const result = new globalThis.Set<A>();
-		for (const item of s) if (other.has(item)) result.add(item);
+		for (const item of s) { if (other.has(item)) { result.add(item); } }
 		return result;
 	};
 
@@ -232,9 +236,11 @@ export namespace Uniq {
 	 */
 	export const difference = <A>(other: ReadonlySet<A>) => (s: ReadonlySet<A>): ReadonlySet<A> => {
 		const set = s as Set<A>;
-		if (typeof set.difference === "function") return set.difference(other as Set<A>);
+		if (typeof set.difference === "function") {
+			return set.difference(other as Set<A>);
+		}
 		const result = new globalThis.Set<A>();
-		for (const item of s) if (!other.has(item)) result.add(item);
+		for (const item of s) { if (!other.has(item)) { result.add(item); } }
 		return result;
 	};
 

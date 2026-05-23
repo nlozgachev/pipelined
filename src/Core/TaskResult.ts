@@ -27,21 +27,21 @@ export namespace TaskResult {
 	/**
 	 * Creates a failed TaskResult with the given error.
 	 */
-	export const err = <E, A>(error: E): TaskResult<E, A> => Task.resolve(Result.error(error));
+	export const err = <E, A>(error: E): TaskResult<E, A> => Task.resolve(Result.err(error));
 
 	/**
 	 * Creates a TaskResult from a nullable value.
-	 * Returns Ok if the value is not null or undefined, error from onNull otherwise.
+	 * Returns Ok if the value is not null or undefined, err from onNull otherwise.
 	 */
 	export const fromNullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskResult<E, A> =>
-		Task.resolve(value === null || value === undefined ? Result.error(onNull()) : Result.ok(value));
+		Task.resolve(value === null || value === undefined ? Result.err(onNull()) : Result.ok(value));
 
 	/**
 	 * Creates a TaskResult from a Maybe.
-	 * Some becomes Ok, None becomes error from onNone.
+	 * Some becomes Ok, None becomes err from onNone.
 	 */
 	export const fromMaybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): TaskResult<E, A> =>
-		Task.resolve(Maybe.isNone(maybe) ? Result.error(onNone()) : Result.ok(maybe.value));
+		Task.resolve(Maybe.isNone(maybe) ? Result.err(onNone()) : Result.ok(maybe.value));
 
 	/**
 	 * Lifts a Result into a TaskResult.
@@ -52,16 +52,10 @@ export namespace TaskResult {
 	 * Wraps a Promise-returning function of any arguments, returning a new function
 	 * that catches rejections and returns a TaskResult.
 	 */
-	export const fromThrowable = <Args extends readonly unknown[], A, E>(
-		f: (...args: Args) => Promise<A>,
-		onError: (e: unknown) => E,
-	) =>
-	(...args: Args): TaskResult<E, A> =>
-		Task.from(() =>
-			f(...args)
-				.then(Result.ok)
-				.catch((e) => Result.error(onError(e)))
-		);
+	export const fromThrowable =
+		<Args extends readonly unknown[], A, E>(f: (...args: Args) => Promise<A>, onError: (e: unknown) => E) =>
+		(...args: Args): TaskResult<E, A> =>
+			Task.from(() => f(...args).then(Result.ok).catch((error) => Result.err(onError(error))));
 
 	/**
 	 * Creates a TaskResult from a function that may throw.
@@ -80,12 +74,7 @@ export namespace TaskResult {
 	export const tryCatch = <E, A>(
 		f: (signal?: AbortSignal) => Promise<A>,
 		onError: (e: unknown) => E,
-	): TaskResult<E, A> =>
-		Task.from((signal) =>
-			f(signal)
-				.then(Result.ok)
-				.catch((e) => Result.error(onError(e)))
-		);
+	): TaskResult<E, A> => Task.from((signal) => f(signal).then(Result.ok).catch((error) => Result.err(onError(error))));
 
 	/**
 	 * Transforms the success value inside a TaskResult.
@@ -104,9 +93,7 @@ export namespace TaskResult {
 	 * If the first fails, propagates the error.
 	 */
 	export const chain = <E, A, B>(f: (a: A) => TaskResult<E, B>) => (data: TaskResult<E, A>): TaskResult<E, B> =>
-		Task.chain((result: Result<E, A>) =>
-			Result.isOk(result) ? f(result.value) : Task.resolve(Result.error(result.error))
-		)(
+		Task.chain((result: Result<E, A>) => Result.isOk(result) ? f(result.value) : Task.resolve(Result.err(result.error)))(
 			data,
 		);
 
@@ -129,7 +116,7 @@ export namespace TaskResult {
 	export const recover =
 		<E, A, B>(fallback: (e: E) => TaskResult<E, B>) => (data: TaskResult<E, A>): TaskResult<E, A | B> =>
 			Task.chain((result: Result<E, A>) =>
-				Result.isError(result) ? fallback(result.error) : Task.resolve(result as Result<E, A | B>)
+				Result.isErr(result) ? fallback(result.error) : Task.resolve(result as Result<E, A | B>)
 			)(data);
 
 	/**
@@ -168,10 +155,9 @@ export namespace TaskResult {
 	 */
 	export const ap = <E, A>(arg: TaskResult<E, A>) => <B>(data: TaskResult<E, (a: A) => B>): TaskResult<E, B> =>
 		Task.from((signal) =>
-			Promise.all([
-				Deferred.toPromise(data(signal)),
-				Deferred.toPromise(arg(signal)),
-			]).then(([of_, oa]) => Result.ap(oa)(of_))
+			Promise.all([Deferred.toPromise(data(signal)), Deferred.toPromise(arg(signal))]).then(([of_, oa]) =>
+				Result.ap(oa)(of_)
+			)
 		);
 
 	/**

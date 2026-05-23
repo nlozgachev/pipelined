@@ -28,7 +28,7 @@ describe("range-100", () => {
 
 describe("range-10k", () => {
 	bench("1. (current) Num.range 10k", () => {
-		Num.range(0, 9_999);
+		Num.range(0, 9999);
 	});
 	bench("2. native range loop 10k", () => {
 		const result = new Array<number>(10_000);
@@ -40,7 +40,7 @@ describe("range-10k", () => {
 
 describe("range-10k-step2", () => {
 	bench("1. (current) Num.range 10k step 2", () => {
-		Num.range(0, 9_998, 2);
+		Num.range(0, 9998, 2);
 	});
 	bench("2. native range loop 10k step 2", () => {
 		const result: number[] = [];
@@ -95,10 +95,10 @@ describe("clamp-100", () => {
 
 describe("clamp-10k", () => {
 	bench("1. (current) Arr.map + Num.clamp 10k", () => {
-		pipe(data10k, Arr.map(Num.clamp(0, 5_000)));
+		pipe(data10k, Arr.map(Num.clamp(0, 5000)));
 	});
 	bench("2. (current) Arr.map + inline clamp 10k", () => {
-		pipe(data10k, Arr.map((n) => Math.min(Math.max(n, 0), 5_000)));
+		pipe(data10k, Arr.map((n) => Math.min(Math.max(n, 0), 5000)));
 	});
 });
 
@@ -108,7 +108,7 @@ describe("parse-100-valid", () => {
 	});
 	bench("2. native parse 100 (all valid", () => {
 		numStrings100.map((s) => {
-			if (s.trim() === "") return { kind: "None" as const };
+			if (s.trim() === "") { return { kind: "None" as const }; }
 			const n = Number(s);
 			return isNaN(n) ? { kind: "None" as const } : { kind: "Some" as const, value: n };
 		});
@@ -121,7 +121,7 @@ describe("parse-100-mixed", () => {
 	});
 	bench("2. native parse 100 (mixed", () => {
 		mixedStrings100.map((s) => {
-			if (s.trim() === "") return { kind: "None" as const };
+			if (s.trim() === "") { return { kind: "None" as const }; }
 			const n = Number(s);
 			return isNaN(n) ? { kind: "None" as const } : { kind: "Some" as const, value: n };
 		});
@@ -134,7 +134,7 @@ describe("parse-10k-valid", () => {
 	});
 	bench("2. native parse 10k (all valid", () => {
 		numStrings10k.map((s) => {
-			if (s.trim() === "") return { kind: "None" as const };
+			if (s.trim() === "") { return { kind: "None" as const }; }
 			const n = Number(s);
 			return isNaN(n) ? { kind: "None" as const } : { kind: "Some" as const, value: n };
 		});
@@ -147,7 +147,7 @@ describe("parse-10k-mixed", () => {
 	});
 	bench("2. native parse 10k (mixed", () => {
 		mixedStrings10k.map((s) => {
-			if (s.trim() === "") return { kind: "None" as const };
+			if (s.trim() === "") { return { kind: "None" as const }; }
 			const n = Number(s);
 			return isNaN(n) ? { kind: "None" as const } : { kind: "Some" as const, value: n };
 		});

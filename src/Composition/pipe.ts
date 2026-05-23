@@ -12,7 +12,7 @@
  * @example
  * ```ts
  * // Basic usage
- * const result = pipe(
+ * const doubledPlusOne = pipe(
  *   5,
  *   n => n * 2,
  *   n => n + 1
@@ -23,15 +23,15 @@
  *   Maybe.some("Alice"),
  *   Maybe.map(name => name.toUpperCase()),
  *   Maybe.map(name => `Hello, ${name}!`),
- *   Maybe.getOrElse("Hello!")
+ *   Maybe.getOrElse(() => "Hello!")
  * ); // "Hello, ALICE!"
  *
  * // Error handling with Result
- * const result = pipe(
- *   Result.tryCatch(() => JSON.parse(input), e => "Invalid JSON"),
- *   Result.map(data => data.value),
- *   Result.getOrElse(null)
- * );
+ * const parsed = pipe(
+ *   Result.tryCatch(() => JSON.parse('{"value": 42}'), () => "Invalid JSON"),
+ *   Result.map((data: { value: number }) => data.value),
+ *   Result.getOrElse(() => null)
+ * ); // 42
  * ```
  *
  * @see {@link flow} for creating reusable pipelines without an initial value
@@ -39,19 +39,8 @@
 export function pipe<A>(a: A): A;
 export function pipe<A, B>(a: A, ab: (a: A) => B): B;
 export function pipe<A, B, C>(a: A, ab: (a: A) => B, bc: (b: B) => C): C;
-export function pipe<A, B, C, D>(
-	a: A,
-	ab: (a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-): D;
-export function pipe<A, B, C, D, E>(
-	a: A,
-	ab: (a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
-): E;
+export function pipe<A, B, C, D>(a: A, ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => D): D;
+export function pipe<A, B, C, D, E>(a: A, ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => D, de: (d: D) => E): E;
 export function pipe<A, B, C, D, E, F>(
 	a: A,
 	ab: (a: A) => B,
@@ -130,27 +119,38 @@ export function pipe(
 	jk?: (a: unknown) => unknown,
 ): unknown {
 	switch (arguments.length) {
-		case 1:
+		case 1: {
 			return a;
-		case 2:
+		}
+		case 2: {
 			return ab!(a);
-		case 3:
+		}
+		case 3: {
 			return bc!(ab!(a));
-		case 4:
+		}
+		case 4: {
 			return cd!(bc!(ab!(a)));
-		case 5:
+		}
+		case 5: {
 			return de!(cd!(bc!(ab!(a))));
-		case 6:
+		}
+		case 6: {
 			return ef!(de!(cd!(bc!(ab!(a)))));
-		case 7:
+		}
+		case 7: {
 			return fg!(ef!(de!(cd!(bc!(ab!(a))))));
-		case 8:
+		}
+		case 8: {
 			return gh!(fg!(ef!(de!(cd!(bc!(ab!(a)))))));
-		case 9:
+		}
+		case 9: {
 			return hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a))))))));
-		case 10:
+		}
+		case 10: {
 			return ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a)))))))));
-		case 11:
+		}
+		case 11: {
 			return jk!(ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a))))))))));
+		}
 	}
 }

@@ -86,12 +86,12 @@ test("Combinable.any has false as its neutral element", () => {
 // ---------------------------------------------------------------------------
 
 test("Combinable.array concatenates two arrays", () => {
-	expect(Combinable.array<number>().combine([3, 4])([1, 2])).toEqual([1, 2, 3, 4]);
+	expect(Combinable.array<number>().combine([3, 4])([1, 2])).toStrictEqual([1, 2, 3, 4]);
 });
 
 test("Combinable.array has empty array as its neutral element", () => {
-	expect(Combinable.array<number>().combine([])([1, 2])).toEqual([1, 2]);
-	expect(Combinable.array<number>().combine([1, 2])([])).toEqual([1, 2]);
+	expect(Combinable.array<number>().combine([])([1, 2])).toStrictEqual([1, 2]);
+	expect(Combinable.array<number>().combine([1, 2])([])).toStrictEqual([1, 2]);
 });
 
 // ---------------------------------------------------------------------------
@@ -100,21 +100,21 @@ test("Combinable.array has empty array as its neutral element", () => {
 
 test("Combinable.maybe combines two Somes using the inner Combinable", () => {
 	const result = Combinable.maybe(Combinable.sum).combine(Maybe.some(3))(Maybe.some(2));
-	expect(result).toEqual(Maybe.some(5));
+	expect(result).toStrictEqual(Maybe.some(5));
 });
 
 test("Combinable.maybe treats None as neutral: combine(None)(Some(x)) = Some(x)", () => {
 	const result = Combinable.maybe(Combinable.sum).combine(Maybe.none())(Maybe.some(5));
-	expect(result).toEqual(Maybe.some(5));
+	expect(result).toStrictEqual(Maybe.some(5));
 });
 
 test("Combinable.maybe treats None as neutral: combine(Some(x))(None) = Some(x)", () => {
 	const result = Combinable.maybe(Combinable.sum).combine(Maybe.some(5))(Maybe.none());
-	expect(result).toEqual(Maybe.some(5));
+	expect(result).toStrictEqual(Maybe.some(5));
 });
 
 test("Combinable.maybe empty is None", () => {
-	expect(Combinable.maybe(Combinable.sum).empty).toEqual(Maybe.none());
+	expect(Combinable.maybe(Combinable.sum).empty).toStrictEqual(Maybe.none());
 });
 
 // ---------------------------------------------------------------------------
@@ -143,9 +143,6 @@ test("Combinable.fold returns the empty element for an empty array", () => {
 // ---------------------------------------------------------------------------
 
 test("Combinable.fold works in a pipe with Maybe values", () => {
-	const result = pipe(
-		[Maybe.some(1), Maybe.some(2), Maybe.some(3)],
-		Combinable.fold(Combinable.maybe(Combinable.sum)),
-	);
-	expect(result).toEqual(Maybe.some(6));
+	const result = pipe([Maybe.some(1), Maybe.some(2), Maybe.some(3)], Combinable.fold(Combinable.maybe(Combinable.sum)));
+	expect(result).toStrictEqual(Maybe.some(6));
 });

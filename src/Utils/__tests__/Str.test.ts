@@ -9,19 +9,19 @@ import { Str } from "../Str.ts";
 // ---------------------------------------------------------------------------
 
 test("Str.split splits a string by a separator", () => {
-	expect(pipe("a,b,c", Str.split(","))).toEqual(["a", "b", "c"]);
+	expect(pipe("a,b,c", Str.split(","))).toStrictEqual(["a", "b", "c"]);
 });
 
 test("Str.split splits by a regex", () => {
-	expect(pipe("a1b2c", Str.split(/\d/))).toEqual(["a", "b", "c"]);
+	expect(pipe("a1b2c", Str.split(/\d/))).toStrictEqual(["a", "b", "c"]);
 });
 
 test("Str.split on missing separator returns single-element array", () => {
-	expect(pipe("hello", Str.split(","))).toEqual(["hello"]);
+	expect(pipe("hello", Str.split(","))).toStrictEqual(["hello"]);
 });
 
 test("Str.split returns empty strings for adjacent separators", () => {
-	expect(pipe("a,,b", Str.split(","))).toEqual(["a", "", "b"]);
+	expect(pipe("a,,b", Str.split(","))).toStrictEqual(["a", "", "b"]);
 });
 
 // ---------------------------------------------------------------------------
@@ -125,23 +125,23 @@ test("Str.capitalize composes in a pipe", () => {
 // ---------------------------------------------------------------------------
 
 test("Str.lines splits on LF line endings", () => {
-	expect(Str.lines("one\ntwo\nthree")).toEqual(["one", "two", "three"]);
+	expect(Str.lines("one\ntwo\nthree")).toStrictEqual(["one", "two", "three"]);
 });
 
 test("Str.lines splits on CRLF line endings", () => {
-	expect(Str.lines("one\r\ntwo\r\nthree")).toEqual(["one", "two", "three"]);
+	expect(Str.lines("one\r\ntwo\r\nthree")).toStrictEqual(["one", "two", "three"]);
 });
 
 test("Str.lines splits on CR line endings", () => {
-	expect(Str.lines("one\rtwo")).toEqual(["one", "two"]);
+	expect(Str.lines("one\rtwo")).toStrictEqual(["one", "two"]);
 });
 
 test("Str.lines returns single-element array for string with no newlines", () => {
-	expect(Str.lines("hello")).toEqual(["hello"]);
+	expect(Str.lines("hello")).toStrictEqual(["hello"]);
 });
 
 test("Str.lines returns two elements when string ends with newline", () => {
-	expect(Str.lines("one\n")).toEqual(["one", ""]);
+	expect(Str.lines("one\n")).toStrictEqual(["one", ""]);
 });
 
 // ---------------------------------------------------------------------------
@@ -149,59 +149,59 @@ test("Str.lines returns two elements when string ends with newline", () => {
 // ---------------------------------------------------------------------------
 
 test("Str.words splits on whitespace and trims", () => {
-	expect(Str.words("  hello   world  ")).toEqual(["hello", "world"]);
+	expect(Str.words("  hello   world  ")).toStrictEqual(["hello", "world"]);
 });
 
 test("Str.words returns empty array for whitespace-only string", () => {
-	expect(Str.words("   ")).toEqual([]);
+	expect(Str.words("   ")).toStrictEqual([]);
 });
 
 test("Str.words returns single word for single-word string", () => {
-	expect(Str.words("hello")).toEqual(["hello"]);
+	expect(Str.words("hello")).toStrictEqual(["hello"]);
 });
 
 test("Str.words splits on mixed whitespace characters", () => {
-	expect(Str.words("a\tb\nc")).toEqual(["a", "b", "c"]);
+	expect(Str.words("a\tb\nc")).toStrictEqual(["a", "b", "c"]);
 });
 
 // ---------------------------------------------------------------------------
 // parse.int
 // ---------------------------------------------------------------------------
 
-test("Str.parse.int returns Some for a valid integer string", () => {
-	expect(Str.parse.int("42")).toEqual(Maybe.some(42));
+test("str.parse.int returns Some for a valid integer string", () => {
+	expect(Str.parse.int("42")).toStrictEqual(Maybe.some(42));
 });
 
-test("Str.parse.int truncates floats", () => {
-	expect(Str.parse.int("3.7")).toEqual(Maybe.some(3));
+test("str.parse.int truncates floats", () => {
+	expect(Str.parse.int("3.7")).toStrictEqual(Maybe.some(3));
 });
 
-test("Str.parse.int returns None for a non-numeric string", () => {
-	expect(Str.parse.int("abc")).toEqual(Maybe.none());
+test("str.parse.int returns None for a non-numeric string", () => {
+	expect(Str.parse.int("abc")).toStrictEqual(Maybe.none());
 });
 
-test("Str.parse.int returns None for empty string", () => {
-	expect(Str.parse.int("")).toEqual(Maybe.none());
+test("str.parse.int returns None for empty string", () => {
+	expect(Str.parse.int("")).toStrictEqual(Maybe.none());
 });
 
 // ---------------------------------------------------------------------------
 // parse.float
 // ---------------------------------------------------------------------------
 
-test("Str.parse.float returns Some for a valid float string", () => {
-	expect(Str.parse.float("3.14")).toEqual(Maybe.some(3.14));
+test("str.parse.float returns Some for a valid float string", () => {
+	expect(Str.parse.float("3.14")).toStrictEqual(Maybe.some(3.14));
 });
 
-test("Str.parse.float returns Some for an integer string", () => {
-	expect(Str.parse.float("42")).toEqual(Maybe.some(42));
+test("str.parse.float returns Some for an integer string", () => {
+	expect(Str.parse.float("42")).toStrictEqual(Maybe.some(42));
 });
 
-test("Str.parse.float returns None for a non-numeric string", () => {
-	expect(Str.parse.float("abc")).toEqual(Maybe.none());
+test("str.parse.float returns None for a non-numeric string", () => {
+	expect(Str.parse.float("abc")).toStrictEqual(Maybe.none());
 });
 
-test("Str.parse.float returns None for empty string", () => {
-	expect(Str.parse.float("")).toEqual(Maybe.none());
+test("str.parse.float returns None for empty string", () => {
+	expect(Str.parse.float("")).toStrictEqual(Maybe.none());
 });
 
 // ---------------------------------------------------------------------------
@@ -348,14 +348,9 @@ test("Str.padEnd pads with custom fill string", () => {
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("Str pipe composition - trim then split then toUpperCase each word", () => {
-	const result = pipe(
-		"  hello world  ",
-		Str.trim,
-		Str.split(" "),
-		(words) => words.map(Str.toUpperCase),
-	);
-	expect(result).toEqual(["HELLO", "WORLD"]);
+test("str pipe composition - trim then split then toUpperCase each word", () => {
+	const result = pipe("  hello world  ", Str.trim, Str.split(" "), (words) => words.map(Str.toUpperCase));
+	expect(result).toStrictEqual(["HELLO", "WORLD"]);
 });
 
 // ---------------------------------------------------------------------------
@@ -364,17 +359,17 @@ test("Str pipe composition - trim then split then toUpperCase each word", () => 
 
 test("Str.parseJson returns Ok for valid JSON object", () => {
 	const result = Str.parseJson('{"name":"Alice","age":30}');
-	expect(result).toEqual(Result.ok({ name: "Alice", age: 30 }));
+	expect(result).toStrictEqual(Result.ok({ name: "Alice", age: 30 }));
 });
 
 test("Str.parseJson returns Ok for valid JSON array", () => {
 	const result = Str.parseJson("[1,2,3]");
-	expect(result).toEqual(Result.ok([1, 2, 3]));
+	expect(result).toStrictEqual(Result.ok([1, 2, 3]));
 });
 
 test("Str.parseJson returns Ok for valid JSON primitives", () => {
-	expect(Str.parseJson('"hello"')).toEqual(Result.ok("hello"));
-	expect(Str.parseJson("42")).toEqual(Result.ok(42));
+	expect(Str.parseJson('"hello"')).toStrictEqual(Result.ok("hello"));
+	expect(Str.parseJson("42")).toStrictEqual(Result.ok(42));
 });
 
 test("Str.parseJson returns Error with SyntaxError for invalid JSON", () => {
@@ -385,5 +380,5 @@ test("Str.parseJson returns Error with SyntaxError for invalid JSON", () => {
 
 test("Str.parseJson returns Ok for empty object", () => {
 	const result = Str.parseJson("{}");
-	expect(result).toEqual(Result.ok({}));
+	expect(result).toStrictEqual(Result.ok({}));
 });

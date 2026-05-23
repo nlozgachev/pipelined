@@ -9,30 +9,30 @@ import { Num } from "../Num.ts";
 // ---------------------------------------------------------------------------
 
 test("Num.range produces integers from start to end (both inclusive)", () => {
-	expect(Num.range(0, 5)).toEqual([0, 1, 2, 3, 4, 5]);
+	expect(Num.range(0, 5)).toStrictEqual([0, 1, 2, 3, 4, 5]);
 });
 
 test("Num.range with step produces every nth integer up to and including to", () => {
-	expect(Num.range(0, 10, 2)).toEqual([0, 2, 4, 6, 8, 10]);
-	expect(Num.range(0, 9, 2)).toEqual([0, 2, 4, 6, 8]);
+	expect(Num.range(0, 10, 2)).toStrictEqual([0, 2, 4, 6, 8, 10]);
+	expect(Num.range(0, 9, 2)).toStrictEqual([0, 2, 4, 6, 8]);
 });
 
 test("Num.range returns empty array when from > to", () => {
-	expect(Num.range(5, 0)).toEqual([]);
+	expect(Num.range(5, 0)).toStrictEqual([]);
 });
 
 test("Num.range returns single element when from equals to", () => {
-	expect(Num.range(3, 3)).toEqual([3]);
-	expect(Num.range(3, 3, 2)).toEqual([3]);
+	expect(Num.range(3, 3)).toStrictEqual([3]);
+	expect(Num.range(3, 3, 2)).toStrictEqual([3]);
 });
 
 test("Num.range returns empty array for non-positive step", () => {
-	expect(Num.range(0, 5, 0)).toEqual([]);
-	expect(Num.range(0, 5, -1)).toEqual([]);
+	expect(Num.range(0, 5, 0)).toStrictEqual([]);
+	expect(Num.range(0, 5, -1)).toStrictEqual([]);
 });
 
 test("Num.range with step 1 matches default behaviour", () => {
-	expect(Num.range(1, 4, 1)).toEqual(Num.range(1, 4));
+	expect(Num.range(1, 4, 1)).toStrictEqual(Num.range(1, 4));
 });
 
 // ---------------------------------------------------------------------------
@@ -75,23 +75,23 @@ test("Num.between returns false when value is outside range", () => {
 // ---------------------------------------------------------------------------
 
 test("Num.parse returns Some for a valid integer string", () => {
-	expect(Num.parse("42")).toEqual(Maybe.some(42));
+	expect(Num.parse("42")).toStrictEqual(Maybe.some(42));
 });
 
 test("Num.parse returns Some for a valid float string", () => {
-	expect(Num.parse("3.14")).toEqual(Maybe.some(3.14));
+	expect(Num.parse("3.14")).toStrictEqual(Maybe.some(3.14));
 });
 
 test("Num.parse returns None for a non-numeric string", () => {
-	expect(Num.parse("abc")).toEqual(Maybe.none());
+	expect(Num.parse("abc")).toStrictEqual(Maybe.none());
 });
 
 test("Num.parse returns None for an empty string", () => {
-	expect(Num.parse("")).toEqual(Maybe.none());
+	expect(Num.parse("")).toStrictEqual(Maybe.none());
 });
 
 test("Num.parse returns None for a whitespace-only string", () => {
-	expect(Num.parse("   ")).toEqual(Maybe.none());
+	expect(Num.parse("   ")).toStrictEqual(Maybe.none());
 });
 
 // ---------------------------------------------------------------------------
@@ -102,8 +102,8 @@ test("Num.add adds the operand to the value", () => {
 	expect(pipe(5, Num.add(3))).toBe(8);
 });
 
-test("Num.add composes with Arr.map", () => {
-	expect(pipe([1, 2, 3], Arr.map(Num.add(10)))).toEqual([11, 12, 13]);
+test("num.add composes with Arr.map", () => {
+	expect(pipe([1, 2, 3], Arr.map(Num.add(10)))).toStrictEqual([11, 12, 13]);
 });
 
 // ---------------------------------------------------------------------------
@@ -114,8 +114,8 @@ test("Num.subtract subtracts the operand from the value", () => {
 	expect(pipe(10, Num.subtract(3))).toBe(7);
 });
 
-test("Num.subtract composes with Arr.map", () => {
-	expect(pipe([5, 10, 15], Arr.map(Num.subtract(2)))).toEqual([3, 8, 13]);
+test("num.subtract composes with Arr.map", () => {
+	expect(pipe([5, 10, 15], Arr.map(Num.subtract(2)))).toStrictEqual([3, 8, 13]);
 });
 
 // ---------------------------------------------------------------------------
@@ -126,8 +126,8 @@ test("Num.multiply multiplies the value by the operand", () => {
 	expect(pipe(6, Num.multiply(7))).toBe(42);
 });
 
-test("Num.multiply composes with Arr.map", () => {
-	expect(pipe([1, 2, 3], Arr.map(Num.multiply(100)))).toEqual([100, 200, 300]);
+test("num.multiply composes with Arr.map", () => {
+	expect(pipe([1, 2, 3], Arr.map(Num.multiply(100)))).toStrictEqual([100, 200, 300]);
 });
 
 // ---------------------------------------------------------------------------
@@ -135,15 +135,15 @@ test("Num.multiply composes with Arr.map", () => {
 // ---------------------------------------------------------------------------
 
 test("Num.divide returns Some for non-zero divisor", () => {
-	expect(pipe(20, Num.divide(4))).toEqual(Maybe.some(5));
+	expect(pipe(20, Num.divide(4))).toStrictEqual(Maybe.some(5));
 });
 
 test("Num.divide returns None when divisor is zero", () => {
-	expect(pipe(5, Num.divide(0))).toEqual(Maybe.none());
+	expect(pipe(5, Num.divide(0))).toStrictEqual(Maybe.none());
 });
 
-test("Num.divide composes with Arr.filterMap", () => {
-	expect(pipe([10, 20, 30], Arr.filterMap(Num.divide(10)))).toEqual([1, 2, 3]);
+test("num.divide composes with Arr.filterMap", () => {
+	expect(pipe([10, 20, 30], Arr.filterMap(Num.divide(10)))).toStrictEqual([1, 2, 3]);
 });
 
 // ---------------------------------------------------------------------------
@@ -162,8 +162,8 @@ test("Num.abs returns 0 for 0", () => {
 	expect(pipe(0, Num.abs)).toBe(0);
 });
 
-test("Num.abs composes with Arr.map", () => {
-	expect(pipe([-1, -2, 3], Arr.map(Num.abs))).toEqual([1, 2, 3]);
+test("num.abs composes with Arr.map", () => {
+	expect(pipe([-1, -2, 3], Arr.map(Num.abs))).toStrictEqual([1, 2, 3]);
 });
 
 // ---------------------------------------------------------------------------
@@ -178,8 +178,8 @@ test("Num.negate negates a negative number", () => {
 	expect(pipe(-5, Num.negate)).toBe(5);
 });
 
-test("Num.negate composes with Arr.map", () => {
-	expect(pipe([1, 2, 3], Arr.map(Num.negate))).toEqual([-1, -2, -3]);
+test("num.negate composes with Arr.map", () => {
+	expect(pipe([1, 2, 3], Arr.map(Num.negate))).toStrictEqual([-1, -2, -3]);
 });
 
 // ---------------------------------------------------------------------------
@@ -235,19 +235,19 @@ test("Num.ceil returns integer unchanged", () => {
 // ---------------------------------------------------------------------------
 
 test("Num.remainder returns Some for the remainder of division", () => {
-	expect(pipe(10, Num.remainder(3))).toEqual(Maybe.some(1));
+	expect(pipe(10, Num.remainder(3))).toStrictEqual(Maybe.some(1));
 });
 
 test("Num.remainder returns Some(0) when evenly divisible", () => {
-	expect(pipe(9, Num.remainder(3))).toEqual(Maybe.some(0));
+	expect(pipe(9, Num.remainder(3))).toStrictEqual(Maybe.some(0));
 });
 
 test("Num.remainder returns None when divisor is zero", () => {
-	expect(pipe(5, Num.remainder(0))).toEqual(Maybe.none());
+	expect(pipe(5, Num.remainder(0))).toStrictEqual(Maybe.none());
 });
 
-test("Num.remainder composes with Arr.filterMap", () => {
-	expect(pipe([10, 11, 12], Arr.filterMap(Num.remainder(3)))).toEqual([1, 2, 0]);
+test("num.remainder composes with Arr.filterMap", () => {
+	expect(pipe([10, 11, 12], Arr.filterMap(Num.remainder(3)))).toStrictEqual([1, 2, 0]);
 });
 
 // ---------------------------------------------------------------------------
@@ -268,12 +268,12 @@ test("Num.sum returns 0 for an empty array", () => {
 // ---------------------------------------------------------------------------
 
 test("Num.mean computes the mean of a list of numbers", () => {
-	expect(Num.mean([1, 2, 3])).toEqual(Maybe.some(2));
-	expect(Num.mean([1.5, 2.5, 5])).toEqual(Maybe.some(3));
+	expect(Num.mean([1, 2, 3])).toStrictEqual(Maybe.some(2));
+	expect(Num.mean([1.5, 2.5, 5])).toStrictEqual(Maybe.some(3));
 });
 
 test("Num.mean returns None for an empty array", () => {
-	expect(Num.mean([])).toEqual(Maybe.none());
+	expect(Num.mean([])).toStrictEqual(Maybe.none());
 });
 
 // ---------------------------------------------------------------------------
@@ -281,12 +281,12 @@ test("Num.mean returns None for an empty array", () => {
 // ---------------------------------------------------------------------------
 
 test("Num.min computes the minimum of a list of numbers", () => {
-	expect(Num.min([5, 1, 3])).toEqual(Maybe.some(1));
-	expect(Num.min([-1.5, -5, -3])).toEqual(Maybe.some(-5));
+	expect(Num.min([5, 1, 3])).toStrictEqual(Maybe.some(1));
+	expect(Num.min([-1.5, -5, -3])).toStrictEqual(Maybe.some(-5));
 });
 
 test("Num.min returns None for an empty array", () => {
-	expect(Num.min([])).toEqual(Maybe.none());
+	expect(Num.min([])).toStrictEqual(Maybe.none());
 });
 
 // ---------------------------------------------------------------------------
@@ -294,23 +294,20 @@ test("Num.min returns None for an empty array", () => {
 // ---------------------------------------------------------------------------
 
 test("Num.max computes the maximum of a list of numbers", () => {
-	expect(Num.max([1, 5, 3])).toEqual(Maybe.some(5));
-	expect(Num.max([-1.5, -5, -3])).toEqual(Maybe.some(-1.5));
+	expect(Num.max([1, 5, 3])).toStrictEqual(Maybe.some(5));
+	expect(Num.max([-1.5, -5, -3])).toStrictEqual(Maybe.some(-1.5));
 });
 
 test("Num.max returns None for an empty array", () => {
-	expect(Num.max([])).toEqual(Maybe.none());
+	expect(Num.max([])).toStrictEqual(Maybe.none());
 });
 
 // ---------------------------------------------------------------------------
 // collection folding pipe composition
 // ---------------------------------------------------------------------------
 
-test("Num folding composes in a pipe", () => {
-	const result = pipe(
-		Num.range(1, 5),
-		Num.sum,
-	);
+test("num folding composes in a pipe", () => {
+	const result = pipe(Num.range(1, 5), Num.sum);
 	expect(result).toBe(15);
 });
 
@@ -318,11 +315,7 @@ test("Num folding composes in a pipe", () => {
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("Num pipe composition - range, map, filter", () => {
-	const result = pipe(
-		Num.range(1, 10),
-		Arr.map(Num.multiply(2)),
-		Arr.filter(Num.between(6, 14)),
-	);
-	expect(result).toEqual([6, 8, 10, 12, 14]);
+test("num pipe composition - range, map, filter", () => {
+	const result = pipe(Num.range(1, 10), Arr.map(Num.multiply(2)), Arr.filter(Num.between(6, 14)));
+	expect(result).toStrictEqual([6, 8, 10, 12, 14]);
 });

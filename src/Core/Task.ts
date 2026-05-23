@@ -51,7 +51,7 @@ export type Task<A> = (signal?: AbortSignal) => Deferred<A>;
 // internally without leaking that primitive through the public API.
 const toPromise = <A>(task: Task<A>, signal?: AbortSignal): Promise<A> => Deferred.toPromise(task(signal));
 
-const getMs = (ms: number | Duration): number => typeof ms === "number" ? ms : Duration.toMilliseconds(ms);
+const getMs = (duration: Duration): number => Duration.toMilliseconds(duration);
 
 export namespace Task {
 	/**
@@ -136,12 +136,7 @@ export namespace Task {
 	 * ```
 	 */
 	export const ap = <A>(arg: Task<A>) => <B>(data: Task<(a: A) => B>): Task<B> =>
-		from((signal) =>
-			Promise.all([
-				toPromise(data, signal),
-				toPromise(arg, signal),
-			]).then(([f, a]) => f(a))
-		);
+		from((signal) => Promise.all([toPromise(data, signal), toPromise(arg, signal)]).then(([f, a]) => f(a)));
 
 	/**
 	 * Executes a side effect on the value without changing the Task.
@@ -176,17 +171,14 @@ export namespace Task {
 	export const all = <T extends readonly Task<unknown>[]>(
 		tasks: T,
 	): Task<{ [K in keyof T]: T[K] extends Task<infer A> ? A : never; }> =>
-		from(
-			(signal) =>
-				Promise.all(tasks.map((t) => toPromise(t, signal))) as Promise<
-					{
-						[K in keyof T]: T[K] extends Task<infer A> ? A : never;
-					}
-				>,
+		from((signal) =>
+			Promise.all(tasks.map((t) => toPromise(t, signal))) as Promise<
+				{ [K in keyof T]: T[K] extends Task<infer A> ? A : never; }
+			>
 		);
 
 	/**
-	 * Delays the execution of a Task by the specified milliseconds or duration.
+	 * Delays the execution of a Task by the specified duration.
 	 * Useful for debouncing or rate limiting.
 	 *
 	 * @example
@@ -197,35 +189,35 @@ export namespace Task {
 	 * )(); // Resolves after 1 second
 	 * ```
 	 */
-	export const delay = (ms: number | Duration) => <A>(data: Task<A>): Task<A> =>
-		from(
-			(signal) =>
-				new Promise<A>((resolve) => {
-					let timerId: ReturnType<typeof setTimeout> | undefined = undefined;
-					const onAbort = () => {
-						if (timerId !== undefined) {
-							clearTimeout(timerId);
-						}
-						resolve(toPromise(data, signal));
-					};
-
-					if (signal) {
-						if (signal.aborted) {
-							return resolve(toPromise(data, signal));
-						}
-						signal.addEventListener("abort", onAbort, { once: true });
+	export const delay = (duration: Duration) => <A>(data: Task<A>): Task<A> =>
+		from((signal) =>
+			new Promise<A>((res) => {
+				// eslint-disable-next-line prefer-const
+				let timerId: ReturnType<typeof setTimeout> | undefined;
+				const onAbort = () => {
+					if (timerId !== undefined) {
+						clearTimeout(timerId);
 					}
+					res(toPromise(data, signal));
+				};
 
-					timerId = setTimeout(() => {
-						signal?.removeEventListener("abort", onAbort);
-						resolve(toPromise(data, signal));
-					}, getMs(ms));
-				}),
+				if (signal) {
+					if (signal.aborted) {
+						return res(toPromise(data, signal));
+					}
+					signal.addEventListener("abort", onAbort, { once: true });
+				}
+
+				timerId = setTimeout(() => {
+					signal?.removeEventListener("abort", onAbort);
+					res(toPromise(data, signal));
+				}, getMs(duration));
+			})
 		);
 
 	/**
 	 * Runs a Task a fixed number of times sequentially, collecting all results into an array.
-	 * An optional delay (ms or Duration) can be inserted between runs.
+	 * An optional delay duration can be inserted between runs.
 	 *
 	 * @example
 	 * ```ts
@@ -235,47 +227,47 @@ export namespace Task {
 	 * )(); // Task<Reading[]> — 5 readings, one per second
 	 * ```
 	 */
-	export const repeat =
-		(options: { times: number; delay?: number | Duration; }) => <A>(task: Task<A>): Task<readonly A[]> =>
-			from((signal) => {
-				const { times, delay: ms } = options;
-				if (times <= 0) return Promise.resolve([]);
-				const results: A[] = [];
-				const wait = (): Promise<void> => {
-					if (signal?.aborted) return Promise.resolve();
-					return new Promise((r) => {
-						let timerId: ReturnType<typeof setTimeout> | undefined = undefined;
-						const onAbort = () => {
-							if (timerId !== undefined) {
-								clearTimeout(timerId);
-							}
-							r();
-						};
-						if (signal) {
-							signal.addEventListener("abort", onAbort, { once: true });
+	export const repeat = (options: { times: number; delay?: Duration; }) => <A>(task: Task<A>): Task<readonly A[]> =>
+		from((signal) => {
+			const { times, delay: delayDuration } = options;
+			if (times <= 0) { return Promise.resolve([]); }
+			const results: A[] = [];
+			const wait = (): Promise<void> => {
+				if (signal?.aborted) { return Promise.resolve(); }
+				return new Promise((r) => {
+					// eslint-disable-next-line prefer-const
+					let timerId: ReturnType<typeof setTimeout> | undefined;
+					const onAbort = () => {
+						if (timerId !== undefined) {
+							clearTimeout(timerId);
 						}
-						timerId = setTimeout(() => {
-							signal?.removeEventListener("abort", onAbort);
-							r();
-						}, getMs(ms || 0));
-					});
-				};
-				const run = (left: number): Promise<A[]> => {
-					if (signal?.aborted) {
-						return Promise.resolve(results);
+						r();
+					};
+					if (signal) {
+						signal.addEventListener("abort", onAbort, { once: true });
 					}
-					return toPromise(task, signal).then((a) => {
-						results.push(a);
-						if (left <= 1 || signal?.aborted) return results;
-						return wait().then(() => run(left - 1));
-					});
-				};
-				return run(times);
-			});
+					timerId = setTimeout(() => {
+						signal?.removeEventListener("abort", onAbort);
+						r();
+					}, delayDuration ? getMs(delayDuration) : 0);
+				});
+			};
+			const run = (left: number): Promise<A[]> => {
+				if (signal?.aborted) {
+					return Promise.resolve(results);
+				}
+				return toPromise(task, signal).then((a) => {
+					results.push(a);
+					if (left <= 1 || signal?.aborted) { return results; }
+					return wait().then(() => run(left - 1));
+				});
+			};
+			return run(times);
+		});
 
 	/**
 	 * Runs a Task repeatedly until the result satisfies a predicate, returning that result.
-	 * An optional delay (ms or Duration) can be inserted between runs.
+	 * An optional delay duration can be inserted between runs.
 	 * An optional `maxAttempts` cap stops the loop after N calls — the last value is returned
 	 * regardless of whether the predicate was satisfied.
 	 *
@@ -288,14 +280,14 @@ export namespace Task {
 	 * ```
 	 */
 	export const repeatUntil =
-		<A>(options: { when: (a: A) => boolean; delay?: number | Duration; maxAttempts?: number; }) =>
-		(task: Task<A>): Task<A> =>
+		<A>(options: { when: (a: A) => boolean; delay?: Duration; maxAttempts?: number; }) => (task: Task<A>): Task<A> =>
 			from((signal) => {
-				const { when: predicate, delay: ms, maxAttempts } = options;
+				const { when: predicate, delay: delayDuration, maxAttempts } = options;
 				const wait = (): Promise<void> => {
-					if (signal?.aborted) return Promise.resolve();
+					if (signal?.aborted) { return Promise.resolve(); }
 					return new Promise((r) => {
-						let timerId: ReturnType<typeof setTimeout> | undefined = undefined;
+						// eslint-disable-next-line prefer-const
+						let timerId: ReturnType<typeof setTimeout> | undefined;
 						const onAbort = () => {
 							if (timerId !== undefined) {
 								clearTimeout(timerId);
@@ -308,7 +300,7 @@ export namespace Task {
 						timerId = setTimeout(() => {
 							signal?.removeEventListener("abort", onAbort);
 							r();
-						}, getMs(ms || 0));
+						}, delayDuration ? getMs(delayDuration) : 0);
 					});
 				};
 				const run = (attempt: number, lastValue?: A): Promise<A> => {
@@ -316,9 +308,9 @@ export namespace Task {
 						return Promise.resolve(lastValue);
 					}
 					return toPromise(task, signal).then((a) => {
-						if (predicate(a)) return a;
-						if (maxAttempts !== undefined && attempt >= maxAttempts) return a;
-						if (signal?.aborted) return a;
+						if (predicate(a)) { return a; }
+						if (maxAttempts !== undefined && attempt >= maxAttempts) { return a; }
+						if (signal?.aborted) { return a; }
 						return wait().then(() => run(attempt + 1, a));
 					});
 				};
@@ -345,7 +337,7 @@ export namespace Task {
 		return from((outerSignal) => {
 			const controllers = tasks.map(() => new AbortController());
 			const onOuterAbort = () => {
-				for (const ctrl of controllers) ctrl.abort();
+				for (const ctrl of controllers) { ctrl.abort(); }
 			};
 			if (outerSignal) {
 				if (outerSignal.aborted) {
@@ -414,8 +406,8 @@ export namespace Task {
 
 	/**
 	 * Converts a `Task<A>` into a `Task<Result<E, A>>`, resolving to `Err` if the
-	 * Task does not complete within the given time. The inner Task receives an
-	 * `AbortSignal` that fires when the deadline passes, so operations like `fetch`
+	 * Task does not complete within the given duration. The inner Task receives an
+	 * `AbortSignal` that fires when the deadline passes, so asynchronous operations
 	 * that accept a signal are cancelled rather than left dangling.
 	 *
 	 * @example
@@ -427,22 +419,23 @@ export namespace Task {
 	 * );
 	 * ```
 	 */
-	export const timeout = <E>(ms: number | Duration, onTimeout: () => E) => <A>(task: Task<A>): Task<Result<E, A>> =>
+	export const timeout = <E>(duration: Duration, onTimeout: () => E) => <A>(task: Task<A>): Task<Result<E, A>> =>
 		from((outerSignal) => {
 			const controller = new AbortController();
 			let timerId: ReturnType<typeof setTimeout> | undefined;
 
-			const cleanUp = () => {
+			function cleanUp() {
 				if (timerId !== undefined) {
 					clearTimeout(timerId);
 				}
+				// eslint-disable-next-line no-use-before-define
 				outerSignal?.removeEventListener("abort", onOuterAbort);
-			};
+			}
 
-			const onOuterAbort = () => {
+			function onOuterAbort() {
 				cleanUp();
 				controller.abort();
-			};
+			}
 
 			if (outerSignal) {
 				if (outerSignal.aborted) {
@@ -457,12 +450,12 @@ export namespace Task {
 					cleanUp();
 					return Result.ok(a);
 				}),
-				new Promise<Result<E, A>>((resolve) => {
+				new Promise<Result<E, A>>((res) => {
 					timerId = setTimeout(() => {
 						controller.abort();
 						cleanUp();
-						resolve(Result.error(onTimeout()));
-					}, getMs(ms));
+						res(Result.err(onTimeout()));
+					}, getMs(duration));
 				}),
 			]);
 		});
@@ -519,7 +512,7 @@ export namespace Task {
 	 * @example
 	 * ```ts
 	 * const name = await pipe(
-	 *     fetchConfig,
+	 *     loadConfig,
 	 *     Task.map(config => config.name),
 	 *     Task.run(),
 	 * );

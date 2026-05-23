@@ -22,6 +22,7 @@
  * processUser({ name: "Bob" }); // "Hello, BOB!"
  *
  * // Compare with pipe (one-time use):
+ * const user: User = { name: "Alice" };
  * pipe(
  *   user,
  *   u => u.name,
@@ -37,13 +38,8 @@
  *
  * @see {@link pipe} for immediate value transformation
  */
-export function flow<A extends ReadonlyArray<unknown>, B>(
-	ab: (...a: A) => B,
-): (...a: A) => B;
-export function flow<A extends ReadonlyArray<unknown>, B, C>(
-	ab: (...a: A) => B,
-	bc: (b: B) => C,
-): (...a: A) => C;
+export function flow<A extends ReadonlyArray<unknown>, B>(ab: (...a: A) => B): (...a: A) => B;
+export function flow<A extends ReadonlyArray<unknown>, B, C>(ab: (...a: A) => B, bc: (b: B) => C): (...a: A) => C;
 export function flow<A extends ReadonlyArray<unknown>, B, C, D>(
 	ab: (...a: A) => B,
 	bc: (b: B) => C,
@@ -89,18 +85,7 @@ export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H, I>(
 	gh: (g: G) => H,
 	hi: (h: H) => I,
 ): (...a: A) => I;
-export function flow<
-	A extends ReadonlyArray<unknown>,
-	B,
-	C,
-	D,
-	E,
-	F,
-	G,
-	H,
-	I,
-	J,
->(
+export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H, I, J>(
 	ab: (...a: A) => B,
 	bc: (b: B) => C,
 	cd: (c: C) => D,
@@ -111,19 +96,7 @@ export function flow<
 	hi: (h: H) => I,
 	ij: (i: I) => J,
 ): (...a: A) => J;
-export function flow<
-	A extends ReadonlyArray<unknown>,
-	B,
-	C,
-	D,
-	E,
-	F,
-	G,
-	H,
-	I,
-	J,
-	K,
->(
+export function flow<A extends ReadonlyArray<unknown>, B, C, D, E, F, G, H, I, J, K>(
 	ab: (...a: A) => B,
 	bc: (b: B) => C,
 	cd: (c: C) => D,
@@ -151,48 +124,58 @@ export function flow(
 ): unknown {
 	const len = arguments.length;
 	switch (len) {
-		case 0:
+		case 0: {
 			return function(...args: unknown[]) {
 				return args[0];
 			};
-		case 1:
+		}
+		case 1: {
 			return ab;
-		case 2:
+		}
+		case 2: {
 			return function(this: unknown) {
 				return bc!(ab.apply(this, arguments as any));
 			};
-		case 3:
+		}
+		case 3: {
 			return function(this: unknown) {
 				return cd!(bc!(ab.apply(this, arguments as any)));
 			};
-		case 4:
+		}
+		case 4: {
 			return function(this: unknown) {
 				return de!(cd!(bc!(ab.apply(this, arguments as any))));
 			};
-		case 5:
+		}
+		case 5: {
 			return function(this: unknown) {
 				return ef!(de!(cd!(bc!(ab.apply(this, arguments as any)))));
 			};
-		case 6:
+		}
+		case 6: {
 			return function(this: unknown) {
 				return fg!(ef!(de!(cd!(bc!(ab.apply(this, arguments as any))))));
 			};
-		case 7:
+		}
+		case 7: {
 			return function(this: unknown) {
 				return gh!(fg!(ef!(de!(cd!(bc!(ab.apply(this, arguments as any)))))));
 			};
-		case 8:
+		}
+		case 8: {
 			return function(this: unknown) {
 				return hi!(gh!(fg!(ef!(de!(cd!(bc!(ab.apply(this, arguments as any))))))));
 			};
-		case 9:
+		}
+		case 9: {
 			return function(this: unknown) {
 				return ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab.apply(this, arguments as any)))))))));
 			};
-		case 10:
+		}
+		case 10: {
 			return function(this: unknown) {
 				return jk!(ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab.apply(this, arguments as any))))))))));
 			};
+		}
 	}
 }
-/* oxlint-enable prefer-rest-params, func-names */

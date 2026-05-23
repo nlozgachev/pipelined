@@ -10,19 +10,15 @@ import { pipe } from "../pipe.ts";
 // ---------------------------------------------------------------------------
 
 test("pipe — identity", () => {
-	fc.assert(
-		fc.property(fc.integer(), (x) => {
-			expect(pipe(x)).toBe(x);
-		}),
-	);
+	fc.assert(fc.property(fc.integer(), (x) => {
+		expect(pipe(x)).toBe(x);
+	}));
 });
 
 test("pipe — single function", () => {
-	fc.assert(
-		fc.property(fc.integer(), fc.func<[number], number>(fc.integer()), (x, f) => {
-			expect(pipe(x, f)).toBe(f(x));
-		}),
-	);
+	fc.assert(fc.property(fc.integer(), fc.func<[number], number>(fc.integer()), (x, f) => {
+		expect(pipe(x, f)).toBe(f(x));
+	}));
 });
 
 test("pipe — two functions", () => {
@@ -57,11 +53,9 @@ test("pipe — three functions", () => {
 // ---------------------------------------------------------------------------
 
 test("flow — single function", () => {
-	fc.assert(
-		fc.property(fc.integer(), fc.func<[number], number>(fc.integer()), (x, f) => {
-			expect(flow(f)(x)).toBe(f(x));
-		}),
-	);
+	fc.assert(fc.property(fc.integer(), fc.func<[number], number>(fc.integer()), (x, f) => {
+		expect(flow(f)(x)).toBe(f(x));
+	}));
 });
 
 test("flow — two functions", () => {
@@ -95,16 +89,9 @@ test("pipe + flow — equivalence", () => {
 // ---------------------------------------------------------------------------
 
 test("curry — round-trip", () => {
-	fc.assert(
-		fc.property(
-			fc.integer(),
-			fc.integer(),
-			fc.func<[number, number], number>(fc.integer()),
-			(a, b, f) => {
-				expect(curry(f)(a)(b)).toBe(f(a, b));
-			},
-		),
-	);
+	fc.assert(fc.property(fc.integer(), fc.integer(), fc.func<[number, number], number>(fc.integer()), (a, b, f) => {
+		expect(curry(f)(a)(b)).toBe(f(a, b));
+	}));
 });
 
 test("curry3 — round-trip", () => {
@@ -126,18 +113,14 @@ test("curry3 — round-trip", () => {
 // ---------------------------------------------------------------------------
 
 test("memoize — correctness", () => {
-	fc.assert(
-		fc.property(fc.integer(), fc.func<[number], number>(fc.integer()), (x, f) => {
-			expect(memoize(f)(x)).toBe(f(x));
-		}),
-	);
+	fc.assert(fc.property(fc.integer(), fc.func<[number], number>(fc.integer()), (x, f) => {
+		expect(memoize(f)(x)).toBe(f(x));
+	}));
 });
 
 test("memoize — determinism", () => {
-	fc.assert(
-		fc.property(fc.integer(), fc.func<[number], number>(fc.integer()), (x, f) => {
-			const m = memoize(f);
-			expect(m(x)).toBe(m(x));
-		}),
-	);
+	fc.assert(fc.property(fc.integer(), fc.func<[number], number>(fc.integer()), (x, f) => {
+		const m = memoize(f);
+		expect(m(x)).toBe(m(x));
+	}));
 });

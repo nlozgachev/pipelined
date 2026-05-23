@@ -94,10 +94,6 @@ test("Duration.subtract can produce a negative duration", () => {
 // --- pipe composition ---
 
 test("Duration.add and subtract compose in a pipe", () => {
-	const result = pipe(
-		Duration.minutes(5),
-		Duration.add(Duration.seconds(30)),
-		Duration.subtract(Duration.minutes(1)),
-	);
+	const result = pipe(Duration.minutes(5), Duration.add(Duration.seconds(30)), Duration.subtract(Duration.minutes(1)));
 	expect(Duration.toSeconds(result)).toBe(270);
 });

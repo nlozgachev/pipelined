@@ -8,107 +8,68 @@ import { Rec } from "../Rec.ts";
 // =============================================================================
 
 test("map - transforms each value in a record", () => {
-	const result = pipe(
-		{ a: 1, b: 2, c: 3 },
-		Rec.map((n) => n * 10),
-	);
-	expect(result).toEqual({ a: 10, b: 20, c: 30 });
+	const result = pipe({ a: 1, b: 2, c: 3 }, Rec.map((n) => n * 10));
+	expect(result).toStrictEqual({ a: 10, b: 20, c: 30 });
 });
 
 test("map - returns empty record for empty input", () => {
-	const result = pipe(
-		{} as Record<string, number>,
-		Rec.map((n) => n * 2),
-	);
-	expect(result).toEqual({});
+	const result = pipe({} as Record<string, number>, Rec.map((n) => n * 2));
+	expect(result).toStrictEqual({});
 });
 
 test("map - transforms value types", () => {
-	const result = pipe(
-		{ x: 1, y: 2 },
-		Rec.map((n) => String(n)),
-	);
-	expect(result).toEqual({ x: "1", y: "2" });
+	const result = pipe({ x: 1, y: 2 }, Rec.map((n) => String(n)));
+	expect(result).toStrictEqual({ x: "1", y: "2" });
 });
 
 test("mapWithKey - transforms values with access to key", () => {
-	const result = pipe(
-		{ a: 1, b: 2 },
-		Rec.mapWithKey((k, v) => `${k}:${v}`),
-	);
-	expect(result).toEqual({ a: "a:1", b: "b:2" });
+	const result = pipe({ a: 1, b: 2 }, Rec.mapWithKey((k, v) => `${k}:${v}`));
+	expect(result).toStrictEqual({ a: "a:1", b: "b:2" });
 });
 
 test("mapWithKey - returns empty record for empty input", () => {
-	const result = pipe(
-		{} as Record<string, number>,
-		Rec.mapWithKey((k, v) => `${k}=${v}`),
-	);
-	expect(result).toEqual({});
+	const result = pipe({} as Record<string, number>, Rec.mapWithKey((k, v) => `${k}=${v}`));
+	expect(result).toStrictEqual({});
 });
 
 test("mapWithKey - key is available for logic", () => {
-	const result = pipe(
-		{ name: "Alice", age: "30" },
-		Rec.mapWithKey((k, v) => (k === "name" ? v.toUpperCase() : v)),
-	);
-	expect(result).toEqual({ name: "ALICE", age: "30" });
+	const result = pipe({ name: "Alice", age: "30" }, Rec.mapWithKey((k, v) => (k === "name" ? v.toUpperCase() : v)));
+	expect(result).toStrictEqual({ name: "ALICE", age: "30" });
 });
 
 test("filter - keeps values satisfying the predicate", () => {
-	const result = pipe(
-		{ a: 1, b: 2, c: 3, d: 4 },
-		Rec.filter((n) => n > 2),
-	);
-	expect(result).toEqual({ c: 3, d: 4 });
+	const result = pipe({ a: 1, b: 2, c: 3, d: 4 }, Rec.filter((n) => n > 2));
+	expect(result).toStrictEqual({ c: 3, d: 4 });
 });
 
 test("filter - returns empty when nothing matches", () => {
-	const result = pipe(
-		{ a: 1, b: 2 },
-		Rec.filter((n) => n > 10),
-	);
-	expect(result).toEqual({});
+	const result = pipe({ a: 1, b: 2 }, Rec.filter((n) => n > 10));
+	expect(result).toStrictEqual({});
 });
 
 test("filter - returns empty for empty input", () => {
-	const result = pipe(
-		{} as Record<string, number>,
-		Rec.filter((_) => true),
-	);
-	expect(result).toEqual({});
+	const result = pipe({} as Record<string, number>, Rec.filter((_) => true));
+	expect(result).toStrictEqual({});
 });
 
 test("filter - keeps all when all match", () => {
-	const result = pipe(
-		{ a: 1, b: 2 },
-		Rec.filter((n) => n > 0),
-	);
-	expect(result).toEqual({ a: 1, b: 2 });
+	const result = pipe({ a: 1, b: 2 }, Rec.filter((n) => n > 0));
+	expect(result).toStrictEqual({ a: 1, b: 2 });
 });
 
 test("filterWithKey - filters using both key and value", () => {
-	const result = pipe(
-		{ a: 1, b: 2, c: 3 },
-		Rec.filterWithKey((k, v) => k !== "b" && v > 0),
-	);
-	expect(result).toEqual({ a: 1, c: 3 });
+	const result = pipe({ a: 1, b: 2, c: 3 }, Rec.filterWithKey((k, v) => k !== "b" && v > 0));
+	expect(result).toStrictEqual({ a: 1, c: 3 });
 });
 
 test("filterWithKey - filters by key only", () => {
-	const result = pipe(
-		{ keep: 1, drop: 2, keep2: 3 },
-		Rec.filterWithKey((k, _v) => k.startsWith("keep")),
-	);
-	expect(result).toEqual({ keep: 1, keep2: 3 });
+	const result = pipe({ keep: 1, drop: 2, keep2: 3 }, Rec.filterWithKey((k, _v) => k.startsWith("keep")));
+	expect(result).toStrictEqual({ keep: 1, keep2: 3 });
 });
 
 test("filterWithKey - returns empty for empty input", () => {
-	const result = pipe(
-		{} as Record<string, number>,
-		Rec.filterWithKey((_k, _v) => true),
-	);
-	expect(result).toEqual({});
+	const result = pipe({} as Record<string, number>, Rec.filterWithKey((_k, _v) => true));
+	expect(result).toStrictEqual({});
 });
 
 // =============================================================================
@@ -117,39 +78,39 @@ test("filterWithKey - returns empty for empty input", () => {
 
 test("lookup - returns Some for existing key", () => {
 	const result = pipe({ a: 1, b: 2, c: 3 }, Rec.lookup("b"));
-	expect(result).toEqual(Maybe.some(2));
+	expect(result).toStrictEqual(Maybe.some(2));
 });
 
 test("lookup - returns None for missing key", () => {
 	const result = pipe({ a: 1, b: 2 }, Rec.lookup("z"));
-	expect(result).toEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.none());
 });
 
 test("lookup - returns None for empty record", () => {
 	const result = pipe({} as Record<string, number>, Rec.lookup("a"));
-	expect(result).toEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.none());
 });
 
 test("lookup - returns Some even if value is falsy (0)", () => {
 	const result = pipe({ a: 0 }, Rec.lookup("a"));
-	expect(result).toEqual(Maybe.some(0));
+	expect(result).toStrictEqual(Maybe.some(0));
 });
 
 test("lookup - returns Some even if value is falsy (empty string)", () => {
 	const result = pipe({ a: "" }, Rec.lookup("a"));
-	expect(result).toEqual(Maybe.some(""));
+	expect(result).toStrictEqual(Maybe.some(""));
 });
 
 test("lookup - returns Some even if value is falsy (false)", () => {
 	const result = pipe({ a: false }, Rec.lookup("a"));
-	expect(result).toEqual(Maybe.some(false));
+	expect(result).toStrictEqual(Maybe.some(false));
 });
 
 test("lookup - does not find inherited properties", () => {
 	const obj = Object.create({ inherited: 42 });
 	obj.own = 1;
 	const result = pipe(obj, Rec.lookup("inherited"));
-	expect(result).toEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.none());
 });
 
 // =============================================================================
@@ -158,63 +119,53 @@ test("lookup - does not find inherited properties", () => {
 
 test("keys - returns all keys of a record", () => {
 	const result = Rec.keys({ a: 1, b: 2, c: 3 });
-	expect(result).toEqual(["a", "b", "c"]);
+	expect(result).toStrictEqual(["a", "b", "c"]);
 });
 
 test("keys - returns empty array for empty record", () => {
 	const result = Rec.keys({});
-	expect(result).toEqual([]);
+	expect(result).toStrictEqual([]);
 });
 
 test("values - returns all values of a record", () => {
 	const result = Rec.values({ a: 10, b: 20, c: 30 });
-	expect(result).toEqual([10, 20, 30]);
+	expect(result).toStrictEqual([10, 20, 30]);
 });
 
 test("values - returns empty array for empty record", () => {
 	const result = Rec.values({});
-	expect(result).toEqual([]);
+	expect(result).toStrictEqual([]);
 });
 
 test("entries - returns all key-value pairs", () => {
 	const result = Rec.entries({ a: 1, b: 2 });
-	expect(result).toEqual([
-		["a", 1],
-		["b", 2],
-	]);
+	expect(result).toStrictEqual([["a", 1], ["b", 2]]);
 });
 
 test("entries - returns empty array for empty record", () => {
 	const result = Rec.entries({});
-	expect(result).toEqual([]);
+	expect(result).toStrictEqual([]);
 });
 
 test("fromEntries - creates record from key-value pairs", () => {
-	const result = Rec.fromEntries([
-		["a", 1],
-		["b", 2],
-		["c", 3],
-	]);
-	expect(result).toEqual({ a: 1, b: 2, c: 3 });
+	const result = Rec.fromEntries([["a", 1], ["b", 2], ["c", 3]]);
+	expect(result).toStrictEqual({ a: 1, b: 2, c: 3 });
 });
 
 test("fromEntries - returns empty record for empty array", () => {
 	const result = Rec.fromEntries([] as [string, number][]);
-	expect(result).toEqual({});
+	expect(result).toStrictEqual({});
 });
 
 test("fromEntries - last entry wins for duplicate keys", () => {
-	const result = Rec.fromEntries([
-		["a", 1],
-		["a", 2],
-	]);
-	expect(result).toEqual({ a: 2 });
+	const result = Rec.fromEntries([["a", 1], ["a", 2]]);
+	expect(result).toStrictEqual({ a: 2 });
 });
 
 test("entries and fromEntries are inverses", () => {
 	const original = { x: 10, y: 20, z: 30 };
 	const roundTripped = Rec.fromEntries(Rec.entries(original));
-	expect(roundTripped).toEqual(original);
+	expect(roundTripped).toStrictEqual(original);
 });
 
 // =============================================================================
@@ -222,67 +173,49 @@ test("entries and fromEntries are inverses", () => {
 // =============================================================================
 
 test("pick - selects specified keys", () => {
-	const result = pipe(
-		{ a: 1, b: 2, c: 3 } as Record<string, number>,
-		Rec.pick("a", "c"),
-	);
-	expect(result).toEqual({ a: 1, c: 3 });
+	const result = pipe({ a: 1, b: 2, c: 3 } as Record<string, number>, Rec.pick("a", "c"));
+	expect(result).toStrictEqual({ a: 1, c: 3 });
 });
 
 test("pick - ignores keys not in record", () => {
 	// @ts-expect-error 'x' does not exist on the record
 	const result = pipe({ a: 1, b: 2 }, Rec.pick("x", "a"));
-	expect(result).toEqual({ a: 1 });
+	expect(result).toStrictEqual({ a: 1 });
 });
 
 test("pick - returns empty when no keys match", () => {
-	const result = pipe(
-		{ a: 1, b: 2 } as Record<string, number>,
-		Rec.pick("x", "y"),
-	);
-	expect(result).toEqual({} as typeof result);
+	const result = pipe({ a: 1, b: 2 } as Record<string, number>, Rec.pick("x", "y"));
+	expect(result).toStrictEqual({} as typeof result);
 });
 
 test("pick - with single key", () => {
-	const result = pipe(
-		{ a: 1, b: 2, c: 3 } as Record<string, number>,
-		Rec.pick("b"),
-	);
-	expect(result).toEqual({ b: 2 });
+	const result = pipe({ a: 1, b: 2, c: 3 } as Record<string, number>, Rec.pick("b"));
+	expect(result).toStrictEqual({ b: 2 });
 });
 
 test("omit - removes specified keys", () => {
-	const result = pipe(
-		{ a: 1, b: 2, c: 3 } as Record<string, number>,
-		Rec.omit("b"),
-	);
-	expect(result).toEqual({ a: 1, c: 3 });
+	const result = pipe({ a: 1, b: 2, c: 3 } as Record<string, number>, Rec.omit("b"));
+	expect(result).toStrictEqual({ a: 1, c: 3 });
 });
 
 test("omit - ignores keys not in record", () => {
 	const result = pipe({ a: 1, b: 2 } as Record<string, number>, Rec.omit("z"));
-	expect(result).toEqual({ a: 1, b: 2 });
+	expect(result).toStrictEqual({ a: 1, b: 2 });
 });
 
 test("omit - multiple keys", () => {
-	const result = pipe(
-		{ a: 1, b: 2, c: 3, d: 4 } as Record<string, number>,
-		Rec.omit("a", "c"),
-	);
-	expect(result).toEqual({ b: 2, d: 4 });
+	const result = pipe({ a: 1, b: 2, c: 3, d: 4 } as Record<string, number>, Rec.omit("a", "c"));
+	expect(result).toStrictEqual({ b: 2, d: 4 });
 });
 
 test("omit - all keys results in empty record", () => {
-	const result = pipe(
-		{ a: 1, b: 2 } as Record<string, number>,
-		Rec.omit("a", "b"),
-	);
-	expect(result).toEqual({});
+	const result = pipe({ a: 1, b: 2 } as Record<string, number>, Rec.omit("a", "b"));
+	expect(result).toStrictEqual({});
 });
 
 test("omit - empty record returns empty record", () => {
 	const result = pipe({} as Record<string, number>, Rec.omit("a"));
-	expect(result).toEqual({});
+	expect(result).toStrictEqual({});
 });
 
 // =============================================================================
@@ -291,32 +224,32 @@ test("omit - empty record returns empty record", () => {
 
 test("merge - combines two records", () => {
 	const result = pipe({ a: 1, b: 2 }, Rec.merge({ c: 3, d: 4 }));
-	expect(result).toEqual({ a: 1, b: 2, c: 3, d: 4 });
+	expect(result).toStrictEqual({ a: 1, b: 2, c: 3, d: 4 });
 });
 
 test("merge - second record overrides first on conflict", () => {
 	const result = pipe({ a: 1, b: 2 }, Rec.merge({ b: 99, c: 3 }));
-	expect(result).toEqual({ a: 1, b: 99, c: 3 });
+	expect(result).toStrictEqual({ a: 1, b: 99, c: 3 });
 });
 
 test("merge - merging with empty record returns original", () => {
 	const result = pipe({ a: 1, b: 2 }, Rec.merge({}));
-	expect(result).toEqual({ a: 1, b: 2 });
+	expect(result).toStrictEqual({ a: 1, b: 2 });
 });
 
 test("merge - merging empty with non-empty returns second", () => {
 	const result = pipe({} as Record<string, number>, Rec.merge({ a: 1 }));
-	expect(result).toEqual({ a: 1 });
+	expect(result).toStrictEqual({ a: 1 });
 });
 
 test("merge - both empty records returns empty record", () => {
 	const result = pipe({} as Record<string, number>, Rec.merge({}));
-	expect(result).toEqual({});
+	expect(result).toStrictEqual({});
 });
 
 test("merge - complete override when all keys conflict", () => {
 	const result = pipe({ a: 1, b: 2 }, Rec.merge({ a: 10, b: 20 }));
-	expect(result).toEqual({ a: 10, b: 20 });
+	expect(result).toStrictEqual({ a: 10, b: 20 });
 });
 
 // =============================================================================
@@ -349,12 +282,12 @@ test("size - returns 1 for single-key record", () => {
 
 test("mapKeys - transforms keys while preserving values", () => {
 	const result = pipe({ a: 1, b: 2 }, Rec.mapKeys((k) => k.toUpperCase()));
-	expect(result).toEqual({ A: 1, B: 2 });
+	expect(result).toStrictEqual({ A: 1, B: 2 });
 });
 
 test("mapKeys - returns empty record for empty input", () => {
 	const result = pipe({} as Record<string, number>, Rec.mapKeys((k) => `prefix_${k}`));
-	expect(result).toEqual({});
+	expect(result).toStrictEqual({});
 });
 
 test("mapKeys - later key wins when two keys map to the same new key", () => {
@@ -365,7 +298,7 @@ test("mapKeys - later key wins when two keys map to the same new key", () => {
 
 test("mapKeys - prefix transformation", () => {
 	const result = pipe({ name: "Alice", age: "30" }, Rec.mapKeys((k) => `user_${k}`));
-	expect(result).toEqual({ user_name: "Alice", user_age: "30" });
+	expect(result).toStrictEqual({ user_name: "Alice", user_age: "30" });
 });
 
 // =============================================================================
@@ -374,23 +307,23 @@ test("mapKeys - prefix transformation", () => {
 
 test("compact - removes None values and unwraps Some values", () => {
 	const result = Rec.compact({ a: Maybe.some(1), b: Maybe.none(), c: Maybe.some(3) });
-	expect(result).toEqual({ a: 1, c: 3 });
+	expect(result).toStrictEqual({ a: 1, c: 3 });
 });
 
 test("compact - returns empty record when all values are None", () => {
 	const data: Record<string, Maybe<number>> = { x: Maybe.none(), y: Maybe.none() };
 	const result = Rec.compact(data);
-	expect(result).toEqual({});
+	expect(result).toStrictEqual({});
 });
 
 test("compact - returns all values when none are None", () => {
 	const result = Rec.compact({ a: Maybe.some(10), b: Maybe.some(20) });
-	expect(result).toEqual({ a: 10, b: 20 });
+	expect(result).toStrictEqual({ a: 10, b: 20 });
 });
 
 test("compact - empty input returns empty output", () => {
 	const result = Rec.compact({});
-	expect(result).toEqual({});
+	expect(result).toStrictEqual({});
 });
 
 // =============================================================================
@@ -398,57 +331,34 @@ test("compact - empty input returns empty output", () => {
 // =============================================================================
 
 test("pipe composition - filter then map", () => {
-	const result = pipe(
-		{ a: 1, b: 2, c: 3 },
-		Rec.filter((n) => n > 1),
-		Rec.map((n) => n * 10),
-	);
-	expect(result).toEqual({ b: 20, c: 30 });
+	const result = pipe({ a: 1, b: 2, c: 3 }, Rec.filter((n) => n > 1), Rec.map((n) => n * 10));
+	expect(result).toStrictEqual({ b: 20, c: 30 });
 });
 
 test("pipe composition - map then filter then size", () => {
-	const result = pipe(
-		{ a: 1, b: 2, c: 3, d: 4 },
-		Rec.map((n) => n * 2),
-		Rec.filter((n) => n > 4),
-		Rec.size,
-	);
+	const result = pipe({ a: 1, b: 2, c: 3, d: 4 }, Rec.map((n) => n * 2), Rec.filter((n) => n > 4), Rec.size);
 	expect(result).toBe(2);
 });
 
 test("pipe composition - merge then mapWithKey", () => {
-	const result = pipe(
-		{ greeting: "hello" },
-		Rec.merge({ farewell: "goodbye" }),
-		Rec.mapWithKey((k, v) => `${k}: ${v}`),
-	);
-	expect(result).toEqual({
-		greeting: "greeting: hello",
-		farewell: "farewell: goodbye",
-	});
+	const result = pipe({ greeting: "hello" }, Rec.merge({ farewell: "goodbye" }), Rec.mapWithKey((k, v) => `${k}: ${v}`));
+	expect(result).toStrictEqual({ greeting: "greeting: hello", farewell: "farewell: goodbye" });
 });
 
-test(
-	"pipe composition - entries, transform, fromEntries round trip",
-	() => {
-		const result = pipe(
-			{ a: 1, b: 2, c: 3 },
-			Rec.entries,
-			(es) => es.filter(([_k, v]) => v > 1),
-			(es) => es.map(([k, v]) => [k, v * 100] as const),
-			Rec.fromEntries,
-		);
-		expect(result).toEqual({ b: 200, c: 300 });
-	},
-);
+test("pipe composition - entries, transform, fromEntries round trip", () => {
+	const result = pipe(
+		{ a: 1, b: 2, c: 3 },
+		Rec.entries,
+		(es) => es.filter(([_k, v]) => v > 1),
+		(es) => es.map(([k, v]) => [k, v * 100] as const),
+		Rec.fromEntries,
+	);
+	expect(result).toStrictEqual({ b: 200, c: 300 });
+});
 
 test("pipe composition - pick then merge", () => {
-	const result = pipe(
-		{ a: 1, b: 2, c: 3 } as Record<string, number>,
-		Rec.pick("a", "b"),
-		Rec.merge({ d: 4 }),
-	);
-	expect(result).toEqual({ a: 1, b: 2, d: 4 });
+	const result = pipe({ a: 1, b: 2, c: 3 } as Record<string, number>, Rec.pick("a", "b"), Rec.merge({ d: 4 }));
+	expect(result).toStrictEqual({ a: 1, b: 2, d: 4 });
 });
 
 // =============================================================================
@@ -457,8 +367,8 @@ test("pipe composition - pick then merge", () => {
 
 test("Rec.groupBy groups items by key function", () => {
 	const result = pipe([1, 2, 3, 4, 5], Rec.groupBy((n) => n % 2 === 0 ? "even" : "odd"));
-	expect([...result["odd"]]).toEqual([1, 3, 5]);
-	expect([...result["even"]]).toEqual([2, 4]);
+	expect([...result["odd"]]).toStrictEqual([1, 3, 5]);
+	expect([...result["even"]]).toStrictEqual([2, 4]);
 });
 
 test("Rec.groupBy returns empty record for empty array", () => {
@@ -467,18 +377,18 @@ test("Rec.groupBy returns empty record for empty array", () => {
 
 test("Rec.groupBy all elements map to same key", () => {
 	const result = pipe([1, 2, 3], Rec.groupBy(() => "all"));
-	expect([...result["all"]]).toEqual([1, 2, 3]);
+	expect([...result["all"]]).toStrictEqual([1, 2, 3]);
 });
 
 test("Rec.groupBy each element maps to a unique key", () => {
 	const result = pipe([1, 2, 3], Rec.groupBy((n) => String(n)));
 	expect(Object.keys(result)).toHaveLength(3);
-	expect([...result["1"]]).toEqual([1]);
+	expect([...result["1"]]).toStrictEqual([1]);
 });
 
 test("Rec.groupBy preserves insertion order within each group", () => {
 	const items = ["banana", "avocado", "blueberry", "apricot"];
 	const result = pipe(items, Rec.groupBy((s) => s[0]));
-	expect([...result["b"]]).toEqual(["banana", "blueberry"]);
-	expect([...result["a"]]).toEqual(["avocado", "apricot"]);
+	expect([...result["b"]]).toStrictEqual(["banana", "blueberry"]);
+	expect([...result["a"]]).toStrictEqual(["avocado", "apricot"]);
 });

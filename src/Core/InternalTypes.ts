@@ -1,4 +1,5 @@
 import { NonEmptyList } from "#types/NonEmptyList.ts";
+import { Duration } from "../Types/Duration.ts";
 
 export type WithKind<K extends string> = { readonly kind: K; };
 
@@ -21,15 +22,12 @@ export type WithLog<T> = { readonly log: ReadonlyArray<T>; };
 /** Retry policy for `Op.interpret`. */
 export type RetryOptions<E> = {
 	readonly attempts: number;
-	readonly backoff?: number | ((attempt: number) => number);
+	readonly backoff?: Duration | ((attempt: number) => Duration);
 	readonly when?: (error: E) => boolean;
 };
 
 /** Timeout policy for `Op.interpret`. Wraps the entire retry sequence. */
-export type TimeoutOptions<E> = {
-	readonly ms: number;
-	readonly onTimeout: () => E;
-};
+export type TimeoutOptions<E> = { readonly duration: Duration; readonly onTimeout: () => E; };
 
 // Cross-cutting option wrappers
 
@@ -38,13 +36,13 @@ export type WithTimeout<E> = { readonly timeout?: TimeoutOptions<E>; };
 
 // Throttled / debounced options
 
-export type WithMs = { readonly ms: number; };
+export type WithDuration = { readonly duration: Duration; };
 /** For `throttled`: also fire on the trailing edge after the cooldown. */
 export type WithTrailing = { readonly trailing: true; };
 /** For `debounced`: also fire on the leading edge (first call). */
 export type WithLeading = { readonly leading: true; };
 /** For `debounced`: maximum ms before the trailing call fires regardless of continued activity. */
-export type WithMaxWait = { readonly maxWait: number; };
+export type WithMaxWait = { readonly maxWait: Duration; };
 
 // Concurrent options
 
@@ -71,11 +69,11 @@ export type WithSize = { readonly size?: number; };
 
 // Exclusive options
 
-export type WithCooldown = { readonly cooldown?: number; };
+export type WithCooldown = { readonly cooldown?: Duration; };
 
 // Restartable options
 
-export type WithMinInterval = { readonly minInterval?: number; };
+export type WithMinInterval = { readonly minInterval?: Duration; };
 
 // Keyed options (formalising existing inline fields)
 

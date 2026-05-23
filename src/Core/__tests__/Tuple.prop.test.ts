@@ -12,20 +12,16 @@ const arbTuple = fc.tuple(fc.string(), fc.integer());
 // make / first / second
 // ---------------------------------------------------------------------------
 
-test("Tuple.make → Tuple.first — round-trip", () => {
-	fc.assert(
-		fc.property(fc.string(), fc.integer(), (a, b) => {
-			expect(Tuple.first(Tuple.make(a, b))).toBe(a);
-		}),
-	);
+test("tuple.make → Tuple.first — round-trip", () => {
+	fc.assert(fc.property(fc.string(), fc.integer(), (a, b) => {
+		expect(Tuple.first(Tuple.make(a, b))).toBe(a);
+	}));
 });
 
-test("Tuple.make → Tuple.second — round-trip", () => {
-	fc.assert(
-		fc.property(fc.string(), fc.integer(), (a, b) => {
-			expect(Tuple.second(Tuple.make(a, b))).toBe(b);
-		}),
-	);
+test("tuple.make → Tuple.second — round-trip", () => {
+	fc.assert(fc.property(fc.string(), fc.integer(), (a, b) => {
+		expect(Tuple.second(Tuple.make(a, b))).toBe(b);
+	}));
 });
 
 // ---------------------------------------------------------------------------
@@ -33,21 +29,17 @@ test("Tuple.make → Tuple.second — round-trip", () => {
 // ---------------------------------------------------------------------------
 
 test("Tuple.swap — involution (swap twice is identity)", () => {
-	fc.assert(
-		fc.property(arbTuple, (t) => {
-			expect(Tuple.swap(Tuple.swap(t))).toEqual(t);
-		}),
-	);
+	fc.assert(fc.property(arbTuple, (t) => {
+		expect(Tuple.swap(Tuple.swap(t))).toStrictEqual(t);
+	}));
 });
 
 test("Tuple.swap — exchanges first and second", () => {
-	fc.assert(
-		fc.property(fc.string(), fc.integer(), (a, b) => {
-			const swapped = Tuple.swap(Tuple.make(a, b));
-			expect(Tuple.first(swapped)).toBe(b);
-			expect(Tuple.second(swapped)).toBe(a);
-		}),
-	);
+	fc.assert(fc.property(fc.string(), fc.integer(), (a, b) => {
+		const swapped = Tuple.swap(Tuple.make(a, b));
+		expect(Tuple.first(swapped)).toBe(b);
+		expect(Tuple.second(swapped)).toBe(a);
+	}));
 });
 
 // ---------------------------------------------------------------------------
@@ -55,20 +47,16 @@ test("Tuple.swap — exchanges first and second", () => {
 // ---------------------------------------------------------------------------
 
 test("Tuple.mapFirst — identity law", () => {
-	fc.assert(
-		fc.property(arbTuple, (t) => {
-			expect(Tuple.mapFirst((x: string) => x)(t)).toEqual(t);
-		}),
-	);
+	fc.assert(fc.property(arbTuple, (t) => {
+		expect(Tuple.mapFirst((x: string) => x)(t)).toStrictEqual(t);
+	}));
 });
 
 test("Tuple.mapFirst — does not affect second", () => {
-	fc.assert(
-		fc.property(arbTuple, fc.string(), (t, suffix) => {
-			const result = Tuple.mapFirst((s: string) => s + suffix)(t);
-			expect(Tuple.second(result)).toBe(Tuple.second(t));
-		}),
-	);
+	fc.assert(fc.property(arbTuple, fc.string(), (t, suffix) => {
+		const result = Tuple.mapFirst((s: string) => s + suffix)(t);
+		expect(Tuple.second(result)).toBe(Tuple.second(t));
+	}));
 });
 
 // ---------------------------------------------------------------------------
@@ -76,20 +64,16 @@ test("Tuple.mapFirst — does not affect second", () => {
 // ---------------------------------------------------------------------------
 
 test("Tuple.mapSecond — identity law", () => {
-	fc.assert(
-		fc.property(arbTuple, (t) => {
-			expect(Tuple.mapSecond((x: number) => x)(t)).toEqual(t);
-		}),
-	);
+	fc.assert(fc.property(arbTuple, (t) => {
+		expect(Tuple.mapSecond((x: number) => x)(t)).toStrictEqual(t);
+	}));
 });
 
 test("Tuple.mapSecond — does not affect first", () => {
-	fc.assert(
-		fc.property(arbTuple, fc.integer(), (t, delta) => {
-			const result = Tuple.mapSecond((n: number) => n + delta)(t);
-			expect(Tuple.first(result)).toBe(Tuple.first(t));
-		}),
-	);
+	fc.assert(fc.property(arbTuple, fc.integer(), (t, delta) => {
+		const result = Tuple.mapSecond((n: number) => n + delta)(t);
+		expect(Tuple.first(result)).toBe(Tuple.first(t));
+	}));
 });
 
 // ---------------------------------------------------------------------------
@@ -97,11 +81,9 @@ test("Tuple.mapSecond — does not affect first", () => {
 // ---------------------------------------------------------------------------
 
 test("Tuple.tap — always returns the identical reference", () => {
-	fc.assert(
-		fc.property(arbTuple, (t) => {
-			expect(Tuple.tap(() => {})(t)).toBe(t);
-		}),
-	);
+	fc.assert(fc.property(arbTuple, (t) => {
+		expect(Tuple.tap(() => {})(t)).toBe(t);
+	}));
 });
 
 // ---------------------------------------------------------------------------
@@ -109,10 +91,8 @@ test("Tuple.tap — always returns the identical reference", () => {
 // ---------------------------------------------------------------------------
 
 test("Tuple.fold — combines both elements", () => {
-	fc.assert(
-		fc.property(fc.string(), fc.integer(), (a, b) => {
-			const result = Tuple.fold((s: string, n: number) => `${s}:${n}`)(Tuple.make(a, b));
-			expect(result).toBe(`${a}:${b}`);
-		}),
-	);
+	fc.assert(fc.property(fc.string(), fc.integer(), (a, b) => {
+		const result = Tuple.fold((s: string, n: number) => `${s}:${n}`)(Tuple.make(a, b));
+		expect(result).toBe(`${a}:${b}`);
+	}));
 });

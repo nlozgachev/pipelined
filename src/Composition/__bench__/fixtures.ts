@@ -18,10 +18,11 @@ export const direct10 = (): void => {
 export const gc = (globalThis as any).gc as (() => void) | undefined;
 
 export function bytesPerCall(fn: () => void, iters = 500_000): number {
-	for (let i = 0; i < 50_000; i++) fn(); // warm up JIT
+	for (let i = 0; i < 50_000; i++) { fn(); // warm up JIT
+	 }
 	gc?.();
 	const before = process.memoryUsage().heapUsed;
-	for (let i = 0; i < iters; i++) fn();
+	for (let i = 0; i < iters; i++) { fn(); }
 	gc?.();
 	const after = process.memoryUsage().heapUsed;
 	return Math.max(0, (after - before) / iters);

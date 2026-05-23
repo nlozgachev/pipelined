@@ -83,7 +83,7 @@ export namespace Arr {
 	 */
 	export const findFirst = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): Maybe<A> => {
 		const idx = data.findIndex(predicate);
-		return idx >= 0 ? Maybe.some(data[idx]) : Maybe.none();
+		return idx !== -1 ? Maybe.some(data[idx]) : Maybe.none();
 	};
 
 	/**
@@ -96,7 +96,7 @@ export namespace Arr {
 	 */
 	export const findLast = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): Maybe<A> => {
 		for (let i = data.length - 1; i >= 0; i--) {
-			if (predicate(data[i])) return Maybe.some(data[i]);
+			if (predicate(data[i])) { return Maybe.some(data[i]); }
 		}
 		return Maybe.none();
 	};
@@ -111,7 +111,7 @@ export namespace Arr {
 	 */
 	export const findIndex = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): Maybe<number> => {
 		const idx = data.findIndex(predicate);
-		return idx >= 0 ? Maybe.some(idx) : Maybe.none();
+		return idx !== -1 ? Maybe.some(idx) : Maybe.none();
 	};
 
 	// --- Transform ---
@@ -127,7 +127,7 @@ export namespace Arr {
 	export const map = <A, B>(f: (a: A) => B) => (data: readonly A[]): readonly B[] => {
 		const n = data.length;
 		const result = new Array<B>(n);
-		for (let i = 0; i < n; i++) result[i] = f(data[i]);
+		for (let i = 0; i < n; i++) { result[i] = f(data[i]); }
 		return result;
 	};
 
@@ -145,7 +145,7 @@ export namespace Arr {
 	export const mapWithIndex = <A, B>(f: (i: number, a: A) => B) => (data: readonly A[]): readonly B[] => {
 		const n = data.length;
 		const result = new Array<B>(n);
-		for (let i = 0; i < n; i++) result[i] = f(i, data[i]);
+		for (let i = 0; i < n; i++) { result[i] = f(i, data[i]); }
 		return result;
 	};
 
@@ -161,7 +161,7 @@ export namespace Arr {
 		const n = data.length;
 		const result: A[] = [];
 		for (let i = 0; i < n; i++) {
-			if (predicate(data[i])) result.push(data[i]);
+			if (predicate(data[i])) { result.push(data[i]); }
 		}
 		return result;
 	};
@@ -184,7 +184,7 @@ export namespace Arr {
 		const result: B[] = [];
 		for (let i = 0; i < data.length; i++) {
 			const mapped = f(data[i]);
-			if (mapped.kind === "Some") result.push(mapped.value);
+			if (mapped.kind === "Some") { result.push(mapped.value); }
 		}
 		return result;
 	};
@@ -234,7 +234,7 @@ export namespace Arr {
 	 *
 	 * @example
 	 * ```ts
-	 * Arr.separate([Result.ok(1), Result.error("bad"), Result.ok(3)]); // [["bad"], [1, 3]]
+	 * Arr.separate([Result.ok(1), Result.err("bad"), Result.ok(3)]); // [["bad"], [1, 3]]
 	 * ```
 	 */
 	export const separate = <E, A>(data: readonly Result<E, A>[]): readonly [readonly E[], readonly A[]] => {
@@ -257,7 +257,7 @@ export namespace Arr {
 	 * ```ts
 	 * pipe(
 	 *   [1, 2, 3, 4],
-	 *   Arr.partitionMap(n => n % 2 === 0 ? Result.ok(n) : Result.error(`odd: ${n}`))
+	 *   Arr.partitionMap(n => n % 2 === 0 ? Result.ok(n) : Result.err(`odd: ${n}`))
 	 * ); // [["odd: 1", "odd: 3"], [2, 4]]
 	 * ```
 	 */
@@ -291,7 +291,7 @@ export namespace Arr {
 		const result: Record<string, A[]> = {};
 		for (const a of data) {
 			const key = f(a);
-			if (!result[key]) result[key] = [];
+			if (!result[key]) { result[key] = []; }
 			result[key].push(a);
 		}
 		return result as unknown as Record<string, NonEmptyList<A>>;
@@ -305,9 +305,7 @@ export namespace Arr {
 	 * Arr.uniq([1, 2, 2, 3, 1]); // [1, 2, 3]
 	 * ```
 	 */
-	export const uniq = <A>(data: readonly A[]): readonly A[] => [
-		...new Set(data),
-	];
+	export const uniq = <A>(data: readonly A[]): readonly A[] => [...new Set(data)];
 
 	/**
 	 * Removes duplicate elements by comparing the result of a key function.
@@ -370,8 +368,8 @@ export namespace Arr {
 	 */
 	export const sortBy = <A>(compare: (a: A, b: A) => number) => (data: readonly A[]): readonly A[] => {
 		const arr = data as A[];
-		if (typeof arr.toSorted === "function") return arr.toSorted(compare);
-		return [...data].sort(compare);
+		if (typeof arr.toSorted === "function") { return arr.toSorted(compare); }
+		return [...data].toSorted(compare);
 	};
 
 	/**
@@ -388,7 +386,7 @@ export namespace Arr {
 	 */
 	export const sortWith = <A>(ord: Ordering<A>) => (data: readonly A[]): readonly A[] => {
 		const arr = data as A[];
-		if (typeof arr.toSorted === "function") return arr.toSorted(ord);
+		if (typeof arr.toSorted === "function") { return arr.toSorted(ord); }
 		return [...data].sort(ord);
 	};
 
@@ -438,7 +436,7 @@ export namespace Arr {
 	 * ```
 	 */
 	export const intersperse = <A>(sep: A) => (data: readonly A[]): readonly A[] => {
-		if (data.length <= 1) return data;
+		if (data.length <= 1) { return data; }
 		const result: A[] = [data[0]];
 		for (let i = 1; i < data.length; i++) {
 			result.push(sep, data[i]);
@@ -455,7 +453,7 @@ export namespace Arr {
 	 * ```
 	 */
 	export const chunksOf = (n: number) => <A>(data: readonly A[]): readonly (readonly A[])[] => {
-		if (n <= 0) return [];
+		if (n <= 0) { return []; }
 		const result: A[][] = [];
 		for (let i = 0; i < data.length; i += n) {
 			result.push(data.slice(i, i + n));
@@ -503,7 +501,7 @@ export namespace Arr {
 		for (let i = 0; i < n; i++) {
 			const chunk = f(data[i]);
 			const m = chunk.length;
-			for (let j = 0; j < m; j++) result.push(chunk[j]);
+			for (let j = 0; j < m; j++) { result.push(chunk[j]); }
 		}
 		return result;
 	};
@@ -521,7 +519,7 @@ export namespace Arr {
 	// --- Traverse / Sequence ---
 
 	/**
-	 * Maps each element to an Maybe and collects the results.
+	 * Maps each element to a Maybe and collects the results.
 	 * Returns None if any mapping returns None.
 	 *
 	 * @example
@@ -540,7 +538,7 @@ export namespace Arr {
 		const result = new Array<B>(n);
 		for (let i = 0; i < n; i++) {
 			const mapped = f(data[i]);
-			if (mapped.kind === "None") return Maybe.none();
+			if (mapped.kind === "None") { return Maybe.none(); }
 			result[i] = mapped.value;
 		}
 		return Maybe.some(result);
@@ -554,7 +552,7 @@ export namespace Arr {
 	 * ```ts
 	 * pipe(
 	 *   [1, 2, 3],
-	 *   Arr.traverseResult(n => n > 0 ? Result.ok(n) : Result.error("negative"))
+	 *   Arr.traverseResult(n => n > 0 ? Result.ok(n) : Result.err("negative"))
 	 * ); // Ok([1, 2, 3])
 	 * ```
 	 */
@@ -564,7 +562,7 @@ export namespace Arr {
 			const result = new Array<B>(n);
 			for (let i = 0; i < n; i++) {
 				const mapped = f(data[i]);
-				if (mapped.kind === "Error") return mapped;
+				if (mapped.kind === "Err") { return mapped; }
 				result[i] = mapped.value;
 			}
 			return Result.ok(result);
@@ -585,7 +583,7 @@ export namespace Arr {
 		Task.from(() => Promise.all(data.map((a) => Deferred.toPromise(f(a)()))));
 
 	/**
-	 * Collects an array of Options into an Maybe of array.
+	 * Collects an array of Maybe instances into a Maybe of array.
 	 * Returns None if any element is None.
 	 *
 	 * @example
@@ -594,24 +592,20 @@ export namespace Arr {
 	 * Arr.sequence([Maybe.some(1), Maybe.none()]); // None
 	 * ```
 	 */
-	export const sequence = <A>(
-		data: readonly Maybe<A>[],
-	): Maybe<readonly A[]> => traverse<Maybe<A>, A>((a) => a)(data);
+	export const sequence = <A>(data: readonly Maybe<A>[]): Maybe<readonly A[]> => traverse<Maybe<A>, A>((a) => a)(data);
 
 	/**
 	 * Collects an array of Results into a Result of array.
 	 * Returns the first Err if any element is Err.
 	 */
-	export const sequenceResult = <E, A>(
-		data: readonly Result<E, A>[],
-	): Result<E, readonly A[]> => traverseResult<E, Result<E, A>, A>((a) => a)(data);
+	export const sequenceResult = <E, A>(data: readonly Result<E, A>[]): Result<E, readonly A[]> =>
+		traverseResult<E, Result<E, A>, A>((a) => a)(data);
 
 	/**
 	 * Collects an array of Tasks into a Task of array. Runs in parallel.
 	 */
-	export const sequenceTask = <A>(
-		data: readonly Task<A>[],
-	): Task<readonly A[]> => traverseTask<Task<A>, A>((a) => a)(data);
+	export const sequenceTask = <A>(data: readonly Task<A>[]): Task<readonly A[]> =>
+		traverseTask<Task<A>, A>((a) => a)(data);
 
 	/**
 	 * Maps each element to a TaskResult and runs them sequentially.
@@ -640,7 +634,7 @@ export namespace Arr {
 				for (const a of data) {
 					// eslint-disable-next-line no-await-in-loop
 					const r = await Deferred.toPromise(f(a)());
-					if (Result.isError(r)) return r;
+					if (Result.isErr(r)) { return r; }
 					result.push(r.value);
 				}
 				return Result.ok(result);
@@ -650,9 +644,8 @@ export namespace Arr {
 	 * Collects an array of TaskResults into a TaskResult of array.
 	 * Returns the first Err if any element is Err, runs sequentially.
 	 */
-	export const sequenceTaskResult = <E, A>(
-		data: readonly Task<Result<E, A>>[],
-	): Task<Result<E, readonly A[]>> => traverseTaskResult<E, Task<Result<E, A>>, A>((a) => a)(data);
+	export const sequenceTaskResult = <E, A>(data: readonly Task<Result<E, A>>[]): Task<Result<E, readonly A[]>> =>
+		traverseTaskResult<E, Task<Result<E, A>>, A>((a) => a)(data);
 
 	/**
 	 * Returns true if the array is non-empty (type guard).
@@ -674,7 +667,7 @@ export namespace Arr {
 	 */
 	export const some = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): boolean => {
 		const n = data.length;
-		for (let i = 0; i < n; i++) if (predicate(data[i])) return true;
+		for (let i = 0; i < n; i++) { if (predicate(data[i])) { return true; } }
 		return false;
 	};
 
@@ -688,7 +681,7 @@ export namespace Arr {
 	 */
 	export const every = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): boolean => {
 		const n = data.length;
-		for (let i = 0; i < n; i++) if (!predicate(data[i])) return false;
+		for (let i = 0; i < n; i++) { if (!predicate(data[i])) { return false; } }
 		return true;
 	};
 
@@ -700,7 +693,7 @@ export namespace Arr {
 	 * Arr.reverse([1, 2, 3]); // [3, 2, 1]
 	 * ```
 	 */
-	export const reverse = <A>(data: readonly A[]): readonly A[] => [...data].reverse();
+	export const reverse = <A>(data: readonly A[]): readonly A[] => [...data].toReversed();
 
 	/**
 	 * Returns a new array with `item` inserted before the element at `index`.
@@ -716,7 +709,7 @@ export namespace Arr {
 	export const insertAt = <A>(index: number, item: A) => (data: readonly A[]): readonly A[] => {
 		const i = Math.max(0, Math.min(index, data.length));
 		const arr = data as A[];
-		if (typeof arr.toSpliced === "function") return arr.toSpliced(i, 0, item);
+		if (typeof arr.toSpliced === "function") { return arr.toSpliced(i, 0, item); }
 		const result = [...data];
 		result.splice(i, 0, item);
 		return result;
@@ -734,9 +727,9 @@ export namespace Arr {
 	 * ```
 	 */
 	export const removeAt = (index: number) => <A>(data: readonly A[]): readonly A[] => {
-		if (index < 0 || index >= data.length) return data;
+		if (index < 0 || index >= data.length) { return data; }
 		const arr = data as A[];
-		if (typeof arr.toSpliced === "function") return arr.toSpliced(index, 1);
+		if (typeof arr.toSpliced === "function") { return arr.toSpliced(index, 1); }
 		const result = [...data];
 		result.splice(index, 1);
 		return result;
@@ -773,7 +766,7 @@ export namespace Arr {
 	export const takeWhile = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): readonly A[] => {
 		const result: A[] = [];
 		for (const a of data) {
-			if (!predicate(a)) break;
+			if (!predicate(a)) { break; }
 			result.push(a);
 		}
 		return result;
@@ -789,7 +782,7 @@ export namespace Arr {
 	 */
 	export const dropWhile = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): readonly A[] => {
 		let i = 0;
-		while (i < data.length && predicate(data[i])) i++;
+		while (i < data.length && predicate(data[i])) { i++; }
 		return data.slice(i);
 	};
 

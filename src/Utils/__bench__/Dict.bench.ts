@@ -23,19 +23,13 @@ const dict100 = makeDict(100);
 const dict10k = makeDict(10_000);
 const dictA100 = makeDict(50);
 const dictB100 = Dict.fromEntries(Array.from({ length: 50 }, (_, i) => [`key${i + 25}`, i + 1000]));
-const dictA10k = makeDict(5_000);
-const dictB10k = Dict.fromEntries(Array.from({ length: 5_000 }, (_, i) => [`key${i + 2_500}`, i + 10_000]));
+const dictA10k = makeDict(5000);
+const dictB10k = Dict.fromEntries(Array.from({ length: 5000 }, (_, i) => [`key${i + 2500}`, i + 10_000]));
 const optDict100 = Dict.fromEntries<string, Maybe<number>>(
-	Array.from({ length: 100 }, (_, i) => [
-		`key${i}`,
-		i % 3 === 0 ? Maybe.none() : Maybe.some(i),
-	]),
+	Array.from({ length: 100 }, (_, i) => [`key${i}`, i % 3 === 0 ? Maybe.none() : Maybe.some(i)]),
 );
 const optDict10k = Dict.fromEntries<string, Maybe<number>>(
-	Array.from({ length: 10_000 }, (_, i) => [
-		`key${i}`,
-		i % 3 === 0 ? Maybe.none() : Maybe.some(i),
-	]),
+	Array.from({ length: 10_000 }, (_, i) => [`key${i}`, i % 3 === 0 ? Maybe.none() : Maybe.some(i)]),
 );
 const data100 = Array.from({ length: 100 }, (_, i) => i);
 const data10k = Array.from({ length: 10_000 }, (_, i) => i);
@@ -129,7 +123,7 @@ describe("dict-filter-100", () => {
 	bench("2. native filter loop 100", () => {
 		const result = new globalThis.Map<string, number>();
 		for (const [k, v] of dict100) {
-			if (v % 2 === 0) result.set(k, v);
+			if (v % 2 === 0) { result.set(k, v); }
 		}
 	});
 });
@@ -141,7 +135,7 @@ describe("dict-filter-10k", () => {
 	bench("2. native filter loop 10k", () => {
 		const result = new globalThis.Map<string, number>();
 		for (const [k, v] of dict10k) {
-			if (v % 2 === 0) result.set(k, v);
+			if (v % 2 === 0) { result.set(k, v); }
 		}
 	});
 });
@@ -171,7 +165,7 @@ describe("dict-intersection-100", () => {
 	bench("2. native intersection loop 100", () => {
 		const result = new globalThis.Map<string, number>();
 		for (const [k, v] of dict100) {
-			if (dictA100.has(k)) result.set(k, v);
+			if (dictA100.has(k)) { result.set(k, v); }
 		}
 	});
 });
@@ -183,7 +177,7 @@ describe("dict-intersection-10k", () => {
 	bench("2. native intersection loop 10k", () => {
 		const result = new globalThis.Map<string, number>();
 		for (const [k, v] of dict10k) {
-			if (dictA10k.has(k)) result.set(k, v);
+			if (dictA10k.has(k)) { result.set(k, v); }
 		}
 	});
 });
@@ -195,7 +189,7 @@ describe("dict-compact-100", () => {
 	bench("2. native compact loop 100", () => {
 		const result = new globalThis.Map<string, number>();
 		for (const [k, v] of optDict100) {
-			if (v.kind === "Some") result.set(k, v.value);
+			if (v.kind === "Some") { result.set(k, v.value); }
 		}
 	});
 });
@@ -207,7 +201,7 @@ describe("dict-compact-10k", () => {
 	bench("2. native compact loop 10k", () => {
 		const result = new globalThis.Map<string, number>();
 		for (const [k, v] of optDict10k) {
-			if (v.kind === "Some") result.set(k, v.value);
+			if (v.kind === "Some") { result.set(k, v.value); }
 		}
 	});
 });
@@ -221,11 +215,11 @@ describe("dict-reduce-100", () => {
 	});
 	bench("3. native values() loop 100", () => {
 		let _acc = 0;
-		for (const v of dict100.values()) _acc += v;
+		for (const v of dict100.values()) { _acc += v; }
 	});
 	bench("4. native entries() loop 100", () => {
 		let _acc = 0;
-		for (const [, v] of dict100) _acc += v;
+		for (const [, v] of dict100) { _acc += v; }
 	});
 });
 
@@ -238,11 +232,11 @@ describe("dict-reduce-10k", () => {
 	});
 	bench("3. native values() loop 10k", () => {
 		let _acc = 0;
-		for (const v of dict10k.values()) _acc += v;
+		for (const v of dict10k.values()) { _acc += v; }
 	});
 	bench("4. native entries() loop 10k", () => {
 		let _acc = 0;
-		for (const [, v] of dict10k) _acc += v;
+		for (const [, v] of dict10k) { _acc += v; }
 	});
 });
 
@@ -290,8 +284,8 @@ describe("dict-groupBy-approaches-10k", () => {
 		for (const n of data10k) {
 			const key = n % 10;
 			const arr = result.get(key);
-			if (arr !== undefined) arr.push(n);
-			else result.set(key, [n]);
+			if (arr !== undefined) { arr.push(n); }
+			else { result.set(key, [n]); }
 		}
 	});
 	bench("2. native Map.groupBy 10k", () => {
@@ -332,7 +326,7 @@ describe("dict-filter-varied-10k", () => {
 	bench("2. native filter loop varied 10k", () => {
 		const result = new globalThis.Map<string, number>();
 		for (const [k, v] of variedDict10k) {
-			if (v % 2 === 0) result.set(k, v);
+			if (v % 2 === 0) { result.set(k, v); }
 		}
 	});
 });

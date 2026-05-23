@@ -33,7 +33,7 @@ export namespace Num {
 	 * ```
 	 */
 	export const range = (from: number, to: number, step = 1): readonly number[] => {
-		if (step <= 0 || from > to) return [];
+		if (step <= 0 || from > to) { return []; }
 		const count = Math.floor((to - from) / step) + 1;
 		const result = new Array<number>(count);
 		for (let i = 0; i < count; i++) {
@@ -78,7 +78,7 @@ export namespace Num {
 	 * ```
 	 */
 	export const parse = (s: string): Maybe<number> => {
-		if (s.trim() === "") return Maybe.none();
+		if (s.trim() === "") { return Maybe.none(); }
 		const n = Number(s);
 		return isNaN(n) ? Maybe.none() : Maybe.some(n);
 	};
@@ -208,7 +208,7 @@ export namespace Num {
 	 */
 	export const sum = (ns: readonly number[]): number => {
 		let result = 0;
-		for (let i = 0; i < ns.length; i++) result += ns[i];
+		for (let i = 0; i < ns.length; i++) { result += ns[i]; }
 		return result;
 	};
 
@@ -234,10 +234,10 @@ export namespace Num {
 	 * ```
 	 */
 	export const min = (ns: readonly number[]): Maybe<number> => {
-		if (ns.length === 0) return Maybe.none();
+		if (ns.length === 0) { return Maybe.none(); }
 		let [result] = ns;
 		for (let i = 1; i < ns.length; i++) {
-			if (ns[i] < result) result = ns[i];
+			if (ns[i] < result) { result = ns[i]; }
 		}
 		return Maybe.some(result);
 	};
@@ -252,10 +252,10 @@ export namespace Num {
 	 * ```
 	 */
 	export const max = (ns: readonly number[]): Maybe<number> => {
-		if (ns.length === 0) return Maybe.none();
+		if (ns.length === 0) { return Maybe.none(); }
 		let [result] = ns;
 		for (let i = 1; i < ns.length; i++) {
-			if (ns[i] > result) result = ns[i];
+			if (ns[i] > result) { result = ns[i]; }
 		}
 		return Maybe.some(result);
 	};

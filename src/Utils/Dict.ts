@@ -86,8 +86,8 @@ export namespace Dict {
 		for (const item of items) {
 			const key = keyFn(item);
 			const arr = result.get(key);
-			if (arr !== undefined) arr.push(item);
-			else result.set(key, [item]);
+			if (arr !== undefined) { arr.push(item); }
+			else { result.set(key, [item]); }
 		}
 		return result;
 	};
@@ -200,7 +200,7 @@ export namespace Dict {
 	 * ```
 	 */
 	export const remove = <K, V>(key: K) => (m: ReadonlyMap<K, V>): ReadonlyMap<K, V> => {
-		if (!m.has(key)) return m;
+		if (!m.has(key)) { return m; }
 		const result = new globalThis.Map(m);
 		result.delete(key);
 		return result;
@@ -277,7 +277,7 @@ export namespace Dict {
 	export const filter = <A>(predicate: (a: A) => boolean) => <K>(m: ReadonlyMap<K, A>): ReadonlyMap<K, A> => {
 		const result = new globalThis.Map<K, A>();
 		for (const [k, v] of m) {
-			if (predicate(v)) result.set(k, v);
+			if (predicate(v)) { result.set(k, v); }
 		}
 		return result;
 	};
@@ -296,7 +296,7 @@ export namespace Dict {
 		<K, A>(predicate: (key: K, a: A) => boolean) => (m: ReadonlyMap<K, A>): ReadonlyMap<K, A> => {
 			const result = new globalThis.Map<K, A>();
 			for (const [k, v] of m) {
-				if (predicate(k, v)) result.set(k, v);
+				if (predicate(k, v)) { result.set(k, v); }
 			}
 			return result;
 		};
@@ -320,7 +320,7 @@ export namespace Dict {
 	export const compact = <K, A>(m: ReadonlyMap<K, Maybe<A>>): ReadonlyMap<K, A> => {
 		const result = new globalThis.Map<K, A>();
 		for (const [k, v] of m) {
-			if (v.kind === "Some") result.set(k, v.value);
+			if (v.kind === "Some") { result.set(k, v.value); }
 		}
 		return result;
 	};
@@ -343,7 +343,7 @@ export namespace Dict {
 		const result = new globalThis.Map<K, B>();
 		for (const [key, value] of m) {
 			const mapped = f(value);
-			if (mapped.kind === "Some") result.set(key, mapped.value);
+			if (mapped.kind === "Some") { result.set(key, mapped.value); }
 		}
 		return result;
 	};
@@ -389,7 +389,7 @@ export namespace Dict {
 	export const intersection = <K, V>(other: ReadonlyMap<K, unknown>) => (m: ReadonlyMap<K, V>): ReadonlyMap<K, V> => {
 		const result = new globalThis.Map<K, V>();
 		for (const [k, v] of m) {
-			if (other.has(k)) result.set(k, v);
+			if (other.has(k)) { result.set(k, v); }
 		}
 		return result;
 	};
@@ -409,7 +409,7 @@ export namespace Dict {
 	export const difference = <K, V>(other: ReadonlyMap<K, unknown>) => (m: ReadonlyMap<K, V>): ReadonlyMap<K, V> => {
 		const result = new globalThis.Map<K, V>();
 		for (const [k, v] of m) {
-			if (!other.has(k)) result.set(k, v);
+			if (!other.has(k)) { result.set(k, v); }
 		}
 		return result;
 	};

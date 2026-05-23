@@ -66,7 +66,7 @@ test("constant - returns same object reference", () => {
 
 test("constant - useful with map to fill arrays", () => {
 	const result = [1, 2, 3].map(constant("x"));
-	expect(result).toEqual(["x", "x", "x"]);
+	expect(result).toStrictEqual(["x", "x", "x"]);
 });
 
 // --- constTrue ---
@@ -154,10 +154,8 @@ test("and - works with Array.filter", () => {
 	const isPositive = (n: number) => n > 0;
 	const isEven = (n: number) => n % 2 === 0;
 
-	const result = [-4, -3, -2, -1, 0, 1, 2, 3, 4].filter(
-		and(isPositive, isEven),
-	);
-	expect(result).toEqual([2, 4]);
+	const result = [-4, -3, -2, -1, 0, 1, 2, 3, 4].filter(and(isPositive, isEven));
+	expect(result).toStrictEqual([2, 4]);
 });
 
 // --- or ---
@@ -211,10 +209,8 @@ test("or - works with Array.filter", () => {
 	const isNegative = (n: number) => n < 0;
 	const isGreaterThan3 = (n: number) => n > 3;
 
-	const result = [-2, -1, 0, 1, 2, 3, 4, 5].filter(
-		or(isNegative, isGreaterThan3),
-	);
-	expect(result).toEqual([-2, -1, 4, 5]);
+	const result = [-2, -1, 0, 1, 2, 3, 4, 5].filter(or(isNegative, isGreaterThan3));
+	expect(result).toStrictEqual([-2, -1, 4, 5]);
 });
 
 // --- once ---
@@ -265,9 +261,9 @@ test("once - works with side effects", () => {
 	const r1 = setup();
 	const r2 = setup();
 
-	expect(effects).toEqual(["setup"]);
+	expect(effects).toStrictEqual(["setup"]);
 	expect(r1).toBe(r2); // same reference
-	expect(r1).toEqual({ ready: true });
+	expect(r1).toStrictEqual({ ready: true });
 });
 
 test("once - caches falsy results correctly", () => {

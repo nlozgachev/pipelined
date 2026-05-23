@@ -17,40 +17,22 @@ test("pipe - single function transformation", () => {
 });
 
 test("pipe - two function transformations", () => {
-	const result = pipe(
-		5,
-		(n: number) => n * 2,
-		(n: number) => n + 1,
-	);
+	const result = pipe(5, (n: number) => n * 2, (n: number) => n + 1);
 	expect(result).toBe(11);
 });
 
 test("pipe - three function transformations", () => {
-	const result = pipe(
-		"hello",
-		(s: string) => s.toUpperCase(),
-		(s: string) => `${s}!`,
-		(s: string) => s.length,
-	);
+	const result = pipe("hello", (s: string) => s.toUpperCase(), (s: string) => `${s}!`, (s: string) => s.length);
 	expect(result).toBe(6);
 });
 
 test("pipe - type preservation through number chain", () => {
-	const result = pipe(
-		10,
-		(n: number) => n / 2,
-		(n: number) => n + 0.5,
-	);
+	const result = pipe(10, (n: number) => n / 2, (n: number) => n + 0.5);
 	expect(result).toBe(5.5);
 });
 
 test("pipe - type transformation through chain", () => {
-	const result = pipe(
-		42,
-		(n: number) => String(n),
-		(s: string) => s.split(""),
-		(arr: string[]) => arr.length,
-	);
+	const result = pipe(42, (n: number) => String(n), (s: string) => [...s], (arr: string[]) => arr.length);
 	expect(result).toBe(2);
 });
 
@@ -65,26 +47,18 @@ test("pipe - integration with Maybe.map", () => {
 });
 
 test("pipe - integration with Maybe.map on None", () => {
-	const result = pipe(
-		Maybe.none() as Maybe<number>,
-		Maybe.map((n: number) => n * 2),
-		Maybe.getOrElse(() => 0),
-	);
+	const result = pipe(Maybe.none() as Maybe<number>, Maybe.map((n: number) => n * 2), Maybe.getOrElse(() => 0));
 	expect(result).toBe(0);
 });
 
 test("pipe - integration with Result.map on Ok", () => {
-	const result = pipe(
-		Result.ok<number>(10),
-		Result.map((n: number) => n * 3),
-		Result.getOrElse(() => 0),
-	);
+	const result = pipe(Result.ok<number>(10), Result.map((n: number) => n * 3), Result.getOrElse(() => 0));
 	expect(result).toBe(30);
 });
 
 test("pipe - integration with Result.map on Err", () => {
 	const result = pipe(
-		Result.error("oops") as Result<string, number>,
+		Result.err("oops") as Result<string, number>,
 		Result.map((n: number) => n * 3),
 		Result.getOrElse(() => 0),
 	);
@@ -92,20 +66,12 @@ test("pipe - integration with Result.map on Err", () => {
 });
 
 test("pipe - works with objects", () => {
-	const result = pipe(
-		{ name: "Alice", age: 30 },
-		(user) => user.name,
-		(name) => name.toUpperCase(),
-	);
+	const result = pipe({ name: "Alice", age: 30 }, (user) => user.name, (name) => name.toUpperCase());
 	expect(result).toBe("ALICE");
 });
 
 test("pipe - works with arrays", () => {
-	const result = pipe(
-		[1, 2, 3, 4, 5],
-		(arr) => arr.filter((n) => n % 2 === 0),
-		(arr) => arr.reduce((a, b) => a + b, 0),
-	);
+	const result = pipe([1, 2, 3, 4, 5], (arr) => arr.filter((n) => n % 2 === 0), (arr) => arr.reduce((a, b) => a + b, 0));
 	expect(result).toBe(6);
 });
 

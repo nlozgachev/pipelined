@@ -77,10 +77,7 @@ test("State.modify produces undefined as the value", () => {
 });
 
 test("State.modify does not affect the value branch", () => {
-	const program = pipe(
-		State.modify<number>((n) => n * 2),
-		State.chain(() => State.get<number>()),
-	);
+	const program = pipe(State.modify<number>((n) => n * 2), State.chain(() => State.get<number>()));
 	const [value, state] = State.run(3)(program);
 	expect(value).toBe(6);
 	expect(state).toBe(6);
@@ -101,11 +98,7 @@ test("State.map does not change the state", () => {
 });
 
 test("State.map chains multiple transformations", () => {
-	const program = pipe(
-		State.resolve<number, number>(3),
-		State.map((n) => n + 1),
-		State.map((n) => n * 10),
-	);
+	const program = pipe(State.resolve<number, number>(3), State.map((n) => n + 1), State.map((n) => n * 10));
 	const [value] = State.run(0)(program);
 	expect(value).toBe(40);
 });
@@ -126,10 +119,7 @@ test("State.chain sequences two computations, threading state", () => {
 });
 
 test("State.chain passes the value from one step to the next", () => {
-	const program = pipe(
-		State.resolve<number, number>(10),
-		State.chain((n) => State.resolve(n * 2)),
-	);
+	const program = pipe(State.resolve<number, number>(10), State.chain((n) => State.resolve(n * 2)));
 	const [value] = State.run(0)(program);
 	expect(value).toBe(20);
 });
@@ -144,7 +134,7 @@ test("State.chain builds a stack via modify and get", () => {
 		State.chain(() => State.get<string[]>()),
 	);
 	const [value] = State.run([] as string[])(program);
-	expect(value).toEqual(["a", "b", "c"]);
+	expect(value).toStrictEqual(["a", "b", "c"]);
 });
 
 // ---------------------------------------------------------------------------
@@ -153,10 +143,7 @@ test("State.chain builds a stack via modify and get", () => {
 
 test("State.ap applies a wrapped function to a wrapped value", () => {
 	const double = (n: number) => n * 2;
-	const program = pipe(
-		State.resolve<number, (n: number) => number>(double),
-		State.ap(State.resolve(7)),
-	);
+	const program = pipe(State.resolve<number, (n: number) => number>(double), State.ap(State.resolve(7)));
 	const [value] = State.run(0)(program);
 	expect(value).toBe(14);
 });
@@ -214,13 +201,10 @@ test("State.execute returns only the final state", () => {
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("State composes well in a pipe chain", () => {
+test("state composes well in a pipe chain", () => {
 	type Cart = { items: string[]; total: number; };
 	const addItem = (item: string, price: number): State<Cart, undefined> =>
-		State.modify((cart) => ({
-			items: [...cart.items, item],
-			total: cart.total + price,
-		}));
+		State.modify((cart) => ({ items: [...cart.items, item], total: cart.total + price }));
 
 	const program = pipe(
 		addItem("apple", 1),

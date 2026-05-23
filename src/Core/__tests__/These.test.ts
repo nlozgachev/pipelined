@@ -7,16 +7,16 @@ import { These, TheseBoth } from "../These.ts";
 // ---------------------------------------------------------------------------
 
 test("These.first creates a These with only a first value", () => {
-	expect(These.first(42)).toEqual({ kind: "First", first: 42 });
+	expect(These.first(42)).toStrictEqual({ kind: "First", first: 42 });
 });
 
 test("These.second creates a These with only a second value", () => {
-	expect(These.second("oops")).toEqual({ kind: "Second", second: "oops" });
+	expect(These.second("oops")).toStrictEqual({ kind: "Second", second: "oops" });
 });
 
 test("These.both creates a These with both values", () => {
 	const result: TheseBoth<number, string> = These.both(42, "warn");
-	expect(result).toEqual({ kind: "Both", first: 42, second: "warn" });
+	expect(result).toStrictEqual({ kind: "Both", first: 42, second: "warn" });
 });
 
 // ---------------------------------------------------------------------------
@@ -92,11 +92,11 @@ test("These.hasSecond returns false for First", () => {
 // ---------------------------------------------------------------------------
 
 test("These.mapFirst transforms First value", () => {
-	expect(pipe(These.first(5), These.mapFirst((n: number) => n * 2))).toEqual({ kind: "First", first: 10 });
+	expect(pipe(These.first(5), These.mapFirst((n: number) => n * 2))).toStrictEqual({ kind: "First", first: 10 });
 });
 
 test("These.mapFirst transforms first value inside Both", () => {
-	expect(pipe(These.both(5, "warn"), These.mapFirst((n: number) => n * 2))).toEqual({
+	expect(pipe(These.both(5, "warn"), These.mapFirst((n: number) => n * 2))).toStrictEqual({
 		kind: "Both",
 		first: 10,
 		second: "warn",
@@ -104,7 +104,7 @@ test("These.mapFirst transforms first value inside Both", () => {
 });
 
 test("These.mapFirst passes through Second unchanged", () => {
-	expect(pipe(These.second<string>("err"), These.mapFirst((n: number) => n * 2))).toEqual({
+	expect(pipe(These.second<string>("err"), These.mapFirst((n: number) => n * 2))).toStrictEqual({
 		kind: "Second",
 		second: "err",
 	});
@@ -115,14 +115,14 @@ test("These.mapFirst passes through Second unchanged", () => {
 // ---------------------------------------------------------------------------
 
 test("These.mapSecond transforms Second value", () => {
-	expect(pipe(These.second("warn"), These.mapSecond((e: string) => e.toUpperCase()))).toEqual({
+	expect(pipe(These.second("warn"), These.mapSecond((e: string) => e.toUpperCase()))).toStrictEqual({
 		kind: "Second",
 		second: "WARN",
 	});
 });
 
 test("These.mapSecond transforms second value inside Both", () => {
-	expect(pipe(These.both(5, "warn"), These.mapSecond((e: string) => e.toUpperCase()))).toEqual({
+	expect(pipe(These.both(5, "warn"), These.mapSecond((e: string) => e.toUpperCase()))).toStrictEqual({
 		kind: "Both",
 		first: 5,
 		second: "WARN",
@@ -130,7 +130,7 @@ test("These.mapSecond transforms second value inside Both", () => {
 });
 
 test("These.mapSecond passes through First unchanged", () => {
-	expect(pipe(These.first<number>(5), These.mapSecond((e: string) => e.toUpperCase()))).toEqual({
+	expect(pipe(These.first<number>(5), These.mapSecond((e: string) => e.toUpperCase()))).toStrictEqual({
 		kind: "First",
 		first: 5,
 	});
@@ -141,33 +141,23 @@ test("These.mapSecond passes through First unchanged", () => {
 // ---------------------------------------------------------------------------
 
 test("These.mapBoth maps the first side for First", () => {
-	expect(pipe(
-		These.first(5),
-		These.mapBoth(
-			(n: number) => n * 2,
-			(e: string) => e.toUpperCase(),
-		),
-	)).toEqual({ kind: "First", first: 10 });
+	expect(pipe(These.first(5), These.mapBoth((n: number) => n * 2, (e: string) => e.toUpperCase()))).toStrictEqual({
+		kind: "First",
+		first: 10,
+	});
 });
 
 test("These.mapBoth maps the second side for Second", () => {
-	expect(pipe(
-		These.second("warn"),
-		These.mapBoth(
-			(n: number) => n * 2,
-			(e: string) => e.toUpperCase(),
-		),
-	)).toEqual({ kind: "Second", second: "WARN" });
+	expect(pipe(These.second("warn"), These.mapBoth((n: number) => n * 2, (e: string) => e.toUpperCase()))).toStrictEqual({
+		kind: "Second",
+		second: "WARN",
+	});
 });
 
 test("These.mapBoth maps both sides for Both", () => {
-	expect(pipe(
-		These.both(5, "warn"),
-		These.mapBoth(
-			(n: number) => n * 2,
-			(e: string) => e.toUpperCase(),
-		),
-	)).toEqual({ kind: "Both", first: 10, second: "WARN" });
+	expect(pipe(These.both(5, "warn"), These.mapBoth((n: number) => n * 2, (e: string) => e.toUpperCase()))).toStrictEqual(
+		{ kind: "Both", first: 10, second: "WARN" },
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -175,10 +165,10 @@ test("These.mapBoth maps both sides for Both", () => {
 // ---------------------------------------------------------------------------
 
 test("These.chainFirst applies function to First value", () => {
-	expect(pipe(
-		These.first(5),
-		These.chainFirst((n: number) => These.first(n * 2)),
-	)).toEqual({ kind: "First", first: 10 });
+	expect(pipe(These.first(5), These.chainFirst((n: number) => These.first(n * 2)))).toStrictEqual({
+		kind: "First",
+		first: 10,
+	});
 });
 
 test("These.chainFirst propagates Second without calling function", () => {
@@ -194,17 +184,17 @@ test("These.chainFirst propagates Second without calling function", () => {
 });
 
 test("These.chainFirst on Both applies function to first value", () => {
-	expect(pipe(
-		These.both(5, "warn"),
-		These.chainFirst((n: number) => These.first(n * 2)),
-	)).toEqual({ kind: "First", first: 10 });
+	expect(pipe(These.both(5, "warn"), These.chainFirst((n: number) => These.first(n * 2)))).toStrictEqual({
+		kind: "First",
+		first: 10,
+	});
 });
 
 test("These.chainFirst can change the first value type", () => {
-	expect(pipe(
-		These.first(42),
-		These.chainFirst((n: number) => These.first(`num: ${n}`)),
-	)).toEqual({ kind: "First", first: "num: 42" });
+	expect(pipe(These.first(42), These.chainFirst((n: number) => These.first(`num: ${n}`)))).toStrictEqual({
+		kind: "First",
+		first: "num: 42",
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -212,10 +202,10 @@ test("These.chainFirst can change the first value type", () => {
 // ---------------------------------------------------------------------------
 
 test("These.chainSecond applies function to Second value", () => {
-	expect(pipe(
-		These.second("warn"),
-		These.chainSecond((s: string) => These.second(s.toUpperCase())),
-	)).toEqual({ kind: "Second", second: "WARN" });
+	expect(pipe(These.second("warn"), These.chainSecond((s: string) => These.second(s.toUpperCase())))).toStrictEqual({
+		kind: "Second",
+		second: "WARN",
+	});
 });
 
 test("These.chainSecond propagates First without calling function", () => {
@@ -231,17 +221,17 @@ test("These.chainSecond propagates First without calling function", () => {
 });
 
 test("These.chainSecond on Both applies function to second value", () => {
-	expect(pipe(
-		These.both(5, "warn"),
-		These.chainSecond((s: string) => These.second(s.toUpperCase())),
-	)).toEqual({ kind: "Second", second: "WARN" });
+	expect(pipe(These.both(5, "warn"), These.chainSecond((s: string) => These.second(s.toUpperCase())))).toStrictEqual({
+		kind: "Second",
+		second: "WARN",
+	});
 });
 
 test("These.chainSecond can change the second value type", () => {
-	expect(pipe(
-		These.second("warn"),
-		These.chainSecond((s: string) => These.second(s.length)),
-	)).toEqual({ kind: "Second", second: 4 });
+	expect(pipe(These.second("warn"), These.chainSecond((s: string) => These.second(s.length)))).toStrictEqual({
+		kind: "Second",
+		second: 4,
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -249,36 +239,30 @@ test("These.chainSecond can change the second value type", () => {
 // ---------------------------------------------------------------------------
 
 test("These.fold calls onFirst for First", () => {
-	expect(pipe(
-		These.first(5),
-		These.fold(
-			(a: number) => `first:${a}`,
-			(b: string) => `second:${b}`,
-			(a: number, b: string) => `both:${a}/${b}`,
+	expect(
+		pipe(
+			These.first(5),
+			These.fold((a: number) => `first:${a}`, (b: string) => `second:${b}`, (a: number, b: string) => `both:${a}/${b}`),
 		),
-	)).toBe("first:5");
+	).toBe("first:5");
 });
 
 test("These.fold calls onSecond for Second", () => {
-	expect(pipe(
-		These.second("e"),
-		These.fold(
-			(a: number) => `first:${a}`,
-			(b: string) => `second:${b}`,
-			(a: number, b: string) => `both:${a}/${b}`,
+	expect(
+		pipe(
+			These.second("e"),
+			These.fold((a: number) => `first:${a}`, (b: string) => `second:${b}`, (a: number, b: string) => `both:${a}/${b}`),
 		),
-	)).toBe("second:e");
+	).toBe("second:e");
 });
 
 test("These.fold calls onBoth for Both", () => {
-	expect(pipe(
-		These.both(5, "w"),
-		These.fold(
-			(a: number) => `first:${a}`,
-			(b: string) => `second:${b}`,
-			(a: number, b: string) => `both:${a}/${b}`,
+	expect(
+		pipe(
+			These.both(5, "w"),
+			These.fold((a: number) => `first:${a}`, (b: string) => `second:${b}`, (a: number, b: string) => `both:${a}/${b}`),
 		),
-	)).toBe("both:5/w");
+	).toBe("both:5/w");
 });
 
 // ---------------------------------------------------------------------------
@@ -286,36 +270,42 @@ test("These.fold calls onBoth for Both", () => {
 // ---------------------------------------------------------------------------
 
 test("These.match calls first handler for First", () => {
-	expect(pipe(
-		These.first(5),
-		These.match({
-			first: (a: number) => `first:${a}`,
-			second: (b: string) => `second:${b}`,
-			both: (a: number, b: string) => `both:${a}/${b}`,
-		}),
-	)).toBe("first:5");
+	expect(
+		pipe(
+			These.first(5),
+			These.match({
+				first: (a: number) => `first:${a}`,
+				second: (b: string) => `second:${b}`,
+				both: (a: number, b: string) => `both:${a}/${b}`,
+			}),
+		),
+	).toBe("first:5");
 });
 
 test("These.match calls second handler for Second", () => {
-	expect(pipe(
-		These.second("e"),
-		These.match({
-			first: (a: number) => `first:${a}`,
-			second: (b: string) => `second:${b}`,
-			both: (a: number, b: string) => `both:${a}/${b}`,
-		}),
-	)).toBe("second:e");
+	expect(
+		pipe(
+			These.second("e"),
+			These.match({
+				first: (a: number) => `first:${a}`,
+				second: (b: string) => `second:${b}`,
+				both: (a: number, b: string) => `both:${a}/${b}`,
+			}),
+		),
+	).toBe("second:e");
 });
 
 test("These.match calls both handler for Both", () => {
-	expect(pipe(
-		These.both(5, "w"),
-		These.match({
-			first: (a: number) => `first:${a}`,
-			second: (b: string) => `second:${b}`,
-			both: (a: number, b: string) => `both:${a}/${b}`,
-		}),
-	)).toBe("both:5/w");
+	expect(
+		pipe(
+			These.both(5, "w"),
+			These.match({
+				first: (a: number) => `first:${a}`,
+				second: (b: string) => `second:${b}`,
+				both: (a: number, b: string) => `both:${a}/${b}`,
+			}),
+		),
+	).toBe("both:5/w");
 });
 
 // ---------------------------------------------------------------------------
@@ -403,7 +393,7 @@ test("These.tap executes side effect on First and returns original", () => {
 		}),
 	);
 	expect(seen).toBe(5);
-	expect(result).toEqual({ kind: "First", first: 5 });
+	expect(result).toStrictEqual({ kind: "First", first: 5 });
 });
 
 test("These.tap executes side effect on Both and returns original", () => {
@@ -415,7 +405,7 @@ test("These.tap executes side effect on Both and returns original", () => {
 		}),
 	);
 	expect(seen).toBe(7);
-	expect(result).toEqual({ kind: "Both", first: 7, second: "w" });
+	expect(result).toStrictEqual({ kind: "Both", first: 7, second: "w" });
 });
 
 test("These.tap does not execute side effect on Second", () => {
@@ -434,26 +424,22 @@ test("These.tap does not execute side effect on Second", () => {
 // ---------------------------------------------------------------------------
 
 test("These.swap converts First to Second", () => {
-	expect(These.swap(These.first(5))).toEqual({ kind: "Second", second: 5 });
+	expect(These.swap(These.first(5))).toStrictEqual({ kind: "Second", second: 5 });
 });
 
 test("These.swap converts Second to First", () => {
-	expect(These.swap(These.second("e"))).toEqual({ kind: "First", first: "e" });
+	expect(These.swap(These.second("e"))).toStrictEqual({ kind: "First", first: "e" });
 });
 
 test("These.swap swaps Both sides", () => {
-	expect(These.swap(These.both(5, "w"))).toEqual({
-		kind: "Both",
-		first: "w",
-		second: 5,
-	});
+	expect(These.swap(These.both(5, "w"))).toStrictEqual({ kind: "Both", first: "w", second: 5 });
 });
 
 // ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("These composes well in a pipe chain", () => {
+test("these composes well in a pipe chain", () => {
 	const result = pipe(
 		These.first(5),
 		These.mapFirst((n: number) => n * 2),
@@ -463,11 +449,11 @@ test("These composes well in a pipe chain", () => {
 	expect(result).toBe(10);
 });
 
-test("These chainFirst on Both discards second", () => {
+test("these chainFirst on Both discards second", () => {
 	const result = pipe(
 		These.both(5, "original warning"),
 		These.mapFirst((n: number) => n + 1),
 		These.chainFirst((n: number) => These.first(n * 2)),
 	);
-	expect(result).toEqual({ kind: "First", first: 12 });
+	expect(result).toStrictEqual({ kind: "First", first: 12 });
 });

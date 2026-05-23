@@ -53,8 +53,8 @@ test("Dict.fromRecord creates a map from a plain object", () => {
 
 test("Dict.groupBy groups items by key function", () => {
 	const m = pipe([1, 2, 3, 4, 5], Dict.groupBy((n) => n % 2 === 0 ? "even" : "odd"));
-	expect([...m.get("odd")!]).toEqual([1, 3, 5]);
-	expect([...m.get("even")!]).toEqual([2, 4]);
+	expect([...m.get("odd")!]).toStrictEqual([1, 3, 5]);
+	expect([...m.get("even")!]).toStrictEqual([2, 4]);
 });
 
 test("Dict.groupBy returns empty map for empty array", () => {
@@ -64,20 +64,20 @@ test("Dict.groupBy returns empty map for empty array", () => {
 test("Dict.groupBy all elements map to same key", () => {
 	const m = pipe([1, 2, 3], Dict.groupBy(() => "all"));
 	expect(m.size).toBe(1);
-	expect([...m.get("all")!]).toEqual([1, 2, 3]);
+	expect([...m.get("all")!]).toStrictEqual([1, 2, 3]);
 });
 
 test("Dict.groupBy each element maps to a unique key", () => {
 	const m = pipe([1, 2, 3], Dict.groupBy((n) => n));
 	expect(m.size).toBe(3);
-	expect([...m.get(1)!]).toEqual([1]);
+	expect([...m.get(1)!]).toStrictEqual([1]);
 });
 
 test("Dict.groupBy preserves insertion order within each group", () => {
 	const items = ["banana", "avocado", "blueberry", "apricot"];
 	const m = pipe(items, Dict.groupBy((s) => s[0]));
-	expect([...m.get("b")!]).toEqual(["banana", "blueberry"]);
-	expect([...m.get("a")!]).toEqual(["avocado", "apricot"]);
+	expect([...m.get("b")!]).toStrictEqual(["banana", "blueberry"]);
+	expect([...m.get("a")!]).toStrictEqual(["avocado", "apricot"]);
 });
 
 // ---------------------------------------------------------------------------
@@ -104,16 +104,16 @@ test("Dict.has returns false on empty map", () => {
 
 test("Dict.lookup returns Some when key exists", () => {
 	const m = Dict.fromEntries([["a", 42]]);
-	expect(pipe(m, Dict.lookup("a"))).toEqual(Maybe.some(42));
+	expect(pipe(m, Dict.lookup("a"))).toStrictEqual(Maybe.some(42));
 });
 
 test("Dict.lookup returns None when key does not exist", () => {
 	const m = Dict.fromEntries([["a", 42]]);
-	expect(pipe(m, Dict.lookup("b"))).toEqual(Maybe.none());
+	expect(pipe(m, Dict.lookup("b"))).toStrictEqual(Maybe.none());
 });
 
 test("Dict.lookup returns None on empty map", () => {
-	expect(pipe(Dict.empty<string, number>(), Dict.lookup("a"))).toEqual(Maybe.none());
+	expect(pipe(Dict.empty<string, number>(), Dict.lookup("a"))).toStrictEqual(Maybe.none());
 });
 
 // ---------------------------------------------------------------------------
@@ -142,15 +142,15 @@ test("Dict.isEmpty returns false for a non-empty map", () => {
 // ---------------------------------------------------------------------------
 
 test("Dict.keys returns all keys in insertion order", () => {
-	expect(Dict.keys(Dict.fromEntries([["b", 2], ["a", 1]]))).toEqual(["b", "a"]);
+	expect(Dict.keys(Dict.fromEntries([["b", 2], ["a", 1]]))).toStrictEqual(["b", "a"]);
 });
 
 test("Dict.values returns all values in insertion order", () => {
-	expect(Dict.values(Dict.fromEntries([["a", 1], ["b", 2]]))).toEqual([1, 2]);
+	expect(Dict.values(Dict.fromEntries([["a", 1], ["b", 2]]))).toStrictEqual([1, 2]);
 });
 
 test("Dict.entries returns all key-value pairs in insertion order", () => {
-	expect(Dict.entries(Dict.fromEntries([["a", 1], ["b", 2]]))).toEqual([["a", 1], ["b", 2]]);
+	expect(Dict.entries(Dict.fromEntries([["a", 1], ["b", 2]]))).toStrictEqual([["a", 1], ["b", 2]]);
 });
 
 // ---------------------------------------------------------------------------
@@ -230,10 +230,7 @@ test("Dict.map returns empty map when input is empty", () => {
 // ---------------------------------------------------------------------------
 
 test("Dict.mapWithKey receives the key and value", () => {
-	const m = pipe(
-		Dict.fromEntries([["a", 1], ["b", 2]]),
-		Dict.mapWithKey((k, v) => `${k}:${v}`),
-	);
+	const m = pipe(Dict.fromEntries([["a", 1], ["b", 2]]), Dict.mapWithKey((k, v) => `${k}:${v}`));
 	expect(m.get("a")).toBe("a:1");
 	expect(m.get("b")).toBe("b:2");
 });
@@ -243,10 +240,7 @@ test("Dict.mapWithKey receives the key and value", () => {
 // ---------------------------------------------------------------------------
 
 test("Dict.filter keeps entries matching predicate", () => {
-	const m = pipe(
-		Dict.fromEntries([["a", 1], ["b", 3], ["c", 0]]),
-		Dict.filter((n) => n > 0),
-	);
+	const m = pipe(Dict.fromEntries([["a", 1], ["b", 3], ["c", 0]]), Dict.filter((n) => n > 0));
 	expect(m.size).toBe(2);
 	expect(m.has("c")).toBe(false);
 });
@@ -260,10 +254,7 @@ test("Dict.filter returns empty map when nothing matches", () => {
 // ---------------------------------------------------------------------------
 
 test("Dict.filterWithKey receives key and value", () => {
-	const m = pipe(
-		Dict.fromEntries([["a", 1], ["b", 2], ["c", 3]]),
-		Dict.filterWithKey((k, v) => k !== "b" && v < 3),
-	);
+	const m = pipe(Dict.fromEntries([["a", 1], ["b", 2], ["c", 3]]), Dict.filterWithKey((k, v) => k !== "b" && v < 3));
 	expect(m.size).toBe(1);
 	expect(m.get("a")).toBe(1);
 });
@@ -274,11 +265,7 @@ test("Dict.filterWithKey receives key and value", () => {
 
 test("Dict.compact removes None values and unwraps Some values", () => {
 	const m = Dict.compact(
-		Dict.fromEntries<string, Maybe<number>>([
-			["a", Maybe.some(1)],
-			["b", Maybe.none()],
-			["c", Maybe.some(3)],
-		]),
+		Dict.fromEntries<string, Maybe<number>>([["a", Maybe.some(1)], ["b", Maybe.none()], ["c", Maybe.some(3)]]),
 	);
 	expect(m.size).toBe(2);
 	expect(m.get("a")).toBe(1);
@@ -287,9 +274,7 @@ test("Dict.compact removes None values and unwraps Some values", () => {
 });
 
 test("Dict.compact returns empty map when all values are None", () => {
-	const m = Dict.compact(
-		Dict.fromEntries<string, Maybe<number>>([["a", Maybe.none()], ["b", Maybe.none()]]),
-	);
+	const m = Dict.compact(Dict.fromEntries<string, Maybe<number>>([["a", Maybe.none()], ["b", Maybe.none()]]));
 	expect(m.size).toBe(0);
 });
 
@@ -306,7 +291,7 @@ test("Dict.filterMap keeps entries where f returns Some", () => {
 			return isNaN(n) ? Maybe.none() : Maybe.some(n);
 		}),
 	);
-	expect(Dict.toRecord(result as ReadonlyMap<string, number>)).toEqual({ a: 1, c: 3 });
+	expect(Dict.toRecord(result as ReadonlyMap<string, number>)).toStrictEqual({ a: 1, c: 3 });
 });
 
 test("Dict.filterMap returns empty map when all entries return None", () => {
@@ -318,7 +303,7 @@ test("Dict.filterMap returns empty map when all entries return None", () => {
 test("Dict.filterMap preserves keys of matching entries", () => {
 	const m = Dict.fromEntries<number, number>([[1, 10], [2, -5], [3, 30]]);
 	const result = pipe(m, Dict.filterMap((n: number) => n > 0 ? Maybe.some(n * 2) : Maybe.none()));
-	expect([...result.entries()]).toEqual([[1, 20], [3, 60]]);
+	expect([...result.entries()]).toStrictEqual([[1, 20], [3, 60]]);
 });
 
 // ---------------------------------------------------------------------------
@@ -326,10 +311,7 @@ test("Dict.filterMap preserves keys of matching entries", () => {
 // ---------------------------------------------------------------------------
 
 test("Dict.union merges two maps with other taking precedence", () => {
-	const m = pipe(
-		Dict.fromEntries([["a", 1], ["b", 2]]),
-		Dict.union(Dict.fromEntries([["b", 99], ["c", 3]])),
-	);
+	const m = pipe(Dict.fromEntries([["a", 1], ["b", 2]]), Dict.union(Dict.fromEntries([["b", 99], ["c", 3]])));
 	expect(m.get("a")).toBe(1);
 	expect(m.get("b")).toBe(99);
 	expect(m.get("c")).toBe(3);
@@ -338,7 +320,7 @@ test("Dict.union merges two maps with other taking precedence", () => {
 test("Dict.union with empty other returns equivalent map", () => {
 	const base = Dict.fromEntries([["a", 1]]);
 	const result = pipe(base, Dict.union(Dict.empty<string, number>()));
-	expect(Dict.entries(result)).toEqual(Dict.entries(base));
+	expect(Dict.entries(result)).toStrictEqual(Dict.entries(base));
 });
 
 // ---------------------------------------------------------------------------
@@ -356,10 +338,7 @@ test("Dict.intersection keeps only common keys with left values", () => {
 });
 
 test("Dict.intersection returns empty map when no common keys", () => {
-	const m = pipe(
-		Dict.fromEntries([["a", 1]]),
-		Dict.intersection(Dict.fromEntries([["b", 2]])),
-	);
+	const m = pipe(Dict.fromEntries([["a", 1]]), Dict.intersection(Dict.fromEntries([["b", 2]])));
 	expect(m.size).toBe(0);
 });
 
@@ -368,10 +347,7 @@ test("Dict.intersection returns empty map when no common keys", () => {
 // ---------------------------------------------------------------------------
 
 test("Dict.difference removes keys present in other", () => {
-	const m = pipe(
-		Dict.fromEntries([["a", 1], ["b", 2], ["c", 3]]),
-		Dict.difference(Dict.fromEntries([["b", 0]])),
-	);
+	const m = pipe(Dict.fromEntries([["a", 1], ["b", 2], ["c", 3]]), Dict.difference(Dict.fromEntries([["b", 0]])));
 	expect(m.size).toBe(2);
 	expect(m.has("b")).toBe(false);
 	expect(m.get("a")).toBe(1);
@@ -388,9 +364,7 @@ test("Dict.difference returns unchanged map when other is empty", () => {
 // ---------------------------------------------------------------------------
 
 test("Dict.reduce folds all values", () => {
-	const sum = Dict.reduce(0, (acc: number, v: number) => acc + v)(
-		Dict.fromEntries([["a", 1], ["b", 2], ["c", 3]]),
-	);
+	const sum = Dict.reduce(0, (acc: number, v: number) => acc + v)(Dict.fromEntries([["a", 1], ["b", 2], ["c", 3]]));
 	expect(sum).toBe(6);
 });
 
@@ -407,10 +381,8 @@ test("Dict.reduceWithKey receives key and value", () => {
 	Dict.reduceWithKey(0, (acc, _v, k: string) => {
 		keys.push(k);
 		return acc;
-	})(
-		Dict.fromEntries([["a", 1], ["b", 2]]),
-	);
-	expect(keys).toEqual(["a", "b"]);
+	})(Dict.fromEntries([["a", 1], ["b", 2]]));
+	expect(keys).toStrictEqual(["a", "b"]);
 });
 
 test("Dict.reduceWithKey folds using both key and value", () => {
@@ -425,18 +397,18 @@ test("Dict.reduceWithKey folds using both key and value", () => {
 // ---------------------------------------------------------------------------
 
 test("Dict.toRecord converts to plain object", () => {
-	expect(Dict.toRecord(Dict.fromEntries([["a", 1], ["b", 2]]))).toEqual({ a: 1, b: 2 });
+	expect(Dict.toRecord(Dict.fromEntries([["a", 1], ["b", 2]]))).toStrictEqual({ a: 1, b: 2 });
 });
 
 test("Dict.toRecord returns empty object for empty map", () => {
-	expect(Dict.toRecord(Dict.empty())).toEqual({});
+	expect(Dict.toRecord(Dict.empty())).toStrictEqual({});
 });
 
 // ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("Dict pipe composition — fromRecord, filter, map, reduce", () => {
+test("dict pipe composition — fromRecord, filter, map, reduce", () => {
 	const result = pipe(
 		Dict.fromRecord({ alice: 85, bob: 92, carol: 60, dave: 77 }),
 		Dict.filter((score) => score >= 75),

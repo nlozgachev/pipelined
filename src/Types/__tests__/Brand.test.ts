@@ -33,7 +33,7 @@ test("Brand.wrap can produce multiple distinct branded values", () => {
 test("Brand.wrap returned constructor is reusable", () => {
 	const toScore = Brand.wrap<"Score", number>();
 	const scores = [1, 2, 3].map(toScore);
-	expect(scores).toEqual([1, 2, 3]);
+	expect(scores).toStrictEqual([1, 2, 3]);
 });
 
 // ---------------------------------------------------------------------------

@@ -147,7 +147,7 @@ test("Uniq.remove does not mutate the original", () => {
 
 test("Uniq.map transforms all items", () => {
 	const s = pipe(Uniq.fromArray([1, 2, 3]), Uniq.map((n) => n * 2));
-	expect([...Uniq.toArray(s)].sort((a, b) => a - b)).toEqual([2, 4, 6]);
+	expect([...Uniq.toArray(s)].toSorted((a, b) => a - b)).toStrictEqual([2, 4, 6]);
 });
 
 test("Uniq.map merges duplicate results", () => {
@@ -165,7 +165,7 @@ test("Uniq.map on empty set returns empty set", () => {
 
 test("Uniq.filter keeps items matching predicate", () => {
 	const s = pipe(Uniq.fromArray([1, 2, 3, 4, 5]), Uniq.filter((n) => n % 2 === 0));
-	expect([...Uniq.toArray(s)].sort((a, b) => a - b)).toEqual([2, 4]);
+	expect([...Uniq.toArray(s)].toSorted((a, b) => a - b)).toStrictEqual([2, 4]);
 });
 
 test("Uniq.filter returns empty set when nothing matches", () => {
@@ -320,18 +320,18 @@ test("Uniq.reduce returns init for empty set", () => {
 // ---------------------------------------------------------------------------
 
 test("Uniq.toArray returns items in insertion order", () => {
-	expect(Uniq.toArray(Uniq.fromArray([3, 1, 2]))).toEqual([3, 1, 2]);
+	expect(Uniq.toArray(Uniq.fromArray([3, 1, 2]))).toStrictEqual([3, 1, 2]);
 });
 
 test("Uniq.toArray returns empty array for empty set", () => {
-	expect(Uniq.toArray(Uniq.empty())).toEqual([]);
+	expect(Uniq.toArray(Uniq.empty())).toStrictEqual([]);
 });
 
 // ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("Uniq pipe composition — fromArray, filter, map, reduce", () => {
+test("uniq pipe composition — fromArray, filter, map, reduce", () => {
 	const result = pipe(
 		Uniq.fromArray([1, 2, 3, 4, 5, 6, 1, 2]), // dedup → {1,2,3,4,5,6}
 		Uniq.filter((n) => n % 2 === 0), // {2,4,6}
@@ -341,7 +341,7 @@ test("Uniq pipe composition — fromArray, filter, map, reduce", () => {
 	expect(result).toBe(120);
 });
 
-test("Uniq pipe composition — set operations", () => {
+test("uniq pipe composition — set operations", () => {
 	const admins = Uniq.fromArray(["alice", "carol"]);
 	const editors = Uniq.fromArray(["bob", "carol", "dave"]);
 	const privileged = pipe(

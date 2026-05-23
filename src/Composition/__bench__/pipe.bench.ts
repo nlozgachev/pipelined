@@ -32,9 +32,7 @@ describe("pipe-10-steps", () => {
 
 {
 	const p3 = bytesPerCall(() => pipe(n, add1, double, negate));
-	const p10 = bytesPerCall(
-		() => pipe(n, add1, double, negate, square, halve, add1, double, negate, square, halve),
-	);
+	const p10 = bytesPerCall(() => pipe(n, add1, double, negate, square, halve, add1, double, negate, square, halve));
 	const d3 = bytesPerCall(direct3);
 	const d10 = bytesPerCall(direct10);
 	console.log("\n  pipe memory footprint (bytes/call, 500k iterations each):");

@@ -6,9 +6,10 @@
 import { Deferred } from "../Core/Deferred.ts";
 import type { Op } from "../Core/Op.ts";
 import { Result } from "../Core/Result.ts";
+import { Duration } from "../Types/Duration.ts";
 
 // ---------------------------------------------------------------------------
-// Internal singletons
+// Internal singletons & helpers
 // ---------------------------------------------------------------------------
 
 const _abortedNil: Op.Nil = { kind: "OpNil", reason: "aborted" };
@@ -18,17 +19,20 @@ const _evictedNil: Op.Nil = { kind: "OpNil", reason: "evicted" };
 const _idle: Op.Idle = { kind: "Idle" };
 const _pending: Op.Pending = { kind: "Pending" };
 const ok = <A>(value: A): Op.Ok<A> => ({ kind: "OpOk", value });
-const err = <E>(error: E): Op.Error<E> => ({ kind: "OpError", error });
+const err = <E>(error: E): Op.Err<E> => ({ kind: "OpErr", error });
+
+const getMs = (duration: Duration): number => Duration.toMilliseconds(duration);
 
 // ---------------------------------------------------------------------------
 // cancellableWait
 // ---------------------------------------------------------------------------
 
-/** Waits `ms` milliseconds. Resolves early if the signal fires (non-blocking abort). */
-export const cancellableWait = (ms: number, signal: AbortSignal): Promise<void> => {
-	if (ms <= 0) return Promise.resolve();
+/** Waits by the specified duration. Resolves early if the signal fires (non-blocking abort). */
+export const cancellableWait = (duration: Duration, signal: AbortSignal): Promise<void> => {
+	const rawMs = getMs(duration);
+	if (rawMs <= 0) { return Promise.resolve(); }
 	return new Promise<void>((resolve) => {
-		const id = setTimeout(resolve, ms);
+		const id = setTimeout(resolve, rawMs);
 		signal.addEventListener("abort", () => {
 			clearTimeout(id);
 			resolve();
@@ -52,25 +56,30 @@ export const runWithRetry = <I, E, A>(
 	onRetrying: (state: Op.Retrying<E>) => void,
 ): Promise<Result<E, A> | null> => {
 	const { attempts, backoff, when: shouldRetry } = options;
-	const getDelay = (n: number): number =>
-		backoff === undefined ? 0 : typeof backoff === "function" ? backoff(n) : backoff;
+	const getDelay = (n: number): Duration | undefined => {
+		if (backoff === undefined) { return undefined; }
+		return typeof backoff === "function" ? backoff(n) : backoff;
+	};
 
 	const attempt = async (left: number): Promise<Result<E, A> | null> => {
 		const result = await Deferred.toPromise(op._factory(input, signal));
-		if (result === null || signal.aborted) return null;
-		if (result.kind === "Ok") return result;
-		if (left <= 1) return result;
-		if (shouldRetry !== undefined && !shouldRetry(result.error)) return result;
+		if (result === null || signal.aborted) { return null; }
+		if (result.kind === "Ok") { return result; }
+		if (left <= 1) { return result; }
+		if (shouldRetry !== undefined && !shouldRetry(result.error)) { return result; }
 		const attemptNumber = attempts - left + 1;
-		const ms = getDelay(attemptNumber);
+		const delayDuration = getDelay(attemptNumber);
+		const ms = delayDuration ? getMs(delayDuration) : 0;
 		onRetrying({
 			kind: "Retrying",
 			attempt: attemptNumber,
 			lastError: result.error,
 			...(ms > 0 ? { nextRetryIn: ms } : {}),
 		});
-		await cancellableWait(ms, signal);
-		if (signal.aborted) return null;
+		if (delayDuration) {
+			await cancellableWait(delayDuration, signal);
+		}
+		if (signal.aborted) { return null; }
 		return attempt(left - 1);
 	};
 
@@ -91,20 +100,20 @@ export const execute = <I, E, A>(
 	op: Op<I, E, A>,
 	input: I,
 	controller: AbortController,
-	retryOptions: Op.RetryOptions<E> | undefined,
-	timeoutOptions: Op.TimeoutOptions<E> | undefined,
-	onRetrying: ((state: Op.Retrying<E>) => void) | undefined,
+	retryOptions?: Op.RetryOptions<E>,
+	timeoutOptions?: Op.TimeoutOptions<E>,
+	onRetrying?: (state: Op.Retrying<E>) => void,
 ): Deferred<Op.Outcome<E, A>> => {
 	const { signal } = controller;
 
 	const toOutcome = (r: Result<E, A> | null): Op.Outcome<E, A> =>
-		r === null ? _abortedNil : r.kind === "Ok" ? ok(r.value) : err(r.error);
+		r === null ? _abortedNil : (r.kind === "Ok" ? ok(r.value) : err(r.error));
 
 	const runPromise: Promise<Op.Outcome<E, A>> = retryOptions !== undefined && onRetrying !== undefined
 		? runWithRetry(op, input, signal, retryOptions, onRetrying).then(toOutcome)
 		: Deferred.toPromise(op._factory(input, signal)).then(toOutcome);
 
-	if (timeoutOptions === undefined) return Deferred.fromPromise(runPromise);
+	if (timeoutOptions === undefined) { return Deferred.fromPromise(runPromise); }
 
 	let timerId: ReturnType<typeof setTimeout>;
 	return Deferred.fromPromise(Promise.race([
@@ -116,7 +125,7 @@ export const execute = <I, E, A>(
 			timerId = setTimeout(() => {
 				controller.abort();
 				resolve(err(timeoutOptions.onTimeout()));
-			}, timeoutOptions.ms);
+			}, getMs(timeoutOptions.duration));
 		}),
 	]));
 };
@@ -127,9 +136,9 @@ export const execute = <I, E, A>(
 
 export const makeRestartable = <I, E, A>(
 	op: Op<I, E, A>,
-	minInterval: number | undefined,
-	retryOptions: Op.RetryOptions<E> | undefined,
-	timeoutOptions: Op.TimeoutOptions<E> | undefined,
+	minInterval?: Duration,
+	retryOptions?: Op.RetryOptions<E>,
+	timeoutOptions?: Op.TimeoutOptions<E>,
 ): Op.Manager<I, E, A, Op.State<E, A>> => {
 	let currentState: Op.State<E, A> = _idle;
 	let currentController: AbortController | undefined;
@@ -157,18 +166,20 @@ export const makeRestartable = <I, E, A>(
 				prev?.(_replacedNil); // resolve previous after updating state
 
 				const startExecution = (): void => {
-					if (currentController !== controller) return; // superseded
+					if (currentController !== controller) { return; // superseded
+					 }
 					lastStartTime = Date.now();
 					emit(_pending);
 
 					const onRetrying = retryOptions
 						? (r: Op.Retrying<E>) => {
-							if (currentController === controller) emit(r);
+							if (currentController === controller) { emit(r); }
 						}
 						: undefined;
 
 					execute(op, input, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
-						if (currentController !== controller) return; // superseded — already resolved by next run()
+						if (currentController !== controller) { return; // superseded — already resolved by next run()
+						 }
 						const r = currentResolve;
 						currentResolve = undefined;
 						currentController = undefined;
@@ -177,15 +188,13 @@ export const makeRestartable = <I, E, A>(
 					});
 				};
 
-				const gap = minInterval !== undefined
-					? Math.max(0, minInterval - (Date.now() - lastStartTime))
-					: 0;
+				const gap = minInterval !== undefined ? Math.max(0, getMs(minInterval) - (Date.now() - lastStartTime)) : 0;
 
 				if (gap > 0) {
 					waitController = new AbortController();
 					const wc = waitController;
-					cancellableWait(gap, wc.signal).then(() => {
-						if (waitController === wc) waitController = undefined;
+					cancellableWait(Duration.milliseconds(gap), wc.signal).then(() => {
+						if (waitController === wc) { waitController = undefined; }
 						startExecution();
 					});
 				} else {
@@ -201,7 +210,7 @@ export const makeRestartable = <I, E, A>(
 		currentController = undefined;
 		const r = currentResolve;
 		currentResolve = undefined;
-		if (currentState.kind !== "Idle") emit(_abortedNil);
+		if (currentState.kind !== "Idle") { emit(_abortedNil); }
 		r?.(_abortedNil);
 	};
 
@@ -213,13 +222,13 @@ export const makeRestartable = <I, E, A>(
 		abort,
 		subscribe: (cb) => {
 			subscribers.add(cb);
-			if (currentState.kind !== "Idle") cb(currentState);
+			if (currentState.kind !== "Idle") { cb(currentState); }
 			return () => subscribers.delete(cb);
 		},
 		reset: () => emit(_idle),
-		poll: (input: I, { interval }: { interval: number; }) => {
+		poll: (input: I, { interval }: { interval: Duration; }) => {
 			void run(input);
-			const id = setInterval(() => void run(input), interval);
+			const id = setInterval(() => void run(input), getMs(interval));
 			return () => clearInterval(id);
 		},
 	};
@@ -227,9 +236,9 @@ export const makeRestartable = <I, E, A>(
 
 export const makeExclusive = <I, E, A>(
 	op: Op<I, E, A>,
-	cooldown: number | undefined,
-	retryOptions: Op.RetryOptions<E> | undefined,
-	timeoutOptions: Op.TimeoutOptions<E> | undefined,
+	cooldown?: Duration,
+	retryOptions?: Op.RetryOptions<E>,
+	timeoutOptions?: Op.TimeoutOptions<E>,
 ): Op.Manager<I, E, A, Op.State<E, A>> => {
 	let currentState: Op.State<E, A> = _idle;
 	let currentController: AbortController | undefined;
@@ -256,21 +265,24 @@ export const makeExclusive = <I, E, A>(
 
 				const onRetrying = retryOptions
 					? (r: Op.Retrying<E>) => {
-						if (currentController === controller) emit(r);
+						if (currentController === controller) { emit(r); }
 					}
 					: undefined;
 
 				execute(op, input, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
-					if (currentController !== controller) return;
+					if (currentController !== controller) { return; }
 					const r = currentResolve;
 					currentResolve = undefined;
 					currentController = undefined;
 					emit(outcome);
 					r?.(outcome);
-					if (cooldown !== undefined && cooldown > 0) {
-						cooldownTimer = setTimeout(() => {
-							cooldownTimer = undefined;
-						}, cooldown);
+					if (cooldown !== undefined) {
+						const rawCooldown = getMs(cooldown);
+						if (rawCooldown > 0) {
+							cooldownTimer = setTimeout(() => {
+								cooldownTimer = undefined;
+							}, rawCooldown);
+						}
 					}
 				});
 			}),
@@ -286,7 +298,7 @@ export const makeExclusive = <I, E, A>(
 		currentController = undefined;
 		const r = currentResolve;
 		currentResolve = undefined;
-		if (currentState.kind !== "Idle") emit(_abortedNil);
+		if (currentState.kind !== "Idle") { emit(_abortedNil); }
 		r?.(_abortedNil);
 	};
 
@@ -298,13 +310,13 @@ export const makeExclusive = <I, E, A>(
 		abort,
 		subscribe: (cb) => {
 			subscribers.add(cb);
-			if (currentState.kind !== "Idle") cb(currentState);
+			if (currentState.kind !== "Idle") { cb(currentState); }
 			return () => subscribers.delete(cb);
 		},
 		reset: () => emit(_idle),
-		poll: (input: I, { interval }: { interval: number; }) => {
+		poll: (input: I, { interval }: { interval: Duration; }) => {
 			void run(input);
-			const id = setInterval(() => void run(input), interval);
+			const id = setInterval(() => void run(input), getMs(interval));
 			return () => clearInterval(id);
 		},
 	};
@@ -312,12 +324,12 @@ export const makeExclusive = <I, E, A>(
 
 export const makeQueue = <I, E, A>(
 	op: Op<I, E, A>,
-	maxSize: number | undefined,
-	overflow: "drop" | "replace-last" | undefined,
-	concurrency: number | undefined,
-	dedupe: ((a: I, b: I) => boolean) | undefined,
-	retryOptions: Op.RetryOptions<E> | undefined,
-	timeoutOptions: Op.TimeoutOptions<E> | undefined,
+	maxSize?: number,
+	overflow?: "drop" | "replace-last",
+	concurrency?: number,
+	dedupe?: (a: I, b: I) => boolean,
+	retryOptions?: Op.RetryOptions<E>,
+	timeoutOptions?: Op.TimeoutOptions<E>,
 ): Op.Manager<I, E, A, Op.State<E, A>> => {
 	const maxConcurrency = concurrency ?? 1;
 	let currentState: Op.State<E, A> = _idle;
@@ -342,14 +354,14 @@ export const makeQueue = <I, E, A>(
 
 		const onRetrying = retryOptions
 			? (r: Op.Retrying<E>) => {
-				if (generation === myGeneration && inflightControllers.has(controller)) emit(r);
+				if (generation === myGeneration && inflightControllers.has(controller)) { emit(r); }
 			}
 			: undefined;
 
 		execute(op, input, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
 			inflightControllers.delete(controller);
 			const idx = inflightResolvers.indexOf(resolve);
-			if (idx !== -1) inflightResolvers.splice(idx, 1);
+			if (idx !== -1) { inflightResolvers.splice(idx, 1); }
 
 			if (generation !== myGeneration) {
 				resolve(_abortedNil);
@@ -422,7 +434,7 @@ export const makeQueue = <I, E, A>(
 		const toResolve = inflightResolvers.splice(0);
 		const queuedResolvers = queue.splice(0).map((item) => item.resolve);
 		inFlight = 0;
-		if (currentState.kind !== "Idle") emit(_abortedNil);
+		if (currentState.kind !== "Idle") { emit(_abortedNil); }
 		toResolve.forEach((r) => r(_abortedNil));
 		queuedResolvers.forEach((r) => r(_abortedNil));
 	};
@@ -435,13 +447,13 @@ export const makeQueue = <I, E, A>(
 		abort,
 		subscribe: (cb) => {
 			subscribers.add(cb);
-			if (currentState.kind !== "Idle") cb(currentState);
+			if (currentState.kind !== "Idle") { cb(currentState); }
 			return () => subscribers.delete(cb);
 		},
 		reset: () => emit(_idle),
-		poll: (input: I, { interval }: { interval: number; }) => {
+		poll: (input: I, { interval }: { interval: Duration; }) => {
 			void run(input);
-			const id = setInterval(() => void run(input), interval);
+			const id = setInterval(() => void run(input), getMs(interval));
 			return () => clearInterval(id);
 		},
 	};
@@ -449,9 +461,9 @@ export const makeQueue = <I, E, A>(
 
 export const makeBuffered = <I, E, A>(
 	op: Op<I, E, A>,
-	size: number | undefined,
-	retryOptions: Op.RetryOptions<E> | undefined,
-	timeoutOptions: Op.TimeoutOptions<E> | undefined,
+	size?: number,
+	retryOptions?: Op.RetryOptions<E>,
+	timeoutOptions?: Op.TimeoutOptions<E>,
 ): Op.Manager<I, E, A, Op.State<E, A>> => {
 	const bufferSize = size ?? 1;
 	let currentState: Op.State<E, A> = _idle;
@@ -473,12 +485,12 @@ export const makeBuffered = <I, E, A>(
 
 		const onRetrying = retryOptions
 			? (r: Op.Retrying<E>) => {
-				if (currentController === controller) emit(r);
+				if (currentController === controller) { emit(r); }
 			}
 			: undefined;
 
 		execute(op, input, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
-			if (currentController !== controller) return;
+			if (currentController !== controller) { return; }
 			const r = currentResolve;
 			currentResolve = undefined;
 			currentController = undefined;
@@ -516,7 +528,7 @@ export const makeBuffered = <I, E, A>(
 		const cr = currentResolve;
 		currentResolve = undefined;
 		const bufferedResolvers = buffer.splice(0).map((item) => item.resolve);
-		if (currentState.kind !== "Idle") emit(_abortedNil);
+		if (currentState.kind !== "Idle") { emit(_abortedNil); }
 		cr?.(_abortedNil);
 		bufferedResolvers.forEach((r) => r(_abortedNil));
 	};
@@ -529,13 +541,13 @@ export const makeBuffered = <I, E, A>(
 		abort,
 		subscribe: (cb) => {
 			subscribers.add(cb);
-			if (currentState.kind !== "Idle") cb(currentState);
+			if (currentState.kind !== "Idle") { cb(currentState); }
 			return () => subscribers.delete(cb);
 		},
 		reset: () => emit(_idle),
-		poll: (input: I, { interval }: { interval: number; }) => {
+		poll: (input: I, { interval }: { interval: Duration; }) => {
 			void run(input);
-			const id = setInterval(() => void run(input), interval);
+			const id = setInterval(() => void run(input), getMs(interval));
 			return () => clearInterval(id);
 		},
 	};
@@ -543,11 +555,11 @@ export const makeBuffered = <I, E, A>(
 
 export const makeDebounced = <I, E, A>(
 	op: Op<I, E, A>,
-	ms: number,
+	duration: Duration,
 	leading: boolean,
-	maxWait: number | undefined,
-	retryOptions: Op.RetryOptions<E> | undefined,
-	timeoutOptions: Op.TimeoutOptions<E> | undefined,
+	maxWait?: Duration,
+	retryOptions?: Op.RetryOptions<E>,
+	timeoutOptions?: Op.TimeoutOptions<E>,
 ): Op.Manager<I, E, A, Op.State<E, A>> => {
 	let currentState: Op.State<E, A> = _idle;
 	// Trailing execution state
@@ -576,12 +588,12 @@ export const makeDebounced = <I, E, A>(
 
 		const onRetrying = retryOptions
 			? (r: Op.Retrying<E>) => {
-				if (leadingController === controller) emit(r);
+				if (leadingController === controller) { emit(r); }
 			}
 			: undefined;
 
 		execute(op, input, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
-			if (leadingController !== controller) return;
+			if (leadingController !== controller) { return; }
 			const r = leadingResolve;
 			leadingResolve = undefined;
 			leadingController = undefined;
@@ -595,7 +607,8 @@ export const makeDebounced = <I, E, A>(
 		firstCallAt = 0;
 		const capturedResolve = pendingResolve;
 		pendingResolve = undefined;
-		if (capturedResolve === undefined) return; // leading-only burst — no trailing call pending
+		if (capturedResolve === undefined) { return; // leading-only burst — no trailing call pending
+		 }
 		currentResolve = capturedResolve;
 		const toRun = pendingInput as I;
 		pendingInput = undefined;
@@ -605,12 +618,12 @@ export const makeDebounced = <I, E, A>(
 
 		const onRetrying = retryOptions
 			? (r: Op.Retrying<E>) => {
-				if (currentController === controller) emit(r);
+				if (currentController === controller) { emit(r); }
 			}
 			: undefined;
 
 		execute(op, toRun, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
-			if (currentController !== controller) return;
+			if (currentController !== controller) { return; }
 			const r = currentResolve;
 			currentResolve = undefined;
 			currentController = undefined;
@@ -620,11 +633,11 @@ export const makeDebounced = <I, E, A>(
 	};
 
 	const scheduleTrailing = (): void => {
-		if (timerId !== undefined) clearTimeout(timerId);
-		let delay = ms;
+		if (timerId !== undefined) { clearTimeout(timerId); }
+		let delay = getMs(duration);
 		if (maxWait !== undefined && firstCallAt > 0) {
-			const maxDelay = firstCallAt + maxWait - Date.now();
-			delay = Math.min(ms, Math.max(0, maxDelay));
+			const maxDelay = firstCallAt + getMs(maxWait) - Date.now();
+			delay = Math.min(getMs(duration), Math.max(0, maxDelay));
 		}
 		timerId = setTimeout(fireTrailing, delay);
 	};
@@ -674,7 +687,7 @@ export const makeDebounced = <I, E, A>(
 		leadingResolve = undefined;
 		leadingController?.abort();
 		leadingController = undefined;
-		if (currentState.kind !== "Idle") emit(_abortedNil);
+		if (currentState.kind !== "Idle") { emit(_abortedNil); }
 		pr?.(_abortedNil);
 		cr?.(_abortedNil);
 		lr?.(_abortedNil);
@@ -688,13 +701,13 @@ export const makeDebounced = <I, E, A>(
 		abort,
 		subscribe: (cb) => {
 			subscribers.add(cb);
-			if (currentState.kind !== "Idle") cb(currentState);
+			if (currentState.kind !== "Idle") { cb(currentState); }
 			return () => subscribers.delete(cb);
 		},
 		reset: () => emit(_idle),
-		poll: (input: I, { interval }: { interval: number; }) => {
+		poll: (input: I, { interval }: { interval: Duration; }) => {
 			void run(input);
-			const id = setInterval(() => void run(input), interval);
+			const id = setInterval(() => void run(input), getMs(interval));
 			return () => clearInterval(id);
 		},
 	};
@@ -702,10 +715,10 @@ export const makeDebounced = <I, E, A>(
 
 export const makeThrottled = <I, E, A>(
 	op: Op<I, E, A>,
-	ms: number,
+	duration: Duration,
 	trailing: boolean,
-	retryOptions: Op.RetryOptions<E> | undefined,
-	timeoutOptions: Op.TimeoutOptions<E> | undefined,
+	retryOptions?: Op.RetryOptions<E>,
+	timeoutOptions?: Op.TimeoutOptions<E>,
 ): Op.Manager<I, E, A, Op.State<E, A>> => {
 	let currentState: Op.State<E, A> = _idle;
 	let currentController: AbortController | undefined;
@@ -728,12 +741,12 @@ export const makeThrottled = <I, E, A>(
 
 		const onRetrying = retryOptions
 			? (r: Op.Retrying<E>) => {
-				if (currentController === controller) emit(r);
+				if (currentController === controller) { emit(r); }
 			}
 			: undefined;
 
 		execute(op, input, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
-			if (currentController !== controller) return;
+			if (currentController !== controller) { return; }
 			const r = currentResolve;
 			currentResolve = undefined;
 			currentController = undefined;
@@ -753,7 +766,7 @@ export const makeThrottled = <I, E, A>(
 				fireOp(input, resolve);
 				startCooldown(); // trailing fire holds its own cooldown window
 			}
-		}, ms);
+		}, getMs(duration));
 	};
 
 	const run = (input: I): Deferred<Op.Outcome<E, A>> => {
@@ -790,7 +803,7 @@ export const makeThrottled = <I, E, A>(
 		const pr = pendingResolve;
 		pendingResolve = undefined;
 		pendingInput = undefined;
-		if (currentState.kind !== "Idle") emit(_abortedNil);
+		if (currentState.kind !== "Idle") { emit(_abortedNil); }
 		cr?.(_abortedNil);
 		pr?.(_abortedNil);
 	};
@@ -803,13 +816,13 @@ export const makeThrottled = <I, E, A>(
 		abort,
 		subscribe: (cb) => {
 			subscribers.add(cb);
-			if (currentState.kind !== "Idle") cb(currentState);
+			if (currentState.kind !== "Idle") { cb(currentState); }
 			return () => subscribers.delete(cb);
 		},
 		reset: () => emit(_idle),
-		poll: (input: I, { interval }: { interval: number; }) => {
+		poll: (input: I, { interval }: { interval: Duration; }) => {
 			void run(input);
-			const id = setInterval(() => void run(input), interval);
+			const id = setInterval(() => void run(input), getMs(interval));
 			return () => clearInterval(id);
 		},
 	};
@@ -819,8 +832,8 @@ export const makeConcurrent = <I, E, A>(
 	op: Op<I, E, A>,
 	n: number,
 	overflow: "queue" | "drop",
-	retryOptions: Op.RetryOptions<E> | undefined,
-	timeoutOptions: Op.TimeoutOptions<E> | undefined,
+	retryOptions?: Op.RetryOptions<E>,
+	timeoutOptions?: Op.TimeoutOptions<E>,
 ): Op.Manager<I, E, A, Op.State<E, A>> => {
 	let currentState: Op.State<E, A> = _idle;
 	let inflight = 0;
@@ -844,14 +857,14 @@ export const makeConcurrent = <I, E, A>(
 
 		const onRetrying = retryOptions
 			? (r: Op.Retrying<E>) => {
-				if (generation === myGeneration && controllers.has(controller)) emit(r);
+				if (generation === myGeneration && controllers.has(controller)) { emit(r); }
 			}
 			: undefined;
 
 		execute(op, input, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
 			controllers.delete(controller);
 			const idx = inflightResolvers.indexOf(resolve);
-			if (idx !== -1) inflightResolvers.splice(idx, 1);
+			if (idx !== -1) { inflightResolvers.splice(idx, 1); }
 
 			if (generation !== myGeneration) {
 				resolve(_abortedNil);
@@ -899,7 +912,7 @@ export const makeConcurrent = <I, E, A>(
 		const toResolve = inflightResolvers.splice(0);
 		const queuedResolvers = overflowQueue.splice(0).map((item) => item.resolve);
 		inflight = 0;
-		if (currentState.kind !== "Idle") emit(_abortedNil);
+		if (currentState.kind !== "Idle") { emit(_abortedNil); }
 		toResolve.forEach((r) => r(_abortedNil));
 		queuedResolvers.forEach((r) => r(_abortedNil));
 	};
@@ -912,13 +925,13 @@ export const makeConcurrent = <I, E, A>(
 		abort,
 		subscribe: (cb) => {
 			subscribers.add(cb);
-			if (currentState.kind !== "Idle") cb(currentState);
+			if (currentState.kind !== "Idle") { cb(currentState); }
 			return () => subscribers.delete(cb);
 		},
 		reset: () => emit(_idle),
-		poll: (input: I, { interval }: { interval: number; }) => {
+		poll: (input: I, { interval }: { interval: Duration; }) => {
 			void run(input);
-			const id = setInterval(() => void run(input), interval);
+			const id = setInterval(() => void run(input), getMs(interval));
 			return () => clearInterval(id);
 		},
 	};
@@ -928,7 +941,7 @@ export const makeKeyed = <I, K, E, A>(
 	op: Op<I, E, A>,
 	keyFn: (input: I) => K,
 	perKey: "exclusive" | "restartable",
-	timeoutOptions: Op.TimeoutOptions<E> | undefined,
+	timeoutOptions?: Op.TimeoutOptions<E>,
 ): Op.KeyedManager<I, K, E, Op.KeyedExclusivePerKey<E, A> | Op.KeyedRestartablePerKey<E, A>> => {
 	type PerKeyS = Op.KeyedExclusivePerKey<E, A> | Op.KeyedRestartablePerKey<E, A>;
 	const stateMap = new Map<K, PerKeyS>();
@@ -962,7 +975,7 @@ export const makeKeyed = <I, K, E, A>(
 				stateMap.set(k, _pending as PerKeyS);
 				emitSnapshot();
 
-				execute(op, input, controller, undefined, timeoutOptions, undefined).then((outcome) => {
+				execute(op, input, controller, undefined, timeoutOptions).then((outcome) => {
 					const slot = slots.get(k);
 					if (!slot || slot.controller !== controller) {
 						resolve(_abortedNil);
@@ -996,7 +1009,7 @@ export const makeKeyed = <I, K, E, A>(
 				stateMap.set(k, _abortedNil as PerKeyS);
 			}
 			slots.clear();
-			if (toResolve.length > 0) emitSnapshot();
+			if (toResolve.length > 0) { emitSnapshot(); }
 			toResolve.forEach((r) => r(_abortedNil));
 		}
 	};
@@ -1009,16 +1022,16 @@ export const makeKeyed = <I, K, E, A>(
 		abort,
 		subscribe: (cb) => {
 			subscribers.add(cb);
-			if (stateMap.size > 0) cb(new Map(stateMap) as ReadonlyMap<K, PerKeyS>);
+			if (stateMap.size > 0) { cb(new Map(stateMap) as ReadonlyMap<K, PerKeyS>); }
 			return () => subscribers.delete(cb);
 		},
 		reset: () => {
 			stateMap.clear();
 			emitSnapshot();
 		},
-		poll: (input: I, { interval }: { interval: number; }) => {
+		poll: (input: I, { interval }: { interval: Duration; }) => {
 			void run(input);
-			const id = setInterval(() => void run(input), interval);
+			const id = setInterval(() => void run(input), getMs(interval));
 			return () => clearInterval(id);
 		},
 	};
@@ -1026,8 +1039,8 @@ export const makeKeyed = <I, K, E, A>(
 
 export const makeOnce = <I, E, A>(
 	op: Op<I, E, A>,
-	retryOptions: Op.RetryOptions<E> | undefined,
-	timeoutOptions: Op.TimeoutOptions<E> | undefined,
+	retryOptions?: Op.RetryOptions<E>,
+	timeoutOptions?: Op.TimeoutOptions<E>,
 ): Op.Manager<I, E, A, Op.State<E, A>> => {
 	let currentState: Op.State<E, A> = _idle;
 	let currentController: AbortController | undefined;
@@ -1053,12 +1066,12 @@ export const makeOnce = <I, E, A>(
 
 				const onRetrying = retryOptions
 					? (r: Op.Retrying<E>) => {
-						if (currentController === controller) emit(r);
+						if (currentController === controller) { emit(r); }
 					}
 					: undefined;
 
 				execute(op, input, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
-					if (currentController !== controller) return;
+					if (currentController !== controller) { return; }
 					const r = currentResolve;
 					currentResolve = undefined;
 					currentController = undefined;
@@ -1074,7 +1087,7 @@ export const makeOnce = <I, E, A>(
 		currentController = undefined;
 		const r = currentResolve;
 		currentResolve = undefined;
-		if (currentState.kind !== "Idle") emit(_abortedNil);
+		if (currentState.kind !== "Idle") { emit(_abortedNil); }
 		r?.(_abortedNil);
 	};
 
@@ -1086,13 +1099,13 @@ export const makeOnce = <I, E, A>(
 		abort,
 		subscribe: (cb) => {
 			subscribers.add(cb);
-			if (currentState.kind !== "Idle") cb(currentState);
+			if (currentState.kind !== "Idle") { cb(currentState); }
 			return () => subscribers.delete(cb);
 		},
 		reset: () => emit(_idle),
-		poll: (input: I, { interval }: { interval: number; }) => {
+		poll: (input: I, { interval }: { interval: Duration; }) => {
 			void run(input);
-			const id = setInterval(() => void run(input), interval);
+			const id = setInterval(() => void run(input), getMs(interval));
 			return () => clearInterval(id);
 		},
 	};

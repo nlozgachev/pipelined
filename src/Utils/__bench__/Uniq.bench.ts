@@ -7,10 +7,7 @@ const data100 = Array.from({ length: 100 }, (_, i) => i);
 const data10k = Array.from({ length: 10_000 }, (_, i) => i);
 
 // varied fixtures — generated once at module load, used across bench groups
-const [variedData100] = fc.sample(
-	fc.array(fc.integer({ min: 0, max: 200 }), { minLength: 100, maxLength: 100 }),
-	1,
-);
+const [variedData100] = fc.sample(fc.array(fc.integer({ min: 0, max: 200 }), { minLength: 100, maxLength: 100 }), 1);
 const [variedData10k] = fc.sample(
 	fc.array(fc.integer({ min: 0, max: 20_000 }), { minLength: 10_000, maxLength: 10_000 }),
 	1,
@@ -22,8 +19,8 @@ const set100 = Uniq.fromArray(data100);
 const set10k = Uniq.fromArray(data10k);
 const setA100 = Uniq.fromArray(Array.from({ length: 50 }, (_, i) => i));
 const setB100 = Uniq.fromArray(Array.from({ length: 50 }, (_, i) => i + 25));
-const setA10k = Uniq.fromArray(Array.from({ length: 5_000 }, (_, i) => i));
-const setB10k = Uniq.fromArray(Array.from({ length: 5_000 }, (_, i) => i + 2_500));
+const setA10k = Uniq.fromArray(Array.from({ length: 5000 }, (_, i) => i));
+const setB10k = Uniq.fromArray(Array.from({ length: 5000 }, (_, i) => i + 2500));
 
 // =============================================================================
 // fromArray
@@ -76,10 +73,10 @@ describe("uniq-has-10k-hit", () => {
 
 describe("uniq-has-10k-miss", () => {
 	bench("1. (current) Uniq.has 10k (absent", () => {
-		pipe(set10k, Uniq.has(99999));
+		pipe(set10k, Uniq.has(99_999));
 	});
 	bench("2. native set.has 10k (absent", () => {
-		set10k.has(99999);
+		set10k.has(99_999);
 	});
 });
 
@@ -89,7 +86,7 @@ describe("uniq-map-100", () => {
 	});
 	bench("2. native map loop 100", () => {
 		const result = new globalThis.Set<number>();
-		for (const item of set100) result.add(item * 2);
+		for (const item of set100) { result.add(item * 2); }
 	});
 });
 
@@ -99,7 +96,7 @@ describe("uniq-map-10k", () => {
 	});
 	bench("2. native map loop 10k", () => {
 		const result = new globalThis.Set<number>();
-		for (const item of set10k) result.add(item * 2);
+		for (const item of set10k) { result.add(item * 2); }
 	});
 });
 
@@ -109,7 +106,7 @@ describe("uniq-filter-100", () => {
 	});
 	bench("2. native filter loop 100", () => {
 		const result = new globalThis.Set<number>();
-		for (const item of set100) if (item % 2 === 0) result.add(item);
+		for (const item of set100) { if (item % 2 === 0) { result.add(item); } }
 	});
 });
 
@@ -119,7 +116,7 @@ describe("uniq-filter-10k", () => {
 	});
 	bench("2. native filter loop 10k", () => {
 		const result = new globalThis.Set<number>();
-		for (const item of set10k) if (item % 2 === 0) result.add(item);
+		for (const item of set10k) { if (item % 2 === 0) { result.add(item); } }
 	});
 });
 
@@ -129,7 +126,7 @@ describe("uniq-union-100", () => {
 	});
 	bench("2. native union loop 100", () => {
 		const result = new globalThis.Set(setA100);
-		for (const item of setB100) result.add(item);
+		for (const item of setB100) { result.add(item); }
 	});
 	bench("3. native set.union() 100", () => {
 		(setA100 as Set<number>).union(setB100 as Set<number>);
@@ -142,7 +139,7 @@ describe("uniq-union-10k", () => {
 	});
 	bench("2. native union loop 10k", () => {
 		const result = new globalThis.Set(setA10k);
-		for (const item of setB10k) result.add(item);
+		for (const item of setB10k) { result.add(item); }
 	});
 	bench("3. native set.union() 10k", () => {
 		(setA10k as Set<number>).union(setB10k as Set<number>);
@@ -155,7 +152,7 @@ describe("uniq-union-approaches-10k", () => {
 	});
 	bench("2. for-of add loop 10k", () => {
 		const result = new globalThis.Set(setA10k);
-		for (const item of setB10k) result.add(item);
+		for (const item of setB10k) { result.add(item); }
 	});
 	bench("3. spread union 10k", () => {
 		void new globalThis.Set([...setA10k, ...setB10k]);
@@ -168,7 +165,7 @@ describe("uniq-intersection-100", () => {
 	});
 	bench("2. native intersection loop 100", () => {
 		const result = new globalThis.Set<number>();
-		for (const item of set100) if (setA100.has(item)) result.add(item);
+		for (const item of set100) { if (setA100.has(item)) { result.add(item); } }
 	});
 	bench("3. native set.intersection() 100", () => {
 		(set100 as Set<number>).intersection(setA100 as Set<number>);
@@ -181,7 +178,7 @@ describe("uniq-intersection-10k", () => {
 	});
 	bench("2. native intersection loop 10k", () => {
 		const result = new globalThis.Set<number>();
-		for (const item of set10k) if (setA10k.has(item)) result.add(item);
+		for (const item of set10k) { if (setA10k.has(item)) { result.add(item); } }
 	});
 	bench("3. native set.intersection() 10k", () => {
 		(set10k as Set<number>).intersection(setA10k as Set<number>);
@@ -194,7 +191,7 @@ describe("uniq-difference-100", () => {
 	});
 	bench("2. native difference loop 100", () => {
 		const result = new globalThis.Set<number>();
-		for (const item of set100) if (!setA100.has(item)) result.add(item);
+		for (const item of set100) { if (!setA100.has(item)) { result.add(item); } }
 	});
 	bench("3. native set.difference() 100", () => {
 		(set100 as Set<number>).difference(setA100 as Set<number>);
@@ -207,7 +204,7 @@ describe("uniq-difference-10k", () => {
 	});
 	bench("2. native difference loop 10k", () => {
 		const result = new globalThis.Set<number>();
-		for (const item of set10k) if (!setA10k.has(item)) result.add(item);
+		for (const item of set10k) { if (!setA10k.has(item)) { result.add(item); } }
 	});
 	bench("3. native set.difference() 10k", () => {
 		(set10k as Set<number>).difference(setA10k as Set<number>);
@@ -220,7 +217,7 @@ describe("uniq-reduce-100", () => {
 	});
 	bench("2. native reduce loop 100", () => {
 		let _acc = 0;
-		for (const item of set100) _acc += item;
+		for (const item of set100) { _acc += item; }
 	});
 });
 
@@ -230,7 +227,7 @@ describe("uniq-reduce-10k", () => {
 	});
 	bench("2. native reduce loop 10k", () => {
 		let _acc = 0;
-		for (const item of set10k) _acc += item;
+		for (const item of set10k) { _acc += item; }
 	});
 });
 
@@ -246,11 +243,11 @@ describe("uniq-insert-100-new", () => {
 
 describe("uniq-insert-10k-new", () => {
 	bench("1. (current) Uniq.insert 10k (new item", () => {
-		pipe(set10k, Uniq.insert(99999));
+		pipe(set10k, Uniq.insert(99_999));
 	});
 	bench("2. native insert clone 10k", () => {
 		const result = new globalThis.Set(set10k);
-		result.add(99999);
+		result.add(99_999);
 	});
 });
 
@@ -310,7 +307,7 @@ describe("uniq-filter-varied-10k", () => {
 	});
 	bench("2. native filter loop varied 10k", () => {
 		const result = new globalThis.Set<number>();
-		for (const item of variedSet10k) if (item % 2 === 0) result.add(item);
+		for (const item of variedSet10k) { if (item % 2 === 0) { result.add(item); } }
 	});
 });
 
@@ -320,6 +317,6 @@ describe("uniq-map-varied-10k", () => {
 	});
 	bench("2. native map loop varied 10k", () => {
 		const result = new globalThis.Set<number>();
-		for (const item of variedSet10k) result.add(item * 2);
+		for (const item of variedSet10k) { result.add(item * 2); }
 	});
 });

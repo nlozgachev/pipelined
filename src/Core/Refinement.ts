@@ -118,7 +118,7 @@ export namespace Refinement {
 	 * Converts a `Refinement<A, B>` into a function `(a: A) => Maybe<B>`.
 	 *
 	 * Returns `Some(a)` when the refinement holds, `None` otherwise. Useful for
-	 * integrating runtime validation into an `Maybe`-based pipeline.
+	 * integrating runtime validation into a `Maybe`-based pipeline.
 	 *
 	 * @example
 	 * ```ts
@@ -150,5 +150,5 @@ export namespace Refinement {
 	 * ```
 	 */
 	export const toResult = <A, B extends A, E>(r: Refinement<A, B>, onFail: (a: A) => E) => (a: A): Result<E, B> =>
-		r(a) ? Result.ok(a) : Result.error(onFail(a));
+		r(a) ? Result.ok(a) : Result.err(onFail(a));
 }

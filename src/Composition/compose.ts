@@ -26,17 +26,8 @@
  */
 export function compose<A, B>(ab: (a: A) => B): (a: A) => B;
 export function compose<A, B, C>(bc: (b: B) => C, ab: (a: A) => B): (a: A) => C;
-export function compose<A, B, C, D>(
-	cd: (c: C) => D,
-	bc: (b: B) => C,
-	ab: (a: A) => B,
-): (a: A) => D;
-export function compose<A, B, C, D, E>(
-	de: (d: D) => E,
-	cd: (c: C) => D,
-	bc: (b: B) => C,
-	ab: (a: A) => B,
-): (a: A) => E;
+export function compose<A, B, C, D>(cd: (c: C) => D, bc: (b: B) => C, ab: (a: A) => B): (a: A) => D;
+export function compose<A, B, C, D, E>(de: (d: D) => E, cd: (c: C) => D, bc: (b: B) => C, ab: (a: A) => B): (a: A) => E;
 export function compose<A, B, C, D, E, F>(
 	ef: (e: E) => F,
 	de: (d: D) => E,
@@ -110,44 +101,54 @@ export function compose(
 ): unknown {
 	const len = arguments.length;
 	switch (len) {
-		case 1:
+		case 1: {
 			return f0;
-		case 2:
+		}
+		case 2: {
 			return function(this: unknown) {
 				return f0(f1!.apply(this, arguments as any));
 			};
-		case 3:
+		}
+		case 3: {
 			return function(this: unknown) {
 				return f0(f1!(f2!.apply(this, arguments as any)));
 			};
-		case 4:
+		}
+		case 4: {
 			return function(this: unknown) {
 				return f0(f1!(f2!(f3!.apply(this, arguments as any))));
 			};
-		case 5:
+		}
+		case 5: {
 			return function(this: unknown) {
 				return f0(f1!(f2!(f3!(f4!.apply(this, arguments as any)))));
 			};
-		case 6:
+		}
+		case 6: {
 			return function(this: unknown) {
 				return f0(f1!(f2!(f3!(f4!(f5!.apply(this, arguments as any))))));
 			};
-		case 7:
+		}
+		case 7: {
 			return function(this: unknown) {
 				return f0(f1!(f2!(f3!(f4!(f5!(f6!.apply(this, arguments as any)))))));
 			};
-		case 8:
+		}
+		case 8: {
 			return function(this: unknown) {
 				return f0(f1!(f2!(f3!(f4!(f5!(f6!(f7!.apply(this, arguments as any))))))));
 			};
-		case 9:
+		}
+		case 9: {
 			return function(this: unknown) {
 				return f0(f1!(f2!(f3!(f4!(f5!(f6!(f7!(f8!.apply(this, arguments as any)))))))));
 			};
-		case 10:
+		}
+		case 10: {
 			return function(this: unknown) {
 				return f0(f1!(f2!(f3!(f4!(f5!(f6!(f7!(f8!(f9!.apply(this, arguments as any))))))))));
 			};
+		}
 	}
 }
 /* oxlint-enable prefer-rest-params, func-names */

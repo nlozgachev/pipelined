@@ -25,10 +25,10 @@ test("not - works with Array.filter", () => {
 	const numbers = [1, 2, 3, 4, 5, 6];
 
 	const odds = numbers.filter(not(isEven));
-	expect(odds).toEqual([1, 3, 5]);
+	expect(odds).toStrictEqual([1, 3, 5]);
 
 	const evens = numbers.filter(isEven);
-	expect(evens).toEqual([2, 4, 6]);
+	expect(evens).toStrictEqual([2, 4, 6]);
 });
 
 test("not - works with string predicates", () => {
@@ -63,15 +63,13 @@ test("not - double negation returns original result", () => {
 });
 
 test("not - works with Array.filter and objects", () => {
-	const users = [
-		{ name: "Alice", admin: true },
-		{ name: "Bob", admin: false },
-		{ name: "Charlie", admin: true },
-		{ name: "Dave", admin: false },
-	];
+	const users = [{ name: "Alice", admin: true }, { name: "Bob", admin: false }, { name: "Charlie", admin: true }, {
+		name: "Dave",
+		admin: false,
+	}];
 
 	const isAdmin = (user: { name: string; admin: boolean; }) => user.admin;
 	const nonAdmins = users.filter(not(isAdmin));
 
-	expect(nonAdmins.map((u) => u.name)).toEqual(["Bob", "Dave"]);
+	expect(nonAdmins.map((u) => u.name)).toStrictEqual(["Bob", "Dave"]);
 });

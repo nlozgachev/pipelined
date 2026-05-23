@@ -25,12 +25,31 @@ export namespace Rec {
 	export const map = <A, B>(f: (a: A) => B) => (data: Readonly<Record<string, A>>): Readonly<Record<string, B>> => {
 		const keys = Object.keys(data);
 		const vals = Object.values(data);
-		const result: Record<string, B> = {};
+		const result: Record<string, B> = Object.create(Object.getPrototypeOf(data));
 		for (let i = 0; i < keys.length; i++) {
 			Object.defineProperty(result, keys[i], { value: f(vals[i]), writable: true, enumerable: true, configurable: true });
 		}
 		return result;
 	};
+
+	export const filterMap =
+		<A, B>(f: (a: A) => Maybe<B>) => (data: Readonly<Record<string, A>>): Readonly<Record<string, B>> => {
+			const keys = Object.keys(data);
+			const vals = Object.values(data);
+			const result: Record<string, B> = Object.create(Object.getPrototypeOf(data));
+			for (let i = 0; i < keys.length; i++) {
+				const maybeVal = f(vals[i]);
+				if (maybeVal.kind === "Some") {
+					Object.defineProperty(result, keys[i], {
+						value: maybeVal.value,
+						writable: true,
+						enumerable: true,
+						configurable: true,
+					});
+				}
+			}
+			return result;
+		};
 
 	/**
 	 * Transforms each value in a record, also receiving the key.
@@ -45,7 +64,7 @@ export namespace Rec {
 		<A, B>(f: (key: string, a: A) => B) => (data: Readonly<Record<string, A>>): Readonly<Record<string, B>> => {
 			const keys = Object.keys(data);
 			const vals = Object.values(data);
-			const result: Record<string, B> = {};
+			const result: Record<string, B> = Object.create(Object.getPrototypeOf(data));
 			for (let i = 0; i < keys.length; i++) {
 				Object.defineProperty(result, keys[i], {
 					value: f(keys[i], vals[i]),
@@ -67,10 +86,12 @@ export namespace Rec {
 	 */
 	export const filter =
 		<A>(predicate: (a: A) => boolean) => (data: Readonly<Record<string, A>>): Readonly<Record<string, A>> => {
-			const result: Record<string, A> = {};
-			for (const [k, v] of Object.entries(data)) {
-				if (predicate(v)) {
-					Object.defineProperty(result, k, { value: v, writable: true, enumerable: true, configurable: true });
+			const keys = Object.keys(data);
+			const vals = Object.values(data);
+			const result: Record<string, A> = Object.create(Object.getPrototypeOf(data));
+			for (let i = 0; i < keys.length; i++) {
+				if (predicate(vals[i])) {
+					Object.defineProperty(result, keys[i], { value: vals[i], writable: true, enumerable: true, configurable: true });
 				}
 			}
 			return result;
@@ -85,18 +106,18 @@ export namespace Rec {
 	 * // { b: 2 }
 	 * ```
 	 */
-	export const filterWithKey = <A>(predicate: (key: string, a: A) => boolean) =>
-	(
-		data: Readonly<Record<string, A>>,
-	): Readonly<Record<string, A>> => {
-		const result: Record<string, A> = {};
-		for (const [k, v] of Object.entries(data)) {
-			if (predicate(k, v)) {
-				Object.defineProperty(result, k, { value: v, writable: true, enumerable: true, configurable: true });
+	export const filterWithKey =
+		<A>(predicate: (key: string, a: A) => boolean) => (
+			data: Readonly<Record<string, A>>,
+		): Readonly<Record<string, A>> => {
+			const result: Record<string, A> = {};
+			for (const [k, v] of Object.entries(data)) {
+				if (predicate(k, v)) {
+					Object.defineProperty(result, k, { value: v, writable: true, enumerable: true, configurable: true });
+				}
 			}
-		}
-		return result;
-	};
+			return result;
+		};
 
 	/**
 	 * Looks up a value by key, returning Maybe.
@@ -108,30 +129,24 @@ export namespace Rec {
 	 * ```
 	 */
 	export const lookup = <K extends string>(key: K) => <V>(data: Record<string, V>): Maybe<V> =>
-		Object.hasOwn(data, key)
-			? { kind: "Some", value: data[key] } as Some<V>
-			: { kind: "None" } as None;
+		Object.hasOwn(data, key) ? { kind: "Some", value: data[key] } as Some<V> : { kind: "None" } as None;
 
 	/**
 	 * Returns all keys of a record.
 	 */
-	export const keys = <T extends Record<string, unknown>>(
-		data: T,
-	): readonly (keyof T & string)[] => Object.keys(data) as (keyof T & string)[];
+	export const keys = <T extends Record<string, unknown>>(data: T): readonly (keyof T & string)[] =>
+		Object.keys(data) as (keyof T & string)[];
 
 	/**
 	 * Returns all values of a record.
 	 */
-	export const values = <T extends Record<string, unknown>>(
-		data: T,
-	): readonly T[keyof T & string][] => Object.values(data) as T[keyof T & string][];
+	export const values = <T extends Record<string, unknown>>(data: T): readonly T[keyof T & string][] =>
+		Object.values(data) as T[keyof T & string][];
 
 	/**
 	 * Returns all key-value pairs of a record.
 	 */
-	export const entries = <T extends Record<string, unknown>>(
-		data: T,
-	): readonly (readonly [keyof T, T[keyof T]])[] =>
+	export const entries = <T extends Record<string, unknown>>(data: T): readonly (readonly [keyof T, T[keyof T]])[] =>
 		Object.entries(data) as unknown as (readonly [keyof T, T[keyof T]])[];
 
 	/**
@@ -142,9 +157,8 @@ export namespace Rec {
 	 * Rec.fromEntries([["a", 1], ["b", 2]]); // { a: 1, b: 2 }
 	 * ```
 	 */
-	export const fromEntries = <A>(
-		data: readonly (readonly [string, A])[],
-	): Readonly<Record<string, A>> => Object.fromEntries(data);
+	export const fromEntries = <A>(data: readonly (readonly [string, A])[]): Readonly<Record<string, A>> =>
+		Object.fromEntries(data);
 
 	/**
 	 * Groups elements of an array into a record keyed by the result of `keyFn`. Each key maps to
@@ -183,10 +197,7 @@ export namespace Rec {
 	 * pipe({ a: 1, b: 2, c: 3 }, Rec.pick("a", "c")); // { a: 1, c: 3 }
 	 * ```
 	 */
-	export const pick = <K extends string>(...pickedKeys: K[]) =>
-	<A extends Record<K, unknown>>(
-		data: A,
-	): Pick<A, K> => {
+	export const pick = <K extends string>(...pickedKeys: K[]) => <A extends Record<K, unknown>>(data: A): Pick<A, K> => {
 		const result = {} as Pick<A, K>;
 		for (const key of pickedKeys) {
 			if (Object.hasOwn(data, key)) {
@@ -273,9 +284,7 @@ export namespace Rec {
 	 * // { a: 1, c: 3 }
 	 * ```
 	 */
-	export const compact = <A>(
-		data: Readonly<Record<string, Maybe<A>>>,
-	): Readonly<Record<string, A>> => {
+	export const compact = <A>(data: Readonly<Record<string, Maybe<A>>>): Readonly<Record<string, A>> => {
 		const result: Record<string, A> = {};
 		for (const [k, v] of Object.entries(data)) {
 			if (v.kind === "Some") {

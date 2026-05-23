@@ -13,9 +13,9 @@ describe("pipeline-maybe-happy", () => {
 	bench("1. (current) pipe + Maybe ops", () => {
 		void pipe(
 			Maybe.some(42),
-			Maybe.map(x => x * 2),
-			Maybe.filter(x => x > 0),
-			Maybe.chain(x => Maybe.some(x + 1)),
+			Maybe.map((x) => x * 2),
+			Maybe.filter((x) => x > 0),
+			Maybe.chain((x) => Maybe.some(x + 1)),
 			Maybe.getOrElse(() => 0),
 		);
 	});
@@ -37,9 +37,9 @@ describe("pipeline-maybe-short-circuit", () => {
 	bench("1. (current) pipe + Maybe ops", () => {
 		void pipe(
 			Maybe.none() as Maybe<number>,
-			Maybe.map(x => x * 2),
-			Maybe.filter(x => x > 0),
-			Maybe.chain(x => Maybe.some(x + 1)),
+			Maybe.map((x) => x * 2),
+			Maybe.filter((x) => x > 0),
+			Maybe.chain((x) => Maybe.some(x + 1)),
 			Maybe.getOrElse(() => 0),
 		);
 	});
@@ -63,9 +63,9 @@ describe("pipeline-result-ok", () => {
 	bench("1. (current) pipe + Result ops", () => {
 		void pipe(
 			Result.ok(42),
-			Result.map(x => x * 2),
-			Result.chain(x => Result.ok(x + 1)),
-			Result.fold(() => -1, x => x),
+			Result.map((x) => x * 2),
+			Result.chain((x) => Result.ok(x + 1)),
+			Result.fold(() => -1, (x) => x),
 		);
 	});
 

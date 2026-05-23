@@ -11,10 +11,7 @@ import { Maybe } from "./Maybe.ts";
  * pipe([1, 2, 3, 4, 5], Combinable.fold(Combinable.sum));            // 15
  * ```
  */
-export type Combinable<A> = {
-	readonly empty: A;
-	readonly combine: (b: A) => (a: A) => A;
-};
+export type Combinable<A> = { readonly empty: A; readonly combine: (b: A) => (a: A) => A; };
 
 export namespace Combinable {
 	/**
@@ -25,10 +22,7 @@ export namespace Combinable {
 	 * pipe(["a", "b", "c"], Combinable.fold(Combinable.string)); // "abc"
 	 * ```
 	 */
-	export const string: Combinable<string> = {
-		empty: "",
-		combine: (b) => (a) => a + b,
-	};
+	export const string: Combinable<string> = { empty: "", combine: (b) => (a) => a + b };
 
 	/**
 	 * Combines numbers by addition. `0` is the neutral element.
@@ -38,10 +32,7 @@ export namespace Combinable {
 	 * pipe([1, 2, 3], Combinable.fold(Combinable.sum)); // 6
 	 * ```
 	 */
-	export const sum: Combinable<number> = {
-		empty: 0,
-		combine: (b) => (a) => a + b,
-	};
+	export const sum: Combinable<number> = { empty: 0, combine: (b) => (a) => a + b };
 
 	/**
 	 * Combines numbers by multiplication. `1` is the neutral element.
@@ -51,10 +42,7 @@ export namespace Combinable {
 	 * pipe([2, 3, 4], Combinable.fold(Combinable.product)); // 24
 	 * ```
 	 */
-	export const product: Combinable<number> = {
-		empty: 1,
-		combine: (b) => (a) => a * b,
-	};
+	export const product: Combinable<number> = { empty: 1, combine: (b) => (a) => a * b };
 
 	/**
 	 * Combines booleans with logical AND. `true` is the neutral element.
@@ -64,10 +52,7 @@ export namespace Combinable {
 	 * pipe([true, true, false], Combinable.fold(Combinable.all)); // false
 	 * ```
 	 */
-	export const all: Combinable<boolean> = {
-		empty: true,
-		combine: (b) => (a) => a && b,
-	};
+	export const all: Combinable<boolean> = { empty: true, combine: (b) => (a) => a && b };
 
 	/**
 	 * Combines booleans with logical OR. `false` is the neutral element.
@@ -77,10 +62,7 @@ export namespace Combinable {
 	 * pipe([false, false, true], Combinable.fold(Combinable.any)); // true
 	 * ```
 	 */
-	export const any: Combinable<boolean> = {
-		empty: false,
-		combine: (b) => (a) => a || b,
-	};
+	export const any: Combinable<boolean> = { empty: false, combine: (b) => (a) => a || b };
 
 	/**
 	 * Combines arrays by concatenation. Empty array is the neutral element.
@@ -90,10 +72,7 @@ export namespace Combinable {
 	 * pipe([[1, 2], [3], [4, 5]], Combinable.fold(Combinable.array<number>())); // [1, 2, 3, 4, 5]
 	 * ```
 	 */
-	export const array = <A>(): Combinable<readonly A[]> => ({
-		empty: [],
-		combine: (b) => (a) => [...a, ...b],
-	});
+	export const array = <A>(): Combinable<readonly A[]> => ({ empty: [], combine: (b) => (a) => [...a, ...b] });
 
 	/**
 	 * Lifts a `Combinable<A>` to `Combinable<Maybe<A>>`. `None` is the neutral element —
@@ -110,11 +89,7 @@ export namespace Combinable {
 	export const maybe = <A>(inner: Combinable<A>): Combinable<Maybe<A>> => ({
 		empty: Maybe.none(),
 		combine: (b) => (a): Maybe<A> =>
-			Maybe.isNone(a)
-				? b
-				: Maybe.isNone(b)
-				? a
-				: Maybe.some(inner.combine(b.value)(a.value)),
+			Maybe.isNone(a) ? b : (Maybe.isNone(b) ? a : Maybe.some(inner.combine(b.value)(a.value))),
 	});
 
 	/**

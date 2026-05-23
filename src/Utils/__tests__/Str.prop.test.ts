@@ -7,19 +7,15 @@ import { Str } from "../Str.ts";
 // ---------------------------------------------------------------------------
 
 test("Str.toUpperCase — idempotence", () => {
-	fc.assert(
-		fc.property(fc.string(), (s) => {
-			expect(Str.toUpperCase(Str.toUpperCase(s))).toBe(Str.toUpperCase(s));
-		}),
-	);
+	fc.assert(fc.property(fc.string(), (s) => {
+		expect(Str.toUpperCase(Str.toUpperCase(s))).toBe(Str.toUpperCase(s));
+	}));
 });
 
 test("Str.toUpperCase — agrees with native", () => {
-	fc.assert(
-		fc.property(fc.string(), (s) => {
-			expect(Str.toUpperCase(s)).toBe(s.toUpperCase());
-		}),
-	);
+	fc.assert(fc.property(fc.string(), (s) => {
+		expect(Str.toUpperCase(s)).toBe(s.toUpperCase());
+	}));
 });
 
 // ---------------------------------------------------------------------------
@@ -27,19 +23,15 @@ test("Str.toUpperCase — agrees with native", () => {
 // ---------------------------------------------------------------------------
 
 test("Str.toLowerCase — idempotence", () => {
-	fc.assert(
-		fc.property(fc.string(), (s) => {
-			expect(Str.toLowerCase(Str.toLowerCase(s))).toBe(Str.toLowerCase(s));
-		}),
-	);
+	fc.assert(fc.property(fc.string(), (s) => {
+		expect(Str.toLowerCase(Str.toLowerCase(s))).toBe(Str.toLowerCase(s));
+	}));
 });
 
 test("Str.toLowerCase — agrees with native", () => {
-	fc.assert(
-		fc.property(fc.string(), (s) => {
-			expect(Str.toLowerCase(s)).toBe(s.toLowerCase());
-		}),
-	);
+	fc.assert(fc.property(fc.string(), (s) => {
+		expect(Str.toLowerCase(s)).toBe(s.toLowerCase());
+	}));
 });
 
 // ---------------------------------------------------------------------------
@@ -47,19 +39,15 @@ test("Str.toLowerCase — agrees with native", () => {
 // ---------------------------------------------------------------------------
 
 test("Str.trim — idempotence", () => {
-	fc.assert(
-		fc.property(fc.string(), (s) => {
-			expect(Str.trim(Str.trim(s))).toBe(Str.trim(s));
-		}),
-	);
+	fc.assert(fc.property(fc.string(), (s) => {
+		expect(Str.trim(Str.trim(s))).toBe(Str.trim(s));
+	}));
 });
 
 test("Str.trim — agrees with native", () => {
-	fc.assert(
-		fc.property(fc.string(), (s) => {
-			expect(Str.trim(s)).toBe(s.trim());
-		}),
-	);
+	fc.assert(fc.property(fc.string(), (s) => {
+		expect(Str.trim(s)).toBe(s.trim());
+	}));
 });
 
 // ---------------------------------------------------------------------------
@@ -67,19 +55,15 @@ test("Str.trim — agrees with native", () => {
 // ---------------------------------------------------------------------------
 
 test("Str.startsWith — reflexive", () => {
-	fc.assert(
-		fc.property(fc.string(), (s) => {
-			expect(Str.startsWith(s)(s)).toBe(true);
-		}),
-	);
+	fc.assert(fc.property(fc.string(), (s) => {
+		expect(Str.startsWith(s)(s)).toBe(true);
+	}));
 });
 
 test("Str.startsWith — agrees with native", () => {
-	fc.assert(
-		fc.property(fc.string({ maxLength: 20 }), fc.string({ maxLength: 20 }), (prefix, s) => {
-			expect(Str.startsWith(prefix)(s)).toBe(s.startsWith(prefix));
-		}),
-	);
+	fc.assert(fc.property(fc.string({ maxLength: 20 }), fc.string({ maxLength: 20 }), (prefix, s) => {
+		expect(Str.startsWith(prefix)(s)).toBe(s.startsWith(prefix));
+	}));
 });
 
 // ---------------------------------------------------------------------------
@@ -87,19 +71,15 @@ test("Str.startsWith — agrees with native", () => {
 // ---------------------------------------------------------------------------
 
 test("Str.endsWith — reflexive", () => {
-	fc.assert(
-		fc.property(fc.string(), (s) => {
-			expect(Str.endsWith(s)(s)).toBe(true);
-		}),
-	);
+	fc.assert(fc.property(fc.string(), (s) => {
+		expect(Str.endsWith(s)(s)).toBe(true);
+	}));
 });
 
 test("Str.endsWith — agrees with native", () => {
-	fc.assert(
-		fc.property(fc.string({ maxLength: 20 }), fc.string({ maxLength: 20 }), (suffix, s) => {
-			expect(Str.endsWith(suffix)(s)).toBe(s.endsWith(suffix));
-		}),
-	);
+	fc.assert(fc.property(fc.string({ maxLength: 20 }), fc.string({ maxLength: 20 }), (suffix, s) => {
+		expect(Str.endsWith(suffix)(s)).toBe(s.endsWith(suffix));
+	}));
 });
 
 // ---------------------------------------------------------------------------
@@ -107,17 +87,13 @@ test("Str.endsWith — agrees with native", () => {
 // ---------------------------------------------------------------------------
 
 test("Str.includes — reflexive", () => {
-	fc.assert(
-		fc.property(fc.string(), (s) => {
-			expect(Str.includes(s)(s)).toBe(true);
-		}),
-	);
+	fc.assert(fc.property(fc.string(), (s) => {
+		expect(Str.includes(s)(s)).toBe(true);
+	}));
 });
 
 test("Str.includes — agrees with native", () => {
-	fc.assert(
-		fc.property(fc.string({ maxLength: 20 }), fc.string({ maxLength: 20 }), (sub, s) => {
-			expect(Str.includes(sub)(s)).toBe(s.includes(sub));
-		}),
-	);
+	fc.assert(fc.property(fc.string({ maxLength: 20 }), fc.string({ maxLength: 20 }), (sub, s) => {
+		expect(Str.includes(sub)(s)).toBe(s.includes(sub));
+	}));
 });

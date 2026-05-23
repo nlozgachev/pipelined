@@ -7,7 +7,7 @@ import { Arr } from "../Arr.ts";
 const data100 = Array.from({ length: 100 }, (_, i) => i);
 const data10k = Array.from({ length: 10_000 }, (_, i) => i);
 const otherArr = Array.from({ length: 10_000 }, (_, i) => i + 1);
-const shuffled = [...data10k].reverse();
+const shuffled = [...data10k].toReversed();
 const words = Array.from({ length: 10_000 }, (_, i) => `word${i % 100}`);
 const toSome = (n: number): Maybe<number> => Maybe.some(n * 2);
 const toSome2 = (n: number): Maybe<number> => Maybe.some(n * 2);
@@ -85,7 +85,7 @@ describe("traverse-maybe-10k", () => {
 		const result: number[] = [];
 		for (const n of data10k) {
 			const v = toSome(n);
-			if (v.kind === "None") break;
+			if (v.kind === "None") { break; }
 			result.push(v.value);
 		}
 	});
@@ -99,7 +99,7 @@ describe("traverse-result-10k", () => {
 		const result: number[] = [];
 		for (const n of data10k) {
 			const v = toOk(n);
-			if (v.kind === "Ok") result.push(v.value);
+			if (v.kind === "Ok") { result.push(v.value); }
 		}
 	});
 });
@@ -112,7 +112,7 @@ describe("groupBy-10k", () => {
 		const result: Record<string, string[]> = {};
 		for (const s of words) {
 			const [key] = s;
-			if (!result[key]) result[key] = [];
+			if (!result[key]) { result[key] = []; }
 			result[key].push(s);
 		}
 	});
@@ -140,7 +140,7 @@ describe("sortBy-10k", () => {
 		pipe(shuffled, Arr.sortBy((a, b) => a - b));
 	});
 	bench("2. native .sort 10k", () => {
-		[...shuffled].sort((a, b) => a - b);
+		[...shuffled].toSorted((a, b) => a - b);
 	});
 	bench("3. native .toSorted 10k", () => {
 		shuffled.toSorted((a, b) => a - b);
@@ -152,7 +152,7 @@ describe("reverse-10k", () => {
 		pipe(data10k, Arr.reverse);
 	});
 	bench("2. native .reverse 10k", () => {
-		[...data10k].reverse();
+		[...data10k].toReversed();
 	});
 	bench("3. native .toReversed 10k", () => {
 		data10k.toReversed();
@@ -161,27 +161,27 @@ describe("reverse-10k", () => {
 
 describe("insertAt-10k", () => {
 	bench("1. (current) Arr.insertAt 10k", () => {
-		pipe(data10k, Arr.insertAt(5_000, -1));
+		pipe(data10k, Arr.insertAt(5000, -1));
 	});
 	bench("2. native .toSpliced insert 10k", () => {
-		data10k.toSpliced(5_000, 0, -1);
+		data10k.toSpliced(5000, 0, -1);
 	});
 	bench("3. spread + splice insert 10k", () => {
 		const result = [...data10k];
-		result.splice(5_000, 0, -1);
+		result.splice(5000, 0, -1);
 	});
 });
 
 describe("removeAt-10k", () => {
 	bench("1. (current) Arr.removeAt 10k", () => {
-		pipe(data10k, Arr.removeAt(5_000));
+		pipe(data10k, Arr.removeAt(5000));
 	});
 	bench("2. native .toSpliced remove 10k", () => {
-		data10k.toSpliced(5_000, 1);
+		data10k.toSpliced(5000, 1);
 	});
 	bench("3. spread + splice remove 10k", () => {
 		const result = [...data10k];
-		result.splice(5_000, 1);
+		result.splice(5000, 1);
 	});
 });
 
@@ -240,7 +240,7 @@ describe("traverse-approaches-10k", () => {
 		const result: number[] = [];
 		for (let i = 0; i < data10k.length; i++) {
 			const mapped = toSome2(data10k[i]);
-			if (mapped.kind === "None") return;
+			if (mapped.kind === "None") { return; }
 			result.push(mapped.value);
 		}
 	});
@@ -249,7 +249,7 @@ describe("traverse-approaches-10k", () => {
 		const result = new Array<number>(n);
 		for (let i = 0; i < n; i++) {
 			const mapped = toSome2(data10k[i]);
-			if (mapped.kind === "None") return;
+			if (mapped.kind === "None") { return; }
 			result[i] = mapped.value;
 		}
 	});
@@ -260,7 +260,7 @@ describe("traverseResult-approaches-10k", () => {
 		const result: number[] = [];
 		for (let i = 0; i < data10k.length; i++) {
 			const mapped = toOk2(data10k[i]);
-			if (mapped.kind === "Error") return;
+			if (mapped.kind === "Err") { return; }
 			result.push(mapped.value);
 		}
 	});
@@ -269,7 +269,7 @@ describe("traverseResult-approaches-10k", () => {
 		const result = new Array<number>(n);
 		for (let i = 0; i < n; i++) {
 			const mapped = toOk2(data10k[i]);
-			if (mapped.kind === "Error") return;
+			if (mapped.kind === "Err") { return; }
 			result[i] = mapped.value;
 		}
 	});
@@ -325,7 +325,7 @@ describe("map-approaches-10k", () => {
 	bench("2. (current) map pre-alloc loop 10k", () => {
 		const n = data10k.length;
 		const result = new Array<number>(n);
-		for (let i = 0; i < n; i++) result[i] = data10k[i] * 2;
+		for (let i = 0; i < n; i++) { result[i] = data10k[i] * 2; }
 	});
 });
 
@@ -336,7 +336,7 @@ describe("filter-approaches-10k", () => {
 	bench("2. (current) filter push loop 10k", () => {
 		const result: number[] = [];
 		for (let i = 0; i < data10k.length; i++) {
-			if (data10k[i] % 2 === 0) result.push(data10k[i]);
+			if (data10k[i] % 2 === 0) { result.push(data10k[i]); }
 		}
 	});
 });
@@ -363,19 +363,19 @@ describe("every-approaches-10k", () => {
 	bench("2. (current) every loop all-pass 10k", () => {
 		const n = data10k.length;
 		for (let i = 0; i < n; i++) {
-			if (!(data10k[i] >= 0)) return;
+			if (!(data10k[i] >= 0)) { return; }
 		}
 	});
 });
 
 describe("every-earlyexit-10k", () => {
 	bench("1. every native .every early-exit 10k", () => {
-		data10k.every((n) => n < 5_000);
+		data10k.every((n) => n < 5000);
 	});
 	bench("2. (current) every loop early-exit 10k", () => {
 		const n = data10k.length;
 		for (let i = 0; i < n; i++) {
-			if (!(data10k[i] < 5_000)) return;
+			if (!(data10k[i] < 5000)) { return; }
 		}
 	});
 });
@@ -387,55 +387,55 @@ describe("some-approaches-10k", () => {
 	bench("2. (current) some loop all-false 10k", () => {
 		const n = data10k.length;
 		for (let i = 0; i < n; i++) {
-			if (data10k[i] < 0) return;
+			if (data10k[i] < 0) { return; }
 		}
 	});
 });
 
 describe("some-earlyexit-10k", () => {
 	bench("1. some native .some early-exit 10k", () => {
-		data10k.some((n) => n > 5_000);
+		data10k.some((n) => n > 5000);
 	});
 	bench("2. (current) some loop early-exit 10k", () => {
 		const n = data10k.length;
 		for (let i = 0; i < n; i++) {
-			if (data10k[i] > 5_000) return;
+			if (data10k[i] > 5000) { return; }
 		}
 	});
 });
 
 describe("take-approaches-10k", () => {
 	bench("1. (current) take native .slice 10k", () => {
-		data10k.slice(0, 5_000);
+		data10k.slice(0, 5000);
 	});
 	bench("2. take pre-alloc loop 10k", () => {
-		const count = Math.min(5_000, data10k.length);
+		const count = Math.min(5000, data10k.length);
 		const result = new Array<number>(count);
-		for (let i = 0; i < count; i++) result[i] = data10k[i];
+		for (let i = 0; i < count; i++) { result[i] = data10k[i]; }
 	});
 });
 
 describe("drop-approaches-10k", () => {
 	bench("1. (current) drop native .slice 10k", () => {
-		data10k.slice(5_000);
+		data10k.slice(5000);
 	});
 	bench("2. drop pre-alloc loop 10k", () => {
-		const start = Math.min(5_000, data10k.length);
+		const start = Math.min(5000, data10k.length);
 		const count = data10k.length - start;
 		const result = new Array<number>(count);
-		for (let i = 0; i < count; i++) result[i] = data10k[start + i];
+		for (let i = 0; i < count; i++) { result[i] = data10k[start + i]; }
 	});
 });
 
 describe("splitAt-approaches-10k", () => {
 	bench("1. (current) splitAt two .slice 10k", () => {
-		void [data10k.slice(0, 5_000), data10k.slice(5_000)];
+		void [data10k.slice(0, 5000), data10k.slice(5000)];
 	});
 	bench("2. splitAt two pre-alloc loops 10k", () => {
-		const i = Math.min(5_000, data10k.length);
+		const i = Math.min(5000, data10k.length);
 		const left = new Array<number>(i);
-		for (let j = 0; j < i; j++) left[j] = data10k[j];
+		for (let j = 0; j < i; j++) { left[j] = data10k[j]; }
 		const right = new Array<number>(data10k.length - i);
-		for (let j = 0; j < right.length; j++) right[j] = data10k[i + j];
+		for (let j = 0; j < right.length; j++) { right[j] = data10k[i + j]; }
 	});
 });

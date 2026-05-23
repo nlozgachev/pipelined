@@ -65,16 +65,16 @@ export const flattenConcatLoop = <A>(data: readonly (readonly A[])[]): readonly 
 // ---------------------------------------------------------------------------
 
 // 1. Wide and shallow: 1000 arrays of size 10 (10k items)
-const wideShallowData = Array.from({ length: 1000 }, (_, i) => Array.from({ length: 10 }, (_, j) => i * 10 + j));
+const wideShallowData = Array.from({ length: 1000 }, (_, i) => Array.from({ length: 10 }, (_inner, j) => i * 10 + j));
 
 // 2. Narrow and deep: 10 arrays of size 1000 (10k items)
-const narrowDeepData = Array.from({ length: 10 }, (_, i) => Array.from({ length: 1000 }, (_, j) => i * 1000 + j));
+const narrowDeepData = Array.from({ length: 10 }, (_, i) => Array.from({ length: 1000 }, (_inner, j) => i * 1000 + j));
 
 // 3. Large: 100 arrays of size 1000 (100k items)
-const largeData = Array.from({ length: 100 }, (_, i) => Array.from({ length: 1000 }, (_, j) => i * 1000 + j));
+const largeData = Array.from({ length: 100 }, (_, i) => Array.from({ length: 1000 }, (_inner, j) => i * 1000 + j));
 
 // 4. Extreme (stack overflow risk for concat-spread): 70,000 arrays of size 1
-const extremeData = Array.from({ length: 70000 }, (_, i) => [i]);
+const extremeData = Array.from({ length: 70_000 }, (_, i) => [i]);
 
 // ---------------------------------------------------------------------------
 // Benchmarks

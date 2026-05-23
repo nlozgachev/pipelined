@@ -141,7 +141,5 @@ export namespace Logged {
 	 * // value = 2, log = ["incremented"]
 	 * ```
 	 */
-	export const run = <W, A>(
-		data: Logged<W, A>,
-	): readonly [A, ReadonlyArray<W>] => [data.value, data.log];
+	export const run = <W, A>(data: Logged<W, A>): readonly [A, ReadonlyArray<W>] => [data.value, data.log];
 }

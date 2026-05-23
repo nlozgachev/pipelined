@@ -76,10 +76,7 @@ test("Lazy.map factory runs once even with multiple evaluations", () => {
 // ---------------------------------------------------------------------------
 
 test("Lazy.chain composes two lazy computations", () => {
-	const lazy = pipe(
-		Lazy.from(() => "hello"),
-		Lazy.chain((s) => Lazy.from(() => s.length)),
-	);
+	const lazy = pipe(Lazy.from(() => "hello"), Lazy.chain((s) => Lazy.from(() => s.length)));
 	expect(Lazy.evaluate(lazy)).toBe(5);
 });
 
@@ -133,10 +130,7 @@ test("Lazy.tap runs the side effect when evaluated", () => {
 });
 
 test("Lazy.tap returns the original value unchanged", () => {
-	const lazy = pipe(
-		Lazy.from(() => "abc"),
-		Lazy.tap(() => {}),
-	);
+	const lazy = pipe(Lazy.from(() => "abc"), Lazy.tap(() => {}));
 	expect(Lazy.evaluate(lazy)).toBe("abc");
 });
 
@@ -157,7 +151,7 @@ test("Lazy.tap side effect fires exactly once across multiple evaluations", () =
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("Lazy composes map, chain, and tap in a pipe", () => {
+test("lazy composes map, chain, and tap in a pipe", () => {
 	const log: string[] = [];
 	const lazy = pipe(
 		Lazy.from(() => 5),
@@ -165,7 +159,7 @@ test("Lazy composes map, chain, and tap in a pipe", () => {
 		Lazy.tap((n) => log.push(`tapped: ${n}`)),
 		Lazy.chain((n) => Lazy.from(() => `result: ${n}`)),
 	);
-	expect(log).toEqual([]);
+	expect(log).toStrictEqual([]);
 	expect(Lazy.evaluate(lazy)).toBe("result: 10");
-	expect(log).toEqual(["tapped: 10"]);
+	expect(log).toStrictEqual(["tapped: 10"]);
 });
