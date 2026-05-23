@@ -91,7 +91,7 @@ test("Validation.fromPredicate composes with ap for multi-field validation", () 
 // map
 // ---------------------------------------------------------------------------
 
-test("Validation.map transforms the valid value", () => {
+test("Validation.map transforms the passed value", () => {
 	const result = pipe(Validation.passed<string, number>(5), Validation.map((n: number) => n * 2));
 	expect(result).toStrictEqual({ kind: "Passed", value: 10 });
 });
@@ -104,6 +104,30 @@ test("Validation.map passes through Invalid unchanged", () => {
 test("Validation.map can change the value type", () => {
 	const result = pipe(Validation.passed<string, number>(42), Validation.map((n: number) => `val: ${n}`));
 	expect(result).toStrictEqual({ kind: "Passed", value: "val: 42" });
+});
+
+// ---------------------------------------------------------------------------
+// mapError
+// ---------------------------------------------------------------------------
+
+test("Validation.mapError transforms errors in Failed", () => {
+	const result = pipe(Validation.failed("oops"), Validation.mapError((e) => e.toUpperCase()));
+	expect(result).toStrictEqual({ kind: "Failed", errors: ["OOPS"] });
+});
+
+test("Validation.mapError transforms all errors in failedAll", () => {
+	const result = pipe(Validation.failedAll(["a", "b"]), Validation.mapError((e) => e.toUpperCase()));
+	expect(result).toStrictEqual({ kind: "Failed", errors: ["A", "B"] });
+});
+
+test("Validation.mapError passes Passed through unchanged", () => {
+	const result = pipe(Validation.passed<string, number>(42), Validation.mapError((e: string) => e.toUpperCase()));
+	expect(result).toStrictEqual({ kind: "Passed", value: 42 });
+});
+
+test("Validation.mapError can change error type", () => {
+	const result = pipe(Validation.failed("not found"), Validation.mapError((e) => ({ message: e })));
+	expect(result).toStrictEqual({ kind: "Failed", errors: [{ message: "not found" }] });
 });
 
 // ---------------------------------------------------------------------------
@@ -130,7 +154,7 @@ test("Validation.ap accumulates errors from both sides", () => {
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["bad a", "bad b"] });
 });
 
-test("validation.ap returns errors from value when function is Valid", () => {
+test("Validation.ap returns errors from value when function is Valid", () => {
 	const result = pipe(
 		Validation.passed<string, (n: number) => number>((n) => n * 2),
 		Validation.ap(Validation.failed("bad value")),
@@ -138,12 +162,12 @@ test("validation.ap returns errors from value when function is Valid", () => {
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["bad value"] });
 });
 
-test("validation.ap returns errors from function when value is Valid", () => {
+test("Validation.ap returns errors from function when value is Valid", () => {
 	const result = pipe(Validation.failed("bad fn"), Validation.ap(Validation.passed<string, number>(5)));
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["bad fn"] });
 });
 
-test("validation.ap accumulates all errors in a multi-field validation", () => {
+test("Validation.ap accumulates all errors in a multi-field validation", () => {
 	const createUser = (name: string) => (email: string) => (age: number) => ({ name, email, age });
 
 	const validateName = (name: string): Validation<string, string> =>
@@ -198,7 +222,7 @@ test("Validation.fold calls onInvalid for Invalid", () => {
 // match (data-last)
 // ---------------------------------------------------------------------------
 
-test("Validation.match calls valid handler for Valid", () => {
+test("Validation.match calls passed handler for Valid", () => {
 	const result = pipe(
 		Validation.passed<string, number>(5),
 		Validation.match({ passed: (n: number) => `got ${n}`, failed: (errors) => `failed: ${errors.join(", ")}` }),
@@ -251,7 +275,7 @@ test("Validation.getOrElse returns Valid value typed as A | B when Valid", () =>
 // tap
 // ---------------------------------------------------------------------------
 
-test("validation.tap executes side effect on Valid and returns original", () => {
+test("Validation.tap executes side effect on Valid and returns original", () => {
 	let sideEffect = 0;
 	const result = pipe(
 		Validation.passed<string, number>(5),
@@ -322,7 +346,7 @@ test("Validation.tapError receives the full error list", () => {
 // recover
 // ---------------------------------------------------------------------------
 
-test("validation.recover returns original Valid without calling fallback", () => {
+test("Validation.recover returns original Valid without calling fallback", () => {
 	let called = false;
 	const result = pipe(
 		Validation.passed<string, number>(5),
@@ -360,7 +384,7 @@ test("Validation.recover can return Invalid as fallback", () => {
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["second"] });
 });
 
-test("validation.recover widens to Validation<E, A | B> when fallback returns a different type", () => {
+test("Validation.recover widens to Validation<E, A | B> when fallback returns a different type", () => {
 	const result = pipe(Validation.failed("error"), Validation.recover((_errors) => Validation.passed("recovered")));
 	expect(result).toStrictEqual({ kind: "Passed", value: "recovered" });
 });
@@ -374,7 +398,7 @@ test("Validation.recover preserves Valid typed as Validation<E, A | B>", () => {
 // recoverUnless
 // ---------------------------------------------------------------------------
 
-test("validation.recoverUnless recovers when predicate returns false for all errors", () => {
+test("Validation.recoverUnless recovers when predicate returns false for all errors", () => {
 	const result = pipe(
 		Validation.failed("recoverable"),
 		Validation.recoverUnless((e) => e === "fatal", () => Validation.passed<string, number>(42)),
@@ -382,7 +406,7 @@ test("validation.recoverUnless recovers when predicate returns false for all err
 	expect(result).toStrictEqual({ kind: "Passed", value: 42 });
 });
 
-test("validation.recoverUnless does NOT recover when predicate returns true for any error", () => {
+test("Validation.recoverUnless does NOT recover when predicate returns true for any error", () => {
 	const result = pipe(
 		Validation.failed("fatal"),
 		Validation.recoverUnless((e) => e === "fatal", () => Validation.passed<string, number>(42)),
@@ -398,7 +422,7 @@ test("Validation.recoverUnless passes through Valid unchanged", () => {
 	expect(result).toStrictEqual({ kind: "Passed", value: 10 });
 });
 
-test("validation.recoverUnless does NOT recover when any error in accumulation matches", () => {
+test("Validation.recoverUnless does NOT recover when any error in accumulation matches", () => {
 	const result = pipe(
 		Validation.failedAll(["minor", "fatal"]),
 		Validation.recoverUnless((e) => e === "fatal", () => Validation.passed<string, number>(42)),
@@ -406,7 +430,7 @@ test("validation.recoverUnless does NOT recover when any error in accumulation m
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["minor", "fatal"] });
 });
 
-test("validation.recoverUnless widens to Validation<E, A | B> when fallback returns a different type", () => {
+test("Validation.recoverUnless widens to Validation<E, A | B> when fallback returns a different type", () => {
 	const result = pipe(
 		Validation.failed("recoverable"),
 		Validation.recoverUnless((e) => e === "fatal", () => Validation.passed("recovered")),

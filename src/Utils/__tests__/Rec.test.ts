@@ -22,6 +22,37 @@ test("map - transforms value types", () => {
 	expect(result).toStrictEqual({ x: "1", y: "2" });
 });
 
+test("filterMap - keeps Some values, drops None", () => {
+	const result = pipe({ a: 1, b: 2, c: 3 }, Rec.filterMap((n) => (n > 1 ? Maybe.some(n * 10) : Maybe.none())));
+	expect(result).toStrictEqual({ b: 20, c: 30 });
+});
+
+test("filterMap - returns empty for empty input", () => {
+	const result = pipe({} as Record<string, number>, Rec.filterMap((n) => Maybe.some(n)));
+	expect(result).toStrictEqual({});
+});
+
+test("filterMap - returns empty when all values map to None", () => {
+	const result = pipe({ a: 1, b: 2 }, Rec.filterMap((_) => Maybe.none()));
+	expect(result).toStrictEqual({});
+});
+
+test("filterMap - keeps all values when all map to Some", () => {
+	const result = pipe({ a: 1, b: 2 }, Rec.filterMap((n) => Maybe.some(n * 2)));
+	expect(result).toStrictEqual({ a: 2, b: 4 });
+});
+
+test("filterMap - can change value type", () => {
+	const result = pipe(
+		{ x: "42", y: "abc" },
+		Rec.filterMap((s) => {
+			const n = Number(s);
+			return isNaN(n) ? Maybe.none() : Maybe.some(n);
+		}),
+	);
+	expect(result).toStrictEqual({ x: 42 });
+});
+
 test("mapWithKey - transforms values with access to key", () => {
 	const result = pipe({ a: 1, b: 2 }, Rec.mapWithKey((k, v) => `${k}:${v}`));
 	expect(result).toStrictEqual({ a: "a:1", b: "b:2" });
