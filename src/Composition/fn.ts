@@ -96,3 +96,19 @@ export const once = <A>(f: () => A): () => A => {
 		return result;
 	};
 };
+
+/**
+ * Returns a fallback value if the input is null or undefined; otherwise returns the input value.
+ * Highly useful as a data-last default value step inside pipelines.
+ *
+ * @example
+ * ```ts
+ * const getName = flow(
+ *   (u: { name?: string | null }) => u.name,
+ *   defaultTo("Guest"),
+ *   name => name.toUpperCase()
+ * ); // returns string
+ * ```
+ */
+export const defaultTo = <B>(fallback: B) => <A>(a: A): NonNullable<A> | B =>
+	a === null || a === undefined ? fallback : (a as NonNullable<A>);

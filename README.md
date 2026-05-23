@@ -362,7 +362,11 @@ See the [benchmarks page](https://pipelined.lozgachev.dev/appendix/benchmarks) f
 
 ### pipelined/composition
 
-- **`pipe`**, **`flow`**, **`compose`** — function composition.
+- **`pipe`**, **`flow`**, **`compose`** — function composition. Attaches high-level composition
+  utilities directly to both `pipe` and `flow` namespaces: **`when`** / **`unless`** (conditional
+  execution), **`either`** (functional branch), **`try`** (error safety fallbacks), **`struct`**
+  (data reshaping), **`safe`** (null-safe short-circuiting), and **`async`** (promisified
+  pipelining).
 - **`curry`** / **`uncurry`**, **`tap`**, **`memoize`**, and other function utilities.
 
 ## License

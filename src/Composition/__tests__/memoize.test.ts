@@ -103,7 +103,6 @@ test("memoize - caches undefined and null results", () => {
 	let callCountA = 0;
 	const fnA = memoize((_n: number) => {
 		callCountA++;
-		return;
 	});
 
 	expect(fnA(1)).toBeUndefined();

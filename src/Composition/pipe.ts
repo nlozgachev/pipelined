@@ -154,3 +154,254 @@ export function pipe(
 		}
 	}
 }
+
+const when = <A>(predicate: (a: A) => boolean, onTrue: (a: A) => A) => (a: A): A => predicate(a) ? onTrue(a) : a;
+
+const unless = <A>(predicate: (a: A) => boolean, onFalse: (a: A) => A) => (a: A): A => predicate(a) ? a : onFalse(a);
+
+const either = <A, B>(predicate: (a: A) => boolean, onTrue: (a: A) => B, onFalse: (a: A) => B) => (a: A): B =>
+	predicate(a) ? onTrue(a) : onFalse(a);
+
+const struct = <A, R extends Record<string, unknown>>(fields: { [K in keyof R]: (a: A) => R[K]; }) => (a: A): R => {
+	const result = {} as any;
+	for (const key of Object.keys(fields)) {
+		result[key] = fields[key](a);
+	}
+	return result;
+};
+
+function safe<A>(a: A): A;
+function safe<A, B>(a: A, ab: (a: NonNullable<A>) => B): B | Extract<A, null | undefined>;
+function safe<A, B, C>(
+	a: A,
+	ab: (a: NonNullable<A>) => B,
+	bc: (b: NonNullable<B>) => C,
+): C | Extract<A | B, null | undefined>;
+function safe<A, B, C, D>(
+	a: A,
+	ab: (a: NonNullable<A>) => B,
+	bc: (b: NonNullable<B>) => C,
+	cd: (c: NonNullable<C>) => D,
+): D | Extract<A | B | C, null | undefined>;
+function safe<A, B, C, D, E>(
+	a: A,
+	ab: (a: NonNullable<A>) => B,
+	bc: (b: NonNullable<B>) => C,
+	cd: (c: NonNullable<C>) => D,
+	de: (d: NonNullable<D>) => E,
+): E | Extract<A | B | C | D, null | undefined>;
+function safe<A, B, C, D, E, F>(
+	a: A,
+	ab: (a: NonNullable<A>) => B,
+	bc: (b: NonNullable<B>) => C,
+	cd: (c: NonNullable<C>) => D,
+	de: (d: NonNullable<D>) => E,
+	ef: (e: NonNullable<E>) => F,
+): F | Extract<A | B | C | D | E, null | undefined>;
+function safe<A, B, C, D, E, F, G>(
+	a: A,
+	ab: (a: NonNullable<A>) => B,
+	bc: (b: NonNullable<B>) => C,
+	cd: (c: NonNullable<C>) => D,
+	de: (d: NonNullable<D>) => E,
+	ef: (e: NonNullable<E>) => F,
+	fg: (f: NonNullable<F>) => G,
+): G | Extract<A | B | C | D | E | F, null | undefined>;
+function safe<A, B, C, D, E, F, G, H>(
+	a: A,
+	ab: (a: NonNullable<A>) => B,
+	bc: (b: NonNullable<B>) => C,
+	cd: (c: NonNullable<C>) => D,
+	de: (d: NonNullable<D>) => E,
+	ef: (e: NonNullable<E>) => F,
+	fg: (f: NonNullable<F>) => G,
+	gh: (g: NonNullable<G>) => H,
+): H | Extract<A | B | C | D | E | F | G, null | undefined>;
+function safe<A, B, C, D, E, F, G, H, I>(
+	a: A,
+	ab: (a: NonNullable<A>) => B,
+	bc: (b: NonNullable<B>) => C,
+	cd: (c: NonNullable<C>) => D,
+	de: (d: NonNullable<D>) => E,
+	ef: (e: NonNullable<E>) => F,
+	fg: (f: NonNullable<F>) => G,
+	gh: (g: NonNullable<G>) => H,
+	hi: (h: NonNullable<H>) => I,
+): I | Extract<A | B | C | D | E | F | G | H, null | undefined>;
+function safe<A, B, C, D, E, F, G, H, I, J>(
+	a: A,
+	ab: (a: NonNullable<A>) => B,
+	bc: (b: NonNullable<B>) => C,
+	cd: (c: NonNullable<C>) => D,
+	de: (d: NonNullable<D>) => E,
+	ef: (e: NonNullable<E>) => F,
+	fg: (f: NonNullable<F>) => G,
+	gh: (g: NonNullable<G>) => H,
+	hi: (h: NonNullable<H>) => I,
+	ij: (i: NonNullable<I>) => J,
+): J | Extract<A | B | C | D | E | F | G | H | I, null | undefined>;
+function safe<A, B, C, D, E, F, G, H, I, J, K>(
+	a: A,
+	ab: (a: NonNullable<A>) => B,
+	bc: (b: NonNullable<B>) => C,
+	cd: (c: NonNullable<C>) => D,
+	de: (d: NonNullable<D>) => E,
+	ef: (e: NonNullable<E>) => F,
+	fg: (f: NonNullable<F>) => G,
+	gh: (g: NonNullable<G>) => H,
+	hi: (h: NonNullable<H>) => I,
+	ij: (i: NonNullable<I>) => J,
+	jk: (j: J) => K,
+): K | Extract<A | B | C | D | E | F | G | H | I | J, null | undefined>;
+function safe(a: unknown, ...fns: ReadonlyArray<(x: unknown) => unknown>): unknown {
+	let result = a;
+	if (result === null || result === undefined) {
+		return result;
+	}
+	for (const fn of fns) {
+		result = fn(result);
+		if (result === null || result === undefined) {
+			return result;
+		}
+	}
+	return result;
+}
+
+function async<A>(a: A | Promise<A>): Promise<A>;
+function async<A, B>(a: A | Promise<A>, ab: (a: A) => B | Promise<B>): Promise<B>;
+function async<A, B, C>(a: A | Promise<A>, ab: (a: A) => B | Promise<B>, bc: (b: B) => C | Promise<C>): Promise<C>;
+function async<A, B, C, D>(
+	a: A | Promise<A>,
+	ab: (a: A) => B | Promise<B>,
+	bc: (b: B) => C | Promise<C>,
+	cd: (c: C) => D | Promise<D>,
+): Promise<D>;
+function async<A, B, C, D, E>(
+	a: A | Promise<A>,
+	ab: (a: A) => B | Promise<B>,
+	bc: (b: B) => C | Promise<C>,
+	cd: (c: C) => D | Promise<D>,
+	de: (d: D) => E | Promise<E>,
+): Promise<E>;
+function async<A, B, C, D, E, F>(
+	a: A | Promise<A>,
+	ab: (a: A) => B | Promise<B>,
+	bc: (b: B) => C | Promise<C>,
+	cd: (c: C) => D | Promise<D>,
+	de: (d: D) => E | Promise<E>,
+	ef: (e: E) => F | Promise<F>,
+): Promise<F>;
+function async<A, B, C, D, E, F, G>(
+	a: A | Promise<A>,
+	ab: (a: A) => B | Promise<B>,
+	bc: (b: B) => C | Promise<C>,
+	cd: (c: C) => D | Promise<D>,
+	de: (d: D) => E | Promise<E>,
+	ef: (e: E) => F | Promise<F>,
+	fg: (f: F) => G | Promise<G>,
+): Promise<G>;
+function async<A, B, C, D, E, F, G, H>(
+	a: A | Promise<A>,
+	ab: (a: A) => B | Promise<B>,
+	bc: (b: B) => C | Promise<C>,
+	cd: (c: C) => D | Promise<D>,
+	de: (d: D) => E | Promise<E>,
+	ef: (e: E) => F | Promise<F>,
+	fg: (f: F) => G | Promise<G>,
+	gh: (g: G) => H | Promise<H>,
+): Promise<H>;
+function async<A, B, C, D, E, F, G, H, I>(
+	a: A | Promise<A>,
+	ab: (a: A) => B | Promise<B>,
+	bc: (b: B) => C | Promise<C>,
+	cd: (c: C) => D | Promise<D>,
+	de: (d: D) => E | Promise<E>,
+	ef: (e: E) => F | Promise<F>,
+	fg: (f: F) => G | Promise<G>,
+	gh: (g: G) => H | Promise<H>,
+	hi: (h: H) => I | Promise<I>,
+): Promise<I>;
+function async<A, B, C, D, E, F, G, H, I, J>(
+	a: A | Promise<A>,
+	ab: (a: A) => B | Promise<B>,
+	bc: (b: B) => C | Promise<C>,
+	cd: (c: C) => D | Promise<D>,
+	de: (d: D) => E | Promise<E>,
+	ef: (e: E) => F | Promise<F>,
+	fg: (f: F) => G | Promise<G>,
+	gh: (g: G) => H | Promise<H>,
+	hi: (h: H) => I | Promise<I>,
+	ij: (i: I) => J,
+): Promise<J>;
+function async<A, B, C, D, E, F, G, H, I, J, K>(
+	a: A | Promise<A>,
+	ab: (a: A) => B | Promise<B>,
+	bc: (b: B) => C | Promise<C>,
+	cd: (c: C) => D | Promise<D>,
+	de: (d: D) => E | Promise<E>,
+	ef: (e: E) => F | Promise<F>,
+	fg: (f: F) => G | Promise<G>,
+	gh: (g: G) => H | Promise<H>,
+	hi: (h: H) => I | Promise<I>,
+	ij: (i: I) => J | Promise<J>,
+	jk: (j: J) => K | Promise<K>,
+): Promise<K>;
+async function async(a: unknown, ...fns: ReadonlyArray<(x: unknown) => unknown | Promise<unknown>>): Promise<unknown> {
+	let result = await a;
+	for (const fn of fns) {
+		result = await fn(result);
+	}
+	return result;
+}
+
+export interface pipe {
+	/**
+	 * Executes a function on the piped value if a predicate is met, otherwise returns the value unchanged.
+	 */
+	readonly when: <A>(predicate: (a: A) => boolean, onTrue: (a: A) => A) => (a: A) => A;
+
+	/**
+	 * Executes a function on the piped value if a predicate is NOT met, otherwise returns the value unchanged.
+	 */
+	readonly unless: <A>(predicate: (a: A) => boolean, onFalse: (a: A) => A) => (a: A) => A;
+
+	/**
+	 * Executes one of two functions based on a predicate, acting as a functional if-else/ternary helper.
+	 */
+	readonly either: <A, B>(predicate: (a: A) => boolean, onTrue: (a: A) => B, onFalse: (a: A) => B) => (a: A) => B;
+
+	/**
+	 * Creates a pipeline step that wraps a throwing function in a try/catch, returning a fallback value if an error occurs.
+	 */
+	readonly try: <A, B, C>(f: (a: A) => B, onError: (error: unknown, value: A) => C) => (a: A) => B | C;
+
+	/**
+	 * Builds an object by applying a record of field-level transformer functions to the piped input.
+	 */
+	readonly struct: <A, R extends Record<string, unknown>>(fields: { [K in keyof R]: (a: A) => R[K]; }) => (a: A) => R;
+
+	/**
+	 * Pipes a value through a sequence of operations, short-circuiting and propagating
+	 * null or undefined immediately if any intermediate step evaluates to nil.
+	 */
+	readonly safe: typeof safe;
+
+	/**
+	 * Pipes a value through a sequence of operations, supporting asynchronous transitions at any step.
+	 */
+	readonly async: typeof async;
+}
+
+pipe.when = when;
+pipe.unless = unless;
+pipe.either = either;
+pipe.struct = struct;
+pipe.safe = safe;
+pipe.async = async;
+pipe.try = <A, B, C>(f: (a: A) => B, onError: (error: unknown, value: A) => C) => (a: A): B | C => {
+	try {
+		return f(a);
+	} catch (error) {
+		return onError(error, a);
+	}
+};

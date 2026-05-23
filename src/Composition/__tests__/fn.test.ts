@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { flow } from "../flow.ts";
 import {
 	and,
 	constant,
@@ -7,6 +8,7 @@ import {
 	constTrue,
 	constUndefined,
 	constVoid,
+	defaultTo,
 	identity,
 	once,
 	or,
@@ -294,4 +296,28 @@ test("once - caches falsy results correctly", () => {
 	expect(returnNull()).toBeNull();
 	expect(returnNull()).toBeNull();
 	expect(callCount3).toBe(1);
+});
+
+// --- defaultTo ---
+
+test("defaultTo - returns non-nullable value unchanged", () => {
+	const fallback = defaultTo("Guest");
+	expect(fallback("Alice")).toBe("Alice");
+	expect(fallback(0)).toBe(0);
+	expect(fallback(false)).toBe(false);
+	expect(fallback({ name: "Bob" })).toStrictEqual({ name: "Bob" });
+});
+
+test("defaultTo - returns fallback value for null or undefined", () => {
+	const fallback = defaultTo("Guest");
+	expect(fallback(null)).toBe("Guest");
+	expect(fallback(undefined)).toBe("Guest");
+});
+
+test("defaultTo - pipeline integration with flow", () => {
+	const getName = flow((u: { name?: string | null; }) => u.name, defaultTo("Guest"), (name) => name.toUpperCase());
+
+	expect(getName({ name: "Alice" })).toBe("ALICE");
+	expect(getName({ name: null })).toBe("GUEST");
+	expect(getName({})).toBe("GUEST");
 });

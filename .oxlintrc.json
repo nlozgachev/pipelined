@@ -56,6 +56,10 @@
 		"no-implied-eval": "error",
 		"vitest/no-identical-title": "error",
 		"vitest/no-disabled-tests": "warn",
-		"vitest/prefer-to-have-length": "warn"
+		"vitest/prefer-to-have-length": "warn",
+		"no-underscore-dangle": "off",
+		"require-unicode-regexp": "off",
+		"no-await-in-loop": "off",
+		"vitest/max-expects": "off"
 	}
 }

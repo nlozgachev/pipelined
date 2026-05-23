@@ -132,3 +132,178 @@ test("flow - zero functions returns the first argument unchanged", () => {
 	expect(identity(42)).toBe(42);
 	expect(identity("hello")).toBe("hello");
 });
+
+// --- flow.when ---
+
+test("flow.when - runs onTrue if predicate is met", () => {
+	let called = false;
+	const run = flow.when((n: number) => n > 5, (n: number) => {
+		called = true;
+		return n * 2;
+	});
+	expect(run(6)).toBe(12);
+	expect(called).toBe(true);
+});
+
+test("flow.when - returns value unchanged if predicate is not met", () => {
+	let called = false;
+	const run = flow.when((n: number) => n > 5, (n: number) => {
+		called = true;
+		return n * 2;
+	});
+	expect(run(4)).toBe(4);
+	expect(called).toBe(false);
+});
+
+// --- flow.unless ---
+
+test("flow.unless - runs onFalse if predicate is not met", () => {
+	let called = false;
+	const run = flow.unless((n: number) => n > 5, (n: number) => {
+		called = true;
+		return n * 2;
+	});
+	expect(run(4)).toBe(8);
+	expect(called).toBe(true);
+});
+
+test("flow.unless - returns value unchanged if predicate is met", () => {
+	let called = false;
+	const run = flow.unless((n: number) => n > 5, (n: number) => {
+		called = true;
+		return n * 2;
+	});
+	expect(run(6)).toBe(6);
+	expect(called).toBe(false);
+});
+
+// --- flow.either ---
+
+test("flow.either - runs onTrue if predicate is met", () => {
+	let trueCalled = false;
+	let falseCalled = false;
+	const run = flow.either((n: number) => n > 5, (n: number) => {
+		trueCalled = true;
+		return n * 2;
+	}, (n: number) => {
+		falseCalled = true;
+		return n + 10;
+	});
+	expect(run(6)).toBe(12);
+	expect(trueCalled).toBe(true);
+	expect(falseCalled).toBe(false);
+});
+
+test("flow.either - runs onFalse if predicate is not met", () => {
+	let trueCalled = false;
+	let falseCalled = false;
+	const run = flow.either((n: number) => n > 5, (n: number) => {
+		trueCalled = true;
+		return n * 2;
+	}, (n: number) => {
+		falseCalled = true;
+		return n + 10;
+	});
+	expect(run(4)).toBe(14);
+	expect(trueCalled).toBe(false);
+	expect(falseCalled).toBe(true);
+});
+
+// --- flow.try ---
+
+test("flow.try - returns result of success path", () => {
+	let errorCalled = false;
+	const run = flow.try((s: string) => JSON.parse(s), () => {
+		errorCalled = true;
+		return { fallback: true };
+	});
+	expect(run('{"a": 1}')).toStrictEqual({ a: 1 });
+	expect(errorCalled).toBe(false);
+});
+
+test("flow.try - handles error and returns fallback value", () => {
+	let errorCalled = false;
+	const run = flow.try((s: string) => JSON.parse(s), (err, input) => {
+		errorCalled = true;
+		expect(err).toBeInstanceOf(Error);
+		expect(input).toBe("invalid json");
+		return { fallback: true };
+	});
+	expect(run("invalid json")).toStrictEqual({ fallback: true });
+	expect(errorCalled).toBe(true);
+});
+
+// --- flow.struct ---
+
+test("flow.struct - builds structured object from inputs", () => {
+	const run = flow.struct<number, { double: number; str: string; isEven: boolean; }>({
+		double: (n) => n * 2,
+		str: (n) => `value is ${n}`,
+		isEven: (n) => n % 2 === 0,
+	});
+	expect(run(5)).toStrictEqual({ double: 10, str: "value is 5", isEven: false });
+});
+
+// --- flow.safe ---
+
+test("flow.safe - runs all steps if none are nil", () => {
+	const run = flow.safe((n: number) => n * 2, (n: number) => n + 1);
+	expect(run(5)).toBe(11);
+});
+
+test("flow.safe - short circuits on null immediately", () => {
+	let secondCalled = false;
+	const run = flow.safe((n: number) => (n > 5 ? null : n * 2), (n: number) => {
+		secondCalled = true;
+		return n + 1;
+	});
+	expect(run(6)).toBeNull();
+	expect(secondCalled).toBe(false);
+});
+
+test("flow.safe - short circuits on undefined immediately", () => {
+	let secondCalled = false;
+	const run = flow.safe((n: number) => (n > 5 ? undefined : n * 2), (n: number) => {
+		secondCalled = true;
+		return n + 1;
+	});
+	expect(run(6)).toBeUndefined();
+	expect(secondCalled).toBe(false);
+});
+
+test("flow.safe - short-circuits initial null/undefined", () => {
+	let firstCalled = false;
+	const run = flow.safe<number | null | undefined, number>((n) => {
+		firstCalled = true;
+		return n * 2;
+	});
+	expect(run(null)).toBeNull();
+	expect(run(undefined)).toBeUndefined();
+	expect(firstCalled).toBe(false);
+});
+
+// --- flow.async ---
+
+test("flow.async - awaits synchronous and asynchronous steps", async () => {
+	const run = flow.async(
+		(n: number) => Promise.resolve(n * 2),
+		(n: number) => n + 1,
+		(n: number) => Promise.resolve(`result: ${n}`),
+	);
+	const res = await run(5);
+	expect(res).toBe("result: 11");
+});
+
+test("flow.async - supports input promise", async () => {
+	const run = flow.async((n: number) => Promise.resolve(n * 2));
+	const res = await run(Promise.resolve(5));
+	expect(res).toBe(10);
+});
+
+// --- integration/composition ---
+
+test("flow - integration with other composition helpers", () => {
+	const run = flow((n: number) => n + 1, flow.when((n) => n > 5, (n) => n * 2), (n) => `Final: ${n}`);
+	expect(run(5)).toBe("Final: 12");
+	expect(run(3)).toBe("Final: 4");
+});

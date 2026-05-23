@@ -108,3 +108,103 @@ test("pipe - 9 functions", () => {
 test("pipe - 10 functions", () => {
 	expect(pipe(0, inc, inc, inc, inc, inc, inc, inc, inc, inc, inc)).toBe(10);
 });
+
+// --- pipe.when / pipe.unless / pipe.either ---
+
+test("pipe.when - applies onTrue if predicate holds", () => {
+	const doubleEven = pipe.when((n: number) => n % 2 === 0, (n: number) => n * 2);
+	expect(doubleEven(2)).toBe(4);
+	expect(doubleEven(3)).toBe(3);
+});
+
+test("pipe.unless - applies onFalse if predicate does not hold", () => {
+	const doubleOdd = pipe.unless((n: number) => n % 2 === 0, (n: number) => n * 2);
+	expect(doubleOdd(3)).toBe(6);
+	expect(doubleOdd(2)).toBe(2);
+});
+
+test("pipe.either - branches appropriately", () => {
+	const describe = pipe.either((n: number) => n > 0, () => "positive", () => "non-positive");
+	expect(describe(5)).toBe("positive");
+	expect(describe(-1)).toBe("non-positive");
+});
+
+// --- pipe.try ---
+
+test("pipe.try - returns result on success", () => {
+	const parsed = pipe('{"value": 42}', pipe.try((s) => JSON.parse(s), () => ({ error: true })));
+	expect(parsed).toStrictEqual({ value: 42 });
+});
+
+test("pipe.try - returns fallback on error", () => {
+	const parsed = pipe("invalid", pipe.try((s) => JSON.parse(s), (err, input) => ({ error: true, input })));
+	expect(parsed).toStrictEqual({ error: true, input: "invalid" });
+});
+
+// --- pipe.struct ---
+
+test("pipe.struct - builds objects dynamically", () => {
+	const result = pipe(
+		{ firstName: "Alice", lastName: "Smith" },
+		pipe.struct({ fullName: (u) => `${u.firstName} ${u.lastName}`, upper: (u) => u.firstName.toUpperCase() }),
+	);
+	expect(result).toStrictEqual({ fullName: "Alice Smith", upper: "ALICE" });
+});
+
+// --- pipe.safe ---
+
+test("pipe.safe - pipes values normally when not nil", () => {
+	const result = pipe.safe("hello", (s) => s.toUpperCase(), (s) => s.length);
+	expect(result).toBe(5);
+});
+
+test("pipe.safe - short-circuits on null", () => {
+	let called = false;
+	const result = pipe.safe(null as string | null, (s) => {
+		called = true;
+		return s.toUpperCase();
+	}, (s) => s.length);
+	expect(result).toBeNull();
+	expect(called).toBe(false);
+});
+
+test("pipe.safe - short-circuits on undefined", () => {
+	let called = false;
+	const result = pipe.safe(undefined as string | undefined, (s) => {
+		called = true;
+		return s.toUpperCase();
+	});
+	expect(result).toBeUndefined();
+	expect(called).toBe(false);
+});
+
+test("pipe.safe - short-circuits if intermediate step returns null", () => {
+	let called = false;
+	const result = pipe.safe({ name: null } as { name: string | null; }, (u) => u.name, (name) => {
+		called = true;
+		return name.length;
+	});
+	expect(result).toBeNull();
+	expect(called).toBe(false);
+});
+
+// --- pipe.async ---
+
+test("pipe.async - resolves synchronous chains", async () => {
+	const result = await pipe.async(5, (n: number) => n * 2, (n: number) => n + 1);
+	expect(result).toBe(11);
+});
+
+test("pipe.async - resolves asynchronous chains", async () => {
+	const result = await pipe.async(
+		Promise.resolve(5),
+		(n: number) => Promise.resolve(n * 2),
+		(n: number) => Promise.resolve(n + 1),
+	);
+	expect(result).toBe(11);
+});
+
+test("pipe.async - resolves hybrid sync and async chains", async () => {
+	const result = await pipe.async(5, (n: number) => Promise.resolve(n * 2), (n: number) => n + 1);
+	expect(result).toBe(11);
+});
