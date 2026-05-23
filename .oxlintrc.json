@@ -34,22 +34,18 @@
 		"vitest/prefer-to-be-falsy": "off",
 		"vitest/prefer-to-be-truthy": "off",
 		"jest/prefer-expect-resolves": "off",
-		"curly": "off",
+		"curly": "warn",
 		"id-length": "off",
 		"capitalized-comments": "off",
 		"no-inline-comments": "off",
 		"max-statements": "off",
 		"vitest/no-importing-vitest-globals": "off",
 		"no-promise-executor-return": "off",
-		"no-shadow": "off",
-		"unicorn/import-style": ["error", {
-			"styles": {
-				"fast-check": {
-					"default": true,
-					"named": false,
-					"namespace": false
-				}
-			}
-		}]
+		"no-shadow": "warn",
+		"vitest/no-focused-tests": "error",
+		"vitest/require-top-level-describe": "off",
+		"vitest/prefer-lowercase-title": "off",
+		"vitest/prefer-expect-assertions": "off",
+		"vitest/no-conditional-in-test": "off"
 	}
 }

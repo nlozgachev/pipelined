@@ -6,7 +6,9 @@
 		"allowImportingTsExtensions": true,
 		"noEmit": true,
 		"strict": true,
+		"ignoreDeprecations": "6.0",
 		"lib": ["ESNext", "DOM"],
+		"types": ["node"],
 		"paths": {
 			"#core/*": ["./src/Core/*"],
 			"#utils/*": ["./src/Utils/*"],

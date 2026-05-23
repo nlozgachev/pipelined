@@ -6,10 +6,13 @@
 	"typescript": {
 		"semiColons": "always",
 		"quoteStyle": "preferDouble",
-		"trailingCommas": "onlyMultiLine"
+		"trailingCommas": "onlyMultiLine",
+		"module.sortImportDeclarations": "caseInsensitive",
+		"importDeclaration.sortNamedImports": "caseInsensitive",
+		"arrowFunction.useParentheses": "force"
 	},
 	"excludes": ["dist/", "node_modules/", "*.md", "*.mdx"],
 	"plugins": [
-		"https://plugins.dprint.dev/typescript-0.95.15.wasm",
+		"https://plugins.dprint.dev/typescript-0.95.15.wasm"
 	]
 }
