@@ -14,11 +14,11 @@ npm add @nlozgachev/pipelined
 
 ## Possibly maybe
 
-**pipelined** names every possible state and gives you operations that compose. `Maybe<A>` for
-values that may or may not be there. `Result<E, A>` for operations that succeed or fail with a typed
-error. `TaskResult<E, A>` for async operations that keep failures as typed values and propagate
-cancellation automatically. `Op<I, E, A>` for managing repeated async interactions — retry, timeout,
-and concurrency strategy in one place. And, of course, there is more than that.
+In mainstream TypeScript, code is often burdened by implicit control flow: unchecked exceptions,
+manual null propagation, and unhandled asynchronous failures. `pipelined` turns these complex
+runtime states into simple, transparent data structures that compose. By representing optionality as
+`Maybe`, failures as `Result`, lazy asynchronous pipelines as `TaskResult`, and repeated stateful
+interactions as `Op`, the library helps disentangle business logic from control mechanics.
 
 ## Documentation
 
@@ -54,8 +54,10 @@ Every step that sees `None` is skipped. The fallback runs once, at the end.
 
 ## Example: typed async errors
 
-Unhandled rejections are invisible until they crash. `TaskResult<E, A>` keeps failures as typed
-values — the error type is part of the signature, not a runtime surprise.
+In JavaScript, asynchronous exceptions bypass the static type system, leaving unhandled rejections
+as invisible runtime risks. `TaskResult<E, A>` represents fallible asynchronous computations as
+lazy, infallible tasks that resolve to a typed `Result`. The error type is explicitly tracked in the
+function signature, ensuring that failures are handled before compile time:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -110,8 +112,10 @@ if (Result.isOk(result)) {
 
 ## Example: transforming data
 
-The utils modules wrap JavaScript's built-in types with data-last, curried operations that return
-`Maybe` wherever a value might be absent. They compose naturally with the core types:
+Standard JavaScript arrays and records routinely return `undefined` on out-of-bounds access or
+missing keys. The utility modules in `pipelined` wrap these operations with data-last, curried
+helper functions that return `Maybe` when a value might be missing, allowing data transformation
+steps to compose naturally with the core types:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -148,7 +152,9 @@ the same way.
 
 ## Example: retry, timeout, and cancellation
 
-A careful, production-minded attempt at "fetch with retry, timeout, and cancellation":
+Handling robust network interactions — including retry attempts, backoff timing, timeouts, and
+signal-driven cancellation — typically requires complex, stateful code that is highly prone to
+subtle race conditions:
 
 ```ts
 type UserResult =
@@ -183,10 +189,6 @@ async function fetchUser(
   return attempt(1);
 }
 ```
-
-The signal is forwarded by hand. The timeout needs its own controller. Timed-out aborts are
-distinguished from external cancellation by checking `signal?.aborted`. The retry is recursive to
-thread the attempt count.
 
 With **pipelined**:
 
@@ -228,13 +230,13 @@ if (Op.isOk(outcome)) {
 fetchUser.abort();
 ```
 
-## Example: repeated interactions
+## Example: repeated UI interactions
 
-Real UIs make the same call many times — a search input fires on every keystroke, a submit button
-gets clicked twice, a polling loop needs to stop when something newer starts. Each scenario has a
-different answer to the same question: *what happens to the previous call when a new one arrives?*
-
-`Op` makes that question a one-word configuration choice.
+User interfaces frequently trigger repeated asynchronous events: a search input firing on every
+keystroke, a submit button clicked multiple times, or a polling loop that must terminate when a
+newer request starts. Managing these concurrency scenarios traditionally requires complex, ad-hoc
+state machines. `Op` simplifies this by allowing developers to declare the concurrency strategy as a
+simple configuration choice:
 
 **Search — cancel the previous call when the user types:**
 
@@ -292,82 +294,53 @@ form.addEventListener("submit", (e) => {
 });
 ```
 
-`restartable`, `exclusive`, `debounced`, `throttled`, `queue`, `buffered`, `concurrent`, `keyed`,
-`once` — each strategy is a complete, tested answer to one concurrency scenario. Swap the word, keep
-the rest of the code.
+The system supports a variety of built-in strategies — `restartable`, `exclusive`, `debounced`,
+`throttled`, `queue`, `buffered`, `concurrent`, `keyed`, and `once` — making the integration of
+complex async scenarios highly predictable.
 
-## What's included?
+## What is included
 
-The library covers the states you encounter in real applications: values that may be absent,
-operations that accumulate multiple errors, data that moves through
-`NotAsked >> Loading >> ( Success | Failure )`, async interactions with concurrency policies, nested
-immutable updates, and computations that share a common environment. Every type follows the same
-conventions — `map`, `chain`, `match`, `getOrElse` — so moving between them feels familiar.
+The library covers the full spectrum of state and control flow scenarios encountered in production
+applications.
 
-### pipelined/core
+### Core context containers
 
-- **`Maybe<A>`** — a value that may not exist; propagates absence without null checks.
-- **`Result<E, A>`** — an operation that succeeds or fails with a typed error.
-- **`Validation<E, A>`** — like `Result`, but accumulates every failure instead of stopping at the
-  first.
-- **`Task<A>`** — a lazy, infallible async operation; nothing runs until called.
-- **`TaskResult<E, A>`** — a lazy async operation that can fail with a typed error.
-- **`TaskMaybe<A>`** — a lazy async operation that may produce nothing.
-- **`TaskValidation<E, A>`** — a lazy async operation that accumulates validation errors.
-- **`Op<I, E, A>`** — a managed async operation with a named concurrency strategy: `restartable`,
-  `exclusive`, `debounced`, `throttled`, `queue`, `buffered`, `concurrent`, `keyed`, or `once`.
-  Handles retry, timeout, cancellation, and state in one place.
-- **`RemoteData<E, A>`** — the four states of a data fetch: `NotAsked`, `Loading`, `Failure`,
-  `Success`.
-- **`These<A, B>`** — an inclusive OR: holds a first value, a second, or both at once.
-- **`Lens<S, A>`** — focus on a required field in a nested structure. Read, set, and modify
-  immutably.
-- **`Optional<S, A>`** — like `Lens`, but the target may be absent (nullable fields, array indices).
-- **`Reader<R, A>`** — a computation that depends on an environment `R`, supplied once at the
-  boundary.
-- **`State<S, A>`** — a computation that reads and updates a state value, threaded explicitly
-  through the chain.
-- **`Logged<W, A>`** — a computation that accumulates a log alongside its value; no console output,
-  just data.
-- **`Predicate<A>`** — a typed boolean function, composable with `and`, `or`, `not`, and `using`.
-- **`Refinement<A, B>`** — a type predicate that narrows `A` to `B` at runtime; composes with
-  `Predicate`.
-- **`Resource<E, A>`** — an acquire/release pair for safe resource management in `TaskResult`
-  pipelines.
-- **`Deferred<A>`** — an infallible async value: a thenable that always resolves, never rejects.
-- **`Tuple<A, B>`** — a typed pair with `first`, `second`, `map`, `swap`, and `fold`.
+`Maybe` represents explicit optionality without null checks. `Result` handles synchronous, typed
+success and failure, while `Validation` accumulates multiple errors. `RemoteData` tracks the four
+states of an asynchronous data fetch (`NotAsked`, `Loading`, `Failure`, `Success`), and `These`
+handles inclusive-OR scenarios containing a first value, a second, or both simultaneously.
 
-### pipelined/utils
+### Asynchronous operations
 
-Everyday utilities for built-in JS types.
+`Task` represents a lazy, infallible asynchronous computation. Fallible asynchronous workflows are
+handled by `TaskResult`, `TaskMaybe`, and `TaskValidation`. For managing stateful, recurring
+asynchronous operations with complex scheduling, `Op` implements named concurrency strategies such
+as `restartable`, `exclusive`, `debounced`, `throttled`, and `queue`, handling retries, timeouts,
+and signal propagation automatically.
 
-- **`Arr`** — array utilities, data-last, returning `Maybe` instead of `undefined`.
-- **`Rec`** — record/object utilities, data-last, with `Maybe`-returning key lookup.
-- **`Dict`** — `ReadonlyMap<K, V>` utilities: `lookup`, `groupBy`, `upsert`, set operations.
-- **`Uniq`** — `ReadonlySet<A>` utilities: `insert`, `remove`, `union`, `intersection`,
-  `difference`.
-- **`Num`** — number utilities: `range`, `clamp`, `between`, safe `parse`, and curried arithmetic.
-- **`Str`** — string utilities: `split`, `trim`, `words`, `lines`, and safe `parse.int` /
-  `parse.float`.
+### Optics and environment state
 
-Every utility is benchmarked against its native equivalent. The data-last currying adds a function
-call; that is the expected cost of composability. Operations that exceeded a reasonable overhead
-have custom implementations that in several cases run faster than the native method they replace.
-See the [benchmarks page](https://pipelined.lozgachev.dev/appendix/benchmarks) for the methodology.
+`Lens` and `Optional` provide a simple concrete interface for safe, nested immutable data updates.
+Environment-dependent calculations and explicit state threading are supported by the `Reader` and
+`State` abstractions, while `Logged` enables side-effect-free data logging.
 
-### pipelined/types
+### Optimized utilities
 
-- **`Brand<K, T>`** — nominal typing at compile time, zero runtime cost.
-- **`NonEmptyList<A>`** — an array guaranteed to have at least one element.
+Custom, performance-optimized utility modules (`Arr`, `Rec`, `Dict`, `Uniq`, `Num`, `Str`) wrap
+standard JavaScript types to return explicit types like `Maybe` and support data-last currying.
+Functions are composed using `pipe` and `flow`, which are enriched with high-level composition
+helpers like `when`, `unless`, `either`, `safe`, and `async` to support robust, expressive
+pipelines.
 
-### pipelined/composition
+### Nominal branding and non-empty lists
 
-- **`pipe`**, **`flow`**, **`compose`** — function composition. Attaches high-level composition
-  utilities directly to both `pipe` and `flow` namespaces: **`when`** / **`unless`** (conditional
-  execution), **`either`** (functional branch), **`try`** (error safety fallbacks), **`struct`**
-  (data reshaping), **`safe`** (null-safe short-circuiting), and **`async`** (promisified
-  pipelining).
-- **`curry`** / **`uncurry`**, **`tap`**, **`memoize`**, and other function utilities.
+Compile-time nominal typing with zero runtime overhead is provided by `Brand`, and `NonEmptyList`
+guarantees that a list is never empty, eliminating defensive array length checks.
+
+Every utility in the library is benchmarked against its native equivalent. The data-last currying
+adds a small function call overhead, which is the expected cost of composability. For operations
+where native overhead is significant, custom implementations are used that often run faster than
+their native counterparts.
 
 ## License
 

@@ -44,21 +44,15 @@ export default defineConfig({
 			sidebar: [{
 				label: "The basics",
 				collapsed: false,
-				items: [
-					{ slug: "basics/installation" },
-					{ slug: "basics/pipelines" },
-					{ slug: "basics/overview" },
-					{ slug: "basics/composition" },
-				],
+				items: [{ slug: "basics/installation" }, { slug: "basics/pipelines" }, { slug: "basics/overview" }, {
+					slug: "basics/composition",
+				}],
 			}, {
 				label: "Errors & absence",
 				collapsed: false,
-				items: [
-					{ slug: "guides/maybe" },
-					{ slug: "guides/result" },
-					{ slug: "guides/validation" },
-					{ slug: "guides/these" },
-				],
+				items: [{ slug: "guides/maybe" }, { slug: "guides/result" }, { slug: "guides/validation" }, {
+					slug: "guides/these",
+				}],
 			}, {
 				label: "Async",
 				collapsed: false,
@@ -72,55 +66,32 @@ export default defineConfig({
 			}, {
 				label: "State & context",
 				collapsed: false,
-				items: [
-					{ slug: "guides/reader" },
-					{ slug: "guides/state" },
-					{ slug: "guides/logged" },
-				],
+				items: [{ slug: "guides/reader" }, { slug: "guides/state" }, { slug: "guides/logged" }],
 			}, {
 				label: "Nested data",
 				collapsed: false,
-				items: [
-					{ slug: "guides/lens" },
-					{ slug: "guides/optional" },
-					{ slug: "guides/tuple" },
-				],
+				items: [{ slug: "guides/lens" }, { slug: "guides/optional" }, { slug: "guides/tuple" }],
 			}, {
 				label: "Type safety",
 				collapsed: false,
-				items: [
-					{ slug: "guides/brand" },
-					{ slug: "guides/duration" },
-					{ slug: "guides/refinement" },
-					{ slug: "guides/predicate" },
-				],
+				items: [{ slug: "guides/brand" }, { slug: "guides/duration" }, { slug: "guides/refinement" }, {
+					slug: "guides/predicate",
+				}],
 			}, {
 				label: "Comparing & combining",
 				collapsed: false,
-				items: [
-					{ slug: "guides/equality" },
-					{ slug: "guides/ordering" },
-					{ slug: "guides/combinable" },
-					{ slug: "guides/lazy" },
-				],
+				items: [{ slug: "guides/equality" }, { slug: "guides/ordering" }, { slug: "guides/combinable" }, {
+					slug: "guides/lazy",
+				}],
 			}, {
 				label: "Collection utilities",
 				collapsed: false,
-				items: [
-					{ slug: "guides/arr" },
-					{ slug: "guides/str" },
-					{ slug: "guides/num" },
-					{ slug: "guides/rec" },
-					{ slug: "guides/dict" },
-					{ slug: "guides/uniq" },
-				],
+				items: [{ slug: "guides/arr" }, { slug: "guides/str" }, { slug: "guides/num" }, { slug: "guides/rec" }, {
+					slug: "guides/dict",
+				}, { slug: "guides/uniq" }],
 			}, {
 				label: "Appendix",
-				items: [
-					{ slug: "appendix/motivation" },
-					{ slug: "appendix/influences" },
-					{ slug: "appendix/benchmarks" },
-				],
+				items: [{ slug: "appendix/motivation" }, { slug: "appendix/influences" }, { slug: "appendix/benchmarks" }],
 			}, typeDocSidebarGroup],
 		}),
 	],
