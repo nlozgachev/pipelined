@@ -192,6 +192,7 @@ With **pipelined**:
 
 ```ts
 import { Op } from "@nlozgachev/pipelined/core";
+import { Duration } from "@nlozgachev/pipelined/types";
 
 const fetchUser = Op.interpret(
   Op.create(
@@ -201,8 +202,11 @@ const fetchUser = Op.interpret(
   ),
   {
     strategy: "restartable",
-    retry: { attempts: 3, backoff: (n) => n * 1000 },
-    timeout: { ms: 5000, onTimeout: () => new ApiError("request timed out") },
+    retry: { attempts: 3, backoff: (n) => Duration.seconds(n) },
+    timeout: {
+      duration: Duration.seconds(5),
+      onTimeout: () => new ApiError("request timed out"),
+    },
   },
 );
 ```
@@ -236,6 +240,7 @@ different answer to the same question: *what happens to the previous call when a
 
 ```ts
 import { Op } from "@nlozgachev/pipelined/core";
+import { Duration } from "@nlozgachev/pipelined/types";
 
 const searchOp = Op.create(
   (signal) => (query: string) =>
@@ -247,7 +252,7 @@ const searchOp = Op.create(
 
 const search = Op.interpret(searchOp, {
   strategy: "restartable", // new call cancels the previous one
-  retry: { attempts: 2, backoff: 300 },
+  retry: { attempts: 2, backoff: Duration.milliseconds(300) },
 });
 
 search.subscribe((state) => {
