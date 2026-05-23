@@ -1,23 +1,23 @@
 {
-  "name": "pipelined-docs",
-  "type": "module",
-  "version": "0.0.1",
-  "scripts": {
-    "dev": "astro dev",
-    "start": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "astro": "astro"
-  },
-  "dependencies": {
-    "@astrojs/starlight": "0.37.6",
-    "astro": "5.17.3",
-    "astro-mermaid": "2.0.1",
-    "mermaid": "11.14.0",
-    "sharp": "0.34.5",
-    "starlight-theme-nova": "0.11.5",
-    "starlight-typedoc": "0.21.5",
-    "typedoc": "0.28.17",
-    "typedoc-plugin-markdown": "4.10.0"
-  }
+	"name": "pipelined-docs",
+	"type": "module",
+	"version": "0.0.1",
+	"scripts": {
+		"dev": "astro dev",
+		"start": "astro dev",
+		"build": "astro build",
+		"preview": "astro preview",
+		"astro": "astro"
+	},
+	"dependencies": {
+		"@astrojs/starlight": "0.37.6",
+		"astro": "5.17.3",
+		"astro-mermaid": "2.0.1",
+		"mermaid": "11.14.0",
+		"sharp": "0.34.5",
+		"starlight-theme-nova": "0.11.5",
+		"starlight-typedoc": "0.21.5",
+		"typedoc": "0.28.17",
+		"typedoc-plugin-markdown": "4.10.0"
+	}
 }

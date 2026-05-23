@@ -12,10 +12,5 @@ export default defineConfig({
 			"#composition/": r("src/Composition") + "/",
 		},
 	},
-	test: {
-		include: ["src/**/*.test.ts"],
-		coverage: {
-			reporter: ["lcov", "text"],
-		},
-	},
+	test: { include: ["src/**/*.test.ts"], coverage: { reporter: ["lcov", "text"] } },
 });

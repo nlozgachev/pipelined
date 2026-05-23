@@ -7,4 +7,12 @@ node_modules/
 npm/
 dist/
 
-notes/
+.astro/
+
+api/
+
+.env
+.env.production
+
+.vscode/
+.zed/
