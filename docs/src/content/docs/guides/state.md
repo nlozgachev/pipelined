@@ -203,6 +203,57 @@ receive duplicate IDs.
 
 ---
 
+## Accumulating values: bind / bindTo
+
+When you need to perform multiple sequential stateful operations and gather their results into a
+single object, nesting `chain` and `map` inside pipelines can become highly complex:
+
+```ts
+const buildProfile = pipe(
+  generateId,
+  State.chain((id) =>
+    pipe(
+      loadData(id),
+      State.map((data) => ({ id, data }))
+    )
+  ),
+  State.chain(({ id, data }) =>
+    pipe(
+      loadPrefs(id),
+      State.map((prefs) => ({ id, data, prefs }))
+    )
+  )
+);
+```
+
+To solve this, you can use `bindTo` and `bind` to cleanly accumulate values key-by-key in a flat,
+readable pipeline.
+
+`bindTo` lifts a value into the pipeline's accumulator object:
+
+```ts
+pipe(
+  State.resolve(42),
+  State.bindTo("value")
+); // State({ value: 42 })
+```
+
+`bind` runs a new stateful operation using the accumulated object and attaches the result to a new
+key:
+
+```ts
+const buildProfile = pipe(
+  generateId,
+  State.bindTo("id"),
+  State.bind("data", ({ id }) => loadData(id)),
+  State.bind("prefs", ({ id }) => loadPrefs(id))
+); // State({ id: number, data: Data, prefs: Preferences })
+```
+
+The underlying state transition threads behind the scenes key-by-key perfectly.
+
+---
+
 ## When to use State
 
 ### Use State when:

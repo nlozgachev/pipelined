@@ -214,4 +214,33 @@ export namespace State {
 	 * ```
 	 */
 	export const execute = <S>(initialState: S) => <A>(st: State<S, A>): S => st(initialState)[1];
+
+	/**
+	 * Lifts a State value into an accumulator object.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(State.resolve(42), State.bindTo("value")); // State({ value: 42 })
+	 * ```
+	 */
+	export const bindTo = <K extends string>(key: K) => <S, A>(data: State<S, A>): State<S, { [P in K]: A; }> =>
+		map<S, A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data);
+
+	/**
+	 * Evaluates a new State using the current accumulator and attaches the output to a new key.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   State.resolve({ a: 1 }),
+	 *   State.bind("b", ({ a }) => State.resolve(a + 1))
+	 * ); // State({ a: 1, b: 2 })
+	 * ```
+	 */
+	export const bind =
+		<K extends string, S, A, B>(key: K, f: (a: A) => State<S, B>) =>
+		(data: State<S, A>): State<S, A & { [P in K]: B; }> =>
+			chain<S, A, A & { [P in K]: B; }>((a) =>
+				map<S, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
+			)(data);
 }

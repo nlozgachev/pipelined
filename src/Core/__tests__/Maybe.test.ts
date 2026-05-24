@@ -455,3 +455,37 @@ test("Maybe.fold — return type matches branch return types", () => {
 	const folded = Maybe.fold((): string => "none", (n: number): string => String(n))(r);
 	expectTypeOf(folded).toBeString();
 });
+
+// --- bindTo ---
+
+test("Maybe.bindTo wraps a value in an accumulator object", () => {
+	const result = pipe(Maybe.some(2), Maybe.bindTo("a"));
+	expect(result).toStrictEqual(Maybe.some({ a: 2 }));
+});
+
+// --- bind ---
+
+test("Maybe.bind accumulates values key-by-key in a pipeline", () => {
+	const result = pipe(
+		Maybe.some(2),
+		Maybe.bindTo("a"),
+		Maybe.bind("b", ({ a }) => Maybe.some(a * 3)),
+		Maybe.bind("c", ({ a, b }) => Maybe.some(a + b)),
+	);
+	expect(result).toStrictEqual(Maybe.some({ a: 2, b: 6, c: 8 }));
+});
+
+test("Maybe.bind short-circuits on None", () => {
+	let called = false;
+	const result = pipe(
+		Maybe.some(2),
+		Maybe.bindTo("a"),
+		Maybe.bind("b", () => Maybe.none()),
+		Maybe.bind("c", ({ b }) => {
+			called = true;
+			return Maybe.some(b);
+		}),
+	);
+	expect(called).toBe(false);
+	expect(result).toStrictEqual(Maybe.none());
+});

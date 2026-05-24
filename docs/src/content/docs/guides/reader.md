@@ -222,6 +222,55 @@ dependencies and environment variables are resolved.
 
 ---
 
+## Accumulating values: bind / bindTo
+
+When you need to perform multiple sequential operations reading from the same environment and
+accumulate their results into a single object, traditional pipelines can become deeply nested
+because each successive function needs access to previous results:
+
+```ts
+const userProfile = pipe(
+  getUser(userId),
+  Reader.chain((user) =>
+    pipe(
+      getPreferences(user.id),
+      Reader.map((prefs) => ({ user, prefs }))
+    )
+  ),
+  Reader.chain(({ user, prefs }) =>
+    pipe(
+      getTheme(prefs.themeId),
+      Reader.map((theme) => ({ user, prefs, theme }))
+    )
+  )
+);
+```
+
+To solve this, you can use `bindTo` and `bind` to cleanly accumulate environment-derived values
+key-by-key in a flat, readable pipeline.
+
+`bindTo` lifts a value into the pipeline's accumulator object:
+
+```ts
+pipe(
+  Reader.resolve(42),
+  Reader.bindTo("value")
+); // Reader({ value: 42 })
+```
+
+`bind` runs a new operation using the accumulated object and attaches the result to a new key:
+
+```ts
+const userProfile = pipe(
+  getUser(userId),
+  Reader.bindTo("user"),
+  Reader.bind("prefs", ({ user }) => getPreferences(user.id)),
+  Reader.bind("theme", ({ prefs }) => getTheme(prefs.themeId))
+); // Reader({ user: User, prefs: Preferences, theme: Theme })
+```
+
+---
+
 ## When to use Reader
 
 ### Use Reader when:

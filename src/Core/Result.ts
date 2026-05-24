@@ -303,4 +303,34 @@ export namespace Result {
 	 */
 	export const ap = <E, A>(arg: Result<E, A>) => <B>(data: Result<E, (a: A) => B>): Result<E, B> =>
 		isOk(data) && isOk(arg) ? ok(data.value(arg.value)) : (isErr(data) ? data : (arg as Err<E>));
+
+	/**
+	 * Converts a Result value into an object containing a single property.
+	 * Initiates the pipeline accumulator record.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Result.ok(42), Result.bindTo("value")); // Ok({ value: 42 })
+	 * ```
+	 */
+	export const bindTo = <K extends string>(key: K) => <E, A>(data: Result<E, A>): Result<E, { [P in K]: A; }> =>
+		map<E, A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data);
+
+	/**
+	 * Evaluates a new Result using the current accumulator and attaches the output to a new key.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Result.ok({ a: 1 }),
+	 *   Result.bind("b", ({ a }) => Result.ok(a + 1))
+	 * ); // Ok({ a: 1, b: 2 })
+	 * ```
+	 */
+	export const bind =
+		<K extends string, E, A, B>(key: K, f: (a: A) => Result<E, B>) =>
+		(data: Result<E, A>): Result<E, A & { [P in K]: B; }> =>
+			chain<E, A, A & { [P in K]: B; }>((a) =>
+				map<E, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
+			)(data);
 }

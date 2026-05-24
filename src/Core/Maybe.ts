@@ -245,4 +245,33 @@ export namespace Maybe {
 	 */
 	export const ap = <A>(arg: Maybe<A>) => <B>(data: Maybe<(a: A) => B>): Maybe<B> =>
 		isSome(data) && isSome(arg) ? some(data.value(arg.value)) : none();
+
+	/**
+	 * Converts a Maybe value into an object containing a single property.
+	 * Initiates the pipeline accumulator record.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Maybe.some(42), Maybe.bindTo("value")); // Some({ value: 42 })
+	 * ```
+	 */
+	export const bindTo = <K extends string>(key: K) => <A>(data: Maybe<A>): Maybe<{ [P in K]: A; }> =>
+		map<A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data);
+
+	/**
+	 * Evaluates a new Maybe using the current accumulator and attaches the output to a new key.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Maybe.some({ a: 1 }),
+	 *   Maybe.bind("b", ({ a }) => Maybe.some(a + 1))
+	 * ); // Some({ a: 1, b: 2 })
+	 * ```
+	 */
+	export const bind =
+		<K extends string, A, B>(key: K, f: (a: A) => Maybe<B>) => (data: Maybe<A>): Maybe<A & { [P in K]: B; }> =>
+			chain<A, A & { [P in K]: B; }>((a) =>
+				map<B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
+			)(data);
 }

@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Deferred } from "../Deferred.ts";
 import { Maybe } from "../Maybe.ts";
@@ -565,4 +565,47 @@ test("TaskResult.fromThrowable returns Err when it throws", async () => {
 	);
 	const result = await fetch("/api")();
 	expect(result).toStrictEqual(Result.err("network error"));
+});
+
+// --- bindTo ---
+
+test("TaskResult.bindTo wraps a value in an accumulator object", async () => {
+	const task = pipe(TaskResult.ok<string, number>(2), TaskResult.bindTo("a"));
+	expectTypeOf(task).toEqualTypeOf<TaskResult<string, { a: number; }>>();
+
+	const result = await task();
+	expect(result).toStrictEqual(Result.ok({ a: 2 }));
+});
+
+// --- bind ---
+
+test("TaskResult.bind accumulates values key-by-key in a pipeline", async () => {
+	const task = pipe(
+		TaskResult.ok<string, number>(2),
+		TaskResult.bindTo("a"),
+		TaskResult.bind("b", ({ a }) => TaskResult.ok<string, number>(a * 3)),
+		TaskResult.bind("c", ({ a, b }) => TaskResult.ok<string, number>(a + b)),
+	);
+	expectTypeOf(task).toEqualTypeOf<TaskResult<string, { a: number; } & { b: number; } & { c: number; }>>();
+
+	const result = await task();
+	expect(result).toStrictEqual(Result.ok({ a: 2, b: 6, c: 8 }));
+});
+
+test("TaskResult.bind short-circuits on Err", async () => {
+	let called = false;
+	const task = pipe(
+		TaskResult.ok<string, number>(2),
+		TaskResult.bindTo("a"),
+		TaskResult.bind("b", () => TaskResult.err<string, number>("fail")),
+		TaskResult.bind("c", ({ b }) => {
+			called = true;
+			return TaskResult.ok<string, number>(b);
+		}),
+	);
+	expectTypeOf(task).toEqualTypeOf<TaskResult<string, { a: number; } & { b: number; } & { c: number; }>>();
+
+	const result = await task();
+	expect(called).toBe(false);
+	expect(result).toStrictEqual(Result.err("fail"));
 });

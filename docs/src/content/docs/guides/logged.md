@@ -155,6 +155,56 @@ database, return them to the client, or filter them, keeping your operational co
 
 ---
 
+## Accumulating values: bind / bindTo
+
+When you need to perform multiple sequential operations and gather their results into a single
+object, nesting `chain` and `map` inside pipelines can become highly complex:
+
+```ts
+const userProfile = pipe(
+  getUser(userId),
+  Logged.chain((user) =>
+    pipe(
+      getPreferences(user.id),
+      Logged.map((prefs) => ({ user, prefs }))
+    )
+  ),
+  Logged.chain(({ user, prefs }) =>
+    pipe(
+      getTheme(prefs.themeId),
+      Logged.map((theme) => ({ user, prefs, theme }))
+    )
+  )
+);
+```
+
+To solve this, you can use `bindTo` and `bind` to cleanly accumulate values key-by-key in a flat,
+readable pipeline.
+
+`bindTo` lifts a value into the pipeline's accumulator object:
+
+```ts
+pipe(
+  Logged.make<string, number>(42),
+  Logged.bindTo("value")
+); // Logged({ value: 42 })
+```
+
+`bind` runs a new operation using the accumulated object and attaches the result to a new key:
+
+```ts
+const userProfile = pipe(
+  getUser(userId),
+  Logged.bindTo("user"),
+  Logged.bind("prefs", ({ user }) => getPreferences(user.id)),
+  Logged.bind("theme", ({ prefs }) => getTheme(prefs.themeId))
+); // Logged({ user: User, prefs: Preferences, theme: Theme })
+```
+
+All logs produced at each key-binding step are automatically concatenated in sequential order.
+
+---
+
 ## When to use Logged
 
 ### Use Logged when:

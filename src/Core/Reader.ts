@@ -167,4 +167,33 @@ export namespace Reader {
 	 * ```
 	 */
 	export const run = <R>(env: R) => <A>(data: Reader<R, A>): A => data(env);
+
+	/**
+	 * Lifts a Reader value into an accumulator object.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Reader.resolve(42), Reader.bindTo("value")); // Reader({ value: 42 })
+	 * ```
+	 */
+	export const bindTo = <K extends string>(key: K) => <R, A>(data: Reader<R, A>): Reader<R, { [P in K]: A; }> =>
+		map<R, A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data);
+
+	/**
+	 * Evaluates a new Reader using the current accumulator and attaches the output to a new key.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Reader.resolve({ a: 1 }),
+	 *   Reader.bind("b", ({ a }) => Reader.resolve(a + 1))
+	 * ); // Reader({ a: 1, b: 2 })
+	 * ```
+	 */
+	export const bind =
+		<K extends string, R, A, B>(key: K, f: (a: A) => Reader<R, B>) =>
+		(data: Reader<R, A>): Reader<R, A & { [P in K]: B; }> =>
+			chain<R, A, A & { [P in K]: B; }>((a) =>
+				map<R, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
+			)(data);
 }

@@ -216,3 +216,26 @@ test("state composes well in a pipe chain", () => {
 	const total = State.evaluate({ items: [] as string[], total: 0 })(program);
 	expect(total).toBe(4);
 });
+
+// --- bindTo ---
+
+test("State.bindTo wraps a value in an accumulator object", () => {
+	const result = pipe(State.resolve<number, number>(2), State.bindTo("a"));
+	const [value, state] = State.run(99)(result);
+	expect(value).toStrictEqual({ a: 2 });
+	expect(state).toBe(99);
+});
+
+// --- bind ---
+
+test("State.bind accumulates values key-by-key in a pipeline", () => {
+	const result = pipe(
+		State.resolve<number, number>(2),
+		State.bindTo("a"),
+		State.bind("b", ({ a }) => State.resolve(a * 3)),
+		State.bind("c", ({ a, b }) => State.resolve(a + b)),
+	);
+	const [value, state] = State.run(99)(result);
+	expect(value).toStrictEqual({ a: 2, b: 6, c: 8 });
+	expect(state).toBe(99);
+});

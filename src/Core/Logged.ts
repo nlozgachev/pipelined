@@ -142,4 +142,33 @@ export namespace Logged {
 	 * ```
 	 */
 	export const run = <W, A>(data: Logged<W, A>): readonly [A, ReadonlyArray<W>] => [data.value, data.log];
+
+	/**
+	 * Lifts a Logged value into an accumulator object.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Logged.make<string, number>(42), Logged.bindTo("value")); // Logged({ value: 42 })
+	 * ```
+	 */
+	export const bindTo = <K extends string>(key: K) => <W, A>(data: Logged<W, A>): Logged<W, { [P in K]: A; }> =>
+		map<W, A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data);
+
+	/**
+	 * Evaluates a new Logged using the current accumulator and attaches the output to a new key.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Logged.make<string, { a: number }>({ a: 1 }),
+	 *   Logged.bind("b", ({ a }) => Logged.make<string, number>(a + 1))
+	 * ); // Logged({ value: { a: 1, b: 2 } })
+	 * ```
+	 */
+	export const bind =
+		<K extends string, W, A, B>(key: K, f: (a: A) => Logged<W, B>) =>
+		(data: Logged<W, A>): Logged<W, A & { [P in K]: B; }> =>
+			chain<W, A, A & { [P in K]: B; }>((a) =>
+				map<W, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
+			)(data);
 }

@@ -279,7 +279,56 @@ const lookupUser = (id: string): TaskMaybe<User> =>
 
 ---
 
+## Accumulating values: bind / bindTo
+
+When you need to perform multiple sequential asynchronous operations and gather their results into a single object, nesting `chain` and `map` inside pipelines can become highly complex and hard to read:
+
+```ts
+const userProfile = pipe(
+  getUser(userId),
+  Task.chain((user) =>
+    pipe(
+      getPreferences(user.id),
+      Task.map((prefs) => ({ user, prefs }))
+    )
+  ),
+  Task.chain(({ user, prefs }) =>
+    pipe(
+      getTheme(prefs.themeId),
+      Task.map((theme) => ({ user, prefs, theme }))
+    )
+  )
+);
+```
+
+To solve this, you can use `bindTo` and `bind` to cleanly accumulate asynchronous values key-by-key in a flat, readable pipeline. These helpers are available across the entire Task family: `Task`, `TaskResult`, and `TaskMaybe`.
+
+`bindTo` lifts an asynchronous value into the pipeline's accumulator object:
+
+```ts
+pipe(
+  Task.resolve(42),
+  Task.bindTo("value")
+); // Task({ value: 42 })
+```
+
+`bind` runs a new asynchronous operation using the accumulated object and attaches the result to a new key:
+
+```ts
+const userProfile = pipe(
+  getUser(userId), // TaskMaybe<User>
+  TaskMaybe.bindTo("user"),
+  TaskMaybe.bind("prefs", ({ user }) => getPreferences(user.id)),
+  TaskMaybe.bind("theme", ({ prefs }) => getTheme(prefs.themeId))
+); // TaskMaybe({ user: User, prefs: Preferences, theme: Theme })
+```
+
+If any step fails (yielding `None` in `TaskMaybe` or `Err` in `TaskResult`), the entire pipeline short-circuits and propagates the failure immediately.
+
+---
+
 ## Running Tasks at boundaries
+
 
 Because a `Task` is simply a function, you run it by invoking it. Invoking a `Task<A>` yields a `Deferred<A>`, which is highly compatible with the standard `Promise` ecosystem. You can `await` it directly within any standard `async/await` block:
 

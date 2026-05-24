@@ -368,6 +368,58 @@ logic of verifying the presence of `rawOffset`.
 
 ---
 
+## Accumulating values: bind / bindTo
+
+When you need to perform multiple sequential operations and gather their results into a single
+object, traditional pipelines can become deeply nested because each successive function needs access
+to previous results:
+
+```ts
+const userProfile = pipe(
+  getUser(userId),
+  Maybe.chain((user) =>
+    pipe(
+      getPreferences(user.id),
+      Maybe.map((prefs) => ({ user, prefs }))
+    )
+  ),
+  Maybe.chain(({ user, prefs }) =>
+    pipe(
+      getTheme(prefs.themeId),
+      Maybe.map((theme) => ({ user, prefs, theme }))
+    )
+  )
+);
+```
+
+To solve this, we can use `bindTo` and `bind` to cleanly accumulate values key-by-key in a flat,
+readable pipeline.
+
+`bindTo` lifts a value into the pipeline's accumulator object:
+
+```ts
+pipe(
+  Maybe.some(42),
+  Maybe.bindTo("value")
+); // Some({ value: 42 })
+```
+
+`bind` runs a new operation using the accumulated object and attaches the result to a new key:
+
+```ts
+const userProfile = pipe(
+  getUser(userId),
+  Maybe.bindTo("user"),
+  Maybe.bind("prefs", ({ user }) => getPreferences(user.id)),
+  Maybe.bind("theme", ({ prefs }) => getTheme(prefs.themeId))
+); // Some({ user: User, prefs: Preferences, theme: Theme })
+```
+
+If any step fails (yielding `None`), the entire pipeline short-circuits and propagates `None`
+immediately.
+
+---
+
 ## When to use Maybe vs null
 
 The introduction of `Maybe` into a codebase is a structural decision. It is not always the correct

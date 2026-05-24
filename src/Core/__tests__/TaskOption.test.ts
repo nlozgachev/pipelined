@@ -337,3 +337,37 @@ test("TaskMaybe.fromResult returns None for Error", async () => {
 	const result = await TaskMaybe.fromResult(Result.err("bad"))();
 	expect(result).toStrictEqual(Maybe.none());
 });
+
+// --- bindTo ---
+
+test("TaskMaybe.bindTo wraps a value in an accumulator object", async () => {
+	const result = await pipe(TaskMaybe.some(2), TaskMaybe.bindTo("a"))();
+	expect(result).toStrictEqual(Maybe.some({ a: 2 }));
+});
+
+// --- bind ---
+
+test("TaskMaybe.bind accumulates values key-by-key in a pipeline", async () => {
+	const result = await pipe(
+		TaskMaybe.some(2),
+		TaskMaybe.bindTo("a"),
+		TaskMaybe.bind("b", ({ a }) => TaskMaybe.some(a * 3)),
+		TaskMaybe.bind("c", ({ a, b }) => TaskMaybe.some(a + b)),
+	)();
+	expect(result).toStrictEqual(Maybe.some({ a: 2, b: 6, c: 8 }));
+});
+
+test("TaskMaybe.bind short-circuits on None", async () => {
+	let called = false;
+	const result = await pipe(
+		TaskMaybe.some(2),
+		TaskMaybe.bindTo("a"),
+		TaskMaybe.bind("b", () => TaskMaybe.none()),
+		TaskMaybe.bind("c", ({ b }) => {
+			called = true;
+			return TaskMaybe.some(b);
+		}),
+	)();
+	expect(called).toBe(false);
+	expect(result).toStrictEqual(Maybe.none());
+});

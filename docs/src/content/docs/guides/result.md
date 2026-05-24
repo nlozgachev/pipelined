@@ -299,6 +299,57 @@ const resultValue = pipe(
 
 ---
 
+## Accumulating values: bind / bindTo
+
+When you need to perform multiple sequential operations and gather their results into a single
+object, traditional pipelines can become deeply nested because each successive function needs access
+to previous results:
+
+```ts
+const userProfile = pipe(
+  getUser(userId),
+  Result.chain((user) =>
+    pipe(
+      getPreferences(user.id),
+      Result.map((prefs) => ({ user, prefs }))
+    )
+  ),
+  Result.chain(({ user, prefs }) =>
+    pipe(
+      getTheme(prefs.themeId),
+      Result.map((theme) => ({ user, prefs, theme }))
+    )
+  )
+);
+```
+
+To solve this, we can use `bindTo` and `bind` to cleanly accumulate values key-by-key in a flat,
+readable pipeline.
+
+`bindTo` lifts a value into the pipeline's accumulator object:
+
+```ts
+pipe(
+  Result.ok(42),
+  Result.bindTo("value")
+); // Ok({ value: 42 })
+```
+
+`bind` runs a new operation using the accumulated object and attaches the result to a new key:
+
+```ts
+const userProfile = pipe(
+  getUser(userId),
+  Result.bindTo("user"),
+  Result.bind("prefs", ({ user }) => getPreferences(user.id)),
+  Result.bind("theme", ({ prefs }) => getTheme(prefs.themeId))
+); // Ok({ user: User, prefs: Preferences, theme: Theme })
+```
+
+If any step fails, the entire pipeline short-circuits and propagates the failure immediately.
+
+---
+
 ## When to use Result vs try/catch
 
 The choice between typed results and runtime exceptions is a structural architectural decision.

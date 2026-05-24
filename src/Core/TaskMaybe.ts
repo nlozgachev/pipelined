@@ -156,4 +156,33 @@ export namespace TaskMaybe {
 	 */
 	export const toTaskResult = <E>(onNone: () => E) => <A>(data: TaskMaybe<A>): TaskResult<E, A> =>
 		Task.map(Maybe.toResult(onNone))(data);
+
+	/**
+	 * Lifts a TaskMaybe value into an accumulator object.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(TaskMaybe.some(42), TaskMaybe.bindTo("value")); // TaskMaybe({ value: 42 })
+	 * ```
+	 */
+	export const bindTo = <K extends string>(key: K) => <A>(data: TaskMaybe<A>): TaskMaybe<{ [P in K]: A; }> =>
+		map<A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data);
+
+	/**
+	 * Evaluates a new TaskMaybe using the current accumulator and attaches the output to a new key.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   TaskMaybe.some({ a: 1 }),
+	 *   TaskMaybe.bind("b", ({ a }) => TaskMaybe.some(a + 1))
+	 * ); // TaskMaybe({ a: 1, b: 2 })
+	 * ```
+	 */
+	export const bind =
+		<K extends string, A, B>(key: K, f: (a: A) => TaskMaybe<B>) =>
+		(data: TaskMaybe<A>): TaskMaybe<A & { [P in K]: B; }> =>
+			chain<A, A & { [P in K]: B; }>((a) =>
+				map<B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
+			)(data);
 }

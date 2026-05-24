@@ -519,4 +519,33 @@ export namespace Task {
 	 * ```
 	 */
 	export const run = (signal?: AbortSignal) => <A>(task: Task<A>): Promise<A> => Deferred.toPromise(task(signal));
+
+	/**
+	 * Converts a Task value into an object containing a single property.
+	 * Initiates the pipeline accumulator record.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Task.resolve(42), Task.bindTo("value")); // Task({ value: 42 })
+	 * ```
+	 */
+	export const bindTo = <K extends string>(key: K) => <A>(data: Task<A>): Task<{ [P in K]: A; }> =>
+		map<A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data);
+
+	/**
+	 * Evaluates a new Task using the current accumulator and attaches the output to a new key.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Task.resolve({ a: 1 }),
+	 *   Task.bind("b", ({ a }) => Task.resolve(a + 1))
+	 * ); // Task({ a: 1, b: 2 })
+	 * ```
+	 */
+	export const bind =
+		<K extends string, A, B>(key: K, f: (a: A) => Task<B>) => (data: Task<A>): Task<A & { [P in K]: B; }> =>
+			chain<A, A & { [P in K]: B; }>((a) =>
+				map<B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
+			)(data);
 }

@@ -879,3 +879,22 @@ test("Task.sequence forwards the AbortSignal to all tasks", async () => {
 
 	expect(signals).toStrictEqual([controller.signal, controller.signal, controller.signal]);
 });
+
+// --- bindTo ---
+
+test("Task.bindTo wraps a value in an accumulator object", async () => {
+	const result = await pipe(Task.resolve(2), Task.bindTo("a"))();
+	expect(result).toStrictEqual({ a: 2 });
+});
+
+// --- bind ---
+
+test("Task.bind accumulates values key-by-key in a pipeline", async () => {
+	const result = await pipe(
+		Task.resolve(2),
+		Task.bindTo("a"),
+		Task.bind("b", ({ a }) => Task.resolve(a * 3)),
+		Task.bind("c", ({ a, b }) => Task.resolve(a + b)),
+	)();
+	expect(result).toStrictEqual({ a: 2, b: 6, c: 8 });
+});

@@ -501,3 +501,37 @@ test("Result.fromThrowable creates a safe function that returns Err when it thro
 	const parse = Result.fromThrowable((s: string) => JSON.parse(s), () => "parse error");
 	expect(parse("invalid")).toStrictEqual(Result.err("parse error"));
 });
+
+// --- bindTo ---
+
+test("Result.bindTo wraps a value in an accumulator object", () => {
+	const result = pipe(Result.ok(2), Result.bindTo("a"));
+	expect(result).toStrictEqual(Result.ok({ a: 2 }));
+});
+
+// --- bind ---
+
+test("Result.bind accumulates values key-by-key in a pipeline", () => {
+	const result = pipe(
+		Result.ok(2),
+		Result.bindTo("a"),
+		Result.bind("b", ({ a }) => Result.ok(a * 3)),
+		Result.bind("c", ({ a, b }) => Result.ok(a + b)),
+	);
+	expect(result).toStrictEqual(Result.ok({ a: 2, b: 6, c: 8 }));
+});
+
+test("Result.bind short-circuits on Err", () => {
+	let called = false;
+	const result = pipe(
+		Result.ok(2),
+		Result.bindTo("a"),
+		Result.bind("b", () => Result.err("fail")),
+		Result.bind("c", ({ b }) => {
+			called = true;
+			return Result.ok(b);
+		}),
+	);
+	expect(called).toBe(false);
+	expect(result).toStrictEqual(Result.err("fail"));
+});

@@ -174,3 +174,26 @@ test("logged logs accumulate across multiple chain steps", () => {
 	expect(value).toBe(3);
 	expect(log).toStrictEqual(["a", "b", "c"]);
 });
+
+// --- bindTo ---
+
+test("Logged.bindTo wraps a value in an accumulator object", () => {
+	const result = pipe(Logged.make<string, number>(2), Logged.bindTo("a"));
+	const [value, log] = Logged.run(result);
+	expect(value).toStrictEqual({ a: 2 });
+	expect(log).toStrictEqual([]);
+});
+
+// --- bind ---
+
+test("Logged.bind accumulates values key-by-key in a pipeline", () => {
+	const result = pipe(
+		Logged.make<string, number>(2),
+		Logged.bindTo("a"),
+		Logged.bind("b", ({ a }) => pipe(Logged.tell("logged b"), Logged.map(() => a * 3))),
+		Logged.bind("c", ({ a, b }) => pipe(Logged.tell("logged c"), Logged.map(() => a + b))),
+	);
+	const [value, log] = Logged.run(result);
+	expect(value).toStrictEqual({ a: 2, b: 6, c: 8 });
+	expect(log).toStrictEqual(["logged b", "logged c"]);
+});

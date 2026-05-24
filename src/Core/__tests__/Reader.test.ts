@@ -211,3 +211,22 @@ test("reader.resolve and Reader.chain work together like map", () => {
 	const doubled = pipe(Reader.asks((c: Config) => c.timeout), Reader.chain((n) => Reader.resolve(n * 2)));
 	expect(doubled(testConfig)).toBe(10_000);
 });
+
+// --- bindTo ---
+
+test("Reader.bindTo wraps a value in an accumulator object", () => {
+	const result = pipe(Reader.resolve<Config, number>(2), Reader.bindTo("a"))(testConfig);
+	expect(result).toStrictEqual({ a: 2 });
+});
+
+// --- bind ---
+
+test("Reader.bind accumulates values key-by-key in a pipeline", () => {
+	const result = pipe(
+		Reader.resolve<Config, number>(2),
+		Reader.bindTo("a"),
+		Reader.bind("b", ({ a }) => Reader.resolve(a * 3)),
+		Reader.bind("c", ({ a, b }) => Reader.resolve(a + b)),
+	)(testConfig);
+	expect(result).toStrictEqual({ a: 2, b: 6, c: 8 });
+});

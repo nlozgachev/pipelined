@@ -53,11 +53,14 @@
 		"format:check": "dprint check && dprint check --config dprint.md.json docs/**/*.md docs/**/*.mdx README.md",
 		"typecheck": "tsc --noEmit",
 		"lint": "oxlint src/",
-		"publish:npm": "pnpm build && npm publish --access public"
+		"publish:npm": "pnpm build && npm publish --access public",
+		"release:patch": "bumpp --patch -c -t -p",
+		"release:minor": "bumpp --minor -c -t -p"
 	},
 	"devDependencies": {
 		"@types/node": "25.9.1",
 		"@vitest/coverage-v8": "4.1.7",
+		"bumpp": "11.1.0",
 		"dprint": "0.54.0",
 		"fast-check": "4.8.0",
 		"oxlint": "1.66.0",
