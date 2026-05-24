@@ -56,6 +56,7 @@ import from `@nlozgachev/pipelined/types`
 | Type                                                 | Description                                                                  |
 | ---------------------------------------------------- | ---------------------------------------------------------------------------- |
 | [Brand](/api/types/type-aliases/brand)               | Nominal typing — prevents mixing values that share the same underlying type. |
+| [Duration](/api/types/type-aliases/duration)         | Represent and manipulate time durations (seconds, milliseconds, etc.).       |
 | [NonEmptyList](/api/types/type-aliases/nonemptylist) | An array guaranteed to have at least one element.                            |
 
 ## Composition

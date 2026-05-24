@@ -20,16 +20,18 @@ import { pipe, flow } from "@nlozgachev/pipelined/composition";
 import { Brand } from "@nlozgachev/pipelined/types";
 ```
 
-| Entry point             | Contains                                                                                                                                                                                                                         |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@nlozgachev/pipelined/core`        | `Maybe`, `Result`, `Validation`, `Task`, `TaskResult`, `TaskMaybe`, `TaskValidation`, `These`, `Tuple`, `RemoteData`, `Deferred`, `Lens`, `Optional`, `Reader`, `State`, `Logged`, `Predicate`, `Refinement` |
-| `@nlozgachev/pipelined/utils`       | `Arr`, `Rec`, `Num`, `Str`, `Dict`, `Uniq`                                                                                                                                                                                       |
-| `@nlozgachev/pipelined/composition` | `pipe`, `flow`, `compose`, `curry`, `tap`, `memoize`, and other function utilities                                                                                                                                               |
-| `@nlozgachev/pipelined/types`       | `Brand`, `NonEmptyList`                                                                                                                                                                                                          |
+| Entry point             | Contains                                                                                                                                                                                                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@nlozgachev/pipelined/core`        | `Maybe`, `Result`, `Validation`, `Task`, `TaskResult`, `TaskMaybe`, `TaskValidation`, `These`, `Tuple`, `RemoteData`, `Deferred`, `Lens`, `Optional`, `Reader`, `State`, `Logged`, `Predicate`, `Refinement`, `Resource`, `Equality`, `Ordering`, `Lazy`, `Combinable`, `Op` |
+| `@nlozgachev/pipelined/utils`       | `Arr`, `Rec`, `Num`, `Str`, `Dict`, `Uniq`                                                                                                                                                                                                                                            |
+| `@nlozgachev/pipelined/composition` | `pipe`, `flow`, `compose`, `curry`, `uncurry`, `flip`, `tap`, `memoize`, `fn`, `not`, `on`, `converge`, `juxt`                                                                                                                                                                         |
+| `@nlozgachev/pipelined/types`       | `Brand`, `Duration`, `NonEmptyList`                                                                                                                                                                                                                                                   |
 
 ## Requirements
 
 - **Node.js** 22 or later (for npm/pnpm/yarn/bun installs)
-- **TypeScript** 5.4 or later with `strict` mode enabled
+- **TypeScript** 5.5 or later with `strict` mode enabled
+
+TypeScript 5.5 or later is required because the library leverages standard ECMAScript Set composition methods (such as `.union()`, `.intersection()`, and `.isSubsetOf()`) which were introduced into TypeScript's standard library in version 5.5.
 
 Strict mode is required for the type-level guarantees — particularly exhaustiveness checking in `match` branches and narrowing in type guards — to work correctly.

@@ -9,7 +9,9 @@ export default defineConfig({
 		types: "src/Types/index.ts",
 	},
 	format: ["esm", "cjs"],
-	dts: true,
+	// [WARN]: workaround
+	// https://github.com/egoist/tsup/issues/1388
+	dts: { compilerOptions: { ignoreDeprecations: "6.0" } },
 	clean: true,
 	target: "es2024",
 	outDir: "dist",
