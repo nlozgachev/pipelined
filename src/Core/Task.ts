@@ -1,6 +1,5 @@
-import { Duration } from "../Types/Duration.ts";
-import { Deferred } from "./Deferred.ts";
-import { Result } from "./Result.ts";
+import { Deferred, Result } from "#core";
+import { Duration } from "#types";
 
 /**
  * A lazy async computation that always resolves.

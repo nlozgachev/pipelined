@@ -1,6 +1,6 @@
-import { pipe } from "#composition/pipe.ts";
+import { pipe } from "#composition";
+import { Str } from "#utils";
 import { bench, describe } from "vitest";
-import { Str } from "../Str.ts";
 
 const csv100 = Array.from({ length: 100 }, (_, i) => `value${i}`).join(",");
 const csv10k = Array.from({ length: 10_000 }, (_, i) => `value${i}`).join(",");

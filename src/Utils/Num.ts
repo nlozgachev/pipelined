@@ -1,4 +1,4 @@
-import { Maybe } from "#core/Maybe.ts";
+import { Maybe } from "#core";
 
 /**
  * Number utilities for common operations. All transformation functions are data-last

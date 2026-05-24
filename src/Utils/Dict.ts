@@ -1,4 +1,4 @@
-import { Maybe } from "#core/Maybe.ts";
+import { Maybe } from "#core";
 
 /**
  * Functional utilities for key-value dictionaries (`ReadonlyMap<K, V>`). All functions are pure

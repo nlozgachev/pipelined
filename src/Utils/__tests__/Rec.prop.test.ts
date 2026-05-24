@@ -1,6 +1,6 @@
+import { Rec } from "#utils";
 import fc from "fast-check";
 import { expect, test } from "vitest";
-import { Rec } from "../Rec.ts";
 
 const dict = fc.dictionary(fc.string({ minLength: 1 }), fc.integer()).map((o) => ({ ...o }));
 

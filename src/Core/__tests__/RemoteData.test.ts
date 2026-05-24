@@ -1,8 +1,6 @@
+import { pipe } from "#composition";
+import { Maybe, RemoteData, Result } from "#core";
 import { expect, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Maybe } from "../Maybe.ts";
-import { RemoteData } from "../RemoteData.ts";
-import { Result } from "../Result.ts";
 
 // ---------------------------------------------------------------------------
 // Constructors

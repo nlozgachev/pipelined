@@ -1,7 +1,7 @@
-import { pipe } from "#composition/pipe.ts";
-import { Maybe } from "#core/Maybe.ts";
+import { pipe } from "#composition";
+import { Maybe } from "#core";
+import { Rec } from "#utils";
 import { bench, describe } from "vitest";
-import { Rec } from "../Rec.ts";
 
 const makeRec = (n: number): Record<string, number> =>
 	Object.fromEntries(Array.from({ length: n }, (_, i) => [`key${i}`, i]));

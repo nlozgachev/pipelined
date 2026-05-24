@@ -1,5 +1,5 @@
+import { Deferred } from "#core";
 import { expect, test } from "vitest";
-import { Deferred } from "../Deferred.ts";
 
 // ---------------------------------------------------------------------------
 // fromPromise

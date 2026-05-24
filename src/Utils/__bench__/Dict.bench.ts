@@ -1,8 +1,8 @@
-import { pipe } from "#composition/pipe.ts";
-import { Maybe } from "#core/Maybe.ts";
+import { pipe } from "#composition";
+import { Maybe } from "#core";
+import { Dict } from "#utils";
 import * as fc from "fast-check";
 import { bench, describe } from "vitest";
-import { Dict } from "../Dict.ts";
 
 const makeDict = (n: number): ReadonlyMap<string, number> =>
 	Dict.fromEntries(Array.from({ length: n }, (_, i) => [`key${i}`, i]));

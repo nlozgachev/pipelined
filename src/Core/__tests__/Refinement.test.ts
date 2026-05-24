@@ -1,8 +1,6 @@
+import { pipe } from "#composition";
+import { Maybe, Refinement, Result } from "#core";
 import { expect, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Maybe } from "../Maybe.ts";
-import { Refinement } from "../Refinement.ts";
-import { Result } from "../Result.ts";
 
 // ---------------------------------------------------------------------------
 // Phantom brand types — each uses a unique symbol so intersections don't collapse

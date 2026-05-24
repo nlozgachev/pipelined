@@ -1,6 +1,6 @@
+import { pipe } from "#composition";
+import { Tuple } from "#core";
 import { expect, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Tuple } from "../Tuple.ts";
 
 // ---------------------------------------------------------------------------
 // make

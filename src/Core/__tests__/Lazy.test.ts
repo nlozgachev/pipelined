@@ -1,6 +1,6 @@
+import { pipe } from "#composition";
+import { Lazy } from "#core";
 import { expect, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Lazy } from "../Lazy.ts";
 
 // ---------------------------------------------------------------------------
 // from + evaluate

@@ -1,7 +1,7 @@
-import { Maybe } from "#core/Maybe.ts";
+import { Maybe } from "#core";
+import { Dict } from "#utils";
 import fc from "fast-check";
 import { expect, test } from "vitest";
-import { Dict } from "../Dict.ts";
 
 // ---------------------------------------------------------------------------
 // Arbitraries

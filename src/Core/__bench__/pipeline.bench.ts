@@ -1,6 +1,5 @@
-import { pipe } from "#composition/pipe.ts";
-import { Maybe } from "#core/Maybe.ts";
-import { Result } from "#core/Result.ts";
+import { pipe } from "#composition";
+import { Maybe, Result } from "#core";
 import { bench, describe } from "vitest";
 
 type MaybeVal = { kind: "Some"; value: number; } | { kind: "None"; };

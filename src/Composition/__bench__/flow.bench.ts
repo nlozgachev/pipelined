@@ -1,6 +1,6 @@
+import { flow } from "#composition";
 import { bench, describe } from "vitest";
-import { flow } from "../flow.ts";
-import { add1, bytesPerCall, direct10, direct3, direct5, double, halve, n, negate, square } from "./fixtures.ts";
+import { add1, bytesPerCall, direct10, direct3, direct5, double, halve, n, negate, square } from "./fixtures";
 
 // Pre-build once — flow is designed to be created once and called many times.
 const flow3 = flow(add1, double, negate);

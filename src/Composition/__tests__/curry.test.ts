@@ -1,6 +1,5 @@
+import { curry, curry3, curry4, uncurry, uncurry3, uncurry4 } from "#composition";
 import { expect, test } from "vitest";
-import { curry, curry3, curry4 } from "../curry.ts";
-import { uncurry, uncurry3, uncurry4 } from "../uncurry.ts";
 
 // --- curry (2-argument) ---
 

@@ -1,6 +1,5 @@
+import { flip, pipe } from "#composition";
 import { expect, test } from "vitest";
-import { flip } from "../flip.ts";
-import { pipe } from "../pipe.ts";
 
 test("flip - reverses argument order of curried function", () => {
 	const subtract = (a: number) => (b: number) => a - b;

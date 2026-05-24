@@ -1,4 +1,4 @@
-import { Maybe } from "./Maybe.ts";
+import { Maybe } from "#core";
 
 /**
  * A type that can combine two values of type `A` into one, with a neutral starting value.

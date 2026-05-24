@@ -1,7 +1,4 @@
-import { Deferred } from "./Deferred.ts";
-import { Result } from "./Result.ts";
-import { Task } from "./Task.ts";
-import { TaskResult } from "./TaskResult.ts";
+import { Deferred, Result, Task, TaskResult } from "#core";
 
 /**
  * A Resource pairs an async acquisition step with a guaranteed cleanup step.

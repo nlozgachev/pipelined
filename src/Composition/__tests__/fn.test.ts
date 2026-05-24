@@ -1,5 +1,3 @@
-import { expect, test } from "vitest";
-import { flow } from "../flow.ts";
 import {
 	and,
 	constant,
@@ -9,10 +7,12 @@ import {
 	constUndefined,
 	constVoid,
 	defaultTo,
+	flow,
 	identity,
 	once,
 	or,
-} from "../fn.ts";
+} from "#composition";
+import { expect, test } from "vitest";
 
 // --- identity ---
 

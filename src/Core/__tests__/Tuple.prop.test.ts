@@ -1,6 +1,6 @@
+import { Tuple } from "#core";
 import fc from "fast-check";
 import { expect, test } from "vitest";
-import { Tuple } from "../Tuple.ts";
 
 // ---------------------------------------------------------------------------
 // Arbitraries

@@ -1,8 +1,6 @@
+import { pipe } from "#composition";
+import { Resource, Task, TaskResult } from "#core";
 import { expect, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Resource } from "../Resource.ts";
-import { Task } from "../Task.ts";
-import { TaskResult } from "../TaskResult.ts";
 
 // ---------------------------------------------------------------------------
 // make

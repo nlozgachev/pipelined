@@ -1,6 +1,6 @@
+import { Passed, Validation } from "#core";
 import fc from "fast-check";
 import { expect, expectTypeOf, test } from "vitest";
-import { Passed, Validation } from "../Validation.ts";
 
 // ---------------------------------------------------------------------------
 // Arbitraries

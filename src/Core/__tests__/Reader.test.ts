@@ -1,6 +1,6 @@
+import { pipe } from "#composition";
+import { Reader } from "#core";
 import { expect, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Reader } from "../Reader.ts";
 
 type Config = { baseUrl: string; apiKey: string; timeout: number; };
 

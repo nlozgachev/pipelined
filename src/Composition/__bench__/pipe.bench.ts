@@ -1,6 +1,6 @@
+import { pipe } from "#composition";
 import { bench, describe } from "vitest";
-import { pipe } from "../pipe.ts";
-import { add1, bytesPerCall, direct10, direct3, direct5, double, halve, n, negate, square } from "./fixtures.ts";
+import { add1, bytesPerCall, direct10, direct3, direct5, double, halve, n, negate, square } from "./fixtures";
 
 describe("pipe-3-steps", () => {
 	bench("1. (current) pipe 3 steps", () => {

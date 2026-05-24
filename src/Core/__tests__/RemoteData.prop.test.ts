@@ -1,6 +1,6 @@
+import { RemoteData } from "#core";
 import fc from "fast-check";
 import { expect, expectTypeOf, test } from "vitest";
-import { RemoteData } from "../RemoteData.ts";
 
 // ---------------------------------------------------------------------------
 // Arbitraries

@@ -1,7 +1,6 @@
+import { compose } from "#composition";
+import { Maybe, Result } from "#core";
 import { expect, test } from "vitest";
-import { Maybe } from "../../Core/Maybe.ts";
-import { Result } from "../../Core/Result.ts";
-import { compose } from "../compose.ts";
 
 test("compose - single function acts as wrapper", () => {
 	const double = compose((n: number) => n * 2);

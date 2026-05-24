@@ -1,8 +1,7 @@
+import { pipe } from "#composition";
+import { Deferred, Task } from "#core";
+import { Duration } from "#types";
 import { expect, expectTypeOf, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Duration } from "../../Types/Duration.ts";
-import { Deferred } from "../Deferred.ts";
-import { Task } from "../Task.ts";
 
 // ---------------------------------------------------------------------------
 // of

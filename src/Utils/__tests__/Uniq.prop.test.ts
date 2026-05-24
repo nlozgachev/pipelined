@@ -1,6 +1,6 @@
+import { Uniq } from "#utils";
 import fc from "fast-check";
 import { expect, test } from "vitest";
-import { Uniq } from "../Uniq.ts";
 
 // ---------------------------------------------------------------------------
 // Arbitraries

@@ -1,9 +1,5 @@
-import { NonEmptyList } from "#types/NonEmptyList.ts";
-import { Deferred } from "./Deferred.ts";
-import { Maybe } from "./Maybe.ts";
-import { Result } from "./Result.ts";
-import { Task } from "./Task.ts";
-import { Validation } from "./Validation.ts";
+import { Deferred, Maybe, Result, Task, Validation } from "#core";
+import { NonEmptyList } from "#types";
 
 /**
  * A Task that resolves to a Validation — combining async operations with

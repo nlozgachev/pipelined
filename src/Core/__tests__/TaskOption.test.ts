@@ -1,9 +1,6 @@
+import { pipe } from "#composition";
+import { Maybe, Result, Task, TaskMaybe } from "#core";
 import { expect, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Maybe } from "../Maybe.ts";
-import { Result } from "../Result.ts";
-import { Task } from "../Task.ts";
-import { TaskMaybe } from "../TaskMaybe.ts";
 
 // ---------------------------------------------------------------------------
 // of

@@ -1,7 +1,6 @@
-import { pipe } from "#composition/pipe.ts";
+import { pipe } from "#composition";
+import { Arr, Num } from "#utils";
 import { bench, describe } from "vitest";
-import { Arr } from "../Arr.ts";
-import { Num } from "../Num.ts";
 
 const data100 = Array.from({ length: 100 }, (_, i) => i);
 const data10k = Array.from({ length: 10_000 }, (_, i) => i);

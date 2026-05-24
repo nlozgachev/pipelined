@@ -1,6 +1,5 @@
+import { converge, pipe } from "#composition";
 import { expect, test } from "vitest";
-import { converge } from "../converge.ts";
-import { pipe } from "../pipe.ts";
 
 test("converge - applies input to both transformers and combines results", () => {
 	const toRecord = converge((lower: string, upper: string) => ({ lower, upper }), [

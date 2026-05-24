@@ -1,7 +1,6 @@
+import { pipe } from "#composition";
+import { Lens, Optional } from "#core";
 import { expect, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Lens } from "../Lens.ts";
-import { Optional } from "../Optional.ts";
 
 type Address = { city: string; zip: string; };
 type User = { name: string; age: number; address: Address; };

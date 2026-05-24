@@ -1,6 +1,6 @@
+import { pipe } from "#composition";
+import { Duration } from "#types";
 import { expect, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Duration } from "../Duration.ts";
 
 // --- milliseconds ---
 

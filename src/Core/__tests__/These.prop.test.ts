@@ -1,6 +1,6 @@
+import { These } from "#core";
 import fc from "fast-check";
 import { expect, expectTypeOf, test } from "vitest";
-import { These } from "../These.ts";
 
 // ---------------------------------------------------------------------------
 // Arbitraries

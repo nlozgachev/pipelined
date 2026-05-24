@@ -1,8 +1,7 @@
-import { pipe } from "#composition/pipe.ts";
-import { Maybe } from "#core/Maybe.ts";
+import { pipe } from "#composition";
+import { Maybe } from "#core";
+import { Arr, Num } from "#utils";
 import { expect, test } from "vitest";
-import { Arr } from "../Arr.ts";
-import { Num } from "../Num.ts";
 
 // ---------------------------------------------------------------------------
 // range

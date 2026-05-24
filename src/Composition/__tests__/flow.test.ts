@@ -1,6 +1,6 @@
+import { flow } from "#composition";
+import { Maybe } from "#core";
 import { expect, test } from "vitest";
-import { Maybe } from "../../Core/Maybe.ts";
-import { flow } from "../flow.ts";
 
 test("flow - single function wraps it", () => {
 	const double = flow((n: number) => n * 2);

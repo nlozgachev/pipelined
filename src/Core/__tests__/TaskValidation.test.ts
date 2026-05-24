@@ -1,10 +1,6 @@
+import { pipe } from "#composition";
+import { Deferred, Maybe, Result, TaskValidation, Validation } from "#core";
 import { expect, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Deferred } from "../Deferred.ts";
-import { Maybe } from "../Maybe.ts";
-import { Result } from "../Result.ts";
-import { TaskValidation } from "../TaskValidation.ts";
-import { Validation } from "../Validation.ts";
 
 // ---------------------------------------------------------------------------
 // valid

@@ -1,8 +1,7 @@
-import { pipe } from "#composition/pipe.ts";
-import { Maybe } from "#core/Maybe.ts";
-import { Result } from "#core/Result.ts";
+import { pipe } from "#composition";
+import { Maybe, Result } from "#core";
+import { Str } from "#utils";
 import { expect, test } from "vitest";
-import { Str } from "../Str.ts";
 
 // ---------------------------------------------------------------------------
 // split

@@ -1,4 +1,4 @@
-import { Brand } from "./Brand.ts";
+import { Brand } from "#types";
 
 /**
  * A branded nominal type representing a duration of time in milliseconds.

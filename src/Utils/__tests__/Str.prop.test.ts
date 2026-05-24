@@ -1,6 +1,6 @@
+import { Str } from "#utils";
 import fc from "fast-check";
 import { expect, test } from "vitest";
-import { Str } from "../Str.ts";
 
 // ---------------------------------------------------------------------------
 // toUpperCase

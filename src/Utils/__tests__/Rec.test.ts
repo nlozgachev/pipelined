@@ -1,7 +1,7 @@
-import { pipe } from "#composition/pipe.ts";
-import { Maybe } from "#core/Maybe.ts";
+import { pipe } from "#composition";
+import { Maybe } from "#core";
+import { Rec } from "#utils";
 import { expect, test } from "vitest";
-import { Rec } from "../Rec.ts";
 
 // =============================================================================
 // Transform: map, mapWithKey, filter, filterWithKey

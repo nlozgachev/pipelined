@@ -1,4 +1,4 @@
-import { Maybe, None, Some } from "#core/Maybe.ts";
+import { Maybe, None, Some } from "#core";
 
 /**
  * Functional record/object utilities that compose well with pipe.

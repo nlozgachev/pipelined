@@ -1,8 +1,7 @@
-import { pipe } from "#composition/pipe.ts";
-import { Maybe } from "#core/Maybe.ts";
-import { Result } from "#core/Result.ts";
+import { pipe } from "#composition";
+import { Maybe, Result } from "#core";
+import { Arr } from "#utils";
 import { bench, describe } from "vitest";
-import { Arr } from "../Arr.ts";
 
 const data100 = Array.from({ length: 100 }, (_, i) => i);
 const data10k = Array.from({ length: 10_000 }, (_, i) => i);

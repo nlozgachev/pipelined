@@ -1,8 +1,6 @@
+import { Maybe, Op, Result } from "#core";
+import { Duration } from "#types";
 import { expect, expectTypeOf, test } from "vitest";
-import { Duration } from "../../Types/Duration.ts";
-import { Maybe } from "../Maybe.ts";
-import { Op } from "../Op.ts";
-import { Result } from "../Result.ts";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1284,14 +1282,14 @@ test("Op.interpret keyed restartable: different keys still run in parallel", asy
 test("Op.interpret keyed type: run() return type for exclusive is narrowed correctly", () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "keyed", key: (n: number) => n, perKey: "exclusive" });
 	expectTypeOf(manager.run).returns.toEqualTypeOf<
-		import("../Deferred.ts").Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.DroppedNil>
+		import("#core").Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.DroppedNil>
 	>();
 });
 
 test("Op.interpret keyed type: run() return type for restartable is narrowed correctly", () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "keyed", key: (n: number) => n, perKey: "restartable" });
 	expectTypeOf(manager.run).returns.toEqualTypeOf<
-		import("../Deferred.ts").Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.ReplacedNil>
+		import("#core").Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.ReplacedNil>
 	>();
 });
 

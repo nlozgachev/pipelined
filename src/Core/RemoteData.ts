@@ -1,6 +1,5 @@
-import { WithError, WithKind, WithValue } from "./InternalTypes.ts";
-import { Maybe } from "./Maybe.ts";
-import { Result } from "./Result.ts";
+import { Maybe, Result } from "#core";
+import type { WithError, WithKind, WithValue } from "#internal";
 
 /**
  * RemoteData represents the state of an async data fetch.

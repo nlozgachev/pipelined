@@ -1,6 +1,6 @@
+import { pipe } from "#composition";
+import { Ordering } from "#core";
 import { expect, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Ordering } from "../Ordering.ts";
 
 // ---------------------------------------------------------------------------
 // string

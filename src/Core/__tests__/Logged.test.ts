@@ -1,6 +1,6 @@
+import { pipe } from "#composition";
+import { Logged } from "#core";
 import { expect, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Logged } from "../Logged.ts";
 
 // ---------------------------------------------------------------------------
 // make

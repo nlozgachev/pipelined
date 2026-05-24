@@ -1,6 +1,5 @@
+import { juxt, pipe } from "#composition";
 import { expect, test } from "vitest";
-import { juxt } from "../juxt.ts";
-import { pipe } from "../pipe.ts";
 
 test("juxt - applies input to two functions and returns a tuple", () => {
 	const nameParts = juxt([(name: string) => name.split(" ")[0], (name: string) => name.split(" ").slice(1).join(" ")]);

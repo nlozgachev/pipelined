@@ -1,7 +1,7 @@
-import { pipe } from "#composition/pipe.ts";
-import { Maybe } from "#core/Maybe.ts";
+import { pipe } from "#composition";
+import { Maybe } from "#core";
+import { Dict } from "#utils";
 import { expect, test } from "vitest";
-import { Dict } from "../Dict.ts";
 
 // ---------------------------------------------------------------------------
 // empty

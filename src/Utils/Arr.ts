@@ -1,10 +1,5 @@
-import { Deferred } from "#core/Deferred.ts";
-import { Equality } from "#core/Equality.ts";
-import { Maybe } from "#core/Maybe.ts";
-import { Ordering } from "#core/Ordering.ts";
-import { Result } from "#core/Result.ts";
-import { Task } from "#core/Task.ts";
-import { isNonEmptyList, NonEmptyList } from "#types/NonEmptyList.ts";
+import { Deferred, Equality, Maybe, Ordering, Result, Task } from "#core";
+import { isNonEmptyList, type NonEmptyList } from "#types";
 
 /**
  * Functional array utilities that compose well with pipe.

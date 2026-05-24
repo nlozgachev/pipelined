@@ -1,6 +1,5 @@
+import { pipe, tap } from "#composition";
 import { expect, test } from "vitest";
-import { pipe } from "../pipe.ts";
-import { tap } from "../tap.ts";
 
 test("tap - side effect executes", () => {
 	let sideEffect = 0;

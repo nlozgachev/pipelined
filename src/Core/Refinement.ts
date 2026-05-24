@@ -1,5 +1,4 @@
-import { Maybe } from "./Maybe.ts";
-import { Result } from "./Result.ts";
+import { Maybe, Result } from "#core";
 
 /**
  * A function from `A` to `A is B` — a type predicate paired with a runtime check.

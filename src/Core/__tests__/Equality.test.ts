@@ -1,6 +1,6 @@
+import { pipe } from "#composition";
+import { Equality } from "#core";
 import { expect, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Equality } from "../Equality.ts";
 
 // ---------------------------------------------------------------------------
 // string

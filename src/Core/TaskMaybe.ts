@@ -1,8 +1,4 @@
-import { Deferred } from "./Deferred.ts";
-import { Maybe } from "./Maybe.ts";
-import { Result } from "./Result.ts";
-import { Task } from "./Task.ts";
-import { TaskResult } from "./TaskResult.ts";
+import { Deferred, Maybe, Result, Task, TaskResult } from "#core";
 
 /**
  * A Task that resolves to an optional value.

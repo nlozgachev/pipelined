@@ -1,7 +1,7 @@
-import { Maybe } from "#core/Maybe.ts";
+import { Maybe } from "#core";
+import { Num } from "#utils";
 import fc from "fast-check";
 import { expect, test } from "vitest";
-import { Num } from "../Num.ts";
 
 const minMax = fc.tuple(fc.integer({ min: -1000, max: 1000 }), fc.integer({ min: -1000, max: 1000 })).map(([a, b]) =>
 	[Math.min(a, b), Math.max(a, b)] as [number, number]

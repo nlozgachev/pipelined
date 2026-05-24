@@ -1,6 +1,6 @@
+import { pipe } from "#composition";
+import { These, TheseBoth } from "#core";
 import { expect, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { These, TheseBoth } from "../These.ts";
 
 // ---------------------------------------------------------------------------
 // first / second / both

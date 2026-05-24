@@ -1,7 +1,6 @@
+import { Maybe, Ok, Result } from "#core";
 import fc from "fast-check";
 import { expect, expectTypeOf, test } from "vitest";
-import { Maybe } from "../Maybe.ts";
-import { Ok, Result } from "../Result.ts";
 
 // ---------------------------------------------------------------------------
 // Arbitraries

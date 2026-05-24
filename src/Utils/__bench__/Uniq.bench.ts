@@ -1,7 +1,7 @@
-import { pipe } from "#composition/pipe.ts";
+import { pipe } from "#composition";
+import { Uniq } from "#utils";
 import * as fc from "fast-check";
 import { bench, describe } from "vitest";
-import { Uniq } from "../Uniq.ts";
 
 const data100 = Array.from({ length: 100 }, (_, i) => i);
 const data10k = Array.from({ length: 10_000 }, (_, i) => i);

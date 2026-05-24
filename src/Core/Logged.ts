@@ -1,4 +1,4 @@
-import { WithLog, WithValue } from "./InternalTypes.ts";
+import { WithLog, WithValue } from "#internal";
 
 /**
  * A value paired with an accumulated log.

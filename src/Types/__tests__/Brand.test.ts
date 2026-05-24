@@ -1,5 +1,5 @@
+import { Brand } from "#types";
 import { expect, test } from "vitest";
-import { Brand } from "../Brand.ts";
 
 // ---------------------------------------------------------------------------
 // wrap

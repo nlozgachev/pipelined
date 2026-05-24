@@ -1,7 +1,6 @@
+import { pipe } from "#composition";
+import { Predicate, Refinement } from "#core";
 import { expect, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Predicate } from "../Predicate.ts";
-import { Refinement } from "../Refinement.ts";
 
 // ---------------------------------------------------------------------------
 // Shared test predicates

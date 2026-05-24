@@ -1,5 +1,4 @@
-import { Maybe } from "#core/Maybe.ts";
-import { Result } from "#core/Result.ts";
+import { Maybe, Result } from "#core";
 
 /**
  * String utilities. All transformation functions are data-last and curried so they

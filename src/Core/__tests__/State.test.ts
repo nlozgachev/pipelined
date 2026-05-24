@@ -1,6 +1,6 @@
+import { pipe } from "#composition";
+import { State } from "#core";
 import { expect, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { State } from "../State.ts";
 
 // ---------------------------------------------------------------------------
 // resolve

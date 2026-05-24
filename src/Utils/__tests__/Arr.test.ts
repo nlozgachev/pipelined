@@ -1,11 +1,7 @@
-import { pipe } from "#composition/pipe.ts";
-import { Equality } from "#core/Equality.ts";
-import { Maybe } from "#core/Maybe.ts";
-import { Ordering } from "#core/Ordering.ts";
-import { Result } from "#core/Result.ts";
-import { Task } from "#core/Task.ts";
+import { pipe } from "#composition";
+import { Equality, Maybe, Ordering, Result, Task } from "#core";
+import { Arr } from "#utils";
 import { expect, test } from "vitest";
-import { Arr } from "../Arr.ts";
 
 // =============================================================================
 // Safe access: head, last, tail, init

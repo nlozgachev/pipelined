@@ -1,4 +1,4 @@
-import type { Optional } from "./Optional.ts";
+import type { Optional } from "#core";
 
 /**
  * Lens<S, A> focuses on a single value A inside a structure S, providing

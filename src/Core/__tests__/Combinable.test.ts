@@ -1,7 +1,6 @@
+import { pipe } from "#composition";
+import { Combinable, Maybe } from "#core";
 import { expect, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Combinable } from "../Combinable.ts";
-import { Maybe } from "../Maybe.ts";
 
 // ---------------------------------------------------------------------------
 // string

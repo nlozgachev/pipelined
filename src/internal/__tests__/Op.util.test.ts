@@ -3,11 +3,7 @@
  * These test the building blocks in isolation — runWithRetry, execute, cancellableWait,
  * and the strategy factories — rather than routing every assertion through Op.interpret.
  */
-import { expect, test } from "vitest";
-import { Deferred } from "../../Core/Deferred.ts";
-import { Op } from "../../Core/Op.ts";
-import { Result } from "../../Core/Result.ts";
-import { Duration } from "../../Types/Duration.ts";
+import { Deferred, Op, Result } from "#core";
 import {
 	cancellableWait,
 	execute,
@@ -21,7 +17,9 @@ import {
 	makeRestartable,
 	makeThrottled,
 	runWithRetry,
-} from "../Op.util.ts";
+} from "#internal";
+import { Duration } from "#types";
+import { expect, test } from "vitest";
 
 // ---------------------------------------------------------------------------
 // Helpers

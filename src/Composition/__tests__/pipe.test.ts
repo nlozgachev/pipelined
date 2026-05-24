@@ -1,7 +1,6 @@
+import { pipe } from "#composition";
+import { Maybe, Result } from "#core";
 import { expect, test } from "vitest";
-import { Maybe } from "../../Core/Maybe.ts";
-import { Result } from "../../Core/Result.ts";
-import { pipe } from "../pipe.ts";
 
 test("pipe - single value (identity)", () => {
 	expect(pipe(42)).toBe(42);

@@ -1,5 +1,5 @@
+import { memoize, memoizeWeak } from "#composition";
 import { expect, test } from "vitest";
-import { memoize, memoizeWeak } from "../memoize.ts";
 
 // --- memoize ---
 

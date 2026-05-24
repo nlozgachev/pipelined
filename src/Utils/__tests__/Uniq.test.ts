@@ -1,6 +1,6 @@
-import { pipe } from "#composition/pipe.ts";
+import { pipe } from "#composition";
+import { Uniq } from "#utils";
 import { expect, test } from "vitest";
-import { Uniq } from "../Uniq.ts";
 
 // ---------------------------------------------------------------------------
 // empty

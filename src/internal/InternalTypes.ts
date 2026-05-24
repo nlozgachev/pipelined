@@ -1,5 +1,4 @@
-import { NonEmptyList } from "#types/NonEmptyList.ts";
-import { Duration } from "../Types/Duration.ts";
+import { Duration, NonEmptyList } from "#types";
 
 export type WithKind<K extends string> = { readonly kind: K; };
 

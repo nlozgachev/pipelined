@@ -1,3 +1,4 @@
+import { Deferred, Maybe, Result } from "#core";
 import {
 	makeBuffered,
 	makeConcurrent,
@@ -8,24 +9,19 @@ import {
 	makeQueue,
 	makeRestartable,
 	makeThrottled,
-} from "../internal/Op.util.ts";
-import { Duration } from "../Types/Duration.ts";
-import { Deferred } from "./Deferred.ts";
-import {
 	type RetryOptions,
-	WithConcurrency,
-	WithCooldown,
-	WithDuration,
-	WithError,
-	WithKind,
-	WithMinInterval,
-	WithN,
-	WithSize,
-	WithTimeout,
-	WithValue,
-} from "./InternalTypes.ts";
-import { Maybe } from "./Maybe.ts";
-import { Result } from "./Result.ts";
+	type WithConcurrency,
+	type WithCooldown,
+	type WithDuration,
+	type WithError,
+	type WithKind,
+	type WithMinInterval,
+	type WithN,
+	type WithSize,
+	type WithTimeout,
+	type WithValue,
+} from "#internal";
+import { Duration } from "#types";
 
 // ---------------------------------------------------------------------------
 // Op<I, E, A>
@@ -435,8 +431,8 @@ export namespace Op {
 	// -------------------------------------------------------------------------
 
 	// eslint-disable-next-line no-shadow
-	export type RetryOptions<E> = import("./InternalTypes.ts").RetryOptions<E>;
-	export type TimeoutOptions<E> = import("./InternalTypes.ts").TimeoutOptions<E>;
+	export type RetryOptions<E> = import("#internal").RetryOptions<E>;
+	export type TimeoutOptions<E> = import("#internal").TimeoutOptions<E>;
 
 	// -------------------------------------------------------------------------
 	// Nil constructor

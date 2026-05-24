@@ -1,4 +1,4 @@
-import { WithFirst, WithKind, WithSecond } from "./InternalTypes.ts";
+import type { WithFirst, WithKind, WithSecond } from "#internal";
 
 /**
  * These<A, B> is an inclusive-OR type: it holds a first value (A), a second

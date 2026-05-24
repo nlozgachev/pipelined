@@ -1,5 +1,5 @@
+import { uncurry, uncurry3, uncurry4 } from "#composition";
 import { expect, test } from "vitest";
-import { uncurry, uncurry3, uncurry4 } from "../uncurry.ts";
 
 // --- uncurry: thunk () => () => C ---
 
