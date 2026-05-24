@@ -1,9 +1,13 @@
+packages:
+  - "."
+  - "docs"
+
 minimumReleaseAge: 1440
 blockExoticSubdeps: true
 saveExact: true
 
 shellEmulator: true
-nodeVersion: 22.0.0
+nodeVersion: 24.0.0
 engineStrict: true
 optimisticRepeatInstall: true
 verifyDepsBeforeRun: true

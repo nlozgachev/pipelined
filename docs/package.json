@@ -10,14 +10,16 @@
 		"astro": "astro"
 	},
 	"dependencies": {
-		"@astrojs/starlight": "0.37.6",
-		"astro": "5.17.3",
+		"@astrojs/starlight": "0.39.2",
+		"astro": "6.3.7",
 		"astro-mermaid": "2.0.1",
-		"mermaid": "11.14.0",
-		"sharp": "0.34.5",
-		"starlight-theme-nova": "0.11.5",
-		"starlight-typedoc": "0.21.5",
-		"typedoc": "0.28.17",
-		"typedoc-plugin-markdown": "4.10.0"
+		"mermaid": "11.15.0",
+		"starlight-theme-nova": "0.11.10",
+		"starlight-typedoc": "0.23.0",
+		"typedoc": "0.28.19",
+		"typedoc-plugin-markdown": "4.11.0"
+	},
+	"devDependencies": {
+		"@nlozgachev/pipelined": "workspace:*"
 	}
 }

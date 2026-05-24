@@ -18,7 +18,7 @@
 	"types": "./dist/index.d.ts",
 	"sideEffects": false,
 	"engines": {
-		"node": ">=22"
+		"node": ">=24"
 	},
 	"files": [
 		"dist"
@@ -55,7 +55,9 @@
 		"lint": "oxlint src/",
 		"publish:npm": "pnpm build && npm publish --access public",
 		"release:patch": "bumpp --patch -c -t -p",
-		"release:minor": "bumpp --minor -c -t -p"
+		"release:minor": "bumpp --minor -c -t -p",
+		"docs:dev": "pnpm --filter pipelined-docs dev",
+		"docs:build": "pnpm --filter pipelined-docs build"
 	},
 	"devDependencies": {
 		"@types/node": "25.9.1",
