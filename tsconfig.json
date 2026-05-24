@@ -9,10 +9,11 @@
 		"lib": ["ESNext", "DOM"],
 		"types": ["node"],
 		"paths": {
-			"#core/*": ["./src/Core/*"],
-			"#utils/*": ["./src/Utils/*"],
-			"#types/*": ["./src/Types/*"],
-			"#composition/*": ["./src/Composition/*"]
+			"#core": ["./src/Core/index.ts"],
+			"#utils": ["./src/Utils/index.ts"],
+			"#types": ["./src/Types/index.ts"],
+			"#composition": ["./src/Composition/index.ts"],
+			"#internal": ["./src/internal/index.ts"]
 		}
 	},
 	"include": ["src"],
