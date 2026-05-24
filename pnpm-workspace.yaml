@@ -12,6 +12,9 @@ engineStrict: true
 optimisticRepeatInstall: true
 verifyDepsBeforeRun: true
 
+ignoredOptionalDependencies:
+  - sharp
+
 allowBuilds:
   dprint: true
   esbuild: true
