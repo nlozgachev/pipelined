@@ -4,6 +4,8 @@
  * and the strategy factories — rather than routing every assertion through Op.interpret.
  */
 import { Deferred, Op, Result } from "#core";
+import { Duration } from "#types";
+import { expect, test } from "vitest";
 import {
 	cancellableWait,
 	execute,
@@ -17,9 +19,7 @@ import {
 	makeRestartable,
 	makeThrottled,
 	runWithRetry,
-} from "#internal";
-import { Duration } from "#types";
-import { expect, test } from "vitest";
+} from "../Op.util";
 
 // ---------------------------------------------------------------------------
 // Helpers

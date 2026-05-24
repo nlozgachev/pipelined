@@ -1,14 +1,6 @@
 import { Deferred, Maybe, Result } from "#core";
+import { Duration } from "#types";
 import {
-	makeBuffered,
-	makeConcurrent,
-	makeDebounced,
-	makeExclusive,
-	makeKeyed,
-	makeOnce,
-	makeQueue,
-	makeRestartable,
-	makeThrottled,
 	type RetryOptions,
 	type WithConcurrency,
 	type WithCooldown,
@@ -20,8 +12,18 @@ import {
 	type WithSize,
 	type WithTimeout,
 	type WithValue,
-} from "#internal";
-import { Duration } from "#types";
+} from "../internal/InternalTypes";
+import {
+	makeBuffered,
+	makeConcurrent,
+	makeDebounced,
+	makeExclusive,
+	makeKeyed,
+	makeOnce,
+	makeQueue,
+	makeRestartable,
+	makeThrottled,
+} from "../internal/Op.util";
 
 // ---------------------------------------------------------------------------
 // Op<I, E, A>
