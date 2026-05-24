@@ -307,8 +307,9 @@ applications.
 
 `Maybe` represents explicit optionality without null checks. `Result` handles synchronous, typed
 success and failure, while `Validation` accumulates multiple errors. `RemoteData` tracks the four
-states of an asynchronous data fetch (`NotAsked`, `Loading`, `Failure`, `Success`), and `These`
-handles inclusive-OR scenarios containing a first value, a second, or both simultaneously.
+states of an asynchronous data fetch (`NotAsked`, `Loading`, `Failure`, `Success`), `These` handles
+inclusive-OR scenarios containing a first value, a second, or both simultaneously, and `Tuple`
+provides a strongly-typed, immutable two-element pair.
 
 ### Asynchronous operations
 
@@ -316,13 +317,22 @@ handles inclusive-OR scenarios containing a first value, a second, or both simul
 handled by `TaskResult`, `TaskMaybe`, and `TaskValidation`. For managing stateful, recurring
 asynchronous operations with complex scheduling, `Op` implements named concurrency strategies such
 as `restartable`, `exclusive`, `debounced`, `throttled`, and `queue`, handling retries, timeouts,
-and signal propagation automatically.
+and signal propagation automatically. `Deferred` represents a lightweight, infallible asynchronous
+value that is guaranteed to always resolve without rejection.
 
 ### Optics and environment state
 
 `Lens` and `Optional` provide a simple concrete interface for safe, nested immutable data updates.
 Environment-dependent calculations and explicit state threading are supported by the `Reader` and
-`State` abstractions, while `Logged` enables side-effect-free data logging.
+`State` abstractions, while `Logged` enables side-effect-free data logging, and `Lazy` implements
+synchronous memoized thunks.
+
+### Algebraic and logic abstractions
+
+For general type-safe comparisons and algebraic operations, the library includes `Equality` for
+composable object and primitive comparisons, `Ordering` for sorting comparators, and `Combinable`
+for structural monoids (allowing folding collections with a neutral starting point). Composable
+boolean checks and type guards are supported by `Predicate` and `Refinement` abstractions.
 
 ### Optimized utilities
 
@@ -332,10 +342,11 @@ Functions are composed using `pipe` and `flow`, which are enriched with high-lev
 helpers like `when`, `unless`, `either`, `safe`, and `async` to support robust, expressive
 pipelines.
 
-### Nominal branding and non-empty lists
+### Nominal branding, durations, and non-empty lists
 
-Compile-time nominal typing with zero runtime overhead is provided by `Brand`, and `NonEmptyList`
-guarantees that a list is never empty, eliminating defensive array length checks.
+Compile-time nominal typing with zero runtime overhead is provided by `Brand`, `Duration` safely
+models and converts time durations (seconds, milliseconds, etc.), and `NonEmptyList` guarantees that
+a list is never empty, eliminating defensive array length checks.
 
 Every utility in the library is benchmarked against its native equivalent. The data-last currying
 adds a small function call overhead, which is the expected cost of composability. For operations
