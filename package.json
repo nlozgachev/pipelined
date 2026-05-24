@@ -23,6 +23,13 @@
 	"files": [
 		"dist"
 	],
+	"imports": {
+		"#core": "./src/Core/index.ts",
+		"#utils": "./src/Utils/index.ts",
+		"#types": "./src/Types/index.ts",
+		"#composition": "./src/Composition/index.ts",
+		"#internal": "./src/internal/index.ts"
+	},
 	"exports": {
 		"./composition": {
 			"types": "./dist/composition.d.ts",
