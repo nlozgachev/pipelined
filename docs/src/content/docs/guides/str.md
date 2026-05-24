@@ -55,7 +55,7 @@ the last position and currying the parameters, string operations can be composed
 inside `pipe`.
 
 ```mermaid
-flowchart LR
+flowchart TD
     A["Raw Input"] --> B["Str.trim"]
     B --> C["Str.split(',')"]
     C --> D["Arr.map(Str.trim)"]

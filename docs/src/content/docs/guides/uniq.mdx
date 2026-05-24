@@ -32,7 +32,7 @@ If we forget to make this copy, we introduce a bug where the user permanently ga
 `Uniq` separates identity from state. Every modification returns a new set representing the new state, while the original remains unchanged. Furthermore, `Uniq` is designed to be highly efficient: if an operation would result in no change (such as inserting a value that is already present, or removing a value that is absent), `Uniq` returns the original set reference, avoiding unnecessary memory allocations.
 
 ```mermaid
-flowchart LR
+flowchart TD
     A["Uniq (Original)"] --> B["insert('admin')"]
     B --> C["New Uniq (With admin)"]
     A --> D["Original Uniq (Unchanged)"]
@@ -83,7 +83,7 @@ Adding or removing items returns a new `Uniq` collection. If the operation does 
 const roles = Uniq.fromArray(["editor", "viewer"]);
 
 // Inserting a new item returns a new set
-const updatedRoles = pipe(roles, Uniq.insert("admin")); 
+const updatedRoles = pipe(roles, Uniq.insert("admin"));
 // Contains: "editor", "viewer", "admin"
 
 // Inserting an existing item returns the original set reference

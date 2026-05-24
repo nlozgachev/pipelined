@@ -62,7 +62,7 @@ TypeScript tuple under the hood, any native two-element array is automatically a
 unpack it manually until the very end of the pipeline.
 
 ```mermaid
-flowchart LR
+flowchart TD
     A["Tuple(A, B)"] --> B["mapFirst(f)"]
     B --> C["Tuple(A2, B)"]
     C --> D["mapSecond(g)"]
