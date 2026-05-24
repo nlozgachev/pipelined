@@ -298,6 +298,67 @@ This hand-off represents a highly common, elegant pattern in production applicat
 
 ---
 
+## Why Validation has no bind / bindTo
+
+A developer familiar with other modules in this library (like `Result` or `Maybe`) might wonder why
+`Validation` completely omits `bind` and `bindTo` helpers.
+
+This omission is a deliberate architectural and structural design choice.
+
+`bind` and `bindTo` represent **monadic sequencing**. In a sequential pipeline:
+
+```ts
+// NOT supported in Validation
+pipe(
+  getUser(userId),
+  Validation.bindTo("user"),
+  Validation.bind("prefs", ({ user }) => getPreferences(user.id)),
+);
+```
+
+Step B (`prefs`) requires the successful output of Step A (`user`). If Step A fails, Step B cannot
+run. This sequential dependency naturally defeats the primary, first-class purpose of `Validation` —
+**independent error accumulation**. If steps are dependent, we cannot evaluate them in parallel, and
+we cannot gather all errors across all branches at the same time.
+
+For sequenced pipelines that depend on prior steps, you should use `Result` (which naturally
+supports `bind` and `bindTo` for fail-fast chaining). If you need to validate independent inputs,
+keep them in `Validation`. Once the data is validated, you can cleanly hand it off to a `Result`
+pipeline using `Validation.toResult` to perform sequential actions.
+
+---
+
+## Combining records: struct
+
+To combine multiple independent validation checks into a single validated object, you can use
+`Validation.struct`.
+
+Unlike `Result.struct` or `Maybe.struct` (which short-circuit on the first failure),
+`Validation.struct` **accumulates errors from all failed branches** into a single `Failed` list:
+
+```ts
+const validatedUser = Validation.struct({
+  name: Validation.fromPredicate((s: string) => s.length > 0, () => "Name is required")(""),
+  age: Validation.fromPredicate((n: number) => n >= 18, () => "Must be at least 18")(16),
+  role: Validation.passed("user"),
+}); 
+// Failed(["Name is required", "Must be at least 18"])
+```
+
+If all validation fields pass successfully, it returns a `Passed` container containing the fully
+constructed record:
+
+```ts
+const passedUser = Validation.struct({
+  name: Validation.passed("Alice"),
+  age: Validation.passed(30),
+  role: Validation.passed("admin"),
+});
+// Passed({ name: "Alice", age: 30, role: "admin" })
+```
+
+---
+
 ## When to use Validation vs Result
 
 ### Use Validation when:

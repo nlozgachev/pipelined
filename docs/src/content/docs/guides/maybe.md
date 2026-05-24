@@ -420,6 +420,36 @@ immediately.
 
 ---
 
+## Combining records: struct
+
+While `bind` is perfect for sequential steps where a latter step depends on the output of a prior
+step, sometimes you have a set of independent `Maybe` values that you want to combine into a single
+object. For this, you can use `Maybe.struct`.
+
+It combines a record of `Maybe` values into a single `Maybe` holding a record of success values. If
+any individual field is `None`, the entire struct short-circuits to `None` immediately:
+
+```ts
+const user = Maybe.struct({
+  name: Maybe.some("Alice"),
+  age: Maybe.some(30),
+  role: Maybe.fromPredicate((r: string) => r === "admin" || r === "user")("user"),
+}); // Some({ name: "Alice", age: 30, role: "user" })
+```
+
+If multiple fields are `None`, `Maybe.struct` short-circuits immediately on the first `None`
+encountered in key order:
+
+```ts
+const failed = Maybe.struct({
+  a: Maybe.some(1),
+  b: Maybe.none(),
+  c: Maybe.none(),
+}); // None
+```
+
+---
+
 ## When to use Maybe vs null
 
 The introduction of `Maybe` into a codebase is a structural decision. It is not always the correct

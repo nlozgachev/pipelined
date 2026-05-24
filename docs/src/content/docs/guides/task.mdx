@@ -327,6 +327,32 @@ If any step fails (yielding `None` in `TaskMaybe` or `Err` in `TaskResult`), the
 
 ---
 
+## Combining async records: struct
+
+While `bind` is perfect for sequential steps where a latter step depends on the output of a prior step, sometimes you have a set of independent asynchronous tasks that you want to combine into a single object. For this, you can use `TaskResult.struct`.
+
+It combines a record of `TaskResult`s into a single `TaskResult` holding a record of success values. Under the hood, **it evaluates all tasks in parallel** (by calling them concurrently and using `Promise.all` internally) while correctly forwarding the `AbortSignal` down to each sub-task:
+
+```ts
+const profileTask = TaskResult.struct({
+  user: getUser(userId),
+  permissions: getUserPermissions(userId),
+  status: TaskResult.ok("active"),
+}); // TaskResult<string, { user: User; permissions: Permission[]; status: string }>
+```
+
+If any individual field resolves to an `Err`, the entire struct short-circuits to that error. If multiple fields fail, `TaskResult.struct` returns the first error encountered in key order:
+
+```ts
+const failed = TaskResult.struct({
+  a: TaskResult.ok(1),
+  b: TaskResult.err("first fail"),
+  c: TaskResult.err("second fail"),
+}); // Resolves to Err("first fail")
+```
+
+---
+
 ## Running Tasks at boundaries
 
 

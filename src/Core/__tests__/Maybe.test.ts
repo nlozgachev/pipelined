@@ -1,7 +1,6 @@
+import { pipe } from "#composition";
+import { Maybe, Result } from "#core";
 import { expect, expectTypeOf, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Maybe } from "../Maybe.ts";
-import { Result } from "../Result.ts";
 
 // ---------------------------------------------------------------------------
 // of / some
@@ -488,4 +487,27 @@ test("Maybe.bind short-circuits on None", () => {
 	);
 	expect(called).toBe(false);
 	expect(result).toStrictEqual(Maybe.none());
+});
+
+// --- struct ---
+
+test("Maybe.struct combines a record of Some values into a single Some record", () => {
+	const res = Maybe.struct({ a: Maybe.some(1), b: Maybe.some("hello") });
+	expect(res).toStrictEqual(Maybe.some({ a: 1, b: "hello" }));
+});
+
+test("Maybe.struct short-circuits on the first None encountered", () => {
+	const res = Maybe.struct({ a: Maybe.some(1), b: Maybe.none(), c: Maybe.some(3) });
+	expect(res).toStrictEqual(Maybe.none());
+});
+
+test("Maybe.struct composes in a pipe pipeline", () => {
+	const res = pipe(
+		Maybe.some({ name: "Alice" }),
+		Maybe.map((u) => u.name),
+		Maybe.chain((name) =>
+			Maybe.struct({ name: Maybe.some(name), valid: Maybe.fromPredicate((n: string) => n.length > 0)(name) })
+		),
+	);
+	expect(res).toStrictEqual(Maybe.some({ name: "Alice", valid: "Alice" }));
 });

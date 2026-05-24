@@ -1,5 +1,5 @@
-import { WithError, WithKind, WithValue } from "./InternalTypes.ts";
-import { Maybe } from "./Maybe.ts";
+import { Maybe } from "#core";
+import type { WithError, WithKind, WithValue } from "#internal";
 
 /**
  * Result represents a value that can be one of two types: a success (Ok) or a failure (Err).
@@ -333,4 +333,32 @@ export namespace Result {
 			chain<E, A, A & { [P in K]: B; }>((a) =>
 				map<E, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
 			)(data);
+
+	/**
+	 * Combines a record of Results into a single Result of a record.
+	 * Evaluates fields in key order and short-circuits on the first failure.
+	 *
+	 * @example
+	 * ```ts
+	 * Result.struct({
+	 *   name: Result.ok("Alice"),
+	 *   age: Result.ok(30)
+	 * }); // Ok({ name: "Alice", age: 30 })
+	 * ```
+	 */
+	export const struct = <E, R extends Record<string, any>>(
+		fields: { [K in keyof R]: Result<E, R[K]>; },
+	): Result<E, R> => {
+		const result = {} as R;
+		for (const key in fields) {
+			if (Object.hasOwn(fields, key)) {
+				const res = fields[key];
+				if (isErr(res)) {
+					return res;
+				}
+				result[key] = res.value;
+			}
+		}
+		return ok(result);
+	};
 }

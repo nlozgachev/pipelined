@@ -1,8 +1,6 @@
+import { pipe } from "#composition";
+import { Maybe, Result, Validation } from "#core";
 import { expect, expectTypeOf, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Maybe } from "../Maybe.ts";
-import { Result } from "../Result.ts";
-import { Validation } from "../Validation.ts";
 
 // ---------------------------------------------------------------------------
 // passed
@@ -626,4 +624,36 @@ test("Validation.fromMaybe returns Valid for Some", () => {
 test("Validation.fromMaybe returns Invalid for None", () => {
 	const result = Validation.fromMaybe(() => "is none")(Maybe.none());
 	expect(result).toStrictEqual(Validation.failed("is none"));
+});
+
+// --- struct ---
+
+test("Validation.struct combines a record of Passed values into a single Passed record", () => {
+	const res = Validation.struct({ a: Validation.passed(1), b: Validation.passed("hello") });
+	expect(res).toStrictEqual(Validation.passed({ a: 1, b: "hello" }));
+});
+
+test("Validation.struct accumulates errors from all Failed branches", () => {
+	const res = Validation.struct({
+		a: Validation.passed(1),
+		b: Validation.failed("first fail"),
+		c: Validation.failed("second fail"),
+	});
+	expect(res).toStrictEqual(Validation.failedAll(["first fail", "second fail"]));
+});
+
+test("Validation.struct composes in a pipe pipeline", () => {
+	const res = pipe(
+		Validation.passed<string, { name: string; }>({ name: "Alice" }),
+		Validation.map((u) => u.name),
+		Validation.match({
+			passed: (name) =>
+				Validation.struct({
+					name: Validation.passed(name),
+					valid: Validation.fromPredicate((n: string) => n.length > 0, () => "invalid")(name),
+				}),
+			failed: (errs) => Validation.failedAll(errs),
+		}),
+	);
+	expect(res).toStrictEqual(Validation.passed({ name: "Alice", valid: "Alice" }));
 });

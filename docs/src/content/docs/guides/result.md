@@ -350,6 +350,39 @@ If any step fails, the entire pipeline short-circuits and propagates the failure
 
 ---
 
+## Combining records: struct
+
+While `bind` is perfect for sequential steps where a latter step depends on the output of a prior
+step, sometimes you have a set of independent `Result`s that you want to combine into a single
+object. For this, you can use `Result.struct`.
+
+It combines a record of `Result`s into a single `Result` holding a record of success values. If any
+individual field is an `Err`, the entire struct short-circuits to that error immediately:
+
+```ts
+const user = Result.struct({
+  name: Result.ok("Alice"),
+  age: Result.ok(30),
+  role: Result.fromPredicate(
+    (r: string) => r === "admin" || r === "user",
+    () => "Invalid role"
+  )("user"),
+}); // Ok({ name: "Alice", age: 30, role: "user" })
+```
+
+If multiple fields fail, `Result.struct` short-circuits and returns the first error encountered in
+key order:
+
+```ts
+const failed = Result.struct({
+  a: Result.ok(1),
+  b: Result.err("first fail"),
+  c: Result.err("second fail"),
+}); // Err("first fail")
+```
+
+---
+
 ## When to use Result vs try/catch
 
 The choice between typed results and runtime exceptions is a structural architectural decision.

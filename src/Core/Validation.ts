@@ -1,7 +1,6 @@
-import { NonEmptyList } from "#types/NonEmptyList.ts";
-import { WithErrors, WithKind, WithValue } from "./InternalTypes.ts";
-import { Maybe } from "./Maybe.ts";
-import { Result } from "./Result.ts";
+import { Maybe, Result } from "#core";
+import type { WithErrors, WithKind, WithValue } from "#internal";
+import { NonEmptyList } from "#types";
 
 /**
  * Validation represents a value that is either passed with a success value,
@@ -374,5 +373,40 @@ export namespace Validation {
 			else { errors.push(...v.errors); }
 		}
 		return errors.length > 0 ? failedAll(errors as unknown as NonEmptyList<E>) : passed(values);
+	};
+
+	/**
+	 * Combines a record of Validations into a single Validation of a record.
+	 * Accumulates all failed branches' errors.
+	 *
+	 * @example
+	 * ```ts
+	 * Validation.struct({
+	 *   name: Validation.passed("Alice"),
+	 *   age: Validation.passed(30)
+	 * }); // Passed({ name: "Alice", age: 30 })
+	 *
+	 * Validation.struct({
+	 *   name: Validation.failed("Name required"),
+	 *   age: Validation.failed("Age must be >= 0")
+	 * }); // Failed(["Name required", "Age must be >= 0"])
+	 * ```
+	 */
+	export const struct = <E, R extends Record<string, any>>(
+		fields: { [K in keyof R]: Validation<E, R[K]>; },
+	): Validation<E, R> => {
+		const record = {} as R;
+		const errors: E[] = [];
+		for (const key in fields) {
+			if (Object.hasOwn(fields, key)) {
+				const val = fields[key];
+				if (isPassed(val)) {
+					record[key] = val.value;
+				} else {
+					errors.push(...val.errors);
+				}
+			}
+		}
+		return errors.length > 0 ? failedAll(errors as unknown as NonEmptyList<E>) : passed(record);
 	};
 }

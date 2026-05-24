@@ -1,9 +1,6 @@
+import { pipe } from "#composition";
+import { Deferred, Maybe, Result, TaskResult } from "#core";
 import { expect, expectTypeOf, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Deferred } from "../Deferred.ts";
-import { Maybe } from "../Maybe.ts";
-import { Result } from "../Result.ts";
-import { TaskResult } from "../TaskResult.ts";
 
 // ---------------------------------------------------------------------------
 // of
@@ -608,4 +605,58 @@ test("TaskResult.bind short-circuits on Err", async () => {
 	const result = await task();
 	expect(called).toBe(false);
 	expect(result).toStrictEqual(Result.err("fail"));
+});
+
+// --- struct ---
+
+test("TaskResult.struct combines a record of Ok values into a single Ok record", async () => {
+	const res = await TaskResult.struct({
+		a: TaskResult.ok<string, number>(1),
+		b: TaskResult.ok<string, string>("hello"),
+	})();
+	expect(res).toStrictEqual(Result.ok({ a: 1, b: "hello" }));
+});
+
+test("TaskResult.struct short-circuits on the first Err encountered", async () => {
+	const res = await TaskResult.struct({
+		a: TaskResult.ok<string, number>(1),
+		b: TaskResult.err<string, string>("first fail"),
+		c: TaskResult.err<string, number>("second fail"),
+	})();
+	expect(res).toStrictEqual(Result.err("first fail"));
+});
+
+test("TaskResult.struct propagates AbortSignal and executes in parallel", async () => {
+	let signalA: AbortSignal | undefined;
+	let signalB: AbortSignal | undefined;
+
+	const taskA: TaskResult<string, number> = (signal) => {
+		signalA = signal;
+		return Deferred.fromPromise(Promise.resolve(Result.ok(1)));
+	};
+	const taskB: TaskResult<string, string> = (signal) => {
+		signalB = signal;
+		return Deferred.fromPromise(Promise.resolve(Result.ok("hello")));
+	};
+
+	const controller = new AbortController();
+	const res = await TaskResult.struct({ a: taskA, b: taskB })(controller.signal);
+
+	expect(res).toStrictEqual(Result.ok({ a: 1, b: "hello" }));
+	expect(signalA).toBe(controller.signal);
+	expect(signalB).toBe(controller.signal);
+});
+
+test("TaskResult.struct composes in a pipe pipeline", async () => {
+	const res = await pipe(
+		TaskResult.ok<string, { name: string; }>({ name: "Alice" }),
+		TaskResult.map((u) => u.name),
+		TaskResult.chain((name) =>
+			TaskResult.struct({
+				name: TaskResult.ok<string, string>(name),
+				valid: TaskResult.fromResult(Result.fromPredicate((n: string) => n.length > 0, () => "invalid")(name)),
+			})
+		),
+	)();
+	expect(res).toStrictEqual(Result.ok({ name: "Alice", valid: "Alice" }));
 });

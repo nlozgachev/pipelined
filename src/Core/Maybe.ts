@@ -1,5 +1,5 @@
-import { WithKind, WithValue } from "./InternalTypes.ts";
-import { Result } from "./Result.ts";
+import { Result } from "#core";
+import { WithKind, WithValue } from "#internal";
 
 /**
  * Maybe represents an optional value: every Maybe is either Some (contains a value) or None (empty).
@@ -274,4 +274,30 @@ export namespace Maybe {
 			chain<A, A & { [P in K]: B; }>((a) =>
 				map<B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
 			)(data);
+
+	/**
+	 * Combines a record of Maybes into a single Maybe of a record.
+	 * Evaluates fields in key order and short-circuits on the first None.
+	 *
+	 * @example
+	 * ```ts
+	 * Maybe.struct({
+	 *   name: Maybe.some("Alice"),
+	 *   age: Maybe.some(30)
+	 * }); // Some({ name: "Alice", age: 30 })
+	 * ```
+	 */
+	export const struct = <R extends Record<string, any>>(fields: { [K in keyof R]: Maybe<R[K]>; }): Maybe<R> => {
+		const result = {} as R;
+		for (const key in fields) {
+			if (Object.hasOwn(fields, key)) {
+				const res = fields[key];
+				if (isNone(res)) {
+					return res;
+				}
+				result[key] = res.value;
+			}
+		}
+		return some(result);
+	};
 }

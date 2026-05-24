@@ -1,7 +1,6 @@
+import { pipe } from "#composition";
+import { Maybe, Result } from "#core";
 import { expect, test } from "vitest";
-import { pipe } from "../../Composition/pipe.ts";
-import { Maybe } from "../Maybe.ts";
-import { Result } from "../Result.ts";
 
 // ---------------------------------------------------------------------------
 // of / ok
@@ -534,4 +533,30 @@ test("Result.bind short-circuits on Err", () => {
 	);
 	expect(called).toBe(false);
 	expect(result).toStrictEqual(Result.err("fail"));
+});
+
+// --- struct ---
+
+test("Result.struct combines a record of Ok values into a single Ok record", () => {
+	const res = Result.struct({ a: Result.ok(1), b: Result.ok("hello") });
+	expect(res).toStrictEqual(Result.ok({ a: 1, b: "hello" }));
+});
+
+test("Result.struct short-circuits on the first Err encountered", () => {
+	const res = Result.struct({ a: Result.ok(1), b: Result.err("first fail"), c: Result.err("second fail") });
+	expect(res).toStrictEqual(Result.err("first fail"));
+});
+
+test("Result.struct composes in a pipe pipeline", () => {
+	const res = pipe(
+		Result.ok({ name: "Alice" }),
+		Result.map((u) => u.name),
+		Result.chain((name) =>
+			Result.struct({
+				name: Result.ok(name),
+				valid: Result.fromPredicate((n: string) => n.length > 0, () => "invalid")(name),
+			})
+		),
+	);
+	expect(res).toStrictEqual(Result.ok({ name: "Alice", valid: "Alice" }));
 });

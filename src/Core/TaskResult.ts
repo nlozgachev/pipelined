@@ -1,7 +1,4 @@
-import { Deferred } from "./Deferred.ts";
-import { Maybe } from "./Maybe.ts";
-import { Result } from "./Result.ts";
-import { Task } from "./Task.ts";
+import { Deferred, Maybe, Result, Task } from "#core";
 
 /**
  * A Task that can fail with an error of type E or succeed with a value of type A.
@@ -207,4 +204,38 @@ export namespace TaskResult {
 			chain<E, A, A & { [P in K]: B; }>((a) =>
 				map<E, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
 			)(data);
+
+	/**
+	 * Combines a record of TaskResults into a single TaskResult of a record.
+	 * Evaluates all tasks in parallel, forwarding the AbortSignal down to each sub-task.
+	 * Returns the first Err encountered in key order.
+	 *
+	 * @example
+	 * ```ts
+	 * TaskResult.struct({
+	 *   name: TaskResult.ok("Alice"),
+	 *   age: TaskResult.ok(30)
+	 * }); // TaskResult({ name: "Alice", age: 30 })
+	 * ```
+	 */
+	export const struct = <E, R extends Record<string, any>>(
+		fields: { [K in keyof R]: TaskResult<E, R[K]>; },
+	): TaskResult<E, R> =>
+		Task.from((signal) => {
+			const keys = Object.keys(fields);
+			const promises = keys.map((key) => Deferred.toPromise(fields[key](signal)).then((res) => ({ key, res })));
+			return Promise.all(promises).then((results) => {
+				const record = {} as R;
+				for (const key of keys) {
+					const found = results.find((r) => r.key === key);
+					if (found) {
+						if (Result.isErr(found.res)) {
+							return found.res;
+						}
+						record[key as keyof R] = found.res.value;
+					}
+				}
+				return Result.ok(record);
+			});
+		});
 }
