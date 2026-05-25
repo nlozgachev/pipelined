@@ -657,3 +657,16 @@ test("Validation.struct composes in a pipe pipeline", () => {
 	);
 	expect(res).toStrictEqual(Validation.passed({ name: "Alice", valid: "Alice" }));
 });
+
+test("Validation.struct ignores inherited prototype properties", () => {
+	const proto = { b: Validation.passed(2) };
+	const fields = Object.create(proto);
+	fields.a = Validation.passed(1);
+	const res = Validation.struct(fields);
+	expect(res).toStrictEqual(Validation.passed({ a: 1 }));
+});
+
+test("Validation.struct returns passed({}) when given an empty object", () => {
+	const res = Validation.struct({});
+	expect(res).toStrictEqual(Validation.passed({}));
+});

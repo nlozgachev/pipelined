@@ -560,3 +560,16 @@ test("Result.struct composes in a pipe pipeline", () => {
 	);
 	expect(res).toStrictEqual(Result.ok({ name: "Alice", valid: "Alice" }));
 });
+
+test("Result.struct ignores inherited prototype properties", () => {
+	const proto = { b: Result.ok(2) };
+	const fields = Object.create(proto);
+	fields.a = Result.ok(1);
+	const res = Result.struct(fields);
+	expect(res).toStrictEqual(Result.ok({ a: 1 }));
+});
+
+test("Result.struct returns ok({}) when given an empty object", () => {
+	const res = Result.struct({});
+	expect(res).toStrictEqual(Result.ok({}));
+});

@@ -511,3 +511,16 @@ test("Maybe.struct composes in a pipe pipeline", () => {
 	);
 	expect(res).toStrictEqual(Maybe.some({ name: "Alice", valid: "Alice" }));
 });
+
+test("Maybe.struct ignores inherited prototype properties", () => {
+	const proto = { b: Maybe.some(2) };
+	const fields = Object.create(proto);
+	fields.a = Maybe.some(1);
+	const res = Maybe.struct(fields);
+	expect(res).toStrictEqual(Maybe.some({ a: 1 }));
+});
+
+test("Maybe.struct returns some({}) when given an empty object", () => {
+	const res = Maybe.struct({});
+	expect(res).toStrictEqual(Maybe.some({}));
+});

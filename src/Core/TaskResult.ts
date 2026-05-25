@@ -223,17 +223,15 @@ export namespace TaskResult {
 	): TaskResult<E, R> =>
 		Task.from((signal) => {
 			const keys = Object.keys(fields);
-			const promises = keys.map((key) => Deferred.toPromise(fields[key](signal)).then((res) => ({ key, res })));
+			const promises = keys.map((key) => Deferred.toPromise(fields[key](signal)));
 			return Promise.all(promises).then((results) => {
 				const record = {} as R;
-				for (const key of keys) {
-					const found = results.find((r) => r.key === key);
-					if (found) {
-						if (Result.isErr(found.res)) {
-							return found.res;
-						}
-						record[key as keyof R] = found.res.value;
+				for (let i = 0; i < keys.length; i++) {
+					const res = results[i];
+					if (Result.isErr(res)) {
+						return res;
 					}
+					record[keys[i] as keyof R] = res.value;
 				}
 				return Result.ok(record);
 			});

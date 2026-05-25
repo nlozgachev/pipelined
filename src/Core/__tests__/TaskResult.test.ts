@@ -660,3 +660,8 @@ test("TaskResult.struct composes in a pipe pipeline", async () => {
 	)();
 	expect(res).toStrictEqual(Result.ok({ name: "Alice", valid: "Alice" }));
 });
+
+test("TaskResult.struct returns ok({}) when given an empty object", async () => {
+	const res = await TaskResult.struct({})();
+	expect(res).toStrictEqual(Result.ok({}));
+});
