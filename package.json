@@ -1,6 +1,6 @@
 {
 	"name": "@nlozgachev/pipelined",
-	"version": "0.39.0",
+	"version": "0.40.0",
 	"description": "Opinionated functional abstractions for TypeScript",
 	"license": "BSD-3-Clause",
 	"homepage": "https://pipelined.lozgachev.dev",
@@ -25,7 +25,7 @@
 	],
 	"imports": {
 		"#core": "./src/Core/index.ts",
-		"#utils": "./src/Utils/index.ts",
+		"#data": "./src/Data/index.ts",
 		"#types": "./src/Types/index.ts",
 		"#composition": "./src/Composition/index.ts",
 		"#internal": "./src/internal/index.ts"

@@ -1,6 +1,6 @@
 import { pipe } from "#composition";
 import { Maybe } from "#core";
-import { Dict } from "#utils";
+import { Dict } from "#data";
 import * as fc from "fast-check";
 import { bench, describe } from "vitest";
 

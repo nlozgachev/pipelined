@@ -1,6 +1,6 @@
 import { pipe } from "#composition";
 import { Maybe } from "#core";
-import { Dict } from "#utils";
+import { Dict } from "#data";
 import { expect, test } from "vitest";
 
 // ---------------------------------------------------------------------------

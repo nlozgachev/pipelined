@@ -68,7 +68,7 @@ Basic formatting operations are wrapped as pure functions that fit cleanly into 
 transformations and pipe flows:
 
 ```ts
-import { Str } from "@nlozgachev/pipelined/utils";
+import { Str } from "@nlozgachev/pipelined/data";
 import { pipe } from "@nlozgachev/pipelined/composition";
 
 // Case conversions
@@ -121,7 +121,7 @@ String matching operations function as curried predicates, which can be passed d
 filters:
 
 ```ts
-import { Arr } from "@nlozgachev/pipelined/utils";
+import { Arr } from "@nlozgachev/pipelined/data";
 
 const files = ["index.ts", "utils.ts", "README.md", "package.json"];
 

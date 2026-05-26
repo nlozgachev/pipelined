@@ -1,5 +1,5 @@
 import { pipe } from "#composition";
-import { Str } from "#utils";
+import { Str } from "#data";
 import { bench, describe } from "vitest";
 
 const csv100 = Array.from({ length: 100 }, (_, i) => `value${i}`).join(",");

@@ -6,10 +6,10 @@ const r = (p: string) => path.resolve(__dirname, p);
 export default defineConfig({
 	resolve: {
 		alias: {
-			"#core/": r("src/Core") + "/",
-			"#utils/": r("src/Utils") + "/",
-			"#types/": r("src/Types") + "/",
-			"#composition/": r("src/Composition") + "/",
+			"#core/": `${r("src/Core")}/`,
+			"#data/": `${r("src/Data")}/`,
+			"#types/": `${r("src/Types")}/`,
+			"#composition/": `${r("src/Composition")}/`,
 		},
 	},
 	test: { include: ["src/**/*.test.ts"], coverage: { reporter: ["lcov", "text"] } },

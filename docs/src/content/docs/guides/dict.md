@@ -28,7 +28,7 @@ safe, explicit lookups.
 We lift key-value associations into the `Dict` context using its core constructors:
 
 ```ts
-import { Dict } from "@nlozgachev/pipelined/utils";
+import { Dict } from "@nlozgachev/pipelined/data";
 
 // An empty dictionary
 const empty = Dict.empty<string, number>();
@@ -178,7 +178,7 @@ const initialStats = pipe(baseStats, Dict.upsert("shares", incrementCounter));
 const defaults = Dict.fromRecord({ timeout: 3000, retries: 3 });
 const overrides = Dict.fromRecord({ timeout: 10000 });
 
-const merged = pipe(defaults, Dict.union(overrides)); 
+const merged = pipe(defaults, Dict.union(overrides));
 // Map { "timeout" => 10000, "retries" => 3 }
 ```
 

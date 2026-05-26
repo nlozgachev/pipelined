@@ -132,7 +132,7 @@ eqUserExact(
 allowing you to deduplicate complex objects structurally:
 
 ```ts
-import { Arr } from "@nlozgachev/pipelined/utils";
+import { Arr } from "@nlozgachev/pipelined/data";
 
 interface LogEvent {
   userId: string;

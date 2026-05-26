@@ -27,7 +27,7 @@ Accessing indices directly in JavaScript can crash our programs or introduce sil
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 import { Maybe } from "@nlozgachev/pipelined/core";
-import { Arr } from "@nlozgachev/pipelined/utils";
+import { Arr } from "@nlozgachev/pipelined/data";
 
 Arr.head([1, 2, 3]); // Some(1)
 Arr.head([]);        // None

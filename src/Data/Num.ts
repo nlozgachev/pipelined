@@ -6,7 +6,7 @@ import { Maybe } from "#core";
  *
  * @example
  * ```ts
- * import { Num } from "@nlozgachev/pipelined/utils";
+ * import { Num } from "@nlozgachev/pipelined/data";
  * import { pipe } from "@nlozgachev/pipelined/composition";
  *
  * pipe(

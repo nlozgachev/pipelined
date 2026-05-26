@@ -6,7 +6,7 @@ import { Maybe, Result } from "#core";
  *
  * @example
  * ```ts
- * import { Str } from "@nlozgachev/pipelined/utils";
+ * import { Str } from "@nlozgachev/pipelined/data";
  * import { pipe } from "@nlozgachev/pipelined/composition";
  *
  * pipe("  Hello, World!  ", Str.trim, Str.toLowerCase); // "hello, world!"

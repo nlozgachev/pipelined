@@ -28,7 +28,7 @@ key absence explicit in your types:
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 import { Maybe } from "@nlozgachev/pipelined/core";
-import { Rec } from "@nlozgachev/pipelined/utils";
+import { Rec } from "@nlozgachev/pipelined/data";
 
 const settings = { theme: "dark", language: "en" };
 

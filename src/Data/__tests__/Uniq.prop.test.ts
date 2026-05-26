@@ -1,4 +1,4 @@
-import { Uniq } from "#utils";
+import { Uniq } from "#data";
 import fc from "fast-check";
 import { expect, test } from "vitest";
 

@@ -36,9 +36,9 @@ import from `@nlozgachev/pipelined/core`
 | [Ordering](/api/core/type-aliases/ordering)             | Composable sort comparators; chain with `thenBy`, flip with `reverse`, adapt with `by`. |
 | [Combinable](/api/core/type-aliases/combinable)         | Monoid algebra — fold collections and combine values with a neutral starting point.     |
 
-## Utils
+## Data
 
-import from `@nlozgachev/pipelined/utils`
+import from `@nlozgachev/pipelined/data`
 
 | Module                                       | Description                                                                            |
 | -------------------------------------------- | -------------------------------------------------------------------------------------- |

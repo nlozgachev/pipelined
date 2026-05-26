@@ -1,5 +1,5 @@
 import { pipe } from "#composition";
-import { Arr, Num } from "#utils";
+import { Arr, Num } from "#data";
 import { bench, describe } from "vitest";
 
 const data100 = Array.from({ length: 100 }, (_, i) => i);

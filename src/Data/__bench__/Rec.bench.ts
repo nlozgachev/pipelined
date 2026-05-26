@@ -1,6 +1,6 @@
 import { pipe } from "#composition";
 import { Maybe } from "#core";
-import { Rec } from "#utils";
+import { Rec } from "#data";
 import { bench, describe } from "vitest";
 
 const makeRec = (n: number): Record<string, number> =>

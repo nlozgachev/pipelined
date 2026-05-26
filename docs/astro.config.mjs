@@ -7,12 +7,12 @@ import starlightTypeDoc, { typeDocSidebarGroup } from "starlight-typedoc";
 
 export default defineConfig({
 	redirects: {
-		"/api/utils/namespaces/arr/functions": "/api/utils/namespaces/arr/functions/chunksof",
-		"/api/utils/namespaces/rec/functions": "/api/utils/namespaces/rec/functions/compact",
-		"/api/utils/namespaces/uniq/functions": "/api/utils/namespaces/uniq/functions/difference",
-		"/api/utils/namespaces/dict/functions": "/api/utils/namespaces/dict/functions/compact",
-		"/api/utils/namespaces/num/functions": "/api/utils/namespaces/num/functions/add",
-		"/api/utils/namespaces/str/functions": "/api/utils/namespaces/str/functions/endswith",
+		"/api/data/namespaces/arr/functions": "/api/data/namespaces/arr/functions/chunksof",
+		"/api/data/namespaces/rec/functions": "/api/data/namespaces/rec/functions/compact",
+		"/api/data/namespaces/uniq/functions": "/api/data/namespaces/uniq/functions/difference",
+		"/api/data/namespaces/dict/functions": "/api/data/namespaces/dict/functions/compact",
+		"/api/data/namespaces/num/functions": "/api/data/namespaces/num/functions/add",
+		"/api/data/namespaces/str/functions": "/api/data/namespaces/str/functions/endswith",
 	},
 	integrations: [
 		mermaid(),
@@ -33,7 +33,7 @@ export default defineConfig({
 						"../src/Core/index.ts",
 						"../src/Types/index.ts",
 						"../src/Composition/index.ts",
-						"../src/Utils/index.ts",
+						"../src/Data/index.ts",
 					],
 					tsconfig: "../tsconfig.typedoc.json",
 					output: "api",

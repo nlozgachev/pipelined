@@ -14,8 +14,8 @@
 			"#core/*": [
 				"./src/Core/*"
 			],
-			"#utils/*": [
-				"./src/Utils/*"
+			"#data/*": [
+				"./src/Data/*"
 			],
 			"#types/*": [
 				"./src/Types/*"

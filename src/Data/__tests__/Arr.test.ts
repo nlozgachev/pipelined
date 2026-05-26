@@ -1,6 +1,6 @@
 import { pipe } from "#composition";
 import { Equality, Maybe, Ordering, Result, Task } from "#core";
-import { Arr } from "#utils";
+import { Arr } from "#data";
 import { expect, test } from "vitest";
 
 // =============================================================================

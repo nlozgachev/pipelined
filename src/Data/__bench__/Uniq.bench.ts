@@ -1,5 +1,5 @@
 import { pipe } from "#composition";
-import { Uniq } from "#utils";
+import { Uniq } from "#data";
 import * as fc from "fast-check";
 import { bench, describe } from "vitest";
 

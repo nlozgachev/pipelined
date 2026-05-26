@@ -43,7 +43,7 @@ flowchart TD
 We can lift raw arrays or individual elements into an immutable `Uniq` collection using constructors:
 
 ```ts
-import { Uniq } from "@nlozgachev/pipelined/utils";
+import { Uniq } from "@nlozgachev/pipelined/data";
 
 // Create a collection from an array, automatically discarding duplicates
 const tags = Uniq.fromArray(["typescript", "functional", "typescript", "pipe"]);
@@ -62,7 +62,7 @@ To inspect the contents of a collection, we use `Uniq.has` and `Uniq.isSubsetOf`
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
-import { Uniq } from "@nlozgachev/pipelined/utils";
+import { Uniq } from "@nlozgachev/pipelined/data";
 
 const permissions = Uniq.fromArray(["read", "write"]);
 

@@ -33,7 +33,7 @@ not anything is there:
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 import { Maybe } from "@nlozgachev/pipelined/core";
-import { Num, Str } from "@nlozgachev/pipelined/utils";
+import { Num, Str } from "@nlozgachev/pipelined/data";
 
 const parseDiscount = (raw: string): string =>
   pipe(
@@ -120,7 +120,7 @@ steps to compose naturally with the core types:
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 import { Maybe } from "@nlozgachev/pipelined/core";
-import { Arr, Num, Rec, Str } from "@nlozgachev/pipelined/utils";
+import { Arr, Num, Rec, Str } from "@nlozgachev/pipelined/data";
 
 type RawItem = { name: string; price: string; category: string };
 type Item = { name: string; price: number; category: string };

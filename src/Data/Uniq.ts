@@ -6,7 +6,7 @@
  *
  * @example
  * ```ts
- * import { Uniq } from "@nlozgachev/pipelined/utils";
+ * import { Uniq } from "@nlozgachev/pipelined/data";
  * import { pipe } from "@nlozgachev/pipelined/composition";
  *
  * const active = pipe(

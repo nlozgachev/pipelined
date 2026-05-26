@@ -15,7 +15,7 @@ The library is split into four entry points. Import only what you need:
 
 ```ts
 import { Maybe, Result, Task } from "@nlozgachev/pipelined/core";
-import { Arr, Str } from "@nlozgachev/pipelined/utils";
+import { Arr, Str } from "@nlozgachev/pipelined/data";
 import { pipe, flow } from "@nlozgachev/pipelined/composition";
 import { Brand } from "@nlozgachev/pipelined/types";
 ```
@@ -23,7 +23,7 @@ import { Brand } from "@nlozgachev/pipelined/types";
 | Entry point             | Contains                                                                                                                                                                                                                                                                              |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@nlozgachev/pipelined/core`        | `Maybe`, `Result`, `Validation`, `Task`, `TaskResult`, `TaskMaybe`, `TaskValidation`, `These`, `Tuple`, `RemoteData`, `Deferred`, `Lens`, `Optional`, `Reader`, `State`, `Logged`, `Predicate`, `Refinement`, `Resource`, `Equality`, `Ordering`, `Lazy`, `Combinable`, `Op` |
-| `@nlozgachev/pipelined/utils`       | `Arr`, `Rec`, `Num`, `Str`, `Dict`, `Uniq`                                                                                                                                                                                                                                            |
+| `@nlozgachev/pipelined/data`       | `Arr`, `Rec`, `Num`, `Str`, `Dict`, `Uniq`                                                                                                                                                                                                                                            |
 | `@nlozgachev/pipelined/composition` | `pipe`, `flow`, `compose`, `curry`, `uncurry`, `flip`, `tap`, `memoize`, `fn`, `not`, `on`, `converge`, `juxt`                                                                                                                                                                         |
 | `@nlozgachev/pipelined/types`       | `Brand`, `Duration`, `NonEmptyList`                                                                                                                                                                                                                                                   |
 

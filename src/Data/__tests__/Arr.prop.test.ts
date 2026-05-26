@@ -1,5 +1,5 @@
 import { Maybe } from "#core";
-import { Arr } from "#utils";
+import { Arr } from "#data";
 import fc from "fast-check";
 import { expect, test } from "vitest";
 

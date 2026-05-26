@@ -66,7 +66,7 @@ To convert a string into a number without encountering the `NaN` trap, we use `N
 returns a `Maybe<number>` context which explicitly models potential parsing failure:
 
 ```ts
-import { Num } from "@nlozgachev/pipelined/utils";
+import { Num } from "@nlozgachev/pipelined/data";
 
 Num.parse("42");    // Some(42)
 Num.parse("3.14");  // Some(3.14)
@@ -81,7 +81,7 @@ ideal for composition within `pipe` and `Arr.map`:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
-import { Arr } from "@nlozgachev/pipelined/utils";
+import { Arr } from "@nlozgachev/pipelined/data";
 
 // Scale an array of scores
 const baseScores = [10, 20, 30];

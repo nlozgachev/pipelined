@@ -61,7 +61,7 @@ Ordering.date(new Date("2026-05-24"), new Date("2026-05-24")); // Zero (tie)
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
-import { Arr } from "@nlozgachev/pipelined/utils";
+import { Arr } from "@nlozgachev/pipelined/data";
 
 // Sorts integers in descending order:
 const descending = Ordering.reverse(Ordering.number);

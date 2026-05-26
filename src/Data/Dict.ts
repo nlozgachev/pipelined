@@ -9,7 +9,7 @@ import { Maybe } from "#core";
  *
  * @example
  * ```ts
- * import { Dict } from "@nlozgachev/pipelined/utils";
+ * import { Dict } from "@nlozgachev/pipelined/data";
  * import { pipe } from "@nlozgachev/pipelined/composition";
  *
  * const scores = pipe(

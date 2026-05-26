@@ -1,4 +1,4 @@
-import { Rec } from "#utils";
+import { Rec } from "#data";
 import fc from "fast-check";
 import { expect, test } from "vitest";
 
