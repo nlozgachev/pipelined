@@ -213,7 +213,7 @@ export namespace tap {
 		const triggerFinish = (duration: Duration) => {
 			if (config.label !== undefined) {
 				console.log(`[${config.label}]: ${Duration.toMilliseconds(duration)}ms`);
-			} else if (config.onFinish) {
+			} else {
 				config.onFinish(duration);
 			}
 		};

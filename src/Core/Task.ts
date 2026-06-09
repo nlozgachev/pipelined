@@ -194,9 +194,7 @@ export namespace Task {
 				// eslint-disable-next-line prefer-const
 				let timerId: ReturnType<typeof setTimeout> | undefined;
 				const onAbort = () => {
-					if (timerId !== undefined) {
-						clearTimeout(timerId);
-					}
+					clearTimeout(timerId);
 					res(toPromise(data, signal));
 				};
 
@@ -231,15 +229,12 @@ export namespace Task {
 			const { times, delay: delayDuration } = options;
 			if (times <= 0) { return Promise.resolve([]); }
 			const results: A[] = [];
-			const wait = (): Promise<void> => {
-				if (signal?.aborted) { return Promise.resolve(); }
-				return new Promise((r) => {
+			const wait = (): Promise<void> =>
+				new Promise((r) => {
 					// eslint-disable-next-line prefer-const
 					let timerId: ReturnType<typeof setTimeout> | undefined;
 					const onAbort = () => {
-						if (timerId !== undefined) {
-							clearTimeout(timerId);
-						}
+						clearTimeout(timerId);
 						r();
 					};
 					if (signal) {
@@ -250,7 +245,6 @@ export namespace Task {
 						r();
 					}, delayDuration ? getMs(delayDuration) : 0);
 				});
-			};
 			const run = (left: number): Promise<A[]> => {
 				if (signal?.aborted) {
 					return Promise.resolve(results);
@@ -282,15 +276,12 @@ export namespace Task {
 		<A>(options: { when: (a: A) => boolean; delay?: Duration; maxAttempts?: number; }) => (task: Task<A>): Task<A> =>
 			from((signal) => {
 				const { when: predicate, delay: delayDuration, maxAttempts } = options;
-				const wait = (): Promise<void> => {
-					if (signal?.aborted) { return Promise.resolve(); }
-					return new Promise((r) => {
+				const wait = (): Promise<void> =>
+					new Promise((r) => {
 						// eslint-disable-next-line prefer-const
 						let timerId: ReturnType<typeof setTimeout> | undefined;
 						const onAbort = () => {
-							if (timerId !== undefined) {
-								clearTimeout(timerId);
-							}
+							clearTimeout(timerId);
 							r();
 						};
 						if (signal) {
@@ -301,7 +292,6 @@ export namespace Task {
 							r();
 						}, delayDuration ? getMs(delayDuration) : 0);
 					});
-				};
 				const run = (attempt: number, lastValue?: A): Promise<A> => {
 					if (signal?.aborted && lastValue !== undefined) {
 						return Promise.resolve(lastValue);
@@ -424,9 +414,7 @@ export namespace Task {
 			let timerId: ReturnType<typeof setTimeout> | undefined;
 
 			function cleanUp() {
-				if (timerId !== undefined) {
-					clearTimeout(timerId);
-				}
+				clearTimeout(timerId);
 				// eslint-disable-next-line no-use-before-define
 				outerSignal?.removeEventListener("abort", onOuterAbort);
 			}

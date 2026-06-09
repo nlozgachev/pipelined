@@ -271,3 +271,67 @@ test("tap.time - logs to console when label config is provided", () => {
 	expect(firstCall?.[0]).toContain("[timer-label]:");
 	spy.mockRestore();
 });
+
+test("tap.log - handles circular objects gracefully", () => {
+	let logged = "";
+	const logger = (msg: string) => {
+		logged = msg;
+	};
+	const circular: any = {};
+	circular.self = circular;
+
+	const res = pipe(circular, tap.log({ logger }));
+
+	expect(res).toBe(circular);
+	expect(logged).toBe("[object Object]");
+});
+
+test("tap.inspect - fallback formatting handles circular objects gracefully", async () => {
+	vi.resetModules();
+	// oxlint-disable-next-line vitest/prefer-import-in-mock
+	vi.doMock("node:util", () => ({ inspect: undefined }));
+	const { tap: dynamicTap } = await import("../tap");
+	const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+	const circular: any = {};
+	circular.self = circular;
+
+	// Satisfy code coverage for the dynamically imported module instance
+	dynamicTap(() => {})(10);
+	dynamicTap.log({ label: "test" })(10);
+	dynamicTap.async(async () => {})(10);
+	dynamicTap.time(() => {}, { label: "test" })(10);
+
+	dynamicTap.inspect()(circular);
+
+	expect(spy).toHaveBeenCalledWith("[object Object]");
+	spy.mockRestore();
+	vi.doUnmock("node:util");
+	vi.resetModules();
+});
+
+test("tap.time - times asynchronous function rejecting, triggers onFinish, and handles rejection", async () => {
+	let finishedDuration: any = null;
+	let capturedPromise: Promise<any> | null = null;
+	const asyncRejectFn = (_n: number) => {
+		capturedPromise = (async () => {
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			throw new Error("async reject");
+		})();
+		return capturedPromise;
+	};
+
+	const res = pipe(
+		10,
+		tap.time(asyncRejectFn, {
+			onFinish: (dur) => {
+				finishedDuration = dur;
+			},
+		}),
+	);
+
+	expect(res).toBe(10);
+	expect(finishedDuration).toBeNull();
+
+	await expect(capturedPromise).rejects.toThrow("async reject");
+	expect(finishedDuration).not.toBeNull();
+});
