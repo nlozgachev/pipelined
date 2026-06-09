@@ -42,6 +42,12 @@ test("Num.between — agrees with clamp", () => {
 	}));
 });
 
+test("Num.inRange — agrees with definition", () => {
+	fc.assert(fc.property(fc.integer(), minMax, (n, [min, max]) => {
+		expect(Num.inRange(min, max)(n)).toBe(n >= min && n < max);
+	}));
+});
+
 // ---------------------------------------------------------------------------
 // add / subtract
 // ---------------------------------------------------------------------------

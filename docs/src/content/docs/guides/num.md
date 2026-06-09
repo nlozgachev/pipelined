@@ -112,17 +112,21 @@ pipe(10, Num.remainder(0)); // None
 
 ## Constraining and testing bounds
 
-We can clamp a number to a specific range or test its membership using `Num.clamp` and
-`Num.between`. Both boundaries are inclusive:
+We can clamp a number to a specific range or test its membership using `Num.clamp`, `Num.between`,
+and `Num.inRange`:
 
 ```ts
-// Constrain a value to the range [0, 100]
+// Constrain a value to the range [0, 100] (both inclusive)
 pipe(150, Num.clamp(0, 100)); // 100
 pipe(-5, Num.clamp(0, 100));  // 0
 pipe(42, Num.clamp(0, 100));  // 42
 
-// Test if a value falls within a range
+// Test if a value falls within a range (both inclusive)
 const isWithinRange = pipe(25, Num.between(10, 50)); // true
+
+// Test if a value falls within a half-open range [start, end) (start inclusive, end exclusive)
+const isInHalfOpenRange = pipe(10, Num.inRange(1, 10)); // false (10 is excluded)
+const isWithinHalfOpenRange = pipe(5, Num.inRange(1, 10)); // true
 ```
 
 ## Generating sequences

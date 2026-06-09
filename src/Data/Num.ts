@@ -67,6 +67,18 @@ export namespace Num {
 	export const between = (min: number, max: number) => (n: number): boolean => n >= min && n <= max;
 
 	/**
+	 * Returns `true` when the number is in the range `[start, end)` (inclusive of `start`, exclusive of `end`).
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(5, Num.inRange(1, 10));  // true
+	 * pipe(1, Num.inRange(1, 10));  // true
+	 * pipe(10, Num.inRange(1, 10)); // false
+	 * ```
+	 */
+	export const inRange = (start: number, end: number) => (n: number): boolean => n >= start && n < end;
+
+	/**
 	 * Parses a string as a number. Returns `None` when the result is `NaN`.
 	 *
 	 * @example

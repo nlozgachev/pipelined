@@ -70,6 +70,21 @@ test("Num.between returns false when value is outside range", () => {
 });
 
 // ---------------------------------------------------------------------------
+// inRange
+// ---------------------------------------------------------------------------
+
+test("Num.inRange returns true when value is inside range (half-open)", () => {
+	expect(pipe(5, Num.inRange(1, 10))).toBe(true);
+	expect(pipe(1, Num.inRange(1, 10))).toBe(true);
+});
+
+test("Num.inRange returns false when value is outside range or on the upper boundary", () => {
+	expect(pipe(0, Num.inRange(1, 10))).toBe(false);
+	expect(pipe(10, Num.inRange(1, 10))).toBe(false);
+	expect(pipe(11, Num.inRange(1, 10))).toBe(false);
+});
+
+// ---------------------------------------------------------------------------
 // parse
 // ---------------------------------------------------------------------------
 

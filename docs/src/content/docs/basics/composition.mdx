@@ -344,6 +344,82 @@ const result = pipe(
 );
 ```
 
+### Diagnostic taps
+
+For debugging, performance auditing, and background tasks, the `tap` namespace provides several specialized, configuration-based side-effect helpers.
+
+#### Printing values with tap.log
+
+`tap.log` logs the piped value to the console. You can optionally supply a `label` to prefix the log output, a custom `logger` destination, or a custom string `formatter` (which defaults to `JSON.stringify` for objects):
+
+```ts
+import { pipe, tap } from "@nlozgachev/pipelined/composition";
+
+pipe(
+  42,
+  tap.log(), // logs: 42
+  tap.log({ label: "Total Score" }), // logs: [Total Score]: 42
+  tap.log({
+    label: "Custom Format",
+    formatter: (n) => `Value is ${n * 2}`,
+  }), // logs: [Custom Format]: Value is 84
+);
+```
+
+#### Detailed object inspection with tap.inspect
+
+For deeply nested objects, `tap.log` might output truncated representations. `tap.inspect` formats objects with infinite depth by default, utilizing Node's `util.inspect` engine under the hood:
+
+```ts
+pipe(
+  { user: { name: "Alice", details: { age: 30, roles: ["admin"] } } },
+  tap.inspect({ label: "User Payload", depth: 2 })
+);
+// logs: [User Payload]: { name: 'Alice', details: { age: 30, roles: [Array] } }
+```
+
+#### Background operations with tap.async
+
+To trigger asynchronous operations (like telemetry hits, audits, or database writes) without blocking the pipeline or turning it into an async promise chain, use `tap.async`. It runs the promise in the background, intercepts any rejections, and routes them to `onError` (defaulting to `console.error`):
+
+```ts
+pipe(
+  userId,
+  tap.async(
+    async (id) => {
+      await saveAnalyticsSession(id);
+    },
+    { onError: (err) => logError(err) }
+  )
+); // returns userId immediately; analytics save runs in background
+```
+
+#### Timing steps with tap.time
+
+`tap.time` measures the execution duration of a side-effect function. It supports both synchronous and asynchronous operations (for promises, the duration is tracked until the promise resolves or rejects).
+
+The configuration object requires either a `label` (to log to the console automatically) or an `onFinish` callback (to route the typed `Duration` elsewhere), which are mutually exclusive to avoid conflicts:
+
+```ts
+import { Duration } from "@nlozgachev/pipelined/types";
+
+// Scenario A: Auto-log to console
+pipe(
+  data,
+  tap.time(syncCalculation, { label: "heavy-math" })
+); // logs: [heavy-math]: 12ms
+
+// Scenario B: Custom APM callback receiving Duration
+pipe(
+  data,
+  tap.time(asyncApiFetch, {
+    onFinish: (duration) => {
+      metrics.send("api.duration_ms", Duration.toMilliseconds(duration));
+    }
+  })
+);
+```
+
 ---
 
 ## Function primitives
