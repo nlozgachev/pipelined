@@ -179,7 +179,7 @@ Calling `task()` while a previous invocation is still active will automatically 
 
 ### Ending pipelines with `run`
 
-When composing inline pipelines, `Task.run` allows you to execute the Task at the terminal end of the `pipe` chain, accepting an optional `AbortSignal` for external cancellation:
+When composing inline pipelines, `Task.run` allows you to execute the Task at the terminal end of the `pipe` chain, returning a `Deferred` value that resolves to the output, and accepting an optional `AbortSignal` for external cancellation:
 
 ```ts
 const controller = new AbortController();

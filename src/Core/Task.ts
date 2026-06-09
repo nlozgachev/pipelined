@@ -517,7 +517,7 @@ export namespace Task {
 	 * );
 	 * ```
 	 */
-	export const run = (signal?: AbortSignal) => <A>(task: Task<A>): Promise<A> => Deferred.toPromise(task(signal));
+	export const run = (signal?: AbortSignal) => <A>(task: Task<A>): Deferred<A> => task(signal);
 
 	/**
 	 * Converts a Task value into an object containing a single property.

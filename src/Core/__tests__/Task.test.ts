@@ -728,7 +728,8 @@ test("Task.fromSync re-evaluates f on each call", async () => {
 
 test("Task.run executes the task and resolves with the value", async () => {
 	const task: Task<number> = () => Deferred.fromPromise(Promise.resolve(42));
-	await expect(pipe(task, Task.run())).resolves.toBe(42);
+	const result = await pipe(task, Task.run());
+	expect(result).toBe(42);
 });
 
 test("Task.run passes the signal to the task", async () => {
@@ -744,7 +745,8 @@ test("Task.run passes the signal to the task", async () => {
 
 test("Task.run works without a signal", async () => {
 	const task: Task<string> = () => Deferred.fromPromise(Promise.resolve("ok"));
-	await expect(pipe(task, Task.run())).resolves.toBe("ok");
+	const result = await pipe(task, Task.run());
+	expect(result).toBe("ok");
 });
 
 // ---------------------------------------------------------------------------

@@ -172,8 +172,7 @@ export namespace TaskResult {
 	 * if (Result.isOk(result)) render(result.value);
 	 * ```
 	 */
-	export const run = (signal?: AbortSignal) => <E, A>(task: TaskResult<E, A>): Promise<Result<E, A>> =>
-		Deferred.toPromise(task(signal));
+	export const run = (signal?: AbortSignal) => <E, A>(task: TaskResult<E, A>): Deferred<Result<E, A>> => task(signal);
 
 	/**
 	 * Converts a TaskResult value into an object containing a single property.
