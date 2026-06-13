@@ -1,6 +1,5 @@
 import { Maybe, Result } from "#core";
-import type { WithErrors, WithKind, WithValue } from "#internal";
-import { NonEmptyList } from "#types";
+import { isNonEmptyArr, type NonEmptyArr, type WithErrors, type WithKind, type WithValue } from "#internal";
 
 /**
  * Validation represents a value that is either passed with a success value,
@@ -61,7 +60,7 @@ export namespace Validation {
 	 * Validation.failedAll(["Invalid input"]);
 	 * ```
 	 */
-	export const failedAll = <E>(errors: NonEmptyList<E>): Failed<E> => ({ kind: "Failed", errors });
+	export const failedAll = <E>(errors: NonEmptyArr<E>): Failed<E> => ({ kind: "Failed", errors });
 
 	/**
 	 * Type guard that checks if a Validation is passed.
@@ -140,7 +139,7 @@ export namespace Validation {
 	 * ```
 	 */
 	export const mapError = <E, F, A>(f: (e: E) => F) => (data: Validation<E, A>): Validation<F, A> =>
-		isFailed(data) ? failedAll(data.errors.map(f) as unknown as NonEmptyList<F>) : data;
+		isFailed(data) ? failedAll(data.errors.map(f) as unknown as NonEmptyArr<F>) : data;
 
 	/**
 	 * Applies a function wrapped in a Validation to a value wrapped in a Validation.
@@ -163,9 +162,10 @@ export namespace Validation {
 	 * ```
 	 */
 	export const ap = <E, A>(arg: Validation<E, A>) => <B>(data: Validation<E, (a: A) => B>): Validation<E, B> => {
-		if (isPassed(data) && isPassed(arg)) { return passed(data.value(arg.value)); }
-		const errors = [...(isFailed(data) ? data.errors : []), ...(isFailed(arg) ? arg.errors : [])] as NonEmptyList<E>;
-		return failedAll(errors);
+		if (isPassed(data)) {
+			return isPassed(arg) ? passed(data.value(arg.value)) : failedAll(arg.errors);
+		}
+		return isPassed(arg) ? failedAll(data.errors) : failedAll([...data.errors, ...arg.errors] as NonEmptyArr<E>);
 	};
 
 	/**
@@ -183,7 +183,7 @@ export namespace Validation {
 	 * ```
 	 */
 	export const fold =
-		<E, A, B>(onFailed: (errors: NonEmptyList<E>) => B, onPassed: (a: A) => B) => (data: Validation<E, A>): B =>
+		<E, A, B>(onFailed: (errors: NonEmptyArr<E>) => B, onPassed: (a: A) => B) => (data: Validation<E, A>): B =>
 			isPassed(data) ? onPassed(data.value) : onFailed(data.errors);
 
 	/**
@@ -201,7 +201,7 @@ export namespace Validation {
 	 * ```
 	 */
 	export const match =
-		<E, A, B>(cases: { passed: (a: A) => B; failed: (errors: NonEmptyList<E>) => B; }) => (data: Validation<E, A>): B =>
+		<E, A, B>(cases: { passed: (a: A) => B; failed: (errors: NonEmptyArr<E>) => B; }) => (data: Validation<E, A>): B =>
 			isPassed(data) ? cases.passed(data.value) : cases.failed(data.errors);
 
 	/**
@@ -248,7 +248,7 @@ export namespace Validation {
 	 * );
 	 * ```
 	 */
-	export const tapError = <E, A>(f: (errors: NonEmptyList<E>) => void) => (data: Validation<E, A>): Validation<E, A> => {
+	export const tapError = <E, A>(f: (errors: NonEmptyArr<E>) => void) => (data: Validation<E, A>): Validation<E, A> => {
 		if (isFailed(data)) { f(data.errors); }
 		return data;
 	};
@@ -259,8 +259,8 @@ export namespace Validation {
 	 * The fallback can produce a different success type, widening the result to `Validation<E, A | B>`.
 	 */
 	export const recover =
-		<E, A, B>(fallback: (errors: NonEmptyList<E>) => Validation<E, B>) =>
-		(data: Validation<E, A>): Validation<E, A | B> => isPassed(data) ? data : fallback(data.errors);
+		<E, A, B>(fallback: (errors: NonEmptyArr<E>) => Validation<E, B>) => (data: Validation<E, A>): Validation<E, A | B> =>
+			isPassed(data) ? data : fallback(data.errors);
 
 	/**
 	 * Recovers from a Failed state unless `isBlocked` returns true for any of the accumulated errors.
@@ -288,7 +288,7 @@ export namespace Validation {
 	 * Validation.toResult(Validation.failed("oops"));  // Err(["oops"])
 	 * ```
 	 */
-	export const toResult = <E, A>(data: Validation<E, A>): Result<NonEmptyList<E>, A> =>
+	export const toResult = <E, A>(data: Validation<E, A>): Result<NonEmptyArr<E>, A> =>
 		isPassed(data) ? Result.ok(data.value) : Result.err(data.errors);
 
 	/**
@@ -341,13 +341,10 @@ export namespace Validation {
 		first: Validation<E, A>,
 		second: Validation<E, B>,
 	): Validation<E, readonly [A, B]> => {
-		if (isPassed(first) && isPassed(second)) {
-			return passed([first.value, second.value]);
+		if (isPassed(first)) {
+			return isPassed(second) ? passed([first.value, second.value]) : failedAll(second.errors);
 		}
-		const errors = [...(isFailed(first) ? first.errors : []), ...(isFailed(second) ? second.errors : [])] as NonEmptyList<
-			E
-		>;
-		return failedAll(errors);
+		return isPassed(second) ? failedAll(first.errors) : failedAll([...first.errors, ...second.errors] as NonEmptyArr<E>);
 	};
 
 	/**
@@ -365,14 +362,14 @@ export namespace Validation {
 	 * // Passed([name, email, age]) or Failed([...all errors])
 	 * ```
 	 */
-	export const productAll = <E, A>(data: NonEmptyList<Validation<E, A>>): Validation<E, readonly A[]> => {
+	export const productAll = <E, A>(data: NonEmptyArr<Validation<E, A>>): Validation<E, readonly A[]> => {
 		const values: A[] = [];
 		const errors: E[] = [];
 		for (const v of data) {
 			if (isPassed(v)) { values.push(v.value); }
 			else { errors.push(...v.errors); }
 		}
-		return errors.length > 0 ? failedAll(errors as unknown as NonEmptyList<E>) : passed(values);
+		return isNonEmptyArr(errors) ? failedAll(errors) : passed(values);
 	};
 
 	/**
@@ -407,6 +404,6 @@ export namespace Validation {
 				}
 			}
 		}
-		return errors.length > 0 ? failedAll(errors as unknown as NonEmptyList<E>) : passed(record);
+		return isNonEmptyArr(errors) ? failedAll(errors) : passed(record);
 	};
 }

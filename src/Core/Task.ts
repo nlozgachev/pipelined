@@ -1,5 +1,9 @@
-import { Deferred, Result } from "#core";
+import { Deferred, Result as CoreResult } from "#core";
+import type { Thenable } from "#internal";
 import { Duration } from "#types";
+import { TaskMaybe } from "./TaskMaybe.ts";
+import { TaskResult } from "./TaskResult.ts";
+import { TaskValidation } from "./TaskValidation.ts";
 
 /**
  * A lazy async computation that always resolves.
@@ -73,7 +77,7 @@ export namespace Task {
 	 * const getTimestamp = Task.from(() => Promise.resolve(Date.now()));
 	 * ```
 	 */
-	export const from = <A>(f: (signal?: AbortSignal) => Promise<A>): Task<A> => (signal?: AbortSignal) =>
+	export const from = <A>(f: (signal?: AbortSignal) => Thenable<A>): Task<A> => (signal?: AbortSignal) =>
 		Deferred.fromPromise(f(signal));
 
 	/**
@@ -408,21 +412,22 @@ export namespace Task {
 	 * );
 	 * ```
 	 */
-	export const timeout = <E>(duration: Duration, onTimeout: () => E) => <A>(task: Task<A>): Task<Result<E, A>> =>
+	export const timeout = <E>(duration: Duration, onTimeout: () => E) => <A>(task: Task<A>): Task<CoreResult<E, A>> =>
 		from((outerSignal) => {
 			const controller = new AbortController();
 			let timerId: ReturnType<typeof setTimeout> | undefined;
 
-			function cleanUp() {
-				clearTimeout(timerId);
-				// eslint-disable-next-line no-use-before-define
-				outerSignal?.removeEventListener("abort", onOuterAbort);
-			}
+			let cleanUp = () => {};
 
-			function onOuterAbort() {
+			const onOuterAbort = () => {
 				cleanUp();
 				controller.abort();
-			}
+			};
+
+			cleanUp = () => {
+				clearTimeout(timerId);
+				outerSignal?.removeEventListener("abort", onOuterAbort);
+			};
 
 			if (outerSignal) {
 				if (outerSignal.aborted) {
@@ -433,15 +438,15 @@ export namespace Task {
 			}
 
 			return Promise.race([
-				toPromise(task, controller.signal).then((a): Result<E, A> => {
+				toPromise(task, controller.signal).then((a): CoreResult<E, A> => {
 					cleanUp();
-					return Result.ok(a);
+					return CoreResult.ok(a);
 				}),
-				new Promise<Result<E, A>>((res) => {
+				new Promise<CoreResult<E, A>>((res) => {
 					timerId = setTimeout(() => {
 						controller.abort();
 						cleanUp();
-						res(Result.err(onTimeout()));
+						res(CoreResult.err(onTimeout()));
 					}, getMs(duration));
 				}),
 			]);
@@ -468,7 +473,7 @@ export namespace Task {
 	 * await poll();
 	 * ```
 	 */
-	export const abortable = <A>(factory: (signal: AbortSignal) => Promise<A>): { task: Task<A>; abort: () => void; } => {
+	export const abortable = <A>(factory: (signal: AbortSignal) => Thenable<A>): { task: Task<A>; abort: () => void; } => {
 		let currentController: AbortController | null = null;
 
 		const abort = () => currentController?.abort();
@@ -535,4 +540,13 @@ export namespace Task {
 			chain<A, A & { [P in K]: B; }>((a) =>
 				map<B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
 			)(data);
+
+	export type Maybe<A> = TaskMaybe<A>;
+	export const Maybe = TaskMaybe;
+
+	export type Result<E, A> = TaskResult<E, A>;
+	export const Result = TaskResult;
+
+	export type Validation<E, A> = TaskValidation<E, A>;
+	export const Validation = TaskValidation;
 }

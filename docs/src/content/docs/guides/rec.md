@@ -164,6 +164,104 @@ Rec.size({ a: 1, b: 2 }); // 2
 
 ---
 
+## Traversing and Sequencing Records
+
+When a record contains values that wrap effectful computations, you may want to aggregate those
+individual effects into a single container holding the mapped record. `Rec.Maybe` and `Rec.Result`
+provide namespaces for traversing and sequencing records, short-circuiting on the first failure.
+
+`Rec.Maybe.traverse` maps a `Maybe`-returning function over the values of a record. If every value
+produces a `Some`, it returns `Some` of the updated record. If any value maps to `None`, the entire
+operation returns `None`:
+
+```ts
+import { Maybe } from "@nlozgachev/pipelined/core";
+import { Rec } from "@nlozgachev/pipelined/data";
+
+const parseNum = (s: string) => s === "NaN" ? Maybe.none() : Maybe.some(Number(s));
+
+pipe({ a: "1", b: "2" }, Rec.Maybe.traverse(parseNum)); // Some({ a: 1, b: 2 })
+pipe({ a: "1", b: "NaN" }, Rec.Maybe.traverse(parseNum)); // None
+```
+
+`Rec.Maybe.sequence` takes a record where every value is already a `Maybe` and collapses it into a
+single `Maybe` of a record:
+
+```ts
+Rec.Maybe.sequence({ a: Maybe.some(1), b: Maybe.some(2) }); // Some({ a: 1, b: 2 })
+Rec.Maybe.sequence({ a: Maybe.some(1), b: Maybe.none() }); // None
+```
+
+Similarly, `Rec.Result.traverse` and `Rec.Result.sequence` aggregate fallible computations:
+
+```ts
+import { Result } from "@nlozgachev/pipelined/core";
+
+const validateStock = (quantity: number) =>
+  quantity < 0 ? Result.err("Negative stock not allowed") : Result.ok(quantity);
+
+pipe({ apples: 10, oranges: 5 }, Rec.Result.traverse(validateStock)); // Ok({ apples: 10, oranges: 5 })
+pipe({ apples: 10, oranges: -1 }, Rec.Result.traverse(validateStock)); // Err("Negative stock not allowed")
+```
+
+---
+
+## Non-Empty Records
+
+Sometimes, you need compile-time assurance that a record contains at least one key-value pair. You
+can represent this with the branded type `Rec.NonEmpty<A>` and refine standard records using the
+type guard `Rec.isNonEmpty`.
+
+```ts
+const userRecord = { admin: "Alice" };
+
+if (Rec.isNonEmpty(userRecord)) {
+  // Inside this block, userRecord is typed as Rec.NonEmpty<string>
+}
+```
+
+You can create a non-empty record directly using `Rec.NonEmpty.singleton` or parse a standard record
+using `Rec.NonEmpty.fromRecord`:
+
+```ts
+const singletonRec = Rec.NonEmpty.singleton("main", 42); // Rec.NonEmpty<number>
+
+const parsedRec = Rec.NonEmpty.fromRecord(userRecord); // Some(Rec.NonEmpty<string>)
+const emptyRec = Rec.NonEmpty.fromRecord({});          // None
+```
+
+Operating on `Rec.NonEmpty<A>` ensures that operations which would normally return standard arrays
+(which could be empty) instead return guaranteed non-empty arrays (`Arr.NonEmpty`). For example,
+extracting keys, values, or entries from a non-empty record returns `Arr.NonEmpty`:
+
+```ts
+const users = Rec.NonEmpty.singleton("admin", "Alice");
+
+Rec.NonEmpty.keys(users);    // Arr.NonEmpty<string> (e.g. ["admin"])
+Rec.NonEmpty.values(users);  // Arr.NonEmpty<string> (e.g. ["Alice"])
+Rec.NonEmpty.entries(users); // Arr.NonEmpty<readonly [string, string]> (e.g. [["admin", "Alice"]])
+```
+
+You can also reduce the values of a non-empty record without providing an initial accumulator seed,
+since there is guaranteed to be at least one value:
+
+```ts
+const scores = Rec.NonEmpty.singleton("math", 95);
+pipe(scores, Rec.NonEmpty.reduce((a, b) => a + b)); // 95
+```
+
+Additionally, `Rec.map` and `Rec.mapWithKey` preserve the non-empty status of the record in their
+return types:
+
+```ts
+const doubled = Rec.map((n: number) => n * 2)(scores); // Rec.NonEmpty<number>
+```
+
+For more details on operating with guaranteed non-empty data structures, see the dedicated
+[Non-Empty Collections Guide](../nonempty).
+
+---
+
 ## When to use Rec
 
 ### Use Rec when:

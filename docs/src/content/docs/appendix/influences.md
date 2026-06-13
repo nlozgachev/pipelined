@@ -130,12 +130,12 @@ The four types in `InternalTypes.ts` are the structural vocabulary of the entire
 type WithKind<K extends string> = { readonly kind: K };
 type WithValue<T> = { readonly value: T };
 type WithError<T> = { readonly error: T };
-type WithErrors<T> = { readonly errors: NonEmptyList<T> };
+type WithErrors<T> = { readonly errors: NonEmptyArr<T> };
 ```
 
 These ensure that field names are consistent across every type in the library. The success payload
 is always named `value`. A single failure is always named `error`. Multiple accumulated failures are
-always named `errors`, and the type of `errors` is always `NonEmptyList` — guaranteeing at least one
+always named `errors`, and the type of `errors` is always `NonEmptyArr` — guaranteeing at least one
 error exists when a type is in an invalid state.
 
 This consistency matters at runtime too: `Maybe.map` and `Result.map` and `RemoteData.map` all look
@@ -231,14 +231,14 @@ In practice this rarely matters for reading type signatures: once you've seen `R
 a few times, you read it as "can fail with string, succeeds with User" and the ordering is
 automatic.
 
-### NonEmptyList as a structural guarantee
+### NonEmptyArr as a structural guarantee
 
-`Validation` uses `NonEmptyList<E>` (defined as `readonly [E, ...E[]]`) for the errors field instead
+`Validation` uses `NonEmptyArr<E>` (defined as `readonly [E, ...E[]]`) for the errors field instead
 of `E[]`. This is a structural guarantee: when a value is `Invalid`, it always has at least one
 error. An `Invalid` with zero errors is a contradiction — it can't be represented.
 
 This matters for consumers of the `invalid` branch. If `errors` were `E[]`, every handler would need
-to guard against the empty case even though it's semantically impossible. With `NonEmptyList`, you
+to guard against the empty case even though it's semantically impossible. With `NonEmptyArr`, you
 can call `errors[0]` or `errors.join(", ")` without defensive checks.
 
 ## What was deliberately left out

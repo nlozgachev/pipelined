@@ -1,4 +1,19 @@
-import { Duration, NonEmptyList } from "#types";
+import { Duration } from "#types";
+import type { Deferred } from "../Core/Deferred";
+
+/**
+ * Represents a promise-like object or a deferred value that can be resolved with `.then()`.
+ */
+export type Thenable<A> = PromiseLike<A> | Deferred<A>;
+
+/**
+ * Represents a value that can be either a synchronous value or a Thenable.
+ */
+export type Awaitable<A> = A | Thenable<A>;
+
+export type NonEmptyArr<A> = readonly [A, ...A[]];
+
+export const isNonEmptyArr = <A>(list: readonly A[]): list is NonEmptyArr<A> => list.length > 0;
 
 export type WithKind<K extends string> = { readonly kind: K; };
 
@@ -6,7 +21,7 @@ export type WithValue<T> = { readonly value: T; };
 
 export type WithError<T> = { readonly error: T; };
 
-export type WithErrors<T> = { readonly errors: NonEmptyList<T>; };
+export type WithErrors<T> = { readonly errors: NonEmptyArr<T>; };
 
 export type WithFirst<T> = { readonly first: T; };
 

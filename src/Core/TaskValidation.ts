@@ -1,5 +1,5 @@
 import { Deferred, Maybe, Result, Task, Validation } from "#core";
-import { NonEmptyList } from "#types";
+import { isNonEmptyArr, type NonEmptyArr, type Thenable } from "#internal";
 
 /**
  * A Task that resolves to a Validation — combining async operations with
@@ -38,7 +38,7 @@ export namespace TaskValidation {
 	/**
 	 * Creates a failed TaskValidation from multiple errors.
 	 */
-	export const failedAll = <E, A>(errors: NonEmptyList<E>): TaskValidation<E, A> =>
+	export const failedAll = <E, A>(errors: NonEmptyArr<E>): TaskValidation<E, A> =>
 		Task.resolve(Validation.failedAll(errors));
 
 	/**
@@ -83,10 +83,12 @@ export namespace TaskValidation {
 	 * ```
 	 */
 	export const tryCatch = <E, A>(
-		f: (signal?: AbortSignal) => Promise<A>,
+		f: (signal?: AbortSignal) => Thenable<A>,
 		onError: (e: unknown) => E,
 	): TaskValidation<E, A> =>
-		Task.from((signal) => f(signal).then(Validation.passed<E, A>).catch((error) => Validation.failed(onError(error))));
+		Task.from((signal) =>
+			Promise.resolve(f(signal)).then(Validation.passed<E, A>).catch((error) => Validation.failed(onError(error)))
+		);
 
 	/**
 	 * Transforms the success value inside a TaskValidation.
@@ -120,7 +122,7 @@ export namespace TaskValidation {
 	 * Extracts a value from a TaskValidation by providing handlers for both cases.
 	 */
 	export const fold =
-		<E, A, B>(onFailed: (errors: NonEmptyList<E>) => B, onPassed: (a: A) => B) => (data: TaskValidation<E, A>): Task<B> =>
+		<E, A, B>(onFailed: (errors: NonEmptyArr<E>) => B, onPassed: (a: A) => B) => (data: TaskValidation<E, A>): Task<B> =>
 			Task.map(Validation.fold<E, A, B>(onFailed, onPassed))(data);
 
 	/**
@@ -138,7 +140,7 @@ export namespace TaskValidation {
 	 * ```
 	 */
 	export const match =
-		<E, A, B>(cases: { passed: (a: A) => B; failed: (errors: NonEmptyList<E>) => B; }) =>
+		<E, A, B>(cases: { passed: (a: A) => B; failed: (errors: NonEmptyArr<E>) => B; }) =>
 		(data: TaskValidation<E, A>): Task<B> => Task.map(Validation.match<E, A, B>(cases))(data);
 
 	/**
@@ -161,7 +163,7 @@ export namespace TaskValidation {
 	 * The fallback can produce a different success type, widening the result to `TaskValidation<E, A | B>`.
 	 */
 	export const recover =
-		<E, A, B>(fallback: (errors: NonEmptyList<E>) => TaskValidation<E, B>) =>
+		<E, A, B>(fallback: (errors: NonEmptyArr<E>) => TaskValidation<E, B>) =>
 		(data: TaskValidation<E, A>): TaskValidation<E, A | B> =>
 			Task.chain((validation: Validation<E, A>) =>
 				Validation.isPassed(validation) ? Task.resolve(validation as Validation<E, A | B>) : fallback(validation.errors)
@@ -204,10 +206,73 @@ export namespace TaskValidation {
 	 * ])(); // Passed([name, email, age]) or Failed([...all errors])
 	 * ```
 	 */
-	export const productAll = <E, A>(data: NonEmptyList<TaskValidation<E, A>>): TaskValidation<E, readonly A[]> =>
+	export const productAll = <E, A>(data: NonEmptyArr<TaskValidation<E, A>>): TaskValidation<E, readonly A[]> =>
 		Task.from((signal) =>
-			Promise.all(data.map((t) => Deferred.toPromise(t(signal)))).then((results) =>
-				Validation.productAll(results as unknown as NonEmptyList<Validation<E, A>>)
-			)
+			Promise.all(data.map((t) => Deferred.toPromise(t(signal)))).then((results) => {
+				const [first, ...rest] = results;
+				return Validation.productAll([first!, ...rest]);
+			})
 		);
+
+	/**
+	 * Transforms all accumulated errors inside a TaskValidation.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   TaskValidation.failed("oops"),
+	 *   TaskValidation.mapError(e => e.toUpperCase())
+	 * ); // TaskValidation(Failed(["OOPS"]))
+	 * ```
+	 */
+	export const mapError = <E, F, A>(f: (e: E) => F) => (data: TaskValidation<E, A>): TaskValidation<F, A> =>
+		Task.map(Validation.mapError<E, F, A>(f))(data);
+
+	/**
+	 * Executes a side effect on the accumulated errors without changing the TaskValidation.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   TaskValidation.failed("invalid name"),
+	 *   TaskValidation.tapError(errs => logger.error(errs))
+	 * );
+	 * ```
+	 */
+	export const tapError =
+		<E, A>(f: (errors: NonEmptyArr<E>) => void) => (data: TaskValidation<E, A>): TaskValidation<E, A> =>
+			Task.map(Validation.tapError<E, A>(f))(data);
+
+	/**
+	 * Combines a record of TaskValidations into a single TaskValidation of a record.
+	 * Evaluates fields in parallel and accumulates all validation errors.
+	 *
+	 * @example
+	 * ```ts
+	 * TaskValidation.struct({
+	 *   name: TaskValidation.passed("Alice"),
+	 *   age: TaskValidation.passed(30)
+	 * }); // TaskValidation({ name: "Alice", age: 30 })
+	 * ```
+	 */
+	export const struct = <E, R extends Record<string, any>>(
+		fields: { [K in keyof R]: TaskValidation<E, R[K]>; },
+	): TaskValidation<E, R> =>
+		Task.from((signal) => {
+			const keys = Object.keys(fields);
+			const promises = keys.map((key) => Deferred.toPromise(fields[key](signal)));
+			return Promise.all(promises).then((results) => {
+				const record = {} as R;
+				const errors: E[] = [];
+				for (let i = 0; i < keys.length; i++) {
+					const res = results[i] as Validation<E, any>;
+					if (Validation.isPassed(res)) {
+						record[keys[i] as keyof R] = res.value;
+					} else {
+						errors.push(...res.errors);
+					}
+				}
+				return isNonEmptyArr(errors) ? Validation.failedAll(errors) : Validation.passed(record);
+			});
+		});
 }

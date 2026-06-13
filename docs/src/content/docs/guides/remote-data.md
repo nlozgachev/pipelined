@@ -226,7 +226,7 @@ const resultUser = pipe(
 
 ### Storing async outcomes with `fromResult`
 
-When you trigger an asynchronous operation (e.g. using a `TaskResult`), you obtain a standard
+When you trigger an asynchronous operation (e.g. using a `Task.Result`), you obtain a standard
 `Result<E, A>` when it resolves. Storing this directly into your component's state as `RemoteData`
 is highly common.
 

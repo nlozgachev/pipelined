@@ -1,7 +1,7 @@
 import { pipe } from "#composition";
-import { Maybe } from "#core";
+import { Maybe, Result } from "#core";
 import { Rec } from "#data";
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 
 // =============================================================================
 // Transform: map, mapWithKey, filter, filterWithKey
@@ -422,4 +422,136 @@ test("Rec.groupBy preserves insertion order within each group", () => {
 	const result = pipe(items, Rec.groupBy((s) => s[0]));
 	expect([...result["b"]]).toStrictEqual(["banana", "blueberry"]);
 	expect([...result["a"]]).toStrictEqual(["avocado", "apricot"]);
+});
+
+// =============================================================================
+// Rec.Maybe & Rec.Result
+// =============================================================================
+
+test("Rec.Maybe.traverse - traverses record with Some values", () => {
+	const result = pipe(
+		{ a: "1", b: "2" },
+		Rec.Maybe.traverse((s) => (s === "NaN" ? Maybe.none() : Maybe.some(Number(s)))),
+	);
+	expect(result).toStrictEqual(Maybe.some({ a: 1, b: 2 }));
+});
+
+test("Rec.Maybe.traverse - short-circuits at first None", () => {
+	const result = pipe(
+		{ a: "1", b: "NaN", c: "3" },
+		Rec.Maybe.traverse((s) => (s === "NaN" ? Maybe.none() : Maybe.some(Number(s)))),
+	);
+	expect(result).toStrictEqual(Maybe.none());
+});
+
+test("Rec.Maybe.traverse - returns Some of empty record for empty input", () => {
+	const result = pipe({} as Record<string, string>, Rec.Maybe.traverse((s) => Maybe.some(s)));
+	expect(result).toStrictEqual(Maybe.some({}));
+});
+
+test("Rec.Maybe.sequence - sequences record of Some values", () => {
+	const result = Rec.Maybe.sequence({ a: Maybe.some(1), b: Maybe.some(2) });
+	expect(result).toStrictEqual(Maybe.some({ a: 1, b: 2 }));
+});
+
+test("Rec.Maybe.sequence - returns None if any is None", () => {
+	const result = Rec.Maybe.sequence({ a: Maybe.some(1), b: Maybe.none() });
+	expect(result).toStrictEqual(Maybe.none());
+});
+
+test("Rec.Result.traverse - traverses record with Ok values", () => {
+	const result = pipe({ a: 1, b: 2 }, Rec.Result.traverse((n) => (n < 0 ? Result.err("negative") : Result.ok(n * 10))));
+	expect(result).toStrictEqual(Result.ok({ a: 10, b: 20 }));
+});
+
+test("Rec.Result.traverse - short-circuits at first Err", () => {
+	const result = pipe(
+		{ a: 1, b: -2, c: 3 },
+		Rec.Result.traverse((n) => (n < 0 ? Result.err("negative") : Result.ok(n * 10))),
+	);
+	expect(result).toStrictEqual(Result.err("negative"));
+});
+
+test("Rec.Result.traverse - returns Ok of empty record for empty input", () => {
+	const result = pipe({} as Record<string, number>, Rec.Result.traverse((n) => Result.ok(n)));
+	expect(result).toStrictEqual(Result.ok({}));
+});
+
+test("Rec.Result.sequence - sequences record of Ok values", () => {
+	const result = Rec.Result.sequence({ a: Result.ok(1), b: Result.ok(2) });
+	expect(result).toStrictEqual(Result.ok({ a: 1, b: 2 }));
+});
+
+test("Rec.Result.sequence - returns Err if any is Err", () => {
+	const result = Rec.Result.sequence({ a: Result.ok(1), b: Result.err("oops") });
+	expect(result).toStrictEqual(Result.err("oops"));
+});
+
+// =============================================================================
+// Rec.NonEmpty
+// =============================================================================
+
+test("Rec.isNonEmpty - returns true for non-empty record", () => {
+	expect(Rec.isNonEmpty({ a: 1 })).toBe(true);
+});
+
+test("Rec.isNonEmpty - returns false for empty record", () => {
+	expect(Rec.isNonEmpty({})).toBe(false);
+});
+
+test("Rec.NonEmpty.singleton - creates a single-element record", () => {
+	const result = Rec.NonEmpty.singleton("key", "value");
+	expect(result).toStrictEqual({ key: "value" });
+	expect(Rec.isNonEmpty(result)).toBe(true);
+});
+
+test("Rec.NonEmpty.fromRecord - returns Some for non-empty record", () => {
+	const result = Rec.NonEmpty.fromRecord({ a: 1 });
+	expect(result).toStrictEqual(Maybe.some({ a: 1 }));
+});
+
+test("Rec.NonEmpty.fromRecord - returns None for empty record", () => {
+	const result = Rec.NonEmpty.fromRecord({});
+	expect(result).toStrictEqual(Maybe.none());
+});
+
+test("Rec.NonEmpty.keys - returns non-empty array of keys", () => {
+	const r = Rec.NonEmpty.singleton("a", 1);
+	const keys = Rec.NonEmpty.keys(r);
+	expect(keys).toStrictEqual(["a"]);
+	expectTypeOf(keys).toEqualTypeOf<readonly [string, ...string[]]>();
+});
+
+test("Rec.NonEmpty.values - returns non-empty array of values", () => {
+	const r = Rec.NonEmpty.singleton("a", 1);
+	const values = Rec.NonEmpty.values(r);
+	expect(values).toStrictEqual([1]);
+	expectTypeOf(values).toEqualTypeOf<readonly [number, ...number[]]>();
+});
+
+test("Rec.NonEmpty.entries - returns non-empty array of entries", () => {
+	const r = Rec.NonEmpty.singleton("a", 1);
+	const entries = Rec.NonEmpty.entries(r);
+	expect(entries).toStrictEqual([["a", 1]]);
+	expectTypeOf(entries).toEqualTypeOf<readonly [readonly [string, number], ...(readonly [string, number])[]]>();
+});
+
+test("Rec.NonEmpty.reduce - reduces non-empty record without initial seed", () => {
+	const r = Rec.NonEmpty.singleton("a", 10);
+	const result = pipe(r, Rec.NonEmpty.reduce((a, b) => a + b));
+	expect(result).toBe(10);
+});
+
+test("Rec.map on NonEmpty - type-safely preserves non-empty status", () => {
+	const r = Rec.NonEmpty.singleton("x", 5);
+	const mapped = Rec.map((n: number) => n * 2)(r);
+	expect(mapped).toStrictEqual({ x: 10 });
+	expectTypeOf(mapped).toEqualTypeOf<Rec.NonEmpty<number>>();
+});
+
+test("Rec.mapWithKey on NonEmpty - type-safely preserves non-empty status", () => {
+	const r = Rec.NonEmpty.singleton("x", 5);
+	const mapped = Rec.mapWithKey((k, v: number) => `${k}:${v}`)(r);
+	expect(mapped).toStrictEqual({ x: "x:5" });
+	expectTypeOf(mapped).toEqualTypeOf<Rec.NonEmpty<string>>();
 });

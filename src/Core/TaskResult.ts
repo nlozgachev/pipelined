@@ -1,4 +1,5 @@
 import { Deferred, Maybe, Result, Task } from "#core";
+import type { Thenable } from "#internal";
 
 /**
  * A Task that can fail with an error of type E or succeed with a value of type A.
@@ -69,9 +70,10 @@ export namespace TaskResult {
 	 * ```
 	 */
 	export const tryCatch = <E, A>(
-		f: (signal?: AbortSignal) => Promise<A>,
+		f: (signal?: AbortSignal) => Thenable<A>,
 		onError: (e: unknown) => E,
-	): TaskResult<E, A> => Task.from((signal) => f(signal).then(Result.ok).catch((error) => Result.err(onError(error))));
+	): TaskResult<E, A> =>
+		Task.from((signal) => Promise.resolve(f(signal)).then(Result.ok).catch((error) => Result.err(onError(error))));
 
 	/**
 	 * Transforms the success value inside a TaskResult.

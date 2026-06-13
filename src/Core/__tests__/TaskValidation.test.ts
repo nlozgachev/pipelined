@@ -1,21 +1,21 @@
 import { pipe } from "#composition";
-import { Deferred, Maybe, Result, TaskValidation, Validation } from "#core";
+import { Deferred, Maybe, Result, Task, Validation } from "#core";
 import { expect, test } from "vitest";
 
 // ---------------------------------------------------------------------------
 // valid
 // ---------------------------------------------------------------------------
 
-test("TaskValidation.passed creates a Task that resolves to Valid", async () => {
-	await expect(TaskValidation.passed<string, number>(42)()).resolves.toStrictEqual({ kind: "Passed", value: 42 });
+test("Task.Validation.passed creates a Task that resolves to Valid", async () => {
+	await expect(Task.Validation.passed<string, number>(42)()).resolves.toStrictEqual({ kind: "Passed", value: 42 });
 });
 
 // ---------------------------------------------------------------------------
 // invalid
 // ---------------------------------------------------------------------------
 
-test("TaskValidation.failed creates a Task that resolves to Invalid with one error", async () => {
-	await expect(TaskValidation.failed<string, number>("bad")()).resolves.toStrictEqual({
+test("Task.Validation.failed creates a Task that resolves to Invalid with one error", async () => {
+	await expect(Task.Validation.failed<string, number>("bad")()).resolves.toStrictEqual({
 		kind: "Failed",
 		errors: ["bad"],
 	});
@@ -25,8 +25,8 @@ test("TaskValidation.failed creates a Task that resolves to Invalid with one err
 // invalidAll
 // ---------------------------------------------------------------------------
 
-test("TaskValidation.failedAll creates a Task that resolves to Invalid with multiple errors", async () => {
-	await expect(TaskValidation.failedAll<string, number>(["err1", "err2"])()).resolves.toStrictEqual({
+test("Task.Validation.failedAll creates a Task that resolves to Invalid with multiple errors", async () => {
+	await expect(Task.Validation.failedAll<string, number>(["err1", "err2"])()).resolves.toStrictEqual({
 		kind: "Failed",
 		errors: ["err1", "err2"],
 	});
@@ -36,15 +36,15 @@ test("TaskValidation.failedAll creates a Task that resolves to Invalid with mult
 // fromValidation
 // ---------------------------------------------------------------------------
 
-test("TaskValidation.fromValidation lifts a Valid into a Task", async () => {
-	await expect(TaskValidation.fromValidation(Validation.passed<string, number>(5))()).resolves.toStrictEqual({
+test("Task.Validation.fromValidation lifts a Valid into a Task", async () => {
+	await expect(Task.Validation.fromValidation(Validation.passed<string, number>(5))()).resolves.toStrictEqual({
 		kind: "Passed",
 		value: 5,
 	});
 });
 
-test("TaskValidation.fromValidation lifts an Invalid into a Task", async () => {
-	await expect(TaskValidation.fromValidation(Validation.failed("e"))()).resolves.toStrictEqual({
+test("Task.Validation.fromValidation lifts an Invalid into a Task", async () => {
+	await expect(Task.Validation.fromValidation(Validation.failed("e"))()).resolves.toStrictEqual({
 		kind: "Failed",
 		errors: ["e"],
 	});
@@ -54,21 +54,21 @@ test("TaskValidation.fromValidation lifts an Invalid into a Task", async () => {
 // tryCatch
 // ---------------------------------------------------------------------------
 
-test("TaskValidation.tryCatch returns Valid when Promise resolves", async () => {
-	await expect(TaskValidation.tryCatch(() => Promise.resolve(42), (e) => String(e))()).resolves.toStrictEqual({
+test("Task.Validation.tryCatch returns Valid when Promise resolves", async () => {
+	await expect(Task.Validation.tryCatch(() => Promise.resolve(42), (e) => String(e))()).resolves.toStrictEqual({
 		kind: "Passed",
 		value: 42,
 	});
 });
 
-test("TaskValidation.tryCatch returns Invalid when Promise rejects", async () => {
-	await expect(TaskValidation.tryCatch(() => Promise.reject(new Error("boom")), (e) => (e as Error).message)()).resolves
+test("Task.Validation.tryCatch returns Invalid when Promise rejects", async () => {
+	await expect(Task.Validation.tryCatch(() => Promise.reject(new Error("boom")), (e) => (e as Error).message)()).resolves
 		.toStrictEqual({ kind: "Failed", errors: ["boom"] });
 });
 
-test("TaskValidation.tryCatch catches async throws", async () => {
+test("Task.Validation.tryCatch catches async throws", async () => {
 	await expect(
-		TaskValidation.tryCatch(
+		Task.Validation.tryCatch(
 			// eslint-disable-next-line require-await
 			async () => {
 				throw new Error("bang");
@@ -78,9 +78,9 @@ test("TaskValidation.tryCatch catches async throws", async () => {
 	).resolves.toStrictEqual({ kind: "Failed", errors: ["bang"] });
 });
 
-test("TaskValidation.tryCatch receives the AbortSignal from the call site", async () => {
+test("Task.Validation.tryCatch receives the AbortSignal from the call site", async () => {
 	let receivedSignal: AbortSignal | undefined;
-	const task = TaskValidation.tryCatch((signal) => {
+	const task = Task.Validation.tryCatch((signal) => {
 		receivedSignal = signal;
 		return Promise.resolve(42);
 	}, (e) => String(e));
@@ -93,18 +93,18 @@ test("TaskValidation.tryCatch receives the AbortSignal from the call site", asyn
 // map
 // ---------------------------------------------------------------------------
 
-test("TaskValidation.map transforms Valid value", async () => {
-	await expect(pipe(TaskValidation.passed<string, number>(5), TaskValidation.map((n: number) => n * 2))()).resolves
+test("Task.Validation.map transforms Valid value", async () => {
+	await expect(pipe(Task.Validation.passed<string, number>(5), Task.Validation.map((n: number) => n * 2))()).resolves
 		.toStrictEqual({ kind: "Passed", value: 10 });
 });
 
-test("TaskValidation.map passes through Invalid unchanged", async () => {
-	await expect(pipe(TaskValidation.failed<string, number>("err"), TaskValidation.map((n: number) => n * 2))()).resolves
+test("Task.Validation.map passes through Invalid unchanged", async () => {
+	await expect(pipe(Task.Validation.failed<string, number>("err"), Task.Validation.map((n: number) => n * 2))()).resolves
 		.toStrictEqual({ kind: "Failed", errors: ["err"] });
 });
 
-test("TaskValidation.map can change the value type", async () => {
-	await expect(pipe(TaskValidation.passed<string, number>(3), TaskValidation.map((n: number) => `n:${n}`))()).resolves
+test("Task.Validation.map can change the value type", async () => {
+	await expect(pipe(Task.Validation.passed<string, number>(3), Task.Validation.map((n: number) => `n:${n}`))()).resolves
 		.toStrictEqual({ kind: "Passed", value: "n:3" });
 });
 
@@ -112,55 +112,55 @@ test("TaskValidation.map can change the value type", async () => {
 // ap (error accumulation)
 // ---------------------------------------------------------------------------
 
-test("TaskValidation.ap applies Valid function to Valid value", async () => {
+test("Task.Validation.ap applies Valid function to Valid value", async () => {
 	const result = await pipe(
-		TaskValidation.passed<string, (n: number) => number>((n) => n * 3),
-		TaskValidation.ap(TaskValidation.passed<string, number>(4)),
+		Task.Validation.passed<string, (n: number) => number>((n) => n * 3),
+		Task.Validation.ap(Task.Validation.passed<string, number>(4)),
 	)();
 	expect(result).toStrictEqual({ kind: "Passed", value: 12 });
 });
 
-test("TaskValidation.ap accumulates errors from both Invalid sides", async () => {
+test("Task.Validation.ap accumulates errors from both Invalid sides", async () => {
 	const add = (a: number) => (b: number) => a + b;
 	const result = await pipe(
-		TaskValidation.passed<string, (a: number) => (b: number) => number>(add),
-		TaskValidation.ap(TaskValidation.failed<string, number>("bad a")),
-		TaskValidation.ap(TaskValidation.failed<string, number>("bad b")),
+		Task.Validation.passed<string, (a: number) => (b: number) => number>(add),
+		Task.Validation.ap(Task.Validation.failed<string, number>("bad a")),
+		Task.Validation.ap(Task.Validation.failed<string, number>("bad b")),
 	)();
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["bad a", "bad b"] });
 });
 
-test("TaskValidation.ap returns Invalid when function side is Invalid", async () => {
+test("Task.Validation.ap returns Invalid when function side is Invalid", async () => {
 	const result = await pipe(
-		TaskValidation.failed<string, (n: number) => number>("bad fn"),
-		TaskValidation.ap(TaskValidation.passed<string, number>(4)),
+		Task.Validation.failed<string, (n: number) => number>("bad fn"),
+		Task.Validation.ap(Task.Validation.passed<string, number>(4)),
 	)();
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["bad fn"] });
 });
 
-test("TaskValidation.ap collects errors from both sides simultaneously", async () => {
+test("Task.Validation.ap collects errors from both sides simultaneously", async () => {
 	const result = await pipe(
-		TaskValidation.failed<string, (n: number) => number>("bad fn"),
-		TaskValidation.ap(TaskValidation.failed<string, number>("bad arg")),
+		Task.Validation.failed<string, (n: number) => number>("bad fn"),
+		Task.Validation.ap(Task.Validation.failed<string, number>("bad arg")),
 	)();
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["bad fn", "bad arg"] });
 });
 
-test("TaskValidation.ap propagates the AbortSignal down to both sides", async () => {
+test("Task.Validation.ap propagates the AbortSignal down to both sides", async () => {
 	let signalLeft: AbortSignal | undefined;
 	let signalRight: AbortSignal | undefined;
 
-	const left: TaskValidation<string, (n: number) => number> = (signal) => {
+	const left: Task.Validation<string, (n: number) => number> = (signal) => {
 		signalLeft = signal;
 		return Deferred.fromPromise(Promise.resolve(Validation.passed((n: number) => n * 3)));
 	};
-	const right: TaskValidation<string, number> = (signal) => {
+	const right: Task.Validation<string, number> = (signal) => {
 		signalRight = signal;
 		return Deferred.fromPromise(Promise.resolve(Validation.passed(4)));
 	};
 
 	const controller = new AbortController();
-	const result = await pipe(left, TaskValidation.ap(right))(controller.signal);
+	const result = await pipe(left, Task.Validation.ap(right))(controller.signal);
 
 	expect(result).toStrictEqual({ kind: "Passed", value: 12 });
 	expect(signalLeft).toBe(controller.signal);
@@ -171,17 +171,17 @@ test("TaskValidation.ap propagates the AbortSignal down to both sides", async ()
 // fold
 // ---------------------------------------------------------------------------
 
-test("TaskValidation.fold calls onValid for Valid", async () => {
+test("Task.Validation.fold calls onValid for Valid", async () => {
 	await expect(
-		pipe(TaskValidation.passed(5), TaskValidation.fold((errs) => `invalid:${errs}`, (n: number) => `valid:${n}`))(),
+		pipe(Task.Validation.passed(5), Task.Validation.fold((errs) => `invalid:${errs}`, (n: number) => `valid:${n}`))(),
 	).resolves.toBe("valid:5");
 });
 
-test("TaskValidation.fold calls onInvalid for Invalid", async () => {
+test("Task.Validation.fold calls onInvalid for Invalid", async () => {
 	await expect(
 		pipe(
-			TaskValidation.failed<string, number>("e"),
-			TaskValidation.fold((errs) => `invalid:${errs.join(",")}`, (n: number) => `valid:${n}`),
+			Task.Validation.failed<string, number>("e"),
+			Task.Validation.fold((errs) => `invalid:${errs.join(",")}`, (n: number) => `valid:${n}`),
 		)(),
 	).resolves.toBe("invalid:e");
 });
@@ -190,20 +190,20 @@ test("TaskValidation.fold calls onInvalid for Invalid", async () => {
 // match
 // ---------------------------------------------------------------------------
 
-test("TaskValidation.match calls valid handler for Valid", async () => {
+test("Task.Validation.match calls valid handler for Valid", async () => {
 	await expect(
 		pipe(
-			TaskValidation.passed<string, number>(5),
-			TaskValidation.match({ passed: (n: number) => `got:${n}`, failed: (errs) => `errs:${errs.join(",")}` }),
+			Task.Validation.passed<string, number>(5),
+			Task.Validation.match({ passed: (n: number) => `got:${n}`, failed: (errs) => `errs:${errs.join(",")}` }),
 		)(),
 	).resolves.toBe("got:5");
 });
 
-test("TaskValidation.match calls invalid handler for Invalid", async () => {
+test("Task.Validation.match calls invalid handler for Invalid", async () => {
 	await expect(
 		pipe(
-			TaskValidation.failed<string, number>("oops"),
-			TaskValidation.match({ passed: (n: number) => `got:${n}`, failed: (errs) => `errs:${errs.join(",")}` }),
+			Task.Validation.failed<string, number>("oops"),
+			Task.Validation.match({ passed: (n: number) => `got:${n}`, failed: (errs) => `errs:${errs.join(",")}` }),
 		)(),
 	).resolves.toBe("errs:oops");
 });
@@ -212,21 +212,21 @@ test("TaskValidation.match calls invalid handler for Invalid", async () => {
 // getOrElse
 // ---------------------------------------------------------------------------
 
-test("TaskValidation.getOrElse returns value for Valid", async () => {
-	await expect(pipe(TaskValidation.passed<string, number>(5), TaskValidation.getOrElse(() => 0))()).resolves.toBe(5);
+test("Task.Validation.getOrElse returns value for Valid", async () => {
+	await expect(pipe(Task.Validation.passed<string, number>(5), Task.Validation.getOrElse(() => 0))()).resolves.toBe(5);
 });
 
-test("TaskValidation.getOrElse returns default for Invalid", async () => {
-	await expect(pipe(TaskValidation.failed<string, number>("e"), TaskValidation.getOrElse(() => 0))()).resolves.toBe(0);
+test("Task.Validation.getOrElse returns default for Invalid", async () => {
+	await expect(pipe(Task.Validation.failed<string, number>("e"), Task.Validation.getOrElse(() => 0))()).resolves.toBe(0);
 });
 
 test("taskValidation.getOrElse widens return type to A | B when default is a different type", async () => {
-	const result = await pipe(TaskValidation.failed("e"), TaskValidation.getOrElse(() => null))();
+	const result = await pipe(Task.Validation.failed("e"), Task.Validation.getOrElse(() => null))();
 	expect(result).toBeNull();
 });
 
-test("TaskValidation.getOrElse returns Valid value typed as A | B when Valid", async () => {
-	const result = await pipe(TaskValidation.passed(5), TaskValidation.getOrElse(() => null))();
+test("Task.Validation.getOrElse returns Valid value typed as A | B when Valid", async () => {
+	const result = await pipe(Task.Validation.passed(5), Task.Validation.getOrElse(() => null))();
 	expect(result).toBe(5);
 });
 
@@ -234,11 +234,11 @@ test("TaskValidation.getOrElse returns Valid value typed as A | B when Valid", a
 // tap
 // ---------------------------------------------------------------------------
 
-test("TaskValidation.tap executes side effect on Valid and returns original", async () => {
+test("Task.Validation.tap executes side effect on Valid and returns original", async () => {
 	let seen = 0;
 	const result = await pipe(
-		TaskValidation.passed<string, number>(5),
-		TaskValidation.tap((n: number) => {
+		Task.Validation.passed<string, number>(5),
+		Task.Validation.tap((n: number) => {
 			seen = n;
 		}),
 	)();
@@ -246,11 +246,11 @@ test("TaskValidation.tap executes side effect on Valid and returns original", as
 	expect(result).toStrictEqual({ kind: "Passed", value: 5 });
 });
 
-test("TaskValidation.tap does not execute side effect on Invalid", async () => {
+test("Task.Validation.tap does not execute side effect on Invalid", async () => {
 	let called = false;
 	await pipe(
-		TaskValidation.failed<string, number>("err"),
-		TaskValidation.tap(() => {
+		Task.Validation.failed<string, number>("err"),
+		Task.Validation.tap(() => {
 			called = true;
 		}),
 	)();
@@ -261,51 +261,51 @@ test("TaskValidation.tap does not execute side effect on Invalid", async () => {
 // recover
 // ---------------------------------------------------------------------------
 
-test("TaskValidation.recover returns original Valid without calling fallback", async () => {
+test("Task.Validation.recover returns original Valid without calling fallback", async () => {
 	let called = false;
 	const result = await pipe(
-		TaskValidation.passed<string, number>(5),
-		TaskValidation.recover((_errors) => {
+		Task.Validation.passed<string, number>(5),
+		Task.Validation.recover((_errors) => {
 			called = true;
-			return TaskValidation.passed<string, number>(99);
+			return Task.Validation.passed<string, number>(99);
 		}),
 	)();
 	expect(called).toBe(false);
 	expect(result).toStrictEqual({ kind: "Passed", value: 5 });
 });
 
-test("TaskValidation.recover provides fallback for Invalid", async () => {
+test("Task.Validation.recover provides fallback for Invalid", async () => {
 	const result = await pipe(
-		TaskValidation.failed<string, number>("err"),
-		TaskValidation.recover((_errors) => TaskValidation.passed<string, number>(99)),
+		Task.Validation.failed<string, number>("err"),
+		Task.Validation.recover((_errors) => Task.Validation.passed<string, number>(99)),
 	)();
 	expect(result).toStrictEqual({ kind: "Passed", value: 99 });
 });
 
-test("TaskValidation.recover exposes the error list to the fallback", async () => {
+test("Task.Validation.recover exposes the error list to the fallback", async () => {
 	let received: string[] = [];
 	await pipe(
-		TaskValidation.failedAll<string, number>(["first", "second"]),
-		TaskValidation.recover((errors) => {
+		Task.Validation.failedAll<string, number>(["first", "second"]),
+		Task.Validation.recover((errors) => {
 			received = [...errors];
-			return TaskValidation.passed<string, number>(0);
+			return Task.Validation.passed<string, number>(0);
 		}),
 	)();
 	expect(received).toStrictEqual(["first", "second"]);
 });
 
-test("taskValidation.recover widens to TaskValidation<E, A | B> when fallback returns a different type", async () => {
+test("taskValidation.recover widens to Task.Validation<E, A | B> when fallback returns a different type", async () => {
 	const result = await pipe(
-		TaskValidation.failed("err"),
-		TaskValidation.recover((_errors) => TaskValidation.passed("recovered")),
+		Task.Validation.failed("err"),
+		Task.Validation.recover((_errors) => Task.Validation.passed("recovered")),
 	)();
 	expect(result).toStrictEqual({ kind: "Passed", value: "recovered" });
 });
 
-test("TaskValidation.recover preserves Valid typed as TaskValidation<E, A | B>", async () => {
+test("Task.Validation.recover preserves Valid typed as Task.Validation<E, A | B>", async () => {
 	const result = await pipe(
-		TaskValidation.passed(5),
-		TaskValidation.recover((_errors) => TaskValidation.passed("recovered")),
+		Task.Validation.passed(5),
+		Task.Validation.recover((_errors) => Task.Validation.passed("recovered")),
 	)();
 	expect(result).toStrictEqual({ kind: "Passed", value: 5 });
 });
@@ -315,17 +315,17 @@ test("TaskValidation.recover preserves Valid typed as TaskValidation<E, A | B>",
 // ---------------------------------------------------------------------------
 
 test("taskValidation composes well in a pipe chain", async () => {
-	const validateName = (name: string): TaskValidation<string, string> =>
-		name.length > 0 ? TaskValidation.passed(name) : TaskValidation.failed("Name required");
-	const validateAge = (age: number): TaskValidation<string, number> =>
-		age >= 0 ? TaskValidation.passed(age) : TaskValidation.failed("Age must be >= 0");
+	const validateName = (name: string): Task.Validation<string, string> =>
+		name.length > 0 ? Task.Validation.passed(name) : Task.Validation.failed("Name required");
+	const validateAge = (age: number): Task.Validation<string, number> =>
+		age >= 0 ? Task.Validation.passed(age) : Task.Validation.failed("Age must be >= 0");
 	const build = (name: string) => (age: number) => ({ name, age });
 	const result = await pipe(
-		TaskValidation.passed<string, typeof build>(build),
-		TaskValidation.ap(validateName("Alice")),
-		TaskValidation.ap(validateAge(30)),
-		TaskValidation.map((user) => user.name),
-		TaskValidation.getOrElse(() => "unknown"),
+		Task.Validation.passed<string, typeof build>(build),
+		Task.Validation.ap(validateName("Alice")),
+		Task.Validation.ap(validateAge(30)),
+		Task.Validation.map((user) => user.name),
+		Task.Validation.getOrElse(() => "unknown"),
 	)();
 	expect(result).toBe("Alice");
 });
@@ -333,9 +333,9 @@ test("taskValidation composes well in a pipe chain", async () => {
 test("taskValidation ap accumulates all errors across multiple validations", async () => {
 	const validate = (name: string) => (age: number) => ({ name, age });
 	const result = await pipe(
-		TaskValidation.passed<string, typeof validate>(validate),
-		TaskValidation.ap(TaskValidation.failed<string, string>("Name required")),
-		TaskValidation.ap(TaskValidation.failed<string, number>("Age required")),
+		Task.Validation.passed<string, typeof validate>(validate),
+		Task.Validation.ap(Task.Validation.failed<string, string>("Name required")),
+		Task.Validation.ap(Task.Validation.failed<string, number>("Age required")),
 	)();
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["Name required", "Age required"] });
 });
@@ -344,26 +344,26 @@ test("taskValidation ap accumulates all errors across multiple validations", asy
 // product
 // ---------------------------------------------------------------------------
 
-test("TaskValidation.product returns tuple when both are Valid", async () => {
-	const result = await TaskValidation.product(
-		TaskValidation.passed<string, string>("alice"),
-		TaskValidation.passed<string, number>(30),
+test("Task.Validation.product returns tuple when both are Valid", async () => {
+	const result = await Task.Validation.product(
+		Task.Validation.passed<string, string>("alice"),
+		Task.Validation.passed<string, number>(30),
 	)();
 	expect(result).toStrictEqual({ kind: "Passed", value: ["alice", 30] });
 });
 
-test("TaskValidation.product accumulates errors when first is Invalid", async () => {
-	const result = await TaskValidation.product(
-		TaskValidation.failed<string, string>("Name required"),
-		TaskValidation.passed<string, number>(30),
+test("Task.Validation.product accumulates errors when first is Invalid", async () => {
+	const result = await Task.Validation.product(
+		Task.Validation.failed<string, string>("Name required"),
+		Task.Validation.passed<string, number>(30),
 	)();
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["Name required"] });
 });
 
-test("TaskValidation.product accumulates errors from both sides", async () => {
-	const result = await TaskValidation.product(
-		TaskValidation.failed<string, string>("Name required"),
-		TaskValidation.failed<string, number>("Age required"),
+test("Task.Validation.product accumulates errors from both sides", async () => {
+	const result = await Task.Validation.product(
+		Task.Validation.failed<string, string>("Name required"),
+		Task.Validation.failed<string, number>("Age required"),
 	)();
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["Name required", "Age required"] });
 });
@@ -372,64 +372,64 @@ test("TaskValidation.product accumulates errors from both sides", async () => {
 // productAll
 // ---------------------------------------------------------------------------
 
-test("TaskValidation.productAll returns all values when all are Valid", async () => {
-	const result = await TaskValidation.productAll([
-		TaskValidation.passed<string, number>(1),
-		TaskValidation.passed<string, number>(2),
-		TaskValidation.passed<string, number>(3),
+test("Task.Validation.productAll returns all values when all are Valid", async () => {
+	const result = await Task.Validation.productAll([
+		Task.Validation.passed<string, number>(1),
+		Task.Validation.passed<string, number>(2),
+		Task.Validation.passed<string, number>(3),
 	])();
 	expect(result).toStrictEqual({ kind: "Passed", value: [1, 2, 3] });
 });
 
-test("TaskValidation.productAll accumulates all errors", async () => {
-	const result = await TaskValidation.productAll([
-		TaskValidation.failed<string, number>("err1"),
-		TaskValidation.passed<string, number>(2),
-		TaskValidation.failed<string, number>("err2"),
+test("Task.Validation.productAll accumulates all errors", async () => {
+	const result = await Task.Validation.productAll([
+		Task.Validation.failed<string, number>("err1"),
+		Task.Validation.passed<string, number>(2),
+		Task.Validation.failed<string, number>("err2"),
 	])();
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["err1", "err2"] });
 });
 
-test("TaskValidation.productAll with single element returns singleton array", async () => {
-	const result = await TaskValidation.productAll([TaskValidation.passed<string, number>(42)])();
+test("Task.Validation.productAll with single element returns singleton array", async () => {
+	const result = await Task.Validation.productAll([Task.Validation.passed<string, number>(42)])();
 	expect(result).toStrictEqual({ kind: "Passed", value: [42] });
 });
 
-test("TaskValidation.product propagates the AbortSignal down to both validation tasks", async () => {
+test("Task.Validation.product propagates the AbortSignal down to both validation tasks", async () => {
 	let signalFirst: AbortSignal | undefined;
 	let signalSecond: AbortSignal | undefined;
 
-	const first: TaskValidation<string, string> = (signal) => {
+	const first: Task.Validation<string, string> = (signal) => {
 		signalFirst = signal;
 		return Deferred.fromPromise(Promise.resolve(Validation.passed("alice")));
 	};
-	const second: TaskValidation<string, number> = (signal) => {
+	const second: Task.Validation<string, number> = (signal) => {
 		signalSecond = signal;
 		return Deferred.fromPromise(Promise.resolve(Validation.passed(30)));
 	};
 
 	const controller = new AbortController();
-	await TaskValidation.product(first, second)(controller.signal);
+	await Task.Validation.product(first, second)(controller.signal);
 
 	expect(signalFirst).toBe(controller.signal);
 	expect(signalSecond).toBe(controller.signal);
 });
 
-test("TaskValidation.productAll propagates the AbortSignal down to all validations", async () => {
+test("Task.Validation.productAll propagates the AbortSignal down to all validations", async () => {
 	let signal1: AbortSignal | undefined;
 	let signal2: AbortSignal | undefined;
 
-	const t1: TaskValidation<string, number> = (signal) => {
+	const t1: Task.Validation<string, number> = (signal) => {
 		signal1 = signal;
 		return Deferred.fromPromise(Promise.resolve(Validation.passed(1)));
 	};
-	const t2: TaskValidation<string, number> = (signal) => {
+	const t2: Task.Validation<string, number> = (signal) => {
 		signal2 = signal;
 		return Deferred.fromPromise(Promise.resolve(Validation.passed(2)));
 	};
 
 	const controller = new AbortController();
-	await TaskValidation.productAll([t1, t2])(controller.signal);
+	await Task.Validation.productAll([t1, t2])(controller.signal);
 
 	expect(signal1).toBe(controller.signal);
 	expect(signal2).toBe(controller.signal);
@@ -437,41 +437,103 @@ test("TaskValidation.productAll propagates the AbortSignal down to all validatio
 
 // --- fromNullable ---
 
-test("TaskValidation.fromNullable returns Valid for non-null value", async () => {
-	const result = await TaskValidation.fromNullable(() => "is null")(42)();
+test("Task.Validation.fromNullable returns Valid for non-null value", async () => {
+	const result = await Task.Validation.fromNullable(() => "is null")(42)();
 	expect(result).toStrictEqual(Validation.passed(42));
 });
 
-test("TaskValidation.fromNullable returns Invalid for null", async () => {
-	const result = await TaskValidation.fromNullable(() => "is null")(null)();
+test("Task.Validation.fromNullable returns Invalid for null", async () => {
+	const result = await Task.Validation.fromNullable(() => "is null")(null)();
 	expect(result).toStrictEqual(Validation.failed("is null"));
 });
 
-test("TaskValidation.fromNullable returns Invalid for undefined", async () => {
-	const result = await TaskValidation.fromNullable(() => "is null")(undefined)();
+test("Task.Validation.fromNullable returns Invalid for undefined", async () => {
+	const result = await Task.Validation.fromNullable(() => "is null")(undefined)();
 	expect(result).toStrictEqual(Validation.failed("is null"));
 });
 
 // --- fromMaybe ---
 
-test("TaskValidation.fromMaybe returns Valid for Some", async () => {
-	const result = await TaskValidation.fromMaybe(() => "is none")(Maybe.some(42))();
+test("Task.Validation.fromMaybe returns Valid for Some", async () => {
+	const result = await Task.Validation.fromMaybe(() => "is none")(Maybe.some(42))();
 	expect(result).toStrictEqual(Validation.passed(42));
 });
 
-test("TaskValidation.fromMaybe returns Invalid for None", async () => {
-	const result = await TaskValidation.fromMaybe(() => "is none")(Maybe.none())();
+test("Task.Validation.fromMaybe returns Invalid for None", async () => {
+	const result = await Task.Validation.fromMaybe(() => "is none")(Maybe.none())();
 	expect(result).toStrictEqual(Validation.failed("is none"));
 });
 
 // --- fromResult ---
 
-test("TaskValidation.fromResult returns Valid for Ok", async () => {
-	const result = await TaskValidation.fromResult(Result.ok(42))();
+test("Task.Validation.fromResult returns Valid for Ok", async () => {
+	const result = await Task.Validation.fromResult(Result.ok(42))();
 	expect(result).toStrictEqual(Validation.passed(42));
 });
 
-test("TaskValidation.fromResult returns Invalid for Err", async () => {
-	const result = await TaskValidation.fromResult(Result.err("bad"))();
+test("Task.Validation.fromResult returns Invalid for Err", async () => {
+	const result = await Task.Validation.fromResult(Result.err("bad"))();
 	expect(result).toStrictEqual(Validation.failed("bad"));
+});
+
+// --- mapError ---
+
+test("Task.Validation.mapError transforms accumulated errors", async () => {
+	const result = await pipe(
+		Task.Validation.failed<string, number>("error"),
+		Task.Validation.mapError((s) => s.toUpperCase()),
+	)();
+	expect(result).toStrictEqual({ kind: "Failed", errors: ["ERROR"] });
+});
+
+test("Task.Validation.mapError passes through Passed unchanged", async () => {
+	const result = await pipe(
+		Task.Validation.passed<string, number>(42),
+		Task.Validation.mapError((s) => s.toUpperCase()),
+	)();
+	expect(result).toStrictEqual({ kind: "Passed", value: 42 });
+});
+
+// --- tapError ---
+
+test("Task.Validation.tapError executes side effect on Failed", async () => {
+	let seen: string[] = [];
+	const result = await pipe(
+		Task.Validation.failed<string, number>("error"),
+		Task.Validation.tapError((errs) => {
+			seen = [...errs];
+		}),
+	)();
+	expect(seen).toStrictEqual(["error"]);
+	expect(result).toStrictEqual({ kind: "Failed", errors: ["error"] });
+});
+
+test("Task.Validation.tapError does not execute side effect on Passed", async () => {
+	let called = false;
+	const result = await pipe(
+		Task.Validation.passed<string, number>(42),
+		Task.Validation.tapError(() => {
+			called = true;
+		}),
+	)();
+	expect(called).toBe(false);
+	expect(result).toStrictEqual({ kind: "Passed", value: 42 });
+});
+
+// --- struct ---
+
+test("Task.Validation.struct combines record of Passed in parallel", async () => {
+	const result = await Task.Validation.struct({
+		name: Task.Validation.passed<string, string>("Alice"),
+		age: Task.Validation.passed<string, number>(30),
+	})();
+	expect(result).toStrictEqual(Validation.passed({ name: "Alice", age: 30 }));
+});
+
+test("Task.Validation.struct accumulates errors from all failed branches", async () => {
+	const result = await Task.Validation.struct({
+		name: Task.Validation.failed<string, string>("Name required"),
+		age: Task.Validation.failed<string, number>("Age must be positive"),
+	})();
+	expect(result).toStrictEqual(Validation.failedAll(["Name required", "Age must be positive"]));
 });

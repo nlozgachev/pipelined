@@ -1,4 +1,5 @@
-import { Deferred, Maybe, Result, Task, TaskResult } from "#core";
+import { Deferred, Maybe, Result, Task } from "#core";
+import type { Thenable } from "#internal";
 
 /**
  * A Task that resolves to an optional value.
@@ -63,8 +64,8 @@ export namespace TaskMaybe {
 	 * );
 	 * ```
 	 */
-	export const tryCatch = <A>(f: (signal?: AbortSignal) => Promise<A>): TaskMaybe<A> =>
-		Task.from((signal) => f(signal).then(Maybe.some).catch(() => Maybe.none()));
+	export const tryCatch = <A>(f: (signal?: AbortSignal) => Thenable<A>): TaskMaybe<A> =>
+		Task.from((signal) => Promise.resolve(f(signal)).then(Maybe.some).catch(() => Maybe.none()));
 
 	/**
 	 * Transforms the value inside a TaskMaybe.
@@ -140,17 +141,17 @@ export namespace TaskMaybe {
 		Task.map(Maybe.filter(predicate))(data);
 
 	/**
-	 * Converts a TaskMaybe to a TaskResult, using onNone to produce the error value.
+	 * Converts a TaskMaybe to a Task.Result, using onNone to produce the error value.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(
 	 *   findUser("123"),
-	 *   TaskMaybe.toTaskResult(() => "User not found")
+	 *   TaskMaybe.toResult(() => "User not found")
 	 * );
 	 * ```
 	 */
-	export const toTaskResult = <E>(onNone: () => E) => <A>(data: TaskMaybe<A>): TaskResult<E, A> =>
+	export const toResult = <E>(onNone: () => E) => <A>(data: TaskMaybe<A>): Task.Result<E, A> =>
 		Task.map(Maybe.toResult(onNone))(data);
 
 	/**
@@ -181,4 +182,47 @@ export namespace TaskMaybe {
 			chain<A, A & { [P in K]: B; }>((a) =>
 				map<B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
 			)(data);
+
+	/**
+	 * Recovers from a None state by providing a fallback TaskMaybe.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   TaskMaybe.none(),
+	 *   TaskMaybe.recover(() => TaskMaybe.some(42))
+	 * ); // TaskMaybe(42)
+	 * ```
+	 */
+	export const recover = <A, B>(fallback: () => TaskMaybe<B>) => (data: TaskMaybe<A>): TaskMaybe<A | B> =>
+		Task.chain<Maybe<A>, Maybe<A | B>>((maybe) => (Maybe.isNone(maybe) ? fallback() : Task.resolve(maybe)))(data);
+
+	/**
+	 * Combines a record of TaskMaybes into a single TaskMaybe of a record.
+	 * Evaluates fields in parallel and returns None if any task resolves to None.
+	 *
+	 * @example
+	 * ```ts
+	 * TaskMaybe.struct({
+	 *   name: TaskMaybe.some("Alice"),
+	 *   age: TaskMaybe.some(30)
+	 * }); // TaskMaybe({ name: "Alice", age: 30 })
+	 * ```
+	 */
+	export const struct = <R extends Record<string, any>>(fields: { [K in keyof R]: TaskMaybe<R[K]>; }): TaskMaybe<R> =>
+		Task.from((signal) => {
+			const keys = Object.keys(fields);
+			const promises = keys.map((key) => Deferred.toPromise(fields[key](signal)));
+			return Promise.all(promises).then((results) => {
+				const record = {} as R;
+				for (let i = 0; i < keys.length; i++) {
+					const res = results[i] as Maybe<any>;
+					if (Maybe.isNone(res)) {
+						return res;
+					}
+					record[keys[i] as keyof R] = res.value;
+				}
+				return Maybe.some(record);
+			});
+		});
 }

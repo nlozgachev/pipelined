@@ -366,6 +366,21 @@ test("intersperse - with string separator", () => {
 	expect(result).toStrictEqual(["a", "-", "b", "-", "c"]);
 });
 
+test("concat - concatenates two arrays", () => {
+	const result = pipe([1, 2], Arr.concat([3, 4]));
+	expect(result).toStrictEqual([1, 2, 3, 4]);
+});
+
+test("concat - concatenates with empty array", () => {
+	const result = pipe([1, 2], Arr.concat([] as number[]));
+	expect(result).toStrictEqual([1, 2]);
+});
+
+test("concat - empty array concatenates with array", () => {
+	const result = pipe([] as number[], Arr.concat([1, 2]));
+	expect(result).toStrictEqual([1, 2]);
+});
+
 test("chunksOf - splits array into chunks of given size", () => {
 	const result = pipe([1, 2, 3, 4, 5], Arr.chunksOf(2));
 	expect(result).toStrictEqual([[1, 2], [3, 4], [5]]);
@@ -476,7 +491,7 @@ test("traverse - all Some results in Some of array", () => {
 		const n = Number(s);
 		return isNaN(n) ? Maybe.none() : Maybe.some(n);
 	};
-	const result = pipe(["1", "2", "3"], Arr.traverse(parseNum));
+	const result = pipe(["1", "2", "3"], Arr.Maybe.traverse(parseNum));
 	expect(result).toStrictEqual(Maybe.some([1, 2, 3]));
 });
 
@@ -485,12 +500,12 @@ test("traverse - any None results in None", () => {
 		const n = Number(s);
 		return isNaN(n) ? Maybe.none() : Maybe.some(n);
 	};
-	const result = pipe(["1", "x", "3"], Arr.traverse(parseNum));
+	const result = pipe(["1", "x", "3"], Arr.Maybe.traverse(parseNum));
 	expect(result).toStrictEqual(Maybe.none());
 });
 
 test("traverse - empty array results in Some of empty array", () => {
-	const result = pipe([] as string[], Arr.traverse((s) => Maybe.some(s)));
+	const result = pipe([] as string[], Arr.Maybe.traverse((s) => Maybe.some(s)));
 	expect(result).toStrictEqual(Maybe.some([]));
 });
 
@@ -500,23 +515,23 @@ test("traverse - fails at first None and short-circuits", () => {
 		callCount++;
 		return n > 0 ? Maybe.some(n) : Maybe.none();
 	};
-	const result = pipe([1, 0, 2, 3], Arr.traverse(f));
+	const result = pipe([1, 0, 2, 3], Arr.Maybe.traverse(f));
 	expect(result).toStrictEqual(Maybe.none());
 	expect(callCount).toBe(2);
 });
 
 test("sequence - all Some results in Some of array", () => {
-	const result = Arr.sequence([Maybe.some(1), Maybe.some(2), Maybe.some(3)]);
+	const result = Arr.Maybe.sequence([Maybe.some(1), Maybe.some(2), Maybe.some(3)]);
 	expect(result).toStrictEqual(Maybe.some([1, 2, 3]));
 });
 
 test("sequence - any None results in None", () => {
-	const result = Arr.sequence([Maybe.some(1), Maybe.none(), Maybe.some(3)]);
+	const result = Arr.Maybe.sequence([Maybe.some(1), Maybe.none(), Maybe.some(3)]);
 	expect(result).toStrictEqual(Maybe.none());
 });
 
 test("sequence - empty array results in Some of empty array", () => {
-	const result = Arr.sequence([] as Maybe<number>[]);
+	const result = Arr.Maybe.sequence([] as Maybe<number>[]);
 	expect(result).toStrictEqual(Maybe.some([]));
 });
 
@@ -526,18 +541,18 @@ test("sequence - empty array results in Some of empty array", () => {
 
 test("traverseResult - all Ok results in Ok of array", () => {
 	const validate = (n: number): Result<string, number> => n > 0 ? Result.ok(n) : Result.err("not positive");
-	const result = pipe([1, 2, 3], Arr.traverseResult(validate));
+	const result = pipe([1, 2, 3], Arr.Result.traverse(validate));
 	expect(result).toStrictEqual(Result.ok([1, 2, 3]));
 });
 
 test("traverseResult - first Err is returned", () => {
 	const validate = (n: number): Result<string, number> => n > 0 ? Result.ok(n) : Result.err(`${n} is not positive`);
-	const result = pipe([1, -2, -3], Arr.traverseResult(validate));
+	const result = pipe([1, -2, -3], Arr.Result.traverse(validate));
 	expect(result).toStrictEqual(Result.err("-2 is not positive"));
 });
 
 test("traverseResult - empty array results in Ok of empty array", () => {
-	const result = pipe([] as number[], Arr.traverseResult((n) => Result.ok(n)));
+	const result = pipe([] as number[], Arr.Result.traverse((n) => Result.ok(n)));
 	expect(result).toStrictEqual(Result.ok([]));
 });
 
@@ -547,22 +562,22 @@ test("traverseResult - short-circuits at first Err", () => {
 		callCount++;
 		return n > 0 ? Result.ok(n) : Result.err("bad");
 	};
-	pipe([1, 0, 2, 3], Arr.traverseResult(f));
+	pipe([1, 0, 2, 3], Arr.Result.traverse(f));
 	expect(callCount).toBe(2);
 });
 
 test("sequenceResult - all Ok results in Ok of array", () => {
-	const result = Arr.sequenceResult([Result.ok(1), Result.ok(2), Result.ok(3)]);
+	const result = Arr.Result.sequence([Result.ok(1), Result.ok(2), Result.ok(3)]);
 	expect(result).toStrictEqual(Result.ok([1, 2, 3]));
 });
 
 test("sequenceResult - first Err is returned", () => {
-	const result = Arr.sequenceResult([Result.ok(1), Result.err("oops"), Result.ok(3)]);
+	const result = Arr.Result.sequence([Result.ok(1), Result.err("oops"), Result.ok(3)]);
 	expect(result).toStrictEqual(Result.err("oops"));
 });
 
 test("sequenceResult - empty array results in Ok of empty array", () => {
-	const result = Arr.sequenceResult([] as Result<string, number>[]);
+	const result = Arr.Result.sequence([] as Result<string, number>[]);
 	expect(result).toStrictEqual(Result.ok([]));
 });
 
@@ -571,12 +586,12 @@ test("sequenceResult - empty array results in Ok of empty array", () => {
 // =============================================================================
 
 test("traverseTask - maps elements to tasks and runs in parallel", async () => {
-	const result = await pipe([1, 2, 3], Arr.traverseTask((n) => Task.resolve(n * 10)))();
+	const result = await pipe([1, 2, 3], Arr.Task.traverse((n) => Task.resolve(n * 10)))();
 	expect(result).toStrictEqual([10, 20, 30]);
 });
 
 test("traverseTask - empty array resolves to empty array", async () => {
-	const result = await pipe([] as number[], Arr.traverseTask((n) => Task.resolve(n)))();
+	const result = await pipe([] as number[], Arr.Task.traverse((n) => Task.resolve(n)))();
 	expect(result).toStrictEqual([]);
 });
 
@@ -584,18 +599,18 @@ test("traverseTask - handles async operations", async () => {
 	const delayedDouble = (n: number): Task<number> =>
 		Task.from(() => new Promise<number>((resolve) => setTimeout(() => resolve(n * 2), 10)));
 
-	const result = await pipe([1, 2, 3], Arr.traverseTask(delayedDouble))();
+	const result = await pipe([1, 2, 3], Arr.Task.traverse(delayedDouble))();
 	expect(result).toStrictEqual([2, 4, 6]);
 });
 
 test("sequenceTask - runs all tasks in parallel and collects results", async () => {
 	const tasks: Task<number>[] = [Task.resolve(10), Task.resolve(20), Task.resolve(30)];
-	const result = await Arr.sequenceTask(tasks)();
+	const result = await Arr.Task.sequence(tasks)();
 	expect(result).toStrictEqual([10, 20, 30]);
 });
 
 test("sequenceTask - empty array resolves to empty array", async () => {
-	const result = await Arr.sequenceTask([] as Task<number>[])();
+	const result = await Arr.Task.sequence([] as Task<number>[])();
 	expect(result).toStrictEqual([]);
 });
 
@@ -605,7 +620,7 @@ test("sequenceTask - preserves order despite different completion times", async 
 		Task.from(() => new Promise<string>((resolve) => setTimeout(() => resolve("fast"), 5))),
 		Task.from(() => new Promise<string>((resolve) => setTimeout(() => resolve("medium"), 15))),
 	];
-	const result = await Arr.sequenceTask(tasks)();
+	const result = await Arr.Task.sequence(tasks)();
 	expect(result).toStrictEqual(["slow", "fast", "medium"]);
 });
 
@@ -616,7 +631,7 @@ test("sequenceTask - preserves order despite different completion times", async 
 test("traverseTaskResult - all succeed returns Ok of results", async () => {
 	const validate = (n: number): Task<Result<string, number>> =>
 		n > 0 ? Task.resolve(Result.ok(n)) : Task.resolve(Result.err("non-positive"));
-	const result = await pipe([1, 2, 3], Arr.traverseTaskResult(validate))();
+	const result = await pipe([1, 2, 3], Arr.Task.Result.traverse(validate))();
 	expect(result).toStrictEqual(Result.ok([1, 2, 3]));
 });
 
@@ -627,19 +642,19 @@ test("traverseTaskResult - first error short-circuits", async () => {
 			order.push(n);
 			return Promise.resolve(n > 0 ? Result.ok(n) : Result.err("non-positive"));
 		});
-	const result = await pipe([1, -1, 3], Arr.traverseTaskResult(validate))();
+	const result = await pipe([1, -1, 3], Arr.Task.Result.traverse(validate))();
 	expect(result).toStrictEqual(Result.err("non-positive"));
 	expect(order).toStrictEqual([1, -1]); // 3 was not processed
 });
 
 test("traverseTaskResult - empty array returns Ok of empty array", async () => {
-	const result = await Arr.traverseTaskResult((n: number) => Task.resolve(Result.ok(n)))([])();
+	const result = await Arr.Task.Result.traverse((n: number) => Task.resolve(Result.ok(n)))([])();
 	expect(result).toStrictEqual(Result.ok([]));
 });
 
 test("sequenceTaskResult - collects Ok results", async () => {
 	const tasks: Task<Result<string, number>>[] = [Task.resolve(Result.ok(10)), Task.resolve(Result.ok(20))];
-	const result = await Arr.sequenceTaskResult(tasks)();
+	const result = await Arr.Task.Result.sequence(tasks)();
 	expect(result).toStrictEqual(Result.ok([10, 20]));
 });
 
@@ -649,7 +664,7 @@ test("sequenceTaskResult - returns first Err", async () => {
 		Task.resolve(Result.err("oops")),
 		Task.resolve(Result.ok(30)),
 	];
-	const result = await Arr.sequenceTaskResult(tasks)();
+	const result = await Arr.Task.Result.sequence(tasks)();
 	expect(result).toStrictEqual(Result.err("oops"));
 });
 
@@ -1096,4 +1111,28 @@ test("Arr.partitionMap composes in pipe", () => {
 		}),
 	);
 	expect(result).toStrictEqual([["abc", "def"], [1, 3]]);
+});
+
+// =============================================================================
+// prepend / append
+// =============================================================================
+
+test("Arr.prepend - prepends an element to an array", () => {
+	const result = pipe([1, 2], Arr.prepend(0));
+	expect(result).toStrictEqual([0, 1, 2]);
+});
+
+test("Arr.prepend - prepends to an empty array", () => {
+	const result = pipe([], Arr.prepend(42));
+	expect(result).toStrictEqual([42]);
+});
+
+test("Arr.append - appends an element to an array", () => {
+	const result = pipe([1, 2], Arr.append(3));
+	expect(result).toStrictEqual([1, 2, 3]);
+});
+
+test("Arr.append - appends to an empty array", () => {
+	const result = pipe([], Arr.append(42));
+	expect(result).toStrictEqual([42]);
 });

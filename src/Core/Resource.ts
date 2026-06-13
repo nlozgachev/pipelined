@@ -1,4 +1,4 @@
-import { Deferred, Result, Task, TaskResult } from "#core";
+import { Deferred, Result, Task } from "#core";
 
 /**
  * A Resource pairs an async acquisition step with a guaranteed cleanup step.
@@ -17,7 +17,7 @@ import { Deferred, Result, Task, TaskResult } from "#core";
  * @example
  * ```ts
  * const dbResource = Resource.make(
- *   TaskResult.tryCatch(() => openConnection(config), (e) => new DbError(e)),
+ *   Task.Result.tryCatch(() => openConnection(config), (e) => new DbError(e)),
  *   (conn) => Task.from(() => conn.close())
  * );
  *
@@ -28,7 +28,7 @@ import { Deferred, Result, Task, TaskResult } from "#core";
  * // conn.close() is called whether queryUser succeeds or fails
  * ```
  */
-export type Resource<E, A> = { readonly acquire: TaskResult<E, A>; readonly release: (a: A) => Task<void>; };
+export type Resource<E, A> = { readonly acquire: Task.Result<E, A>; readonly release: (a: A) => Task<void>; };
 
 export namespace Resource {
 	/**
@@ -37,12 +37,12 @@ export namespace Resource {
 	 * @example
 	 * ```ts
 	 * const fileResource = Resource.make(
-	 *   TaskResult.tryCatch(() => fs.promises.open("data.csv", "r"), toFileError),
+	 *   Task.Result.tryCatch(() => fs.promises.open("data.csv", "r"), toFileError),
 	 *   (handle) => Task.from(() => handle.close())
 	 * );
 	 * ```
 	 */
-	export const make = <E, A>(acquire: TaskResult<E, A>, release: (a: A) => Task<void>): Resource<E, A> => ({
+	export const make = <E, A>(acquire: Task.Result<E, A>, release: (a: A) => Task<void>): Resource<E, A> => ({
 		acquire,
 		release,
 	});
@@ -80,7 +80,7 @@ export namespace Resource {
 	 * // conn is closed whether the query succeeds or fails
 	 * ```
 	 */
-	export const use = <E, A, B>(f: (a: A) => TaskResult<E, B>) => (resource: Resource<E, A>): TaskResult<E, B> =>
+	export const use = <E, A, B>(f: (a: A) => Task.Result<E, B>) => (resource: Resource<E, A>): Task.Result<E, B> =>
 		Task.from((signal) =>
 			Deferred.toPromise(resource.acquire(signal)).then(async (acquired) => {
 				if (Result.isErr(acquired)) { return acquired as Result<E, B>; }

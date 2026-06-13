@@ -1,7 +1,7 @@
 import { Deferred, Maybe, Result } from "#core";
 import { Duration } from "#types";
 import {
-	type RetryOptions,
+	type RetryOptions as InternalRetryOptions,
 	type WithConcurrency,
 	type WithCooldown,
 	type WithDuration,
@@ -73,18 +73,18 @@ export type Op<I, E, A> = {
 // ---------------------------------------------------------------------------
 
 // `Retrying<E>` is only added to the state union when retry options are present.
-type MaybeRetry<E, O> = O extends { retry: RetryOptions<E>; } ? Op.Retrying<E> : never;
+type MaybeRetry<E, O> = O extends { retry: InternalRetryOptions<E>; } ? Op.Retrying<E> : never;
 
 // Union of all valid option shapes — exposed as a single type so the TS language service
 // can show all strategy literals in autocomplete (overload aggregation is unreliable).
 type AllInterpretOptions<I, E> =
-	| ({ strategy: "once"; retry?: RetryOptions<E>; } & WithTimeout<E>)
-	| ({ strategy: "restartable"; retry?: RetryOptions<E>; } & WithMinInterval & WithTimeout<E>)
-	| ({ strategy: "exclusive"; retry?: RetryOptions<E>; } & WithCooldown & WithTimeout<E>)
+	| ({ strategy: "once"; retry?: InternalRetryOptions<E>; } & WithTimeout<E>)
+	| ({ strategy: "restartable"; retry?: InternalRetryOptions<E>; } & WithMinInterval & WithTimeout<E>)
+	| ({ strategy: "exclusive"; retry?: InternalRetryOptions<E>; } & WithCooldown & WithTimeout<E>)
 	| (
 		& {
 			strategy: "queue";
-			retry?: RetryOptions<E>;
+			retry?: InternalRetryOptions<E>;
 			maxSize?: number;
 			overflow?: "drop" | "replace-last";
 			dedupe?: (a: I, b: I) => boolean;
@@ -92,14 +92,14 @@ type AllInterpretOptions<I, E> =
 		& WithConcurrency
 		& WithTimeout<E>
 	)
-	| ({ strategy: "buffered"; retry?: RetryOptions<E>; } & WithSize & WithTimeout<E>)
+	| ({ strategy: "buffered"; retry?: InternalRetryOptions<E>; } & WithSize & WithTimeout<E>)
 	| (
-		& { strategy: "debounced"; retry?: RetryOptions<E>; leading?: true; maxWait?: Duration; }
+		& { strategy: "debounced"; retry?: InternalRetryOptions<E>; leading?: true; maxWait?: Duration; }
 		& WithDuration
 		& WithTimeout<E>
 	)
-	| ({ strategy: "throttled"; retry?: RetryOptions<E>; trailing?: true; } & WithDuration & WithTimeout<E>)
-	| ({ strategy: "concurrent"; retry?: RetryOptions<E>; overflow?: "queue" | "drop"; } & WithN & WithTimeout<E>)
+	| ({ strategy: "throttled"; retry?: InternalRetryOptions<E>; trailing?: true; } & WithDuration & WithTimeout<E>)
+	| ({ strategy: "concurrent"; retry?: InternalRetryOptions<E>; overflow?: "queue" | "drop"; } & WithN & WithTimeout<E>)
 	| ({ strategy: "keyed"; perKey?: "exclusive" | "restartable"; key: (input: I) => unknown; } & WithTimeout<E>);
 
 // Extracts the key type from the `keyed` strategy's `key` function.
@@ -432,7 +432,6 @@ export namespace Op {
 	// Types — Options (defined in InternalTypes.ts, re-exported here for convenience)
 	// -------------------------------------------------------------------------
 
-	// eslint-disable-next-line no-shadow
 	export type RetryOptions<E> = import("#internal").RetryOptions<E>;
 	export type TimeoutOptions<E> = import("#internal").TimeoutOptions<E>;
 
@@ -906,7 +905,7 @@ export namespace Op {
 			size?: number;
 			cooldown?: Duration;
 			minInterval?: Duration;
-			retry?: RetryOptions<E>;
+			retry?: InternalRetryOptions<E>;
 			timeout?: TimeoutOptions<E>;
 		},
 	): any {

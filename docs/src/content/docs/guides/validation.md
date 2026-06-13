@@ -46,9 +46,9 @@ const pass = Validation.passed("Alice"); // Validation<never, string>
 const fail = Validation.failed("Username must be at least 3 characters"); // Validation<string, never>
 ```
 
-Under the hood, all failures in `Validation` are collected inside a `NonEmptyList` (a type-safe
+Under the hood, all failures in `Validation` are collected inside an `Arr.NonEmpty` (a type-safe
 array guaranteed to contain at least one element). When you call `Validation.failed(err)`, the
-library automatically wraps your error in a list container.
+library automatically wraps your error in an array container.
 
 If you already have an array of errors and want to lift it directly, you can use `failedAll`:
 
@@ -146,9 +146,10 @@ const formValidation = Validation.productAll([
 // Failed([...all errors]) — if any fail
 ```
 
-Because `productAll` expects a `NonEmptyList` (a non-empty array) of validations, you are guaranteed
-to receive a compiled result carrying a type-safe array of values, completely avoiding the
-possibility of empty array inputs or undefined states at compile time.
+Because `productAll` expects an `Arr.NonEmpty` (a non-empty array) of validations, you are
+guaranteed that the input list has at least one validation check, carrying a type-safe array of
+values, completely avoiding the possibility of empty array inputs or undefined states at compile
+time.
 
 ---
 
@@ -199,7 +200,7 @@ const view = pipe(
   formValidation,
   Validation.match({
     passed: (data) => renderSuccessDashboard(data),
-    failed: (errors) => renderErrorList(errors), // errors is NonEmptyList<E>
+    failed: (errors) => renderErrorList(errors), // errors is Arr.NonEmpty<E>
   }),
 );
 
@@ -273,7 +274,7 @@ accumulating validation flow, you can lift it using `fromResult`:
 const emailCheck = Validation.fromResult(parseEmail(input)); // Passed(email) or Failed([err])
 ```
 
-The single error from the `Err` is wrapped in a type-safe `NonEmptyList` automatically.
+The single error from the `Err` is wrapped in a type-safe `Arr.NonEmpty` automatically.
 
 ### Sequencing actions by converting to Result
 
@@ -355,6 +356,56 @@ const passedUser = Validation.struct({
   role: Validation.passed("admin"),
 });
 // Passed({ name: "Alice", age: 30, role: "admin" })
+```
+
+---
+
+## Asynchronous Validation: Task.Validation
+
+When you need to perform validation checks that require asynchronous operations (such as making a
+network request to verify email availability, or querying a database to check if a username is
+taken), you can use `Task.Validation<E, A>`.
+
+Under the hood, `Task.Validation` is an alias for `Task<Validation<E, A>>`. Like `Validation`, it
+concurrently evaluates independent checks and aggregates all failures into a single list rather than
+failing fast.
+
+To run multiple asynchronous validation checks in parallel and accumulate any failures, combine them
+using `Task.Validation.struct`:
+
+```ts
+import { Task } from "@nlozgachev/pipelined/core";
+
+const validateUserAsync = Task.Validation.struct({
+  username: checkUsernameUnique(username), // Task.Validation<string, string>
+  email: checkEmailNotBlocked(email),       // Task.Validation<string, string>
+}); // Task.Validation<string, { username: string; email: string }>
+```
+
+If any check fails, the task resolves to a `Failed` variant containing the accumulated list of all
+errors.
+
+### Transforming and Inspecting Errors
+
+Because validation processes are designed to accumulate multiple failures, we often need to format
+or log these errors mid-pipeline. `Task.Validation` provides dedicated error-mapping combinators for
+this:
+
+- **`mapError`**: Transforms all accumulated errors in the list using a function `(e: E) => F`.
+- **`tapError`**: Executes a side effect (such as logging warnings) on the accumulated list of
+  errors without modifying the pipeline's value.
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Task } from "@nlozgachev/pipelined/core";
+
+const validatedProfile = pipe(
+  validateUserAsync,
+  Task.Validation.mapError((err) => `Server Validation: ${err}`),
+  Task.Validation.tapError((errors) => {
+    logger.warn(`Profile validation failed with ${errors.length} errors`, { errors });
+  })
+);
 ```
 
 ---

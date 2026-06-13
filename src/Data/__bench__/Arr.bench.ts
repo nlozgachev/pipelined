@@ -78,7 +78,7 @@ describe("scan-10k", () => {
 
 describe("traverse-maybe-10k", () => {
 	bench("1. (current) Arr.traverse Maybe 10k (all-Some", () => {
-		pipe(data10k, Arr.traverse(toSome));
+		pipe(data10k, Arr.Maybe.traverse(toSome));
 	});
 	bench("2. native traverse Maybe 10k (all-Some", () => {
 		const result: number[] = [];
@@ -92,7 +92,7 @@ describe("traverse-maybe-10k", () => {
 
 describe("traverse-result-10k", () => {
 	bench("1. (current) Arr.traverseResult 10k (all-Ok", () => {
-		pipe(data10k, Arr.traverseResult(toOk));
+		pipe(data10k, Arr.Result.traverse(toOk));
 	});
 	bench("2. native traverseResult 10k (all-Ok", () => {
 		const result: number[] = [];

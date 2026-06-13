@@ -1,5 +1,212 @@
-import { Deferred, Equality, Maybe, Ordering, Result, Task } from "#core";
-import { isNonEmptyList, type NonEmptyList } from "#types";
+import { Deferred, Equality, Ordering } from "#core";
+import { isNonEmptyArr, type NonEmptyArr } from "#internal";
+import { Maybe as CoreMaybe } from "../Core/Maybe.ts";
+import { Result as CoreResult } from "../Core/Result.ts";
+import { Task as CoreTask } from "../Core/Task.ts";
+
+namespace ArrMaybe {
+	/**
+	 * Maps each element to a Maybe and collects the results.
+	 * Returns None if any mapping returns None.
+	 *
+	 * @example
+	 * ```ts
+	 * const parseNum = (s: string): Maybe<number> => {
+	 *   const n = Number(s);
+	 *   return isNaN(n) ? Maybe.none() : Maybe.some(n);
+	 * };
+	 *
+	 * pipe(["1", "2", "3"], Arr.Maybe.traverse(parseNum)); // Some([1, 2, 3])
+	 * pipe(["1", "x", "3"], Arr.Maybe.traverse(parseNum)); // None
+	 * ```
+	 */
+	export const traverse = <A, B>(f: (a: A) => CoreMaybe<B>) => (data: readonly A[]): CoreMaybe<readonly B[]> => {
+		const n = data.length;
+		const result = new Array<B>(n);
+		for (let i = 0; i < n; i++) {
+			const mapped = f(data[i]);
+			if (mapped.kind === "None") { return CoreMaybe.none(); }
+			result[i] = mapped.value;
+		}
+		return CoreMaybe.some(result);
+	};
+
+	/**
+	 * Collects an array of Maybe instances into a Maybe of array.
+	 * Returns None if any element is None.
+	 *
+	 * @example
+	 * ```ts
+	 * Arr.Maybe.sequence([Maybe.some(1), Maybe.some(2)]); // Some([1, 2])
+	 * Arr.Maybe.sequence([Maybe.some(1), Maybe.none()]); // None
+	 * ```
+	 */
+	export const sequence = <A>(data: readonly CoreMaybe<A>[]): CoreMaybe<readonly A[]> =>
+		traverse<CoreMaybe<A>, A>((a) => a)(data);
+}
+
+namespace ArrResult {
+	/**
+	 * Maps each element to a Result and collects the results.
+	 * Returns the first Err if any mapping fails.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   [1, 2, 3],
+	 *   Arr.Result.traverse(n => n > 0 ? Result.ok(n) : Result.err("negative"))
+	 * ); // Ok([1, 2, 3])
+	 * ```
+	 */
+	export const traverse =
+		<E, A, B>(f: (a: A) => CoreResult<E, B>) => (data: readonly A[]): CoreResult<E, readonly B[]> => {
+			const n = data.length;
+			const result = new Array<B>(n);
+			for (let i = 0; i < n; i++) {
+				const mapped = f(data[i]);
+				if (mapped.kind === "Err") { return mapped; }
+				result[i] = mapped.value;
+			}
+			return CoreResult.ok(result);
+		};
+
+	/**
+	 * Collects an array of Results into a Result of array.
+	 * Returns the first Err if any element is Err.
+	 */
+	export const sequence = <E, A>(data: readonly CoreResult<E, A>[]): CoreResult<E, readonly A[]> =>
+		traverse<E, CoreResult<E, A>, A>((a) => a)(data);
+}
+
+namespace ArrTaskResult {
+	/**
+	 * Maps each element to a TaskResult and runs them sequentially.
+	 * Returns the first Err encountered, or Ok of all results if all succeed.
+	 *
+	 * @example
+	 * ```ts
+	 * const validate = (n: number): Task.Result<string, number> =>
+	 *   n > 0 ? Task.Result.ok(n) : Task.Result.err("non-positive");
+	 *
+	 * pipe(
+	 *   [1, 2, 3],
+	 *   Arr.Task.Result.traverse(validate)
+	 * )(); // Deferred<Ok([1, 2, 3])>
+	 *
+	 * pipe(
+	 *   [1, -1, 3],
+	 *   Arr.Task.Result.traverse(validate)
+	 * )(); // Deferred<Err("non-positive")>
+	 * ```
+	 */
+	export const traverse =
+		<E, A, B>(f: (a: A) => CoreTask<CoreResult<E, B>>) => (data: readonly A[]): CoreTask<CoreResult<E, readonly B[]>> =>
+			CoreTask.from(async () => {
+				const result: B[] = [];
+				for (const a of data) {
+					// eslint-disable-next-line no-await-in-loop
+					const r = await Deferred.toPromise(f(a)());
+					if (CoreResult.isErr(r)) { return r; }
+					result.push(r.value);
+				}
+				return CoreResult.ok(result);
+			});
+
+	/**
+	 * Collects an array of TaskResults into a TaskResult of array.
+	 * Returns the first Err if any element is Err, runs sequentially.
+	 */
+	export const sequence = <E, A>(data: readonly CoreTask<CoreResult<E, A>>[]): CoreTask<CoreResult<E, readonly A[]>> =>
+		traverse<E, CoreTask<CoreResult<E, A>>, A>((a) => a)(data);
+}
+
+namespace ArrTask {
+	/**
+	 * Maps each element to a Task and runs all in parallel.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   [1, 2, 3],
+	 *   Arr.Task.traverse(n => Task.resolve(n * 2))
+	 * )(); // Promise<[2, 4, 6]>
+	 * ```
+	 */
+	export const traverse = <A, B>(f: (a: A) => CoreTask<B>) => (data: readonly A[]): CoreTask<readonly B[]> =>
+		CoreTask.from(() => Promise.all(data.map((a) => Deferred.toPromise(f(a)()))));
+
+	/**
+	 * Collects an array of Tasks into a Task of array. Runs in parallel.
+	 */
+	export const sequence = <A>(data: readonly CoreTask<A>[]): CoreTask<readonly A[]> =>
+		traverse<CoreTask<A>, A>((a) => a)(data);
+
+	export const Result = ArrTaskResult;
+}
+
+namespace ArrNonEmpty {
+	/**
+	 * Creates a single-element list.
+	 *
+	 * @example
+	 * ```ts
+	 * Arr.NonEmpty.singleton(42); // [42]
+	 * ```
+	 */
+	export const singleton = <A>(value: A): NonEmptyArr<A> => [value];
+
+	/**
+	 * Returns Some if the array is non-empty, None otherwise.
+	 *
+	 * @example
+	 * ```ts
+	 * Arr.NonEmpty.fromArray([1, 2]); // Some([1, 2])
+	 * Arr.NonEmpty.fromArray([]); // None
+	 * ```
+	 */
+	export const fromArray = <A>(data: readonly A[]): CoreMaybe<NonEmptyArr<A>> =>
+		isNonEmptyArr(data) ? CoreMaybe.some(data) : CoreMaybe.none();
+
+	/**
+	 * Returns the first element of a NonEmptyArr.
+	 *
+	 * @example
+	 * ```ts
+	 * Arr.NonEmpty.head([1, 2, 3]); // 1
+	 * ```
+	 */
+	export const head = <A>(data: NonEmptyArr<A>): A => data[0];
+
+	/**
+	 * Returns the last element of a NonEmptyArr.
+	 *
+	 * @example
+	 * ```ts
+	 * Arr.NonEmpty.last([1, 2, 3]); // 3
+	 * ```
+	 */
+	export const last = <A>(data: NonEmptyArr<A>): A => data[data.length - 1];
+
+	/**
+	 * Returns all elements except the first.
+	 *
+	 * @example
+	 * ```ts
+	 * Arr.NonEmpty.tail([1, 2, 3]); // [2, 3]
+	 * ```
+	 */
+	export const tail = <A>(data: NonEmptyArr<A>): readonly A[] => data.slice(1);
+
+	/**
+	 * Reduces a NonEmptyArr from the left without an initial value.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe([1, 2, 3, 4] as NonEmptyArr<number>, Arr.NonEmpty.reduce((a, b) => a + b)); // 10
+	 * ```
+	 */
+	export const reduce = <A>(f: (acc: A, a: A) => A) => (data: NonEmptyArr<A>): A => data.reduce(f);
+}
 
 /**
  * Functional array utilities that compose well with pipe.
@@ -17,6 +224,17 @@ import { isNonEmptyList, type NonEmptyList } from "#types";
  * ```
  */
 export namespace Arr {
+	/**
+	 * A type alias representing an array that is guaranteed to contain at least one element.
+	 * Under the hood, this is a read-only tuple structure: `readonly [A, ...A[]]`.
+	 *
+	 * @example
+	 * ```ts
+	 * const list: Arr.NonEmpty<number> = [1, 2, 3];
+	 * ```
+	 */
+	export type NonEmpty<A> = NonEmptyArr<A>;
+
 	// --- Safe access ---
 
 	/**
@@ -28,7 +246,8 @@ export namespace Arr {
 	 * Arr.head([]); // None
 	 * ```
 	 */
-	export const head = <A>(data: readonly A[]): Maybe<A> => data.length > 0 ? Maybe.some(data[0]) : Maybe.none();
+	export const head = <A>(data: readonly A[]): CoreMaybe<A> =>
+		data.length > 0 ? CoreMaybe.some(data[0]) : CoreMaybe.none();
 
 	/**
 	 * Returns the last element of an array, or None if the array is empty.
@@ -39,8 +258,8 @@ export namespace Arr {
 	 * Arr.last([]); // None
 	 * ```
 	 */
-	export const last = <A>(data: readonly A[]): Maybe<A> =>
-		data.length > 0 ? Maybe.some(data[data.length - 1]) : Maybe.none();
+	export const last = <A>(data: readonly A[]): CoreMaybe<A> =>
+		data.length > 0 ? CoreMaybe.some(data[data.length - 1]) : CoreMaybe.none();
 
 	/**
 	 * Returns all elements except the first, or None if the array is empty.
@@ -51,8 +270,8 @@ export namespace Arr {
 	 * Arr.tail([]); // None
 	 * ```
 	 */
-	export const tail = <A>(data: readonly A[]): Maybe<readonly A[]> =>
-		data.length > 0 ? Maybe.some(data.slice(1)) : Maybe.none();
+	export const tail = <A>(data: readonly A[]): CoreMaybe<readonly A[]> =>
+		data.length > 0 ? CoreMaybe.some(data.slice(1)) : CoreMaybe.none();
 
 	/**
 	 * Returns all elements except the last, or None if the array is empty.
@@ -63,8 +282,8 @@ export namespace Arr {
 	 * Arr.init([]); // None
 	 * ```
 	 */
-	export const init = <A>(data: readonly A[]): Maybe<readonly A[]> =>
-		data.length > 0 ? Maybe.some(data.slice(0, -1)) : Maybe.none();
+	export const init = <A>(data: readonly A[]): CoreMaybe<readonly A[]> =>
+		data.length > 0 ? CoreMaybe.some(data.slice(0, -1)) : CoreMaybe.none();
 
 	// --- Search ---
 
@@ -76,9 +295,9 @@ export namespace Arr {
 	 * pipe([1, 2, 3, 4], Arr.findFirst(n => n > 2)); // Some(3)
 	 * ```
 	 */
-	export const findFirst = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): Maybe<A> => {
+	export const findFirst = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): CoreMaybe<A> => {
 		const idx = data.findIndex(predicate);
-		return idx !== -1 ? Maybe.some(data[idx]) : Maybe.none();
+		return idx !== -1 ? CoreMaybe.some(data[idx]) : CoreMaybe.none();
 	};
 
 	/**
@@ -89,11 +308,11 @@ export namespace Arr {
 	 * pipe([1, 2, 3, 4], Arr.findLast(n => n > 2)); // Some(4)
 	 * ```
 	 */
-	export const findLast = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): Maybe<A> => {
+	export const findLast = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): CoreMaybe<A> => {
 		for (let i = data.length - 1; i >= 0; i--) {
-			if (predicate(data[i])) { return Maybe.some(data[i]); }
+			if (predicate(data[i])) { return CoreMaybe.some(data[i]); }
 		}
-		return Maybe.none();
+		return CoreMaybe.none();
 	};
 
 	/**
@@ -104,9 +323,9 @@ export namespace Arr {
 	 * pipe([1, 2, 3, 4], Arr.findIndex(n => n > 2)); // Some(2)
 	 * ```
 	 */
-	export const findIndex = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): Maybe<number> => {
+	export const findIndex = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): CoreMaybe<number> => {
 		const idx = data.findIndex(predicate);
-		return idx !== -1 ? Maybe.some(idx) : Maybe.none();
+		return idx !== -1 ? CoreMaybe.some(idx) : CoreMaybe.none();
 	};
 
 	// --- Transform ---
@@ -119,12 +338,13 @@ export namespace Arr {
 	 * pipe([1, 2, 3], Arr.map(n => n * 2)); // [2, 4, 6]
 	 * ```
 	 */
-	export const map = <A, B>(f: (a: A) => B) => (data: readonly A[]): readonly B[] => {
-		const n = data.length;
-		const result = new Array<B>(n);
-		for (let i = 0; i < n; i++) { result[i] = f(data[i]); }
-		return result;
-	};
+	export const map: <A, B>(f: (a: A) => B) => { (data: NonEmpty<A>): NonEmpty<B>; (data: readonly A[]): readonly B[]; } =
+		<A, B>(f: (a: A) => B) => (data: readonly A[]): any => {
+			const n = data.length;
+			const result = new Array<B>(n);
+			for (let i = 0; i < n; i++) { result[i] = f(data[i]); }
+			return result;
+		};
 
 	/**
 	 * Transforms each element using both its value and its zero-based index.
@@ -137,12 +357,15 @@ export namespace Arr {
 	 * ); // [{ position: 1, value: "a" }, { position: 2, value: "b" }, { position: 3, value: "c" }]
 	 * ```
 	 */
-	export const mapWithIndex = <A, B>(f: (i: number, a: A) => B) => (data: readonly A[]): readonly B[] => {
-		const n = data.length;
-		const result = new Array<B>(n);
-		for (let i = 0; i < n; i++) { result[i] = f(i, data[i]); }
-		return result;
-	};
+	export const mapWithIndex: <A, B>(
+		f: (i: number, a: A) => B,
+	) => { (data: NonEmpty<A>): NonEmpty<B>; (data: readonly A[]): readonly B[]; } =
+		<A, B>(f: (i: number, a: A) => B) => (data: readonly A[]): any => {
+			const n = data.length;
+			const result = new Array<B>(n);
+			for (let i = 0; i < n; i++) { result[i] = f(i, data[i]); }
+			return result;
+		};
 
 	/**
 	 * Filters elements that satisfy the predicate.
@@ -175,7 +398,7 @@ export namespace Arr {
 	 * pipe(["1", "abc", "3"], Arr.filterMap(parseNum)); // [1, 3]
 	 * ```
 	 */
-	export const filterMap = <A, B>(f: (a: A) => Maybe<B>) => (data: readonly A[]): readonly B[] => {
+	export const filterMap = <A, B>(f: (a: A) => CoreMaybe<B>) => (data: readonly A[]): readonly B[] => {
 		const result: B[] = [];
 		for (let i = 0; i < data.length; i++) {
 			const mapped = f(data[i]);
@@ -213,7 +436,7 @@ export namespace Arr {
 	 * Arr.compact([Maybe.some(1), Maybe.none(), Maybe.some(3)]); // [1, 3]
 	 * ```
 	 */
-	export const compact = <A>(data: readonly Maybe<A>[]): readonly A[] => {
+	export const compact = <A>(data: readonly CoreMaybe<A>[]): readonly A[] => {
 		const result: A[] = [];
 		for (const item of data) {
 			if (item.kind === "Some") {
@@ -232,7 +455,7 @@ export namespace Arr {
 	 * Arr.separate([Result.ok(1), Result.err("bad"), Result.ok(3)]); // [["bad"], [1, 3]]
 	 * ```
 	 */
-	export const separate = <E, A>(data: readonly Result<E, A>[]): readonly [readonly E[], readonly A[]] => {
+	export const separate = <E, A>(data: readonly CoreResult<E, A>[]): readonly [readonly E[], readonly A[]] => {
 		const errors: E[] = [];
 		const successes: A[] = [];
 		for (const item of data) {
@@ -257,7 +480,7 @@ export namespace Arr {
 	 * ```
 	 */
 	export const partitionMap =
-		<A, E, B>(f: (a: A) => Result<E, B>) => (data: readonly A[]): readonly [readonly E[], readonly B[]] => {
+		<A, E, B>(f: (a: A) => CoreResult<E, B>) => (data: readonly A[]): readonly [readonly E[], readonly B[]] => {
 			const errors: E[] = [];
 			const successes: B[] = [];
 			for (const item of data) {
@@ -282,14 +505,14 @@ export namespace Arr {
 	 * ); // { a: ["apple", "avocado"], b: ["banana"] }
 	 * ```
 	 */
-	export const groupBy = <A>(f: (a: A) => string) => (data: readonly A[]): Record<string, NonEmptyList<A>> => {
+	export const groupBy = <A>(f: (a: A) => string) => (data: readonly A[]): Record<string, NonEmptyArr<A>> => {
 		const result: Record<string, A[]> = {};
 		for (const a of data) {
 			const key = f(a);
 			if (!result[key]) { result[key] = []; }
 			result[key].push(a);
 		}
-		return result as unknown as Record<string, NonEmptyList<A>>;
+		return result as unknown as Record<string, NonEmptyArr<A>>;
 	};
 
 	/**
@@ -430,14 +653,29 @@ export namespace Arr {
 	 * pipe([1, 2, 3], Arr.intersperse(0)); // [1, 0, 2, 0, 3]
 	 * ```
 	 */
-	export const intersperse = <A>(sep: A) => (data: readonly A[]): readonly A[] => {
-		if (data.length <= 1) { return data; }
-		const result: A[] = [data[0]];
-		for (let i = 1; i < data.length; i++) {
-			result.push(sep, data[i]);
-		}
-		return result;
-	};
+	export const intersperse: <A>(sep: A) => { (data: NonEmpty<A>): NonEmpty<A>; (data: readonly A[]): readonly A[]; } =
+		<A>(sep: A) => (data: readonly A[]): any => {
+			if (data.length <= 1) { return data; }
+			const result: A[] = [data[0]];
+			for (let i = 1; i < data.length; i++) {
+				result.push(sep, data[i]);
+			}
+			return result;
+		};
+
+	/**
+	 * Concatenates a standard array or NonEmptyArr with another array.
+	 * If the first array is a NonEmptyArr, the result is guaranteed to be a NonEmptyArr.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe([1, 2], Arr.concat([3, 4])); // [1, 2, 3, 4]
+	 * ```
+	 */
+	export const concat: <A>(
+		other: readonly A[],
+	) => { (data: NonEmpty<A>): NonEmpty<A>; (data: readonly A[]): readonly A[]; } =
+		<A>(other: readonly A[]) => (data: readonly A[]): any => [...data, ...other];
 
 	/**
 	 * Splits an array into chunks of the given size.
@@ -513,139 +751,34 @@ export namespace Arr {
 
 	// --- Traverse / Sequence ---
 
-	/**
-	 * Maps each element to a Maybe and collects the results.
-	 * Returns None if any mapping returns None.
-	 *
-	 * @example
-	 * ```ts
-	 * const parseNum = (s: string): Maybe<number> => {
-	 *   const n = Number(s);
-	 *   return isNaN(n) ? Maybe.none() : Maybe.some(n);
-	 * };
-	 *
-	 * pipe(["1", "2", "3"], Arr.traverse(parseNum)); // Some([1, 2, 3])
-	 * pipe(["1", "x", "3"], Arr.traverse(parseNum)); // None
-	 * ```
-	 */
-	export const traverse = <A, B>(f: (a: A) => Maybe<B>) => (data: readonly A[]): Maybe<readonly B[]> => {
-		const n = data.length;
-		const result = new Array<B>(n);
-		for (let i = 0; i < n; i++) {
-			const mapped = f(data[i]);
-			if (mapped.kind === "None") { return Maybe.none(); }
-			result[i] = mapped.value;
-		}
-		return Maybe.some(result);
-	};
-
-	/**
-	 * Maps each element to a Result and collects the results.
-	 * Returns the first Err if any mapping fails.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   [1, 2, 3],
-	 *   Arr.traverseResult(n => n > 0 ? Result.ok(n) : Result.err("negative"))
-	 * ); // Ok([1, 2, 3])
-	 * ```
-	 */
-	export const traverseResult =
-		<E, A, B>(f: (a: A) => Result<E, B>) => (data: readonly A[]): Result<E, readonly B[]> => {
-			const n = data.length;
-			const result = new Array<B>(n);
-			for (let i = 0; i < n; i++) {
-				const mapped = f(data[i]);
-				if (mapped.kind === "Err") { return mapped; }
-				result[i] = mapped.value;
-			}
-			return Result.ok(result);
-		};
-
-	/**
-	 * Maps each element to a Task and runs all in parallel.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   [1, 2, 3],
-	 *   Arr.traverseTask(n => Task.resolve(n * 2))
-	 * )(); // Promise<[2, 4, 6]>
-	 * ```
-	 */
-	export const traverseTask = <A, B>(f: (a: A) => Task<B>) => (data: readonly A[]): Task<readonly B[]> =>
-		Task.from(() => Promise.all(data.map((a) => Deferred.toPromise(f(a)()))));
-
-	/**
-	 * Collects an array of Maybe instances into a Maybe of array.
-	 * Returns None if any element is None.
-	 *
-	 * @example
-	 * ```ts
-	 * Arr.sequence([Maybe.some(1), Maybe.some(2)]); // Some([1, 2])
-	 * Arr.sequence([Maybe.some(1), Maybe.none()]); // None
-	 * ```
-	 */
-	export const sequence = <A>(data: readonly Maybe<A>[]): Maybe<readonly A[]> => traverse<Maybe<A>, A>((a) => a)(data);
-
-	/**
-	 * Collects an array of Results into a Result of array.
-	 * Returns the first Err if any element is Err.
-	 */
-	export const sequenceResult = <E, A>(data: readonly Result<E, A>[]): Result<E, readonly A[]> =>
-		traverseResult<E, Result<E, A>, A>((a) => a)(data);
-
-	/**
-	 * Collects an array of Tasks into a Task of array. Runs in parallel.
-	 */
-	export const sequenceTask = <A>(data: readonly Task<A>[]): Task<readonly A[]> =>
-		traverseTask<Task<A>, A>((a) => a)(data);
-
-	/**
-	 * Maps each element to a TaskResult and runs them sequentially.
-	 * Returns the first Err encountered, or Ok of all results if all succeed.
-	 *
-	 * @example
-	 * ```ts
-	 * const validate = (n: number): TaskResult<string, number> =>
-	 *   n > 0 ? TaskResult.ok(n) : TaskResult.err("non-positive");
-	 *
-	 * pipe(
-	 *   [1, 2, 3],
-	 *   Arr.traverseTaskResult(validate)
-	 * )(); // Deferred<Ok([1, 2, 3])>
-	 *
-	 * pipe(
-	 *   [1, -1, 3],
-	 *   Arr.traverseTaskResult(validate)
-	 * )(); // Deferred<Err("non-positive")>
-	 * ```
-	 */
-	export const traverseTaskResult =
-		<E, A, B>(f: (a: A) => Task<Result<E, B>>) => (data: readonly A[]): Task<Result<E, readonly B[]>> =>
-			Task.from(async () => {
-				const result: B[] = [];
-				for (const a of data) {
-					// eslint-disable-next-line no-await-in-loop
-					const r = await Deferred.toPromise(f(a)());
-					if (Result.isErr(r)) { return r; }
-					result.push(r.value);
-				}
-				return Result.ok(result);
-			});
-
-	/**
-	 * Collects an array of TaskResults into a TaskResult of array.
-	 * Returns the first Err if any element is Err, runs sequentially.
-	 */
-	export const sequenceTaskResult = <E, A>(data: readonly Task<Result<E, A>>[]): Task<Result<E, readonly A[]>> =>
-		traverseTaskResult<E, Task<Result<E, A>>, A>((a) => a)(data);
+	export const Maybe = ArrMaybe;
+	export const Result = ArrResult;
+	export const Task = ArrTask;
 
 	/**
 	 * Returns true if the array is non-empty (type guard).
 	 */
-	export const isNonEmpty = <A>(data: readonly A[]): data is NonEmptyList<A> => isNonEmptyList(data);
+	export const isNonEmpty = <A>(data: readonly A[]): data is NonEmpty<A> => isNonEmptyArr(data);
+
+	/**
+	 * Prepends a value to the beginning of an array, returning a NonEmptyArr.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe([1, 2], Arr.prepend(0)); // [0, 1, 2]
+	 * ```
+	 */
+	export const prepend = <A>(value: A) => (data: readonly A[]): NonEmpty<A> => [value, ...data];
+
+	/**
+	 * Appends a value to the end of an array, returning a NonEmptyArr.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe([1, 2], Arr.append(3)); // [1, 2, 3]
+	 * ```
+	 */
+	export const append = <A>(value: A) => (data: readonly A[]): NonEmpty<A> => [...data, value] as unknown as NonEmpty<A>;
 
 	/**
 	 * Returns the length of an array.
@@ -688,7 +821,9 @@ export namespace Arr {
 	 * Arr.reverse([1, 2, 3]); // [3, 2, 1]
 	 * ```
 	 */
-	export const reverse = <A>(data: readonly A[]): readonly A[] => [...data].toReversed();
+	export const reverse: { <A>(data: NonEmpty<A>): NonEmpty<A>; <A>(data: readonly A[]): readonly A[]; } = <A>(
+		data: readonly A[],
+	): any => [...data].toReversed();
 
 	/**
 	 * Returns a new array with `item` inserted before the element at `index`.
@@ -816,4 +951,6 @@ export namespace Arr {
 		const i = Math.max(0, index);
 		return [data.slice(0, i), data.slice(i)];
 	};
+
+	export const NonEmpty = ArrNonEmpty;
 }

@@ -1,3 +1,5 @@
+import type { Awaitable } from "#internal";
+
 /**
  * Pipes a value through a series of functions from left to right.
  * Each function receives the output of the previous function.
@@ -267,86 +269,86 @@ function safe(a: unknown, ...fns: ReadonlyArray<(x: unknown) => unknown>): unkno
 	return result;
 }
 
-function async<A>(a: A | Promise<A>): Promise<A>;
-function async<A, B>(a: A | Promise<A>, ab: (a: A) => B | Promise<B>): Promise<B>;
-function async<A, B, C>(a: A | Promise<A>, ab: (a: A) => B | Promise<B>, bc: (b: B) => C | Promise<C>): Promise<C>;
+function async<A>(a: Awaitable<A>): Promise<A>;
+function async<A, B>(a: Awaitable<A>, ab: (a: A) => Awaitable<B>): Promise<B>;
+function async<A, B, C>(a: Awaitable<A>, ab: (a: A) => Awaitable<B>, bc: (b: B) => Awaitable<C>): Promise<C>;
 function async<A, B, C, D>(
-	a: A | Promise<A>,
-	ab: (a: A) => B | Promise<B>,
-	bc: (b: B) => C | Promise<C>,
-	cd: (c: C) => D | Promise<D>,
+	a: Awaitable<A>,
+	ab: (a: A) => Awaitable<B>,
+	bc: (b: B) => Awaitable<C>,
+	cd: (c: C) => Awaitable<D>,
 ): Promise<D>;
 function async<A, B, C, D, E>(
-	a: A | Promise<A>,
-	ab: (a: A) => B | Promise<B>,
-	bc: (b: B) => C | Promise<C>,
-	cd: (c: C) => D | Promise<D>,
-	de: (d: D) => E | Promise<E>,
+	a: Awaitable<A>,
+	ab: (a: A) => Awaitable<B>,
+	bc: (b: B) => Awaitable<C>,
+	cd: (c: C) => Awaitable<D>,
+	de: (d: D) => Awaitable<E>,
 ): Promise<E>;
 function async<A, B, C, D, E, F>(
-	a: A | Promise<A>,
-	ab: (a: A) => B | Promise<B>,
-	bc: (b: B) => C | Promise<C>,
-	cd: (c: C) => D | Promise<D>,
-	de: (d: D) => E | Promise<E>,
-	ef: (e: E) => F | Promise<F>,
+	a: Awaitable<A>,
+	ab: (a: A) => Awaitable<B>,
+	bc: (b: B) => Awaitable<C>,
+	cd: (c: C) => Awaitable<D>,
+	de: (d: D) => Awaitable<E>,
+	ef: (e: E) => Awaitable<F>,
 ): Promise<F>;
 function async<A, B, C, D, E, F, G>(
-	a: A | Promise<A>,
-	ab: (a: A) => B | Promise<B>,
-	bc: (b: B) => C | Promise<C>,
-	cd: (c: C) => D | Promise<D>,
-	de: (d: D) => E | Promise<E>,
-	ef: (e: E) => F | Promise<F>,
-	fg: (f: F) => G | Promise<G>,
+	a: Awaitable<A>,
+	ab: (a: A) => Awaitable<B>,
+	bc: (b: B) => Awaitable<C>,
+	cd: (c: C) => Awaitable<D>,
+	de: (d: D) => Awaitable<E>,
+	ef: (e: E) => Awaitable<F>,
+	fg: (f: F) => Awaitable<G>,
 ): Promise<G>;
 function async<A, B, C, D, E, F, G, H>(
-	a: A | Promise<A>,
-	ab: (a: A) => B | Promise<B>,
-	bc: (b: B) => C | Promise<C>,
-	cd: (c: C) => D | Promise<D>,
-	de: (d: D) => E | Promise<E>,
-	ef: (e: E) => F | Promise<F>,
-	fg: (f: F) => G | Promise<G>,
-	gh: (g: G) => H | Promise<H>,
+	a: Awaitable<A>,
+	ab: (a: A) => Awaitable<B>,
+	bc: (b: B) => Awaitable<C>,
+	cd: (c: C) => Awaitable<D>,
+	de: (d: D) => Awaitable<E>,
+	ef: (e: E) => Awaitable<F>,
+	fg: (f: F) => Awaitable<G>,
+	gh: (g: G) => Awaitable<H>,
 ): Promise<H>;
 function async<A, B, C, D, E, F, G, H, I>(
-	a: A | Promise<A>,
-	ab: (a: A) => B | Promise<B>,
-	bc: (b: B) => C | Promise<C>,
-	cd: (c: C) => D | Promise<D>,
-	de: (d: D) => E | Promise<E>,
-	ef: (e: E) => F | Promise<F>,
-	fg: (f: F) => G | Promise<G>,
-	gh: (g: G) => H | Promise<H>,
-	hi: (h: H) => I | Promise<I>,
+	a: Awaitable<A>,
+	ab: (a: A) => Awaitable<B>,
+	bc: (b: B) => Awaitable<C>,
+	cd: (c: C) => Awaitable<D>,
+	de: (d: D) => Awaitable<E>,
+	ef: (e: E) => Awaitable<F>,
+	fg: (f: F) => Awaitable<G>,
+	gh: (g: G) => Awaitable<H>,
+	hi: (h: H) => Awaitable<I>,
 ): Promise<I>;
 function async<A, B, C, D, E, F, G, H, I, J>(
-	a: A | Promise<A>,
-	ab: (a: A) => B | Promise<B>,
-	bc: (b: B) => C | Promise<C>,
-	cd: (c: C) => D | Promise<D>,
-	de: (d: D) => E | Promise<E>,
-	ef: (e: E) => F | Promise<F>,
-	fg: (f: F) => G | Promise<G>,
-	gh: (g: G) => H | Promise<H>,
-	hi: (h: H) => I | Promise<I>,
+	a: Awaitable<A>,
+	ab: (a: A) => Awaitable<B>,
+	bc: (b: B) => Awaitable<C>,
+	cd: (c: C) => Awaitable<D>,
+	de: (d: D) => Awaitable<E>,
+	ef: (e: E) => Awaitable<F>,
+	fg: (f: F) => Awaitable<G>,
+	gh: (g: G) => Awaitable<H>,
+	hi: (h: H) => Awaitable<I>,
 	ij: (i: I) => J,
 ): Promise<J>;
 function async<A, B, C, D, E, F, G, H, I, J, K>(
-	a: A | Promise<A>,
-	ab: (a: A) => B | Promise<B>,
-	bc: (b: B) => C | Promise<C>,
-	cd: (c: C) => D | Promise<D>,
-	de: (d: D) => E | Promise<E>,
-	ef: (e: E) => F | Promise<F>,
-	fg: (f: F) => G | Promise<G>,
-	gh: (g: G) => H | Promise<H>,
-	hi: (h: H) => I | Promise<I>,
-	ij: (i: I) => J | Promise<J>,
-	jk: (j: J) => K | Promise<K>,
+	a: Awaitable<A>,
+	ab: (a: A) => Awaitable<B>,
+	bc: (b: B) => Awaitable<C>,
+	cd: (c: C) => Awaitable<D>,
+	de: (d: D) => Awaitable<E>,
+	ef: (e: E) => Awaitable<F>,
+	fg: (f: F) => Awaitable<G>,
+	gh: (g: G) => Awaitable<H>,
+	hi: (h: H) => Awaitable<I>,
+	ij: (i: I) => Awaitable<J>,
+	jk: (j: J) => Awaitable<K>,
 ): Promise<K>;
-async function async(a: unknown, ...fns: ReadonlyArray<(x: unknown) => unknown | Promise<unknown>>): Promise<unknown> {
+async function async(a: unknown, ...fns: ReadonlyArray<(x: unknown) => Awaitable<unknown>>): Promise<unknown> {
 	let result = await a;
 	for (const fn of fns) {
 		result = await fn(result);

@@ -1,3 +1,5 @@
+import type { Thenable } from "#internal";
+
 declare const _deferred: unique symbol;
 
 /**
@@ -23,7 +25,7 @@ export type Deferred<A> = { readonly [_deferred]: A; readonly then: (onfulfilled
 
 export namespace Deferred {
 	/**
-	 * Wraps a `Promise` into a `Deferred`, structurally excluding rejection handlers,
+	 * Wraps a `Promise` or `Deferred` into a `Deferred`, structurally excluding rejection handlers,
 	 * `.catch()`, `.finally()`, and chainable `.then()`.
 	 *
 	 * **Precondition**: `p` must never reject. If `p` rejects, the returned `Deferred` will
@@ -36,7 +38,7 @@ export namespace Deferred {
 	 * const value = await d; // "hello"
 	 * ```
 	 */
-	export const fromPromise = <A>(p: Promise<A>): Deferred<A> =>
+	export const fromPromise = <A>(p: Thenable<A>): Deferred<A> =>
 		// eslint-disable-next-line unicorn/no-thenable -- Deferred is intentionally thenable; it is the mechanism that makes Task awaitable
 		({ then: ((f) => p.then(f)) as Deferred<A>["then"] }) as Deferred<A>;
 

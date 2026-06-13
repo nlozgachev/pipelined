@@ -27,7 +27,7 @@ composing multiple resources — like a database connection and a cache socket. 
 boundaries makes it very easy to forget who holds the responsibility to clean it up.
 
 `Resource<E, A>` solves this structurally by implementing the **bracket pattern**. It packages the
-potentially fallible `acquire` step (a `TaskResult`) and the infallible `release` step (a `Task`)
+potentially fallible `acquire` step (a `Task.Result`) and the infallible `release` step (a `Task`)
 into a single, cohesive data structure.
 
 ```mermaid
@@ -52,10 +52,10 @@ We define a resource by supplying the actions to open and close it.
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
-import { Resource, Task, TaskResult } from "@nlozgachev/pipelined/core";
+import { Resource, Task } from "@nlozgachev/pipelined/core";
 
 const dbResource = Resource.make(
-  TaskResult.tryCatch(
+  Task.Result.tryCatch(
     () => openConnection({ host: "db.local" }),
     (error) => new Error(`DB connection failed: ${error}`),
   ),
@@ -86,13 +86,13 @@ structurally incapable of failing to acquire.
 ## Running Actions with use
 
 To perform work with our resource, we pass our operational logic to `Resource.use`. The work
-function receives the acquired value and must return a `TaskResult`:
+function receives the acquired value and must return a `Task.Result`:
 
 ```ts
 const products = await pipe(
   dbResource,
   Resource.use((connection) =>
-    TaskResult.tryCatch(
+    Task.Result.tryCatch(
       () => connection.query("SELECT * FROM products"),
       (error) => new Error(`Query failed: ${error}`),
     )
@@ -127,7 +127,7 @@ const combinedResource = Resource.combine(dbResource, cacheResource);
 const result = await pipe(
   combinedResource,
   Resource.use(([connection, cache]) =>
-    TaskResult.tryCatch(
+    Task.Result.tryCatch(
       async () => {
         const cached = await cache.get("profile_123");
         if (cached) return cached;
@@ -161,7 +161,7 @@ const result = await pipe(
     pipe(
       transactionResource(connection),
       Resource.use((transaction) =>
-        TaskResult.tryCatch(
+        Task.Result.tryCatch(
           () => executeDatabaseWrite(transaction, orderData),
           (error) => new Error(`Write failed: ${error}`),
         )

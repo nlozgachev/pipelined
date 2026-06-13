@@ -74,9 +74,9 @@ export default defineConfig({
 			}, {
 				label: "Type safety",
 				collapsed: false,
-				items: [{ slug: "guides/brand" }, { slug: "guides/duration" }, { slug: "guides/refinement" }, {
-					slug: "guides/predicate",
-				}],
+				items: [{ slug: "guides/brand" }, { slug: "guides/duration" }, { slug: "guides/nonempty" }, {
+					slug: "guides/refinement",
+				}, { slug: "guides/predicate" }],
 			}, {
 				label: "Comparing & combining",
 				collapsed: false,

@@ -1,3 +1,4 @@
+import type { Thenable } from "#internal";
 import { inspect as nodeInspect } from "node:util";
 import { Duration } from "../Types/Duration";
 
@@ -178,9 +179,9 @@ export namespace tap {
 	 * );
 	 * ```
 	 */
-	export const async = <A>(fn: (a: A) => Promise<unknown>, options?: AsyncOptions) => (a: A): A => {
+	export const async = <A>(fn: (a: A) => Thenable<unknown>, options?: AsyncOptions) => (a: A): A => {
 		const onError = options?.onError ?? console.error;
-		fn(a).catch((err) => {
+		Promise.resolve(fn(a)).catch((err) => {
 			onError(err);
 		});
 		return a;
@@ -220,8 +221,10 @@ export namespace tap {
 
 		try {
 			const res = fn(a);
-			if (res instanceof Promise) {
-				res.then(() => {
+			if (
+				res !== null && (typeof res === "object" || typeof res === "function") && typeof (res as any).then === "function"
+			) {
+				(res as any).then(() => {
 					const duration = Duration.milliseconds(performance.now() - start);
 					triggerFinish(duration);
 				}, () => {

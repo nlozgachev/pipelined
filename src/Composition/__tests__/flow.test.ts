@@ -1,5 +1,5 @@
 import { flow } from "#composition";
-import { Maybe } from "#core";
+import { Deferred, Maybe } from "#core";
 import { expect, test } from "vitest";
 
 test("flow - single function wraps it", () => {
@@ -306,4 +306,14 @@ test("flow - integration with other composition helpers", () => {
 	const run = flow((n: number) => n + 1, flow.when((n) => n > 5, (n) => n * 2), (n) => `Final: ${n}`);
 	expect(run(5)).toBe("Final: 12");
 	expect(run(3)).toBe("Final: 4");
+});
+
+test("flow.async - resolves Deferred values and functions returning Deferred", async () => {
+	const run = flow.async(
+		(n: number) => Deferred.fromPromise(Promise.resolve(n * 2)),
+		(n: number) => n + 1,
+		(n: number) => Deferred.fromPromise(Promise.resolve(`result: ${n}`)),
+	);
+	const res = await run(Deferred.fromPromise(Promise.resolve(5)));
+	expect(res).toBe("result: 11");
 });

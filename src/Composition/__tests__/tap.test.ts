@@ -1,4 +1,5 @@
 import { pipe, tap } from "#composition";
+import { Deferred } from "#core";
 import { expect, test, vi } from "vitest";
 
 test("tap - side effect executes", () => {
@@ -333,5 +334,48 @@ test("tap.time - times asynchronous function rejecting, triggers onFinish, and h
 	expect(finishedDuration).toBeNull();
 
 	await expect(capturedPromise).rejects.toThrow("async reject");
+	expect(finishedDuration).not.toBeNull();
+});
+
+test("tap.async - works with Deferred", async () => {
+	let resolved = false;
+	const deferredFn = (_n: number) => {
+		const p = new Promise<void>((resolve) => setTimeout(resolve, 10));
+		return Deferred.fromPromise(p.then(() => {
+			resolved = true;
+		}));
+	};
+
+	const res = pipe(42, tap.async(deferredFn));
+
+	expect(res).toBe(42);
+	expect(resolved).toBe(false);
+
+	// Wait for the deferred side effect to complete
+	await new Promise((resolve) => setTimeout(resolve, 15));
+	expect(resolved).toBe(true);
+});
+
+test("tap.time - times Deferred function and triggers onFinish asynchronously", async () => {
+	let finishedDuration: any = null;
+	const deferredFn = (_n: number) => {
+		const p = new Promise<void>((resolve) => setTimeout(resolve, 10));
+		return Deferred.fromPromise(p);
+	};
+
+	const res = pipe(
+		10,
+		tap.time(deferredFn, {
+			onFinish: (dur) => {
+				finishedDuration = dur;
+			},
+		}),
+	);
+
+	expect(res).toBe(10);
+	expect(finishedDuration).toBeNull(); // Still running
+
+	// Wait for the deferred to resolve
+	await new Promise((resolve) => setTimeout(resolve, 15));
 	expect(finishedDuration).not.toBeNull();
 });

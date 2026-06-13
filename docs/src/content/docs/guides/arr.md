@@ -198,7 +198,7 @@ want the entire pipeline to fail.
 
 The `traverse` family executes this inside-out flip automatically during the mapping stage.
 
-### Safe traversal with `traverse` (Maybe)
+### Safe traversal with `Arr.Maybe.traverse`
 
 Maps each element to a `Maybe` and flattens it. If a single element yields `None`, the entire result
 resolves to `None`:
@@ -206,16 +206,16 @@ resolves to `None`:
 ```ts
 pipe(
   ["1", "2", "3"],
-  Arr.traverse(parseNumeric),
+  Arr.Maybe.traverse(parseNumeric),
 ); // Some([1, 2, 3])
 
 pipe(
   ["1", "invalid_text", "3"],
-  Arr.traverse(parseNumeric),
+  Arr.Maybe.traverse(parseNumeric),
 ); // None (the entire check short-circuits)
 ```
 
-### Safe error traversal with `traverseResult` (Result)
+### Safe error traversal with `Arr.Result.traverse`
 
 Maps elements to `Result`, returning `Ok` only if every element succeeded, or the first `Err`
 encountered:
@@ -224,33 +224,86 @@ encountered:
 const validateAge = (age: number): Result<string, number> =>
   age >= 18 ? Result.ok(age) : Result.err(`Age ${age} is underage`);
 
-pipe([20, 25, 30], Arr.traverseResult(validateAge)); // Ok([20, 25, 30])
-pipe([20, 16, 30], Arr.traverseResult(validateAge)); // Err("Age 16 is underage")
+pipe([20, 25, 30], Arr.Result.traverse(validateAge)); // Ok([20, 25, 30])
+pipe([20, 16, 30], Arr.Result.traverse(validateAge)); // Err("Age 16 is underage")
 ```
 
-### Asynchronous traversal with `traverseTask` and `traverseTaskResult`
+### Asynchronous traversal with `Arr.Task.traverse` and `Arr.Task.Result.traverse`
 
-- `traverseTask` runs all async tasks in **parallel**, resolving to a `Task<A[]>` once all complete.
-- `traverseTaskResult` runs tasks **sequentially**, short-circuiting on the first `Err` encountered.
+- `Arr.Task.traverse` runs all async tasks in **parallel**, resolving to a `Task<A[]>` once all
+  complete.
+- `Arr.Task.Result.traverse` runs tasks **sequentially**, short-circuiting on the first `Err`
+  encountered.
 
 ```ts
 // Parallel user profile fetch:
 pipe(
   userIds,
-  Arr.traverseTask((id) => fetchUserTask(id)),
+  Arr.Task.traverse((id) => fetchUserTask(id)),
 )(); // Promise<User[]> (all requests execute simultaneously)
 ```
 
 ### Flipping existing structures: `sequence`
 
-If you *already* have an array of containers, you can flip them using `sequence`, `sequenceResult`,
-`sequenceTask`, or `sequenceTaskResult` directly without mapping:
+If you *already* have an array of containers, you can flip them using `sequence` directly under each
+nested namespace:
 
 ```ts
 // Array<Maybe<number>> → Maybe<Array<number>>
-Arr.sequence([Maybe.some(1), Maybe.some(2)]); // Some([1, 2])
-Arr.sequence([Maybe.some(1), Maybe.none()]);   // None
+Arr.Maybe.sequence([Maybe.some(1), Maybe.some(2)]); // Some([1, 2])
+Arr.Maybe.sequence([Maybe.some(1), Maybe.none()]);   // None
 ```
+
+---
+
+## Non-Empty Arrays: Arr.NonEmpty and Generic Operations
+
+When you need compile-time guarantees that an array is not empty (e.g., for safe head access or
+accumulating validation errors), you can use `Arr.NonEmpty<A>` from the data module.
+
+To simplify operating on non-empty arrays, several core `Arr` helpers are generic and automatically
+preserve the non-empty type contract when applied to a `Arr.NonEmpty`. These include `map`,
+`mapWithIndex`, `reverse`, `intersperse`, `prepend`, `append`, and `concat`.
+
+```ts
+import { Arr } from "@nlozgachev/pipelined/data";
+
+const list: Arr.NonEmpty<number> = [1, 2, 3];
+
+// Generic operations preserve the Arr.NonEmpty type signature automatically:
+const doubled: Arr.NonEmpty<number> = Arr.map((n) => n * 2)(list);
+const reversed: Arr.NonEmpty<number> = Arr.reverse(list);
+const extended: Arr.NonEmpty<number> = pipe(list, Arr.concat([4, 5]));
+```
+
+### Specialized Non-Empty Operations: Arr.NonEmpty
+
+For operations that have structurally distinct signatures or return shapes when applied to non-empty
+arrays, you can use the nested `Arr.NonEmpty` namespace.
+
+- **`head` / `last`**: Because a non-empty array is guaranteed to contain elements, these helpers
+  return the value directly instead of wrapping it in a `Maybe`.
+- **`tail`**: Returns all elements after the first as a standard `readonly A[]`.
+- **`reduce`**: Reduces the array from the left without requiring an initial seed value, since there
+  is always at least one element.
+- **`singleton`**: Wraps a single value in an `Arr.NonEmpty`.
+- **`fromArray`**: Attempts to lift a standard, potentially empty array into an `Arr.NonEmpty`,
+  returning `Some<Arr.NonEmpty>` if elements are present, and `None` otherwise.
+
+```ts
+import { Arr } from "@nlozgachev/pipelined/data";
+
+const list: Arr.NonEmpty<number> = [10, 20, 30];
+
+const first: number = Arr.NonEmpty.head(list); // 10 (returns number directly, not Maybe)
+const sum: number = Arr.NonEmpty.reduce((a, b) => a + b)(list); // 60 (no initial value required)
+
+const singletonList = Arr.NonEmpty.singleton("value"); // Arr.NonEmpty<string>
+const maybeNonEmpty = Arr.NonEmpty.fromArray([1, 2]); // Some([1, 2])
+```
+
+For more details on when to enforce non-empty guarantees at the boundaries of your systems, see the
+dedicated [NonEmpty Guide](../nonempty).
 
 ---
 
@@ -263,7 +316,7 @@ Arr.sequence([Maybe.some(1), Maybe.none()]);   // None
 - **Accessing indices safely**: You want to avoid runtime `undefined` crashes and explicitly capture
   absence via `Maybe`.
 - **Flipping async collections**: You need to traverse an array with fallible or asynchronous steps,
-  mapping `Array<TaskResult<E, A>>` to `TaskResult<E, A[]>` cleanly.
+  mapping `Array<Task.Result<E, A>>` to `Task.Result<E, A[]>` cleanly.
 
 ### Keep using native array methods when:
 

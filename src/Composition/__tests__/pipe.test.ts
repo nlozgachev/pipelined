@@ -1,5 +1,5 @@
 import { pipe } from "#composition";
-import { Maybe, Result } from "#core";
+import { Deferred, Maybe, Result } from "#core";
 import { expect, test } from "vitest";
 
 test("pipe - single value (identity)", () => {
@@ -205,5 +205,15 @@ test("pipe.async - resolves asynchronous chains", async () => {
 
 test("pipe.async - resolves hybrid sync and async chains", async () => {
 	const result = await pipe.async(5, (n: number) => Promise.resolve(n * 2), (n: number) => n + 1);
+	expect(result).toBe(11);
+});
+
+test("pipe.async - resolves Deferred values and functions returning Deferred", async () => {
+	const val = Deferred.fromPromise(Promise.resolve(5));
+	const result = await pipe.async(
+		val,
+		(n: number) => Deferred.fromPromise(Promise.resolve(n * 2)),
+		(n: number) => n + 1,
+	);
 	expect(result).toBe(11);
 });

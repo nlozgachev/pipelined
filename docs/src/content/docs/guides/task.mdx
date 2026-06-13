@@ -225,38 +225,38 @@ const readyState = await pipe(
 
 While `Task<A>` is excellent for operations that never fail, typical real-world async tasks involve network or database requests that can yield errors. For these, we use specialized variants within the Task family.
 
-### TaskResult
+### Task.Result
 
-`TaskResult<E, A>` represents a fallible async task, equivalent to `Task<Result<E, A>>` under the hood. It serves as the primary tool for most asynchronous applications:
+`Task.Result<E, A>` represents a fallible async task, equivalent to `Task<Result<E, A>>` under the hood. It serves as the primary tool for most asynchronous applications:
 
 ```ts
-import { TaskResult } from "@nlozgachev/pipelined/core";
+import { Task } from "@nlozgachev/pipelined/core";
 
-const fetchProfile = (userId: string): TaskResult<string, User> =>
-  TaskResult.tryCatch(
+const fetchProfile = (userId: string): Task.Result<string, User> =>
+  Task.Result.tryCatch(
     (signal) => fetch(`/users/${userId}`, { signal }).then((r) => r.json()),
     (error) => `Could not fetch user: ${error}`,
   );
 
 const userDisplayName = pipe(
   fetchProfile("123"),
-  TaskResult.map((user) => user.name),
-  TaskResult.getOrElse(() => "Guest User"),
+  Task.Result.map((user) => user.name),
+  Task.Result.getOrElse(() => "Guest User"),
 );
 
 const name = await userDisplayName(); // Returns a string safely (never throws)
 ```
 
-### Cancellation propagation in TaskResult chains
+### Cancellation propagation in Task.Result chains
 
-When sequencing multiple `TaskResult` steps, `TaskResult.chain` propagates the abort signal down the line automatically. An abort triggered at the call site immediately cancels whichever step is currently in flight:
+When sequencing multiple `Task.Result` steps, `Task.Result.chain` propagates the abort signal down the line automatically. An abort triggered at the call site immediately cancels whichever step is currently in flight:
 
 ```ts
-const fetchReport = (reportId: string): TaskResult<string, Report> =>
+const fetchReport = (reportId: string): Task.Result<string, Report> =>
   pipe(
-    TaskResult.tryCatch((sig) => initiateJob(reportId, sig), String),
-    TaskResult.chain((job) => TaskResult.tryCatch((sig) => checkJobStatus(job.id, sig), String)),
-    TaskResult.chain((status) => TaskResult.tryCatch((sig) => downloadData(status.url, sig), String)),
+    Task.Result.tryCatch((sig) => initiateJob(reportId, sig), String),
+    Task.Result.chain((job) => Task.Result.tryCatch((sig) => checkJobStatus(job.id, sig), String)),
+    Task.Result.chain((status) => Task.Result.tryCatch((sig) => downloadData(status.url, sig), String)),
   );
 
 const controller = new AbortController();
@@ -266,15 +266,51 @@ const result = await fetchReport("report_42")(controller.signal);
 // and instantly stop the chain, preventing subsequent network calls.
 ```
 
-### TaskMaybe
+### Task.Maybe
 
-`TaskMaybe<A>` represents an asynchronous operation that may yield nothing, equivalent to `Task<Maybe<A>>`:
+`Task.Maybe<A>` represents an asynchronous operation that may yield nothing, equivalent to `Task<Maybe<A>>`:
 
 ```ts
-import { TaskMaybe } from "@nlozgachev/pipelined/core";
+import { Task } from "@nlozgachev/pipelined/core";
 
-const lookupUser = (id: string): TaskMaybe<User> =>
-  TaskMaybe.tryCatch(() => db.users.findById(id));
+const lookupUser = (id: string): Task.Maybe<User> =>
+  Task.Maybe.tryCatch(() => db.users.findById(id));
+```
+
+When an asynchronous operation resolves to `None` (representing an absent resource or a failed lookup), you can recover gracefully by providing a fallback asynchronous operation using `recover`:
+
+```ts
+const loadConfig = (userId: string): Task.Maybe<Config> =>
+  pipe(
+    fetchUserConfig(userId),
+    Task.Maybe.recover(() => fetchDefaultConfig())
+  );
+```
+
+### Task.Validation
+
+`Task.Validation<E, A>` represents an asynchronous validation check that accumulates multiple errors, equivalent to `Task<Validation<E, A>>`:
+
+```ts
+import { Task } from "@nlozgachev/pipelined/core";
+
+const checkUsernameUnique = (username: string): Task.Validation<string, string> =>
+  Task.Validation.tryCatch(
+    (signal) => db.users.isUnique(username, signal),
+    (error) => `Username check failed: ${error}`,
+  );
+```
+
+Because validations accumulate multiple errors instead of failing fast, we often need to transform or perform side effects on the collected errors mid-pipeline. You can transform the error list using `mapError`, or execute a side effect (such as writing to a warning logger) using `tapError`:
+
+```ts
+const validateProfile = pipe(
+  checkUsernameUnique(username),
+  Task.Validation.mapError((err) => `Validation: ${err}`),
+  Task.Validation.tapError((errors) => {
+    logger.warn(`Async validation failed with ${errors.length} errors`);
+  })
+);
 ```
 
 ---
@@ -301,7 +337,7 @@ const userProfile = pipe(
 );
 ```
 
-To solve this, you can use `bindTo` and `bind` to cleanly accumulate asynchronous values key-by-key in a flat, readable pipeline. These helpers are available across the entire Task family: `Task`, `TaskResult`, and `TaskMaybe`.
+To solve this, you can use `bindTo` and `bind` to cleanly accumulate asynchronous values key-by-key in a flat, readable pipeline. These helpers are available across the entire Task family: `Task`, `Task.Result`, and `Task.Maybe`.
 
 `bindTo` lifts an asynchronous value into the pipeline's accumulator object:
 
@@ -316,39 +352,52 @@ pipe(
 
 ```ts
 const userProfile = pipe(
-  getUser(userId), // TaskMaybe<User>
-  TaskMaybe.bindTo("user"),
-  TaskMaybe.bind("prefs", ({ user }) => getPreferences(user.id)),
-  TaskMaybe.bind("theme", ({ prefs }) => getTheme(prefs.themeId))
-); // TaskMaybe({ user: User, prefs: Preferences, theme: Theme })
+  getUser(userId), // Task.Maybe<User>
+  Task.Maybe.bindTo("user"),
+  Task.Maybe.bind("prefs", ({ user }) => getPreferences(user.id)),
+  Task.Maybe.bind("theme", ({ prefs }) => getTheme(prefs.themeId))
+); // Task.Maybe({ user: User, prefs: Preferences, theme: Theme })
 ```
 
-If any step fails (yielding `None` in `TaskMaybe` or `Err` in `TaskResult`), the entire pipeline short-circuits and propagates the failure immediately.
+If any step fails (yielding `None` in `Task.Maybe` or `Err` in `Task.Result`), the entire pipeline short-circuits and propagates the failure immediately.
 
 ---
 
 ## Combining async records: struct
 
-While `bind` is perfect for sequential steps where a latter step depends on the output of a prior step, sometimes you have a set of independent asynchronous tasks that you want to combine into a single object. For this, you can use `TaskResult.struct`.
+While `bind` is perfect for sequential steps where a latter step depends on the output of a prior step, sometimes you have a set of independent asynchronous tasks that you want to combine into a single object. For this, you can use the `struct` helper, which is available on `Task.Result`, `Task.Maybe`, and `Task.Validation`.
 
-It combines a record of `TaskResult`s into a single `TaskResult` holding a record of success values. Under the hood, **it evaluates all tasks in parallel** (by calling them concurrently and using `Promise.all` internally) while correctly forwarding the `AbortSignal` down to each sub-task:
+`struct` combines a record of async tasks into a single task holding a record of success values. Under the hood, **it evaluates all tasks in parallel** (by calling them concurrently and using `Promise.all` internally) while correctly forwarding the `AbortSignal` down to each sub-task.
+
+### With Task.Result
+If any individual field resolves to an `Err`, the entire struct short-circuits to that error. If multiple fields fail, `Task.Result.struct` returns the first error encountered in key order:
 
 ```ts
-const profileTask = TaskResult.struct({
+const profileTask = Task.Result.struct({
   user: getUser(userId),
   permissions: getUserPermissions(userId),
-  status: TaskResult.ok("active"),
-}); // TaskResult<string, { user: User; permissions: Permission[]; status: string }>
+  status: Task.Result.ok("active"),
+}); // Task.Result<string, { user: User; permissions: Permission[]; status: string }>
 ```
 
-If any individual field resolves to an `Err`, the entire struct short-circuits to that error. If multiple fields fail, `TaskResult.struct` returns the first error encountered in key order:
+### With Task.Maybe
+Evaluates fields in parallel, resolving to `Some` record if all succeed, and returning `None` immediately if any task resolves to `None`:
 
 ```ts
-const failed = TaskResult.struct({
-  a: TaskResult.ok(1),
-  b: TaskResult.err("first fail"),
-  c: TaskResult.err("second fail"),
-}); // Resolves to Err("first fail")
+const profileTask = Task.Maybe.struct({
+  user: lookupUser(userId),
+  preferences: loadPreferences(userId),
+}); // Task.Maybe<{ user: User; preferences: Preferences }>
+```
+
+### With Task.Validation
+Evaluates validations in parallel and **accumulates all validation errors** across all failed branches, rather than short-circuiting:
+
+```ts
+const validationTask = Task.Validation.struct({
+  username: checkUsernameUnique(username),
+  email: checkEmailNotBlocked(email),
+}); // Task.Validation<string, { username: string; email: string }>
 ```
 
 ---
@@ -377,7 +426,7 @@ const profilePromise = Deferred.toPromise(fetchProfile("123")()); // Promise<Res
 ### Use Task when:
 *   **You need composition**: You want to define, combine, or delay asynchronous steps point-free inside `pipe` chains before triggering execution.
 *   **You need concurrency controls**: You require parallel, raced, or ordered sequential queues (`Task.all`, `Task.race`, `Task.sequential`).
-*   **You want typed errors**: You want compiler-enforced error handling via `TaskResult` rather than catching untyped exceptions in standard `async/await` blocks.
+*   **You want typed errors**: You want compiler-enforced error handling via `Task.Result` rather than catching untyped exceptions in standard `async/await` blocks.
 
 ### Keep using async/await when:
 *   **Operations are standalone**: Simple, linear scripts or internal functions where functional composition and pipelining add zero architectural value.

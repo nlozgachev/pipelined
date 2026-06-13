@@ -38,7 +38,6 @@ export namespace These {
 	 * These.first(42); // { kind: "First", first: 42 }
 	 * ```
 	 */
-	// eslint-disable-next-line no-shadow
 	export const first = <A>(value: A): TheseFirst<A> => ({ kind: "First", first: value });
 
 	/**
@@ -49,7 +48,6 @@ export namespace These {
 	 * These.second("warning"); // { kind: "Second", second: "warning" }
 	 * ```
 	 */
-	// eslint-disable-next-line no-shadow
 	export const second = <B>(value: B): TheseSecond<B> => ({ kind: "Second", second: value });
 
 	/**
