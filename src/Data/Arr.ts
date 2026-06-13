@@ -80,7 +80,7 @@ namespace ArrResult {
 
 namespace ArrTaskResult {
 	/**
-	 * Maps each element to a TaskResult and runs them sequentially.
+	 * Maps each element to a Task.Result and runs them sequentially.
 	 * Returns the first Err encountered, or Ok of all results if all succeed.
 	 *
 	 * @example
@@ -113,7 +113,7 @@ namespace ArrTaskResult {
 			});
 
 	/**
-	 * Collects an array of TaskResults into a TaskResult of array.
+	 * Collects an array of Task.Results into a Task.Result of array.
 	 * Returns the first Err if any element is Err, runs sequentially.
 	 */
 	export const sequence = <E, A>(data: readonly CoreTask<CoreResult<E, A>>[]): CoreTask<CoreResult<E, readonly A[]>> =>

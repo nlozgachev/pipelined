@@ -11,7 +11,7 @@ import { TaskValidation } from "./TaskValidation.ts";
  * Two guarantees:
  * - **Lazy** — nothing starts until you call it.
  * - **Infallible** — it never rejects. If failure is possible, encode it in the
- *   return type using `TaskResult<E, A>` instead.
+ *   return type using `Task.Result<E, A>` instead.
  *
  * An optional `AbortSignal` can be passed at the call site. Combinators like
  * `retry`, `pollUntil`, and `timeout` thread it automatically to every inner
@@ -408,7 +408,7 @@ export namespace Task {
 	 * pipe(
 	 *   heavyComputation,
 	 *   Task.timeout(Duration.seconds(5), () => "timed out"),
-	 *   TaskResult.chain(processResult)
+	 *   Task.Result.chain(processResult)
 	 * );
 	 * ```
 	 */

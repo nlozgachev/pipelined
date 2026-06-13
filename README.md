@@ -17,7 +17,7 @@ npm add @nlozgachev/pipelined
 In mainstream TypeScript, code is often burdened by implicit control flow: unchecked exceptions,
 manual null propagation, and unhandled asynchronous failures. `pipelined` turns these complex
 runtime states into simple, transparent data structures that compose. By representing optionality as
-`Maybe`, failures as `Result`, lazy asynchronous pipelines as `TaskResult`, and repeated stateful
+`Maybe`, failures as `Result`, lazy asynchronous pipelines as `Task.Result`, and repeated stateful
 interactions as `Op`, the library helps disentangle business logic from control mechanics.
 
 ## Documentation
@@ -55,18 +55,18 @@ Every step that sees `None` is skipped. The fallback runs once, at the end.
 ## Example: typed async errors
 
 In JavaScript, asynchronous exceptions bypass the static type system, leaving unhandled rejections
-as invisible runtime risks. `TaskResult<E, A>` represents fallible asynchronous computations as
+as invisible runtime risks. `Task.Result<E, A>` represents fallible asynchronous computations as
 lazy, infallible tasks that resolve to a typed `Result`. The error type is explicitly tracked in the
 function signature, ensuring that failures are handled before compile time:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
-import { Result, TaskResult } from "@nlozgachev/pipelined/core";
+import { Result, Task } from "@nlozgachev/pipelined/core";
 
 type ApiError = { status: number; message: string };
 
-const fetchUser = (id: string): TaskResult<ApiError, User> =>
-  TaskResult.tryCatch(
+const fetchUser = (id: string): Task.Result<ApiError, User> =>
+  Task.Result.tryCatch(
     (signal) =>
       fetch(`/users/${id}`, { signal }).then((r) => {
         if (!r.ok) throw { status: r.status, message: r.statusText };
@@ -75,8 +75,8 @@ const fetchUser = (id: string): TaskResult<ApiError, User> =>
     (e) => e as ApiError,
   );
 
-const fetchPosts = (userId: string): TaskResult<ApiError, Post[]> =>
-  TaskResult.tryCatch(
+const fetchPosts = (userId: string): Task.Result<ApiError, Post[]> =>
+  Task.Result.tryCatch(
     (signal) =>
       fetch(`/users/${userId}/posts`, { signal }).then((r) => r.json()),
     (e) => e as ApiError,
@@ -86,10 +86,10 @@ const fetchPosts = (userId: string): TaskResult<ApiError, Post[]> =>
 const userWithPosts = (id: string) =>
   pipe(
     fetchUser(id),
-    TaskResult.chain((user) =>
+    Task.Result.chain((user) =>
       pipe(
         fetchPosts(user.id),
-        TaskResult.map((posts) => ({ ...user, posts })),
+        Task.Result.map((posts) => ({ ...user, posts })),
       )
     ),
   );
@@ -314,7 +314,7 @@ provides a strongly-typed, immutable two-element pair.
 ### Asynchronous operations
 
 `Task` represents a lazy, infallible asynchronous computation. Fallible asynchronous workflows are
-handled by `TaskResult`, `TaskMaybe`, and `TaskValidation`. For managing stateful, recurring
+handled by `Task.Result`, `Task.Maybe`, and `Task.Validation`. For managing stateful, recurring
 asynchronous operations with complex scheduling, `Op` implements named concurrency strategies such
 as `restartable`, `exclusive`, `debounced`, `throttled`, and `queue`, handling retries, timeouts,
 and signal propagation automatically. `Deferred` represents a lightweight, infallible asynchronous

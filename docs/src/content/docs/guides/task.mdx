@@ -27,7 +27,7 @@ type Task<A> = () => Deferred<A>;
 
 `Deferred<A>` is a minimal, infallible asynchronous value. It supports `await` but has no `.catch()` or `.finally()` methods. At the type level, a `Deferred` value is guaranteed never to reject.
 
-By wrapping our async work in a function, we make it **lazy**—nothing runs until you explicitly invoke the Task. And by treating the core `Task` as infallible, we force all possible failures into the data channel: `TaskResult<E, A>` is a `Task` yielding a `Result<E, A>`, making failures impossible to overlook.
+By wrapping our async work in a function, we make it **lazy**—nothing runs until you explicitly invoke the Task. And by treating the core `Task` as infallible, we force all possible failures into the data channel: `Task.Result<E, A>` is a `Task` yielding a `Result<E, A>`, making failures impossible to overlook.
 
 ```ts
 import { Task } from "@nlozgachev/pipelined/core";

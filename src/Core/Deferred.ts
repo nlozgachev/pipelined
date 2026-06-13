@@ -29,7 +29,7 @@ export namespace Deferred {
 	 * `.catch()`, `.finally()`, and chainable `.then()`.
 	 *
 	 * **Precondition**: `p` must never reject. If `p` rejects, the returned `Deferred` will
-	 * never resolve — `await`-ing it will hang indefinitely. Use `TaskResult.tryCatch` to
+	 * never resolve — `await`-ing it will hang indefinitely. Use `Task.Result.tryCatch` to
 	 * handle operations that may fail before converting to a `Deferred`.
 	 *
 	 * @example

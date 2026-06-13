@@ -289,7 +289,7 @@ export namespace RemoteData {
 	 *
 	 * @example
 	 * ```ts
-	 * const result = await TaskResult.tryCatch(fetchUser, String)();
+	 * const result = await Task.Result.tryCatch(fetchUser, String)();
 	 * setState(RemoteData.fromResult(result)); // Success(user) or Failure(msg)
 	 * ```
 	 */

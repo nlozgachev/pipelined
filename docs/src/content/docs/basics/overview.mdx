@@ -86,22 +86,22 @@ If both fields are invalid, both validation errors are gathered and returned tog
 
 An asynchronous operation in standard JavaScript is represented by a `Promise`. Promises are eager—they begin executing the moment they are created—and they can reject with any value.
 
-`TaskResult<E, A>` is a lazy, infallible blueprint for an asynchronous operation that eventually yields a `Result<E, A>`. Because it is lazy, nothing runs until we explicitly invoke it. Because it is infallible at the promise level, the outer `Task` always resolves successfully, carrying our typed `Result` inside.
+`Task.Result<E, A>` is a lazy, infallible blueprint for an asynchronous operation that eventually yields a `Result<E, A>`. Because it is lazy, nothing runs until we explicitly invoke it. Because it is infallible at the promise level, the outer `Task` always resolves successfully, carrying our typed `Result` inside.
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
-import { TaskResult } from "@nlozgachev/pipelined/core";
+import { Task } from "@nlozgachev/pipelined/core";
 
-const fetchUser = (id: string): TaskResult<string, User> =>
-  TaskResult.tryCatch(
+const fetchUser = (id: string): Task.Result<string, User> =>
+  Task.Result.tryCatch(
     (signal) => fetch(`/users/${id}`, { signal }).then((r) => r.json()),
     (e) => `Network failure: ${e}`,
   );
 
 const greeting = pipe(
   fetchUser("42"),
-  TaskResult.map((user) => `Hello, ${user.name}`),
-  TaskResult.getOrElse(() => "Welcome, guest"),
+  Task.Result.map((user) => `Hello, ${user.name}`),
+  Task.Result.getOrElse(() => "Welcome, guest"),
 );
 
 // Execution is deferred. Nothing has run yet.

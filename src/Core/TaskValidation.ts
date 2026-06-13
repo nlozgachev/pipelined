@@ -3,21 +3,21 @@ import { isNonEmptyArr, type NonEmptyArr, type Thenable } from "#internal";
 
 /**
  * A Task that resolves to a Validation — combining async operations with
- * error accumulation. Unlike TaskResult, multiple failures are collected
+ * error accumulation. Unlike Task.Result, multiple failures are collected
  * rather than short-circuiting on the first error.
  *
  * @example
  * ```ts
- * const validateName = (name: string): TaskValidation<string, string> =>
+ * const validateName = (name: string): Task.Validation<string, string> =>
  *   name.length > 0
- *     ? TaskValidation.passed(name)
- *     : TaskValidation.failed("Name is required");
+ *     ? Task.Validation.passed(name)
+ *     : Task.Validation.failed("Name is required");
  *
  * // Accumulate errors from multiple async validations using ap
  * pipe(
- *   TaskValidation.passed((name: string) => (age: number) => ({ name, age })),
- *   TaskValidation.ap(validateName("")),
- *   TaskValidation.ap(validateAge(-1))
+ *   Task.Validation.passed((name: string) => (age: number) => ({ name, age })),
+ *   Task.Validation.ap(validateName("")),
+ *   Task.Validation.ap(validateAge(-1))
  * )();
  * // Failed(["Name is required", "Age must be positive"])
  * ```
@@ -26,28 +26,28 @@ export type TaskValidation<E, A> = Task<Validation<E, A>>;
 
 export namespace TaskValidation {
 	/**
-	 * Wraps a value in a passed TaskValidation.
+	 * Wraps a value in a passed Task.Validation.
 	 */
 	export const passed = <E, A>(value: A): TaskValidation<E, A> => Task.resolve(Validation.passed(value));
 
 	/**
-	 * Creates a failed TaskValidation with a single error.
+	 * Creates a failed Task.Validation with a single error.
 	 */
 	export const failed = <E, A>(error: E): TaskValidation<E, A> => Task.resolve(Validation.failed(error));
 
 	/**
-	 * Creates a failed TaskValidation from multiple errors.
+	 * Creates a failed Task.Validation from multiple errors.
 	 */
 	export const failedAll = <E, A>(errors: NonEmptyArr<E>): TaskValidation<E, A> =>
 		Task.resolve(Validation.failedAll(errors));
 
 	/**
-	 * Lifts a Validation into a TaskValidation.
+	 * Lifts a Validation into a Task.Validation.
 	 */
 	export const fromValidation = <E, A>(validation: Validation<E, A>): TaskValidation<E, A> => Task.resolve(validation);
 
 	/**
-	 * Creates a TaskValidation from a nullable value.
+	 * Creates a Task.Validation from a nullable value.
 	 * If the value is null or undefined, returns Failed with the error from onNull.
 	 * Otherwise, returns Passed.
 	 */
@@ -55,28 +55,28 @@ export namespace TaskValidation {
 		Task.resolve(value === null || value === undefined ? Validation.failed(onNull()) : Validation.passed(value));
 
 	/**
-	 * Creates a TaskValidation from a Maybe.
+	 * Creates a Task.Validation from a Maybe.
 	 * Some becomes Passed, None becomes Failed with the error from onNone.
 	 */
 	export const fromMaybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): TaskValidation<E, A> =>
 		Task.resolve(Maybe.isNone(maybe) ? Validation.failed(onNone()) : Validation.passed(maybe.value));
 
 	/**
-	 * Creates a TaskValidation from a Result.
+	 * Creates a Task.Validation from a Result.
 	 * Ok becomes Passed, Err(e) becomes Failed([e]).
 	 */
 	export const fromResult = <E, A>(result: Result<E, A>): TaskValidation<E, A> =>
 		Task.resolve(Validation.fromResult(result));
 
 	/**
-	 * Creates a TaskValidation from a Promise-returning function.
+	 * Creates a Task.Validation from a Promise-returning function.
 	 * Catches any errors and transforms them using the onError function.
 	 * The factory optionally receives an `AbortSignal` forwarded from the call site.
 	 *
 	 * @example
 	 * ```ts
-	 * const fetchUser = (id: string): TaskValidation<string, User> =>
-	 *   TaskValidation.tryCatch(
+	 * const fetchUser = (id: string): Task.Validation<string, User> =>
+	 *   Task.Validation.tryCatch(
 	 *     (signal) => fetch(`/users/${id}`, { signal }).then(r => r.json()),
 	 *     e => `Failed to fetch user: ${e}`
 	 *   );
@@ -91,22 +91,22 @@ export namespace TaskValidation {
 		);
 
 	/**
-	 * Transforms the success value inside a TaskValidation.
+	 * Transforms the success value inside a Task.Validation.
 	 */
 	export const map = <E, A, B>(f: (a: A) => B) => (data: TaskValidation<E, A>): TaskValidation<E, B> =>
 		Task.map(Validation.map<A, B>(f))(data);
 
 	/**
-	 * Applies a function wrapped in a TaskValidation to a value wrapped in a
-	 * TaskValidation. Both Tasks run in parallel and errors from both sides
+	 * Applies a function wrapped in a Task.Validation to a value wrapped in a
+	 * Task.Validation. Both Tasks run in parallel and errors from both sides
 	 * are accumulated.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   TaskValidation.passed((name: string) => (age: number) => ({ name, age })),
-	 *   TaskValidation.ap(validateName(name)),
-	 *   TaskValidation.ap(validateAge(age))
+	 *   Task.Validation.passed((name: string) => (age: number) => ({ name, age })),
+	 *   Task.Validation.ap(validateName(name)),
+	 *   Task.Validation.ap(validateAge(age))
 	 * )();
 	 * ```
 	 */
@@ -119,20 +119,20 @@ export namespace TaskValidation {
 			);
 
 	/**
-	 * Extracts a value from a TaskValidation by providing handlers for both cases.
+	 * Extracts a value from a Task.Validation by providing handlers for both cases.
 	 */
 	export const fold =
 		<E, A, B>(onFailed: (errors: NonEmptyArr<E>) => B, onPassed: (a: A) => B) => (data: TaskValidation<E, A>): Task<B> =>
 			Task.map(Validation.fold<E, A, B>(onFailed, onPassed))(data);
 
 	/**
-	 * Pattern matches on a TaskValidation, returning a Task of the result.
+	 * Pattern matches on a Task.Validation, returning a Task of the result.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(
 	 *   validateForm(input),
-	 *   TaskValidation.match({
+	 *   Task.Validation.match({
 	 *     passed: data => save(data),
 	 *     failed: errors => showErrors(errors)
 	 *   })
@@ -144,23 +144,23 @@ export namespace TaskValidation {
 		(data: TaskValidation<E, A>): Task<B> => Task.map(Validation.match<E, A, B>(cases))(data);
 
 	/**
-	 * Returns the success value or a default value if the TaskValidation is failed.
+	 * Returns the success value or a default value if the Task.Validation is failed.
 	 * The default can be a different type, widening the result to `Task<A | B>`.
 	 */
 	export const getOrElse = <E, A, B>(defaultValue: () => B) => (data: TaskValidation<E, A>): Task<A | B> =>
 		Task.map(Validation.getOrElse<E, A, B>(defaultValue))(data);
 
 	/**
-	 * Executes a side effect on the success value without changing the TaskValidation.
+	 * Executes a side effect on the success value without changing the Task.Validation.
 	 * Useful for logging or debugging.
 	 */
 	export const tap = <E, A>(f: (a: A) => void) => (data: TaskValidation<E, A>): TaskValidation<E, A> =>
 		Task.map(Validation.tap<E, A>(f))(data);
 
 	/**
-	 * Recovers from a Failed state by providing a fallback TaskValidation.
+	 * Recovers from a Failed state by providing a fallback Task.Validation.
 	 * The fallback receives the accumulated error list so callers can inspect which errors occurred.
-	 * The fallback can produce a different success type, widening the result to `TaskValidation<E, A | B>`.
+	 * The fallback can produce a different success type, widening the result to `Task.Validation<E, A | B>`.
 	 */
 	export const recover =
 		<E, A, B>(fallback: (errors: NonEmptyArr<E>) => TaskValidation<E, B>) =>
@@ -170,13 +170,13 @@ export namespace TaskValidation {
 			)(data);
 
 	/**
-	 * Runs two TaskValidations concurrently and combines their results into a tuple.
+	 * Runs two Task.Validations concurrently and combines their results into a tuple.
 	 * If both are Passed, returns Passed with both values. If either fails, accumulates
 	 * errors from both sides.
 	 *
 	 * @example
 	 * ```ts
-	 * await TaskValidation.product(
+	 * await Task.Validation.product(
 	 *   validateName(form.name),
 	 *   validateAge(form.age),
 	 * )(); // Passed(["Alice", 30]) or Failed([...errors])
@@ -193,13 +193,13 @@ export namespace TaskValidation {
 		);
 
 	/**
-	 * Runs all TaskValidations concurrently and collects results.
+	 * Runs all Task.Validations concurrently and collects results.
 	 * If all are Passed, returns Passed with all values as an array.
 	 * If any fail, returns Failed with all accumulated errors.
 	 *
 	 * @example
 	 * ```ts
-	 * await TaskValidation.productAll([
+	 * await Task.Validation.productAll([
 	 *   validateName(form.name),
 	 *   validateEmail(form.email),
 	 *   validateAge(form.age),
@@ -215,27 +215,27 @@ export namespace TaskValidation {
 		);
 
 	/**
-	 * Transforms all accumulated errors inside a TaskValidation.
+	 * Transforms all accumulated errors inside a Task.Validation.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   TaskValidation.failed("oops"),
-	 *   TaskValidation.mapError(e => e.toUpperCase())
-	 * ); // TaskValidation(Failed(["OOPS"]))
+	 *   Task.Validation.failed("oops"),
+	 *   Task.Validation.mapError(e => e.toUpperCase())
+	 * ); // Task.Validation(Failed(["OOPS"]))
 	 * ```
 	 */
 	export const mapError = <E, F, A>(f: (e: E) => F) => (data: TaskValidation<E, A>): TaskValidation<F, A> =>
 		Task.map(Validation.mapError<E, F, A>(f))(data);
 
 	/**
-	 * Executes a side effect on the accumulated errors without changing the TaskValidation.
+	 * Executes a side effect on the accumulated errors without changing the Task.Validation.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   TaskValidation.failed("invalid name"),
-	 *   TaskValidation.tapError(errs => logger.error(errs))
+	 *   Task.Validation.failed("invalid name"),
+	 *   Task.Validation.tapError(errs => logger.error(errs))
 	 * );
 	 * ```
 	 */
@@ -244,15 +244,15 @@ export namespace TaskValidation {
 			Task.map(Validation.tapError<E, A>(f))(data);
 
 	/**
-	 * Combines a record of TaskValidations into a single TaskValidation of a record.
+	 * Combines a record of Task.Validations into a single Task.Validation of a record.
 	 * Evaluates fields in parallel and accumulates all validation errors.
 	 *
 	 * @example
 	 * ```ts
-	 * TaskValidation.struct({
-	 *   name: TaskValidation.passed("Alice"),
-	 *   age: TaskValidation.passed(30)
-	 * }); // TaskValidation({ name: "Alice", age: 30 })
+	 * Task.Validation.struct({
+	 *   name: Task.Validation.passed("Alice"),
+	 *   age: Task.Validation.passed(30)
+	 * }); // Task.Validation({ name: "Alice", age: 30 })
 	 * ```
 	 */
 	export const struct = <E, R extends Record<string, any>>(
