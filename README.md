@@ -140,7 +140,7 @@ const cheapestByCategory = (items: RawItem[]) =>
     items,
     Arr.filterMap(normalise), // parse + drop unparseable prices in one pass
     Arr.sortBy((a, b) => a.price - b.price), // ascending price
-    Arr.groupBy((item) => item.category), // Record<string, NonEmptyList<Item>>
+    Arr.groupBy((item) => item.category), // Record<string, Arr.NonEmpty<Item>>
     Rec.map((group) => Arr.head(group)), // cheapest per category — Maybe<Item>
   );
 ```
@@ -342,11 +342,12 @@ Functions are composed using `pipe` and `flow`, which are enriched with high-lev
 helpers like `when`, `unless`, `either`, `safe`, and `async` to support robust, expressive
 pipelines.
 
-### Nominal branding, durations, and non-empty lists
+### Nominal branding, durations, and non-empty collections
 
-Compile-time nominal typing with zero runtime overhead is provided by `Brand`, `Duration` safely
-models and converts time durations (seconds, milliseconds, etc.), and `NonEmptyList` guarantees that
-a list is never empty, eliminating defensive array length checks.
+Compile-time nominal typing with zero runtime overhead is provided by `Brand`. `Duration` safely
+models and converts time durations (seconds, milliseconds, etc.). `Arr.NonEmpty` and `Rec.NonEmpty`
+guarantee that an array or record is never empty, eliminating defensive length/emptiness checks at
+runtime.
 
 Every utility in the library is benchmarked against its native equivalent. The data-last currying
 adds a small function call overhead, which is the expected cost of composability. For operations
