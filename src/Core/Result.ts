@@ -210,11 +210,11 @@ export namespace Result {
 		 *
 		 * @example
 		 * ```ts
-		 * pipe(null, Result.from.Nullable(() => "is null")); // Err("is null")
-		 * pipe(42, Result.from.Nullable(() => "is null"));   // Ok(42)
+		 * pipe(null, Result.from.nullable(() => "is null")); // Err("is null")
+		 * pipe(42, Result.from.nullable(() => "is null"));   // Ok(42)
 		 * ```
 		 */
-		export const Nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): Result<E, A> =>
+		export const nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): Result<E, A> =>
 			value === null || value === undefined ? err(onNull()) : ok(value);
 
 		/**
@@ -236,7 +236,7 @@ export namespace Result {
 		 *
 		 * @example
 		 * ```ts
-		 * const safeParse = Result.from.Throwable(
+		 * const safeParse = Result.from.throwable(
 		 *   (s: string) => JSON.parse(s),
 		 *   (e) => new Error(`Parse error: ${e}`)
 		 * );
@@ -245,7 +245,7 @@ export namespace Result {
 		 * safeParse('invalid');  // Err(Error)
 		 * ```
 		 */
-		export const Throwable =
+		export const throwable =
 			<Args extends readonly unknown[], A, E>(f: (...args: Args) => A, onError: (e: unknown) => E) =>
 			(...args: Args): Result<E, A> => {
 				try {

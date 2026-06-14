@@ -30,7 +30,10 @@ test("Task.Result.tryCatch returns Ok when Promise resolves", async () => {
 });
 
 test("Task.Result.tryCatch returns Err when Promise rejects", async () => {
-	const result = await Task.Result.tryCatch(() => Promise.reject(new Error("boom")), (e) => (e as Error).message)();
+	const result = await Task.Result.tryCatch(
+		() => Promise.reject(new Error("boom")),
+		(e: unknown) => (e as Error).message,
+	)();
 	expect(result).toStrictEqual({ kind: "Err", error: "boom" });
 });
 
@@ -435,11 +438,11 @@ test("Task.Result.ap propagates the AbortSignal down to both sides in parallel",
 
 	const left: Task.Result<string, (n: number) => number> = (signal) => {
 		signalLeft = signal;
-		return Deferred.fromPromise(Promise.resolve(Result.ok((n: number) => n * 3)));
+		return Deferred.from.Promise(Promise.resolve(Result.ok((n: number) => n * 3)));
 	};
 	const right: Task.Result<string, number> = (signal) => {
 		signalRight = signal;
-		return Deferred.fromPromise(Promise.resolve(Result.ok(4)));
+		return Deferred.from.Promise(Promise.resolve(Result.ok(4)));
 	};
 
 	const controller = new AbortController();
@@ -500,26 +503,26 @@ test("Task.Result.run passes the signal to the task", async () => {
 	let receivedSignal: AbortSignal | undefined;
 	const task: Task.Result<never, void> = (signal) => {
 		receivedSignal = signal;
-		return Deferred.fromPromise(Promise.resolve(Result.ok(undefined)));
+		return Deferred.from.Promise(Promise.resolve(Result.ok(undefined)));
 	};
 	await pipe(task, Task.Result.run(controller.signal));
 	expect(receivedSignal).toBe(controller.signal);
 });
 
-// --- fromNullable ---
+// --- from.nullable ---
 
-test("Task.Result.fromNullable returns Ok for non-null value", async () => {
-	const result = await Task.Result.from.Nullable(() => "is null")(42)();
+test("Task.Result.from.nullable returns Ok for non-null value", async () => {
+	const result = await Task.Result.from.nullable(() => "is null")(42)();
 	expect(result).toStrictEqual(Result.ok(42));
 });
 
-test("Task.Result.fromNullable returns Err for null", async () => {
-	const result = await Task.Result.from.Nullable(() => "is null")(null)();
+test("Task.Result.from.nullable returns Err for null", async () => {
+	const result = await Task.Result.from.nullable(() => "is null")(null)();
 	expect(result).toStrictEqual(Result.err("is null"));
 });
 
-test("Task.Result.fromNullable returns Err for undefined", async () => {
-	const result = await Task.Result.from.Nullable(() => "is null")(undefined)();
+test("Task.Result.from.nullable returns Err for undefined", async () => {
+	const result = await Task.Result.from.nullable(() => "is null")(undefined)();
 	expect(result).toStrictEqual(Result.err("is null"));
 });
 
@@ -550,13 +553,13 @@ test("Task.Result.fromResult returns Err for Err", async () => {
 // --- fromThrowable ---
 
 test("Task.Result.fromThrowable returns Ok when it succeeds", async () => {
-	const parse = Task.Result.from.Throwable((s: string) => Promise.resolve(JSON.parse(s)), () => "parse error");
+	const parse = Task.Result.from.throwable((s: string) => Promise.resolve(JSON.parse(s)), () => "parse error");
 	const result = await parse('{"a":1}')();
 	expect(result).toStrictEqual(Result.ok({ a: 1 }));
 });
 
 test("Task.Result.fromThrowable returns Err when it throws", async () => {
-	const fetch = Task.Result.from.Throwable(
+	const fetch = Task.Result.from.throwable(
 		(_url: string) => Promise.reject(new Error("network error")),
 		(e) => (e as Error).message,
 	);
@@ -632,11 +635,11 @@ test("Task.Result.struct propagates AbortSignal and executes in parallel", async
 
 	const taskA: Task.Result<string, number> = (signal) => {
 		signalA = signal;
-		return Deferred.fromPromise(Promise.resolve(Result.ok(1)));
+		return Deferred.from.Promise(Promise.resolve(Result.ok(1)));
 	};
 	const taskB: Task.Result<string, string> = (signal) => {
 		signalB = signal;
-		return Deferred.fromPromise(Promise.resolve(Result.ok("hello")));
+		return Deferred.from.Promise(Promise.resolve(Result.ok("hello")));
 	};
 
 	const controller = new AbortController();

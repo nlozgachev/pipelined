@@ -34,13 +34,13 @@ import { Dict } from "@nlozgachev/pipelined/data";
 const empty = Dict.empty<string, number>();
 
 // Lift an array of key-value pairs (supports any key type)
-const byId = Dict.fromEntries([
+const byId = Dict.from.entries([
   ["usr_1", { name: "Alice", role: "admin" }],
   ["usr_2", { name: "Bob", role: "member" }],
 ]);
 
 // Convert a plain object
-const scores = Dict.fromRecord({ alice: 85, bob: 92, carol: 74 });
+const scores = Dict.from.Record({ alice: 85, bob: 92, carol: 74 });
 ```
 
 `Dict.singleton(key, value)` is also available to quickly construct a typed dictionary holding
@@ -56,7 +56,7 @@ Instead of returning nullable values, `Dict.lookup` explicitly yields a `Maybe` 
 import { pipe } from "@nlozgachev/pipelined/composition";
 import { Maybe } from "@nlozgachev/pipelined/core";
 
-const config = Dict.fromRecord({ timeout: 5000, retries: 3 });
+const config = Dict.from.Record({ timeout: 5000, retries: 3 });
 
 pipe(config, Dict.lookup("timeout")); // Some(5000)
 pipe(config, Dict.lookup("missing")); // None
@@ -85,7 +85,7 @@ If the transformation depends on the key as well as the value, `Dict.mapWithKey`
 callback:
 
 ```ts
-const userDetails = Dict.fromRecord({ usr_1: "admin", usr_2: "member" });
+const userDetails = Dict.from.Record({ usr_1: "admin", usr_2: "member" });
 
 const labels = pipe(
   userDetails,
@@ -106,7 +106,7 @@ const passing = pipe(scores, Dict.filter((score) => score >= 75));
 
 // Remove entries where the key starts with an internal prefix:
 const publicScores = pipe(
-  Dict.fromRecord({ test_alice: 99, bob: 92 }),
+  Dict.from.Record({ test_alice: 99, bob: 92 }),
   Dict.filterWithKey((key, _score) => !key.startsWith("test_")),
 ); // Map { "bob" => 92 }
 ```
@@ -124,7 +124,7 @@ const parseNumeric = (s: string): Maybe<number> => {
 };
 
 const parsed = pipe(
-  Dict.fromRecord({ val_a: "42", val_b: "invalid_text", val_c: "100" }),
+  Dict.from.Record({ val_a: "42", val_b: "invalid_text", val_c: "100" }),
   Dict.filterMap(parseNumeric),
 ); // Map { "val_a" => 42, "val_c" => 100 }
 ```
@@ -137,7 +137,7 @@ Unlike native `Map` operations, modifying a `Dict` never alters the original ins
 modification returns a fresh, structurally copied dictionary:
 
 ```ts
-const baseStats = Dict.fromRecord({ visits: 100, likes: 25 });
+const baseStats = Dict.from.Record({ visits: 100, likes: 25 });
 
 // Inserting a new key-value pair
 const expanded = pipe(baseStats, Dict.insert("shares", 5));
@@ -175,8 +175,8 @@ const initialStats = pipe(baseStats, Dict.upsert("shares", incrementCounter));
   dictionary.
 
 ```ts
-const defaults = Dict.fromRecord({ timeout: 3000, retries: 3 });
-const overrides = Dict.fromRecord({ timeout: 10000 });
+const defaults = Dict.from.Record({ timeout: 3000, retries: 3 });
+const overrides = Dict.from.Record({ timeout: 10000 });
 
 const merged = pipe(defaults, Dict.union(overrides));
 // Map { "timeout" => 10000, "retries" => 3 }

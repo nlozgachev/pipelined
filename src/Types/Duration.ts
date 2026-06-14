@@ -1,3 +1,4 @@
+/* eslint-disable no-shadow */
 import { Brand } from "#types";
 
 /**
@@ -10,7 +11,7 @@ import { Brand } from "#types";
  * const twoSeconds = Duration.seconds(2);
  * const total = pipe(halfSecond, Duration.add(twoSeconds));
  *
- * Duration.toSeconds(total); // 2.5
+ * Duration.to.seconds(total); // 2.5
  * ```
  */
 export type Duration = Brand<"Duration", number>;
@@ -43,30 +44,33 @@ export namespace Duration {
 	 */
 	export const days = (d: number): Duration => wrap(d * 24 * 60 * 60 * 1000);
 
-	/**
-	 * Converts a Duration back to raw milliseconds.
-	 */
-	export const toMilliseconds = (d: Duration): number => Brand.unwrap(d);
+	// --- to ---
+	export namespace to {
+		/**
+		 * Converts a Duration back to raw milliseconds.
+		 */
+		export const milliseconds = (d: Duration): number => Brand.unwrap(d);
 
-	/**
-	 * Converts a Duration to seconds.
-	 */
-	export const toSeconds = (d: Duration): number => Brand.unwrap(d) / 1000;
+		/**
+		 * Converts a Duration to seconds.
+		 */
+		export const seconds = (d: Duration): number => Brand.unwrap(d) / 1000;
 
-	/**
-	 * Converts a Duration to minutes.
-	 */
-	export const toMinutes = (d: Duration): number => Brand.unwrap(d) / (60 * 1000);
+		/**
+		 * Converts a Duration to minutes.
+		 */
+		export const minutes = (d: Duration): number => Brand.unwrap(d) / (60 * 1000);
 
-	/**
-	 * Converts a Duration to hours.
-	 */
-	export const toHours = (d: Duration): number => Brand.unwrap(d) / (60 * 60 * 1000);
+		/**
+		 * Converts a Duration to hours.
+		 */
+		export const hours = (d: Duration): number => Brand.unwrap(d) / (60 * 60 * 1000);
 
-	/**
-	 * Converts a Duration to days.
-	 */
-	export const toDays = (d: Duration): number => Brand.unwrap(d) / (24 * 60 * 60 * 1000);
+		/**
+		 * Converts a Duration to days.
+		 */
+		export const days = (d: Duration): number => Brand.unwrap(d) / (24 * 60 * 60 * 1000);
+	}
 
 	/**
 	 * Adds two Durations together.

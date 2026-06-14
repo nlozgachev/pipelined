@@ -11,9 +11,9 @@ test("isNonEmptyArr - returns false for empty array", () => {
 	expect(isNonEmptyArr([])).toBe(false);
 });
 
-test("Arr.map on NonEmptyArr - maps values type-safely", () => {
+test("Arr.NonEmpty.map on NonEmptyArr - maps values type-safely", () => {
 	const list: NonEmptyArr<number> = [1, 2, 3];
-	const result: NonEmptyArr<number> = Arr.map((n: number) => n * 2)(list);
+	const result: NonEmptyArr<number> = Arr.NonEmpty.map((n: number) => n * 2)(list);
 	expect(result).toStrictEqual([2, 4, 6]);
 });
 
@@ -22,13 +22,13 @@ test("Arr.NonEmpty.singleton - creates a single-element list", () => {
 	expect(result).toStrictEqual([42]);
 });
 
-test("Arr.NonEmpty.fromArray - returns Some for non-empty array", () => {
-	const result = Arr.NonEmpty.fromArray([1, 2]);
+test("Arr.NonEmpty.from.Array - returns Some for non-empty array", () => {
+	const result = Arr.NonEmpty.from.Array([1, 2]);
 	expect(result).toStrictEqual(Maybe.some([1, 2]));
 });
 
-test("Arr.NonEmpty.fromArray - returns None for empty array", () => {
-	const result = Arr.NonEmpty.fromArray([]);
+test("Arr.NonEmpty.from.Array - returns None for empty array", () => {
+	const result = Arr.NonEmpty.from.Array([]);
 	expect(result).toStrictEqual(Maybe.none());
 });
 
@@ -47,9 +47,9 @@ test("Arr.NonEmpty.tail - returns elements after the first", () => {
 	expect(Arr.NonEmpty.tail(list)).toStrictEqual([2, 3]);
 });
 
-test("Arr.concat on NonEmptyArr - concatenates list with array", () => {
+test("Arr.NonEmpty.concat on NonEmptyArr - concatenates list with array", () => {
 	const list: NonEmptyArr<number> = [1, 2];
-	const result: NonEmptyArr<number> = Arr.concat([3, 4])(list);
+	const result: NonEmptyArr<number> = Arr.NonEmpty.concat([3, 4])(list);
 	expect(result).toStrictEqual([1, 2, 3, 4]);
 });
 

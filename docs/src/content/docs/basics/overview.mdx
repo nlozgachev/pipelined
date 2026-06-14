@@ -3,7 +3,7 @@ title: Designing with states
 description: The situations every TypeScript application encounters, and the data structures that name them.
 ---
 
-TypeScript is an exceptional language for describing the shape of data, but it leaves a notable gap when it comes to describing the *states* our applications are actually in. 
+TypeScript is an exceptional language for describing the shape of data, but it leaves a notable gap when it comes to describing the *states* our applications are actually in.
 
 We are provided with excellent low-level primitives: `null` and `undefined` for absence, `try/catch` blocks for errors, and `Promise` for asynchronous operations. These are mechanisms, not models. Because the language does not provide first-class structures to carry the semantic meaning of these states, every project is forced to invent its own ad-hoc conventions.
 
@@ -13,7 +13,7 @@ We are provided with excellent low-level primitives: `null` and `undefined` for 
 
 ## A value that may not be present
 
-We spend a significant amount of our day querying databases, searching maps, and checking configurations for values that might not be there. In standard TypeScript, we represent this with `T | null` or `T | undefined`. 
+We spend a significant amount of our day querying databases, searching maps, and checking configurations for values that might not be there. In standard TypeScript, we represent this with `T | null` or `T | undefined`.
 
 This is easy to write, but it forces the caller of a function to immediately stop and write conditional logic. If they forget, strict mode may warn them, but the checking logic itself remains intertwined with the happy path of the program.
 
@@ -25,7 +25,7 @@ import { Maybe } from "@nlozgachev/pipelined/core";
 
 const city = pipe(
   users.get(userId),                 // User | undefined
-  Maybe.from.Nullable,                // Maybe<User>
+  Maybe.from.nullable,                // Maybe<User>
   Maybe.map((u) => u.address),       // Maybe<Address>
   Maybe.map((a) => a.city),          // Maybe<string>
   Maybe.getOrElse(() => "Unknown"),  // string
@@ -48,7 +48,7 @@ import { Result } from "@nlozgachev/pipelined/core";
 
 const parseId = (raw: string): Result<string, number> => {
   const n = Number(raw);
-  return isNaN(n) ? Result.err("Input is not a valid number") : Result.ok(n);
+  return isNaN(n) ? Result.make.err("Input is not a valid number") : Result.make.ok(n);
 };
 
 const route = pipe(
@@ -62,7 +62,7 @@ const route = pipe(
 
 ## Collecting multiple failures
 
-When we validate a complex data structure—like a registration form—we often want to present the user with a list of all errors. 
+When we validate a complex data structure—like a registration form—we often want to present the user with a list of all errors.
 
 If we use a standard `Result` or `try/catch` pattern, the program short-circuits at the very first failure. This is correct for sequential business logic, but frustrating for user interfaces where displaying only one error at a time forces a slow, trial-and-error cycle of form submission.
 
@@ -72,10 +72,10 @@ If we use a standard `Result` or `try/catch` pattern, the program short-circuits
 import { Validation } from "@nlozgachev/pipelined/core";
 
 const validateName = (s: string): Validation<string, string> =>
-  s.trim() ? Validation.passed(s.trim()) : Validation.failed("Name is required");
+  s.trim() ? Validation.make.passed(s.trim()) : Validation.make.failed("Name is required");
 
 const validateAge = (n: number): Validation<string, number> =>
-  n >= 0 ? Validation.passed(n) : Validation.failed("Age must be non-negative");
+  n >= 0 ? Validation.make.passed(n) : Validation.make.failed("Age must be non-negative");
 ```
 
 If both fields are invalid, both validation errors are gathered and returned together, enabling clean, comprehensive user feedback.
@@ -136,6 +136,21 @@ const renderUI = RemoteData.match({
   success:  (user) => renderProfile(user),
 });
 ```
+
+---
+
+## Unified Drawer Architecture
+
+To keep the root namespaces of each module clean, predictable, and focused on operational combinators (like `map`, `chain`, and `filter`), **pipelined** organizes instantiation, serialization, and inspection under four standardized "drawer" namespaces:
+
+| Drawer | Purpose | Examples |
+| :--- | :--- | :--- |
+| **`make.*`** | Instantiates specific variant states of a sum type. | `Result.make.ok(42)`<br/>`Maybe.make.some(5)` |
+| **`from.*`** | Instantiates a type from another format, component, or nullable representation. | `Maybe.from.nullable(val)`<br/>`Tuple.from.pair(a, b)` |
+| **`to.*`** | Converts/serializes a type back to another format or language primitive. | `Maybe.to.nullable(maybe)`<br/>`Result.to.Maybe(result)` |
+| **`is.*`** | Inspects states, runs predicates, or performs type guard checks. | `Result.is.ok(result)`<br/>`Arr.is.empty(array)` |
+
+By separating these creation and check concerns into drawers, you always know where to find constructors and serializations without cluttering your IDE autocompletion for day-to-day mapping and piping logic.
 
 ---
 

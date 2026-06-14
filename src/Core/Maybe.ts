@@ -1,3 +1,4 @@
+/* eslint-disable no-shadow-restricted-names */
 import { type Result, Result as CoreResult } from "#core";
 import { WithKind, WithValue } from "#internal";
 
@@ -49,12 +50,12 @@ export namespace Maybe {
 		/**
 		 * Extracts the value from a Maybe, returning null if None.
 		 */
-		export const Nullable = <A>(data: Maybe<A>): A | null => isSome(data) ? data.value : null;
+		export const nullable = <A>(data: Maybe<A>): A | null => isSome(data) ? data.value : null;
 
 		/**
 		 * Extracts the value from a Maybe, returning undefined if None.
 		 */
-		export const Undefined = <A>(data: Maybe<A>): A | undefined => isSome(data) ? data.value : undefined;
+		export const undefined = <A>(data: Maybe<A>): A | undefined => isSome(data) ? data.value : globalThis.undefined;
 
 		/**
 		 * Converts a Maybe to a Result.
@@ -85,11 +86,11 @@ export namespace Maybe {
 		 *
 		 * @example
 		 * ```ts
-		 * Maybe.from.Nullable(null); // None
-		 * Maybe.from.Nullable(42); // Some(42)
+		 * Maybe.from.nullable(null); // None
+		 * Maybe.from.nullable(42); // Some(42)
 		 * ```
 		 */
-		export const Nullable = <A>(value: A | null | undefined): Maybe<A> =>
+		export const nullable = <A>(value: A | null | undefined): Maybe<A> =>
 			value === null || value === undefined ? none() : some(value);
 
 		/**

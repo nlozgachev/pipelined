@@ -287,7 +287,7 @@ arrays, you can use the nested `Arr.NonEmpty` namespace.
 - **`reduce`**: Reduces the array from the left without requiring an initial seed value, since there
   is always at least one element.
 - **`singleton`**: Wraps a single value in an `Arr.NonEmpty`.
-- **`fromArray`**: Attempts to lift a standard, potentially empty array into an `Arr.NonEmpty`,
+- **`from.Array`**: Attempts to lift a standard, potentially empty array into an `Arr.NonEmpty`,
   returning `Some<Arr.NonEmpty>` if elements are present, and `None` otherwise.
 
 ```ts
@@ -299,7 +299,7 @@ const first: number = Arr.NonEmpty.head(list); // 10 (returns number directly, n
 const sum: number = Arr.NonEmpty.reduce((a, b) => a + b)(list); // 60 (no initial value required)
 
 const singletonList = Arr.NonEmpty.singleton("value"); // Arr.NonEmpty<string>
-const maybeNonEmpty = Arr.NonEmpty.fromArray([1, 2]); // Some([1, 2])
+const maybeNonEmpty = Arr.NonEmpty.from.Array([1, 2]); // Some([1, 2])
 ```
 
 For more details on when to enforce non-empty guarantees at the boundaries of your systems, see the

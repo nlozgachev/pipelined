@@ -209,10 +209,10 @@ test("pipe.async - resolves hybrid sync and async chains", async () => {
 });
 
 test("pipe.async - resolves Deferred values and functions returning Deferred", async () => {
-	const val = Deferred.fromPromise(Promise.resolve(5));
+	const val = Deferred.from.Promise(Promise.resolve(5));
 	const result = await pipe.async(
 		val,
-		(n: number) => Deferred.fromPromise(Promise.resolve(n * 2)),
+		(n: number) => Deferred.from.Promise(Promise.resolve(n * 2)),
 		(n: number) => n + 1,
 	);
 	expect(result).toBe(11);

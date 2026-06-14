@@ -335,14 +335,14 @@ At boundaries, you can map an `Outcome` back to other library primitives.
 ```ts
 const resultOutcome = pipe(
   outcome,
-  Op.toResult(() => new ApiError("Request was cancelled")),
+  Op.to.Result(() => new ApiError("Request was cancelled")),
 ); // Result<ApiError, A>
 ```
 
 `toMaybe` maps `Ok` to `Some` and maps both `Err` and `Nil` states to `None`:
 
 ```ts
-const maybeOutcome = Op.toMaybe(outcome); // Some(A) or None
+const maybeOutcome = Op.to.Maybe(outcome); // Some(A) or None
 ```
 
 To wire the success of one manager directly to the invocation of another, use `Op.wire`:

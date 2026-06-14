@@ -341,7 +341,7 @@ test("tap.async - works with Deferred", async () => {
 	let resolved = false;
 	const deferredFn = (_n: number) => {
 		const p = new Promise<void>((resolve) => setTimeout(resolve, 10));
-		return Deferred.fromPromise(p.then(() => {
+		return Deferred.from.Promise(p.then(() => {
 			resolved = true;
 		}));
 	};
@@ -360,7 +360,7 @@ test("tap.time - times Deferred function and triggers onFinish asynchronously", 
 	let finishedDuration: any = null;
 	const deferredFn = (_n: number) => {
 		const p = new Promise<void>((resolve) => setTimeout(resolve, 10));
-		return Deferred.fromPromise(p);
+		return Deferred.from.Promise(p);
 	};
 
 	const res = pipe(

@@ -1,3 +1,4 @@
+/* eslint-disable no-use-before-define */
 import { Deferred, Equality, Ordering } from "#core";
 import { isNonEmptyArr, type NonEmptyArr } from "#internal";
 import { Maybe as CoreMaybe } from "../Core/Maybe.ts";
@@ -101,11 +102,11 @@ namespace ArrTaskResult {
 	 */
 	export const traverse =
 		<E, A, B>(f: (a: A) => CoreTask<CoreResult<E, B>>) => (data: readonly A[]): CoreTask<CoreResult<E, readonly B[]>> =>
-			CoreTask.from(async () => {
+			CoreTask.from.Promise(async () => {
 				const result: B[] = [];
 				for (const a of data) {
 					// eslint-disable-next-line no-await-in-loop
-					const r = await Deferred.toPromise(f(a)());
+					const r = await Deferred.to.Promise(f(a)());
 					if (CoreResult.isErr(r)) { return r; }
 					result.push(r.value);
 				}
@@ -133,7 +134,7 @@ namespace ArrTask {
 	 * ```
 	 */
 	export const traverse = <A, B>(f: (a: A) => CoreTask<B>) => (data: readonly A[]): CoreTask<readonly B[]> =>
-		CoreTask.from(() => Promise.all(data.map((a) => Deferred.toPromise(f(a)()))));
+		CoreTask.from.Promise(() => Promise.all(data.map((a) => Deferred.to.Promise(f(a)()))));
 
 	/**
 	 * Collects an array of Tasks into a Task of array. Runs in parallel.
@@ -155,17 +156,20 @@ namespace ArrNonEmpty {
 	 */
 	export const singleton = <A>(value: A): NonEmptyArr<A> => [value];
 
-	/**
-	 * Returns Some if the array is non-empty, None otherwise.
-	 *
-	 * @example
-	 * ```ts
-	 * Arr.NonEmpty.fromArray([1, 2]); // Some([1, 2])
-	 * Arr.NonEmpty.fromArray([]); // None
-	 * ```
-	 */
-	export const fromArray = <A>(data: readonly A[]): CoreMaybe<NonEmptyArr<A>> =>
-		isNonEmptyArr(data) ? CoreMaybe.some(data) : CoreMaybe.none();
+	// --- from ---
+	export namespace from {
+		/**
+		 * Returns Some if the array is non-empty, None otherwise.
+		 *
+		 * @example
+		 * ```ts
+		 * Arr.NonEmpty.from.Array([1, 2]); // Some([1, 2])
+		 * Arr.NonEmpty.from.Array([]); // None
+		 * ```
+		 */
+		export const Array = <A>(data: readonly A[]): CoreMaybe<NonEmptyArr<A>> =>
+			isNonEmptyArr(data) ? CoreMaybe.some(data) : CoreMaybe.none();
+	}
 
 	/**
 	 * Returns the first element of a NonEmptyArr.
@@ -206,6 +210,60 @@ namespace ArrNonEmpty {
 	 * ```
 	 */
 	export const reduce = <A>(f: (acc: A, a: A) => A) => (data: NonEmptyArr<A>): A => data.reduce(f);
+
+	/**
+	 * Transforms each element of a NonEmptyArr.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Arr.NonEmpty.singleton(1), Arr.NonEmpty.map(n => n * 2)); // [2]
+	 * ```
+	 */
+	export const map = <A, B>(f: (a: A) => B) => (data: NonEmptyArr<A>): NonEmptyArr<B> =>
+		Arr.map(f)(data) as unknown as NonEmptyArr<B>;
+
+	/**
+	 * Transforms each element of a NonEmptyArr, also receiving the index.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Arr.NonEmpty.singleton("a"), Arr.NonEmpty.mapWithIndex((i, s) => `${i}:${s}`)); // ["0:a"]
+	 * ```
+	 */
+	export const mapWithIndex = <A, B>(f: (i: number, a: A) => B) => (data: NonEmptyArr<A>): NonEmptyArr<B> =>
+		Arr.mapWithIndex(f)(data) as unknown as NonEmptyArr<B>;
+
+	/**
+	 * Inserts a separator between every element of a NonEmptyArr.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe([1, 2] as Arr.NonEmpty<number>, Arr.NonEmpty.intersperse(0)); // [1, 0, 2]
+	 * ```
+	 */
+	export const intersperse = <A>(sep: A) => (data: NonEmptyArr<A>): NonEmptyArr<A> =>
+		Arr.intersperse(sep)(data) as unknown as NonEmptyArr<A>;
+
+	/**
+	 * Concatenates a NonEmptyArr with a standard array.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Arr.NonEmpty.singleton(1), Arr.NonEmpty.concat([2, 3])); // [1, 2, 3]
+	 * ```
+	 */
+	export const concat = <A>(other: readonly A[]) => (data: NonEmptyArr<A>): NonEmptyArr<A> =>
+		Arr.concat(other)(data) as unknown as NonEmptyArr<A>;
+
+	/**
+	 * Reverses a NonEmptyArr.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Arr.NonEmpty.singleton(1), Arr.NonEmpty.reverse); // [1]
+	 * ```
+	 */
+	export const reverse = <A>(data: NonEmptyArr<A>): NonEmptyArr<A> => Arr.reverse(data) as unknown as NonEmptyArr<A>;
 }
 
 /**
@@ -338,13 +396,12 @@ export namespace Arr {
 	 * pipe([1, 2, 3], Arr.map(n => n * 2)); // [2, 4, 6]
 	 * ```
 	 */
-	export const map: <A, B>(f: (a: A) => B) => { (data: NonEmpty<A>): NonEmpty<B>; (data: readonly A[]): readonly B[]; } =
-		<A, B>(f: (a: A) => B) => (data: readonly A[]): any => {
-			const n = data.length;
-			const result = new Array<B>(n);
-			for (let i = 0; i < n; i++) { result[i] = f(data[i]); }
-			return result;
-		};
+	export const map = <A, B>(f: (a: A) => B) => (data: readonly A[]): readonly B[] => {
+		const n = data.length;
+		const result = new Array<B>(n);
+		for (let i = 0; i < n; i++) { result[i] = f(data[i]); }
+		return result;
+	};
 
 	/**
 	 * Transforms each element using both its value and its zero-based index.
@@ -357,15 +414,12 @@ export namespace Arr {
 	 * ); // [{ position: 1, value: "a" }, { position: 2, value: "b" }, { position: 3, value: "c" }]
 	 * ```
 	 */
-	export const mapWithIndex: <A, B>(
-		f: (i: number, a: A) => B,
-	) => { (data: NonEmpty<A>): NonEmpty<B>; (data: readonly A[]): readonly B[]; } =
-		<A, B>(f: (i: number, a: A) => B) => (data: readonly A[]): any => {
-			const n = data.length;
-			const result = new Array<B>(n);
-			for (let i = 0; i < n; i++) { result[i] = f(i, data[i]); }
-			return result;
-		};
+	export const mapWithIndex = <A, B>(f: (i: number, a: A) => B) => (data: readonly A[]): readonly B[] => {
+		const n = data.length;
+		const result = new Array<B>(n);
+		for (let i = 0; i < n; i++) { result[i] = f(i, data[i]); }
+		return result;
+	};
 
 	/**
 	 * Filters elements that satisfy the predicate.
@@ -653,29 +707,24 @@ export namespace Arr {
 	 * pipe([1, 2, 3], Arr.intersperse(0)); // [1, 0, 2, 0, 3]
 	 * ```
 	 */
-	export const intersperse: <A>(sep: A) => { (data: NonEmpty<A>): NonEmpty<A>; (data: readonly A[]): readonly A[]; } =
-		<A>(sep: A) => (data: readonly A[]): any => {
-			if (data.length <= 1) { return data; }
-			const result: A[] = [data[0]];
-			for (let i = 1; i < data.length; i++) {
-				result.push(sep, data[i]);
-			}
-			return result;
-		};
+	export const intersperse = <A>(sep: A) => (data: readonly A[]): readonly A[] => {
+		if (data.length <= 1) { return data; }
+		const result: A[] = [data[0]];
+		for (let i = 1; i < data.length; i++) {
+			result.push(sep, data[i]);
+		}
+		return result;
+	};
 
 	/**
-	 * Concatenates a standard array or NonEmptyArr with another array.
-	 * If the first array is a NonEmptyArr, the result is guaranteed to be a NonEmptyArr.
+	 * Concatenates a standard array with another array.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe([1, 2], Arr.concat([3, 4])); // [1, 2, 3, 4]
 	 * ```
 	 */
-	export const concat: <A>(
-		other: readonly A[],
-	) => { (data: NonEmpty<A>): NonEmpty<A>; (data: readonly A[]): readonly A[]; } =
-		<A>(other: readonly A[]) => (data: readonly A[]): any => [...data, ...other];
+	export const concat = <A>(other: readonly A[]) => (data: readonly A[]): readonly A[] => [...data, ...other];
 
 	/**
 	 * Splits an array into chunks of the given size.
@@ -821,9 +870,7 @@ export namespace Arr {
 	 * Arr.reverse([1, 2, 3]); // [3, 2, 1]
 	 * ```
 	 */
-	export const reverse: { <A>(data: NonEmpty<A>): NonEmpty<A>; <A>(data: readonly A[]): readonly A[]; } = <A>(
-		data: readonly A[],
-	): any => [...data].toReversed();
+	export const reverse = <A>(data: readonly A[]): readonly A[] => [...data].toReversed();
 
 	/**
 	 * Returns a new array with `item` inserted before the element at `index`.

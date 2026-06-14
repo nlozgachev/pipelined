@@ -147,13 +147,13 @@ test("Tuple.swap works with homogeneous pairs", () => {
 // toArray
 // ---------------------------------------------------------------------------
 
-test("Tuple.toArray returns both elements in order", () => {
-	expect(Tuple.toArray(Tuple.make("hello", 42))).toStrictEqual(["hello", 42]);
+test("Tuple.to.Array returns both elements in order", () => {
+	expect(Tuple.to.Array(Tuple.make("hello", 42))).toStrictEqual(["hello", 42]);
 });
 
-test("Tuple.toArray returns a new array (not the original tuple)", () => {
+test("Tuple.to.Array returns a new array (not the original tuple)", () => {
 	const t = Tuple.make(1, 2);
-	const arr = Tuple.toArray(t);
+	const arr = Tuple.to.Array(t);
 	expect(arr).not.toBe(t as unknown);
 });
 

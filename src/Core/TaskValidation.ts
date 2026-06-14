@@ -62,7 +62,7 @@ export namespace TaskValidation {
 		 * If the value is null or undefined, returns Failed with the error from onNull.
 		 * Otherwise, returns Passed.
 		 */
-		export const Nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskValidation<E, A> =>
+		export const nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskValidation<E, A> =>
 			CoreTask.resolve(
 				value === null || value === undefined ? CoreValidation.failed(onNull()) : CoreValidation.passed(value),
 			);
@@ -100,7 +100,7 @@ export namespace TaskValidation {
 		f: (signal?: AbortSignal) => Thenable<A>,
 		onError: (e: unknown) => E,
 	): TaskValidation<E, A> =>
-		CoreTask.from((signal) =>
+		CoreTask.from.Promise((signal) =>
 			Promise.resolve(f(signal)).then(CoreValidation.passed<E, A>).catch((error) => CoreValidation.failed(onError(error)))
 		);
 
@@ -126,8 +126,8 @@ export namespace TaskValidation {
 	 */
 	export const ap =
 		<E, A>(arg: TaskValidation<E, A>) => <B>(data: TaskValidation<E, (a: A) => B>): TaskValidation<E, B> =>
-			CoreTask.from((signal) =>
-				Promise.all([Deferred.toPromise(data(signal)), Deferred.toPromise(arg(signal))]).then(([vf, va]) =>
+			CoreTask.from.Promise((signal) =>
+				Promise.all([Deferred.to.Promise(data(signal)), Deferred.to.Promise(arg(signal))]).then(([vf, va]) =>
 					CoreValidation.ap(va)(vf)
 				)
 			);
@@ -202,8 +202,8 @@ export namespace TaskValidation {
 		first: TaskValidation<E, A>,
 		second: TaskValidation<E, B>,
 	): TaskValidation<E, readonly [A, B]> =>
-		CoreTask.from((signal) =>
-			Promise.all([Deferred.toPromise(first(signal)), Deferred.toPromise(second(signal))]).then(([va, vb]) =>
+		CoreTask.from.Promise((signal) =>
+			Promise.all([Deferred.to.Promise(first(signal)), Deferred.to.Promise(second(signal))]).then(([va, vb]) =>
 				CoreValidation.product(va, vb)
 			)
 		);
@@ -223,8 +223,8 @@ export namespace TaskValidation {
 	 * ```
 	 */
 	export const productAll = <E, A>(data: NonEmptyArr<TaskValidation<E, A>>): TaskValidation<E, readonly A[]> =>
-		CoreTask.from((signal) =>
-			Promise.all(data.map((t) => Deferred.toPromise(t(signal)))).then((results) => {
+		CoreTask.from.Promise((signal) =>
+			Promise.all(data.map((t) => Deferred.to.Promise(t(signal)))).then((results) => {
 				const [first, ...rest] = results;
 				return CoreValidation.productAll([first!, ...rest]);
 			})
@@ -274,9 +274,9 @@ export namespace TaskValidation {
 	export const struct = <E, R extends Record<string, any>>(
 		fields: { [K in keyof R]: TaskValidation<E, R[K]>; },
 	): TaskValidation<E, R> =>
-		CoreTask.from((signal) => {
+		CoreTask.from.Promise((signal) => {
 			const keys = Object.keys(fields);
-			const promises = keys.map((key) => Deferred.toPromise(fields[key](signal)));
+			const promises = keys.map((key) => Deferred.to.Promise(fields[key](signal)));
 			return Promise.all(promises).then((results) => {
 				const record = {} as R;
 				const errors: E[] = [];

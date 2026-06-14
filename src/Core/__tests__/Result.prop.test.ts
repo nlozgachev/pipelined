@@ -130,16 +130,16 @@ test("Result.recover — identity on Ok", () => {
 });
 
 // ---------------------------------------------------------------------------
-// fromPredicate
+// from.Predicate
 // ---------------------------------------------------------------------------
 
-test("Result.fromPredicate — always-true gives Ok with original value", () => {
+test("Result.from.Predicate — always-true gives Ok with original value", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
 		expect(Result.from.Predicate((_: number) => true, () => "bad")(n)).toStrictEqual(Result.ok(n));
 	}));
 });
 
-test("Result.fromPredicate — always-false gives Error via onFalse", () => {
+test("Result.from.Predicate — always-false gives Error via onFalse", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
 		expect(Result.from.Predicate((_: number) => false, (x) => `bad:${x}`)(n)).toStrictEqual(Result.err(`bad:${n}`));
 	}));

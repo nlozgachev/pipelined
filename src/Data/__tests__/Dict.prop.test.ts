@@ -8,7 +8,7 @@ import { expect, test } from "vitest";
 // ---------------------------------------------------------------------------
 
 const arbDict = fc.array(fc.tuple(fc.string({ minLength: 1 }), fc.integer()), { maxLength: 8 }).map((pairs) =>
-	Dict.fromEntries(pairs)
+	Dict.from.entries(pairs)
 );
 
 // ---------------------------------------------------------------------------
@@ -17,7 +17,7 @@ const arbDict = fc.array(fc.tuple(fc.string({ minLength: 1 }), fc.integer()), { 
 
 test("dict.fromEntries → Dict.entries — every entry is found via lookup", () => {
 	fc.assert(fc.property(fc.array(fc.tuple(fc.string({ minLength: 1 }), fc.integer()), { maxLength: 8 }), (pairs) => {
-		const m = Dict.fromEntries(pairs);
+		const m = Dict.from.entries(pairs);
 		const entries = Dict.entries(m);
 		entries.forEach(([k, v]) => {
 			expect(Dict.lookup(k)(m)).toStrictEqual(Maybe.some(v));

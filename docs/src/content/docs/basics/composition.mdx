@@ -414,7 +414,7 @@ pipe(
   data,
   tap.time(asyncApiFetch, {
     onFinish: (duration) => {
-      metrics.send("api.duration_ms", Duration.toMilliseconds(duration));
+      metrics.send("api.duration_ms", Duration.to.milliseconds(duration));
     }
   })
 );

@@ -12,32 +12,32 @@ const [variedData10k] = fc.sample(
 	fc.array(fc.integer({ min: 0, max: 20_000 }), { minLength: 10_000, maxLength: 10_000 }),
 	1,
 );
-const variedSet100 = Uniq.fromArray(variedData100);
-const variedSet10k = Uniq.fromArray(variedData10k);
+const variedSet100 = Uniq.from.Array(variedData100);
+const variedSet10k = Uniq.from.Array(variedData10k);
 
-const set100 = Uniq.fromArray(data100);
-const set10k = Uniq.fromArray(data10k);
-const setA100 = Uniq.fromArray(Array.from({ length: 50 }, (_, i) => i));
-const setB100 = Uniq.fromArray(Array.from({ length: 50 }, (_, i) => i + 25));
-const setA10k = Uniq.fromArray(Array.from({ length: 5000 }, (_, i) => i));
-const setB10k = Uniq.fromArray(Array.from({ length: 5000 }, (_, i) => i + 2500));
+const set100 = Uniq.from.Array(data100);
+const set10k = Uniq.from.Array(data10k);
+const setA100 = Uniq.from.Array(Array.from({ length: 50 }, (_, i) => i));
+const setB100 = Uniq.from.Array(Array.from({ length: 50 }, (_, i) => i + 25));
+const setA10k = Uniq.from.Array(Array.from({ length: 5000 }, (_, i) => i));
+const setB10k = Uniq.from.Array(Array.from({ length: 5000 }, (_, i) => i + 2500));
 
 // =============================================================================
-// fromArray
+// from.Array
 // =============================================================================
 
-describe("uniq-fromArray-100", () => {
-	bench("1. (current) Uniq.fromArray 100", () => {
-		Uniq.fromArray(data100);
+describe("uniq-from.Array-100", () => {
+	bench("1. (current) Uniq.from.Array 100", () => {
+		Uniq.from.Array(data100);
 	});
 	bench("2. native new Set 100", () => {
 		void new globalThis.Set(data100);
 	});
 });
 
-describe("uniq-fromArray-10k", () => {
-	bench("1. (current) Uniq.fromArray 10k", () => {
-		Uniq.fromArray(data10k);
+describe("uniq-from.Array-10k", () => {
+	bench("1. (current) Uniq.from.Array 10k", () => {
+		Uniq.from.Array(data10k);
 	});
 	bench("2. native new Set 10k", () => {
 		void new globalThis.Set(data10k);
@@ -265,9 +265,9 @@ describe("uniq-insert-10k-existing", () => {
 // varied fixtures (fast-check generated, non-sequential with duplicates)
 // =============================================================================
 
-describe("uniq-fromArray-varied-100", () => {
-	bench("1. (current) Uniq.fromArray varied 100", () => {
-		Uniq.fromArray(variedData100);
+describe("uniq-from.Array-varied-100", () => {
+	bench("1. (current) Uniq.from.Array varied 100", () => {
+		Uniq.from.Array(variedData100);
 	});
 	bench("2. native new Set varied 100", () => {
 		void new globalThis.Set(variedData100);
@@ -292,9 +292,9 @@ describe("uniq-has-varied-100-miss", () => {
 	});
 });
 
-describe("uniq-fromArray-varied-10k", () => {
-	bench("1. (current) Uniq.fromArray varied 10k", () => {
-		Uniq.fromArray(variedData10k);
+describe("uniq-from.Array-varied-10k", () => {
+	bench("1. (current) Uniq.from.Array varied 10k", () => {
+		Uniq.from.Array(variedData10k);
 	});
 	bench("2. native new Set varied 10k", () => {
 		void new globalThis.Set(variedData10k);

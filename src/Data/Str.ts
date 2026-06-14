@@ -1,4 +1,11 @@
 import { Maybe, Result } from "#core";
+import { type NonEmpty } from "#internal";
+import type { Brand } from "#types";
+
+/**
+ * A branded type representing a string with at least one character.
+ */
+export type NonEmptyString = Brand<NonEmpty<"Str">, string>;
 
 /**
  * String utilities. All transformation functions are data-last and curried so they
@@ -12,7 +19,34 @@ import { Maybe, Result } from "#core";
  * pipe("  Hello, World!  ", Str.trim, Str.toLowerCase); // "hello, world!"
  * ```
  */
+namespace StrNonEmpty {
+	// --- from ---
+	export namespace from {
+		/**
+		 * Returns Some containing NonEmptyString if the string is not empty, None otherwise.
+		 *
+		 * @example
+		 * ```ts
+		 * Str.NonEmpty.from.String("hello"); // Some("hello")
+		 * Str.NonEmpty.from.String("");      // None
+		 * ```
+		 */
+		export const String = (s: string): Maybe<NonEmptyString> =>
+			s.length > 0 ? Maybe.some(s as NonEmptyString) : Maybe.none();
+	}
+}
+
 export namespace Str {
+	/**
+	 * A branded type representing a string with at least one character.
+	 */
+	export type NonEmpty = NonEmptyString;
+
+	/**
+	 * Type guard to check if a string is non-empty.
+	 */
+	export const isNonEmpty = (s: string): s is NonEmpty => s.length > 0;
+
 	/**
 	 * Splits a string by a separator. Data-last: use in `pipe`.
 	 *
@@ -260,4 +294,6 @@ export namespace Str {
 			return Result.err(error as SyntaxError);
 		}
 	};
+
+	export const NonEmpty = StrNonEmpty;
 }

@@ -35,7 +35,7 @@ const arbNilOutcome = fc.constantFrom<Op.NilReason>("aborted", "dropped", "repla
 const arbOutcome = fc.oneof(arbOkOutcome, arbErrOutcome, arbNilOutcome);
 
 /** Already-resolved Deferred wrapping an outcome value. */
-const settled = <E, A>(o: Op.Outcome<E, A>): Deferred<Op.Outcome<E, A>> => Deferred.fromPromise(Promise.resolve(o));
+const settled = <E, A>(o: Op.Outcome<E, A>): Deferred<Op.Outcome<E, A>> => Deferred.from.Promise(Promise.resolve(o));
 
 // ---------------------------------------------------------------------------
 // Pure outcome combinators — algebraic laws
@@ -132,7 +132,7 @@ test("Op.race — pre-resolved deferred wins regardless of its position", async 
 				const pos = posRaw % total;
 				const deferreds: Deferred<Op.Outcome<string, number>>[] = Array.from(
 					{ length: total },
-					(_, i) => i === pos ? settled(winner) : Deferred.fromPromise(new Promise<Op.Outcome<string, number>>(() => {})),
+					(_, i) => i === pos ? settled(winner) : Deferred.from.Promise(new Promise<Op.Outcome<string, number>>(() => {})),
 				);
 				const result = await Op.race(deferreds);
 				expect(result).toStrictEqual(winner);
@@ -149,7 +149,7 @@ test("Op.interpret exclusive — burst of N produces exactly 1 Ok and N-1 Droppe
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 2, max: 8 }), async (n) => {
 		const manager = Op.interpret(immediateOp, { strategy: "exclusive" });
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
-		const outcomes = (await Promise.all(deferreds.map(Deferred.toPromise))) as Op.Outcome<string, number>[];
+		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
 		expect(outcomes.filter(Op.isOk)).toHaveLength(1);
 		expect(outcomes.filter((o) => Op.isNil(o) && (o as Op.Nil).reason === "dropped")).toHaveLength(n - 1);
 	}));
@@ -163,7 +163,7 @@ test("Op.interpret restartable — burst of N produces exactly 1 Ok and N-1 Repl
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 2, max: 8 }), async (n) => {
 		const manager = Op.interpret(immediateOp, { strategy: "restartable" });
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
-		const outcomes = (await Promise.all(deferreds.map(Deferred.toPromise))) as Op.Outcome<string, number>[];
+		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
 		expect(outcomes.filter(Op.isOk)).toHaveLength(1);
 		expect(outcomes.filter((o) => Op.isNil(o) && (o as Op.Nil).reason === "replaced")).toHaveLength(n - 1);
 	}));
@@ -182,7 +182,7 @@ test("Op.interpret restartable — abort() resolves all in-flight Deferreds as N
 		const manager = Op.interpret(neverOp, { strategy: "restartable" });
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
 		manager.abort();
-		const outcomes = (await Promise.all(deferreds.map(Deferred.toPromise))) as Op.Outcome<string, number>[];
+		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
 		expect(outcomes.every(Op.isNil)).toBe(true);
 	}));
 });
@@ -194,7 +194,7 @@ test("Op.interpret restartable — abort() resolves all in-flight Deferreds as N
 test("Op.interpret queue — all runs resolve to Ok when op always succeeds", async () => {
 	await fc.assert(fc.asyncProperty(fc.array(fc.integer(), { minLength: 1, maxLength: 6 }), async (inputs) => {
 		const manager = Op.interpret(immediateOp, { strategy: "queue" });
-		const outcomes = (await Promise.all(inputs.map((i) => manager.run(i)).map(Deferred.toPromise))) as Op.Outcome<
+		const outcomes = (await Promise.all(inputs.map((i) => manager.run(i)).map(Deferred.to.Promise))) as Op.Outcome<
 			string,
 			number
 		>[];
@@ -205,7 +205,7 @@ test("Op.interpret queue — all runs resolve to Ok when op always succeeds", as
 test("Op.interpret queue — Ok values arrive in submission order", async () => {
 	await fc.assert(fc.asyncProperty(fc.array(fc.integer(), { minLength: 1, maxLength: 6 }), async (inputs) => {
 		const manager = Op.interpret(immediateOp, { strategy: "queue" });
-		const outcomes = (await Promise.all(inputs.map((i) => manager.run(i)).map(Deferred.toPromise))) as Op.Outcome<
+		const outcomes = (await Promise.all(inputs.map((i) => manager.run(i)).map(Deferred.to.Promise))) as Op.Outcome<
 			string,
 			number
 		>[];
@@ -219,7 +219,7 @@ test("Op.interpret queue — abort() resolves all Deferreds as AbortedNil", asyn
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
 		await Promise.resolve(); // let the first item start running
 		manager.abort();
-		const outcomes = (await Promise.all(deferreds.map(Deferred.toPromise))) as Op.Outcome<string, number>[];
+		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
 		expect(outcomes.every(Op.isNil)).toBe(true);
 		expect(outcomes.every((o) => (o as Op.Nil).reason === "aborted")).toBe(true);
 	}));
@@ -233,7 +233,7 @@ test("Op.interpret once — first run produces Ok, subsequent burst runs produce
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 2, max: 8 }), async (n) => {
 		const manager = Op.interpret(tickOp, { strategy: "once" });
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
-		const outcomes = (await Promise.all(deferreds.map(Deferred.toPromise))) as Op.Outcome<string, number>[];
+		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
 		expect(outcomes[0]).toMatchObject({ kind: "OpOk", value: 0 });
 		expect(outcomes.slice(1).every((o) => Op.isNil(o) && (o as Op.Nil).reason === "dropped")).toBe(true);
 	}));
@@ -244,7 +244,7 @@ test("Op.interpret once — post-completion runs always produce DroppedNil", asy
 		const manager = Op.interpret(immediateOp, { strategy: "once" });
 		await manager.run(0);
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i + 1));
-		const outcomes = (await Promise.all(deferreds.map(Deferred.toPromise))) as Op.Outcome<string, number>[];
+		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
 		expect(outcomes.every((o) => Op.isNil(o) && (o as Op.Nil).reason === "dropped")).toBe(true);
 	}));
 });
@@ -275,7 +275,7 @@ test("Op.interpret exclusive cooldown — synchronous burst after completion all
 		const manager = Op.interpret(immediateOp, { strategy: "exclusive", cooldown: Duration.milliseconds(200) });
 		await manager.run(0); // completes; starts 200ms cooldown
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i + 1));
-		const outcomes = (await Promise.all(deferreds.map(Deferred.toPromise))) as Op.Outcome<string, number>[];
+		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
 		expect(outcomes.every((o) => Op.isNil(o) && (o as Op.Nil).reason === "dropped")).toBe(true);
 	}));
 });
@@ -289,7 +289,7 @@ test("Op.interpret restartable with minInterval: 0 — burst still produces 1 Ok
 		// minInterval: 0 means gap=0 so no actual wait; algebraic invariant is unchanged
 		const manager = Op.interpret(immediateOp, { strategy: "restartable", minInterval: Duration.milliseconds(0) });
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
-		const outcomes = (await Promise.all(deferreds.map(Deferred.toPromise))) as Op.Outcome<string, number>[];
+		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
 		expect(outcomes.filter(Op.isOk)).toHaveLength(1);
 		expect(outcomes.filter((o) => Op.isNil(o) && (o as Op.Nil).reason === "replaced")).toHaveLength(n - 1);
 	}));
@@ -306,7 +306,7 @@ test("Op.interpret buffered size=k — burst of N > k+1 produces exactly k+1 Ok 
 			async ({ k, n }) => {
 				const manager = Op.interpret(immediateOp, { strategy: "buffered", size: k });
 				const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
-				const outcomes = (await Promise.all(deferreds.map(Deferred.toPromise))) as Op.Outcome<string, number>[];
+				const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
 				expect(outcomes.filter(Op.isOk)).toHaveLength(k + 1);
 				expect(outcomes.filter((o) => Op.isNil(o) && (o as Op.Nil).reason === "evicted")).toHaveLength(n - k - 1);
 			},
@@ -321,7 +321,7 @@ test("Op.interpret buffered size=k — burst of N <= k+1 all resolve to Ok", asy
 			async ({ k, n }) => {
 				const manager = Op.interpret(immediateOp, { strategy: "buffered", size: k });
 				const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
-				const outcomes = (await Promise.all(deferreds.map(Deferred.toPromise))) as Op.Outcome<string, number>[];
+				const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
 				expect(outcomes.every(Op.isOk)).toBe(true);
 			},
 		),
@@ -339,7 +339,7 @@ test("Op.interpret queue maxSize=m — burst of N > m+1 produces m+1 Ok and N-m-
 			async ({ m, n }) => {
 				const manager = Op.interpret(immediateOp, { strategy: "queue", maxSize: m });
 				const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
-				const outcomes = (await Promise.all(deferreds.map(Deferred.toPromise))) as Op.Outcome<string, number>[];
+				const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
 				expect(outcomes.filter(Op.isOk)).toHaveLength(m + 1);
 				expect(outcomes.filter((o) => Op.isNil(o) && (o as Op.Nil).reason === "dropped")).toHaveLength(n - m - 1);
 			},
@@ -358,7 +358,7 @@ test("Op.interpret queue overflow replace-last — burst of N > m+1 produces m+1
 			async ({ m, n }) => {
 				const manager = Op.interpret(immediateOp, { strategy: "queue", maxSize: m, overflow: "replace-last" });
 				const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
-				const outcomes = (await Promise.all(deferreds.map(Deferred.toPromise))) as Op.Outcome<string, number>[];
+				const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
 				expect(outcomes.filter(Op.isOk)).toHaveLength(m + 1);
 				expect(outcomes.filter((o) => Op.isNil(o) && (o as Op.Nil).reason === "evicted")).toHaveLength(n - m - 1);
 			},
@@ -377,7 +377,7 @@ test("Op.interpret queue concurrency=k — all N inputs resolve to Ok when op su
 			fc.array(fc.integer(), { minLength: 1, maxLength: 8 }),
 			async (k, inputs) => {
 				const manager = Op.interpret(immediateOp, { strategy: "queue", concurrency: k });
-				const outcomes = (await Promise.all(inputs.map((i) => manager.run(i)).map(Deferred.toPromise))) as Op.Outcome<
+				const outcomes = (await Promise.all(inputs.map((i) => manager.run(i)).map(Deferred.to.Promise))) as Op.Outcome<
 					string,
 					number
 				>[];
@@ -397,7 +397,7 @@ test("Op.interpret queue dedupe — N equal inputs produce 2 Ok and N-2 DroppedN
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 2, max: 8 }), fc.integer(), async (n, input) => {
 		const manager = Op.interpret(immediateOp, { strategy: "queue", dedupe: (a, b) => a === b });
 		const deferreds = Array.from({ length: n }, () => manager.run(input));
-		const outcomes = (await Promise.all(deferreds.map(Deferred.toPromise))) as Op.Outcome<string, number>[];
+		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
 		expect(outcomes.filter(Op.isOk)).toHaveLength(2);
 		expect(outcomes.filter((o) => Op.isNil(o) && (o as Op.Nil).reason === "dropped")).toHaveLength(n - 2);
 	}));
@@ -431,7 +431,7 @@ test("Op.interpret throttled trailing — burst of N >= 3 produces 2 Ok (leading
 			trailing: true,
 		});
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i + 1));
-		const outcomes = (await Promise.all(deferreds.map(Deferred.toPromise))) as Op.Outcome<string, number>[];
+		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
 		expect(outcomes.filter(Op.isOk)).toHaveLength(2);
 		expect(outcomes.filter((o) => Op.isNil(o) && (o as Op.Nil).reason === "evicted")).toHaveLength(n - 2);
 	}));
@@ -449,7 +449,7 @@ test("Op.interpret debounced leading — burst of N produces Ok for first and la
 			leading: true,
 		});
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i + 1));
-		const outcomes = (await Promise.all(deferreds.map(Deferred.toPromise))) as Op.Outcome<string, number>[];
+		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
 		expect(outcomes[0]).toMatchObject({ kind: "OpOk" }); // leading
 		expect(outcomes[n - 1]).toMatchObject({ kind: "OpOk" }); // trailing
 		expect(outcomes.slice(1, -1).every((o) => Op.isNil(o) && (o as Op.Nil).reason === "evicted")).toBe(true);

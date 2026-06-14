@@ -204,24 +204,24 @@ test("Predicate.any short-circuits when first predicate passes", () => {
 // fromRefinement
 // ---------------------------------------------------------------------------
 
-test("Predicate.fromRefinement returns true when refinement passes", () => {
+test("Predicate.from.Refinement returns true when refinement passes", () => {
 	type NonEmptyString = string & { readonly _tag: "NonEmpty"; };
 	const isNonEmptyStr: Refinement<string, NonEmptyString> = Refinement.make((s) => s.length > 0);
-	const p = Predicate.fromRefinement(isNonEmptyStr);
+	const p = Predicate.from.Refinement(isNonEmptyStr);
 	expect(p("hello")).toBe(true);
 });
 
-test("Predicate.fromRefinement returns false when refinement fails", () => {
+test("Predicate.from.Refinement returns false when refinement fails", () => {
 	type NonEmptyString = string & { readonly _tag: "NonEmpty"; };
 	const isNonEmptyStr: Refinement<string, NonEmptyString> = Refinement.make((s) => s.length > 0);
-	const p = Predicate.fromRefinement(isNonEmptyStr);
+	const p = Predicate.from.Refinement(isNonEmptyStr);
 	expect(p("")).toBe(false);
 });
 
-test("Predicate.fromRefinement result composes with and/or", () => {
+test("Predicate.from.Refinement result composes with and/or", () => {
 	type LongString = string & { readonly _tag: "Long"; };
 	const isLong: Refinement<string, LongString> = Refinement.make((s) => s.length >= 5);
-	const combined = pipe(Predicate.fromRefinement(isLong), Predicate.and(isNonEmpty));
+	const combined = pipe(Predicate.from.Refinement(isLong), Predicate.and(isNonEmpty));
 	expect(combined("hello world")).toBe(true);
 	expect(combined("hi")).toBe(false);
 	expect(combined("")).toBe(false);

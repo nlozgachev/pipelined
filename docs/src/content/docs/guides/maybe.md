@@ -98,7 +98,7 @@ const empty = Maybe.none(); // Maybe<never>
 
 In practice, you will rarely write `some` or `none` manually. Instead, you will ingest values coming
 from external interfaces — such as third-party libraries, DOM elements, or API payloads — which use
-`null` or `undefined`. For this, we use `from.Nullable`:
+`null` or `undefined`. For this, we use `from.nullable`:
 
 ```ts
 interface AppConfig {
@@ -107,7 +107,7 @@ interface AppConfig {
 
 const config: AppConfig = {};
 
-const theme = Maybe.from.Nullable(config.theme); // None
+const theme = Maybe.from.nullable(config.theme); // None
 ```
 
 ---
@@ -141,7 +141,7 @@ interface User {
 
 const getAvatarFilename = (user: User): Maybe<string> =>
   pipe(
-    Maybe.from.Nullable(user.profile),
+    Maybe.from.nullable(user.profile),
     Maybe.map((p) => p.avatarUrl),
     Maybe.map((url) => url.split("/").pop()),
   );
@@ -181,7 +181,7 @@ const failed = pipe(Maybe.some("abc"), Maybe.chain(parseInteger)); // None
 Think of `map` as a tool for transformations that are guaranteed to succeed once a value is present,
 and `chain` as a tool for transformations that themselves introduce the possibility of failure.
 
-### Narrowing focus with `filter` and `fromPredicate`
+### Narrowing focus with `filter` and `from.Predicate`
 
 Sometimes a value exists, but it does not meet our business criteria. We can use `filter` to turn a
 `Some` into a `None` if it fails to satisfy a predicate.
@@ -193,14 +193,14 @@ pipe(Maybe.some(4), Maybe.filter(isEven)); // Some(4)
 pipe(Maybe.some(5), Maybe.filter(isEven)); // None
 ```
 
-If we are starting from a raw value rather than a `Maybe`, we can use `fromPredicate` to decide
+If we are starting from a raw value rather than a `Maybe`, we can use `from.Predicate` to decide
 whether to wrap the value in `Some` or `None` right at the boundary:
 
 ```ts
 const validateAge = (age: number): Maybe<number> =>
   pipe(
     age,
-    Maybe.fromPredicate((n) => n >= 18),
+    Maybe.from.Predicate((n) => n >= 18),
   );
 ```
 
@@ -265,8 +265,8 @@ If you are passing the result to an external library that expects standard `null
 values, you can convert the `Maybe` back at the very end of your pipeline:
 
 ```ts
-const nullable = Maybe.toNullable(maybeValue);   // T | null
-const undefinedVal = Maybe.toUndefined(maybeValue); // T | undefined
+const nullable = Maybe.to.nullable(maybeValue);   // T | null
+const undefinedVal = Maybe.to.undefined(maybeValue); // T | undefined
 ```
 
 ---
@@ -301,8 +301,8 @@ For this, we use `recover`. It takes a function that returns another `Maybe` whe
 ```ts
 const getTheme = (userId: string): Maybe<string> =>
   pipe(
-    Maybe.from.Nullable(cache.get(`theme:${userId}`)),
-    Maybe.recover(() => Maybe.from.Nullable(db.get(`theme:${userId}`))),
+    Maybe.from.nullable(cache.get(`theme:${userId}`)),
+    Maybe.recover(() => Maybe.from.nullable(db.get(`theme:${userId}`))),
     Maybe.getOrElse(() => "light"),
   );
 ```
@@ -354,7 +354,7 @@ clean offset index.
 ```ts
 const getPageOffset = (rawOffset: string | undefined, pageSize: number): number =>
   pipe(
-    Maybe.from.Nullable(rawOffset),                     // Maybe<string>
+    Maybe.from.nullable(rawOffset),                     // Maybe<string>
     Maybe.chain(parseInteger),                         // Maybe<number>
     Maybe.filter((offset) => offset >= 0),             // Maybe<number>
     Maybe.map((offset) => offset * pageSize),          // Maybe<number>
@@ -433,7 +433,7 @@ any individual field is `None`, the entire struct short-circuits to `None` immed
 const user = Maybe.struct({
   name: Maybe.some("Alice"),
   age: Maybe.some(30),
-  role: Maybe.fromPredicate((r: string) => r === "admin" || r === "user")("user"),
+  role: Maybe.from.Predicate((r: string) => r === "admin" || r === "user")("user"),
 }); // Some({ name: "Alice", age: 30, role: "user" })
 ```
 

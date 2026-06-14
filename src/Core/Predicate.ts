@@ -8,7 +8,7 @@ import { Refinement } from "#core";
  * Use it when you need to combine, negate, or adapt boolean checks as first-class values
  * and do not require the extra type information that a `Refinement` provides.
  *
- * Every `Refinement<A, B>` is a `Predicate<A>` — convert with `Predicate.fromRefinement`
+ * Every `Refinement<A, B>` is a `Predicate<A>` — convert with `Predicate.from.Refinement`
  * when you want to compose a narrowing check alongside plain predicates.
  *
  * @example
@@ -144,25 +144,30 @@ export namespace Predicate {
 	 */
 	export const any = <A>(predicates: ReadonlyArray<Predicate<A>>): Predicate<A> => (a) => predicates.some((p) => p(a));
 
-	/**
-	 * Converts a `Refinement<A, B>` into a `Predicate<A>`, discarding the compile-time
-	 * narrowing. Use this when you want to combine a type guard with plain predicates
-	 * using `and`, `or`, or `all`.
-	 *
-	 * @example
-	 * ```ts
-	 * const isString: Refinement<unknown, string> =
-	 *   Refinement.make(x => typeof x === "string");
-	 *
-	 * const isShortString: Predicate<unknown> = pipe(
-	 *   Predicate.fromRefinement(isString),
-	 *   Predicate.and(x => (x as string).length < 10)
-	 * );
-	 *
-	 * isShortString("hi");            // true
-	 * isShortString("a very long string that exceeds ten characters");  // false
-	 * isShortString(42);              // false
-	 * ```
-	 */
-	export const fromRefinement = <A, B extends A>(r: Refinement<A, B>): Predicate<A> => r;
+	// --- from ---
+	export namespace from {
+		/**
+		 * Converts a `Refinement<A, B>` into a `Predicate<A>`, discarding the compile-time
+		 * narrowing. Use this when you want to combine a type guard with plain predicates
+		 * using `and`, `or`, or `all`.
+		 *
+		 * This is a zero-cost runtime type cast.
+		 *
+		 * @example
+		 * ```ts
+		 * const isString: Refinement<unknown, string> =
+		 *   Refinement.make(x => typeof x === "string");
+		 *
+		 * const isShortString: Predicate<unknown> = pipe(
+		 *   Predicate.from.Refinement(isString),
+		 *   Predicate.and(x => (x as string).length < 10)
+		 * );
+		 *
+		 * isShortString("hi");            // true
+		 * isShortString("a very long string that exceeds ten characters");  // false
+		 * isShortString(42);              // false
+		 * ```
+		 */
+		export const Refinement = <A, B extends A>(r: Refinement<A, B>): Predicate<A> => r;
+	}
 }

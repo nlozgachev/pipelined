@@ -191,13 +191,13 @@ test("runWithRetry returns null when signal is aborted during backoff wait", asy
 
 test("execute resolves to Ok when the factory succeeds", async () => {
 	const controller = new AbortController();
-	const outcome = await Deferred.toPromise(execute(successOp(), 42, controller));
+	const outcome = await Deferred.to.Promise(execute(successOp(), 42, controller));
 	expect(outcome).toStrictEqual({ kind: "OpOk", value: 42 });
 });
 
 test("execute resolves to Err when the factory fails without retry", async () => {
 	const controller = new AbortController();
-	const outcome = await Deferred.toPromise(execute(failOp("oops"), 1, controller));
+	const outcome = await Deferred.to.Promise(execute(failOp("oops"), 1, controller));
 	expect(outcome).toStrictEqual({ kind: "OpErr", error: "oops" });
 });
 
@@ -205,20 +205,20 @@ test("execute resolves to AbortedNil when the controller is aborted before the o
 	const controller = new AbortController();
 	const d = execute(successOp(100), 1, controller);
 	controller.abort();
-	const outcome = await Deferred.toPromise(d);
+	const outcome = await Deferred.to.Promise(d);
 	expect(outcome).toStrictEqual({ kind: "OpNil", reason: "aborted" });
 });
 
 test("execute calls onRetrying when retryOptions is provided", async () => {
 	const controller = new AbortController();
 	const retrying: Op.Retrying<string>[] = [];
-	await Deferred.toPromise(execute(failOp(), 1, controller, { attempts: 3 }, undefined, (r) => retrying.push(r)));
+	await Deferred.to.Promise(execute(failOp(), 1, controller, { attempts: 3 }, undefined, (r) => retrying.push(r)));
 	expect(retrying).toHaveLength(2);
 });
 
 test("execute resolves to Err(onTimeout()) when the timeout fires", async () => {
 	const controller = new AbortController();
-	const outcome = await Deferred.toPromise(
+	const outcome = await Deferred.to.Promise(
 		execute(successOp(200), 1, controller, undefined, {
 			duration: Duration.milliseconds(20),
 			onTimeout: () => "timed out",
@@ -229,7 +229,7 @@ test("execute resolves to Err(onTimeout()) when the timeout fires", async () => 
 
 test("execute resolves to Ok when the op finishes before the timeout", async () => {
 	const controller = new AbortController();
-	const outcome = await Deferred.toPromise(
+	const outcome = await Deferred.to.Promise(
 		execute(successOp(0), 7, controller, undefined, {
 			duration: Duration.milliseconds(500),
 			onTimeout: () => "timed out",

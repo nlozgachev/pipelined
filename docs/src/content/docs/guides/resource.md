@@ -59,7 +59,7 @@ const dbResource = Resource.make(
     () => openConnection({ host: "db.local" }),
     (error) => new Error(`DB connection failed: ${error}`),
   ),
-  (connection) => Task.from(() => connection.close()),
+  (connection) => Task.from.Promise(() => connection.close()),
 );
 ```
 
@@ -72,9 +72,9 @@ If acquiring the resource is guaranteed to succeed — such as acquiring an in-m
 a local timer — we can use `fromTask` to skip error mapping:
 
 ```ts
-const lockResource = Resource.fromTask<never, Lock>(
-  Task.from(() => Promise.resolve(acquireLock("process_orders"))),
-  (lock) => Task.from(() => Promise.resolve(lock.release())),
+const lockResource = Resource.from.Task<never, Lock>(
+  Task.from.Promise(() => Promise.resolve(acquireLock("process_orders"))),
+  (lock) => Task.from.Promise(() => Promise.resolve(lock.release())),
 );
 ```
 

@@ -1,7 +1,7 @@
 import { pipe } from "#composition";
 import { Maybe, Result } from "#core";
 import { Str } from "#data";
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 
 // ---------------------------------------------------------------------------
 // split
@@ -380,4 +380,30 @@ test("Str.parseJson returns Error with SyntaxError for invalid JSON", () => {
 test("Str.parseJson returns Ok for empty object", () => {
 	const result = Str.parseJson("{}");
 	expect(result).toStrictEqual(Result.ok({}));
+});
+
+// ---------------------------------------------------------------------------
+// Str.NonEmpty
+// ---------------------------------------------------------------------------
+
+test("Str.isNonEmpty - returns true for non-empty string", () => {
+	expect(Str.isNonEmpty("hello")).toBe(true);
+});
+
+test("Str.isNonEmpty - returns false for empty string", () => {
+	expect(Str.isNonEmpty("")).toBe(false);
+});
+
+test("Str.NonEmpty.from.String - returns Some for non-empty string", () => {
+	const result = Str.NonEmpty.from.String("hello");
+	if (result.kind !== "Some") {
+		throw new Error("Expected Some");
+	}
+	expect(result.value).toBe("hello");
+	expectTypeOf(result.value).toEqualTypeOf<Str.NonEmpty>();
+});
+
+test("Str.NonEmpty.from.String - returns None for empty string", () => {
+	const result = Str.NonEmpty.from.String("");
+	expect(result.kind).toBe("None");
 });

@@ -146,12 +146,12 @@ test("Task.Maybe.ap propagates the AbortSignal to both sides", async () => {
 	let signal1: AbortSignal | undefined;
 	let signal2: AbortSignal | undefined;
 
-	const fnTask = Task.from((signal) => {
+	const fnTask = Task.from.Promise((signal) => {
 		signal1 = signal;
 		return Promise.resolve(Maybe.some((n: number) => n * 3));
 	});
 
-	const argTask = Task.from((signal) => {
+	const argTask = Task.from.Promise((signal) => {
 		signal2 = signal;
 		return Promise.resolve(Maybe.some(4));
 	});
@@ -307,20 +307,20 @@ test("taskMaybe pipe short-circuits on None", async () => {
 	expect(result).toBe(0);
 });
 
-// --- fromNullable ---
+// --- from.nullable ---
 
-test("Task.Maybe.fromNullable returns Some for non-null value", async () => {
-	const result = await Task.Maybe.from.Nullable(42)();
+test("Task.Maybe.from.nullable returns Some for non-null value", async () => {
+	const result = await Task.Maybe.from.nullable(42)();
 	expect(result).toStrictEqual(Maybe.some(42));
 });
 
-test("Task.Maybe.fromNullable returns None for null", async () => {
-	const result = await Task.Maybe.from.Nullable(null)();
+test("Task.Maybe.from.nullable returns None for null", async () => {
+	const result = await Task.Maybe.from.nullable(null)();
 	expect(result).toStrictEqual(Maybe.none());
 });
 
-test("Task.Maybe.fromNullable returns None for undefined", async () => {
-	const result = await Task.Maybe.from.Nullable(undefined)();
+test("Task.Maybe.from.nullable returns None for undefined", async () => {
+	const result = await Task.Maybe.from.nullable(undefined)();
 	expect(result).toStrictEqual(Maybe.none());
 });
 

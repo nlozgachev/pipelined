@@ -36,14 +36,14 @@ Two deliberate design choices make `Deferred` work:
 
 ## Wrapping Promises with fromPromise
 
-`Deferred.fromPromise` is the gateway constructor. It wraps a standard `Promise` that you are
+`Deferred.from.Promise` is the gateway constructor. It wraps a standard `Promise` that you are
 confident will never reject, lifting it into the infallible `Deferred` type:
 
 ```ts
 import { Deferred } from "@nlozgachev/pipelined/core";
 
 // Wrapping a guaranteed cache lookup
-const themeState: Deferred<string> = Deferred.fromPromise(
+const themeState: Deferred<string> = Deferred.from.Promise(
   prefsCache.getOrDefault("theme", "dark"),
 );
 ```
@@ -77,10 +77,10 @@ checks `instanceof Promise` rather than accepting generic thenables, you can con
 `toPromise`:
 
 ```ts
-const userSession = Deferred.fromPromise(sessionStore.get("userId"));
+const userSession = Deferred.from.Promise(sessionStore.get("userId"));
 
 // Convert back for library interop
-const sessionPromise: Promise<string> = Deferred.toPromise(userSession);
+const sessionPromise: Promise<string> = Deferred.to.Promise(userSession);
 ```
 
 The resulting `Promise` is guaranteed to resolve, inheriting the structural infallibility of the

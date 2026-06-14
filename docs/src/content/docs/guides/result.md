@@ -363,7 +363,7 @@ individual field is an `Err`, the entire struct short-circuits to that error imm
 const user = Result.struct({
   name: Result.ok("Alice"),
   age: Result.ok(30),
-  role: Result.fromPredicate(
+  role: Result.from.Predicate(
     (r: string) => r === "admin" || r === "user",
     () => "Invalid role"
   )("user"),

@@ -19,7 +19,7 @@ const _pending: Op.Pending = { kind: "Pending" };
 const ok = <A>(value: A): Op.Ok<A> => ({ kind: "OpOk", value });
 const err = <E>(error: E): Op.Err<E> => ({ kind: "OpErr", error });
 
-const getMs = (duration: Duration): number => Duration.toMilliseconds(duration);
+const getMs = (duration: Duration): number => Duration.to.milliseconds(duration);
 
 // ---------------------------------------------------------------------------
 // cancellableWait
@@ -60,7 +60,7 @@ export const runWithRetry = <I, E, A>(
 	};
 
 	const attempt = async (left: number): Promise<Result<E, A> | null> => {
-		const result = await Deferred.toPromise(op._factory(input, signal));
+		const result = await Deferred.to.Promise(op._factory(input, signal));
 		if (result === null || signal.aborted) { return null; }
 		if (result.kind === "Ok") { return result; }
 		if (left <= 1) { return result; }
@@ -109,12 +109,12 @@ export const execute = <I, E, A>(
 
 	const runPromise: Promise<Op.Outcome<E, A>> = retryOptions !== undefined && onRetrying !== undefined
 		? runWithRetry(op, input, signal, retryOptions, onRetrying).then(toOutcome)
-		: Deferred.toPromise(op._factory(input, signal)).then(toOutcome);
+		: Deferred.to.Promise(op._factory(input, signal)).then(toOutcome);
 
-	if (timeoutOptions === undefined) { return Deferred.fromPromise(runPromise); }
+	if (timeoutOptions === undefined) { return Deferred.from.Promise(runPromise); }
 
 	let timerId: ReturnType<typeof setTimeout>;
-	return Deferred.fromPromise(Promise.race([
+	return Deferred.from.Promise(Promise.race([
 		runPromise.then((outcome) => {
 			clearTimeout(timerId);
 			return outcome;
@@ -151,7 +151,7 @@ export const makeRestartable = <I, E, A>(
 	};
 
 	const run = (input: I): Deferred<Op.Outcome<E, A>> =>
-		Deferred.fromPromise(
+		Deferred.from.Promise(
 			new Promise<Op.Outcome<E, A>>((resolve) => {
 				// Cancel any in-progress wait and the previous invocation.
 				waitController?.abort();
@@ -252,9 +252,9 @@ export const makeExclusive = <I, E, A>(
 	const run = (input: I): Deferred<Op.Outcome<E, A>> => {
 		if (currentController !== undefined || cooldownTimer !== undefined) {
 			// In-flight or in cooldown — drop this call immediately.
-			return Deferred.fromPromise(Promise.resolve(_droppedNil));
+			return Deferred.from.Promise(Promise.resolve(_droppedNil));
 		}
-		return Deferred.fromPromise(
+		return Deferred.from.Promise(
 			new Promise<Op.Outcome<E, A>>((resolve) => {
 				currentResolve = resolve;
 				currentController = new AbortController();
@@ -392,7 +392,7 @@ export const makeQueue = <I, E, A>(
 
 		// Slot available — start immediately.
 		if (inFlight < maxConcurrency) {
-			return Deferred.fromPromise(
+			return Deferred.from.Promise(
 				new Promise<Op.Outcome<E, A>>((resolve) => {
 					startOne(input, resolve, myGeneration);
 				}),
@@ -401,7 +401,7 @@ export const makeQueue = <I, E, A>(
 
 		// Queue has capacity (unbounded when maxSize is undefined).
 		if (maxSize === undefined || queue.length < maxSize) {
-			return Deferred.fromPromise(
+			return Deferred.from.Promise(
 				new Promise<Op.Outcome<E, A>>((resolve) => {
 					queue.push({ input, resolve });
 					emit({ kind: "Queued", position: queue.length - 1 });
@@ -411,7 +411,7 @@ export const makeQueue = <I, E, A>(
 
 		// Queue is full — apply overflow policy.
 		if (overflow === "replace-last") {
-			return Deferred.fromPromise(
+			return Deferred.from.Promise(
 				new Promise<Op.Outcome<E, A>>((resolve) => {
 					const tail = queue.pop()!;
 					tail.resolve(_evictedNil);
@@ -422,7 +422,7 @@ export const makeQueue = <I, E, A>(
 		}
 
 		// Drop (default when maxSize is set).
-		return Deferred.fromPromise(Promise.resolve(_droppedNil));
+		return Deferred.from.Promise(Promise.resolve(_droppedNil));
 	};
 
 	const abort = (): void => {
@@ -502,7 +502,7 @@ export const makeBuffered = <I, E, A>(
 	};
 
 	const run = (input: I): Deferred<Op.Outcome<E, A>> =>
-		Deferred.fromPromise(
+		Deferred.from.Promise(
 			new Promise<Op.Outcome<E, A>>((resolve) => {
 				if (currentController === undefined) {
 					startRun(input, resolve);
@@ -644,7 +644,7 @@ export const makeDebounced = <I, E, A>(
 		timerId !== undefined || leadingController !== undefined || currentController !== undefined;
 
 	const run = (input: I): Deferred<Op.Outcome<E, A>> =>
-		Deferred.fromPromise(
+		Deferred.from.Promise(
 			new Promise<Op.Outcome<E, A>>((resolve) => {
 				if (!inDebounceWindow()) {
 					// Fresh start.
@@ -770,9 +770,9 @@ export const makeThrottled = <I, E, A>(
 	const run = (input: I): Deferred<Op.Outcome<E, A>> => {
 		if (cooldownTimer !== undefined) {
 			if (!trailing) {
-				return Deferred.fromPromise(Promise.resolve(_droppedNil));
+				return Deferred.from.Promise(Promise.resolve(_droppedNil));
 			}
-			return Deferred.fromPromise(
+			return Deferred.from.Promise(
 				new Promise<Op.Outcome<E, A>>((resolve) => {
 					const prev = pendingResolve;
 					pendingInput = input;
@@ -781,7 +781,7 @@ export const makeThrottled = <I, E, A>(
 				}),
 			);
 		}
-		return Deferred.fromPromise(
+		return Deferred.from.Promise(
 			new Promise<Op.Outcome<E, A>>((resolve) => {
 				fireOp(input, resolve);
 				startCooldown();
@@ -884,7 +884,7 @@ export const makeConcurrent = <I, E, A>(
 		const myGeneration = generation;
 
 		if (inflight < n) {
-			return Deferred.fromPromise(
+			return Deferred.from.Promise(
 				new Promise<Op.Outcome<E, A>>((resolve) => {
 					startOne(input, resolve, myGeneration);
 				}),
@@ -892,10 +892,10 @@ export const makeConcurrent = <I, E, A>(
 		}
 
 		if (overflow === "drop") {
-			return Deferred.fromPromise(Promise.resolve(_droppedNil));
+			return Deferred.from.Promise(Promise.resolve(_droppedNil));
 		}
 
-		return Deferred.fromPromise(
+		return Deferred.from.Promise(
 			new Promise<Op.Outcome<E, A>>((resolve) => {
 				overflowQueue.push({ input, resolve });
 				emit({ kind: "Queued", position: overflowQueue.length - 1 });
@@ -956,7 +956,7 @@ export const makeKeyed = <I, K, E, A>(
 
 		if (slots.has(k)) {
 			if (perKey === "exclusive") {
-				return Deferred.fromPromise(Promise.resolve(_droppedNil));
+				return Deferred.from.Promise(Promise.resolve(_droppedNil));
 			}
 			// restartable: cancel existing slot
 			const existing = slots.get(k)!;
@@ -966,7 +966,7 @@ export const makeKeyed = <I, K, E, A>(
 			prev(_replacedNil);
 		}
 
-		return Deferred.fromPromise(
+		return Deferred.from.Promise(
 			new Promise<Op.Outcome<E, A>>((resolve) => {
 				const controller = new AbortController();
 				slots.set(k, { controller, resolve });
@@ -1053,9 +1053,9 @@ export const makeOnce = <I, E, A>(
 	const run = (input: I): Deferred<Op.Outcome<E, A>> => {
 		// Terminal: once the manager leaves Idle, all subsequent calls are dropped.
 		if (currentState.kind !== "Idle") {
-			return Deferred.fromPromise(Promise.resolve(_droppedNil));
+			return Deferred.from.Promise(Promise.resolve(_droppedNil));
 		}
-		return Deferred.fromPromise(
+		return Deferred.from.Promise(
 			new Promise<Op.Outcome<E, A>>((resolve) => {
 				currentResolve = resolve;
 				currentController = new AbortController();

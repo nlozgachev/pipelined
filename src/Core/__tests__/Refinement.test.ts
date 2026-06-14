@@ -114,49 +114,49 @@ test("Refinement.or returns false when both refinements fail", () => {
 // toFilter
 // ---------------------------------------------------------------------------
 
-test("Refinement.toFilter returns Some when refinement passes", () => {
-	const result = pipe("hello", Refinement.toFilter(isNonEmpty));
+test("Refinement.to.Maybe returns Some when refinement passes", () => {
+	const result = pipe("hello", Refinement.to.Maybe(isNonEmpty));
 	expect(result.kind).toBe("Some");
 	expect(result.kind === "Some" ? result.value as string : null).toBe("hello");
 });
 
-test("Refinement.toFilter returns None when refinement fails", () => {
-	expect(pipe("", Refinement.toFilter(isNonEmpty)) as Maybe<string>).toStrictEqual({ kind: "None" });
+test("Refinement.to.Maybe returns None when refinement fails", () => {
+	expect(pipe("", Refinement.to.Maybe(isNonEmpty)) as Maybe<string>).toStrictEqual({ kind: "None" });
 });
 
-test("Refinement.toFilter works in a pipe chain with composed refinements", () => {
+test("Refinement.to.Maybe works in a pipe chain with composed refinements", () => {
 	const isPositiveEven = pipe(isPositive, Refinement.and(isEven));
-	expect(Maybe.isSome(pipe(4, Refinement.toFilter(isPositiveEven)))).toBe(true);
-	expect(Maybe.isNone(pipe(3, Refinement.toFilter(isPositiveEven)))).toBe(true);
-	expect(Maybe.isNone(pipe(-2, Refinement.toFilter(isPositiveEven)))).toBe(true);
+	expect(Maybe.isSome(pipe(4, Refinement.to.Maybe(isPositiveEven)))).toBe(true);
+	expect(Maybe.isNone(pipe(3, Refinement.to.Maybe(isPositiveEven)))).toBe(true);
+	expect(Maybe.isNone(pipe(-2, Refinement.to.Maybe(isPositiveEven)))).toBe(true);
 });
 
 // ---------------------------------------------------------------------------
 // toResult
 // ---------------------------------------------------------------------------
 
-test("Refinement.toResult returns Ok when refinement passes", () => {
-	const result = pipe("hello", Refinement.toResult(isNonEmpty, (s) => `"${s}" is empty`));
+test("Refinement.to.Result returns Ok when refinement passes", () => {
+	const result = pipe("hello", Refinement.to.Result(isNonEmpty, (s) => `"${s}" is empty`));
 	expect(result.kind).toBe("Ok");
 	expect(result.kind === "Ok" ? result.value as string : null).toBe("hello");
 });
 
-test("Refinement.toResult returns Err with onFail value when refinement fails", () => {
-	expect(pipe("", Refinement.toResult(isNonEmpty, (s) => `"${s}" is empty`)) as Result<string, string>).toStrictEqual({
+test("Refinement.to.Result returns Err with onFail value when refinement fails", () => {
+	expect(pipe("", Refinement.to.Result(isNonEmpty, (s) => `"${s}" is empty`)) as Result<string, string>).toStrictEqual({
 		kind: "Err",
 		error: '"" is empty',
 	});
 });
 
-test("Refinement.toResult passes the failing value to onFail", () => {
-	const result = pipe(-5, Refinement.toResult(isPositive, (n) => `${n} is not positive`)) as Result<string, number>;
+test("Refinement.to.Result passes the failing value to onFail", () => {
+	const result = pipe(-5, Refinement.to.Result(isPositive, (n) => `${n} is not positive`)) as Result<string, number>;
 	expect(result).toStrictEqual({ kind: "Err", error: "-5 is not positive" });
 });
 
-test("Refinement.toResult works in a pipe chain with composed refinements", () => {
+test("Refinement.to.Result works in a pipe chain with composed refinements", () => {
 	const isPositiveEven = pipe(isPositive, Refinement.and(isEven));
-	expect(Result.isOk(pipe(4, Refinement.toResult(isPositiveEven, (n) => `${n} failed`)))).toBe(true);
-	expect(pipe(3, Refinement.toResult(isPositiveEven, (n) => `${n} failed`)) as Result<string, number>).toStrictEqual({
+	expect(Result.isOk(pipe(4, Refinement.to.Result(isPositiveEven, (n) => `${n} failed`)))).toBe(true);
+	expect(pipe(3, Refinement.to.Result(isPositiveEven, (n) => `${n} failed`)) as Result<string, number>).toStrictEqual({
 		kind: "Err",
 		error: "3 failed",
 	});

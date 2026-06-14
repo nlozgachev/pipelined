@@ -152,11 +152,11 @@ test("Task.Validation.ap propagates the AbortSignal down to both sides", async (
 
 	const left: Task.Validation<string, (n: number) => number> = (signal) => {
 		signalLeft = signal;
-		return Deferred.fromPromise(Promise.resolve(Validation.passed((n: number) => n * 3)));
+		return Deferred.from.Promise(Promise.resolve(Validation.passed((n: number) => n * 3)));
 	};
 	const right: Task.Validation<string, number> = (signal) => {
 		signalRight = signal;
-		return Deferred.fromPromise(Promise.resolve(Validation.passed(4)));
+		return Deferred.from.Promise(Promise.resolve(Validation.passed(4)));
 	};
 
 	const controller = new AbortController();
@@ -401,11 +401,11 @@ test("Task.Validation.product propagates the AbortSignal down to both validation
 
 	const first: Task.Validation<string, string> = (signal) => {
 		signalFirst = signal;
-		return Deferred.fromPromise(Promise.resolve(Validation.passed("alice")));
+		return Deferred.from.Promise(Promise.resolve(Validation.passed("alice")));
 	};
 	const second: Task.Validation<string, number> = (signal) => {
 		signalSecond = signal;
-		return Deferred.fromPromise(Promise.resolve(Validation.passed(30)));
+		return Deferred.from.Promise(Promise.resolve(Validation.passed(30)));
 	};
 
 	const controller = new AbortController();
@@ -421,11 +421,11 @@ test("Task.Validation.productAll propagates the AbortSignal down to all validati
 
 	const t1: Task.Validation<string, number> = (signal) => {
 		signal1 = signal;
-		return Deferred.fromPromise(Promise.resolve(Validation.passed(1)));
+		return Deferred.from.Promise(Promise.resolve(Validation.passed(1)));
 	};
 	const t2: Task.Validation<string, number> = (signal) => {
 		signal2 = signal;
-		return Deferred.fromPromise(Promise.resolve(Validation.passed(2)));
+		return Deferred.from.Promise(Promise.resolve(Validation.passed(2)));
 	};
 
 	const controller = new AbortController();
@@ -435,20 +435,20 @@ test("Task.Validation.productAll propagates the AbortSignal down to all validati
 	expect(signal2).toBe(controller.signal);
 });
 
-// --- fromNullable ---
+// --- from.nullable ---
 
-test("Task.Validation.fromNullable returns Valid for non-null value", async () => {
-	const result = await Task.Validation.from.Nullable(() => "is null")(42)();
+test("Task.Validation.from.nullable returns Valid for non-null value", async () => {
+	const result = await Task.Validation.from.nullable(() => "is null")(42)();
 	expect(result).toStrictEqual(Validation.passed(42));
 });
 
-test("Task.Validation.fromNullable returns Invalid for null", async () => {
-	const result = await Task.Validation.from.Nullable(() => "is null")(null)();
+test("Task.Validation.from.nullable returns Invalid for null", async () => {
+	const result = await Task.Validation.from.nullable(() => "is null")(null)();
 	expect(result).toStrictEqual(Validation.failed("is null"));
 });
 
-test("Task.Validation.fromNullable returns Invalid for undefined", async () => {
-	const result = await Task.Validation.from.Nullable(() => "is null")(undefined)();
+test("Task.Validation.from.nullable returns Invalid for undefined", async () => {
+	const result = await Task.Validation.from.nullable(() => "is null")(undefined)();
 	expect(result).toStrictEqual(Validation.failed("is null"));
 });
 

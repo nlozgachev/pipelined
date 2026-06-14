@@ -1,7 +1,7 @@
 import { pipe } from "#composition";
 import { Equality, Maybe, Ordering, Result, Task } from "#core";
 import { Arr } from "#data";
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 
 // =============================================================================
 // Safe access: head, last, tail, init
@@ -597,7 +597,7 @@ test("traverseTask - empty array resolves to empty array", async () => {
 
 test("traverseTask - handles async operations", async () => {
 	const delayedDouble = (n: number): Task<number> =>
-		Task.from(() => new Promise<number>((resolve) => setTimeout(() => resolve(n * 2), 10)));
+		Task.from.Promise(() => new Promise<number>((resolve) => setTimeout(() => resolve(n * 2), 10)));
 
 	const result = await pipe([1, 2, 3], Arr.Task.traverse(delayedDouble))();
 	expect(result).toStrictEqual([2, 4, 6]);
@@ -616,9 +616,9 @@ test("sequenceTask - empty array resolves to empty array", async () => {
 
 test("sequenceTask - preserves order despite different completion times", async () => {
 	const tasks: Task<string>[] = [
-		Task.from(() => new Promise<string>((resolve) => setTimeout(() => resolve("slow"), 30))),
-		Task.from(() => new Promise<string>((resolve) => setTimeout(() => resolve("fast"), 5))),
-		Task.from(() => new Promise<string>((resolve) => setTimeout(() => resolve("medium"), 15))),
+		Task.from.Promise(() => new Promise<string>((resolve) => setTimeout(() => resolve("slow"), 30))),
+		Task.from.Promise(() => new Promise<string>((resolve) => setTimeout(() => resolve("fast"), 5))),
+		Task.from.Promise(() => new Promise<string>((resolve) => setTimeout(() => resolve("medium"), 15))),
 	];
 	const result = await Arr.Task.sequence(tasks)();
 	expect(result).toStrictEqual(["slow", "fast", "medium"]);
@@ -638,7 +638,7 @@ test("traverseTaskResult - all succeed returns Ok of results", async () => {
 test("traverseTaskResult - first error short-circuits", async () => {
 	const order: number[] = [];
 	const validate = (n: number): Task<Result<string, number>> =>
-		Task.from(() => {
+		Task.from.Promise(() => {
 			order.push(n);
 			return Promise.resolve(n > 0 ? Result.ok(n) : Result.err("non-positive"));
 		});
@@ -1135,4 +1135,92 @@ test("Arr.append - appends an element to an array", () => {
 test("Arr.append - appends to an empty array", () => {
 	const result = pipe([], Arr.append(42));
 	expect(result).toStrictEqual([42]);
+});
+
+// =============================================================================
+// Arr.NonEmpty
+// =============================================================================
+
+test("Arr.NonEmpty.singleton - creates a single-element non-empty array", () => {
+	const result = Arr.NonEmpty.singleton(42);
+	expect(result).toStrictEqual([42]);
+	expectTypeOf(result).toEqualTypeOf<readonly [number, ...number[]]>();
+});
+
+test("Arr.NonEmpty.from.Array - returns Some for non-empty array", () => {
+	const result = Arr.NonEmpty.from.Array([1, 2]);
+	expect(result).toStrictEqual(Maybe.some([1, 2]));
+});
+
+test("Arr.NonEmpty.from.Array - returns None for empty array", () => {
+	const result = Arr.NonEmpty.from.Array([]);
+	expect(result).toStrictEqual(Maybe.none());
+});
+
+test("Arr.NonEmpty.head - returns the first element", () => {
+	const result = Arr.NonEmpty.head([1, 2, 3]);
+	expect(result).toBe(1);
+});
+
+test("Arr.NonEmpty.last - returns the last element", () => {
+	const result = Arr.NonEmpty.last([1, 2, 3]);
+	expect(result).toBe(3);
+});
+
+test("Arr.NonEmpty.tail - returns all elements except the first", () => {
+	const result = Arr.NonEmpty.tail([1, 2, 3]);
+	expect(result).toStrictEqual([2, 3]);
+});
+
+test("Arr.NonEmpty.reduce - reduces elements from left without initial value", () => {
+	const result = pipe([1, 2, 3, 4] as Arr.NonEmpty<number>, Arr.NonEmpty.reduce((a, b) => a + b));
+	expect(result).toBe(10);
+});
+
+test("Arr.NonEmpty.map - maps elements and preserves NonEmpty type", () => {
+	const result = pipe(Arr.NonEmpty.singleton(1), Arr.NonEmpty.map((n) => n * 2));
+	expect(result).toStrictEqual([2]);
+	expectTypeOf(result).toEqualTypeOf<readonly [number, ...number[]]>();
+});
+
+test("Arr.NonEmpty.mapWithIndex - maps elements with index and preserves NonEmpty type", () => {
+	const result = pipe(Arr.NonEmpty.singleton("a"), Arr.NonEmpty.mapWithIndex((i, s) => `${i}:${s}`));
+	expect(result).toStrictEqual(["0:a"]);
+	expectTypeOf(result).toEqualTypeOf<readonly [string, ...string[]]>();
+});
+
+test("Arr.NonEmpty.intersperse - inserts separator between elements", () => {
+	const result = pipe([1, 2, 3] as Arr.NonEmpty<number>, Arr.NonEmpty.intersperse(0));
+	expect(result).toStrictEqual([1, 0, 2, 0, 3]);
+	expectTypeOf(result).toEqualTypeOf<readonly [number, ...number[]]>();
+});
+
+test("Arr.NonEmpty.intersperse - returns original array if length is 1", () => {
+	const result = pipe([42] as Arr.NonEmpty<number>, Arr.NonEmpty.intersperse(0));
+	expect(result).toStrictEqual([42]);
+});
+
+test("Arr.NonEmpty.concat - concatenates with standard array", () => {
+	const result = pipe(Arr.NonEmpty.singleton(1), Arr.NonEmpty.concat([2, 3]));
+	expect(result).toStrictEqual([1, 2, 3]);
+	expectTypeOf(result).toEqualTypeOf<readonly [number, ...number[]]>();
+});
+
+test("Arr.NonEmpty.reverse - reverses non-empty array", () => {
+	const result = pipe([1, 2, 3] as Arr.NonEmpty<number>, Arr.NonEmpty.reverse);
+	expect(result).toStrictEqual([3, 2, 1]);
+	expectTypeOf(result).toEqualTypeOf<readonly [number, ...number[]]>();
+});
+
+test("Arr.NonEmpty pipe composition", () => {
+	const result = pipe(
+		Arr.NonEmpty.singleton(1),
+		Arr.NonEmpty.concat([2]),
+		Arr.NonEmpty.map((n) => n * 2),
+		Arr.NonEmpty.intersperse(0),
+		Arr.NonEmpty.concat([5, 6]),
+		Arr.NonEmpty.reverse,
+	);
+	expect(result).toStrictEqual([6, 5, 4, 0, 2]);
+	expectTypeOf(result).toEqualTypeOf<readonly [number, ...number[]]>();
 });

@@ -310,10 +310,10 @@ test("flow - integration with other composition helpers", () => {
 
 test("flow.async - resolves Deferred values and functions returning Deferred", async () => {
 	const run = flow.async(
-		(n: number) => Deferred.fromPromise(Promise.resolve(n * 2)),
+		(n: number) => Deferred.from.Promise(Promise.resolve(n * 2)),
 		(n: number) => n + 1,
-		(n: number) => Deferred.fromPromise(Promise.resolve(`result: ${n}`)),
+		(n: number) => Deferred.from.Promise(Promise.resolve(`result: ${n}`)),
 	);
-	const res = await run(Deferred.fromPromise(Promise.resolve(5)));
+	const res = await run(Deferred.from.Promise(Promise.resolve(5)));
 	expect(res).toBe("result: 11");
 });

@@ -5,7 +5,7 @@ import * as fc from "fast-check";
 import { bench, describe } from "vitest";
 
 const makeDict = (n: number): ReadonlyMap<string, number> =>
-	Dict.fromEntries(Array.from({ length: n }, (_, i) => [`key${i}`, i]));
+	Dict.from.entries(Array.from({ length: n }, (_, i) => [`key${i}`, i]));
 
 // varied fixtures — generated once at module load, non-sequential keys and values
 const [variedEntries100] = fc.sample(
@@ -16,19 +16,19 @@ const [variedEntries10k] = fc.sample(
 	fc.array(fc.tuple(fc.string({ minLength: 1, maxLength: 10 }), fc.integer()), { minLength: 10_000, maxLength: 10_000 }),
 	1,
 ) as [[string, number][]];
-const variedDict100 = Dict.fromEntries(variedEntries100);
-const variedDict10k = Dict.fromEntries(variedEntries10k);
+const variedDict100 = Dict.from.entries(variedEntries100);
+const variedDict10k = Dict.from.entries(variedEntries10k);
 
 const dict100 = makeDict(100);
 const dict10k = makeDict(10_000);
 const dictA100 = makeDict(50);
-const dictB100 = Dict.fromEntries(Array.from({ length: 50 }, (_, i) => [`key${i + 25}`, i + 1000]));
+const dictB100 = Dict.from.entries(Array.from({ length: 50 }, (_, i) => [`key${i + 25}`, i + 1000]));
 const dictA10k = makeDict(5000);
-const dictB10k = Dict.fromEntries(Array.from({ length: 5000 }, (_, i) => [`key${i + 2500}`, i + 10_000]));
-const optDict100 = Dict.fromEntries<string, Maybe<number>>(
+const dictB10k = Dict.from.entries(Array.from({ length: 5000 }, (_, i) => [`key${i + 2500}`, i + 10_000]));
+const optDict100 = Dict.from.entries<string, Maybe<number>>(
 	Array.from({ length: 100 }, (_, i) => [`key${i}`, i % 3 === 0 ? Maybe.none() : Maybe.some(i)]),
 );
-const optDict10k = Dict.fromEntries<string, Maybe<number>>(
+const optDict10k = Dict.from.entries<string, Maybe<number>>(
 	Array.from({ length: 10_000 }, (_, i) => [`key${i}`, i % 3 === 0 ? Maybe.none() : Maybe.some(i)]),
 );
 const data100 = Array.from({ length: 100 }, (_, i) => i);

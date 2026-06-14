@@ -204,7 +204,7 @@ export namespace tap {
 	 * pipe(
 	 *   data,
 	 *   tap.time(fetchData, {
-	 *     onFinish: (dur) => metrics.histogram("api.time", Duration.toMilliseconds(dur))
+	 *     onFinish: (dur) => metrics.histogram("api.time", Duration.to.milliseconds(dur))
 	 *   })
 	 * );
 	 * ```
@@ -213,7 +213,7 @@ export namespace tap {
 		const start = performance.now();
 		const triggerFinish = (duration: Duration) => {
 			if (config.label !== undefined) {
-				console.log(`[${config.label}]: ${Duration.toMilliseconds(duration)}ms`);
+				console.log(`[${config.label}]: ${Duration.to.milliseconds(duration)}ms`);
 			} else {
 				config.onFinish(duration);
 			}

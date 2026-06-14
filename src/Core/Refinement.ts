@@ -1,4 +1,4 @@
-import { Maybe, Result } from "#core";
+import { Maybe as CoreMaybe, Result as CoreResult } from "#core";
 
 /**
  * A function from `A` to `A is B` — a type predicate paired with a runtime check.
@@ -18,7 +18,7 @@ import { Maybe, Result } from "#core";
  *
  * pipe(
  *   "hello",
- *   Refinement.toFilter(isNonEmpty)
+ *   Refinement.to.Maybe(isNonEmpty)
  * ); // Some("hello")
  * ```
  */
@@ -113,41 +113,44 @@ export namespace Refinement {
 		<B extends A>(first: Refinement<A, B>): Refinement<A, B | C> =>
 		(a): a is B | C => first(a) || second(a);
 
-	/**
-	 * Converts a `Refinement<A, B>` into a function `(a: A) => Maybe<B>`.
-	 *
-	 * Returns `Some(a)` when the refinement holds, `None` otherwise. Useful for
-	 * integrating runtime validation into a `Maybe`-based pipeline.
-	 *
-	 * @example
-	 * ```ts
-	 * type PositiveNumber = number & { readonly _tag: "Positive" };
-	 * const isPositive: Refinement<number, PositiveNumber> =
-	 *   Refinement.make(n => n > 0);
-	 *
-	 * pipe(-1, Refinement.toFilter(isPositive)); // None
-	 * pipe(42, Refinement.toFilter(isPositive)); // Some(42)
-	 * ```
-	 */
-	export const toFilter = <A, B extends A>(r: Refinement<A, B>) => (a: A): Maybe<B> =>
-		r(a) ? Maybe.some(a) : Maybe.none();
+	// --- to ---
+	export namespace to {
+		/**
+		 * Converts a `Refinement<A, B>` into a function `(a: A) => Maybe<B>`.
+		 *
+		 * Returns `Some(a)` when the refinement holds, `None` otherwise. Useful for
+		 * integrating runtime validation into a `Maybe`-based pipeline.
+		 *
+		 * @example
+		 * ```ts
+		 * type PositiveNumber = number & { readonly _tag: "Positive" };
+		 * const isPositive: Refinement<number, PositiveNumber> =
+		 *   Refinement.make(n => n > 0);
+		 *
+		 * pipe(-1, Refinement.to.Maybe(isPositive)); // None
+		 * pipe(42, Refinement.to.Maybe(isPositive)); // Some(42)
+		 * ```
+		 */
+		export const Maybe = <A, B extends A>(r: Refinement<A, B>) => (a: A): CoreMaybe<B> =>
+			r(a) ? CoreMaybe.some(a) : CoreMaybe.none();
 
-	/**
-	 * Converts a `Refinement<A, B>` into a function `(a: A) => Result<E, B>`.
-	 *
-	 * Returns `Ok(a)` when the refinement holds, `Err(onFail(a))` otherwise. Use
-	 * this to surface validation failures as typed errors inside a `Result` pipeline.
-	 *
-	 * @example
-	 * ```ts
-	 * type NonEmptyString = string & { readonly _tag: "NonEmpty" };
-	 * const isNonEmpty: Refinement<string, NonEmptyString> =
-	 *   Refinement.make(s => s.length > 0);
-	 *
-	 * pipe("", Refinement.toResult(isNonEmpty, () => "must not be empty")); // Err(...)
-	 * pipe("hi", Refinement.toResult(isNonEmpty, () => "must not be empty")); // Ok("hi")
-	 * ```
-	 */
-	export const toResult = <A, B extends A, E>(r: Refinement<A, B>, onFail: (a: A) => E) => (a: A): Result<E, B> =>
-		r(a) ? Result.ok(a) : Result.err(onFail(a));
+		/**
+		 * Converts a `Refinement<A, B>` into a function `(a: A) => Result<E, B>`.
+		 *
+		 * Returns `Ok(a)` when the refinement holds, `Err(onFail(a))` otherwise. Use
+		 * this to surface validation failures as typed errors inside a `Result` pipeline.
+		 *
+		 * @example
+		 * ```ts
+		 * type NonEmptyString = string & { readonly _tag: "NonEmpty" };
+		 * const isNonEmpty: Refinement<string, NonEmptyString> =
+		 *   Refinement.make(s => s.length > 0);
+		 *
+		 * pipe("", Refinement.to.Result(isNonEmpty, () => "must not be empty")); // Err(...)
+		 * pipe("hi", Refinement.to.Result(isNonEmpty, () => "must not be empty")); // Ok("hi")
+		 * ```
+		 */
+		export const Result = <A, B extends A, E>(r: Refinement<A, B>, onFail: (a: A) => E) => (a: A): CoreResult<E, B> =>
+			r(a) ? CoreResult.ok(a) : CoreResult.err(onFail(a));
+	}
 }

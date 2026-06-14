@@ -1,14 +1,15 @@
+/* eslint-disable no-use-before-define, no-shadow */
 import { Maybe as CoreMaybe, None as CoreNone, Result as CoreResult, Some as CoreSome } from "#core";
-import { type NonEmptyArr } from "#internal";
-
-declare const _nonEmptyRecord: unique symbol;
+import { type NonEmpty, type NonEmptyArr } from "#internal";
+import type { Brand } from "#types";
 
 /**
  * A branded type representing a record with at least one key-value pair.
  */
-export type NonEmptyRecord<A> = Readonly<Record<string, A>> & { readonly [_nonEmptyRecord]: true; };
+export type NonEmptyRecord<A, K extends string = string> = Brand<NonEmpty<"Rec">, Readonly<Record<K, A>>>;
 
-const _isNonEmpty = <A>(data: Readonly<Record<string, A>>): data is NonEmptyRecord<A> => Object.keys(data).length > 0;
+const _isNonEmpty = <A, K extends string>(data: Readonly<Record<K, A>>): data is NonEmptyRecord<A, K> =>
+	Object.keys(data).length > 0;
 
 namespace RecMaybe {
 	/**
@@ -105,20 +106,23 @@ namespace RecNonEmpty {
 	 * Rec.NonEmpty.singleton("a", 1); // { a: 1 }
 	 * ```
 	 */
-	export const singleton = <A>(key: string, value: A): NonEmptyRecord<A> =>
-		({ [key]: value }) as unknown as NonEmptyRecord<A>;
+	export const singleton = <K extends string, A>(key: K, value: A): NonEmptyRecord<A, K> =>
+		({ [key]: value }) as unknown as NonEmptyRecord<A, K>;
 
-	/**
-	 * Creates a NonEmpty record from a standard record if it is not empty.
-	 *
-	 * @example
-	 * ```ts
-	 * Rec.NonEmpty.fromRecord({ a: 1 }); // Some({ a: 1 })
-	 * Rec.NonEmpty.fromRecord({});      // None
-	 * ```
-	 */
-	export const fromRecord = <A>(data: Readonly<Record<string, A>>): CoreMaybe<NonEmptyRecord<A>> =>
-		_isNonEmpty(data) ? CoreMaybe.some(data) : CoreMaybe.none();
+	// --- from ---
+	export namespace from {
+		/**
+		 * Creates a NonEmpty record from a standard record if it is not empty.
+		 *
+		 * @example
+		 * ```ts
+		 * Rec.NonEmpty.from.Record({ a: 1 }); // Some({ a: 1 })
+		 * Rec.NonEmpty.from.Record({});      // None
+		 * ```
+		 */
+		export const Record = <K extends string, A>(data: Readonly<Record<K, A>>): CoreMaybe<NonEmptyRecord<A, K>> =>
+			_isNonEmpty(data) ? CoreMaybe.some(data) : CoreMaybe.none();
+	}
 
 	/**
 	 * Returns a non-empty array of keys for a NonEmpty record.
@@ -128,8 +132,8 @@ namespace RecNonEmpty {
 	 * Rec.NonEmpty.keys(Rec.NonEmpty.singleton("a", 1)); // ["a"]
 	 * ```
 	 */
-	export const keys = <A>(data: NonEmptyRecord<A>): NonEmptyArr<string> =>
-		Object.keys(data) as unknown as NonEmptyArr<string>;
+	export const keys = <K extends string, A>(data: NonEmptyRecord<A, K>): NonEmptyArr<K> =>
+		Rec.keys(data) as unknown as NonEmptyArr<K>;
 
 	/**
 	 * Returns a non-empty array of values for a NonEmpty record.
@@ -139,7 +143,8 @@ namespace RecNonEmpty {
 	 * Rec.NonEmpty.values(Rec.NonEmpty.singleton("a", 1)); // [1]
 	 * ```
 	 */
-	export const values = <A>(data: NonEmptyRecord<A>): NonEmptyArr<A> => Object.values(data) as unknown as NonEmptyArr<A>;
+	export const values = <K extends string, A>(data: NonEmptyRecord<A, K>): NonEmptyArr<A> =>
+		Rec.values(data) as unknown as NonEmptyArr<A>;
 
 	/**
 	 * Returns a non-empty array of entry tuples for a NonEmpty record.
@@ -149,8 +154,8 @@ namespace RecNonEmpty {
 	 * Rec.NonEmpty.entries(Rec.NonEmpty.singleton("a", 1)); // [["a", 1]]
 	 * ```
 	 */
-	export const entries = <A>(data: NonEmptyRecord<A>): NonEmptyArr<readonly [string, A]> =>
-		Object.entries(data) as unknown as NonEmptyArr<readonly [string, A]>;
+	export const entries = <K extends string, A>(data: NonEmptyRecord<A, K>): NonEmptyArr<readonly [K, A]> =>
+		Rec.entries(data) as unknown as NonEmptyArr<readonly [K, A]>;
 
 	/**
 	 * Reduces a NonEmpty record's values from the left without an initial value.
@@ -160,10 +165,31 @@ namespace RecNonEmpty {
 	 * pipe(Rec.NonEmpty.singleton("a", 1), Rec.NonEmpty.reduce((a, b) => a + b)); // 1
 	 * ```
 	 */
-	export const reduce = <A>(f: (acc: A, a: A) => A) => (data: NonEmptyRecord<A>): A => {
-		const recordVals = Object.values(data) as unknown as NonEmptyArr<A>;
-		return recordVals.reduce(f);
-	};
+	export const reduce = <A>(f: (acc: A, a: A) => A) => <K extends string>(data: NonEmptyRecord<A, K>): A =>
+		values(data).reduce(f);
+
+	/**
+	 * Transforms each value of a NonEmpty record.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Rec.NonEmpty.singleton("a", 1), Rec.NonEmpty.map(n => n * 2)); // { a: 2 }
+	 * ```
+	 */
+	export const map = <A, B>(f: (a: A) => B) => <K extends string>(data: NonEmptyRecord<A, K>): NonEmptyRecord<B, K> =>
+		Rec.map(f)(data) as unknown as NonEmptyRecord<B, K>;
+
+	/**
+	 * Transforms each value of a NonEmpty record, also receiving the key.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Rec.NonEmpty.singleton("a", 1), Rec.NonEmpty.mapWithKey((k, v) => `${k}:${v}`)); // { a: "a:1" }
+	 * ```
+	 */
+	export const mapWithKey =
+		<A, B>(f: (key: string, a: A) => B) => <K extends string>(data: NonEmptyRecord<A, K>): NonEmptyRecord<B, K> =>
+			Rec.mapWithKey(f)(data) as unknown as NonEmptyRecord<B, K>;
 }
 
 /**
@@ -183,7 +209,7 @@ export namespace Rec {
 	/**
 	 * A branded type representing a record with at least one key-value pair.
 	 */
-	export type NonEmpty<A> = NonEmptyRecord<A>;
+	export type NonEmpty<A, K extends string = string> = NonEmptyRecord<A, K>;
 
 	/**
 	 * Type guard to check if a record is non-empty.
@@ -198,21 +224,26 @@ export namespace Rec {
 	 * pipe({ a: 1, b: 2 }, Rec.map(n => n * 2)); // { a: 2, b: 4 }
 	 * ```
 	 */
-	export const map = <A, B>(f: (a: A) => B) =>
-		((data: Readonly<Record<string, A>>) => {
+	export const map =
+		<A, B>(f: (a: A) => B) => <K extends string>(data: Readonly<Record<K, A>>): Readonly<Record<K, B>> => {
 			const recordKeys = Object.keys(data);
-			const recordValues = Object.values(data);
+			const recordValues = Object.values(data) as readonly A[];
 			const result: Record<string, B> = Object.create(Object.getPrototypeOf(data));
 			for (let i = 0; i < recordKeys.length; i++) {
-				Object.defineProperty(result, recordKeys[i], {
-					value: f(recordValues[i]),
-					writable: true,
-					enumerable: true,
-					configurable: true,
-				});
+				const key = recordKeys[i];
+				if (key === "__proto__") {
+					Object.defineProperty(result, "__proto__", {
+						value: f(recordValues[i]),
+						writable: true,
+						enumerable: true,
+						configurable: true,
+					});
+				} else {
+					result[key] = f(recordValues[i]);
+				}
 			}
-			return result;
-		}) as { (data: NonEmpty<A>): NonEmpty<B>; (data: Readonly<Record<string, A>>): Readonly<Record<string, B>>; };
+			return result as unknown as Readonly<Record<K, B>>;
+		};
 
 	export const filterMap =
 		<A, B>(f: (a: A) => CoreMaybe<B>) => (data: Readonly<Record<string, A>>): Readonly<Record<string, B>> => {
@@ -242,21 +273,26 @@ export namespace Rec {
 	 * // { a: "a:1", b: "b:2" }
 	 * ```
 	 */
-	export const mapWithKey = <A, B>(f: (key: string, a: A) => B) =>
-		((data: Readonly<Record<string, A>>) => {
+	export const mapWithKey =
+		<A, B>(f: (key: string, a: A) => B) => <K extends string>(data: Readonly<Record<K, A>>): Readonly<Record<K, B>> => {
 			const recordKeys = Object.keys(data);
-			const recordValues = Object.values(data);
+			const recordValues = Object.values(data) as readonly A[];
 			const result: Record<string, B> = Object.create(Object.getPrototypeOf(data));
 			for (let i = 0; i < recordKeys.length; i++) {
-				Object.defineProperty(result, recordKeys[i], {
-					value: f(recordKeys[i], recordValues[i]),
-					writable: true,
-					enumerable: true,
-					configurable: true,
-				});
+				const key = recordKeys[i];
+				if (key === "__proto__") {
+					Object.defineProperty(result, "__proto__", {
+						value: f(key, recordValues[i]),
+						writable: true,
+						enumerable: true,
+						configurable: true,
+					});
+				} else {
+					result[key] = f(key, recordValues[i]);
+				}
 			}
-			return result;
-		}) as { (data: NonEmpty<A>): NonEmpty<B>; (data: Readonly<Record<string, A>>): Readonly<Record<string, B>>; };
+			return result as unknown as Readonly<Record<K, B>>;
+		};
 
 	/**
 	 * Filters values in a record by a predicate.
@@ -336,16 +372,19 @@ export namespace Rec {
 	export const entries = <T extends Record<string, unknown>>(data: T): readonly (readonly [keyof T, T[keyof T]])[] =>
 		Object.entries(data) as unknown as (readonly [keyof T, T[keyof T]])[];
 
-	/**
-	 * Creates a record from key-value pairs.
-	 *
-	 * @example
-	 * ```ts
-	 * Rec.fromEntries([["a", 1], ["b", 2]]); // { a: 1, b: 2 }
-	 * ```
-	 */
-	export const fromEntries = <A>(data: readonly (readonly [string, A])[]): Readonly<Record<string, A>> =>
-		Object.fromEntries(data);
+	// --- from ---
+	export namespace from {
+		/**
+		 * Creates a record from key-value pairs.
+		 *
+		 * @example
+		 * ```ts
+		 * Rec.from.entries([["a", 1], ["b", 2]]); // { a: 1, b: 2 }
+		 * ```
+		 */
+		export const entries = <A>(data: readonly (readonly [string, A])[]): Readonly<Record<string, A>> =>
+			Object.fromEntries(data);
+	}
 
 	/**
 	 * Groups elements of an array into a record keyed by the result of `keyFn`. Each key maps to

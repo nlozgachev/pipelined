@@ -141,7 +141,7 @@ const isNonEmpty: Refinement<string, NonEmptyString> = Refinement.make((s) => s.
 const parseTitle = (raw: string): Maybe<NonEmptyString> =>
   pipe(
     raw.trim(),
-    Refinement.toFilter(isNonEmpty),
+    Refinement.to.Maybe(isNonEmpty),
   ); // Some(NonEmptyString) or None
 ```
 
@@ -155,7 +155,7 @@ import { Result } from "@nlozgachev/pipelined/core";
 const parseQuantity = (raw: number): Result<string, PositiveNumber> =>
   pipe(
     raw,
-    Refinement.toResult(isPositive, (n) => `Quantity must be positive, got ${n}`),
+    Refinement.to.Result(isPositive, (n) => `Quantity must be positive, got ${n}`),
   );
 ```
 
@@ -168,11 +168,11 @@ const isEmail: Refinement<NonEmptyString, EmailString> = Refinement.make((s) => 
 const validateEmailInput = (raw: string): Result<string, EmailString> =>
   pipe(
     raw,
-    Refinement.toResult(isNonEmpty, () => "Email address cannot be empty"),
+    Refinement.to.Result(isNonEmpty, () => "Email address cannot be empty"),
     Result.chain((nonEmpty) =>
       pipe(
         nonEmpty,
-        Refinement.toResult(isEmail, () => "Email address must contain an '@' symbol"),
+        Refinement.to.Result(isEmail, () => "Email address must contain an '@' symbol"),
       )
     ),
   );

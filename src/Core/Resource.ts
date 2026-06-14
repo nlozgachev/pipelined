@@ -1,4 +1,4 @@
-import { Deferred, Result, Task } from "#core";
+import { Deferred, Result, type Task, Task as CoreTask } from "#core";
 
 /**
  * A Resource pairs an async acquisition step with a guaranteed cleanup step.
@@ -11,14 +11,14 @@ import { Deferred, Result, Task } from "#core";
  * the work function returns an error. If `acquire` itself fails, `release` is
  * skipped — there is nothing to clean up.
  *
- * Build a Resource with `Resource.make` or `Resource.fromTask`, then run it
+ * Build a Resource with `Resource.make` or `Resource.from.Task`, then run it
  * with `Resource.use`.
  *
  * @example
  * ```ts
  * const dbResource = Resource.make(
  *   Task.Result.tryCatch(() => openConnection(config), (e) => new DbError(e)),
- *   (conn) => Task.from(() => conn.close())
+ *   (conn) => Task.from.Promise(() => conn.close())
  * );
  *
  * const result = await pipe(
@@ -38,7 +38,7 @@ export namespace Resource {
 	 * ```ts
 	 * const fileResource = Resource.make(
 	 *   Task.Result.tryCatch(() => fs.promises.open("data.csv", "r"), toFileError),
-	 *   (handle) => Task.from(() => handle.close())
+	 *   (handle) => Task.from.Promise(() => handle.close())
 	 * );
 	 * ```
 	 */
@@ -47,23 +47,26 @@ export namespace Resource {
 		release,
 	});
 
-	/**
-	 * Creates a Resource from an acquire operation that cannot fail.
-	 * Use this when opening the resource is guaranteed to succeed, such as
-	 * in-memory locks, counters, or timers.
-	 *
-	 * @example
-	 * ```ts
-	 * const timerResource = Resource.fromTask<never, Timer>(
-	 *   Task.from(() => Promise.resolve(startTimer())),
-	 *   (timer) => Task.from(() => Promise.resolve(timer.stop()))
-	 * );
-	 * ```
-	 */
-	export const fromTask = <E, A>(acquire: Task<A>, release: (a: A) => Task<void>): Resource<E, A> => ({
-		acquire: Task.map((a: A): Result<E, A> => Result.ok(a))(acquire),
-		release,
-	});
+	// --- from ---
+	export namespace from {
+		/**
+		 * Creates a Resource from an acquire operation that cannot fail.
+		 * Use this when opening the resource is guaranteed to succeed, such as
+		 * in-memory locks, counters, or timers.
+		 *
+		 * @example
+		 * ```ts
+		 * const timerResource = Resource.from.Task<never, Timer>(
+		 *   Task.from.Promise(() => Promise.resolve(startTimer())),
+		 *   (timer) => Task.from.Promise(() => Promise.resolve(timer.stop()))
+		 * );
+		 * ```
+		 */
+		export const Task = <E, A>(acquire: Task<A>, release: (a: A) => Task<void>): Resource<E, A> => ({
+			acquire: CoreTask.map((a: A): Result<E, A> => Result.ok(a))(acquire),
+			release,
+		});
+	}
 
 	/**
 	 * Acquires the resource, runs `f` with it, then releases it.
@@ -81,15 +84,15 @@ export namespace Resource {
 	 * ```
 	 */
 	export const use = <E, A, B>(f: (a: A) => Task.Result<E, B>) => (resource: Resource<E, A>): Task.Result<E, B> =>
-		Task.from((signal) =>
-			Deferred.toPromise(resource.acquire(signal)).then(async (acquired) => {
+		CoreTask.from.Promise((signal) =>
+			Deferred.to.Promise(resource.acquire(signal)).then(async (acquired) => {
 				if (Result.isErr(acquired)) { return acquired as Result<E, B>; }
 				const a = acquired.value;
 				try {
-					const usageResult = await Deferred.toPromise(f(a)(signal));
+					const usageResult = await Deferred.to.Promise(f(a)(signal));
 					return usageResult;
 				} finally {
-					await Deferred.toPromise(resource.release(a)(signal));
+					await Deferred.to.Promise(resource.release(a)(signal));
 				}
 			})
 		);
@@ -115,16 +118,16 @@ export namespace Resource {
 		resourceA: Resource<E, A>,
 		resourceB: Resource<E, B>,
 	): Resource<E, readonly [A, B]> => ({
-		acquire: Task.from((signal) =>
-			Deferred.toPromise(resourceA.acquire(signal)).then(async (acquiredA) => {
+		acquire: CoreTask.from.Promise((signal) =>
+			Deferred.to.Promise(resourceA.acquire(signal)).then(async (acquiredA) => {
 				if (Result.isErr(acquiredA)) {
 					return acquiredA as Result<E, readonly [A, B]>;
 				}
 				const a = acquiredA.value;
 
-				const acquiredB = await Deferred.toPromise(resourceB.acquire(signal));
+				const acquiredB = await Deferred.to.Promise(resourceB.acquire(signal));
 				if (Result.isErr(acquiredB)) {
-					await Deferred.toPromise(resourceA.release(a)(signal));
+					await Deferred.to.Promise(resourceA.release(a)(signal));
 					return acquiredB as Result<E, readonly [A, B]>;
 				}
 
@@ -132,8 +135,8 @@ export namespace Resource {
 			})
 		),
 		release: ([a, b]) =>
-			Task.from((signal) =>
-				Deferred.toPromise(resourceB.release(b)(signal)).then(() => Deferred.toPromise(resourceA.release(a)(signal)))
+			CoreTask.from.Promise((signal) =>
+				Deferred.to.Promise(resourceB.release(b)(signal)).then(() => Deferred.to.Promise(resourceA.release(a)(signal)))
 			),
 	});
 }

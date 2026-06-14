@@ -93,3 +93,5 @@ export type WithMinInterval = { readonly minInterval?: Duration; };
 
 export type WithKey<I, K> = { readonly key: (input: I) => K; };
 export type WithPerKey<S extends string> = { readonly perKey: S; };
+
+export type NonEmpty<T extends string> = `NonEmpty${T}`;

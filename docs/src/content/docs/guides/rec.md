@@ -131,13 +131,13 @@ Rec.values(coordinates);  // [10, 20]
 Rec.entries(coordinates); // [["x", 10], ["y", 20]]
 ```
 
-`Rec.fromEntries` is the inverse constructor, building a record from an array of key-value pairs:
+`Rec.from.entries` is the inverse constructor, building a record from an array of key-value pairs:
 
 ```ts
-Rec.fromEntries([["a", 1], ["b", 2]]); // { a: 1, b: 2 }
+Rec.from.entries([["a", 1], ["b", 2]]); // { a: 1, b: 2 }
 ```
 
-You can pair `entries` and `fromEntries` to easily perform structural record mappings:
+You can pair `entries` and `from.entries` to easily perform structural record mappings:
 
 ```ts
 // Upper-casing all keys in a record:
@@ -147,7 +147,7 @@ const parsed = pipe(
   rawInput,
   Rec.entries,
   (entries) => entries.map(([key, value]) => [key.toUpperCase(), value] as const),
-  Rec.fromEntries,
+  Rec.from.entries,
 ); // { FIRSTNAME: "Alice", LASTNAME: "Smith" }
 ```
 
@@ -221,13 +221,13 @@ if (Rec.isNonEmpty(userRecord)) {
 ```
 
 You can create a non-empty record directly using `Rec.NonEmpty.singleton` or parse a standard record
-using `Rec.NonEmpty.fromRecord`:
+using `Rec.NonEmpty.from.Record`:
 
 ```ts
 const singletonRec = Rec.NonEmpty.singleton("main", 42); // Rec.NonEmpty<number>
 
-const parsedRec = Rec.NonEmpty.fromRecord(userRecord); // Some(Rec.NonEmpty<string>)
-const emptyRec = Rec.NonEmpty.fromRecord({});          // None
+const parsedRec = Rec.NonEmpty.from.Record(userRecord); // Some(Rec.NonEmpty<string>)
+const emptyRec = Rec.NonEmpty.from.Record({});          // None
 ```
 
 Operating on `Rec.NonEmpty<A>` ensures that operations which would normally return standard arrays

@@ -56,7 +56,7 @@ We lift asynchronous values into a `Task` context depending on whether they are 
 const constantTask = Task.resolve(42); // Task<number>
 
 // Wrapping a Promise-returning function
-const fetchTimestamp = Task.from(() => Promise.resolve(Date.now())); // Task<number>
+const fetchTimestamp = Task.from.Promise(() => Promise.resolve(Date.now())); // Task<number>
 ```
 
 `Task.from` is a clear, explicit alias for wrapping a promise factory `() => Promise<A>`. It serves as the primary gateway for lifting standard async library calls into our functional system.
@@ -90,7 +90,7 @@ When a transformation itself returns another `Task`, we use `chain` to execute t
 const getSessionUserId = (): Task<string> => Task.resolve("user_abc");
 
 const fetchUserPreferences = (userId: string): Task<Preferences> =>
-  Task.from(() => preferencesService.get(userId));
+  Task.from.Promise(() => preferencesService.get(userId));
 
 const userPrefs = pipe(
   getSessionUserId(),
@@ -411,12 +411,12 @@ Because a `Task` is simply a function, you run it by invoking it. Invoking a `Ta
 const value = await fetchProfile("123")(); // Ok(user) or Err(error)
 ```
 
-If you are interfacing with external libraries or frameworks that strictly require a standard `Promise` instance, you can convert the `Deferred` value using `Deferred.toPromise`:
+If you are interfacing with external libraries or frameworks that strictly require a standard `Promise` instance, you can convert the `Deferred` value using `Deferred.to.Promise`:
 
 ```ts
 import { Deferred } from "@nlozgachev/pipelined/core";
 
-const profilePromise = Deferred.toPromise(fetchProfile("123")()); // Promise<Result<string, User>>
+const profilePromise = Deferred.to.Promise(fetchProfile("123")()); // Promise<Result<string, User>>
 ```
 
 ---

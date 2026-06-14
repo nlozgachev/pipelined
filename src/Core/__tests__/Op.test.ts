@@ -368,33 +368,33 @@ test("Op.recover does not call f on Nil — same reference", () => {
 // ---------------------------------------------------------------------------
 
 test("op.toResult converts Ok to Result.ok", () => {
-	expect(Op.toResult(() => "no-result")(Op.ok(1))).toStrictEqual(Result.ok(1));
+	expect(Op.to.Result(() => "no-result")(Op.ok(1))).toStrictEqual(Result.ok(1));
 });
 
 test("op.toResult converts Err to Result.err", () => {
 	const outcome = Op.err("boom") as Op.Outcome<string, number>;
-	expect(Op.toResult(() => "no-result")(outcome)).toStrictEqual(Result.err("boom"));
+	expect(Op.to.Result(() => "no-result")(outcome)).toStrictEqual(Result.err("boom"));
 });
 
-test("Op.toResult converts Nil via onNil", () => {
+test("Op.to.Result converts Nil via onNil", () => {
 	const outcome = Op.nil("aborted") as Op.Outcome<string, number>;
-	expect(Op.toResult(() => "no-result")(outcome)).toStrictEqual(Result.err("no-result"));
+	expect(Op.to.Result(() => "no-result")(outcome)).toStrictEqual(Result.err("no-result"));
 });
 
 // ---------------------------------------------------------------------------
 // toMaybe
 // ---------------------------------------------------------------------------
 
-test("Op.toMaybe converts Ok to Some", () => {
-	expect(Op.toMaybe(Op.ok(7))).toStrictEqual(Maybe.some(7));
+test("Op.to.Maybe converts Ok to Some", () => {
+	expect(Op.to.Maybe(Op.ok(7))).toStrictEqual(Maybe.some(7));
 });
 
-test("Op.toMaybe converts Err to None", () => {
-	expect(Op.toMaybe(Op.err("e") as Op.Outcome<string, number>)).toStrictEqual(Maybe.none());
+test("Op.to.Maybe converts Err to None", () => {
+	expect(Op.to.Maybe(Op.err("e") as Op.Outcome<string, number>)).toStrictEqual(Maybe.none());
 });
 
-test("Op.toMaybe converts Nil to None", () => {
-	expect(Op.toMaybe(Op.nil("aborted") as Op.Outcome<string, number>)).toStrictEqual(Maybe.none());
+test("Op.to.Maybe converts Nil to None", () => {
+	expect(Op.to.Maybe(Op.nil("aborted") as Op.Outcome<string, number>)).toStrictEqual(Maybe.none());
 });
 
 // ---------------------------------------------------------------------------

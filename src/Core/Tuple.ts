@@ -115,15 +115,18 @@ export namespace Tuple {
 	 */
 	export const swap = <A, B>(tuple: Tuple<A, B>): Tuple<B, A> => [tuple[1], tuple[0]];
 
-	/**
-	 * Converts the pair to a heterogeneous readonly array `readonly (A | B)[]`.
-	 *
-	 * @example
-	 * ```ts
-	 * Tuple.toArray(Tuple.make("hello", 42)); // ["hello", 42]
-	 * ```
-	 */
-	export const toArray = <A, B>(tuple: Tuple<A, B>): readonly (A | B)[] => [...tuple];
+	// --- to ---
+	export namespace to {
+		/**
+		 * Converts the pair to a heterogeneous readonly array `readonly (A | B)[]`.
+		 *
+		 * @example
+		 * ```ts
+		 * Tuple.to.Array(Tuple.make("hello", 42)); // ["hello", 42]
+		 * ```
+		 */
+		export const Array = <A, B>(tuple: Tuple<A, B>): readonly (A | B)[] => [...tuple];
+	}
 
 	/**
 	 * Runs a side effect with both values without changing the pair.

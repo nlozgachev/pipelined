@@ -149,13 +149,13 @@ const localizedPrice = pipe(
 
 If we need to inspect the values inside a pipeline without altering them (e.g. for logging), we can
 use `Tuple.tap`. When interfacing with APIs that do not support tuple types, we can convert the pair
-to a plain array using `Tuple.toArray`:
+to a plain array using `Tuple.to.Array`:
 
 ```ts
 const loggedPair = pipe(
   Tuple.make("debug_flag", true),
   Tuple.tap((key, val) => console.log(`Config: ${key} is ${val}`)),
-  Tuple.toArray
+  Tuple.to.Array
 ); // logs "Config: debug_flag is true", returns ["debug_flag", true]
 ```
 

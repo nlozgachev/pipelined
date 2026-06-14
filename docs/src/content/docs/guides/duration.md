@@ -94,10 +94,10 @@ plain numbers, we unwrap the `Duration` into the specific unit we need:
 ```ts
 const duration = Duration.minutes(1.5);
 
-Duration.toMilliseconds(duration); // 90000
-Duration.toSeconds(duration);      // 90
-Duration.toMinutes(duration);      // 1.5
-Duration.toHours(duration);        // 0.025
+Duration.to.milliseconds(duration); // 90000
+Duration.to.seconds(duration);      // 90
+Duration.to.minutes(duration);      // 1.5
+Duration.to.hours(duration);        // 0.025
 ```
 
 ## Curried time arithmetic
@@ -118,7 +118,7 @@ const adjustedTimeout = pipe(
   Duration.subtract(Duration.seconds(5))
 );
 
-Duration.toSeconds(adjustedTimeout); // 25.2
+Duration.to.seconds(adjustedTimeout); // 25.2
 ```
 
 ## Deep integration with asynchronous APIs

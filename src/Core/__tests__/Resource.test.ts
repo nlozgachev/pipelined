@@ -16,8 +16,8 @@ test("Resource.make creates a resource with the given acquire and release", asyn
 // fromTask
 // ---------------------------------------------------------------------------
 
-test("Resource.fromTask wraps an infallible Task as a successful acquire", async () => {
-	const resource = Resource.fromTask<string, number>(Task.resolve(7), (_n) => Task.resolve(undefined as void));
+test("Resource.from.Task wraps an infallible Task as a successful acquire", async () => {
+	const resource = Resource.from.Task<string, number>(Task.resolve(7), (_n) => Task.resolve(undefined as void));
 	const result = await resource.acquire();
 	expect(result).toStrictEqual({ kind: "Ok", value: 7 });
 });
@@ -35,7 +35,7 @@ test("Resource.use passes the acquired value to the function", async () => {
 test("Resource.use calls release after the function succeeds", async () => {
 	let released = false;
 	const resource = Resource.make(Task.Result.ok<string, number>(1), (_n) =>
-		Task.from(() => {
+		Task.from.Promise(() => {
 			released = true;
 			return Promise.resolve(undefined as void);
 		}));
@@ -46,7 +46,7 @@ test("Resource.use calls release after the function succeeds", async () => {
 test("Resource.use calls release with the acquired value", async () => {
 	let releasedWith: number | null = null;
 	const resource = Resource.make(Task.Result.ok<string, number>(99), (n) =>
-		Task.from(() => {
+		Task.from.Promise(() => {
 			releasedWith = n;
 			return Promise.resolve(undefined as void);
 		}));
@@ -61,7 +61,7 @@ test("Resource.use calls release with the acquired value", async () => {
 test("Resource.use calls release even when the function returns Err", async () => {
 	let released = false;
 	const resource = Resource.make(Task.Result.ok<string, number>(5), (_n) =>
-		Task.from(() => {
+		Task.from.Promise(() => {
 			released = true;
 			return Promise.resolve(undefined as void);
 		}));
@@ -73,7 +73,7 @@ test("Resource.use calls release even when the function returns Err", async () =
 test("Resource.use does not call release when acquire fails", async () => {
 	let released = false;
 	const resource = Resource.make(Task.Result.err<string, number>("cannot connect"), (_n) =>
-		Task.from(() => {
+		Task.from.Promise(() => {
 			released = true;
 			return Promise.resolve(undefined as void);
 		}));
@@ -124,12 +124,12 @@ test("Resource.combine presents both acquired values as a tuple", async () => {
 test("Resource.combine releases second resource before first", async () => {
 	const order: string[] = [];
 	const rA = Resource.make(Task.Result.ok<string, string>("A"), (_s) =>
-		Task.from(() => {
+		Task.from.Promise(() => {
 			order.push("release-A");
 			return Promise.resolve(undefined as void);
 		}));
 	const rB = Resource.make(Task.Result.ok<string, string>("B"), (_s) =>
-		Task.from(() => {
+		Task.from.Promise(() => {
 			order.push("release-B");
 			return Promise.resolve(undefined as void);
 		}));
@@ -140,7 +140,7 @@ test("Resource.combine releases second resource before first", async () => {
 test("Resource.combine releases first resource when second acquire fails", async () => {
 	let releasedA = false;
 	const rA = Resource.make(Task.Result.ok<string, string>("A"), (_s) =>
-		Task.from(() => {
+		Task.from.Promise(() => {
 			releasedA = true;
 			return Promise.resolve(undefined as void);
 		}));
@@ -188,8 +188,8 @@ test("resource composes with Task.Result operations inside use", async () => {
 
 test("Resource.use works with fromTask resource", async () => {
 	let released = false;
-	const resource = Resource.fromTask<string, string>(Task.resolve("handle"), (_s) =>
-		Task.from(() => {
+	const resource = Resource.from.Task<string, string>(Task.resolve("handle"), (_s) =>
+		Task.from.Promise(() => {
 			released = true;
 			return Promise.resolve(undefined as void);
 		}));

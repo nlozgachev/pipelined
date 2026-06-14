@@ -46,7 +46,7 @@ We can lift raw arrays or individual elements into an immutable `Uniq` collectio
 import { Uniq } from "@nlozgachev/pipelined/data";
 
 // Create a collection from an array, automatically discarding duplicates
-const tags = Uniq.fromArray(["typescript", "functional", "typescript", "pipe"]);
+const tags = Uniq.from.Array(["typescript", "functional", "typescript", "pipe"]);
 // Contains: "typescript", "functional", "pipe"
 
 // Create a collection with a single starting value
@@ -64,14 +64,14 @@ To inspect the contents of a collection, we use `Uniq.has` and `Uniq.isSubsetOf`
 import { pipe } from "@nlozgachev/pipelined/composition";
 import { Uniq } from "@nlozgachev/pipelined/data";
 
-const permissions = Uniq.fromArray(["read", "write"]);
+const permissions = Uniq.from.Array(["read", "write"]);
 
 // Test for direct membership
 const canWrite = pipe(permissions, Uniq.has("write")); // true
 const canDelete = pipe(permissions, Uniq.has("delete")); // false
 
 // Test if one collection is completely contained within another
-const required = Uniq.fromArray(["read", "write"]);
+const required = Uniq.from.Array(["read", "write"]);
 const hasRequired = pipe(required, Uniq.isSubsetOf(permissions)); // true
 ```
 
@@ -80,7 +80,7 @@ const hasRequired = pipe(required, Uniq.isSubsetOf(permissions)); // true
 Adding or removing items returns a new `Uniq` collection. If the operation does not change the membership of the set, the original reference is preserved:
 
 ```ts
-const roles = Uniq.fromArray(["editor", "viewer"]);
+const roles = Uniq.from.Array(["editor", "viewer"]);
 
 // Inserting a new item returns a new set
 const updatedRoles = pipe(roles, Uniq.insert("admin"));
@@ -100,7 +100,7 @@ const reducedRoles = pipe(roles, Uniq.remove("viewer"));
 We can transform the elements of a collection or filter them using pure functions. If a transformation produces duplicate values, `Uniq` automatically merges them to maintain uniqueness:
 
 ```ts
-const tags = Uniq.fromArray(["TypeScript", "typescript", "CSS"]);
+const tags = Uniq.from.Array(["TypeScript", "typescript", "CSS"]);
 
 // Normalise all tags to lowercase
 const normalised = pipe(
@@ -126,8 +126,8 @@ In modern runtimes (including Node.js 22+, Chrome 122+, and Safari 17+), these o
 </Aside>
 
 ```ts
-const backendRoles = Uniq.fromArray(["alice", "bob", "carol"]);
-const frontendRoles = Uniq.fromArray(["bob", "carol", "dave"]);
+const backendRoles = Uniq.from.Array(["alice", "bob", "carol"]);
+const frontendRoles = Uniq.from.Array(["bob", "carol", "dave"]);
 
 // Combine both collections (All engineers across both teams)
 const allEngineers = pipe(backendRoles, Uniq.union(frontendRoles));
@@ -147,10 +147,10 @@ const backendOnly = pipe(backendRoles, Uniq.difference(frontendRoles));
 When it is time to leave the immutable context—either to serialize data for an API or to interface with a library that requires standard arrays—we can fold or convert our collection:
 
 ```ts
-const activeFlags = Uniq.fromArray(["logging", "analytics"]);
+const activeFlags = Uniq.from.Array(["logging", "analytics"]);
 
 // Convert back to a standard JavaScript array
-const arrayFlags = Uniq.toArray(activeFlags); // ["logging", "analytics"]
+const arrayFlags = Uniq.to.Array(activeFlags); // ["logging", "analytics"]
 
 // Fold the collection into a single value
 const totalLength = pipe(

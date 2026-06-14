@@ -49,7 +49,7 @@ primitive checks to work on rich, deeply nested domain objects, which is extreme
 express cleanly with `Refinement`.
 
 If you need to mix a type guard into a simple boolean chain, you can lift it using
-`Predicate.fromRefinement`.
+`Predicate.from.Refinement`.
 
 ---
 

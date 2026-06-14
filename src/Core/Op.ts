@@ -1,4 +1,4 @@
-import { Deferred, Maybe, Result } from "#core";
+import { Deferred, Maybe as CoreMaybe, Result as CoreResult } from "#core";
 import { Duration } from "#types";
 import {
 	type RetryOptions as InternalRetryOptions,
@@ -65,7 +65,7 @@ export type Op<I, E, A> = {
 	 * @internal — Used by `Op.interpret`. Do not call directly.
 	 * Returns `null` when the operation was aborted (signal fired before factory resolved).
 	 */
-	readonly _factory: (input: I, signal: AbortSignal) => Deferred<Result<E, A> | null>;
+	readonly _factory: (input: I, signal: AbortSignal) => Deferred<CoreResult<E, A> | null>;
 };
 
 // ---------------------------------------------------------------------------
@@ -499,10 +499,10 @@ export namespace Op {
 		onError: (e: unknown) => E,
 	): Op<I, E, A> => ({
 		_factory: (input, signal) =>
-			Deferred.fromPromise(
-				factory(signal)(input).then((value): Result<E, A> => Result.ok(value)).catch((error): Result<E, A> | null =>
-					signal.aborted ? null : Result.err(onError(error))
-				),
+			Deferred.from.Promise(
+				factory(signal)(input).then((value): CoreResult<E, A> => CoreResult.ok(value)).catch((
+					error,
+				): CoreResult<E, A> | null => signal.aborted ? null : CoreResult.err(onError(error))),
 			),
 	});
 
@@ -755,25 +755,36 @@ export namespace Op {
 	 *
 	 * @example
 	 * ```ts
-	 * Op.toResult(() => new ApiError("no result"))(outcome);
+	 * Op.to.Result(() => new ApiError("no result"))(outcome);
 	 * ```
 	 */
-	export const toResult = <E, A>(onNil: () => E) => (outcome: Outcome<E, A>): Result<E, A> => {
-		if (outcome.kind === "OpOk") { return Result.ok(outcome.value); }
-		if (outcome.kind === "OpErr") { return Result.err(outcome.error); }
-		return Result.err(onNil());
-	};
+	// --- to ---
+	export namespace to {
+		/**
+		 * Converts an Outcome to a `Result`. `Nil` becomes `Err(onNil())`.
+		 *
+		 * @example
+		 * ```ts
+		 * Op.to.Result(() => new ApiError("no result"))(outcome);
+		 * ```
+		 */
+		export const Result = <E, A>(onNil: () => E) => (outcome: Outcome<E, A>): CoreResult<E, A> => {
+			if (outcome.kind === "OpOk") { return CoreResult.ok(outcome.value); }
+			if (outcome.kind === "OpErr") { return CoreResult.err(outcome.error); }
+			return CoreResult.err(onNil());
+		};
 
-	/**
-	 * Converts an Outcome to a `Maybe`. `Ok` becomes `Some`; `Err` and `Nil` become `None`.
-	 *
-	 * @example
-	 * ```ts
-	 * Op.toMaybe(outcome); // Maybe<User>
-	 * ```
-	 */
-	export const toMaybe = <E, A>(outcome: Outcome<E, A>): Maybe<A> =>
-		outcome.kind === "OpOk" ? Maybe.some(outcome.value) : Maybe.none();
+		/**
+		 * Converts an Outcome to a `Maybe`. `Ok` becomes `Some`; `Err` and `Nil` become `None`.
+		 *
+		 * @example
+		 * ```ts
+		 * Op.to.Maybe(outcome); // Maybe<User>
+		 * ```
+		 */
+		export const Maybe = <E, A>(outcome: Outcome<E, A>): CoreMaybe<A> =>
+			outcome.kind === "OpOk" ? CoreMaybe.some(outcome.value) : CoreMaybe.none();
+	}
 
 	// -------------------------------------------------------------------------
 	// Combinators for invocation-level results
@@ -790,7 +801,7 @@ export namespace Op {
 	 */
 	export const all = <E, A>(
 		invocations: ReadonlyArray<Deferred<Outcome<E, A>>>,
-	): Deferred<ReadonlyArray<Outcome<E, A>>> => Deferred.fromPromise(Promise.all(invocations.map(Deferred.toPromise)));
+	): Deferred<ReadonlyArray<Outcome<E, A>>> => Deferred.from.Promise(Promise.all(invocations.map(Deferred.to.Promise)));
 
 	/**
 	 * Resolves to the outcome of whichever invocation settles first.
@@ -802,7 +813,7 @@ export namespace Op {
 	 * ```
 	 */
 	export const race = <E, A>(invocations: ReadonlyArray<Deferred<Outcome<E, A>>>): Deferred<Outcome<E, A>> =>
-		Deferred.fromPromise(Promise.race(invocations.map(Deferred.toPromise)));
+		Deferred.from.Promise(Promise.race(invocations.map(Deferred.to.Promise)));
 
 	/**
 	 * Subscribes to a manager and calls a handler when the state reaches `OpOk`.

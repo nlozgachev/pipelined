@@ -48,31 +48,31 @@ test("Validation.failed creates an Invalid from a single error", () => {
 });
 
 // ---------------------------------------------------------------------------
-// fromPredicate
+// from.Predicate
 // ---------------------------------------------------------------------------
 
-test("Validation.fromPredicate returns Valid when predicate passes", () => {
+test("Validation.from.Predicate returns Valid when predicate passes", () => {
 	expect(pipe("Alice", Validation.from.Predicate((s) => s.length > 0, () => "required"))).toStrictEqual({
 		kind: "Passed",
 		value: "Alice",
 	});
 });
 
-test("Validation.fromPredicate returns Invalid when predicate fails", () => {
+test("Validation.from.Predicate returns Invalid when predicate fails", () => {
 	expect(pipe("", Validation.from.Predicate((s) => s.length > 0, () => "required"))).toStrictEqual({
 		kind: "Failed",
 		errors: ["required"],
 	});
 });
 
-test("Validation.fromPredicate passes the value to onFalse", () => {
+test("Validation.from.Predicate passes the value to onFalse", () => {
 	expect(pipe(-1, Validation.from.Predicate((n) => n >= 0, (n) => `${n} is negative`))).toStrictEqual({
 		kind: "Failed",
 		errors: ["-1 is negative"],
 	});
 });
 
-test("Validation.fromPredicate composes with ap for multi-field validation", () => {
+test("Validation.from.Predicate composes with ap for multi-field validation", () => {
 	const validateName = Validation.from.Predicate((s: string) => s.length > 0, () => "Name required");
 	const validateAge = Validation.from.Predicate((n: number) => n >= 0, () => "Age invalid");
 	const result = pipe(
@@ -597,20 +597,20 @@ test("Validation.fold — return type matches branch return types", () => {
 	expectTypeOf(folded).toBeString();
 });
 
-// --- fromNullable ---
+// --- from.nullable ---
 
-test("Validation.fromNullable returns Valid for non-null values", () => {
-	const result = Validation.from.Nullable(() => "is null")(42);
+test("Validation.from.nullable returns Valid for non-null values", () => {
+	const result = Validation.from.nullable(() => "is null")(42);
 	expect(result).toStrictEqual(Validation.passed(42));
 });
 
-test("Validation.fromNullable returns Invalid for null", () => {
-	const result = Validation.from.Nullable(() => "is null")(null);
+test("Validation.from.nullable returns Invalid for null", () => {
+	const result = Validation.from.nullable(() => "is null")(null);
 	expect(result).toStrictEqual(Validation.failed("is null"));
 });
 
-test("Validation.fromNullable returns Invalid for undefined", () => {
-	const result = Validation.from.Nullable(() => "is null")(undefined);
+test("Validation.from.nullable returns Invalid for undefined", () => {
+	const result = Validation.from.nullable(() => "is null")(undefined);
 	expect(result).toStrictEqual(Validation.failed("is null"));
 });
 

@@ -41,7 +41,7 @@ export namespace TaskResult {
 		 * Creates a Task.Result from a nullable value.
 		 * Returns Ok if the value is not null or undefined, err from onNull otherwise.
 		 */
-		export const Nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskResult<E, A> =>
+		export const nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskResult<E, A> =>
 			CoreTask.resolve(value === null || value === undefined ? CoreResult.err(onNull()) : CoreResult.ok(value));
 
 		/**
@@ -60,10 +60,10 @@ export namespace TaskResult {
 		 * Wraps a Promise-returning function of any arguments, returning a new function
 		 * that catches rejections and returns a Task.Result.
 		 */
-		export const Throwable =
+		export const throwable =
 			<Args extends readonly unknown[], A, E>(f: (...args: Args) => Promise<A>, onError: (e: unknown) => E) =>
 			(...args: Args): TaskResult<E, A> =>
-				CoreTask.from(() => f(...args).then(CoreResult.ok).catch((error) => CoreResult.err(onError(error))));
+				CoreTask.from.Promise(() => f(...args).then(CoreResult.ok).catch((error) => CoreResult.err(onError(error))));
 	}
 
 	/**
@@ -84,7 +84,7 @@ export namespace TaskResult {
 		f: (signal?: AbortSignal) => Thenable<A>,
 		onError: (e: unknown) => E,
 	): TaskResult<E, A> =>
-		CoreTask.from((signal) =>
+		CoreTask.from.Promise((signal) =>
 			Promise.resolve(f(signal)).then(CoreResult.ok).catch((error) => CoreResult.err(onError(error)))
 		);
 
@@ -166,8 +166,8 @@ export namespace TaskResult {
 	 * Both Tasks run in parallel.
 	 */
 	export const ap = <E, A>(arg: TaskResult<E, A>) => <B>(data: TaskResult<E, (a: A) => B>): TaskResult<E, B> =>
-		CoreTask.from((signal) =>
-			Promise.all([Deferred.toPromise(data(signal)), Deferred.toPromise(arg(signal))]).then(([of_, oa]) =>
+		CoreTask.from.Promise((signal) =>
+			Promise.all([Deferred.to.Promise(data(signal)), Deferred.to.Promise(arg(signal))]).then(([of_, oa]) =>
 				CoreResult.ap(oa)(of_)
 			)
 		);
@@ -235,9 +235,9 @@ export namespace TaskResult {
 	export const struct = <E, R extends Record<string, any>>(
 		fields: { [K in keyof R]: TaskResult<E, R[K]>; },
 	): TaskResult<E, R> =>
-		CoreTask.from((signal) => {
+		CoreTask.from.Promise((signal) => {
 			const keys = Object.keys(fields);
-			const promises = keys.map((key) => Deferred.toPromise(fields[key](signal)));
+			const promises = keys.map((key) => Deferred.to.Promise(fields[key](signal)));
 			return Promise.all(promises).then((results) => {
 				const record = {} as R;
 				for (let i = 0; i < keys.length; i++) {

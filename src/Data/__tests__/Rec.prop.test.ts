@@ -42,9 +42,9 @@ test("Rec.filter(always false) — empty result", () => {
 // entries / fromEntries
 // ---------------------------------------------------------------------------
 
-test("Rec.fromEntries(Rec.entries) — round-trip", () => {
+test("Rec.from.entries(Rec.entries) — round-trip", () => {
 	fc.assert(fc.property(dict, (obj) => {
-		expect(Rec.fromEntries(Rec.entries(obj) as readonly (readonly [string, number])[])).toStrictEqual(obj);
+		expect(Rec.from.entries(Rec.entries(obj) as readonly (readonly [string, number])[])).toStrictEqual(obj);
 	}));
 });
 

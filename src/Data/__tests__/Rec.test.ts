@@ -179,23 +179,23 @@ test("entries - returns empty array for empty record", () => {
 });
 
 test("fromEntries - creates record from key-value pairs", () => {
-	const result = Rec.fromEntries([["a", 1], ["b", 2], ["c", 3]]);
+	const result = Rec.from.entries([["a", 1], ["b", 2], ["c", 3]]);
 	expect(result).toStrictEqual({ a: 1, b: 2, c: 3 });
 });
 
 test("fromEntries - returns empty record for empty array", () => {
-	const result = Rec.fromEntries([] as [string, number][]);
+	const result = Rec.from.entries([] as [string, number][]);
 	expect(result).toStrictEqual({});
 });
 
 test("fromEntries - last entry wins for duplicate keys", () => {
-	const result = Rec.fromEntries([["a", 1], ["a", 2]]);
+	const result = Rec.from.entries([["a", 1], ["a", 2]]);
 	expect(result).toStrictEqual({ a: 2 });
 });
 
 test("entries and fromEntries are inverses", () => {
 	const original = { x: 10, y: 20, z: 30 };
-	const roundTripped = Rec.fromEntries(Rec.entries(original));
+	const roundTripped = Rec.from.entries(Rec.entries(original));
 	expect(roundTripped).toStrictEqual(original);
 });
 
@@ -382,7 +382,7 @@ test("pipe composition - entries, transform, fromEntries round trip", () => {
 		Rec.entries,
 		(es) => es.filter(([_k, v]) => v > 1),
 		(es) => es.map(([k, v]) => [k, v * 100] as const),
-		Rec.fromEntries,
+		Rec.from.entries,
 	);
 	expect(result).toStrictEqual({ b: 200, c: 300 });
 });
@@ -505,13 +505,13 @@ test("Rec.NonEmpty.singleton - creates a single-element record", () => {
 	expect(Rec.isNonEmpty(result)).toBe(true);
 });
 
-test("Rec.NonEmpty.fromRecord - returns Some for non-empty record", () => {
-	const result = Rec.NonEmpty.fromRecord({ a: 1 });
+test("Rec.NonEmpty.from.Record - returns Some for non-empty record", () => {
+	const result = Rec.NonEmpty.from.Record({ a: 1 });
 	expect(result).toStrictEqual(Maybe.some({ a: 1 }));
 });
 
-test("Rec.NonEmpty.fromRecord - returns None for empty record", () => {
-	const result = Rec.NonEmpty.fromRecord({});
+test("Rec.NonEmpty.from.Record - returns None for empty record", () => {
+	const result = Rec.NonEmpty.from.Record({});
 	expect(result).toStrictEqual(Maybe.none());
 });
 
@@ -519,7 +519,7 @@ test("Rec.NonEmpty.keys - returns non-empty array of keys", () => {
 	const r = Rec.NonEmpty.singleton("a", 1);
 	const keys = Rec.NonEmpty.keys(r);
 	expect(keys).toStrictEqual(["a"]);
-	expectTypeOf(keys).toEqualTypeOf<readonly [string, ...string[]]>();
+	expectTypeOf(keys).toEqualTypeOf<readonly ["a", ..."a"[]]>();
 });
 
 test("Rec.NonEmpty.values - returns non-empty array of values", () => {
@@ -533,7 +533,7 @@ test("Rec.NonEmpty.entries - returns non-empty array of entries", () => {
 	const r = Rec.NonEmpty.singleton("a", 1);
 	const entries = Rec.NonEmpty.entries(r);
 	expect(entries).toStrictEqual([["a", 1]]);
-	expectTypeOf(entries).toEqualTypeOf<readonly [readonly [string, number], ...(readonly [string, number])[]]>();
+	expectTypeOf(entries).toEqualTypeOf<readonly [readonly ["a", number], ...(readonly ["a", number])[]]>();
 });
 
 test("Rec.NonEmpty.reduce - reduces non-empty record without initial seed", () => {
@@ -542,16 +542,36 @@ test("Rec.NonEmpty.reduce - reduces non-empty record without initial seed", () =
 	expect(result).toBe(10);
 });
 
-test("Rec.map on NonEmpty - type-safely preserves non-empty status", () => {
+test("Rec.map on NonEmpty - returns standard Record", () => {
 	const r = Rec.NonEmpty.singleton("x", 5);
 	const mapped = Rec.map((n: number) => n * 2)(r);
 	expect(mapped).toStrictEqual({ x: 10 });
-	expectTypeOf(mapped).toEqualTypeOf<Rec.NonEmpty<number>>();
+	expectTypeOf(mapped).toEqualTypeOf<Readonly<Record<string, number>>>();
 });
 
-test("Rec.mapWithKey on NonEmpty - type-safely preserves non-empty status", () => {
+test("Rec.mapWithKey on NonEmpty - returns standard Record", () => {
 	const r = Rec.NonEmpty.singleton("x", 5);
-	const mapped = Rec.mapWithKey((k, v: number) => `${k}:${v}`)(r);
+	const mapped = Rec.mapWithKey((k, v: number): string => `${k}:${v}`)(r);
 	expect(mapped).toStrictEqual({ x: "x:5" });
-	expectTypeOf(mapped).toEqualTypeOf<Rec.NonEmpty<string>>();
+	expectTypeOf(mapped).toEqualTypeOf<Readonly<Record<string, string>>>();
+});
+
+test("Rec.NonEmpty.map - maps values and preserves NonEmpty type", () => {
+	const r = Rec.NonEmpty.singleton("x", 5);
+	const mapped = pipe(r, Rec.NonEmpty.map((n) => n * 2));
+	expect(mapped).toStrictEqual({ x: 10 });
+	expectTypeOf(mapped).toEqualTypeOf<Rec.NonEmpty<number, "x">>();
+});
+
+test("Rec.NonEmpty.mapWithKey - maps values with key and preserves NonEmpty type", () => {
+	const r = Rec.NonEmpty.singleton("x", 5);
+	const mapped = pipe(r, Rec.NonEmpty.mapWithKey((k, v) => `${k}:${v}`));
+	expect(mapped).toStrictEqual({ x: "x:5" });
+	expectTypeOf(mapped).toEqualTypeOf<Rec.NonEmpty<string, "x">>();
+});
+
+test("Rec.NonEmpty pipe composition", () => {
+	const result = pipe(Rec.NonEmpty.singleton("a", 5), Rec.NonEmpty.map((n) => n * 2), Rec.NonEmpty.keys);
+	expect(result).toStrictEqual(["a"]);
+	expectTypeOf(result).toEqualTypeOf<readonly ["a", ..."a"[]]>();
 });

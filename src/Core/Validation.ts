@@ -99,11 +99,11 @@ export namespace Validation {
 		 *
 		 * @example
 		 * ```ts
-		 * pipe(null, Validation.from.Nullable(() => "is null")); // Failed(["is null"])
-		 * pipe(42, Validation.from.Nullable(() => "is null"));   // Passed(42)
+		 * pipe(null, Validation.from.nullable(() => "is null")); // Failed(["is null"])
+		 * pipe(42, Validation.from.nullable(() => "is null"));   // Passed(42)
 		 * ```
 		 */
-		export const Nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): Validation<E, A> =>
+		export const nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): Validation<E, A> =>
 			value === null || value === undefined ? failed(onNull()) : passed(value);
 
 		/**

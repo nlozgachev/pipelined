@@ -49,65 +49,65 @@ test("Maybe.isNone returns false for Some", () => {
 });
 
 // ---------------------------------------------------------------------------
-// fromNullable
+// from.nullable
 // ---------------------------------------------------------------------------
 
-test("Maybe.from.Nullable returns None for null", () => {
-	expect(Maybe.from.Nullable(null)).toStrictEqual({ kind: "None" });
+test("Maybe.from.nullable returns None for null", () => {
+	expect(Maybe.from.nullable(null)).toStrictEqual({ kind: "None" });
 });
 
-test("Maybe.from.Nullable returns None for undefined", () => {
-	expect(Maybe.from.Nullable(undefined)).toStrictEqual({ kind: "None" });
+test("Maybe.from.nullable returns None for undefined", () => {
+	expect(Maybe.from.nullable(undefined)).toStrictEqual({ kind: "None" });
 });
 
-test("Maybe.from.Nullable returns Some for 0", () => {
-	expect(Maybe.from.Nullable(0)).toStrictEqual({ kind: "Some", value: 0 });
+test("Maybe.from.nullable returns Some for 0", () => {
+	expect(Maybe.from.nullable(0)).toStrictEqual({ kind: "Some", value: 0 });
 });
 
-test("Maybe.from.Nullable returns Some for false", () => {
-	expect(Maybe.from.Nullable(false)).toStrictEqual({ kind: "Some", value: false });
+test("Maybe.from.nullable returns Some for false", () => {
+	expect(Maybe.from.nullable(false)).toStrictEqual({ kind: "Some", value: false });
 });
 
-test("Maybe.from.Nullable returns Some for empty string", () => {
-	expect(Maybe.from.Nullable("")).toStrictEqual({ kind: "Some", value: "" });
+test("Maybe.from.nullable returns Some for empty string", () => {
+	expect(Maybe.from.nullable("")).toStrictEqual({ kind: "Some", value: "" });
 });
 
-test("Maybe.from.Nullable returns Some for NaN", () => {
-	expect(Maybe.from.Nullable(NaN)).toStrictEqual({ kind: "Some", value: NaN });
+test("Maybe.from.nullable returns Some for NaN", () => {
+	expect(Maybe.from.nullable(NaN)).toStrictEqual({ kind: "Some", value: NaN });
 });
 
-test("Maybe.from.Nullable returns Some for a regular value", () => {
-	expect(Maybe.from.Nullable(42)).toStrictEqual({ kind: "Some", value: 42 });
+test("Maybe.from.nullable returns Some for a regular value", () => {
+	expect(Maybe.from.nullable(42)).toStrictEqual({ kind: "Some", value: 42 });
 });
 
-test("Maybe.from.Nullable returns Some for an object", () => {
+test("Maybe.from.nullable returns Some for an object", () => {
 	const obj = { a: 1 };
-	const result = Maybe.from.Nullable(obj);
+	const result = Maybe.from.nullable(obj);
 	expect(result).toStrictEqual({ kind: "Some", value: { a: 1 } });
 });
 
 // ---------------------------------------------------------------------------
-// toNullable
+// to.nullable
 // ---------------------------------------------------------------------------
 
-test("Maybe.to.Nullable returns the value for Some", () => {
-	expect(Maybe.to.Nullable(Maybe.some(42))).toBe(42);
+test("Maybe.to.nullable returns the value for Some", () => {
+	expect(Maybe.to.nullable(Maybe.some(42))).toBe(42);
 });
 
-test("Maybe.to.Nullable returns null for None", () => {
-	expect(Maybe.to.Nullable(Maybe.none())).toBeNull();
+test("Maybe.to.nullable returns null for None", () => {
+	expect(Maybe.to.nullable(Maybe.none())).toBeNull();
 });
 
 // ---------------------------------------------------------------------------
 // toUndefined
 // ---------------------------------------------------------------------------
 
-test("Maybe.to.Undefined returns the value for Some", () => {
-	expect(Maybe.to.Undefined(Maybe.some(42))).toBe(42);
+test("Maybe.to.undefined returns the value for Some", () => {
+	expect(Maybe.to.undefined(Maybe.some(42))).toBe(42);
 });
 
-test("Maybe.to.Undefined returns undefined for None", () => {
-	expect(Maybe.to.Undefined(Maybe.none())).toBeUndefined();
+test("Maybe.to.undefined returns undefined for None", () => {
+	expect(Maybe.to.undefined(Maybe.none())).toBeUndefined();
 });
 
 // ---------------------------------------------------------------------------
@@ -382,7 +382,7 @@ test("Maybe.ap returns None when both are None", () => {
 
 test("maybe composes well in a pipe chain", () => {
 	const result = pipe(
-		Maybe.from.Nullable("42" as string | null),
+		Maybe.from.nullable("42" as string | null),
 		Maybe.map((s) => parseInt(s, 10)),
 		Maybe.filter((n) => n > 0),
 		Maybe.map((n) => n * 2),
@@ -393,7 +393,7 @@ test("maybe composes well in a pipe chain", () => {
 
 test("maybe pipe short-circuits on None", () => {
 	const result = pipe(
-		Maybe.from.Nullable(null as string | null),
+		Maybe.from.nullable(null as string | null),
 		Maybe.map((s) => parseInt(s, 10)),
 		Maybe.filter((n) => n > 0),
 		Maybe.map((n) => n * 2),
@@ -403,7 +403,7 @@ test("maybe pipe short-circuits on None", () => {
 });
 
 // ---------------------------------------------------------------------------
-// fromPredicate
+// from.Predicate
 // ---------------------------------------------------------------------------
 
 test("Maybe.from.Predicate returns Some when predicate passes", () => {
