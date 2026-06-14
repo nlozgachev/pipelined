@@ -36,9 +36,9 @@ test("Uniq.size — agrees with toArray length", () => {
 	}));
 });
 
-test("Uniq.isEmpty — iff size is 0", () => {
+test("Uniq.is.empty — iff size is 0", () => {
 	fc.assert(fc.property(arbUniq, (s) => {
-		expect(Uniq.isEmpty(s)).toBe(Uniq.size(s) === 0);
+		expect(Uniq.is.empty(s)).toBe(Uniq.size(s) === 0);
 	}));
 });
 

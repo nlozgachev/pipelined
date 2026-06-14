@@ -40,20 +40,20 @@ To begin validating, we lift our data checks into the `Validation` context:
 import { Validation } from "@nlozgachev/pipelined/core";
 
 // Representing a successful validation check
-const pass = Validation.passed("Alice"); // Validation<never, string>
+const pass = Validation.make.passed("Alice"); // Validation<never, string>
 
 // Representing a single failure
-const fail = Validation.failed("Username must be at least 3 characters"); // Validation<string, never>
+const fail = Validation.make.failed("Username must be at least 3 characters"); // Validation<string, never>
 ```
 
 Under the hood, all failures in `Validation` are collected inside an `Arr.NonEmpty` (a type-safe
-array guaranteed to contain at least one element). When you call `Validation.failed(err)`, the
+array guaranteed to contain at least one element). When you call `Validation.make.failed(err)`, the
 library automatically wraps your error in an array container.
 
 If you already have an array of errors and want to lift it directly, you can use `failedAll`:
 
 ```ts
-const multipleFails = Validation.failedAll([
+const multipleFails = Validation.make.failedAll([
   "Email is malformed",
   "Email domain is not allowed",
 ]);
@@ -94,7 +94,7 @@ const createUser = (name: string) => (email: string) => (age: number) => ({
 });
 
 const result = pipe(
-  Validation.passed(createUser),
+  Validation.make.passed(createUser),
   Validation.ap(validateName(form.name)),   // Applies name check
   Validation.ap(validateEmail(form.email)), // Applies email check
   Validation.ap(validateAge(form.age)),     // Applies age check
@@ -244,7 +244,7 @@ pipe(
   validatePayload(input),
   Validation.recover((errors) => {
     console.warn("Payload validation failed. Using default configuration.", errors);
-    return Validation.passed(defaultPayload);
+    return Validation.make.passed(defaultPayload);
   }),
 );
 ```
@@ -341,7 +341,7 @@ Unlike `Result.struct` or `Maybe.struct` (which short-circuit on the first failu
 const validatedUser = Validation.struct({
   name: Validation.from.Predicate((s: string) => s.length > 0, () => "Name is required")(""),
   age: Validation.from.Predicate((n: number) => n >= 18, () => "Must be at least 18")(16),
-  role: Validation.passed("user"),
+  role: Validation.make.passed("user"),
 }); 
 // Failed(["Name is required", "Must be at least 18"])
 ```
@@ -351,9 +351,9 @@ constructed record:
 
 ```ts
 const passedUser = Validation.struct({
-  name: Validation.passed("Alice"),
-  age: Validation.passed(30),
-  role: Validation.passed("admin"),
+  name: Validation.make.passed("Alice"),
+  age: Validation.make.passed(30),
+  role: Validation.make.passed("admin"),
 });
 // Passed({ name: "Alice", age: 30, role: "admin" })
 ```

@@ -37,18 +37,18 @@ export namespace TaskValidation {
 	/**
 	 * Wraps a value in a passed Task.Validation.
 	 */
-	export const passed = <E, A>(value: A): TaskValidation<E, A> => CoreTask.resolve(CoreValidation.passed(value));
+	export const passed = <E, A>(value: A): TaskValidation<E, A> => CoreTask.resolve(CoreValidation.make.passed(value));
 
 	/**
 	 * Creates a failed Task.Validation with a single error.
 	 */
-	export const failed = <E, A>(error: E): TaskValidation<E, A> => CoreTask.resolve(CoreValidation.failed(error));
+	export const failed = <E, A>(error: E): TaskValidation<E, A> => CoreTask.resolve(CoreValidation.make.failed(error));
 
 	/**
 	 * Creates a failed Task.Validation from multiple errors.
 	 */
 	export const failedAll = <E, A>(errors: NonEmptyArr<E>): TaskValidation<E, A> =>
-		CoreTask.resolve(CoreValidation.failedAll(errors));
+		CoreTask.resolve(CoreValidation.make.failedAll(errors));
 
 	// --- from ---
 	export namespace from {
@@ -64,7 +64,7 @@ export namespace TaskValidation {
 		 */
 		export const nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskValidation<E, A> =>
 			CoreTask.resolve(
-				value === null || value === undefined ? CoreValidation.failed(onNull()) : CoreValidation.passed(value),
+				value === null || value === undefined ? CoreValidation.make.failed(onNull()) : CoreValidation.make.passed(value),
 			);
 
 		/**
@@ -72,7 +72,9 @@ export namespace TaskValidation {
 		 * Some becomes Passed, None becomes Failed with the error from onNone.
 		 */
 		export const Maybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): TaskValidation<E, A> =>
-			CoreTask.resolve(CoreMaybe.isNone(maybe) ? CoreValidation.failed(onNone()) : CoreValidation.passed(maybe.value));
+			CoreTask.resolve(
+				CoreMaybe.is.none(maybe) ? CoreValidation.make.failed(onNone()) : CoreValidation.make.passed(maybe.value),
+			);
 
 		/**
 		 * Creates a Task.Validation from a Result.
@@ -101,7 +103,9 @@ export namespace TaskValidation {
 		onError: (e: unknown) => E,
 	): TaskValidation<E, A> =>
 		CoreTask.from.Promise((signal) =>
-			Promise.resolve(f(signal)).then(CoreValidation.passed<E, A>).catch((error) => CoreValidation.failed(onError(error)))
+			Promise.resolve(f(signal)).then(CoreValidation.make.passed<E, A>).catch((error) =>
+				CoreValidation.make.failed(onError(error))
+			)
 		);
 
 	/**
@@ -180,7 +184,7 @@ export namespace TaskValidation {
 		<E, A, B>(fallback: (errors: NonEmptyArr<E>) => TaskValidation<E, B>) =>
 		(data: TaskValidation<E, A>): TaskValidation<E, A | B> =>
 			CoreTask.chain((validation: Validation<E, A>) =>
-				CoreValidation.isPassed(validation)
+				CoreValidation.is.passed(validation)
 					? CoreTask.resolve(validation as Validation<E, A | B>)
 					: fallback(validation.errors)
 			)(data);
@@ -282,13 +286,13 @@ export namespace TaskValidation {
 				const errors: E[] = [];
 				for (let i = 0; i < keys.length; i++) {
 					const res = results[i] as Validation<E, any>;
-					if (CoreValidation.isPassed(res)) {
+					if (CoreValidation.is.passed(res)) {
 						record[keys[i] as keyof R] = res.value;
 					} else {
 						errors.push(...res.errors);
 					}
 				}
-				return isNonEmptyArr(errors) ? CoreValidation.failedAll(errors) : CoreValidation.passed(record);
+				return isNonEmptyArr(errors) ? CoreValidation.make.failedAll(errors) : CoreValidation.make.passed(record);
 			});
 		});
 }

@@ -8,10 +8,10 @@ const data10k = Array.from({ length: 10_000 }, (_, i) => i);
 const otherArr = Array.from({ length: 10_000 }, (_, i) => i + 1);
 const shuffled = [...data10k].toReversed();
 const words = Array.from({ length: 10_000 }, (_, i) => `word${i % 100}`);
-const toSome = (n: number): Maybe<number> => Maybe.some(n * 2);
-const toSome2 = (n: number): Maybe<number> => Maybe.some(n * 2);
-const toOk = (n: number): Result<never, number> => Result.ok(n * 2);
-const toOk2 = (n: number): Result<never, number> => Result.ok(n * 2);
+const toSome = (n: number): Maybe<number> => Maybe.make.some(n * 2);
+const toSome2 = (n: number): Maybe<number> => Maybe.make.some(n * 2);
+const toOk = (n: number): Result<never, number> => Result.make.ok(n * 2);
+const toOk2 = (n: number): Result<never, number> => Result.make.ok(n * 2);
 
 // =============================================================================
 // map

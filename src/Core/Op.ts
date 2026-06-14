@@ -500,9 +500,9 @@ export namespace Op {
 	): Op<I, E, A> => ({
 		_factory: (input, signal) =>
 			Deferred.from.Promise(
-				factory(signal)(input).then((value): CoreResult<E, A> => CoreResult.ok(value)).catch((
+				factory(signal)(input).then((value): CoreResult<E, A> => CoreResult.make.ok(value)).catch((
 					error,
-				): CoreResult<E, A> | null => signal.aborted ? null : CoreResult.err(onError(error))),
+				): CoreResult<E, A> | null => signal.aborted ? null : CoreResult.make.err(onError(error))),
 			),
 	});
 
@@ -769,9 +769,9 @@ export namespace Op {
 		 * ```
 		 */
 		export const Result = <E, A>(onNil: () => E) => (outcome: Outcome<E, A>): CoreResult<E, A> => {
-			if (outcome.kind === "OpOk") { return CoreResult.ok(outcome.value); }
-			if (outcome.kind === "OpErr") { return CoreResult.err(outcome.error); }
-			return CoreResult.err(onNil());
+			if (outcome.kind === "OpOk") { return CoreResult.make.ok(outcome.value); }
+			if (outcome.kind === "OpErr") { return CoreResult.make.err(outcome.error); }
+			return CoreResult.make.err(onNil());
 		};
 
 		/**
@@ -783,7 +783,7 @@ export namespace Op {
 		 * ```
 		 */
 		export const Maybe = <E, A>(outcome: Outcome<E, A>): CoreMaybe<A> =>
-			outcome.kind === "OpOk" ? CoreMaybe.some(outcome.value) : CoreMaybe.none();
+			outcome.kind === "OpOk" ? CoreMaybe.make.some(outcome.value) : CoreMaybe.make.none();
 	}
 
 	// -------------------------------------------------------------------------

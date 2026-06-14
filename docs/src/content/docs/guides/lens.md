@@ -96,26 +96,26 @@ target field across our application.
 
 ## Creating lenses
 
-The simplest way to create a lens is with `Lens.prop`, which focuses on a single property of an
-object. The double-parenthesis syntax (`prop<Source>()("key")`) allows TypeScript to autocomplete
-keys and enforce type safety:
+The simplest way to create a lens is with `Lens.from.property`, which focuses on a single property
+of an object. The double-parenthesis syntax (`prop<Source>()("key")`) allows TypeScript to
+autocomplete keys and enforce type safety:
 
 ```ts
 import { Lens } from "@nlozgachev/pipelined/core";
 
 // Focus on the database property of AppConfig
-const databaseLens = Lens.prop<AppConfig>()("database");
+const databaseLens = Lens.from.property<AppConfig>()("database");
 
 // Focus on the pool property of DatabaseConfig
 type DatabaseConfig = AppConfig["database"];
-const poolLens = Lens.prop<DatabaseConfig>()("pool");
+const poolLens = Lens.from.property<DatabaseConfig>()("pool");
 ```
 
 For custom paths — such as navigating a non-standard data structure or mapping values on the fly —
-we can define a lens manually using `Lens.make`:
+we can define a lens manually using `Lens.from.accessors`:
 
 ```ts
-const coordinatesLens = Lens.make(
+const coordinatesLens = Lens.from.accessors(
   (point: [number, number]) => point[0], // Getter: focus on the X coordinate
   (x) => (point) => [x, point[1]]        // Setter: return a new coordinate tuple
 );
@@ -130,7 +130,7 @@ them perfectly suited for `pipe`:
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 
-const maxLens = Lens.prop<AppConfig["database"]["pool"]>()("max");
+const maxLens = Lens.from.property<AppConfig["database"]["pool"]>()("max");
 
 // 1. Reading a value
 const currentMax = pipe(config.database.pool, Lens.get(maxLens)); // 10
@@ -153,9 +153,9 @@ This composition lets us build complex paths out of simple, reusable building bl
 
 ```ts
 // Define the shallow lenses
-const database = Lens.prop<AppConfig>()("database");
-const pool = Lens.prop<AppConfig["database"]>()("pool");
-const max = Lens.prop<AppConfig["database"]["pool"]>()("max");
+const database = Lens.from.property<AppConfig>()("database");
+const pool = Lens.from.property<AppConfig["database"]>()("pool");
+const max = Lens.from.property<AppConfig["database"]["pool"]>()("max");
 
 // Compose them into a single deep lens
 const maxConnectionsLens = pipe(
@@ -197,14 +197,14 @@ type UserProfile = {
   };
 };
 
-const profileLens = Lens.prop<UserProfile>()("name");
-const preferencesOptional = Optional.prop<UserProfile>()("preferences");
+const profileLens = Lens.from.property<UserProfile>()("name");
+const preferencesOptional = Optional.from.property<UserProfile>()("preferences");
 
 // Transition from guaranteed path (Lens) to optional path (Optional)
 const themeOptional = pipe(
-  Lens.prop<UserProfile>()("preferences"),
+  Lens.from.property<UserProfile>()("preferences"),
   Lens.toOptional,
-  Optional.andThen(Optional.prop<{ theme?: string }>()("theme"))
+  Optional.andThen(Optional.from.property<{ theme?: string }>()("theme"))
 );
 ```
 

@@ -58,9 +58,9 @@ import { These } from "@nlozgachev/pipelined/core";
 
 type ContactDetails = These<EmailAddress, PhoneNumber>;
 
-const emailOnly = These.first(email);       // Email only
-const phoneOnly = These.second(phone);      // Phone only
-const both = These.both(email, phone);      // Both channels available
+const emailOnly = These.make.first(email);       // Email only
+const phoneOnly = These.make.second(phone);      // Phone only
+const both = These.make.both(email, phone);      // Both channels available
 ```
 
 ### 2. Local and Remote Synchronization
@@ -76,9 +76,9 @@ comparing records, three outcomes are structurally possible:
 interface UserRecord { id: string; name: string }
 
 const reconcile = (local: UserRecord | null, remote: UserRecord | null): These<UserRecord, UserRecord> => {
-  if (local && !remote) return These.first(local);
-  if (!local && remote) return These.second(remote);
-  if (local && remote)  return These.both(local, remote);
+  if (local && !remote) return These.make.first(local);
+  if (!local && remote) return These.make.second(remote);
+  if (local && remote)  return These.make.both(local, remote);
   throw new Error("Cannot reconcile when both sources are empty");
 };
 ```
@@ -100,9 +100,9 @@ import { pipe } from "@nlozgachev/pipelined/composition";
 
 const formatEmail = (email: EmailAddress) => email.toLowerCase();
 
-pipe(These.first(email), These.mapFirst(formatEmail));      // First(formattedEmail)
-pipe(These.both(email, phone), These.mapFirst(formatEmail)); // Both(formattedEmail, phone)
-pipe(These.second(phone), These.mapFirst(formatEmail));     // Second(phone)
+pipe(These.make.first(email), These.mapFirst(formatEmail));      // First(formattedEmail)
+pipe(These.make.both(email, phone), These.mapFirst(formatEmail)); // Both(formattedEmail, phone)
+pipe(These.make.second(phone), These.mapFirst(formatEmail));     // Second(phone)
 ```
 
 ### Mapping the second side with `mapSecond`
@@ -112,8 +112,8 @@ pipe(These.second(phone), These.mapFirst(formatEmail));     // Second(phone)
 ```ts
 const formatPhone = (phone: PhoneNumber) => phone.trim();
 
-pipe(These.second(phone), These.mapSecond(formatPhone));  // Second(formattedPhone)
-pipe(These.both(email, phone), These.mapSecond(formatPhone)); // Both(email, formattedPhone)
+pipe(These.make.second(phone), These.mapSecond(formatPhone));  // Second(formattedPhone)
+pipe(These.make.both(email, phone), These.mapSecond(formatPhone)); // Both(email, formattedPhone)
 ```
 
 ### Mapping both sides with `mapBoth`
@@ -122,7 +122,7 @@ pipe(These.both(email, phone), These.mapSecond(formatPhone)); // Both(email, for
 
 ```ts
 pipe(
-  These.both(email, phone),
+  These.make.both(email, phone),
   These.mapBoth(formatEmail, formatPhone),
 ); // Both(formattedEmail, formattedPhone)
 ```
@@ -140,10 +140,10 @@ step returns:
 
 ```ts
 const lookupEmailMetaData = (email: string): These<EmailMeta, PhoneNumber> => 
-  These.first(fetchMetadata(email));
+  These.make.first(fetchMetadata(email));
 
 pipe(
-  These.both("alice@example.com", "+15550199"),
+  These.make.both("alice@example.com", "+15550199"),
   These.chainFirst(lookupEmailMetaData),
 ); // First(EmailMeta) — phone number is discarded
 ```
@@ -189,10 +189,10 @@ If you only want to extract one side of the container and provide a fallback if 
 
 ```ts
 // Extract the email (available in First or Both), or fallback
-pipe(These.second(phone), These.getFirstOrElse(() => defaultEmail)); // defaultEmail
+pipe(These.make.second(phone), These.getFirstOrElse(() => defaultEmail)); // defaultEmail
 
 // Extract the phone (available in Second or Both), or fallback
-pipe(These.first(email), These.getSecondOrElse(() => defaultPhone)); // defaultPhone
+pipe(These.make.first(email), These.getSecondOrElse(() => defaultPhone)); // defaultPhone
 ```
 
 ---
@@ -203,9 +203,9 @@ To check which variant is active without unpacking the full structure, `These` p
 guards:
 
 ```ts
-These.isFirst(value);  // true if First only
-These.isSecond(value); // true if Second only
-These.isBoth(value);   // true if Both
+These.is.first(value);  // true if First only
+These.is.second(value); // true if Second only
+These.is.both(value);   // true if Both
 
 These.hasFirst(value);  // true if First or Both
 These.hasSecond(value); // true if Second or Both
@@ -220,8 +220,8 @@ These.hasSecond(value); // true if Second or Both
 `swap` reverses the first and second values of the container:
 
 ```ts
-These.swap(These.first(email));         // Second(email)
-These.swap(These.both(email, phone));   // Both(phone, email)
+These.swap(These.make.first(email));         // Second(email)
+These.swap(These.make.both(email, phone));   // Both(phone, email)
 ```
 
 ### Peeking with tap
@@ -231,7 +231,7 @@ container, leaving the original `These` unchanged:
 
 ```ts
 pipe(
-  These.both(email, phone),
+  These.make.both(email, phone),
   These.tap((e) => console.log(`Sending system check to ${e}`)),
 );
 ```

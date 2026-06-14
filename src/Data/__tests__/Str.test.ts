@@ -168,19 +168,19 @@ test("Str.words splits on mixed whitespace characters", () => {
 // ---------------------------------------------------------------------------
 
 test("str.parse.int returns Some for a valid integer string", () => {
-	expect(Str.parse.int("42")).toStrictEqual(Maybe.some(42));
+	expect(Str.parse.int("42")).toStrictEqual(Maybe.make.some(42));
 });
 
 test("str.parse.int truncates floats", () => {
-	expect(Str.parse.int("3.7")).toStrictEqual(Maybe.some(3));
+	expect(Str.parse.int("3.7")).toStrictEqual(Maybe.make.some(3));
 });
 
 test("str.parse.int returns None for a non-numeric string", () => {
-	expect(Str.parse.int("abc")).toStrictEqual(Maybe.none());
+	expect(Str.parse.int("abc")).toStrictEqual(Maybe.make.none());
 });
 
 test("str.parse.int returns None for empty string", () => {
-	expect(Str.parse.int("")).toStrictEqual(Maybe.none());
+	expect(Str.parse.int("")).toStrictEqual(Maybe.make.none());
 });
 
 // ---------------------------------------------------------------------------
@@ -188,19 +188,19 @@ test("str.parse.int returns None for empty string", () => {
 // ---------------------------------------------------------------------------
 
 test("str.parse.float returns Some for a valid float string", () => {
-	expect(Str.parse.float("3.14")).toStrictEqual(Maybe.some(3.14));
+	expect(Str.parse.float("3.14")).toStrictEqual(Maybe.make.some(3.14));
 });
 
 test("str.parse.float returns Some for an integer string", () => {
-	expect(Str.parse.float("42")).toStrictEqual(Maybe.some(42));
+	expect(Str.parse.float("42")).toStrictEqual(Maybe.make.some(42));
 });
 
 test("str.parse.float returns None for a non-numeric string", () => {
-	expect(Str.parse.float("abc")).toStrictEqual(Maybe.none());
+	expect(Str.parse.float("abc")).toStrictEqual(Maybe.make.none());
 });
 
 test("str.parse.float returns None for empty string", () => {
-	expect(Str.parse.float("")).toStrictEqual(Maybe.none());
+	expect(Str.parse.float("")).toStrictEqual(Maybe.make.none());
 });
 
 // ---------------------------------------------------------------------------
@@ -239,16 +239,16 @@ test("Str.replaceAll returns the string unchanged when pattern not found", () =>
 // isEmpty
 // ---------------------------------------------------------------------------
 
-test("Str.isEmpty returns true for an empty string", () => {
-	expect(pipe("", Str.isEmpty)).toBe(true);
+test("Str.is.empty returns true for an empty string", () => {
+	expect(pipe("", Str.is.empty)).toBe(true);
 });
 
-test("Str.isEmpty returns false for a non-empty string", () => {
-	expect(pipe("hi", Str.isEmpty)).toBe(false);
+test("Str.is.empty returns false for a non-empty string", () => {
+	expect(pipe("hi", Str.is.empty)).toBe(false);
 });
 
-test("Str.isEmpty returns false for a whitespace-only string", () => {
-	expect(pipe("   ", Str.isEmpty)).toBe(false);
+test("Str.is.empty returns false for a whitespace-only string", () => {
+	expect(pipe("   ", Str.is.empty)).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
@@ -358,17 +358,17 @@ test("str pipe composition - trim then split then toUpperCase each word", () => 
 
 test("Str.parseJson returns Ok for valid JSON object", () => {
 	const result = Str.parseJson('{"name":"Alice","age":30}');
-	expect(result).toStrictEqual(Result.ok({ name: "Alice", age: 30 }));
+	expect(result).toStrictEqual(Result.make.ok({ name: "Alice", age: 30 }));
 });
 
 test("Str.parseJson returns Ok for valid JSON array", () => {
 	const result = Str.parseJson("[1,2,3]");
-	expect(result).toStrictEqual(Result.ok([1, 2, 3]));
+	expect(result).toStrictEqual(Result.make.ok([1, 2, 3]));
 });
 
 test("Str.parseJson returns Ok for valid JSON primitives", () => {
-	expect(Str.parseJson('"hello"')).toStrictEqual(Result.ok("hello"));
-	expect(Str.parseJson("42")).toStrictEqual(Result.ok(42));
+	expect(Str.parseJson('"hello"')).toStrictEqual(Result.make.ok("hello"));
+	expect(Str.parseJson("42")).toStrictEqual(Result.make.ok(42));
 });
 
 test("Str.parseJson returns Error with SyntaxError for invalid JSON", () => {
@@ -379,19 +379,19 @@ test("Str.parseJson returns Error with SyntaxError for invalid JSON", () => {
 
 test("Str.parseJson returns Ok for empty object", () => {
 	const result = Str.parseJson("{}");
-	expect(result).toStrictEqual(Result.ok({}));
+	expect(result).toStrictEqual(Result.make.ok({}));
 });
 
 // ---------------------------------------------------------------------------
 // Str.NonEmpty
 // ---------------------------------------------------------------------------
 
-test("Str.isNonEmpty - returns true for non-empty string", () => {
-	expect(Str.isNonEmpty("hello")).toBe(true);
+test("Str.is.nonEmpty - returns true for non-empty string", () => {
+	expect(Str.is.nonEmpty("hello")).toBe(true);
 });
 
-test("Str.isNonEmpty - returns false for empty string", () => {
-	expect(Str.isNonEmpty("")).toBe(false);
+test("Str.is.nonEmpty - returns false for empty string", () => {
+	expect(Str.is.nonEmpty("")).toBe(false);
 });
 
 test("Str.NonEmpty.from.String - returns Some for non-empty string", () => {

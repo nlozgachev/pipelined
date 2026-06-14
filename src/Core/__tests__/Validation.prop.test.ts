@@ -6,8 +6,8 @@ import { expect, expectTypeOf, test } from "vitest";
 // Arbitraries
 // ---------------------------------------------------------------------------
 
-const arbValid = fc.integer().map((n) => Validation.passed<string, number>(n));
-const arbInvalid = fc.string().map((s): Validation<string, number> => Validation.failed(s));
+const arbValid = fc.integer().map((n) => Validation.make.passed<string, number>(n));
+const arbInvalid = fc.string().map((s): Validation<string, number> => Validation.make.failed(s));
 const arbValidation = fc.oneof(arbValid, arbInvalid);
 
 // ---------------------------------------------------------------------------
@@ -40,18 +40,18 @@ test("Validation.map — identity on Invalid", () => {
 
 test("Validation.ap — Valid(f) + Valid(a) = Valid(f(a))", () => {
 	fc.assert(fc.property(fc.integer(), fc.integer(), (n, delta) => {
-		const vf = Validation.passed<string, (x: number) => number>((x: number) => x + delta);
-		const va = Validation.passed<string, number>(n);
-		expect(Validation.ap(va)(vf)).toStrictEqual(Validation.passed(n + delta));
+		const vf = Validation.make.passed<string, (x: number) => number>((x: number) => x + delta);
+		const va = Validation.make.passed<string, number>(n);
+		expect(Validation.ap(va)(vf)).toStrictEqual(Validation.make.passed(n + delta));
 	}));
 });
 
 test("Validation.ap — Invalid(f) + Invalid(a) accumulates both error lists", () => {
 	fc.assert(fc.property(fc.string(), fc.string(), (e1, e2) => {
-		const vf: Validation<string, (x: number) => number> = Validation.failed(e1);
-		const va: Validation<string, number> = Validation.failed(e2);
+		const vf: Validation<string, (x: number) => number> = Validation.make.failed(e1);
+		const va: Validation<string, number> = Validation.make.failed(e2);
 		const result = Validation.ap(va)(vf);
-		expect(Validation.isFailed(result)).toBe(true);
+		expect(Validation.is.failed(result)).toBe(true);
 		const invalid = result as unknown as { errors: string[]; };
 		expect(invalid.errors).toContain(e1);
 		expect(invalid.errors).toContain(e2);
@@ -108,7 +108,7 @@ test("Validation.tapError — always returns the identical reference", () => {
 
 test("Validation.recover — identity on Valid", () => {
 	fc.assert(fc.property(arbValid, (v) => {
-		expect(Validation.recover((_) => Validation.passed(-999))(v)).toBe(v);
+		expect(Validation.recover((_) => Validation.make.passed(-999))(v)).toBe(v);
 	}));
 });
 
@@ -118,14 +118,14 @@ test("Validation.recover — identity on Valid", () => {
 
 test("Validation.from.Predicate — always-true gives Valid with original value", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
-		expect(Validation.from.Predicate((_: number) => true, () => "bad")(n)).toStrictEqual(Validation.passed(n));
+		expect(Validation.from.Predicate((_: number) => true, () => "bad")(n)).toStrictEqual(Validation.make.passed(n));
 	}));
 });
 
 test("Validation.from.Predicate — always-false gives Invalid via onFalse", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
 		const result = Validation.from.Predicate((_: number) => false, (x) => `bad:${x}`)(n);
-		expect(Validation.isFailed(result)).toBe(true);
+		expect(Validation.is.failed(result)).toBe(true);
 		const invalid = result as unknown as { errors: string[]; };
 		expect(invalid.errors[0]).toBe(`bad:${n}`);
 	}));
@@ -137,19 +137,18 @@ test("Validation.from.Predicate — always-false gives Invalid via onFalse", () 
 
 test("Validation.product — two Valid produces Valid tuple", () => {
 	fc.assert(fc.property(fc.integer(), fc.string(), (n, s) => {
-		expect(Validation.product(Validation.passed<string, number>(n), Validation.passed<string, string>(s))).toStrictEqual(
-			Validation.passed([n, s]),
-		);
+		expect(Validation.product(Validation.make.passed<string, number>(n), Validation.make.passed<string, string>(s)))
+			.toStrictEqual(Validation.make.passed([n, s]));
 	}));
 });
 
 test("Validation.product — at least one Invalid produces Invalid with accumulated errors", () => {
 	fc.assert(fc.property(fc.string(), fc.string(), (e1, e2) => {
 		const result = Validation.product(
-			Validation.failed(e1) as Validation<string, number>,
-			Validation.failed(e2) as Validation<string, string>,
+			Validation.make.failed(e1) as Validation<string, number>,
+			Validation.make.failed(e2) as Validation<string, string>,
 		);
-		expect(Validation.isFailed(result)).toBe(true);
+		expect(Validation.is.failed(result)).toBe(true);
 		const invalid = result as unknown as { errors: string[]; };
 		expect(invalid.errors).toHaveLength(2);
 	}));

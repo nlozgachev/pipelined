@@ -22,23 +22,29 @@ test("map - transforms value types", () => {
 	expect(result).toStrictEqual({ x: "1", y: "2" });
 });
 
+test("map - handles prototype pollution key", () => {
+	const obj = JSON.parse('{"__proto__": 123}') as Record<string, number>;
+	const result = pipe(obj, Rec.map((n) => n * 2));
+	expect(result.__proto__).toBe(246);
+});
+
 test("filterMap - keeps Some values, drops None", () => {
-	const result = pipe({ a: 1, b: 2, c: 3 }, Rec.filterMap((n) => (n > 1 ? Maybe.some(n * 10) : Maybe.none())));
+	const result = pipe({ a: 1, b: 2, c: 3 }, Rec.filterMap((n) => (n > 1 ? Maybe.make.some(n * 10) : Maybe.make.none())));
 	expect(result).toStrictEqual({ b: 20, c: 30 });
 });
 
 test("filterMap - returns empty for empty input", () => {
-	const result = pipe({} as Record<string, number>, Rec.filterMap((n) => Maybe.some(n)));
+	const result = pipe({} as Record<string, number>, Rec.filterMap((n) => Maybe.make.some(n)));
 	expect(result).toStrictEqual({});
 });
 
 test("filterMap - returns empty when all values map to None", () => {
-	const result = pipe({ a: 1, b: 2 }, Rec.filterMap((_) => Maybe.none()));
+	const result = pipe({ a: 1, b: 2 }, Rec.filterMap((_) => Maybe.make.none()));
 	expect(result).toStrictEqual({});
 });
 
 test("filterMap - keeps all values when all map to Some", () => {
-	const result = pipe({ a: 1, b: 2 }, Rec.filterMap((n) => Maybe.some(n * 2)));
+	const result = pipe({ a: 1, b: 2 }, Rec.filterMap((n) => Maybe.make.some(n * 2)));
 	expect(result).toStrictEqual({ a: 2, b: 4 });
 });
 
@@ -47,7 +53,7 @@ test("filterMap - can change value type", () => {
 		{ x: "42", y: "abc" },
 		Rec.filterMap((s) => {
 			const n = Number(s);
-			return isNaN(n) ? Maybe.none() : Maybe.some(n);
+			return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 		}),
 	);
 	expect(result).toStrictEqual({ x: 42 });
@@ -66,6 +72,12 @@ test("mapWithKey - returns empty record for empty input", () => {
 test("mapWithKey - key is available for logic", () => {
 	const result = pipe({ name: "Alice", age: "30" }, Rec.mapWithKey((k, v) => (k === "name" ? v.toUpperCase() : v)));
 	expect(result).toStrictEqual({ name: "ALICE", age: "30" });
+});
+
+test("mapWithKey - handles prototype pollution key", () => {
+	const obj = JSON.parse('{"__proto__": 123}') as Record<string, number>;
+	const result = pipe(obj, Rec.mapWithKey((k, v) => `${k}:${v}`));
+	expect(result.__proto__).toBe("__proto__:123");
 });
 
 test("filter - keeps values satisfying the predicate", () => {
@@ -109,39 +121,39 @@ test("filterWithKey - returns empty for empty input", () => {
 
 test("lookup - returns Some for existing key", () => {
 	const result = pipe({ a: 1, b: 2, c: 3 }, Rec.lookup("b"));
-	expect(result).toStrictEqual(Maybe.some(2));
+	expect(result).toStrictEqual(Maybe.make.some(2));
 });
 
 test("lookup - returns None for missing key", () => {
 	const result = pipe({ a: 1, b: 2 }, Rec.lookup("z"));
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 test("lookup - returns None for empty record", () => {
 	const result = pipe({} as Record<string, number>, Rec.lookup("a"));
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 test("lookup - returns Some even if value is falsy (0)", () => {
 	const result = pipe({ a: 0 }, Rec.lookup("a"));
-	expect(result).toStrictEqual(Maybe.some(0));
+	expect(result).toStrictEqual(Maybe.make.some(0));
 });
 
 test("lookup - returns Some even if value is falsy (empty string)", () => {
 	const result = pipe({ a: "" }, Rec.lookup("a"));
-	expect(result).toStrictEqual(Maybe.some(""));
+	expect(result).toStrictEqual(Maybe.make.some(""));
 });
 
 test("lookup - returns Some even if value is falsy (false)", () => {
 	const result = pipe({ a: false }, Rec.lookup("a"));
-	expect(result).toStrictEqual(Maybe.some(false));
+	expect(result).toStrictEqual(Maybe.make.some(false));
 });
 
 test("lookup - does not find inherited properties", () => {
 	const obj = Object.create({ inherited: 42 });
 	obj.own = 1;
 	const result = pipe(obj, Rec.lookup("inherited"));
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 // =============================================================================
@@ -288,11 +300,11 @@ test("merge - complete override when all keys conflict", () => {
 // =============================================================================
 
 test("isEmpty - returns true for empty record", () => {
-	expect(Rec.isEmpty({})).toBe(true);
+	expect(Rec.is.empty({})).toBe(true);
 });
 
 test("isEmpty - returns false for non-empty record", () => {
-	expect(Rec.isEmpty({ a: 1 })).toBe(false);
+	expect(Rec.is.empty({ a: 1 })).toBe(false);
 });
 
 test("size - returns 0 for empty record", () => {
@@ -337,18 +349,18 @@ test("mapKeys - prefix transformation", () => {
 // =============================================================================
 
 test("compact - removes None values and unwraps Some values", () => {
-	const result = Rec.compact({ a: Maybe.some(1), b: Maybe.none(), c: Maybe.some(3) });
+	const result = Rec.compact({ a: Maybe.make.some(1), b: Maybe.make.none(), c: Maybe.make.some(3) });
 	expect(result).toStrictEqual({ a: 1, c: 3 });
 });
 
 test("compact - returns empty record when all values are None", () => {
-	const data: Record<string, Maybe<number>> = { x: Maybe.none(), y: Maybe.none() };
+	const data: Record<string, Maybe<number>> = { x: Maybe.make.none(), y: Maybe.make.none() };
 	const result = Rec.compact(data);
 	expect(result).toStrictEqual({});
 });
 
 test("compact - returns all values when none are None", () => {
-	const result = Rec.compact({ a: Maybe.some(10), b: Maybe.some(20) });
+	const result = Rec.compact({ a: Maybe.make.some(10), b: Maybe.make.some(20) });
 	expect(result).toStrictEqual({ a: 10, b: 20 });
 });
 
@@ -431,88 +443,91 @@ test("Rec.groupBy preserves insertion order within each group", () => {
 test("Rec.Maybe.traverse - traverses record with Some values", () => {
 	const result = pipe(
 		{ a: "1", b: "2" },
-		Rec.Maybe.traverse((s) => (s === "NaN" ? Maybe.none() : Maybe.some(Number(s)))),
+		Rec.Maybe.traverse((s) => (s === "NaN" ? Maybe.make.none() : Maybe.make.some(Number(s)))),
 	);
-	expect(result).toStrictEqual(Maybe.some({ a: 1, b: 2 }));
+	expect(result).toStrictEqual(Maybe.make.some({ a: 1, b: 2 }));
 });
 
 test("Rec.Maybe.traverse - short-circuits at first None", () => {
 	const result = pipe(
 		{ a: "1", b: "NaN", c: "3" },
-		Rec.Maybe.traverse((s) => (s === "NaN" ? Maybe.none() : Maybe.some(Number(s)))),
+		Rec.Maybe.traverse((s) => (s === "NaN" ? Maybe.make.none() : Maybe.make.some(Number(s)))),
 	);
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 test("Rec.Maybe.traverse - returns Some of empty record for empty input", () => {
-	const result = pipe({} as Record<string, string>, Rec.Maybe.traverse((s) => Maybe.some(s)));
-	expect(result).toStrictEqual(Maybe.some({}));
+	const result = pipe({} as Record<string, string>, Rec.Maybe.traverse((s) => Maybe.make.some(s)));
+	expect(result).toStrictEqual(Maybe.make.some({}));
 });
 
 test("Rec.Maybe.sequence - sequences record of Some values", () => {
-	const result = Rec.Maybe.sequence({ a: Maybe.some(1), b: Maybe.some(2) });
-	expect(result).toStrictEqual(Maybe.some({ a: 1, b: 2 }));
+	const result = Rec.Maybe.sequence({ a: Maybe.make.some(1), b: Maybe.make.some(2) });
+	expect(result).toStrictEqual(Maybe.make.some({ a: 1, b: 2 }));
 });
 
 test("Rec.Maybe.sequence - returns None if any is None", () => {
-	const result = Rec.Maybe.sequence({ a: Maybe.some(1), b: Maybe.none() });
-	expect(result).toStrictEqual(Maybe.none());
+	const result = Rec.Maybe.sequence({ a: Maybe.make.some(1), b: Maybe.make.none() });
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 test("Rec.Result.traverse - traverses record with Ok values", () => {
-	const result = pipe({ a: 1, b: 2 }, Rec.Result.traverse((n) => (n < 0 ? Result.err("negative") : Result.ok(n * 10))));
-	expect(result).toStrictEqual(Result.ok({ a: 10, b: 20 }));
+	const result = pipe(
+		{ a: 1, b: 2 },
+		Rec.Result.traverse((n) => (n < 0 ? Result.make.err("negative") : Result.make.ok(n * 10))),
+	);
+	expect(result).toStrictEqual(Result.make.ok({ a: 10, b: 20 }));
 });
 
 test("Rec.Result.traverse - short-circuits at first Err", () => {
 	const result = pipe(
 		{ a: 1, b: -2, c: 3 },
-		Rec.Result.traverse((n) => (n < 0 ? Result.err("negative") : Result.ok(n * 10))),
+		Rec.Result.traverse((n) => (n < 0 ? Result.make.err("negative") : Result.make.ok(n * 10))),
 	);
-	expect(result).toStrictEqual(Result.err("negative"));
+	expect(result).toStrictEqual(Result.make.err("negative"));
 });
 
 test("Rec.Result.traverse - returns Ok of empty record for empty input", () => {
-	const result = pipe({} as Record<string, number>, Rec.Result.traverse((n) => Result.ok(n)));
-	expect(result).toStrictEqual(Result.ok({}));
+	const result = pipe({} as Record<string, number>, Rec.Result.traverse((n) => Result.make.ok(n)));
+	expect(result).toStrictEqual(Result.make.ok({}));
 });
 
 test("Rec.Result.sequence - sequences record of Ok values", () => {
-	const result = Rec.Result.sequence({ a: Result.ok(1), b: Result.ok(2) });
-	expect(result).toStrictEqual(Result.ok({ a: 1, b: 2 }));
+	const result = Rec.Result.sequence({ a: Result.make.ok(1), b: Result.make.ok(2) });
+	expect(result).toStrictEqual(Result.make.ok({ a: 1, b: 2 }));
 });
 
 test("Rec.Result.sequence - returns Err if any is Err", () => {
-	const result = Rec.Result.sequence({ a: Result.ok(1), b: Result.err("oops") });
-	expect(result).toStrictEqual(Result.err("oops"));
+	const result = Rec.Result.sequence({ a: Result.make.ok(1), b: Result.make.err("oops") });
+	expect(result).toStrictEqual(Result.make.err("oops"));
 });
 
 // =============================================================================
 // Rec.NonEmpty
 // =============================================================================
 
-test("Rec.isNonEmpty - returns true for non-empty record", () => {
-	expect(Rec.isNonEmpty({ a: 1 })).toBe(true);
+test("Rec.is.nonEmpty - returns true for non-empty record", () => {
+	expect(Rec.is.nonEmpty({ a: 1 })).toBe(true);
 });
 
-test("Rec.isNonEmpty - returns false for empty record", () => {
-	expect(Rec.isNonEmpty({})).toBe(false);
+test("Rec.is.nonEmpty - returns false for empty record", () => {
+	expect(Rec.is.nonEmpty({})).toBe(false);
 });
 
 test("Rec.NonEmpty.singleton - creates a single-element record", () => {
 	const result = Rec.NonEmpty.singleton("key", "value");
 	expect(result).toStrictEqual({ key: "value" });
-	expect(Rec.isNonEmpty(result)).toBe(true);
+	expect(Rec.is.nonEmpty(result)).toBe(true);
 });
 
 test("Rec.NonEmpty.from.Record - returns Some for non-empty record", () => {
 	const result = Rec.NonEmpty.from.Record({ a: 1 });
-	expect(result).toStrictEqual(Maybe.some({ a: 1 }));
+	expect(result).toStrictEqual(Maybe.make.some({ a: 1 }));
 });
 
 test("Rec.NonEmpty.from.Record - returns None for empty record", () => {
 	const result = Rec.NonEmpty.from.Record({});
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 test("Rec.NonEmpty.keys - returns non-empty array of keys", () => {

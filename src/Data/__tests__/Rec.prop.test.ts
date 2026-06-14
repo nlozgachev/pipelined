@@ -58,9 +58,9 @@ test("Rec.size — agrees with native", () => {
 	}));
 });
 
-test("Rec.isEmpty — iff size is 0", () => {
+test("Rec.is.empty — iff size is 0", () => {
 	fc.assert(fc.property(dict, (obj) => {
-		expect(Rec.isEmpty(obj)).toBe(Rec.size(obj) === 0);
+		expect(Rec.is.empty(obj)).toBe(Rec.size(obj) === 0);
 	}));
 });
 

@@ -104,16 +104,16 @@ test("Dict.has returns false on empty map", () => {
 
 test("Dict.lookup returns Some when key exists", () => {
 	const m = Dict.from.entries([["a", 42]]);
-	expect(pipe(m, Dict.lookup("a"))).toStrictEqual(Maybe.some(42));
+	expect(pipe(m, Dict.lookup("a"))).toStrictEqual(Maybe.make.some(42));
 });
 
 test("Dict.lookup returns None when key does not exist", () => {
 	const m = Dict.from.entries([["a", 42]]);
-	expect(pipe(m, Dict.lookup("b"))).toStrictEqual(Maybe.none());
+	expect(pipe(m, Dict.lookup("b"))).toStrictEqual(Maybe.make.none());
 });
 
 test("Dict.lookup returns None on empty map", () => {
-	expect(pipe(Dict.empty<string, number>(), Dict.lookup("a"))).toStrictEqual(Maybe.none());
+	expect(pipe(Dict.empty<string, number>(), Dict.lookup("a"))).toStrictEqual(Maybe.make.none());
 });
 
 // ---------------------------------------------------------------------------
@@ -129,12 +129,12 @@ test("Dict.size returns the number of entries", () => {
 // isEmpty
 // ---------------------------------------------------------------------------
 
-test("Dict.isEmpty returns true for an empty map", () => {
-	expect(Dict.isEmpty(Dict.empty())).toBe(true);
+test("Dict.is.empty returns true for an empty map", () => {
+	expect(Dict.is.empty(Dict.empty())).toBe(true);
 });
 
-test("Dict.isEmpty returns false for a non-empty map", () => {
-	expect(Dict.isEmpty(Dict.singleton("a", 1))).toBe(false);
+test("Dict.is.empty returns false for a non-empty map", () => {
+	expect(Dict.is.empty(Dict.singleton("a", 1))).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
@@ -265,7 +265,10 @@ test("Dict.filterWithKey receives key and value", () => {
 
 test("Dict.compact removes None values and unwraps Some values", () => {
 	const m = Dict.compact(
-		Dict.from.entries<string, Maybe<number>>([["a", Maybe.some(1)], ["b", Maybe.none()], ["c", Maybe.some(3)]]),
+		Dict.from.entries<string, Maybe<number>>([["a", Maybe.make.some(1)], ["b", Maybe.make.none()], [
+			"c",
+			Maybe.make.some(3),
+		]]),
 	);
 	expect(m.size).toBe(2);
 	expect(m.get("a")).toBe(1);
@@ -274,7 +277,7 @@ test("Dict.compact removes None values and unwraps Some values", () => {
 });
 
 test("Dict.compact returns empty map when all values are None", () => {
-	const m = Dict.compact(Dict.from.entries<string, Maybe<number>>([["a", Maybe.none()], ["b", Maybe.none()]]));
+	const m = Dict.compact(Dict.from.entries<string, Maybe<number>>([["a", Maybe.make.none()], ["b", Maybe.make.none()]]));
 	expect(m.size).toBe(0);
 });
 
@@ -288,7 +291,7 @@ test("Dict.filterMap keeps entries where f returns Some", () => {
 		m,
 		Dict.filterMap((s: string) => {
 			const n = Number(s);
-			return isNaN(n) ? Maybe.none() : Maybe.some(n);
+			return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 		}),
 	);
 	expect(Dict.to.Record(result as ReadonlyMap<string, number>)).toStrictEqual({ a: 1, c: 3 });
@@ -296,13 +299,13 @@ test("Dict.filterMap keeps entries where f returns Some", () => {
 
 test("Dict.filterMap returns empty map when all entries return None", () => {
 	const m = Dict.from.Record({ a: "x", b: "y" });
-	const result = pipe(m, Dict.filterMap((_: string): Maybe<number> => Maybe.none()));
+	const result = pipe(m, Dict.filterMap((_: string): Maybe<number> => Maybe.make.none()));
 	expect(result.size).toBe(0);
 });
 
 test("Dict.filterMap preserves keys of matching entries", () => {
 	const m = Dict.from.entries<number, number>([[1, 10], [2, -5], [3, 30]]);
-	const result = pipe(m, Dict.filterMap((n: number) => n > 0 ? Maybe.some(n * 2) : Maybe.none()));
+	const result = pipe(m, Dict.filterMap((n: number) => n > 0 ? Maybe.make.some(n * 2) : Maybe.make.none()));
 	expect([...result.entries()]).toStrictEqual([[1, 20], [3, 60]]);
 });
 
@@ -422,12 +425,12 @@ test("dict pipe composition — fromRecord, filter, map, reduce", () => {
 // Dict.NonEmpty
 // ---------------------------------------------------------------------------
 
-test("Dict.isNonEmpty - returns true for non-empty map", () => {
-	expect(Dict.isNonEmpty(Dict.singleton("a", 1))).toBe(true);
+test("Dict.is.nonEmpty - returns true for non-empty map", () => {
+	expect(Dict.is.nonEmpty(Dict.singleton("a", 1))).toBe(true);
 });
 
-test("Dict.isNonEmpty - returns false for empty map", () => {
-	expect(Dict.isNonEmpty(Dict.empty())).toBe(false);
+test("Dict.is.nonEmpty - returns false for empty map", () => {
+	expect(Dict.is.nonEmpty(Dict.empty())).toBe(false);
 });
 
 test("Dict.NonEmpty.singleton - creates a single-entry map", () => {

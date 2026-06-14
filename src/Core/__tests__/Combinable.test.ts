@@ -98,22 +98,22 @@ test("Combinable.array has empty array as its neutral element", () => {
 // ---------------------------------------------------------------------------
 
 test("Combinable.maybe combines two Somes using the inner Combinable", () => {
-	const result = Combinable.maybe(Combinable.sum).combine(Maybe.some(3))(Maybe.some(2));
-	expect(result).toStrictEqual(Maybe.some(5));
+	const result = Combinable.maybe(Combinable.sum).combine(Maybe.make.some(3))(Maybe.make.some(2));
+	expect(result).toStrictEqual(Maybe.make.some(5));
 });
 
 test("Combinable.maybe treats None as neutral: combine(None)(Some(x)) = Some(x)", () => {
-	const result = Combinable.maybe(Combinable.sum).combine(Maybe.none())(Maybe.some(5));
-	expect(result).toStrictEqual(Maybe.some(5));
+	const result = Combinable.maybe(Combinable.sum).combine(Maybe.make.none())(Maybe.make.some(5));
+	expect(result).toStrictEqual(Maybe.make.some(5));
 });
 
 test("Combinable.maybe treats None as neutral: combine(Some(x))(None) = Some(x)", () => {
-	const result = Combinable.maybe(Combinable.sum).combine(Maybe.some(5))(Maybe.none());
-	expect(result).toStrictEqual(Maybe.some(5));
+	const result = Combinable.maybe(Combinable.sum).combine(Maybe.make.some(5))(Maybe.make.none());
+	expect(result).toStrictEqual(Maybe.make.some(5));
 });
 
 test("Combinable.maybe empty is None", () => {
-	expect(Combinable.maybe(Combinable.sum).empty).toStrictEqual(Maybe.none());
+	expect(Combinable.maybe(Combinable.sum).empty).toStrictEqual(Maybe.make.none());
 });
 
 // ---------------------------------------------------------------------------
@@ -142,6 +142,9 @@ test("Combinable.fold returns the empty element for an empty array", () => {
 // ---------------------------------------------------------------------------
 
 test("Combinable.fold works in a pipe with Maybe values", () => {
-	const result = pipe([Maybe.some(1), Maybe.some(2), Maybe.some(3)], Combinable.fold(Combinable.maybe(Combinable.sum)));
-	expect(result).toStrictEqual(Maybe.some(6));
+	const result = pipe(
+		[Maybe.make.some(1), Maybe.make.some(2), Maybe.make.some(3)],
+		Combinable.fold(Combinable.maybe(Combinable.sum)),
+	);
+	expect(result).toStrictEqual(Maybe.make.some(6));
 });

@@ -14,7 +14,7 @@ type OptionalKeys<T> = { [K in keyof T]-?: undefined extends T[K] ? K : never; }
  * ```ts
  * type Profile = { username: string; bio?: string };
  *
- * const bioOpt = Optional.prop<Profile>()("bio");
+ * const bioOpt = Optional.from.property<Profile>()("bio");
  *
  * pipe(profile, Optional.get(bioOpt));               // Some("hello") or None
  * pipe(profile, Optional.set(bioOpt)("hello"));      // new Profile with bio set
@@ -24,35 +24,41 @@ type OptionalKeys<T> = { [K in keyof T]-?: undefined extends T[K] ? K : never; }
 export type Optional<S, A> = { readonly get: (s: S) => Maybe<A>; readonly set: (a: A) => (s: S) => S; };
 
 export namespace Optional {
-	/**
-	 * Constructs an Optional from a getter (returning Maybe<A>) and a setter.
-	 *
-	 * @example
-	 * ```ts
-	 * const firstChar = Optional.make(
-	 *   (s: string) => s.length > 0 ? Maybe.some(s[0]) : Maybe.none(),
-	 *   (c) => (s) => s.length > 0 ? c + s.slice(1) : s,
-	 * );
-	 * ```
-	 */
-	export const make = <S, A>(get: (s: S) => Maybe<A>, set: (a: A) => (s: S) => S): Optional<S, A> => ({ get, set });
+	// --- from ---
+	export namespace from {
+		/**
+		 * Constructs an Optional from a getter (returning Maybe<A>) and a setter.
+		 *
+		 * @example
+		 * ```ts
+		 * const firstChar = Optional.from.accessors(
+		 *   (s: string) => s.length > 0 ? Maybe.make.some(s[0]) : Maybe.make.none(),
+		 *   (c) => (s) => s.length > 0 ? c + s.slice(1) : s,
+		 * );
+		 * ```
+		 */
+		export const accessors = <S, A>(get: (s: S) => Maybe<A>, set: (a: A) => (s: S) => S): Optional<S, A> => ({
+			get,
+			set,
+		});
 
-	/**
-	 * Creates an Optional that focuses on an optional property of an object.
-	 * Only keys whose type includes undefined (i.e. `field?: T`) are accepted.
-	 * Call with the structure type first, then the key.
-	 *
-	 * @example
-	 * ```ts
-	 * type Profile = { username: string; bio?: string };
-	 * const bioOpt = Optional.prop<Profile>()("bio");
-	 * ```
-	 */
-	export const prop = <S>() => <K extends OptionalKeys<S>>(key: K): Optional<S, NonNullable<S[K]>> =>
-		make((s) => {
-			const val = s[key];
-			return val !== null && val !== undefined ? Maybe.some(val as NonNullable<S[K]>) : Maybe.none();
-		}, (a) => (s) => ({ ...s, [key]: a } as S));
+		/**
+		 * Creates an Optional that focuses on an optional property of an object.
+		 * Only keys whose type includes undefined (i.e. `field?: T`) are accepted.
+		 * Call with the structure type first, then the key.
+		 *
+		 * @example
+		 * ```ts
+		 * type Profile = { username: string; bio?: string };
+		 * const bioOpt = Optional.from.property<Profile>()("bio");
+		 * ```
+		 */
+		export const property = <S>() => <K extends OptionalKeys<S>>(key: K): Optional<S, NonNullable<S[K]>> =>
+			accessors((s) => {
+				const val = s[key];
+				return val !== null && val !== undefined ? Maybe.make.some(val as NonNullable<S[K]>) : Maybe.make.none();
+			}, (a) => (s) => ({ ...s, [key]: a } as S));
+	}
 
 	/**
 	 * Creates an Optional that focuses on an element at a given index in an array.
@@ -67,7 +73,7 @@ export namespace Optional {
 	 * ```
 	 */
 	export const index = <A>(i: number): Optional<A[], A> =>
-		make((arr) => i >= 0 && i < arr.length ? Maybe.some(arr[i]) : Maybe.none(), (a) => (arr) => {
+		from.accessors((arr) => i >= 0 && i < arr.length ? Maybe.make.some(arr[i]) : Maybe.make.none(), (a) => (arr) => {
 			if (i < 0 || i >= arr.length) { return arr; }
 			const copy = [...arr];
 			copy[i] = a;
@@ -159,15 +165,15 @@ export namespace Optional {
 	 * @example
 	 * ```ts
 	 * const deepOpt = pipe(
-	 *   Optional.prop<User>()("address"),
-	 *   Optional.andThen(Optional.prop<Address>()("landmark")),
+	 *   Optional.from.property<User>()("address"),
+	 *   Optional.andThen(Optional.from.property<Address>()("landmark")),
 	 * );
 	 * ```
 	 */
 	export const andThen = <A, B>(inner: Optional<A, B>) => <S>(outer: Optional<S, A>): Optional<S, B> =>
-		make((s) => {
+		from.accessors((s) => {
 			const mid = outer.get(s);
-			return mid.kind === "None" ? Maybe.none() : inner.get(mid.value);
+			return mid.kind === "None" ? Maybe.make.none() : inner.get(mid.value);
 		}, (b) => (s) => {
 			const mid = outer.get(s);
 			return mid.kind === "None" ? s : outer.set(inner.set(b)(mid.value))(s);
@@ -180,15 +186,15 @@ export namespace Optional {
 	 * @example
 	 * ```ts
 	 * const cityOpt = pipe(
-	 *   Optional.prop<User>()("address"),
-	 *   Optional.andThenLens(Lens.prop<Address>()("city")),
+	 *   Optional.from.property<User>()("address"),
+	 *   Optional.andThenLens(Lens.from.property<Address>()("city")),
 	 * );
 	 * ```
 	 */
 	export const andThenLens = <A, B>(inner: Lens<A, B>) => <S>(outer: Optional<S, A>): Optional<S, B> =>
-		make((s) => {
+		from.accessors((s) => {
 			const mid = outer.get(s);
-			return mid.kind === "None" ? Maybe.none() : Maybe.some(inner.get(mid.value));
+			return mid.kind === "None" ? Maybe.make.none() : Maybe.make.some(inner.get(mid.value));
 		}, (b) => (s) => {
 			const mid = outer.get(s);
 			return mid.kind === "None" ? s : outer.set(inner.set(b)(mid.value))(s);

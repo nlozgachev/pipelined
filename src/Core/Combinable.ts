@@ -82,14 +82,14 @@ export namespace Combinable {
 	 * @example
 	 * ```ts
 	 * const c = Combinable.maybe(Combinable.sum);
-	 * c.combine(Maybe.some(3))(Maybe.some(2)); // Some(5)
-	 * c.combine(Maybe.none())(Maybe.some(5));  // Some(5)
+	 * c.combine(Maybe.make.some(3))(Maybe.make.some(2)); // Some(5)
+	 * c.combine(Maybe.make.none())(Maybe.make.some(5));  // Some(5)
 	 * ```
 	 */
 	export const maybe = <A>(inner: Combinable<A>): Combinable<Maybe<A>> => ({
-		empty: Maybe.none(),
+		empty: Maybe.make.none(),
 		combine: (b) => (a): Maybe<A> =>
-			Maybe.isNone(a) ? b : (Maybe.isNone(b) ? a : Maybe.some(inner.combine(b.value)(a.value))),
+			Maybe.is.none(a) ? b : (Maybe.is.none(b) ? a : Maybe.make.some(inner.combine(b.value)(a.value))),
 	});
 
 	/**

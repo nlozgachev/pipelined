@@ -103,7 +103,7 @@ const controller = new AbortController();
 const fetchUserWithPosts = userWithPosts("42"); // build the lazy task
 const result = await fetchUserWithPosts(controller.signal); // run it — signal controls cancellation
 
-if (Result.isOk(result)) {
+if (Result.is.ok(result)) {
   render(result.value); // { ...User, posts: Post[] }
 } else {
   showError(result.error); // ApiError — typed, not unknown

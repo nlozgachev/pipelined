@@ -53,16 +53,16 @@ import { RemoteData } from "@nlozgachev/pipelined/core";
 type UserState = RemoteData<string, User>;
 
 // 1. Initial idle state before any action
-let state: UserState = RemoteData.notAsked();
+let state: UserState = RemoteData.make.notAsked();
 
 // 2. An API request is initiated
-state = RemoteData.loading();
+state = RemoteData.make.loading();
 
 // 3. The network times out
-state = RemoteData.failure("Request timed out");
+state = RemoteData.make.failure("Request timed out");
 
 // 4. A successful reload brings data
-state = RemoteData.success(activeUser);
+state = RemoteData.make.success(activeUser);
 ```
 
 ---

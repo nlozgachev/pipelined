@@ -98,7 +98,7 @@ distinguished by a literal `kind` field:
 ```ts
 type Maybe<A> = { kind: "Some"; value: A } | { kind: "None" };
 
-type Result<E, A> = { kind: "Ok"; value: A } | { kind: "Error"; error: E };
+type Result<E, A> = { kind: "Ok"; value: A } | { kind: "Err"; error: E };
 
 type RemoteData<E, A> =
   | { kind: "NotAsked" }
@@ -156,7 +156,9 @@ Each type is defined as a pair: a TypeScript type alias and a namespace with the
 export type Maybe<A> = Some<A> | None;
 
 export namespace Maybe {
-  export const some = <A>(value: A): Some<A> => ({ kind: "Some", value });
+  export namespace make {
+    export const some = <A>(value: A): Some<A> => ({ kind: "Some", value });
+  }
   export const map  = <A, B>(f: (a: A) => B) => (data: Maybe<A>): Maybe<B> => ...
   export const fold = ...
 }
@@ -167,7 +169,7 @@ A single import gives you both:
 ```ts
 import { Maybe } from "@nlozgachev/pipelined/core";
 
-const x: Maybe<number> = Maybe.some(42); // type and constructor from the same import
+const x: Maybe<number> = Maybe.make.some(42); // type and constructor from the same import
 ```
 
 The namespace acts like a module — a flat collection of named functions. There's no class, no
@@ -197,7 +199,7 @@ that accepts the data. This is what makes `pipe` and `flow` compose cleanly:
 
 ```ts
 pipe(
-  Maybe.some(5),
+  Maybe.make.some(5),
   Maybe.map((n) => n * 2), // map(n => n * 2) is already a function Maybe<number> → Maybe<number>
   Maybe.getOrElse(0),
 );
@@ -207,7 +209,7 @@ Without data-last, each `pipe` step would need to be wrapped in an arrow functio
 
 ```ts
 pipe(
-  Maybe.some(5),
+  Maybe.make.some(5),
   (opt) => Maybe.map(opt, (n) => n * 2), // awkward — two arguments, data first
   (opt) => Maybe.getOrElse(opt, 0),
 );
@@ -234,10 +236,10 @@ automatic.
 ### NonEmptyArr as a structural guarantee
 
 `Validation` uses `NonEmptyArr<E>` (defined as `readonly [E, ...E[]]`) for the errors field instead
-of `E[]`. This is a structural guarantee: when a value is `Invalid`, it always has at least one
-error. An `Invalid` with zero errors is a contradiction — it can't be represented.
+of `E[]`. This is a structural guarantee: when a value is `Failed`, it always has at least one
+error. A `Failed` with zero errors is a contradiction — it can't be represented.
 
-This matters for consumers of the `invalid` branch. If `errors` were `E[]`, every handler would need
+This matters for consumers of the `failed` branch. If `errors` were `E[]`, every handler would need
 to guard against the empty case even though it's semantically impossible. With `NonEmptyArr`, you
 can call `errors[0]` or `errors.join(", ")` without defensive checks.
 

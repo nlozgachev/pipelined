@@ -52,7 +52,7 @@ namespace DictNonEmpty {
 		 * ```
 		 */
 		export const Map = <K, V>(m: ReadonlyMap<K, V>): Maybe<NonEmptyMap<K, V>> =>
-			m.size > 0 ? Maybe.some(m as NonEmptyMap<K, V>) : Maybe.none();
+			m.size > 0 ? Maybe.make.some(m as NonEmptyMap<K, V>) : Maybe.make.none();
 	}
 
 	/**
@@ -127,10 +127,22 @@ export namespace Dict {
 	 */
 	export type NonEmpty<K, V> = NonEmptyMap<K, V>;
 
-	/**
-	 * Type guard to check if a dictionary is non-empty.
-	 */
-	export const isNonEmpty = <K, V>(m: ReadonlyMap<K, V>): m is NonEmpty<K, V> => m.size > 0;
+	export namespace is {
+		/**
+		 * Returns `true` if the dictionary has no entries.
+		 *
+		 * @example
+		 * ```ts
+		 * Dict.is.empty(Dict.empty()); // true
+		 * ```
+		 */
+		export const empty = <K, V>(m: ReadonlyMap<K, V>): boolean => m.size === 0;
+
+		/**
+		 * Type guard to check if a dictionary is non-empty.
+		 */
+		export const nonEmpty = <K, V>(m: ReadonlyMap<K, V>): m is NonEmpty<K, V> => m.size > 0;
+	}
 
 	// ---------------------------------------------------------------------------
 	// Constructors
@@ -231,7 +243,7 @@ export namespace Dict {
 	 * ```
 	 */
 	export const lookup = <K>(key: K) => <V>(m: ReadonlyMap<K, V>): Maybe<V> =>
-		m.has(key) ? Maybe.some(m.get(key) as V) : Maybe.none();
+		m.has(key) ? Maybe.make.some(m.get(key) as V) : Maybe.make.none();
 
 	/**
 	 * Returns the number of entries in the dictionary.
@@ -242,16 +254,6 @@ export namespace Dict {
 	 * ```
 	 */
 	export const size = <K, V>(m: ReadonlyMap<K, V>): number => m.size;
-
-	/**
-	 * Returns `true` if the dictionary has no entries.
-	 *
-	 * @example
-	 * ```ts
-	 * Dict.isEmpty(Dict.empty()); // true
-	 * ```
-	 */
-	export const isEmpty = <K, V>(m: ReadonlyMap<K, V>): boolean => m.size === 0;
 
 	/**
 	 * Returns all keys as a readonly array, in insertion order.
@@ -424,9 +426,9 @@ export namespace Dict {
 	 * import { Maybe } from "@nlozgachev/pipelined/core";
 	 *
 	 * Dict.compact(Dict.from.Entries([
-	 *   ["a", Maybe.some(1)],
-	 *   ["b", Maybe.none()],
-	 *   ["c", Maybe.some(3)],
+	 *   ["a", Maybe.make.some(1)],
+	 *   ["b", Maybe.make.none()],
+	 *   ["c", Maybe.make.some(3)],
 	 * ]));
 	 * // ReadonlyMap { "a" => 1, "c" => 3 }
 	 * ```
@@ -447,7 +449,7 @@ export namespace Dict {
 	 * ```ts
 	 * const parse = (s: string): Maybe<number> => {
 	 *     const n = Number(s);
-	 *     return isNaN(n) ? Maybe.none() : Maybe.some(n);
+	 *     return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 	 * };
 	 * Dict.filterMap(parse)(Dict.from.Record({ a: "1", b: "two", c: "3" }));
 	 * // ReadonlyMap { "a" => 1, "c" => 3 }

@@ -156,8 +156,8 @@ const parsed = pipe(
 ## Sizing and Verification
 
 ```ts
-Rec.isEmpty({});         // true
-Rec.isEmpty({ a: 1 });   // false
+Rec.is.empty({});         // true
+Rec.is.empty({ a: 1 });   // false
 
 Rec.size({ a: 1, b: 2 }); // 2
 ```
@@ -178,7 +178,7 @@ operation returns `None`:
 import { Maybe } from "@nlozgachev/pipelined/core";
 import { Rec } from "@nlozgachev/pipelined/data";
 
-const parseNum = (s: string) => s === "NaN" ? Maybe.none() : Maybe.some(Number(s));
+const parseNum = (s: string) => s === "NaN" ? Maybe.make.none() : Maybe.make.some(Number(s));
 
 pipe({ a: "1", b: "2" }, Rec.Maybe.traverse(parseNum)); // Some({ a: 1, b: 2 })
 pipe({ a: "1", b: "NaN" }, Rec.Maybe.traverse(parseNum)); // None
@@ -188,8 +188,8 @@ pipe({ a: "1", b: "NaN" }, Rec.Maybe.traverse(parseNum)); // None
 single `Maybe` of a record:
 
 ```ts
-Rec.Maybe.sequence({ a: Maybe.some(1), b: Maybe.some(2) }); // Some({ a: 1, b: 2 })
-Rec.Maybe.sequence({ a: Maybe.some(1), b: Maybe.none() }); // None
+Rec.Maybe.sequence({ a: Maybe.make.some(1), b: Maybe.make.some(2) }); // Some({ a: 1, b: 2 })
+Rec.Maybe.sequence({ a: Maybe.make.some(1), b: Maybe.make.none() }); // None
 ```
 
 Similarly, `Rec.Result.traverse` and `Rec.Result.sequence` aggregate fallible computations:
@@ -198,7 +198,7 @@ Similarly, `Rec.Result.traverse` and `Rec.Result.sequence` aggregate fallible co
 import { Result } from "@nlozgachev/pipelined/core";
 
 const validateStock = (quantity: number) =>
-  quantity < 0 ? Result.err("Negative stock not allowed") : Result.ok(quantity);
+  quantity < 0 ? Result.make.err("Negative stock not allowed") : Result.make.ok(quantity);
 
 pipe({ apples: 10, oranges: 5 }, Rec.Result.traverse(validateStock)); // Ok({ apples: 10, oranges: 5 })
 pipe({ apples: 10, oranges: -1 }, Rec.Result.traverse(validateStock)); // Err("Negative stock not allowed")
@@ -210,12 +210,12 @@ pipe({ apples: 10, oranges: -1 }, Rec.Result.traverse(validateStock)); // Err("N
 
 Sometimes, you need compile-time assurance that a record contains at least one key-value pair. You
 can represent this with the branded type `Rec.NonEmpty<A>` and refine standard records using the
-type guard `Rec.isNonEmpty`.
+type guard `Rec.is.nonEmpty`.
 
 ```ts
 const userRecord = { admin: "Alice" };
 
-if (Rec.isNonEmpty(userRecord)) {
+if (Rec.is.nonEmpty(userRecord)) {
   // Inside this block, userRecord is typed as Rec.NonEmpty<string>
 }
 ```

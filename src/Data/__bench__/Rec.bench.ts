@@ -9,7 +9,9 @@ const makeRec = (n: number): Record<string, number> =>
 const rec100 = makeRec(100);
 const rec10k = makeRec(10_000);
 const makeOptRec = (n: number): Record<string, Maybe<number>> =>
-	Object.fromEntries(Array.from({ length: n }, (_, i) => [`key${i}`, i % 3 === 0 ? Maybe.none() : Maybe.some(i)]));
+	Object.fromEntries(
+		Array.from({ length: n }, (_, i) => [`key${i}`, i % 3 === 0 ? Maybe.make.none() : Maybe.make.some(i)]),
+	);
 const optRec100 = makeOptRec(100);
 const optRec10k = makeOptRec(10_000);
 const data10k = Array.from({ length: 10_000 }, (_, i) => i);

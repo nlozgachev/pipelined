@@ -14,13 +14,13 @@ const arbTuple = fc.tuple(fc.string(), fc.integer());
 
 test("tuple.make → Tuple.first — round-trip", () => {
 	fc.assert(fc.property(fc.string(), fc.integer(), (a, b) => {
-		expect(Tuple.first(Tuple.make(a, b))).toBe(a);
+		expect(Tuple.first(Tuple.from.pair(a, b))).toBe(a);
 	}));
 });
 
 test("tuple.make → Tuple.second — round-trip", () => {
 	fc.assert(fc.property(fc.string(), fc.integer(), (a, b) => {
-		expect(Tuple.second(Tuple.make(a, b))).toBe(b);
+		expect(Tuple.second(Tuple.from.pair(a, b))).toBe(b);
 	}));
 });
 
@@ -36,7 +36,7 @@ test("Tuple.swap — involution (swap twice is identity)", () => {
 
 test("Tuple.swap — exchanges first and second", () => {
 	fc.assert(fc.property(fc.string(), fc.integer(), (a, b) => {
-		const swapped = Tuple.swap(Tuple.make(a, b));
+		const swapped = Tuple.swap(Tuple.from.pair(a, b));
 		expect(Tuple.first(swapped)).toBe(b);
 		expect(Tuple.second(swapped)).toBe(a);
 	}));
@@ -92,7 +92,7 @@ test("Tuple.tap — always returns the identical reference", () => {
 
 test("Tuple.fold — combines both elements", () => {
 	fc.assert(fc.property(fc.string(), fc.integer(), (a, b) => {
-		const result = Tuple.fold((s: string, n: number) => `${s}:${n}`)(Tuple.make(a, b));
+		const result = Tuple.fold((s: string, n: number) => `${s}:${n}`)(Tuple.from.pair(a, b));
 		expect(result).toBe(`${a}:${b}`);
 	}));
 });

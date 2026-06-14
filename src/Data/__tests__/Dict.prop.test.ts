@@ -20,7 +20,7 @@ test("dict.fromEntries → Dict.entries — every entry is found via lookup", ()
 		const m = Dict.from.entries(pairs);
 		const entries = Dict.entries(m);
 		entries.forEach(([k, v]) => {
-			expect(Dict.lookup(k)(m)).toStrictEqual(Maybe.some(v));
+			expect(Dict.lookup(k)(m)).toStrictEqual(Maybe.make.some(v));
 		});
 	}));
 });
@@ -69,9 +69,9 @@ test("Dict.size — agrees with entries count", () => {
 	}));
 });
 
-test("Dict.isEmpty — iff size is 0", () => {
+test("Dict.is.empty — iff size is 0", () => {
 	fc.assert(fc.property(arbDict, (m) => {
-		expect(Dict.isEmpty(m)).toBe(Dict.size(m) === 0);
+		expect(Dict.is.empty(m)).toBe(Dict.size(m) === 0);
 	}));
 });
 
@@ -81,7 +81,7 @@ test("Dict.isEmpty — iff size is 0", () => {
 
 test("Dict.insert — inserted key is immediately found via lookup", () => {
 	fc.assert(fc.property(arbDict, fc.string({ minLength: 1 }), fc.integer(), (m, k, v) => {
-		expect(Dict.lookup(k)(Dict.insert(k, v)(m))).toStrictEqual(Maybe.some(v));
+		expect(Dict.lookup(k)(Dict.insert(k, v)(m))).toStrictEqual(Maybe.make.some(v));
 	}));
 });
 
@@ -91,7 +91,7 @@ test("Dict.insert — inserted key is immediately found via lookup", () => {
 
 test("Dict.remove — removed key is not found via lookup", () => {
 	fc.assert(fc.property(arbDict, fc.string({ minLength: 1 }), (m, k) => {
-		expect(Dict.lookup(k)(Dict.remove(k)(m))).toStrictEqual(Maybe.none());
+		expect(Dict.lookup(k)(Dict.remove(k)(m))).toStrictEqual(Maybe.make.none());
 	}));
 });
 

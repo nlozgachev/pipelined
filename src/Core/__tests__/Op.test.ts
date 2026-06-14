@@ -367,18 +367,18 @@ test("Op.recover does not call f on Nil — same reference", () => {
 // toResult
 // ---------------------------------------------------------------------------
 
-test("op.toResult converts Ok to Result.ok", () => {
-	expect(Op.to.Result(() => "no-result")(Op.ok(1))).toStrictEqual(Result.ok(1));
+test("op.toResult converts Ok to Result.make.ok", () => {
+	expect(Op.to.Result(() => "no-result")(Op.ok(1))).toStrictEqual(Result.make.ok(1));
 });
 
-test("op.toResult converts Err to Result.err", () => {
+test("op.toResult converts Err to Result.make.err", () => {
 	const outcome = Op.err("boom") as Op.Outcome<string, number>;
-	expect(Op.to.Result(() => "no-result")(outcome)).toStrictEqual(Result.err("boom"));
+	expect(Op.to.Result(() => "no-result")(outcome)).toStrictEqual(Result.make.err("boom"));
 });
 
 test("Op.to.Result converts Nil via onNil", () => {
 	const outcome = Op.nil("aborted") as Op.Outcome<string, number>;
-	expect(Op.to.Result(() => "no-result")(outcome)).toStrictEqual(Result.err("no-result"));
+	expect(Op.to.Result(() => "no-result")(outcome)).toStrictEqual(Result.make.err("no-result"));
 });
 
 // ---------------------------------------------------------------------------
@@ -386,15 +386,15 @@ test("Op.to.Result converts Nil via onNil", () => {
 // ---------------------------------------------------------------------------
 
 test("Op.to.Maybe converts Ok to Some", () => {
-	expect(Op.to.Maybe(Op.ok(7))).toStrictEqual(Maybe.some(7));
+	expect(Op.to.Maybe(Op.ok(7))).toStrictEqual(Maybe.make.some(7));
 });
 
 test("Op.to.Maybe converts Err to None", () => {
-	expect(Op.to.Maybe(Op.err("e") as Op.Outcome<string, number>)).toStrictEqual(Maybe.none());
+	expect(Op.to.Maybe(Op.err("e") as Op.Outcome<string, number>)).toStrictEqual(Maybe.make.none());
 });
 
 test("Op.to.Maybe converts Nil to None", () => {
-	expect(Op.to.Maybe(Op.nil("aborted") as Op.Outcome<string, number>)).toStrictEqual(Maybe.none());
+	expect(Op.to.Maybe(Op.nil("aborted") as Op.Outcome<string, number>)).toStrictEqual(Maybe.make.none());
 });
 
 // ---------------------------------------------------------------------------

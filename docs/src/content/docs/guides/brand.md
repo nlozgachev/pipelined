@@ -114,7 +114,7 @@ const toEmail = Brand.wrap<"Email", string>();
 
 // The only public entryway to create an Email value:
 export const parseEmail = (s: string): Maybe<Email> =>
-  s.includes("@") ? Maybe.some(toEmail(s)) : Maybe.none();
+  s.includes("@") ? Maybe.make.some(toEmail(s)) : Maybe.make.none();
 ```
 
 By hiding the raw `toEmail` constructor and only exporting `parseEmail`, we guarantee that **it is

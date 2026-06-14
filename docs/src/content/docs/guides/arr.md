@@ -135,7 +135,7 @@ const ids = rawStrings.map(parseId).filter(isSome).map(unwrap);
 ```ts
 const parseNumeric = (s: string): Maybe<number> => {
   const n = Number(s);
-  return isNaN(n) ? Maybe.none() : Maybe.some(n);
+  return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 };
 
 const numbers = pipe(
@@ -222,7 +222,7 @@ encountered:
 
 ```ts
 const validateAge = (age: number): Result<string, number> =>
-  age >= 18 ? Result.ok(age) : Result.err(`Age ${age} is underage`);
+  age >= 18 ? Result.make.ok(age) : Result.make.err(`Age ${age} is underage`);
 
 pipe([20, 25, 30], Arr.Result.traverse(validateAge)); // Ok([20, 25, 30])
 pipe([20, 16, 30], Arr.Result.traverse(validateAge)); // Err("Age 16 is underage")
@@ -250,8 +250,8 @@ nested namespace:
 
 ```ts
 // Array<Maybe<number>> → Maybe<Array<number>>
-Arr.Maybe.sequence([Maybe.some(1), Maybe.some(2)]); // Some([1, 2])
-Arr.Maybe.sequence([Maybe.some(1), Maybe.none()]);   // None
+Arr.Maybe.sequence([Maybe.make.some(1), Maybe.make.some(2)]); // Some([1, 2])
+Arr.Maybe.sequence([Maybe.make.some(1), Maybe.make.none()]);   // None
 ```
 
 ---

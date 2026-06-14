@@ -54,7 +54,7 @@ We define a resource by supplying the actions to open and close it.
 import { pipe } from "@nlozgachev/pipelined/composition";
 import { Resource, Task } from "@nlozgachev/pipelined/core";
 
-const dbResource = Resource.make(
+const dbResource = Resource.from.handlers(
   Task.Result.tryCatch(
     () => openConnection({ host: "db.local" }),
     (error) => new Error(`DB connection failed: ${error}`),

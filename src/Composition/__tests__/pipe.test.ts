@@ -37,7 +37,7 @@ test("pipe - type transformation through chain", () => {
 
 test("pipe - integration with Maybe.map", () => {
 	const result = pipe(
-		Maybe.some(5),
+		Maybe.make.some(5),
 		Maybe.map((n: number) => n * 2),
 		Maybe.map((n: number) => n + 1),
 		Maybe.getOrElse(() => 0),
@@ -46,18 +46,18 @@ test("pipe - integration with Maybe.map", () => {
 });
 
 test("pipe - integration with Maybe.map on None", () => {
-	const result = pipe(Maybe.none() as Maybe<number>, Maybe.map((n: number) => n * 2), Maybe.getOrElse(() => 0));
+	const result = pipe(Maybe.make.none() as Maybe<number>, Maybe.map((n: number) => n * 2), Maybe.getOrElse(() => 0));
 	expect(result).toBe(0);
 });
 
 test("pipe - integration with Result.map on Ok", () => {
-	const result = pipe(Result.ok<number>(10), Result.map((n: number) => n * 3), Result.getOrElse(() => 0));
+	const result = pipe(Result.make.ok<number>(10), Result.map((n: number) => n * 3), Result.getOrElse(() => 0));
 	expect(result).toBe(30);
 });
 
 test("pipe - integration with Result.map on Err", () => {
 	const result = pipe(
-		Result.err("oops") as Result<string, number>,
+		Result.make.err("oops") as Result<string, number>,
 		Result.map((n: number) => n * 3),
 		Result.getOrElse(() => 0),
 	);

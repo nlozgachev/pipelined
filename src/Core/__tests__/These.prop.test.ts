@@ -6,9 +6,9 @@ import { expect, expectTypeOf, test } from "vitest";
 // Arbitraries
 // ---------------------------------------------------------------------------
 
-const arbFirst = fc.string().map(These.first);
-const arbSecond = fc.integer().map(These.second);
-const arbBoth = fc.tuple(fc.string(), fc.integer()).map(([a, b]) => These.both(a, b));
+const arbFirst = fc.string().map(These.make.first);
+const arbSecond = fc.integer().map(These.make.second);
+const arbBoth = fc.tuple(fc.string(), fc.integer()).map(([a, b]) => These.make.both(a, b));
 const arbThese = fc.oneof(arbFirst, arbSecond, arbBoth);
 
 // ---------------------------------------------------------------------------
@@ -51,21 +51,21 @@ test("These.mapSecond — composition law", () => {
 // hasFirst / hasSecond — structural invariants
 // ---------------------------------------------------------------------------
 
-test("These.isBoth implies hasFirst and hasSecond", () => {
+test("These.is.both implies hasFirst and hasSecond", () => {
 	fc.assert(fc.property(arbBoth, (t) => {
 		expect(These.hasFirst(t)).toBe(true);
 		expect(These.hasSecond(t)).toBe(true);
 	}));
 });
 
-test("These.isFirst implies hasFirst and not hasSecond", () => {
+test("These.is.first implies hasFirst and not hasSecond", () => {
 	fc.assert(fc.property(arbFirst, (t) => {
 		expect(These.hasFirst(t)).toBe(true);
 		expect(These.hasSecond(t)).toBe(false);
 	}));
 });
 
-test("These.isSecond implies hasSecond and not hasFirst", () => {
+test("These.is.second implies hasSecond and not hasFirst", () => {
 	fc.assert(fc.property(arbSecond, (t) => {
 		expect(These.hasSecond(t)).toBe(true);
 		expect(These.hasFirst(t)).toBe(false);

@@ -10,7 +10,7 @@ import { Duration } from "../Types/Duration";
  * ```ts
  * // Debugging a pipeline
  * pipe(
- *   Maybe.some(5),
+ *   Maybe.make.some(5),
  *   tap(x => console.log("Before map:", x)),
  *   Maybe.map(n => n * 2),
  *   tap(x => console.log("After map:", x)),

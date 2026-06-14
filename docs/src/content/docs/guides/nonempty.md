@@ -83,27 +83,27 @@ the conditional blocks, TypeScript automatically narrows the types:
 import { Arr, Rec, Uniq, Dict, Str } from "@nlozgachev/pipelined/data";
 
 const userList: string[] = getUsers();
-if (Arr.isNonEmpty(userList)) {
+if (Arr.is.nonEmpty(userList)) {
   const admin = userList[0]; // Narrowed to string (not string | undefined)
 }
 
 const userConfig: Record<string, string> = getConfig();
-if (Rec.isNonEmpty(userConfig)) {
+if (Rec.is.nonEmpty(userConfig)) {
   // Narrowed to Rec.NonEmpty<string, string>
 }
 
 const tagSet: ReadonlySet<string> = getTags();
-if (Uniq.isNonEmpty(tagSet)) {
+if (Uniq.is.nonEmpty(tagSet)) {
   // Narrowed to Uniq.NonEmpty<string>
 }
 
 const userMap: ReadonlyMap<string, number> = getScores();
-if (Dict.isNonEmpty(userMap)) {
+if (Dict.is.nonEmpty(userMap)) {
   // Narrowed to Dict.NonEmpty<string, number>
 }
 
 const nameInput: string = getName();
-if (Str.isNonEmpty(nameInput)) {
+if (Str.is.nonEmpty(nameInput)) {
   // Narrowed to Str.NonEmpty
 }
 ```

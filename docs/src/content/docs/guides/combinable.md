@@ -105,16 +105,16 @@ import { Maybe } from "@nlozgachev/pipelined/core";
 const maybeSum = Combinable.maybe(Combinable.sum);
 
 // None acts as the neutral element:
-maybeSum.combine(Maybe.some(3))(Maybe.some(2)); // Some(5)
-maybeSum.combine(Maybe.none())(Maybe.some(5));  // Some(5)
-maybeSum.combine(Maybe.some(5))(Maybe.none());  // Some(5)
+maybeSum.combine(Maybe.make.some(3))(Maybe.make.some(2)); // Some(5)
+maybeSum.combine(Maybe.make.none())(Maybe.make.some(5));  // Some(5)
+maybeSum.combine(Maybe.make.some(5))(Maybe.make.none());  // Some(5)
 ```
 
 This makes folding collections of optional domain fields extremely elegant:
 
 ```ts
 const totalScores = pipe(
-  [Maybe.some(10), Maybe.none(), Maybe.some(20)],
+  [Maybe.make.some(10), Maybe.make.none(), Maybe.make.some(20)],
   Combinable.fold(Combinable.maybe(Combinable.sum)),
 ); // Some(30)
 ```

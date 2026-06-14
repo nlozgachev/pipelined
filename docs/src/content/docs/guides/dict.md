@@ -120,7 +120,7 @@ When you need to map dictionary values and filter out empty or invalid items sim
 ```ts
 const parseNumeric = (s: string): Maybe<number> => {
   const n = Number(s);
-  return isNaN(n) ? Maybe.none() : Maybe.some(n);
+  return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 };
 
 const parsed = pipe(

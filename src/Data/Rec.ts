@@ -19,7 +19,7 @@ namespace RecMaybe {
 	 *
 	 * @example
 	 * ```ts
-	 * const parseNum = (s: string) => s === "NaN" ? Maybe.none() : Maybe.some(Number(s));
+	 * const parseNum = (s: string) => s === "NaN" ? Maybe.make.none() : Maybe.make.some(Number(s));
 	 * pipe({ a: "1", b: "2" }, Rec.Maybe.traverse(parseNum)); // Some({ a: 1, b: 2 })
 	 * pipe({ a: "1", b: "NaN" }, Rec.Maybe.traverse(parseNum)); // None
 	 * ```
@@ -45,8 +45,8 @@ namespace RecMaybe {
 	 *
 	 * @example
 	 * ```ts
-	 * Rec.Maybe.sequence({ a: Maybe.some(1), b: Maybe.some(2) }); // Some({ a: 1, b: 2 })
-	 * Rec.Maybe.sequence({ a: Maybe.some(1), b: Maybe.none() }); // None
+	 * Rec.Maybe.sequence({ a: Maybe.make.some(1), b: Maybe.make.some(2) }); // Some({ a: 1, b: 2 })
+	 * Rec.Maybe.sequence({ a: Maybe.make.some(1), b: Maybe.make.none() }); // None
 	 * ```
 	 */
 	export const sequence = <A>(data: Readonly<Record<string, CoreMaybe<A>>>): CoreMaybe<Readonly<Record<string, A>>> =>
@@ -61,7 +61,7 @@ namespace RecResult {
 	 *
 	 * @example
 	 * ```ts
-	 * const checkPositive = (n: number) => n < 0 ? Result.err("negative") : Result.ok(n);
+	 * const checkPositive = (n: number) => n < 0 ? Result.make.err("negative") : Result.make.ok(n);
 	 * pipe({ a: 1, b: 2 }, Rec.Result.traverse(checkPositive)); // Ok({ a: 1, b: 2 })
 	 * pipe({ a: 1, b: -2 }, Rec.Result.traverse(checkPositive)); // Err("negative")
 	 * ```
@@ -88,8 +88,8 @@ namespace RecResult {
 	 *
 	 * @example
 	 * ```ts
-	 * Rec.Result.sequence({ a: Result.ok(1), b: Result.ok(2) }); // Ok({ a: 1, b: 2 })
-	 * Rec.Result.sequence({ a: Result.ok(1), b: Result.err("oops") }); // Err("oops")
+	 * Rec.Result.sequence({ a: Result.make.ok(1), b: Result.make.ok(2) }); // Ok({ a: 1, b: 2 })
+	 * Rec.Result.sequence({ a: Result.make.ok(1), b: Result.make.err("oops") }); // Err("oops")
 	 * ```
 	 */
 	export const sequence = <E, A>(
@@ -121,7 +121,7 @@ namespace RecNonEmpty {
 		 * ```
 		 */
 		export const Record = <K extends string, A>(data: Readonly<Record<K, A>>): CoreMaybe<NonEmptyRecord<A, K>> =>
-			_isNonEmpty(data) ? CoreMaybe.some(data) : CoreMaybe.none();
+			_isNonEmpty(data) ? CoreMaybe.make.some(data) : CoreMaybe.make.none();
 	}
 
 	/**
@@ -211,10 +211,17 @@ export namespace Rec {
 	 */
 	export type NonEmpty<A, K extends string = string> = NonEmptyRecord<A, K>;
 
-	/**
-	 * Type guard to check if a record is non-empty.
-	 */
-	export const isNonEmpty = _isNonEmpty;
+	export namespace is {
+		/**
+		 * Returns true if the record has no keys.
+		 */
+		export const empty = <A>(data: Readonly<Record<string, A>>): boolean => Object.keys(data).length === 0;
+
+		/**
+		 * Type guard to check if a record is non-empty.
+		 */
+		export const nonEmpty = _isNonEmpty;
+	}
 
 	/**
 	 * Transforms each value in a record.
@@ -472,11 +479,6 @@ export namespace Rec {
 		});
 
 	/**
-	 * Returns true if the record has no keys.
-	 */
-	export const isEmpty = <A>(data: Readonly<Record<string, A>>): boolean => Object.keys(data).length === 0;
-
-	/**
 	 * Returns the number of keys in a record.
 	 */
 	export const size = <A>(data: Readonly<Record<string, A>>): number => Object.keys(data).length;
@@ -506,7 +508,7 @@ export namespace Rec {
 	 *
 	 * @example
 	 * ```ts
-	 * Rec.compact({ a: Maybe.some(1), b: Maybe.none(), c: Maybe.some(3) });
+	 * Rec.compact({ a: Maybe.make.some(1), b: Maybe.make.none(), c: Maybe.make.some(3) });
 	 * // { a: 1, c: 3 }
 	 * ```
 	 */

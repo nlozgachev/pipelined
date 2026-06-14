@@ -50,7 +50,7 @@ namespace UniqNonEmpty {
 		 * ```
 		 */
 		export const Set = <A>(s: ReadonlySet<A>): Maybe<NonEmptySet<A>> =>
-			s.size > 0 ? Maybe.some(s as NonEmptySet<A>) : Maybe.none();
+			s.size > 0 ? Maybe.make.some(s as NonEmptySet<A>) : Maybe.make.none();
 	}
 
 	/**
@@ -94,10 +94,22 @@ export namespace Uniq {
 	 */
 	export type NonEmpty<A> = NonEmptySet<A>;
 
-	/**
-	 * Type guard to check if a unique collection is non-empty.
-	 */
-	export const isNonEmpty = <A>(s: ReadonlySet<A>): s is NonEmpty<A> => s.size > 0;
+	export namespace is {
+		/**
+		 * Returns `true` if the collection has no items.
+		 *
+		 * @example
+		 * ```ts
+		 * Uniq.is.empty(Uniq.empty()); // true
+		 * ```
+		 */
+		export const empty = <A>(s: ReadonlySet<A>): boolean => s.size === 0;
+
+		/**
+		 * Type guard to check if a unique collection is non-empty.
+		 */
+		export const nonEmpty = <A>(s: ReadonlySet<A>): s is NonEmpty<A> => s.size > 0;
+	}
 
 	// ---------------------------------------------------------------------------
 	// Constructors
@@ -161,16 +173,6 @@ export namespace Uniq {
 	 * ```
 	 */
 	export const size = <A>(s: ReadonlySet<A>): number => s.size;
-
-	/**
-	 * Returns `true` if the collection has no items.
-	 *
-	 * @example
-	 * ```ts
-	 * Uniq.isEmpty(Uniq.empty()); // true
-	 * ```
-	 */
-	export const isEmpty = <A>(s: ReadonlySet<A>): boolean => s.size === 0;
 
 	/**
 	 * Returns `true` if every item in `set` also exists in `other`.

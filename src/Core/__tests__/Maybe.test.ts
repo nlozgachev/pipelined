@@ -6,46 +6,46 @@ import { expect, expectTypeOf, test } from "vitest";
 // of / some
 // ---------------------------------------------------------------------------
 
-test("Maybe.some wraps a value in Some", () => {
-	const result = Maybe.some(42);
+test("Maybe.make.some wraps a value in Some", () => {
+	const result = Maybe.make.some(42);
 	expect(result).toStrictEqual({ kind: "Some", value: 42 });
 });
 
-test("Maybe.some creates a Some with the given value", () => {
-	const result = Maybe.some("hello");
+test("Maybe.make.some creates a Some with the given value", () => {
+	const result = Maybe.make.some("hello");
 	expect(result).toStrictEqual({ kind: "Some", value: "hello" });
 });
 
-test("maybe.some and Maybe.some produce the same result", () => {
-	expect(Maybe.some(10)).toStrictEqual(Maybe.some(10));
+test("maybe.some and Maybe.make.some produce the same result", () => {
+	expect(Maybe.make.some(10)).toStrictEqual(Maybe.make.some(10));
 });
 
 // ---------------------------------------------------------------------------
 // isSome
 // ---------------------------------------------------------------------------
 
-test("Maybe.isSome returns true for Some", () => {
-	expect(Maybe.isSome(Maybe.some(1))).toBe(true);
+test("Maybe.is.some returns true for Some", () => {
+	expect(Maybe.is.some(Maybe.make.some(1))).toBe(true);
 });
 
-test("Maybe.isSome returns false for None", () => {
-	expect(Maybe.isSome(Maybe.none())).toBe(false);
+test("Maybe.is.some returns false for None", () => {
+	expect(Maybe.is.some(Maybe.make.none())).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
 // none / isNone
 // ---------------------------------------------------------------------------
 
-test("Maybe.none creates a None", () => {
-	expect(Maybe.none()).toStrictEqual({ kind: "None" });
+test("Maybe.make.none creates a None", () => {
+	expect(Maybe.make.none()).toStrictEqual({ kind: "None" });
 });
 
-test("Maybe.isNone returns true for None", () => {
-	expect(Maybe.isNone(Maybe.none())).toBe(true);
+test("Maybe.is.none returns true for None", () => {
+	expect(Maybe.is.none(Maybe.make.none())).toBe(true);
 });
 
-test("Maybe.isNone returns false for Some", () => {
-	expect(Maybe.isNone(Maybe.some(1))).toBe(false);
+test("Maybe.is.none returns false for Some", () => {
+	expect(Maybe.is.none(Maybe.make.some(1))).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
@@ -91,11 +91,11 @@ test("Maybe.from.nullable returns Some for an object", () => {
 // ---------------------------------------------------------------------------
 
 test("Maybe.to.nullable returns the value for Some", () => {
-	expect(Maybe.to.nullable(Maybe.some(42))).toBe(42);
+	expect(Maybe.to.nullable(Maybe.make.some(42))).toBe(42);
 });
 
 test("Maybe.to.nullable returns null for None", () => {
-	expect(Maybe.to.nullable(Maybe.none())).toBeNull();
+	expect(Maybe.to.nullable(Maybe.make.none())).toBeNull();
 });
 
 // ---------------------------------------------------------------------------
@@ -103,11 +103,11 @@ test("Maybe.to.nullable returns null for None", () => {
 // ---------------------------------------------------------------------------
 
 test("Maybe.to.undefined returns the value for Some", () => {
-	expect(Maybe.to.undefined(Maybe.some(42))).toBe(42);
+	expect(Maybe.to.undefined(Maybe.make.some(42))).toBe(42);
 });
 
 test("Maybe.to.undefined returns undefined for None", () => {
-	expect(Maybe.to.undefined(Maybe.none())).toBeUndefined();
+	expect(Maybe.to.undefined(Maybe.make.none())).toBeUndefined();
 });
 
 // ---------------------------------------------------------------------------
@@ -115,19 +115,19 @@ test("Maybe.to.undefined returns undefined for None", () => {
 // ---------------------------------------------------------------------------
 
 test("Maybe.to.Result converts Some to Ok", () => {
-	const result = pipe(Maybe.some(42), Maybe.to.Result(() => "missing"));
+	const result = pipe(Maybe.make.some(42), Maybe.to.Result(() => "missing"));
 	expect(result).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
 test("maybe.toResult converts None to Err using the onNone callback", () => {
-	const result = Maybe.to.Result(() => "error")(Maybe.none());
+	const result = Maybe.to.Result(() => "error")(Maybe.make.none());
 	expect(result).toStrictEqual({ kind: "Err", error: "error" });
 });
 
 test("maybe.toResult lazily evaluates the error callback only on None", () => {
 	let called = false;
 	pipe(
-		Maybe.some(10),
+		Maybe.make.some(10),
 		Maybe.to.Result(() => {
 			called = true;
 			return "error";
@@ -141,12 +141,12 @@ test("maybe.toResult lazily evaluates the error callback only on None", () => {
 // ---------------------------------------------------------------------------
 
 test("Maybe.from.Result converts Ok to Some", () => {
-	const result = Maybe.from.Result(Result.ok(42));
+	const result = Maybe.from.Result(Result.make.ok(42));
 	expect(result).toStrictEqual({ kind: "Some", value: 42 });
 });
 
 test("Maybe.from.Result converts Err to None", () => {
-	const result = Maybe.from.Result(Result.err("x"));
+	const result = Maybe.from.Result(Result.make.err("x"));
 	expect(result).toStrictEqual({ kind: "None" });
 });
 
@@ -155,17 +155,17 @@ test("Maybe.from.Result converts Err to None", () => {
 // ---------------------------------------------------------------------------
 
 test("Maybe.map transforms the value inside Some", () => {
-	const result = pipe(Maybe.some(5), Maybe.map((n: number) => n * 2));
+	const result = pipe(Maybe.make.some(5), Maybe.map((n: number) => n * 2));
 	expect(result).toStrictEqual({ kind: "Some", value: 10 });
 });
 
 test("Maybe.map passes through None unchanged", () => {
-	const result = pipe(Maybe.none(), Maybe.map((n: number) => n * 2));
+	const result = pipe(Maybe.make.none(), Maybe.map((n: number) => n * 2));
 	expect(result).toStrictEqual({ kind: "None" });
 });
 
 test("Maybe.map can change the type", () => {
-	const result = pipe(Maybe.some(5), Maybe.map((n: number) => String(n)));
+	const result = pipe(Maybe.make.some(5), Maybe.map((n: number) => String(n)));
 	expect(result).toStrictEqual({ kind: "Some", value: "5" });
 });
 
@@ -176,28 +176,28 @@ test("Maybe.map can change the type", () => {
 test("Maybe.chain applies function when Some", () => {
 	const parseNumber = (s: string) => {
 		const n = parseInt(s, 10);
-		return isNaN(n) ? Maybe.none() : Maybe.some(n);
+		return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 	};
-	const result = pipe(Maybe.some("42"), Maybe.chain(parseNumber));
+	const result = pipe(Maybe.make.some("42"), Maybe.chain(parseNumber));
 	expect(result).toStrictEqual({ kind: "Some", value: 42 });
 });
 
 test("Maybe.chain returns None when function returns None", () => {
 	const parseNumber = (s: string) => {
 		const n = parseInt(s, 10);
-		return isNaN(n) ? Maybe.none() : Maybe.some(n);
+		return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 	};
-	const result = pipe(Maybe.some("abc"), Maybe.chain(parseNumber));
+	const result = pipe(Maybe.make.some("abc"), Maybe.chain(parseNumber));
 	expect(result).toStrictEqual({ kind: "None" });
 });
 
 test("Maybe.chain propagates None without calling function", () => {
 	let called = false;
 	pipe(
-		Maybe.none(),
+		Maybe.make.none(),
 		Maybe.chain((_s: string) => {
 			called = true;
-			return Maybe.some(1);
+			return Maybe.make.some(1);
 		}),
 	);
 	expect(called).toBe(false);
@@ -208,12 +208,12 @@ test("Maybe.chain propagates None without calling function", () => {
 // ---------------------------------------------------------------------------
 
 test("Maybe.fold calls onSome for Some", () => {
-	const result = pipe(Maybe.some(5), Maybe.fold(() => "none", (n: number) => `value: ${n}`));
+	const result = pipe(Maybe.make.some(5), Maybe.fold(() => "none", (n: number) => `value: ${n}`));
 	expect(result).toBe("value: 5");
 });
 
 test("Maybe.fold calls onNone for None", () => {
-	const result = pipe(Maybe.none(), Maybe.fold(() => "none", (n: number) => `value: ${n}`));
+	const result = pipe(Maybe.make.none(), Maybe.fold(() => "none", (n: number) => `value: ${n}`));
 	expect(result).toBe("none");
 });
 
@@ -222,19 +222,19 @@ test("Maybe.fold calls onNone for None", () => {
 // ---------------------------------------------------------------------------
 
 test("Maybe.match calls some handler for Some", () => {
-	const result = pipe(Maybe.some(5), Maybe.match({ some: (n: number) => `got ${n}`, none: () => "nothing" }));
+	const result = pipe(Maybe.make.some(5), Maybe.match({ some: (n: number) => `got ${n}`, none: () => "nothing" }));
 	expect(result).toBe("got 5");
 });
 
 test("Maybe.match calls none handler for None", () => {
-	const result = pipe(Maybe.none(), Maybe.match({ some: (n: number) => `got ${n}`, none: () => "nothing" }));
+	const result = pipe(Maybe.make.none(), Maybe.match({ some: (n: number) => `got ${n}`, none: () => "nothing" }));
 	expect(result).toBe("nothing");
 });
 
 test("Maybe.match is data-last (returns a function first)", () => {
 	const handler = Maybe.match({ some: (n) => `val: ${n}`, none: () => "empty" });
-	expect(handler(Maybe.some(3))).toBe("val: 3");
-	expect(handler(Maybe.none())).toBe("empty");
+	expect(handler(Maybe.make.some(3))).toBe("val: 3");
+	expect(handler(Maybe.make.none())).toBe("empty");
 });
 
 // ---------------------------------------------------------------------------
@@ -242,22 +242,22 @@ test("Maybe.match is data-last (returns a function first)", () => {
 // ---------------------------------------------------------------------------
 
 test("Maybe.getOrElse returns value for Some", () => {
-	const result = pipe(Maybe.some(5), Maybe.getOrElse(() => 0));
+	const result = pipe(Maybe.make.some(5), Maybe.getOrElse(() => 0));
 	expect(result).toBe(5);
 });
 
 test("Maybe.getOrElse returns default for None", () => {
-	const result = pipe(Maybe.none(), Maybe.getOrElse(() => 0));
+	const result = pipe(Maybe.make.none(), Maybe.getOrElse(() => 0));
 	expect(result).toBe(0);
 });
 
 test("Maybe.getOrElse widens return type to A | B when default is a different type", () => {
-	const result = pipe(Maybe.none(), Maybe.getOrElse(() => null));
+	const result = pipe(Maybe.make.none(), Maybe.getOrElse(() => null));
 	expect(result).toBeNull();
 });
 
 test("Maybe.getOrElse returns Some value typed as A | B when Some", () => {
-	const result = pipe(Maybe.some("hello"), Maybe.getOrElse(() => null));
+	const result = pipe(Maybe.make.some("hello"), Maybe.getOrElse(() => null));
 	expect(result).toBe("hello");
 });
 
@@ -268,7 +268,7 @@ test("Maybe.getOrElse returns Some value typed as A | B when Some", () => {
 test("maybe.tap executes side effect on Some and returns original", () => {
 	let sideEffect = 0;
 	const result = pipe(
-		Maybe.some(5),
+		Maybe.make.some(5),
 		Maybe.tap((n: number) => {
 			sideEffect = n;
 		}),
@@ -280,7 +280,7 @@ test("maybe.tap executes side effect on Some and returns original", () => {
 test("Maybe.tap does not execute side effect on None", () => {
 	let called = false;
 	const result = pipe(
-		Maybe.none(),
+		Maybe.make.none(),
 		Maybe.tap((_n: number) => {
 			called = true;
 		}),
@@ -294,22 +294,22 @@ test("Maybe.tap does not execute side effect on None", () => {
 // ---------------------------------------------------------------------------
 
 test("Maybe.filter keeps Some when predicate is true", () => {
-	const result = pipe(Maybe.some(5), Maybe.filter((n: number) => n > 3));
+	const result = pipe(Maybe.make.some(5), Maybe.filter((n: number) => n > 3));
 	expect(result).toStrictEqual({ kind: "Some", value: 5 });
 });
 
 test("Maybe.filter returns None when predicate is false", () => {
-	const result = pipe(Maybe.some(2), Maybe.filter((n: number) => n > 3));
+	const result = pipe(Maybe.make.some(2), Maybe.filter((n: number) => n > 3));
 	expect(result).toStrictEqual({ kind: "None" });
 });
 
 test("Maybe.filter returns None when input is None", () => {
-	const result = pipe(Maybe.none(), Maybe.filter((n: number) => n > 3));
+	const result = pipe(Maybe.make.none(), Maybe.filter((n: number) => n > 3));
 	expect(result).toStrictEqual({ kind: "None" });
 });
 
 test("Maybe.filter on None returns the same None reference", () => {
-	const none = Maybe.none();
+	const none = Maybe.make.none();
 	const result = pipe(none as Maybe<number>, Maybe.filter((n) => n > 3));
 	expect(result).toBe(none);
 });
@@ -321,10 +321,10 @@ test("Maybe.filter on None returns the same None reference", () => {
 test("maybe.recover returns original Some without calling fallback", () => {
 	let called = false;
 	const result = pipe(
-		Maybe.some(5),
+		Maybe.make.some(5),
 		Maybe.recover(() => {
 			called = true;
-			return Maybe.some(99);
+			return Maybe.make.some(99);
 		}),
 	);
 	expect(called).toBe(false);
@@ -332,22 +332,22 @@ test("maybe.recover returns original Some without calling fallback", () => {
 });
 
 test("Maybe.recover provides fallback for None", () => {
-	const result = pipe(Maybe.none(), Maybe.recover(() => Maybe.some(99)));
+	const result = pipe(Maybe.make.none(), Maybe.recover(() => Maybe.make.some(99)));
 	expect(result).toStrictEqual({ kind: "Some", value: 99 });
 });
 
 test("Maybe.recover can return None as fallback", () => {
-	const result = pipe(Maybe.none(), Maybe.recover(() => Maybe.none()));
+	const result = pipe(Maybe.make.none(), Maybe.recover(() => Maybe.make.none()));
 	expect(result).toStrictEqual({ kind: "None" });
 });
 
 test("Maybe.recover widens to Maybe<A | B> when fallback returns a different type", () => {
-	const result = pipe(Maybe.none(), Maybe.recover(() => Maybe.some("fallback")));
+	const result = pipe(Maybe.make.none(), Maybe.recover(() => Maybe.make.some("fallback")));
 	expect(result).toStrictEqual({ kind: "Some", value: "fallback" });
 });
 
 test("Maybe.recover preserves Some typed as Maybe<A | B>", () => {
-	const result = pipe(Maybe.some(42), Maybe.recover(() => Maybe.some("fallback")));
+	const result = pipe(Maybe.make.some(42), Maybe.recover(() => Maybe.make.some("fallback")));
 	expect(result).toStrictEqual({ kind: "Some", value: 42 });
 });
 
@@ -357,22 +357,22 @@ test("Maybe.recover preserves Some typed as Maybe<A | B>", () => {
 
 test("Maybe.ap applies Some function to Some value", () => {
 	const add = (a: number) => (b: number) => a + b;
-	const result = pipe(Maybe.some(add), Maybe.ap(Maybe.some(5)), Maybe.ap(Maybe.some(3)));
+	const result = pipe(Maybe.make.some(add), Maybe.ap(Maybe.make.some(5)), Maybe.ap(Maybe.make.some(3)));
 	expect(result).toStrictEqual({ kind: "Some", value: 8 });
 });
 
 test("Maybe.ap returns None when function is None", () => {
-	const result = pipe(Maybe.none(), Maybe.ap(Maybe.some(5)));
+	const result = pipe(Maybe.make.none(), Maybe.ap(Maybe.make.some(5)));
 	expect(result).toStrictEqual({ kind: "None" });
 });
 
 test("Maybe.ap returns None when value is None", () => {
-	const result = pipe(Maybe.some((n: number) => n * 2), Maybe.ap(Maybe.none()));
+	const result = pipe(Maybe.make.some((n: number) => n * 2), Maybe.ap(Maybe.make.none()));
 	expect(result).toStrictEqual({ kind: "None" });
 });
 
 test("Maybe.ap returns None when both are None", () => {
-	const result = pipe(Maybe.none(), Maybe.ap(Maybe.none()));
+	const result = pipe(Maybe.make.none(), Maybe.ap(Maybe.make.none()));
 	expect(result).toStrictEqual({ kind: "None" });
 });
 
@@ -407,25 +407,25 @@ test("maybe pipe short-circuits on None", () => {
 // ---------------------------------------------------------------------------
 
 test("Maybe.from.Predicate returns Some when predicate passes", () => {
-	expect(Maybe.from.Predicate((n: number) => n > 0)(5)).toStrictEqual(Maybe.some(5));
+	expect(Maybe.from.Predicate((n: number) => n > 0)(5)).toStrictEqual(Maybe.make.some(5));
 });
 
 test("Maybe.from.Predicate returns None when predicate fails", () => {
-	expect(Maybe.from.Predicate((n: number) => n > 0)(-1)).toStrictEqual(Maybe.none());
+	expect(Maybe.from.Predicate((n: number) => n > 0)(-1)).toStrictEqual(Maybe.make.none());
 });
 
 test("Maybe.from.Predicate returns None for boundary value", () => {
-	expect(Maybe.from.Predicate((n: number) => n > 0)(0)).toStrictEqual(Maybe.none());
+	expect(Maybe.from.Predicate((n: number) => n > 0)(0)).toStrictEqual(Maybe.make.none());
 });
 
 test("Maybe.from.Predicate works with string predicates", () => {
-	expect(Maybe.from.Predicate((s: string) => s.length > 0)("")).toStrictEqual(Maybe.none());
-	expect(Maybe.from.Predicate((s: string) => s.length > 0)("hi")).toStrictEqual(Maybe.some("hi"));
+	expect(Maybe.from.Predicate((s: string) => s.length > 0)("")).toStrictEqual(Maybe.make.none());
+	expect(Maybe.from.Predicate((s: string) => s.length > 0)("hi")).toStrictEqual(Maybe.make.some("hi"));
 });
 
 test("Maybe.from.Predicate composes in pipe", () => {
-	expect(pipe(18, Maybe.from.Predicate((n: number) => n >= 18))).toStrictEqual(Maybe.some(18));
-	expect(pipe(17, Maybe.from.Predicate((n: number) => n >= 18))).toStrictEqual(Maybe.none());
+	expect(pipe(18, Maybe.from.Predicate((n: number) => n >= 18))).toStrictEqual(Maybe.make.some(18));
+	expect(pipe(17, Maybe.from.Predicate((n: number) => n >= 18))).toStrictEqual(Maybe.make.none());
 });
 
 // ---------------------------------------------------------------------------
@@ -433,24 +433,24 @@ test("Maybe.from.Predicate composes in pipe", () => {
 // ---------------------------------------------------------------------------
 
 test("Maybe.map — return type reflects mapped function output", () => {
-	const r: Maybe<number> = Maybe.some(42);
+	const r: Maybe<number> = Maybe.make.some(42);
 	const mapped = Maybe.map((n: number) => String(n))(r);
 	expectTypeOf(mapped).toEqualTypeOf<Maybe<string>>();
 });
 
 test("Maybe.chain — collapses nested Maybe", () => {
-	const r: Maybe<number> = Maybe.some(42);
-	const chained = Maybe.chain((n: number) => Maybe.some(String(n)))(r);
+	const r: Maybe<number> = Maybe.make.some(42);
+	const chained = Maybe.chain((n: number) => Maybe.make.some(String(n)))(r);
 	expectTypeOf(chained).toEqualTypeOf<Maybe<string>>();
 });
 
 test("Maybe.getOrElse — widens return type to A | B", () => {
-	const val = pipe(Maybe.some("hello"), Maybe.getOrElse((): null => null));
+	const val = pipe(Maybe.make.some("hello"), Maybe.getOrElse((): null => null));
 	expectTypeOf(val).toEqualTypeOf<string | null>();
 });
 
 test("Maybe.fold — return type matches branch return types", () => {
-	const r: Maybe<number> = Maybe.some(42);
+	const r: Maybe<number> = Maybe.make.some(42);
 	const folded = Maybe.fold((): string => "none", (n: number): string => String(n))(r);
 	expectTypeOf(folded).toBeString();
 });
@@ -458,69 +458,69 @@ test("Maybe.fold — return type matches branch return types", () => {
 // --- bindTo ---
 
 test("Maybe.bindTo wraps a value in an accumulator object", () => {
-	const result = pipe(Maybe.some(2), Maybe.bindTo("a"));
-	expect(result).toStrictEqual(Maybe.some({ a: 2 }));
+	const result = pipe(Maybe.make.some(2), Maybe.bindTo("a"));
+	expect(result).toStrictEqual(Maybe.make.some({ a: 2 }));
 });
 
 // --- bind ---
 
 test("Maybe.bind accumulates values key-by-key in a pipeline", () => {
 	const result = pipe(
-		Maybe.some(2),
+		Maybe.make.some(2),
 		Maybe.bindTo("a"),
-		Maybe.bind("b", ({ a }) => Maybe.some(a * 3)),
-		Maybe.bind("c", ({ a, b }) => Maybe.some(a + b)),
+		Maybe.bind("b", ({ a }) => Maybe.make.some(a * 3)),
+		Maybe.bind("c", ({ a, b }) => Maybe.make.some(a + b)),
 	);
-	expect(result).toStrictEqual(Maybe.some({ a: 2, b: 6, c: 8 }));
+	expect(result).toStrictEqual(Maybe.make.some({ a: 2, b: 6, c: 8 }));
 });
 
 test("Maybe.bind short-circuits on None", () => {
 	let called = false;
 	const result = pipe(
-		Maybe.some(2),
+		Maybe.make.some(2),
 		Maybe.bindTo("a"),
-		Maybe.bind("b", () => Maybe.none()),
+		Maybe.bind("b", () => Maybe.make.none()),
 		Maybe.bind("c", ({ b }) => {
 			called = true;
-			return Maybe.some(b);
+			return Maybe.make.some(b);
 		}),
 	);
 	expect(called).toBe(false);
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 // --- struct ---
 
 test("Maybe.struct combines a record of Some values into a single Some record", () => {
-	const res = Maybe.struct({ a: Maybe.some(1), b: Maybe.some("hello") });
-	expect(res).toStrictEqual(Maybe.some({ a: 1, b: "hello" }));
+	const res = Maybe.struct({ a: Maybe.make.some(1), b: Maybe.make.some("hello") });
+	expect(res).toStrictEqual(Maybe.make.some({ a: 1, b: "hello" }));
 });
 
 test("Maybe.struct short-circuits on the first None encountered", () => {
-	const res = Maybe.struct({ a: Maybe.some(1), b: Maybe.none(), c: Maybe.some(3) });
-	expect(res).toStrictEqual(Maybe.none());
+	const res = Maybe.struct({ a: Maybe.make.some(1), b: Maybe.make.none(), c: Maybe.make.some(3) });
+	expect(res).toStrictEqual(Maybe.make.none());
 });
 
 test("Maybe.struct composes in a pipe pipeline", () => {
 	const res = pipe(
-		Maybe.some({ name: "Alice" }),
+		Maybe.make.some({ name: "Alice" }),
 		Maybe.map((u) => u.name),
 		Maybe.chain((name) =>
-			Maybe.struct({ name: Maybe.some(name), valid: Maybe.from.Predicate((n: string) => n.length > 0)(name) })
+			Maybe.struct({ name: Maybe.make.some(name), valid: Maybe.from.Predicate((n: string) => n.length > 0)(name) })
 		),
 	);
-	expect(res).toStrictEqual(Maybe.some({ name: "Alice", valid: "Alice" }));
+	expect(res).toStrictEqual(Maybe.make.some({ name: "Alice", valid: "Alice" }));
 });
 
 test("Maybe.struct ignores inherited prototype properties", () => {
-	const proto = { b: Maybe.some(2) };
+	const proto = { b: Maybe.make.some(2) };
 	const fields = Object.create(proto);
-	fields.a = Maybe.some(1);
+	fields.a = Maybe.make.some(1);
 	const res = Maybe.struct(fields);
-	expect(res).toStrictEqual(Maybe.some({ a: 1 }));
+	expect(res).toStrictEqual(Maybe.make.some({ a: 1 }));
 });
 
 test("Maybe.struct returns some({}) when given an empty object", () => {
 	const res = Maybe.struct({});
-	expect(res).toStrictEqual(Maybe.some({}));
+	expect(res).toStrictEqual(Maybe.make.some({}));
 });

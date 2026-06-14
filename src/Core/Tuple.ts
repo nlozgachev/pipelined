@@ -10,7 +10,7 @@
  * import { Tuple } from "@nlozgachev/pipelined/core";
  * import { pipe } from "@nlozgachev/pipelined/composition";
  *
- * const entry = Tuple.make("alice", 42);
+ * const entry = Tuple.from.pair("alice", 42);
  *
  * pipe(
  *   entry,
@@ -23,22 +23,35 @@
 export type Tuple<A, B> = readonly [A, B];
 
 export namespace Tuple {
-	/**
-	 * Creates a pair from two values.
-	 *
-	 * @example
-	 * ```ts
-	 * Tuple.make("Paris", 2_161_000); // ["Paris", 2161000]
-	 * ```
-	 */
-	export const make = <A, B>(first: A, second: B): Tuple<A, B> => [first, second];
+	// --- from ---
+	export namespace from {
+		/**
+		 * Creates a pair from two values.
+		 *
+		 * @example
+		 * ```ts
+		 * Tuple.from.pair("Paris", 2_161_000); // ["Paris", 2161000]
+		 * ```
+		 */
+		export const pair = <A, B>(first: A, second: B): Tuple<A, B> => [first, second];
+
+		/**
+		 * Creates a Tuple from a two-element array.
+		 *
+		 * @example
+		 * ```ts
+		 * Tuple.from.array(["Paris", 2_161_000] as const); // ["Paris", 2161000]
+		 * ```
+		 */
+		export const array = <A, B>(arr: readonly [A, B]): Tuple<A, B> => arr;
+	}
 
 	/**
 	 * Returns the first value from the pair.
 	 *
 	 * @example
 	 * ```ts
-	 * Tuple.first(Tuple.make("Paris", 2_161_000)); // "Paris"
+	 * Tuple.first(Tuple.from.pair("Paris", 2_161_000)); // "Paris"
 	 * ```
 	 */
 	export const first = <A, B>(tuple: Tuple<A, B>): A => tuple[0];
@@ -48,7 +61,7 @@ export namespace Tuple {
 	 *
 	 * @example
 	 * ```ts
-	 * Tuple.second(Tuple.make("Paris", 2_161_000)); // 2161000
+	 * Tuple.second(Tuple.from.pair("Paris", 2_161_000)); // 2161000
 	 * ```
 	 */
 	export const second = <A, B>(tuple: Tuple<A, B>): B => tuple[1];
@@ -58,7 +71,7 @@ export namespace Tuple {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Tuple.make("alice", 42), Tuple.mapFirst((s) => s.toUpperCase())); // ["ALICE", 42]
+	 * pipe(Tuple.from.pair("alice", 42), Tuple.mapFirst((s) => s.toUpperCase())); // ["ALICE", 42]
 	 * ```
 	 */
 	export const mapFirst = <A, C>(f: (a: A) => C) => <B>(tuple: Tuple<A, B>): Tuple<C, B> => [f(tuple[0]), tuple[1]];
@@ -68,7 +81,7 @@ export namespace Tuple {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Tuple.make("alice", 42), Tuple.mapSecond((n) => n * 2)); // ["alice", 84]
+	 * pipe(Tuple.from.pair("alice", 42), Tuple.mapSecond((n) => n * 2)); // ["alice", 84]
 	 * ```
 	 */
 	export const mapSecond = <B, D>(f: (b: B) => D) => <A>(tuple: Tuple<A, B>): Tuple<A, D> => [tuple[0], f(tuple[1])];
@@ -79,7 +92,7 @@ export namespace Tuple {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Tuple.make("alice", 42),
+	 *   Tuple.from.pair("alice", 42),
 	 *   Tuple.mapBoth(
 	 *     (name) => name.toUpperCase(),
 	 *     (score) => score * 2,
@@ -99,7 +112,7 @@ export namespace Tuple {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Tuple.make("Alice", 100), Tuple.fold((name, score) => `${name}: ${score}`));
+	 * pipe(Tuple.from.pair("Alice", 100), Tuple.fold((name, score) => `${name}: ${score}`));
 	 * // "Alice: 100"
 	 * ```
 	 */
@@ -110,7 +123,7 @@ export namespace Tuple {
 	 *
 	 * @example
 	 * ```ts
-	 * Tuple.swap(Tuple.make("key", 1)); // [1, "key"]
+	 * Tuple.swap(Tuple.from.pair("key", 1)); // [1, "key"]
 	 * ```
 	 */
 	export const swap = <A, B>(tuple: Tuple<A, B>): Tuple<B, A> => [tuple[1], tuple[0]];
@@ -122,7 +135,7 @@ export namespace Tuple {
 		 *
 		 * @example
 		 * ```ts
-		 * Tuple.to.Array(Tuple.make("hello", 42)); // ["hello", 42]
+		 * Tuple.to.Array(Tuple.from.pair("hello", 42)); // ["hello", 42]
 		 * ```
 		 */
 		export const Array = <A, B>(tuple: Tuple<A, B>): readonly (A | B)[] => [...tuple];
@@ -135,7 +148,7 @@ export namespace Tuple {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Tuple.make("Paris", 2_161_000),
+	 *   Tuple.from.pair("Paris", 2_161_000),
 	 *   Tuple.tap((city, pop) => console.log(`${city}: ${pop}`)),
 	 *   Tuple.mapSecond((n) => n / 1_000_000),
 	 * ); // logs "Paris: 2161000", returns ["Paris", 2.161]

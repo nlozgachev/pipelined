@@ -9,62 +9,62 @@ import { expect, expectTypeOf, test } from "vitest";
 
 test("head - returns Some of the first element for a non-empty array", () => {
 	const result = Arr.head([10, 20, 30]);
-	expect(result).toStrictEqual(Maybe.some(10));
+	expect(result).toStrictEqual(Maybe.make.some(10));
 });
 
 test("head - returns None for an empty array", () => {
 	const result = Arr.head([]);
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 test("head - returns Some for a single-element array", () => {
 	const result = Arr.head(["only"]);
-	expect(result).toStrictEqual(Maybe.some("only"));
+	expect(result).toStrictEqual(Maybe.make.some("only"));
 });
 
 test("last - returns Some of the last element for a non-empty array", () => {
 	const result = Arr.last([10, 20, 30]);
-	expect(result).toStrictEqual(Maybe.some(30));
+	expect(result).toStrictEqual(Maybe.make.some(30));
 });
 
 test("last - returns None for an empty array", () => {
 	const result = Arr.last([]);
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 test("last - returns Some for a single-element array", () => {
 	const result = Arr.last([42]);
-	expect(result).toStrictEqual(Maybe.some(42));
+	expect(result).toStrictEqual(Maybe.make.some(42));
 });
 
 test("tail - returns Some of all elements except the first", () => {
 	const result = Arr.tail([1, 2, 3]);
-	expect(result).toStrictEqual(Maybe.some([2, 3]));
+	expect(result).toStrictEqual(Maybe.make.some([2, 3]));
 });
 
 test("tail - returns Some of empty array for single-element array", () => {
 	const result = Arr.tail([1]);
-	expect(result).toStrictEqual(Maybe.some([]));
+	expect(result).toStrictEqual(Maybe.make.some([]));
 });
 
 test("tail - returns None for an empty array", () => {
 	const result = Arr.tail([]);
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 test("init - returns Some of all elements except the last", () => {
 	const result = Arr.init([1, 2, 3]);
-	expect(result).toStrictEqual(Maybe.some([1, 2]));
+	expect(result).toStrictEqual(Maybe.make.some([1, 2]));
 });
 
 test("init - returns Some of empty array for single-element array", () => {
 	const result = Arr.init([1]);
-	expect(result).toStrictEqual(Maybe.some([]));
+	expect(result).toStrictEqual(Maybe.make.some([]));
 });
 
 test("init - returns None for an empty array", () => {
 	const result = Arr.init([]);
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 // =============================================================================
@@ -73,57 +73,57 @@ test("init - returns None for an empty array", () => {
 
 test("findFirst - returns Some of the first matching element", () => {
 	const result = pipe([1, 2, 3, 4, 5], Arr.findFirst((n) => n > 3));
-	expect(result).toStrictEqual(Maybe.some(4));
+	expect(result).toStrictEqual(Maybe.make.some(4));
 });
 
 test("findFirst - returns None when no element matches", () => {
 	const result = pipe([1, 2, 3], Arr.findFirst((n) => n > 10));
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 test("findFirst - returns None for an empty array", () => {
 	const result = pipe([] as number[], Arr.findFirst((n) => n > 0));
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 test("findFirst - returns Some(undefined) when undefined matches", () => {
 	const result = pipe([undefined, 1, 2] as (number | undefined)[], Arr.findFirst((x) => x === undefined));
-	expect(result).toStrictEqual(Maybe.some(undefined));
+	expect(result).toStrictEqual(Maybe.make.some(undefined));
 });
 
 test("findLast - returns Some of the last matching element", () => {
 	const result = pipe([1, 2, 3, 4, 5], Arr.findLast((n) => n > 2));
-	expect(result).toStrictEqual(Maybe.some(5));
+	expect(result).toStrictEqual(Maybe.make.some(5));
 });
 
 test("findLast - returns None when no element matches", () => {
 	const result = pipe([1, 2, 3], Arr.findLast((n) => n > 10));
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 test("findLast - returns None for an empty array", () => {
 	const result = pipe([] as number[], Arr.findLast((_) => true));
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 test("findLast - returns Some(undefined) when undefined matches", () => {
 	const result = pipe([1, undefined, 2, undefined] as (number | undefined)[], Arr.findLast((x) => x === undefined));
-	expect(result).toStrictEqual(Maybe.some(undefined));
+	expect(result).toStrictEqual(Maybe.make.some(undefined));
 });
 
 test("findIndex - returns Some of the index of the first match", () => {
 	const result = pipe([10, 20, 30, 40], Arr.findIndex((n) => n === 30));
-	expect(result).toStrictEqual(Maybe.some(2));
+	expect(result).toStrictEqual(Maybe.make.some(2));
 });
 
 test("findIndex - returns None when no element matches", () => {
 	const result = pipe([10, 20, 30], Arr.findIndex((n) => n === 99));
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 test("findIndex - returns None for an empty array", () => {
 	const result = pipe([] as number[], Arr.findIndex((_) => true));
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 // =============================================================================
@@ -186,28 +186,26 @@ test("filter - returns empty array for empty input", () => {
 test("Arr.filterMap collects Some values and discards None", () => {
 	const parseNum = (s: string): Maybe<number> => {
 		const n = Number(s);
-		return isNaN(n) ? Maybe.none() : Maybe.some(n);
+		return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 	};
 	expect(pipe(["1", "abc", "3"], Arr.filterMap(parseNum))).toStrictEqual([1, 3]);
 });
 
 test("Arr.filterMap returns empty array when all elements map to None", () => {
-	expect(pipe(["a", "b", "c"], Arr.filterMap(() => Maybe.none()))).toStrictEqual([]);
+	expect(pipe(["a", "b", "c"], Arr.filterMap(() => Maybe.make.none()))).toStrictEqual([]);
 });
 
 test("Arr.filterMap returns all values when all elements map to Some", () => {
-	expect(pipe([1, 2, 3], Arr.filterMap(Maybe.some))).toStrictEqual([1, 2, 3]);
+	expect(pipe([1, 2, 3], Arr.filterMap(Maybe.make.some))).toStrictEqual([1, 2, 3]);
 });
 
 test("Arr.filterMap on empty array returns empty array", () => {
-	expect(pipe([], Arr.filterMap(Maybe.some))).toStrictEqual([]);
+	expect(pipe([], Arr.filterMap(Maybe.make.some))).toStrictEqual([]);
 });
 
 test("Arr.filterMap maps and filters in a single pipe", () => {
-	expect(pipe([1, 2, 3, 4, 5], Arr.filterMap((n) => n % 2 === 0 ? Maybe.some(n * 10) : Maybe.none()))).toStrictEqual([
-		20,
-		40,
-	]);
+	expect(pipe([1, 2, 3, 4, 5], Arr.filterMap((n) => n % 2 === 0 ? Maybe.make.some(n * 10) : Maybe.make.none())))
+		.toStrictEqual([20, 40]);
 });
 
 test("partition - splits array into pass and fail groups", () => {
@@ -489,50 +487,50 @@ test("reduce - builds an object from entries", () => {
 test("traverse - all Some results in Some of array", () => {
 	const parseNum = (s: string): Maybe<number> => {
 		const n = Number(s);
-		return isNaN(n) ? Maybe.none() : Maybe.some(n);
+		return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 	};
 	const result = pipe(["1", "2", "3"], Arr.Maybe.traverse(parseNum));
-	expect(result).toStrictEqual(Maybe.some([1, 2, 3]));
+	expect(result).toStrictEqual(Maybe.make.some([1, 2, 3]));
 });
 
 test("traverse - any None results in None", () => {
 	const parseNum = (s: string): Maybe<number> => {
 		const n = Number(s);
-		return isNaN(n) ? Maybe.none() : Maybe.some(n);
+		return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 	};
 	const result = pipe(["1", "x", "3"], Arr.Maybe.traverse(parseNum));
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 test("traverse - empty array results in Some of empty array", () => {
-	const result = pipe([] as string[], Arr.Maybe.traverse((s) => Maybe.some(s)));
-	expect(result).toStrictEqual(Maybe.some([]));
+	const result = pipe([] as string[], Arr.Maybe.traverse((s) => Maybe.make.some(s)));
+	expect(result).toStrictEqual(Maybe.make.some([]));
 });
 
 test("traverse - fails at first None and short-circuits", () => {
 	let callCount = 0;
 	const f = (n: number): Maybe<number> => {
 		callCount++;
-		return n > 0 ? Maybe.some(n) : Maybe.none();
+		return n > 0 ? Maybe.make.some(n) : Maybe.make.none();
 	};
 	const result = pipe([1, 0, 2, 3], Arr.Maybe.traverse(f));
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 	expect(callCount).toBe(2);
 });
 
 test("sequence - all Some results in Some of array", () => {
-	const result = Arr.Maybe.sequence([Maybe.some(1), Maybe.some(2), Maybe.some(3)]);
-	expect(result).toStrictEqual(Maybe.some([1, 2, 3]));
+	const result = Arr.Maybe.sequence([Maybe.make.some(1), Maybe.make.some(2), Maybe.make.some(3)]);
+	expect(result).toStrictEqual(Maybe.make.some([1, 2, 3]));
 });
 
 test("sequence - any None results in None", () => {
-	const result = Arr.Maybe.sequence([Maybe.some(1), Maybe.none(), Maybe.some(3)]);
-	expect(result).toStrictEqual(Maybe.none());
+	const result = Arr.Maybe.sequence([Maybe.make.some(1), Maybe.make.none(), Maybe.make.some(3)]);
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 test("sequence - empty array results in Some of empty array", () => {
 	const result = Arr.Maybe.sequence([] as Maybe<number>[]);
-	expect(result).toStrictEqual(Maybe.some([]));
+	expect(result).toStrictEqual(Maybe.make.some([]));
 });
 
 // =============================================================================
@@ -540,45 +538,46 @@ test("sequence - empty array results in Some of empty array", () => {
 // =============================================================================
 
 test("traverseResult - all Ok results in Ok of array", () => {
-	const validate = (n: number): Result<string, number> => n > 0 ? Result.ok(n) : Result.err("not positive");
+	const validate = (n: number): Result<string, number> => n > 0 ? Result.make.ok(n) : Result.make.err("not positive");
 	const result = pipe([1, 2, 3], Arr.Result.traverse(validate));
-	expect(result).toStrictEqual(Result.ok([1, 2, 3]));
+	expect(result).toStrictEqual(Result.make.ok([1, 2, 3]));
 });
 
 test("traverseResult - first Err is returned", () => {
-	const validate = (n: number): Result<string, number> => n > 0 ? Result.ok(n) : Result.err(`${n} is not positive`);
+	const validate = (n: number): Result<string, number> =>
+		n > 0 ? Result.make.ok(n) : Result.make.err(`${n} is not positive`);
 	const result = pipe([1, -2, -3], Arr.Result.traverse(validate));
-	expect(result).toStrictEqual(Result.err("-2 is not positive"));
+	expect(result).toStrictEqual(Result.make.err("-2 is not positive"));
 });
 
 test("traverseResult - empty array results in Ok of empty array", () => {
-	const result = pipe([] as number[], Arr.Result.traverse((n) => Result.ok(n)));
-	expect(result).toStrictEqual(Result.ok([]));
+	const result = pipe([] as number[], Arr.Result.traverse((n) => Result.make.ok(n)));
+	expect(result).toStrictEqual(Result.make.ok([]));
 });
 
 test("traverseResult - short-circuits at first Err", () => {
 	let callCount = 0;
 	const f = (n: number): Result<string, number> => {
 		callCount++;
-		return n > 0 ? Result.ok(n) : Result.err("bad");
+		return n > 0 ? Result.make.ok(n) : Result.make.err("bad");
 	};
 	pipe([1, 0, 2, 3], Arr.Result.traverse(f));
 	expect(callCount).toBe(2);
 });
 
 test("sequenceResult - all Ok results in Ok of array", () => {
-	const result = Arr.Result.sequence([Result.ok(1), Result.ok(2), Result.ok(3)]);
-	expect(result).toStrictEqual(Result.ok([1, 2, 3]));
+	const result = Arr.Result.sequence([Result.make.ok(1), Result.make.ok(2), Result.make.ok(3)]);
+	expect(result).toStrictEqual(Result.make.ok([1, 2, 3]));
 });
 
 test("sequenceResult - first Err is returned", () => {
-	const result = Arr.Result.sequence([Result.ok(1), Result.err("oops"), Result.ok(3)]);
-	expect(result).toStrictEqual(Result.err("oops"));
+	const result = Arr.Result.sequence([Result.make.ok(1), Result.make.err("oops"), Result.make.ok(3)]);
+	expect(result).toStrictEqual(Result.make.err("oops"));
 });
 
 test("sequenceResult - empty array results in Ok of empty array", () => {
 	const result = Arr.Result.sequence([] as Result<string, number>[]);
-	expect(result).toStrictEqual(Result.ok([]));
+	expect(result).toStrictEqual(Result.make.ok([]));
 });
 
 // =============================================================================
@@ -630,9 +629,9 @@ test("sequenceTask - preserves order despite different completion times", async 
 
 test("traverseTaskResult - all succeed returns Ok of results", async () => {
 	const validate = (n: number): Task<Result<string, number>> =>
-		n > 0 ? Task.resolve(Result.ok(n)) : Task.resolve(Result.err("non-positive"));
+		n > 0 ? Task.resolve(Result.make.ok(n)) : Task.resolve(Result.make.err("non-positive"));
 	const result = await pipe([1, 2, 3], Arr.Task.Result.traverse(validate))();
-	expect(result).toStrictEqual(Result.ok([1, 2, 3]));
+	expect(result).toStrictEqual(Result.make.ok([1, 2, 3]));
 });
 
 test("traverseTaskResult - first error short-circuits", async () => {
@@ -640,32 +639,32 @@ test("traverseTaskResult - first error short-circuits", async () => {
 	const validate = (n: number): Task<Result<string, number>> =>
 		Task.from.Promise(() => {
 			order.push(n);
-			return Promise.resolve(n > 0 ? Result.ok(n) : Result.err("non-positive"));
+			return Promise.resolve(n > 0 ? Result.make.ok(n) : Result.make.err("non-positive"));
 		});
 	const result = await pipe([1, -1, 3], Arr.Task.Result.traverse(validate))();
-	expect(result).toStrictEqual(Result.err("non-positive"));
+	expect(result).toStrictEqual(Result.make.err("non-positive"));
 	expect(order).toStrictEqual([1, -1]); // 3 was not processed
 });
 
 test("traverseTaskResult - empty array returns Ok of empty array", async () => {
-	const result = await Arr.Task.Result.traverse((n: number) => Task.resolve(Result.ok(n)))([])();
-	expect(result).toStrictEqual(Result.ok([]));
+	const result = await Arr.Task.Result.traverse((n: number) => Task.resolve(Result.make.ok(n)))([])();
+	expect(result).toStrictEqual(Result.make.ok([]));
 });
 
 test("sequenceTaskResult - collects Ok results", async () => {
-	const tasks: Task<Result<string, number>>[] = [Task.resolve(Result.ok(10)), Task.resolve(Result.ok(20))];
+	const tasks: Task<Result<string, number>>[] = [Task.resolve(Result.make.ok(10)), Task.resolve(Result.make.ok(20))];
 	const result = await Arr.Task.Result.sequence(tasks)();
-	expect(result).toStrictEqual(Result.ok([10, 20]));
+	expect(result).toStrictEqual(Result.make.ok([10, 20]));
 });
 
 test("sequenceTaskResult - returns first Err", async () => {
 	const tasks: Task<Result<string, number>>[] = [
-		Task.resolve(Result.ok(10)),
-		Task.resolve(Result.err("oops")),
-		Task.resolve(Result.ok(30)),
+		Task.resolve(Result.make.ok(10)),
+		Task.resolve(Result.make.err("oops")),
+		Task.resolve(Result.make.ok(30)),
 	];
 	const result = await Arr.Task.Result.sequence(tasks)();
-	expect(result).toStrictEqual(Result.err("oops"));
+	expect(result).toStrictEqual(Result.make.err("oops"));
 });
 
 // =============================================================================
@@ -673,15 +672,15 @@ test("sequenceTaskResult - returns first Err", async () => {
 // =============================================================================
 
 test("isNonEmpty - returns true for non-empty array", () => {
-	expect(Arr.isNonEmpty([1, 2, 3])).toBe(true);
+	expect(Arr.is.nonEmpty([1, 2, 3])).toBe(true);
 });
 
 test("isNonEmpty - returns false for empty array", () => {
-	expect(Arr.isNonEmpty([])).toBe(false);
+	expect(Arr.is.nonEmpty([])).toBe(false);
 });
 
 test("isNonEmpty - returns true for single-element array", () => {
-	expect(Arr.isNonEmpty([undefined])).toBe(true);
+	expect(Arr.is.nonEmpty([undefined])).toBe(true);
 });
 
 test("some - returns true when at least one element matches", () => {
@@ -967,7 +966,7 @@ test("size - returns 1 for single-element array", () => {
 
 test("pipe composition - filter, map, head", () => {
 	const result = pipe([1, 2, 3, 4, 5], Arr.filter((n) => n > 2), Arr.map((n) => n * 10), Arr.head);
-	expect(result).toStrictEqual(Maybe.some(30));
+	expect(result).toStrictEqual(Maybe.make.some(30));
 });
 
 test("pipe composition - map, filter, reduce", () => {
@@ -1050,17 +1049,17 @@ test("sortWith - falls back to sort when toSorted is unavailable", () => {
 // =============================================================================
 
 test("Arr.compact extracts values from Some and discards None", () => {
-	const input = [Maybe.some(1), Maybe.none(), Maybe.some(2), Maybe.none(), Maybe.some(3)];
+	const input = [Maybe.make.some(1), Maybe.make.none(), Maybe.make.some(2), Maybe.make.none(), Maybe.make.some(3)];
 	expect(Arr.compact(input)).toStrictEqual([1, 2, 3]);
 });
 
 test("Arr.compact returns empty array for all None", () => {
-	const input = [Maybe.none(), Maybe.none(), Maybe.none()];
+	const input = [Maybe.make.none(), Maybe.make.none(), Maybe.make.none()];
 	expect(Arr.compact(input)).toStrictEqual([]);
 });
 
 test("Arr.compact returns all values when no None present", () => {
-	const input = [Maybe.some("a"), Maybe.some("b"), Maybe.some("c")];
+	const input = [Maybe.make.some("a"), Maybe.make.some("b"), Maybe.make.some("c")];
 	expect(Arr.compact(input)).toStrictEqual(["a", "b", "c"]);
 });
 
@@ -1069,7 +1068,7 @@ test("Arr.compact returns all values when no None present", () => {
 // =============================================================================
 
 test("Arr.separate splits Results into errors and successes", () => {
-	const input = [Result.ok(1), Result.err("bad"), Result.ok(2), Result.err("worse")];
+	const input = [Result.make.ok(1), Result.make.err("bad"), Result.make.ok(2), Result.make.err("worse")];
 	expect(Arr.separate(input)).toStrictEqual([["bad", "worse"], [1, 2]]);
 });
 
@@ -1078,12 +1077,12 @@ test("Arr.separate returns empty arrays for empty input", () => {
 });
 
 test("Arr.separate returns only errors when all are Error", () => {
-	const input = [Result.err("a"), Result.err("b")];
+	const input = [Result.make.err("a"), Result.make.err("b")];
 	expect(Arr.separate(input)).toStrictEqual([["a", "b"], []]);
 });
 
 test("Arr.separate returns only successes when all are Ok", () => {
-	const input = [Result.ok(1), Result.ok(2), Result.ok(3)];
+	const input = [Result.make.ok(1), Result.make.ok(2), Result.make.ok(3)];
 	expect(Arr.separate(input)).toStrictEqual([[], [1, 2, 3]]);
 });
 
@@ -1092,13 +1091,14 @@ test("Arr.separate returns only successes when all are Ok", () => {
 // =============================================================================
 
 test("Arr.partitionMap maps and separates in one pass", () => {
-	const classify = (n: number): Result<string, number> => n > 0 ? Result.ok(n * 10) : Result.err(`${n} is not positive`);
+	const classify = (n: number): Result<string, number> =>
+		n > 0 ? Result.make.ok(n * 10) : Result.make.err(`${n} is not positive`);
 	const result = pipe([1, -2, 3, -4], Arr.partitionMap(classify));
 	expect(result).toStrictEqual([["-2 is not positive", "-4 is not positive"], [10, 30]]);
 });
 
 test("Arr.partitionMap returns empty arrays for empty input", () => {
-	const result = pipe([] as number[], Arr.partitionMap((n) => Result.ok(n)));
+	const result = pipe([] as number[], Arr.partitionMap((n) => Result.make.ok(n)));
 	expect(result).toStrictEqual([[], []]);
 });
 
@@ -1107,7 +1107,7 @@ test("Arr.partitionMap composes in pipe", () => {
 		["1", "abc", "3", "def"],
 		Arr.partitionMap((s) => {
 			const n = Number(s);
-			return isNaN(n) ? Result.err(s) : Result.ok(n);
+			return isNaN(n) ? Result.make.err(s) : Result.make.ok(n);
 		}),
 	);
 	expect(result).toStrictEqual([["abc", "def"], [1, 3]]);
@@ -1149,12 +1149,12 @@ test("Arr.NonEmpty.singleton - creates a single-element non-empty array", () => 
 
 test("Arr.NonEmpty.from.Array - returns Some for non-empty array", () => {
 	const result = Arr.NonEmpty.from.Array([1, 2]);
-	expect(result).toStrictEqual(Maybe.some([1, 2]));
+	expect(result).toStrictEqual(Maybe.make.some([1, 2]));
 });
 
 test("Arr.NonEmpty.from.Array - returns None for empty array", () => {
 	const result = Arr.NonEmpty.from.Array([]);
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 test("Arr.NonEmpty.head - returns the first element", () => {

@@ -70,7 +70,7 @@ test("num.multiply + Num.divide — inverse", () => {
 			(n, b) => {
 				// (n * b) / b === n for integers within float precision
 				// divide now returns Maybe, so we compare with Some(n)
-				expect(Num.divide(b)(Num.multiply(b)(n))).toStrictEqual(Maybe.some(n));
+				expect(Num.divide(b)(Num.multiply(b)(n))).toStrictEqual(Maybe.make.some(n));
 			},
 		),
 	);

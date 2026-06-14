@@ -90,10 +90,10 @@ context. This is the boundary where the messy real world meets our clean system.
 
 ```ts
 // Wrapping an existing value
-const five = Maybe.some(5); // Maybe<number>
+const five = Maybe.make.some(5); // Maybe<number>
 
 // Representing explicit absence
-const empty = Maybe.none(); // Maybe<never>
+const empty = Maybe.make.none(); // Maybe<never>
 ```
 
 In practice, you will rarely write `some` or `none` manually. Instead, you will ingest values coming
@@ -125,8 +125,8 @@ result. If we have a `None`, `map` does nothing and returns the `None` unchanged
 ```ts
 const double = (n: number) => n * 2;
 
-pipe(Maybe.some(5), Maybe.map(double)); // Some(10)
-pipe(Maybe.none(), Maybe.map(double));  // None
+pipe(Maybe.make.some(5), Maybe.map(double)); // Some(10)
+pipe(Maybe.make.none(), Maybe.map(double));  // None
 ```
 
 Consider how this simplifies deep record navigation. Imagine parsing a user profile to extract their
@@ -163,19 +163,19 @@ If we were to use `map` with a function that returns a `Maybe`, we would end up 
 ```ts
 const parseInteger = (s: string): Maybe<number> => {
   const n = parseInt(s, 10);
-  return isNaN(n) ? Maybe.none() : Maybe.some(n);
+  return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 };
 
 // Using map results in nesting:
-const nested = pipe(Maybe.some("42"), Maybe.map(parseInteger)); // Some(Some(42))
+const nested = pipe(Maybe.make.some("42"), Maybe.map(parseInteger)); // Some(Some(42))
 ```
 
 To resolve this, we use `chain`. It applies the transformation and flattens the nested structure,
 leaving us with a clean `Maybe<number>`.
 
 ```ts
-const flat = pipe(Maybe.some("42"), Maybe.chain(parseInteger)); // Some(42)
-const failed = pipe(Maybe.some("abc"), Maybe.chain(parseInteger)); // None
+const flat = pipe(Maybe.make.some("42"), Maybe.chain(parseInteger)); // Some(42)
+const failed = pipe(Maybe.make.some("abc"), Maybe.chain(parseInteger)); // None
 ```
 
 Think of `map` as a tool for transformations that are guaranteed to succeed once a value is present,
@@ -189,8 +189,8 @@ Sometimes a value exists, but it does not meet our business criteria. We can use
 ```ts
 const isEven = (n: number) => n % 2 === 0;
 
-pipe(Maybe.some(4), Maybe.filter(isEven)); // Some(4)
-pipe(Maybe.some(5), Maybe.filter(isEven)); // None
+pipe(Maybe.make.some(4), Maybe.filter(isEven)); // Some(4)
+pipe(Maybe.make.some(5), Maybe.filter(isEven)); // None
 ```
 
 If we are starting from a raw value rather than a `Maybe`, we can use `from.Predicate` to decide
@@ -219,12 +219,12 @@ fallback value if we have a `None`.
 
 ```ts
 pipe(
-  Maybe.some("admin"),
+  Maybe.make.some("admin"),
   Maybe.getOrElse(() => "guest"),
 ); // "admin"
 
 pipe(
-  Maybe.none(),
+  Maybe.make.none(),
   Maybe.getOrElse(() => "guest"),
 ); // "guest"
 ```
@@ -281,7 +281,7 @@ unchanged. If the `Maybe` is `None`, the function is ignored.
 
 ```ts
 pipe(
-  Maybe.some("Configuration parsed successfully"),
+  Maybe.make.some("Configuration parsed successfully"),
   Maybe.tap((msg) => console.log(msg)),
   Maybe.map((msg) => msg.toUpperCase()),
 ); // Logs message, then continues to produce Some("CONFIGURATION PARSED SUCCESSFULLY")
@@ -340,7 +340,7 @@ Conversely, if we have a `Result` and want to discard the error context, we can 
 `Maybe` using `from.Result`:
 
 ```ts
-const maybeValue = Maybe.from.Result(Result.err("An error occurred")); // None
+const maybeValue = Maybe.from.Result(Result.make.err("An error occurred")); // None
 ```
 
 ---
@@ -399,7 +399,7 @@ readable pipeline.
 
 ```ts
 pipe(
-  Maybe.some(42),
+  Maybe.make.some(42),
   Maybe.bindTo("value")
 ); // Some({ value: 42 })
 ```
@@ -431,8 +431,8 @@ any individual field is `None`, the entire struct short-circuits to `None` immed
 
 ```ts
 const user = Maybe.struct({
-  name: Maybe.some("Alice"),
-  age: Maybe.some(30),
+  name: Maybe.make.some("Alice"),
+  age: Maybe.make.some(30),
   role: Maybe.from.Predicate((r: string) => r === "admin" || r === "user")("user"),
 }); // Some({ name: "Alice", age: 30, role: "user" })
 ```
@@ -442,9 +442,9 @@ encountered in key order:
 
 ```ts
 const failed = Maybe.struct({
-  a: Maybe.some(1),
-  b: Maybe.none(),
-  c: Maybe.none(),
+  a: Maybe.make.some(1),
+  b: Maybe.make.none(),
+  c: Maybe.make.none(),
 }); // None
 ```
 

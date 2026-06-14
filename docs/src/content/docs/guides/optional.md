@@ -91,27 +91,27 @@ flowchart TD
 
 ## Creating optional paths
 
-We can target optional object properties using `Optional.prop`, and array elements by index using
-`Optional.index`:
+We can target optional object properties using `Optional.from.property`, and array elements by index
+using `Optional.index`:
 
 ```ts
 import { Optional } from "@nlozgachev/pipelined/core";
 
 // Focus on an optional field within an object
-const notificationsOptional = Optional.prop<UserSettings>()("notifications");
+const notificationsOptional = Optional.from.property<UserSettings>()("notifications");
 
 // Focus on a specific element of an array by index
 const firstItemOptional = Optional.index<string>(0); // Optional<string[], string>
 ```
 
 If we need a custom optional path — such as parsing a string value that might be empty or invalid —
-we can define it manually with `Optional.make`:
+we can define it manually with `Optional.from.accessors`:
 
 ```ts
 import { Maybe } from "@nlozgachev/pipelined/core";
 
-const firstCharOptional = Optional.make(
-  (str: string) => str.length > 0 ? Maybe.some(str[0]) : Maybe.none(),
+const firstCharOptional = Optional.from.accessors(
+  (str: string) => str.length > 0 ? Maybe.make.some(str[0]) : Maybe.make.none(),
   (char) => (str) => str.length > 0 ? char + str.slice(1) : str
 );
 ```
@@ -124,7 +124,7 @@ functional helpers to extract or fold the value:
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 
-const slackOptional = Optional.prop<UserSettings["notifications"]>()("slack");
+const slackOptional = Optional.from.property<UserSettings["notifications"]>()("slack");
 
 // Extract the Slack settings as a Maybe context
 const slackSettings = pipe(settings.notifications, Optional.get(slackOptional));
@@ -147,7 +147,7 @@ is resolved and a change occurs, preserving reference equality and returning the
 the path is broken:
 
 ```ts
-const slackEnabledOptional = Optional.prop<{ webhookUrl?: string; enabled?: boolean }>()("enabled");
+const slackEnabledOptional = Optional.from.property<{ webhookUrl?: string; enabled?: boolean }>()("enabled");
 
 // Safely modify a value if it exists, otherwise do nothing
 const updatedNotifications = pipe(
@@ -166,9 +166,9 @@ Just like lenses, optionals compose. We can combine multiple optional paths usin
 or a `None` value:
 
 ```ts
-const notifications = Optional.prop<UserSettings>()("notifications");
-const slack = Optional.prop<Required<UserSettings>["notifications"]>()("slack");
-const webhook = Optional.prop<Required<Required<UserSettings>["notifications"]>["slack"]>()("webhookUrl");
+const notifications = Optional.from.property<UserSettings>()("notifications");
+const slack = Optional.from.property<Required<UserSettings>["notifications"]>()("slack");
+const webhook = Optional.from.property<Required<Required<UserSettings>["notifications"]>["slack"]>()("webhookUrl");
 
 // Compose a deep optional path
 const slackWebhookOptional = pipe(
@@ -206,8 +206,8 @@ type Config = {
   };
 };
 
-const serverLens = Lens.prop<Config>()("server");
-const sslOptional = Optional.prop<Config["server"]>()("ssl");
+const serverLens = Lens.from.property<Config>()("server");
+const sslOptional = Optional.from.property<Config["server"]>()("ssl");
 
 // Compose a guaranteed path with an optional path
 const sslCertOptional = pipe(
@@ -223,7 +223,7 @@ Use the following reference to select the correct tool for your data path:
 
 | Situation                                                            | Tool                                        |
 | :------------------------------------------------------------------- | :------------------------------------------ |
-| The target property is required and always present                   | `Lens.prop`                                 |
-| The target property is declared as optional (`key?: T`)              | `Optional.prop`                             |
+| The target property is required and always present                   | `Lens.from.property`                        |
+| The target property is declared as optional (`key?: T`)              | `Optional.from.property`                    |
 | The target is a specific element within an array (`arr[i]`)          | `Optional.index`                            |
 | The path starts with required fields and ends with an optional field | `Lens.andThenOptional` or `Lens.toOptional` |

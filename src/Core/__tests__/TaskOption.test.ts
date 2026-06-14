@@ -23,11 +23,11 @@ test("Task.Maybe.none creates a Task that resolves to None", async () => {
 // ---------------------------------------------------------------------------
 
 test("Task.Maybe.fromMaybe lifts Some into a Task", async () => {
-	await expect(Task.Maybe.from.Maybe(Maybe.some(10))()).resolves.toStrictEqual({ kind: "Some", value: 10 });
+	await expect(Task.Maybe.from.Maybe(Maybe.make.some(10))()).resolves.toStrictEqual({ kind: "Some", value: 10 });
 });
 
 test("Task.Maybe.fromMaybe lifts None into a Task", async () => {
-	await expect(Task.Maybe.from.Maybe(Maybe.none())()).resolves.toStrictEqual({ kind: "None" });
+	await expect(Task.Maybe.from.Maybe(Maybe.make.none())()).resolves.toStrictEqual({ kind: "None" });
 });
 
 // ---------------------------------------------------------------------------
@@ -148,12 +148,12 @@ test("Task.Maybe.ap propagates the AbortSignal to both sides", async () => {
 
 	const fnTask = Task.from.Promise((signal) => {
 		signal1 = signal;
-		return Promise.resolve(Maybe.some((n: number) => n * 3));
+		return Promise.resolve(Maybe.make.some((n: number) => n * 3));
 	});
 
 	const argTask = Task.from.Promise((signal) => {
 		signal2 = signal;
-		return Promise.resolve(Maybe.some(4));
+		return Promise.resolve(Maybe.make.some(4));
 	});
 
 	await pipe(fnTask, Task.Maybe.ap(argTask))(controller.signal);
@@ -311,36 +311,36 @@ test("taskMaybe pipe short-circuits on None", async () => {
 
 test("Task.Maybe.from.nullable returns Some for non-null value", async () => {
 	const result = await Task.Maybe.from.nullable(42)();
-	expect(result).toStrictEqual(Maybe.some(42));
+	expect(result).toStrictEqual(Maybe.make.some(42));
 });
 
 test("Task.Maybe.from.nullable returns None for null", async () => {
 	const result = await Task.Maybe.from.nullable(null)();
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 test("Task.Maybe.from.nullable returns None for undefined", async () => {
 	const result = await Task.Maybe.from.nullable(undefined)();
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 // --- fromResult ---
 
 test("Task.Maybe.fromResult returns Some for Ok", async () => {
-	const result = await Task.Maybe.from.Result(Result.ok(42))();
-	expect(result).toStrictEqual(Maybe.some(42));
+	const result = await Task.Maybe.from.Result(Result.make.ok(42))();
+	expect(result).toStrictEqual(Maybe.make.some(42));
 });
 
 test("Task.Maybe.fromResult returns None for Error", async () => {
-	const result = await Task.Maybe.from.Result(Result.err("bad"))();
-	expect(result).toStrictEqual(Maybe.none());
+	const result = await Task.Maybe.from.Result(Result.make.err("bad"))();
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 // --- bindTo ---
 
 test("Task.Maybe.bindTo wraps a value in an accumulator object", async () => {
 	const result = await pipe(Task.Maybe.some(2), Task.Maybe.bindTo("a"))();
-	expect(result).toStrictEqual(Maybe.some({ a: 2 }));
+	expect(result).toStrictEqual(Maybe.make.some({ a: 2 }));
 });
 
 // --- bind ---
@@ -352,7 +352,7 @@ test("Task.Maybe.bind accumulates values key-by-key in a pipeline", async () => 
 		Task.Maybe.bind("b", ({ a }) => Task.Maybe.some(a * 3)),
 		Task.Maybe.bind("c", ({ a, b }) => Task.Maybe.some(a + b)),
 	)();
-	expect(result).toStrictEqual(Maybe.some({ a: 2, b: 6, c: 8 }));
+	expect(result).toStrictEqual(Maybe.make.some({ a: 2, b: 6, c: 8 }));
 });
 
 test("Task.Maybe.bind short-circuits on None", async () => {
@@ -367,29 +367,29 @@ test("Task.Maybe.bind short-circuits on None", async () => {
 		}),
 	)();
 	expect(called).toBe(false);
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 // --- recover ---
 
 test("Task.Maybe.recover returns original Some", async () => {
 	const result = await pipe(Task.Maybe.some(42), Task.Maybe.recover(() => Task.Maybe.some(0)))();
-	expect(result).toStrictEqual(Maybe.some(42));
+	expect(result).toStrictEqual(Maybe.make.some(42));
 });
 
 test("Task.Maybe.recover returns fallback on None", async () => {
 	const result = await pipe(Task.Maybe.none<number>(), Task.Maybe.recover(() => Task.Maybe.some(42)))();
-	expect(result).toStrictEqual(Maybe.some(42));
+	expect(result).toStrictEqual(Maybe.make.some(42));
 });
 
 // --- struct ---
 
 test("Task.Maybe.struct combines record of Some in parallel", async () => {
 	const result = await Task.Maybe.struct({ name: Task.Maybe.some("Alice"), age: Task.Maybe.some(30) })();
-	expect(result).toStrictEqual(Maybe.some({ name: "Alice", age: 30 }));
+	expect(result).toStrictEqual(Maybe.make.some({ name: "Alice", age: 30 }));
 });
 
 test("Task.Maybe.struct returns None if any key yields None", async () => {
 	const result = await Task.Maybe.struct({ name: Task.Maybe.some("Alice"), age: Task.Maybe.none<number>() })();
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });

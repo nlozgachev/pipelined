@@ -28,12 +28,12 @@ export namespace TaskResult {
 	/**
 	 * Wraps a value in a successful Task.Result.
 	 */
-	export const ok = <E, A>(value: A): TaskResult<E, A> => CoreTask.resolve(CoreResult.ok(value));
+	export const ok = <E, A>(value: A): TaskResult<E, A> => CoreTask.resolve(CoreResult.make.ok(value));
 
 	/**
 	 * Creates a failed Task.Result with the given error.
 	 */
-	export const err = <E, A>(error: E): TaskResult<E, A> => CoreTask.resolve(CoreResult.err(error));
+	export const err = <E, A>(error: E): TaskResult<E, A> => CoreTask.resolve(CoreResult.make.err(error));
 
 	// --- from ---
 	export namespace from {
@@ -42,14 +42,14 @@ export namespace TaskResult {
 		 * Returns Ok if the value is not null or undefined, err from onNull otherwise.
 		 */
 		export const nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskResult<E, A> =>
-			CoreTask.resolve(value === null || value === undefined ? CoreResult.err(onNull()) : CoreResult.ok(value));
+			CoreTask.resolve(value === null || value === undefined ? CoreResult.make.err(onNull()) : CoreResult.make.ok(value));
 
 		/**
 		 * Creates a Task.Result from a Maybe.
 		 * Some becomes Ok, None becomes err from onNone.
 		 */
 		export const Maybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): TaskResult<E, A> =>
-			CoreTask.resolve(CoreMaybe.isNone(maybe) ? CoreResult.err(onNone()) : CoreResult.ok(maybe.value));
+			CoreTask.resolve(CoreMaybe.is.none(maybe) ? CoreResult.make.err(onNone()) : CoreResult.make.ok(maybe.value));
 
 		/**
 		 * Lifts a Result into a Task.Result.
@@ -63,7 +63,9 @@ export namespace TaskResult {
 		export const throwable =
 			<Args extends readonly unknown[], A, E>(f: (...args: Args) => Promise<A>, onError: (e: unknown) => E) =>
 			(...args: Args): TaskResult<E, A> =>
-				CoreTask.from.Promise(() => f(...args).then(CoreResult.ok).catch((error) => CoreResult.err(onError(error))));
+				CoreTask.from.Promise(() =>
+					f(...args).then(CoreResult.make.ok).catch((error) => CoreResult.make.err(onError(error)))
+				);
 	}
 
 	/**
@@ -85,7 +87,7 @@ export namespace TaskResult {
 		onError: (e: unknown) => E,
 	): TaskResult<E, A> =>
 		CoreTask.from.Promise((signal) =>
-			Promise.resolve(f(signal)).then(CoreResult.ok).catch((error) => CoreResult.err(onError(error)))
+			Promise.resolve(f(signal)).then(CoreResult.make.ok).catch((error) => CoreResult.make.err(onError(error)))
 		);
 
 	/**
@@ -106,7 +108,7 @@ export namespace TaskResult {
 	 */
 	export const chain = <E, A, B>(f: (a: A) => TaskResult<E, B>) => (data: TaskResult<E, A>): TaskResult<E, B> =>
 		CoreTask.chain((result: Result<E, A>) =>
-			CoreResult.isOk(result) ? f(result.value) : CoreTask.resolve(CoreResult.err(result.error))
+			CoreResult.is.ok(result) ? f(result.value) : CoreTask.resolve(CoreResult.make.err(result.error))
 		)(data);
 
 	/**
@@ -128,7 +130,7 @@ export namespace TaskResult {
 	export const recover =
 		<E, A, B>(fallback: (e: E) => TaskResult<E, B>) => (data: TaskResult<E, A>): TaskResult<E, A | B> =>
 			CoreTask.chain((result: Result<E, A>) =>
-				CoreResult.isErr(result) ? fallback(result.error) : CoreTask.resolve(result as Result<E, A | B>)
+				CoreResult.is.err(result) ? fallback(result.error) : CoreTask.resolve(result as Result<E, A | B>)
 			)(data);
 
 	/**
@@ -184,7 +186,7 @@ export namespace TaskResult {
 	 *     Task.Result.chain(user => fetchPosts(user.id)),
 	 *     Task.Result.run(controller.signal),
 	 * );
-	 * if (Result.isOk(result)) render(result.value);
+	 * if (Result.is.ok(result)) render(result.value);
 	 * ```
 	 */
 	export const run = (signal?: AbortSignal) => <E, A>(task: TaskResult<E, A>): Deferred<Result<E, A>> => task(signal);
@@ -242,12 +244,12 @@ export namespace TaskResult {
 				const record = {} as R;
 				for (let i = 0; i < keys.length; i++) {
 					const res = results[i];
-					if (CoreResult.isErr(res)) {
+					if (CoreResult.is.err(res)) {
 						return res;
 					}
 					record[keys[i] as keyof R] = res.value;
 				}
-				return CoreResult.ok(record);
+				return CoreResult.make.ok(record);
 			});
 		});
 }

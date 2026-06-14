@@ -33,7 +33,7 @@ At the runtime level, a `Refinement` is simply a standard function returning a b
 
 ## Creating Refinements
 
-To lift a standard boolean check into a typed `Refinement`, we use `Refinement.make`:
+To lift a standard boolean check into a typed `Refinement`, we use `Refinement.from.predicate`:
 
 ```ts
 import { Brand } from "@nlozgachev/pipelined/types";
@@ -43,17 +43,17 @@ type PositiveNumber = Brand<"PositiveNumber", number>;
 type EvenNumber     = Brand<"EvenNumber", number>;
 
 const isPositive: Refinement<number, PositiveNumber> =
-  Refinement.make((n) => n > 0);
+  Refinement.from.predicate((n) => n > 0);
 
 const isEven: Refinement<number, EvenNumber> =
-  Refinement.make((n) => n % 2 === 0);
+  Refinement.from.predicate((n) => n % 2 === 0);
 
 isPositive(42);  // true  — 42 is narrowed to PositiveNumber
 isPositive(-1);  // false
 ```
 
 <Aside type="caution">
-`Refinement.make` is a compile-time assertion. You are guaranteeing to the TypeScript compiler that the supplied boolean check correctly narrows the type. The compiler cannot verify that your logic matches the target brand. Use it at boundaries to bootstrap your core rules, and build more complex rules by composing existing, verified refinements.
+`Refinement.from.predicate` is a compile-time assertion. You are guaranteeing to the TypeScript compiler that the supplied boolean check correctly narrows the type. The compiler cannot verify that your logic matches the target brand. Use it at boundaries to bootstrap your core rules, and build more complex rules by composing existing, verified refinements.
 </Aside>
 
 ---
@@ -73,10 +73,10 @@ type NonEmptyString = Brand<"NonEmpty", string>;
 type TrimmedString  = Brand<"Trimmed", NonEmptyString>;
 
 const isNonEmpty: Refinement<string, NonEmptyString> =
-  Refinement.make((s) => s.length > 0);
+  Refinement.from.predicate((s) => s.length > 0);
 
 const isTrimmed: Refinement<NonEmptyString, TrimmedString> =
-  Refinement.make((s) => s === s.trim());
+  Refinement.from.predicate((s) => s === s.trim());
 
 // string → NonEmptyString → TrimmedString collapses to a single string → TrimmedString check
 const isNonEmptyTrimmed: Refinement<string, TrimmedString> = pipe(
@@ -115,8 +115,8 @@ interface User { role: string }
 type AdminUser = User & { role: "admin" }
 type SuperUser = User & { role: "super" }
 
-const isAdmin: Refinement<User, AdminUser> = Refinement.make((u) => u.role === "admin");
-const isSuper: Refinement<User, SuperUser> = Refinement.make((u) => u.role === "super");
+const isAdmin: Refinement<User, AdminUser> = Refinement.from.predicate((u) => u.role === "admin");
+const isSuper: Refinement<User, SuperUser> = Refinement.from.predicate((u) => u.role === "super");
 
 const isPrivileged: Refinement<User, AdminUser | SuperUser> = pipe(
   isAdmin,
@@ -136,7 +136,7 @@ Refinements integrate seamlessly into your data transformation flows.
 
 ```ts
 type NonEmptyString = Brand<"NonEmpty", string>;
-const isNonEmpty: Refinement<string, NonEmptyString> = Refinement.make((s) => s.length > 0);
+const isNonEmpty: Refinement<string, NonEmptyString> = Refinement.from.predicate((s) => s.length > 0);
 
 const parseTitle = (raw: string): Maybe<NonEmptyString> =>
   pipe(
@@ -163,7 +163,7 @@ This makes validating nested constraints inside a `Result.chain` extremely elega
 
 ```ts
 type EmailString = Brand<"Email", string>;
-const isEmail: Refinement<NonEmptyString, EmailString> = Refinement.make((s) => s.includes("@"));
+const isEmail: Refinement<NonEmptyString, EmailString> = Refinement.from.predicate((s) => s.includes("@"));
 
 const validateEmailInput = (raw: string): Result<string, EmailString> =>
   pipe(

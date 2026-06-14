@@ -12,8 +12,8 @@ import type { Optional } from "#core";
  * type Address = { city: string; zip: string };
  * type User = { name: string; address: Address };
  *
- * const addressLens = Lens.prop<User>()("address");
- * const cityLens    = Lens.prop<Address>()("city");
+ * const addressLens = Lens.from.property<User>()("address");
+ * const cityLens    = Lens.from.property<Address>()("city");
  * const userCityLens = pipe(addressLens, Lens.andThen(cityLens));
  *
  * pipe(user, Lens.get(userCityLens));             // "Berlin"
@@ -24,30 +24,33 @@ import type { Optional } from "#core";
 export type Lens<S, A> = { readonly get: (s: S) => A; readonly set: (a: A) => (s: S) => S; };
 
 export namespace Lens {
-	/**
-	 * Constructs a Lens from a getter and a setter.
-	 *
-	 * @example
-	 * ```ts
-	 * const nameLens = Lens.make(
-	 *   (user: User) => user.name,
-	 *   (name) => (user) => ({ ...user, name }),
-	 * );
-	 * ```
-	 */
-	export const make = <S, A>(get: (s: S) => A, set: (a: A) => (s: S) => S): Lens<S, A> => ({ get, set });
+	// --- from ---
+	export namespace from {
+		/**
+		 * Constructs a Lens from a getter and a setter.
+		 *
+		 * @example
+		 * ```ts
+		 * const nameLens = Lens.from.accessors(
+		 *   (user: User) => user.name,
+		 *   (name) => (user) => ({ ...user, name }),
+		 * );
+		 * ```
+		 */
+		export const accessors = <S, A>(get: (s: S) => A, set: (a: A) => (s: S) => S): Lens<S, A> => ({ get, set });
 
-	/**
-	 * Creates a Lens that focuses on a property of an object.
-	 * Call with the structure type first, then the key.
-	 *
-	 * @example
-	 * ```ts
-	 * const nameLens = Lens.prop<User>()("name");
-	 * ```
-	 */
-	export const prop = <S>() => <K extends keyof S>(key: K): Lens<S, S[K]> =>
-		make((s) => s[key], (a) => (s) => ({ ...s, [key]: a } as S));
+		/**
+		 * Creates a Lens that focuses on a property of an object.
+		 * Call with the structure type first, then the key.
+		 *
+		 * @example
+		 * ```ts
+		 * const nameLens = Lens.from.property<User>()("name");
+		 * ```
+		 */
+		export const property = <S>() => <K extends keyof S>(key: K): Lens<S, S[K]> =>
+			accessors((s) => s[key], (a) => (s) => ({ ...s, [key]: a } as S));
+	}
 
 	/**
 	 * Reads the focused value from a structure.
@@ -86,13 +89,13 @@ export namespace Lens {
 	 * @example
 	 * ```ts
 	 * const userCityLens = pipe(
-	 *   Lens.prop<User>()("address"),
-	 *   Lens.andThen(Lens.prop<Address>()("city")),
+	 *   Lens.from.property<User>()("address"),
+	 *   Lens.andThen(Lens.from.property<Address>()("city")),
 	 * );
 	 * ```
 	 */
 	export const andThen = <A, B>(inner: Lens<A, B>) => <S>(outer: Lens<S, A>): Lens<S, B> =>
-		make((s) => inner.get(outer.get(s)), (b) => (s) => outer.set(inner.set(b)(outer.get(s)))(s));
+		from.accessors((s) => inner.get(outer.get(s)), (b) => (s) => outer.set(inner.set(b)(outer.get(s)))(s));
 
 	/**
 	 * Composes a Lens with an Optional, producing an Optional.
@@ -101,8 +104,8 @@ export namespace Lens {
 	 * @example
 	 * ```ts
 	 * const userBioOpt = pipe(
-	 *   Lens.prop<User>()("profile"),
-	 *   Lens.andThenOptional(Optional.prop<Profile>()("bio")),
+	 *   Lens.from.property<User>()("profile"),
+	 *   Lens.andThenOptional(Optional.from.property<Profile>()("bio")),
 	 * );
 	 * ```
 	 */
@@ -118,9 +121,9 @@ export namespace Lens {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Lens.prop<User>()("address"),
+	 *   Lens.from.property<User>()("address"),
 	 *   Lens.toOptional,
-	 *   Optional.andThen(Optional.prop<Address>()("landmark")),
+	 *   Optional.andThen(Optional.from.property<Address>()("landmark")),
 	 * );
 	 * ```
 	 */

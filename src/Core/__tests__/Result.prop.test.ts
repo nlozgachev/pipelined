@@ -6,8 +6,8 @@ import { expect, expectTypeOf, test } from "vitest";
 // Arbitraries
 // ---------------------------------------------------------------------------
 
-const arbOk = fc.integer().map(Result.ok);
-const arbErr = fc.string().map(Result.err);
+const arbOk = fc.integer().map(Result.make.ok);
+const arbErr = fc.string().map(Result.make.err);
 const arbResult = fc.oneof(arbOk, arbErr);
 
 // ---------------------------------------------------------------------------
@@ -50,28 +50,28 @@ test("Result.mapError — identity law on error value", () => {
 
 test("Result.chain — left identity", () => {
 	fc.assert(fc.property(fc.integer(), (a) => {
-		const f = (x: number): Result<string, string> => x > 0 ? Result.ok(String(x)) : Result.err("non-positive");
-		expect(Result.chain(f)(Result.ok(a))).toStrictEqual(f(a));
+		const f = (x: number): Result<string, string> => x > 0 ? Result.make.ok(String(x)) : Result.make.err("non-positive");
+		expect(Result.chain(f)(Result.make.ok(a))).toStrictEqual(f(a));
 	}));
 });
 
 test("Result.chain — right identity", () => {
 	fc.assert(fc.property(arbResult, (r) => {
-		expect(Result.chain(Result.ok)(r)).toStrictEqual(r);
+		expect(Result.chain(Result.make.ok)(r)).toStrictEqual(r);
 	}));
 });
 
 test("Result.chain — associativity", () => {
 	fc.assert(fc.property(arbResult, fc.integer(), (r, threshold) => {
-		const f = (x: number): Result<string, number> => x > 0 ? Result.ok(x * 2) : Result.err("non-positive");
-		const g = (x: number): Result<string, number> => x > threshold ? Result.ok(x + 1) : Result.err("too small");
+		const f = (x: number): Result<string, number> => x > 0 ? Result.make.ok(x * 2) : Result.make.err("non-positive");
+		const g = (x: number): Result<string, number> => x > threshold ? Result.make.ok(x + 1) : Result.make.err("too small");
 		expect(Result.chain(f)(Result.chain(g)(r))).toStrictEqual(Result.chain((x: number) => Result.chain(f)(g(x)))(r));
 	}));
 });
 
 test("Result.chain — short-circuits on Error", () => {
 	fc.assert(fc.property(arbErr, (r) => {
-		expect(Result.chain((_: number) => Result.ok(0))(r)).toBe(r);
+		expect(Result.chain((_: number) => Result.make.ok(0))(r)).toBe(r);
 	}));
 });
 
@@ -125,7 +125,7 @@ test("Result.tapError — always returns the identical reference", () => {
 
 test("Result.recover — identity on Ok", () => {
 	fc.assert(fc.property(arbOk, (r) => {
-		expect(Result.recover((_: string) => Result.ok(-999))(r)).toBe(r);
+		expect(Result.recover((_: string) => Result.make.ok(-999))(r)).toBe(r);
 	}));
 });
 
@@ -135,13 +135,13 @@ test("Result.recover — identity on Ok", () => {
 
 test("Result.from.Predicate — always-true gives Ok with original value", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
-		expect(Result.from.Predicate((_: number) => true, () => "bad")(n)).toStrictEqual(Result.ok(n));
+		expect(Result.from.Predicate((_: number) => true, () => "bad")(n)).toStrictEqual(Result.make.ok(n));
 	}));
 });
 
 test("Result.from.Predicate — always-false gives Error via onFalse", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
-		expect(Result.from.Predicate((_: number) => false, (x) => `bad:${x}`)(n)).toStrictEqual(Result.err(`bad:${n}`));
+		expect(Result.from.Predicate((_: number) => false, (x) => `bad:${x}`)(n)).toStrictEqual(Result.make.err(`bad:${n}`));
 	}));
 });
 
@@ -152,12 +152,12 @@ test("Result.from.Predicate — always-false gives Error via onFalse", () => {
 test("Result.toMaybe — Ok maps to Some", () => {
 	fc.assert(fc.property(arbOk, (r) => {
 		const o = r as Ok<number>;
-		expect(Result.to.Maybe(r)).toStrictEqual(Maybe.some(o.value));
+		expect(Result.to.Maybe(r)).toStrictEqual(Maybe.make.some(o.value));
 	}));
 });
 
 test("Result.toMaybe — Error maps to None", () => {
 	fc.assert(fc.property(arbErr, (r) => {
-		expect(Result.to.Maybe(r)).toStrictEqual(Maybe.none());
+		expect(Result.to.Maybe(r)).toStrictEqual(Maybe.make.none());
 	}));
 });

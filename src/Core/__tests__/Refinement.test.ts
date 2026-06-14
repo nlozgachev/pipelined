@@ -16,24 +16,24 @@ type TrimmedString = NonEmptyString & { readonly [_trimmed]: true; };
 type PositiveNumber = number & { readonly [_positive]: true; };
 type EvenNumber = number & { readonly [_even]: true; };
 
-const isNonEmpty: Refinement<string, NonEmptyString> = Refinement.make((s) => s.length > 0);
-const isTrimmed: Refinement<NonEmptyString, TrimmedString> = Refinement.make((s) => s === s.trim());
-const isPositive: Refinement<number, PositiveNumber> = Refinement.make((n) => n > 0);
-const isEven: Refinement<number, EvenNumber> = Refinement.make((n) => n % 2 === 0);
+const isNonEmpty: Refinement<string, NonEmptyString> = Refinement.from.predicate((s) => s.length > 0);
+const isTrimmed: Refinement<NonEmptyString, TrimmedString> = Refinement.from.predicate((s) => s === s.trim());
+const isPositive: Refinement<number, PositiveNumber> = Refinement.from.predicate((n) => n > 0);
+const isEven: Refinement<number, EvenNumber> = Refinement.from.predicate((n) => n % 2 === 0);
 
 // ---------------------------------------------------------------------------
 // make
 // ---------------------------------------------------------------------------
 
-test("Refinement.make returns true when predicate passes", () => {
+test("Refinement.from.predicate returns true when predicate passes", () => {
 	expect(isNonEmpty("hello")).toBe(true);
 });
 
-test("Refinement.make returns false when predicate fails", () => {
+test("Refinement.from.predicate returns false when predicate fails", () => {
 	expect(isNonEmpty("")).toBe(false);
 });
 
-test("Refinement.make works as a type guard in conditional branches", () => {
+test("Refinement.from.predicate works as a type guard in conditional branches", () => {
 	const value: string = "world";
 	expect(isNonEmpty(value)).toBe(true);
 	// TypeScript compile-time check: narrowed type must be assignable to NonEmptyString.
@@ -126,9 +126,9 @@ test("Refinement.to.Maybe returns None when refinement fails", () => {
 
 test("Refinement.to.Maybe works in a pipe chain with composed refinements", () => {
 	const isPositiveEven = pipe(isPositive, Refinement.and(isEven));
-	expect(Maybe.isSome(pipe(4, Refinement.to.Maybe(isPositiveEven)))).toBe(true);
-	expect(Maybe.isNone(pipe(3, Refinement.to.Maybe(isPositiveEven)))).toBe(true);
-	expect(Maybe.isNone(pipe(-2, Refinement.to.Maybe(isPositiveEven)))).toBe(true);
+	expect(Maybe.is.some(pipe(4, Refinement.to.Maybe(isPositiveEven)))).toBe(true);
+	expect(Maybe.is.none(pipe(3, Refinement.to.Maybe(isPositiveEven)))).toBe(true);
+	expect(Maybe.is.none(pipe(-2, Refinement.to.Maybe(isPositiveEven)))).toBe(true);
 });
 
 // ---------------------------------------------------------------------------
@@ -155,7 +155,7 @@ test("Refinement.to.Result passes the failing value to onFail", () => {
 
 test("Refinement.to.Result works in a pipe chain with composed refinements", () => {
 	const isPositiveEven = pipe(isPositive, Refinement.and(isEven));
-	expect(Result.isOk(pipe(4, Refinement.to.Result(isPositiveEven, (n) => `${n} failed`)))).toBe(true);
+	expect(Result.is.ok(pipe(4, Refinement.to.Result(isPositiveEven, (n) => `${n} failed`)))).toBe(true);
 	expect(pipe(3, Refinement.to.Result(isPositiveEven, (n) => `${n} failed`)) as Result<string, number>).toStrictEqual({
 		kind: "Err",
 		error: "3 failed",

@@ -101,7 +101,7 @@ test("runWithRetry returns Ok on first success", async () => {
 		{ attempts: 3 },
 		(r) => retrying.push(r),
 	);
-	expect(result).toStrictEqual(Result.ok(1));
+	expect(result).toStrictEqual(Result.make.ok(1));
 	expect(retrying).toHaveLength(0);
 });
 
@@ -113,7 +113,7 @@ test("runWithRetry retries on Err and returns Err when attempts exhausted", asyn
 	}, (e) => (e as Error).message);
 	const retrying: Op.Retrying<string>[] = [];
 	const result = await runWithRetry(op, 1, new AbortController().signal, { attempts: 3 }, (r) => retrying.push(r));
-	expect(result).toStrictEqual(Result.err("boom"));
+	expect(result).toStrictEqual(Result.make.err("boom"));
 	expect(calls).toBe(3);
 	expect(retrying).toHaveLength(2); // attempt 1 and 2 produce a Retrying; 3rd attempt returns Err
 	expect(retrying[0]).toStrictEqual({ kind: "Retrying", attempt: 1, lastError: "boom" });
@@ -127,7 +127,7 @@ test("runWithRetry stops early on Ok without exhausting all attempts", async () 
 		return calls < 2 ? Promise.reject(new Error("not yet")) : Promise.resolve(99);
 	}, (e) => (e as Error).message);
 	const result = await runWithRetry(op, 1, new AbortController().signal, { attempts: 5 }, () => {});
-	expect(result).toStrictEqual(Result.ok(99));
+	expect(result).toStrictEqual(Result.make.ok(99));
 	expect(calls).toBe(2);
 });
 
@@ -141,7 +141,7 @@ test("runWithRetry respects the `when` guard and stops early on non-retryable er
 		attempts: 5,
 		when: (e) => e !== "not-retryable",
 	}, () => {});
-	expect(result).toStrictEqual(Result.err("not-retryable"));
+	expect(result).toStrictEqual(Result.make.err("not-retryable"));
 	expect(calls).toBe(1);
 });
 

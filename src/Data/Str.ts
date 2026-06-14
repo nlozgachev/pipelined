@@ -32,7 +32,7 @@ namespace StrNonEmpty {
 		 * ```
 		 */
 		export const String = (s: string): Maybe<NonEmptyString> =>
-			s.length > 0 ? Maybe.some(s as NonEmptyString) : Maybe.none();
+			s.length > 0 ? Maybe.make.some(s as NonEmptyString) : Maybe.make.none();
 	}
 }
 
@@ -42,10 +42,23 @@ export namespace Str {
 	 */
 	export type NonEmpty = NonEmptyString;
 
-	/**
-	 * Type guard to check if a string is non-empty.
-	 */
-	export const isNonEmpty = (s: string): s is NonEmpty => s.length > 0;
+	export namespace is {
+		/**
+		 * Returns `true` when the string is empty.
+		 *
+		 * @example
+		 * ```ts
+		 * pipe("", Str.is.empty);   // true
+		 * pipe("hi", Str.is.empty); // false
+		 * ```
+		 */
+		export const empty = (s: string): boolean => s.length === 0;
+
+		/**
+		 * Type guard to check if a string is non-empty.
+		 */
+		export const nonEmpty = (s: string): s is NonEmpty => s.length > 0;
+	}
 
 	/**
 	 * Splits a string by a separator. Data-last: use in `pipe`.
@@ -176,17 +189,6 @@ export namespace Str {
 	export const words = (s: string): readonly string[] => s.trim().split(/\s+/).filter(Boolean);
 
 	/**
-	 * Returns `true` when the string is empty.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe("", Str.isEmpty);   // true
-	 * pipe("hi", Str.isEmpty); // false
-	 * ```
-	 */
-	export const isEmpty = (s: string): boolean => s.length === 0;
-
-	/**
 	 * Returns `true` when the string is empty or contains only whitespace.
 	 *
 	 * @example
@@ -259,7 +261,7 @@ export namespace Str {
 		 */
 		int: (s: string): Maybe<number> => {
 			const n = parseInt(s, 10);
-			return isNaN(n) ? Maybe.none() : Maybe.some(n);
+			return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 		},
 
 		/**
@@ -274,7 +276,7 @@ export namespace Str {
 		 */
 		float: (s: string): Maybe<number> => {
 			const n = parseFloat(s);
-			return isNaN(n) ? Maybe.none() : Maybe.some(n);
+			return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 		},
 	};
 
@@ -289,9 +291,9 @@ export namespace Str {
 	 */
 	export const parseJson = (s: string): Result<SyntaxError, unknown> => {
 		try {
-			return Result.ok(JSON.parse(s));
+			return Result.make.ok(JSON.parse(s));
 		} catch (error) {
-			return Result.err(error as SyntaxError);
+			return Result.make.err(error as SyntaxError);
 		}
 	};
 

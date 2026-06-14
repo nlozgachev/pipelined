@@ -26,10 +26,10 @@ const dictB100 = Dict.from.entries(Array.from({ length: 50 }, (_, i) => [`key${i
 const dictA10k = makeDict(5000);
 const dictB10k = Dict.from.entries(Array.from({ length: 5000 }, (_, i) => [`key${i + 2500}`, i + 10_000]));
 const optDict100 = Dict.from.entries<string, Maybe<number>>(
-	Array.from({ length: 100 }, (_, i) => [`key${i}`, i % 3 === 0 ? Maybe.none() : Maybe.some(i)]),
+	Array.from({ length: 100 }, (_, i) => [`key${i}`, i % 3 === 0 ? Maybe.make.none() : Maybe.make.some(i)]),
 );
 const optDict10k = Dict.from.entries<string, Maybe<number>>(
-	Array.from({ length: 10_000 }, (_, i) => [`key${i}`, i % 3 === 0 ? Maybe.none() : Maybe.some(i)]),
+	Array.from({ length: 10_000 }, (_, i) => [`key${i}`, i % 3 === 0 ? Maybe.make.none() : Maybe.make.some(i)]),
 );
 const data100 = Array.from({ length: 100 }, (_, i) => i);
 const data10k = Array.from({ length: 10_000 }, (_, i) => i);

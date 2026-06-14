@@ -22,7 +22,7 @@ import type { Awaitable } from "#internal";
  *
  * // With library functions
  * const greeting = pipe(
- *   Maybe.some("Alice"),
+ *   Maybe.make.some("Alice"),
  *   Maybe.map(name => name.toUpperCase()),
  *   Maybe.map(name => `Hello, ${name}!`),
  *   Maybe.getOrElse(() => "Hello!")

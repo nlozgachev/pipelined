@@ -8,7 +8,7 @@ import { WithKind, WithValue } from "#internal";
  *
  * @example
  * ```ts
- * const user = { name: "Alice", email: Maybe.some("alice@example.com") };
+ * const user = { name: "Alice", email: Maybe.make.some("alice@example.com") };
  *
  * pipe(
  *   user.email,
@@ -25,37 +25,41 @@ export type None = WithKind<"None">;
 const _none: None = { kind: "None" };
 
 export namespace Maybe {
-	/**
-	 * Creates a Some containing the given value.
-	 */
-	export const some = <A>(value: A): Some<A> => ({ kind: "Some", value });
+	export namespace make {
+		/**
+		 * Creates a Some containing the given value.
+		 */
+		export const some = <A>(value: A): Some<A> => ({ kind: "Some", value });
 
-	/**
-	 * Type guard that checks if a Maybe is Some.
-	 */
-	export const isSome = <A>(data: Maybe<A>): data is Some<A> => data.kind === "Some";
+		/**
+		 * Creates a None (empty Maybe).
+		 */
+		export const none = (): None => _none;
+	}
 
-	/**
-	 * Creates a None (empty Maybe).
-	 */
-	export const none = (): None => _none;
+	export namespace is {
+		/**
+		 * Type guard that checks if a Maybe is Some.
+		 */
+		export const some = <A>(data: Maybe<A>): data is Some<A> => data.kind === "Some";
 
-	/**
-	 * Type guard that checks if a Maybe is None.
-	 */
-	export const isNone = <A>(data: Maybe<A>): data is None => data.kind === "None";
+		/**
+		 * Type guard that checks if a Maybe is None.
+		 */
+		export const none = <A>(data: Maybe<A>): data is None => data.kind === "None";
+	}
 
 	// --- to ---
 	export namespace to {
 		/**
 		 * Extracts the value from a Maybe, returning null if None.
 		 */
-		export const nullable = <A>(data: Maybe<A>): A | null => isSome(data) ? data.value : null;
+		export const nullable = <A>(data: Maybe<A>): A | null => is.some(data) ? data.value : null;
 
 		/**
 		 * Extracts the value from a Maybe, returning undefined if None.
 		 */
-		export const undefined = <A>(data: Maybe<A>): A | undefined => isSome(data) ? data.value : globalThis.undefined;
+		export const undefined = <A>(data: Maybe<A>): A | undefined => is.some(data) ? data.value : globalThis.undefined;
 
 		/**
 		 * Converts a Maybe to a Result.
@@ -64,18 +68,18 @@ export namespace Maybe {
 		 * @example
 		 * ```ts
 		 * pipe(
-		 *   Maybe.some(42),
+		 *   Maybe.make.some(42),
 		 *   Maybe.to.Result(() => "Value was missing")
 		 * ); // Ok(42)
 		 *
 		 * pipe(
-		 *   Maybe.none(),
+		 *   Maybe.make.none(),
 		 *   Maybe.to.Result(() => "Value was missing")
 		 * ); // Err("Value was missing")
 		 * ```
 		 */
 		export const Result = <E>(onNone: () => E) => <A>(data: Maybe<A>): Result<E, A> =>
-			isSome(data) ? CoreResult.ok(data.value) : CoreResult.err(onNone());
+			is.some(data) ? CoreResult.make.ok(data.value) : CoreResult.make.err(onNone());
 	}
 
 	// --- from ---
@@ -91,7 +95,7 @@ export namespace Maybe {
 		 * ```
 		 */
 		export const nullable = <A>(value: A | null | undefined): Maybe<A> =>
-			value === null || value === undefined ? none() : some(value);
+			value === null || value === undefined ? make.none() : make.some(value);
 
 		/**
 		 * Creates a Maybe from a predicate applied to a value.
@@ -106,7 +110,7 @@ export namespace Maybe {
 		 * pipe("", Maybe.from.Predicate((s: string) => s.length > 0));      // None
 		 * ```
 		 */
-		export const Predicate = <A>(pred: (a: A) => boolean) => (a: A): Maybe<A> => pred(a) ? some(a) : none();
+		export const Predicate = <A>(pred: (a: A) => boolean) => (a: A): Maybe<A> => pred(a) ? make.some(a) : make.none();
 
 		/**
 		 * Creates a Maybe from a Result.
@@ -114,11 +118,12 @@ export namespace Maybe {
 		 *
 		 * @example
 		 * ```ts
-		 * Maybe.from.Result(Result.ok(42)); // Some(42)
-		 * Maybe.from.Result(Result.err("oops")); // None
+		 * Maybe.from.Result(Result.make.ok(42)); // Some(42)
+		 * Maybe.from.Result(Result.make.err("oops")); // None
 		 * ```
 		 */
-		export const Result = <E, A>(data: Result<E, A>): Maybe<A> => CoreResult.isOk(data) ? some(data.value) : none();
+		export const Result = <E, A>(data: Result<E, A>): Maybe<A> =>
+			CoreResult.is.ok(data) ? make.some(data.value) : make.none();
 	}
 
 	/**
@@ -126,11 +131,12 @@ export namespace Maybe {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Maybe.some(5), Maybe.map(n => n * 2)); // Some(10)
-	 * pipe(Maybe.none(), Maybe.map(n => n * 2)); // None
+	 * pipe(Maybe.make.some(5), Maybe.map(n => n * 2)); // Some(10)
+	 * pipe(Maybe.make.none(), Maybe.map(n => n * 2)); // None
 	 * ```
 	 */
-	export const map = <A, B>(f: (a: A) => B) => (data: Maybe<A>): Maybe<B> => isSome(data) ? some(f(data.value)) : data;
+	export const map = <A, B>(f: (a: A) => B) => (data: Maybe<A>): Maybe<B> =>
+		is.some(data) ? make.some(f(data.value)) : data;
 
 	/**
 	 * Chains Maybe computations. If the first is Some, passes the value to f.
@@ -140,15 +146,15 @@ export namespace Maybe {
 	 * ```ts
 	 * const parseNumber = (s: string): Maybe<number> => {
 	 *   const n = parseInt(s, 10);
-	 *   return isNaN(n) ? Maybe.none() : Maybe.some(n);
+	 *   return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 	 * };
 	 *
-	 * pipe(Maybe.some("42"), Maybe.chain(parseNumber)); // Some(42)
-	 * pipe(Maybe.some("abc"), Maybe.chain(parseNumber)); // None
+	 * pipe(Maybe.make.some("42"), Maybe.chain(parseNumber)); // Some(42)
+	 * pipe(Maybe.make.some("abc"), Maybe.chain(parseNumber)); // None
 	 * ```
 	 */
 	export const chain = <A, B>(f: (a: A) => Maybe<B>) => (data: Maybe<A>): Maybe<B> =>
-		isSome(data) ? f(data.value) : data;
+		is.some(data) ? f(data.value) : data;
 
 	/**
 	 * Extracts the value from a Maybe by providing handlers for both cases.
@@ -156,7 +162,7 @@ export namespace Maybe {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Maybe.some(5),
+	 *   Maybe.make.some(5),
 	 *   Maybe.fold(
 	 *     () => "No value",
 	 *     n => `Value: ${n}`
@@ -165,7 +171,7 @@ export namespace Maybe {
 	 * ```
 	 */
 	export const fold = <A, B>(onNone: () => B, onSome: (a: A) => B) => (data: Maybe<A>): B =>
-		isSome(data) ? onSome(data.value) : onNone();
+		is.some(data) ? onSome(data.value) : onNone();
 
 	/**
 	 * Pattern matches on a Maybe, returning the result of the matching case.
@@ -182,7 +188,7 @@ export namespace Maybe {
 	 * ```
 	 */
 	export const match = <A, B>(cases: { none: () => B; some: (a: A) => B; }) => (data: Maybe<A>): B =>
-		isSome(data) ? cases.some(data.value) : cases.none();
+		is.some(data) ? cases.some(data.value) : cases.none();
 
 	/**
 	 * Returns the value inside a Maybe, or a default value if None.
@@ -191,13 +197,13 @@ export namespace Maybe {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Maybe.some(5), Maybe.getOrElse(() => 0)); // 5
-	 * pipe(Maybe.none(), Maybe.getOrElse(() => 0)); // 0
-	 * pipe(Maybe.none<string>(), Maybe.getOrElse(() => null)); // null — typed as string | null
+	 * pipe(Maybe.make.some(5), Maybe.getOrElse(() => 0)); // 5
+	 * pipe(Maybe.make.none(), Maybe.getOrElse(() => 0)); // 0
+	 * pipe(Maybe.make.none<string>(), Maybe.getOrElse(() => null)); // null — typed as string | null
 	 * ```
 	 */
 	export const getOrElse = <A, B>(defaultValue: () => B) => (data: Maybe<A>): A | B =>
-		isSome(data) ? data.value : defaultValue();
+		is.some(data) ? data.value : defaultValue();
 
 	/**
 	 * Executes a side effect on the value without changing the Maybe.
@@ -206,14 +212,14 @@ export namespace Maybe {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Maybe.some(5),
+	 *   Maybe.make.some(5),
 	 *   Maybe.tap(n => console.log("Value:", n)),
 	 *   Maybe.map(n => n * 2)
 	 * );
 	 * ```
 	 */
 	export const tap = <A>(f: (a: A) => void) => (data: Maybe<A>): Maybe<A> => {
-		if (isSome(data)) { f(data.value); }
+		if (is.some(data)) { f(data.value); }
 		return data;
 	};
 
@@ -223,19 +229,19 @@ export namespace Maybe {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Maybe.some(5), Maybe.filter(n => n > 3)); // Some(5)
-	 * pipe(Maybe.some(2), Maybe.filter(n => n > 3)); // None
+	 * pipe(Maybe.make.some(5), Maybe.filter(n => n > 3)); // Some(5)
+	 * pipe(Maybe.make.some(2), Maybe.filter(n => n > 3)); // None
 	 * ```
 	 */
 	export const filter = <A>(predicate: (a: A) => boolean) => (data: Maybe<A>): Maybe<A> =>
-		isSome(data) ? (predicate(data.value) ? data : none()) : data;
+		is.some(data) ? (predicate(data.value) ? data : make.none()) : data;
 
 	/**
 	 * Recovers from a None by providing a fallback Maybe.
 	 * The fallback can produce a different type, widening the result to `Maybe<A | B>`.
 	 */
 	export const recover = <A, B>(fallback: () => Maybe<B>) => (data: Maybe<A>): Maybe<A | B> =>
-		isSome(data) ? data : fallback();
+		is.some(data) ? data : fallback();
 
 	/**
 	 * Applies a function wrapped in a Maybe to a value wrapped in a Maybe.
@@ -244,14 +250,14 @@ export namespace Maybe {
 	 * ```ts
 	 * const add = (a: number) => (b: number) => a + b;
 	 * pipe(
-	 *   Maybe.some(add),
-	 *   Maybe.ap(Maybe.some(5)),
-	 *   Maybe.ap(Maybe.some(3))
+	 *   Maybe.make.some(add),
+	 *   Maybe.ap(Maybe.make.some(5)),
+	 *   Maybe.ap(Maybe.make.some(3))
 	 * ); // Some(8)
 	 * ```
 	 */
 	export const ap = <A>(arg: Maybe<A>) => <B>(data: Maybe<(a: A) => B>): Maybe<B> =>
-		isSome(data) && isSome(arg) ? some(data.value(arg.value)) : none();
+		is.some(data) && is.some(arg) ? make.some(data.value(arg.value)) : make.none();
 
 	/**
 	 * Converts a Maybe value into an object containing a single property.
@@ -259,7 +265,7 @@ export namespace Maybe {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Maybe.some(42), Maybe.bindTo("value")); // Some({ value: 42 })
+	 * pipe(Maybe.make.some(42), Maybe.bindTo("value")); // Some({ value: 42 })
 	 * ```
 	 */
 	export const bindTo = <K extends string>(key: K) => <A>(data: Maybe<A>): Maybe<{ [P in K]: A; }> =>
@@ -271,8 +277,8 @@ export namespace Maybe {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Maybe.some({ a: 1 }),
-	 *   Maybe.bind("b", ({ a }) => Maybe.some(a + 1))
+	 *   Maybe.make.some({ a: 1 }),
+	 *   Maybe.bind("b", ({ a }) => Maybe.make.some(a + 1))
 	 * ); // Some({ a: 1, b: 2 })
 	 * ```
 	 */
@@ -289,8 +295,8 @@ export namespace Maybe {
 	 * @example
 	 * ```ts
 	 * Maybe.struct({
-	 *   name: Maybe.some("Alice"),
-	 *   age: Maybe.some(30)
+	 *   name: Maybe.make.some("Alice"),
+	 *   age: Maybe.make.some(30)
 	 * }); // Some({ name: "Alice", age: 30 })
 	 * ```
 	 */
@@ -299,12 +305,12 @@ export namespace Maybe {
 		for (const key in fields) {
 			if (Object.hasOwn(fields, key)) {
 				const res = fields[key];
-				if (isNone(res)) {
+				if (is.none(res)) {
 					return res;
 				}
 				result[key] = res.value;
 			}
 		}
-		return some(result);
+		return make.some(result);
 	};
 }

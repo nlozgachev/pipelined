@@ -6,10 +6,10 @@ import { expect, expectTypeOf, test } from "vitest";
 // Arbitraries
 // ---------------------------------------------------------------------------
 
-const arbSuccess = fc.integer().map(RemoteData.success);
-const arbFailure = fc.string().map(RemoteData.failure);
-const arbNotAsked = fc.constant(RemoteData.notAsked());
-const arbLoading = fc.constant(RemoteData.loading());
+const arbSuccess = fc.integer().map(RemoteData.make.success);
+const arbFailure = fc.string().map(RemoteData.make.failure);
+const arbNotAsked = fc.constant(RemoteData.make.notAsked());
+const arbLoading = fc.constant(RemoteData.make.loading());
 const arbRemoteData = fc.oneof(arbSuccess, arbFailure, arbNotAsked, arbLoading);
 const arbNonSuccess = fc.oneof(arbFailure, arbNotAsked, arbLoading);
 
@@ -43,7 +43,7 @@ test("remoteData.map — identity on non-Success variants", () => {
 
 test("remoteData.chain — short-circuits on non-Success", () => {
 	fc.assert(fc.property(arbNonSuccess, (rd) => {
-		expect(RemoteData.chain((_: number) => RemoteData.success(0))(rd)).toBe(rd);
+		expect(RemoteData.chain((_: number) => RemoteData.make.success(0))(rd)).toBe(rd);
 	}));
 });
 
@@ -53,7 +53,7 @@ test("remoteData.chain — short-circuits on non-Success", () => {
 
 test("remoteData.getOrElse — returns value on Success", () => {
 	fc.assert(fc.property(arbSuccess, (rd) => {
-		expect(RemoteData.isSuccess(rd) && RemoteData.getOrElse(() => -1)(rd) === rd.value).toBe(true);
+		expect(RemoteData.is.success(rd) && RemoteData.getOrElse(() => -1)(rd) === rd.value).toBe(true);
 	}));
 });
 
@@ -95,6 +95,6 @@ test("remoteData.tap — always returns the identical reference", () => {
 
 test("remoteData.recover — identity on Success", () => {
 	fc.assert(fc.property(arbSuccess, (rd) => {
-		expect(RemoteData.recover(() => RemoteData.success(-999))(rd)).toBe(rd);
+		expect(RemoteData.recover(() => RemoteData.make.success(-999))(rd)).toBe(rd);
 	}));
 });

@@ -438,11 +438,11 @@ test("Task.Result.ap propagates the AbortSignal down to both sides in parallel",
 
 	const left: Task.Result<string, (n: number) => number> = (signal) => {
 		signalLeft = signal;
-		return Deferred.from.Promise(Promise.resolve(Result.ok((n: number) => n * 3)));
+		return Deferred.from.Promise(Promise.resolve(Result.make.ok((n: number) => n * 3)));
 	};
 	const right: Task.Result<string, number> = (signal) => {
 		signalRight = signal;
-		return Deferred.from.Promise(Promise.resolve(Result.ok(4)));
+		return Deferred.from.Promise(Promise.resolve(Result.make.ok(4)));
 	};
 
 	const controller = new AbortController();
@@ -503,7 +503,7 @@ test("Task.Result.run passes the signal to the task", async () => {
 	let receivedSignal: AbortSignal | undefined;
 	const task: Task.Result<never, void> = (signal) => {
 		receivedSignal = signal;
-		return Deferred.from.Promise(Promise.resolve(Result.ok(undefined)));
+		return Deferred.from.Promise(Promise.resolve(Result.make.ok(undefined)));
 	};
 	await pipe(task, Task.Result.run(controller.signal));
 	expect(receivedSignal).toBe(controller.signal);
@@ -513,41 +513,41 @@ test("Task.Result.run passes the signal to the task", async () => {
 
 test("Task.Result.from.nullable returns Ok for non-null value", async () => {
 	const result = await Task.Result.from.nullable(() => "is null")(42)();
-	expect(result).toStrictEqual(Result.ok(42));
+	expect(result).toStrictEqual(Result.make.ok(42));
 });
 
 test("Task.Result.from.nullable returns Err for null", async () => {
 	const result = await Task.Result.from.nullable(() => "is null")(null)();
-	expect(result).toStrictEqual(Result.err("is null"));
+	expect(result).toStrictEqual(Result.make.err("is null"));
 });
 
 test("Task.Result.from.nullable returns Err for undefined", async () => {
 	const result = await Task.Result.from.nullable(() => "is null")(undefined)();
-	expect(result).toStrictEqual(Result.err("is null"));
+	expect(result).toStrictEqual(Result.make.err("is null"));
 });
 
 // --- fromMaybe ---
 
 test("Task.Result.fromMaybe returns Ok for Some", async () => {
-	const result = await Task.Result.from.Maybe(() => "is none")(Maybe.some(42))();
-	expect(result).toStrictEqual(Result.ok(42));
+	const result = await Task.Result.from.Maybe(() => "is none")(Maybe.make.some(42))();
+	expect(result).toStrictEqual(Result.make.ok(42));
 });
 
 test("Task.Result.fromMaybe returns Err for None", async () => {
-	const result = await Task.Result.from.Maybe(() => "is none")(Maybe.none())();
-	expect(result).toStrictEqual(Result.err("is none"));
+	const result = await Task.Result.from.Maybe(() => "is none")(Maybe.make.none())();
+	expect(result).toStrictEqual(Result.make.err("is none"));
 });
 
 // --- fromResult ---
 
 test("Task.Result.fromResult returns Ok for Ok", async () => {
-	const result = await Task.Result.from.Result(Result.ok(42))();
-	expect(result).toStrictEqual(Result.ok(42));
+	const result = await Task.Result.from.Result(Result.make.ok(42))();
+	expect(result).toStrictEqual(Result.make.ok(42));
 });
 
 test("Task.Result.fromResult returns Err for Err", async () => {
-	const result = await Task.Result.from.Result(Result.err("bad"))();
-	expect(result).toStrictEqual(Result.err("bad"));
+	const result = await Task.Result.from.Result(Result.make.err("bad"))();
+	expect(result).toStrictEqual(Result.make.err("bad"));
 });
 
 // --- fromThrowable ---
@@ -555,7 +555,7 @@ test("Task.Result.fromResult returns Err for Err", async () => {
 test("Task.Result.fromThrowable returns Ok when it succeeds", async () => {
 	const parse = Task.Result.from.throwable((s: string) => Promise.resolve(JSON.parse(s)), () => "parse error");
 	const result = await parse('{"a":1}')();
-	expect(result).toStrictEqual(Result.ok({ a: 1 }));
+	expect(result).toStrictEqual(Result.make.ok({ a: 1 }));
 });
 
 test("Task.Result.fromThrowable returns Err when it throws", async () => {
@@ -564,7 +564,7 @@ test("Task.Result.fromThrowable returns Err when it throws", async () => {
 		(e) => (e as Error).message,
 	);
 	const result = await fetch("/api")();
-	expect(result).toStrictEqual(Result.err("network error"));
+	expect(result).toStrictEqual(Result.make.err("network error"));
 });
 
 // --- bindTo ---
@@ -574,7 +574,7 @@ test("Task.Result.bindTo wraps a value in an accumulator object", async () => {
 	expectTypeOf(task).toEqualTypeOf<Task.Result<string, { a: number; }>>();
 
 	const result = await task();
-	expect(result).toStrictEqual(Result.ok({ a: 2 }));
+	expect(result).toStrictEqual(Result.make.ok({ a: 2 }));
 });
 
 // --- bind ---
@@ -589,7 +589,7 @@ test("Task.Result.bind accumulates values key-by-key in a pipeline", async () =>
 	expectTypeOf(task).toEqualTypeOf<Task.Result<string, { a: number; } & { b: number; } & { c: number; }>>();
 
 	const result = await task();
-	expect(result).toStrictEqual(Result.ok({ a: 2, b: 6, c: 8 }));
+	expect(result).toStrictEqual(Result.make.ok({ a: 2, b: 6, c: 8 }));
 });
 
 test("Task.Result.bind short-circuits on Err", async () => {
@@ -607,7 +607,7 @@ test("Task.Result.bind short-circuits on Err", async () => {
 
 	const result = await task();
 	expect(called).toBe(false);
-	expect(result).toStrictEqual(Result.err("fail"));
+	expect(result).toStrictEqual(Result.make.err("fail"));
 });
 
 // --- struct ---
@@ -617,7 +617,7 @@ test("Task.Result.struct combines a record of Ok values into a single Ok record"
 		a: Task.Result.ok<string, number>(1),
 		b: Task.Result.ok<string, string>("hello"),
 	})();
-	expect(res).toStrictEqual(Result.ok({ a: 1, b: "hello" }));
+	expect(res).toStrictEqual(Result.make.ok({ a: 1, b: "hello" }));
 });
 
 test("Task.Result.struct short-circuits on the first Err encountered", async () => {
@@ -626,7 +626,7 @@ test("Task.Result.struct short-circuits on the first Err encountered", async () 
 		b: Task.Result.err<string, string>("first fail"),
 		c: Task.Result.err<string, number>("second fail"),
 	})();
-	expect(res).toStrictEqual(Result.err("first fail"));
+	expect(res).toStrictEqual(Result.make.err("first fail"));
 });
 
 test("Task.Result.struct propagates AbortSignal and executes in parallel", async () => {
@@ -635,17 +635,17 @@ test("Task.Result.struct propagates AbortSignal and executes in parallel", async
 
 	const taskA: Task.Result<string, number> = (signal) => {
 		signalA = signal;
-		return Deferred.from.Promise(Promise.resolve(Result.ok(1)));
+		return Deferred.from.Promise(Promise.resolve(Result.make.ok(1)));
 	};
 	const taskB: Task.Result<string, string> = (signal) => {
 		signalB = signal;
-		return Deferred.from.Promise(Promise.resolve(Result.ok("hello")));
+		return Deferred.from.Promise(Promise.resolve(Result.make.ok("hello")));
 	};
 
 	const controller = new AbortController();
 	const res = await Task.Result.struct({ a: taskA, b: taskB })(controller.signal);
 
-	expect(res).toStrictEqual(Result.ok({ a: 1, b: "hello" }));
+	expect(res).toStrictEqual(Result.make.ok({ a: 1, b: "hello" }));
 	expect(signalA).toBe(controller.signal);
 	expect(signalB).toBe(controller.signal);
 });
@@ -661,10 +661,10 @@ test("Task.Result.struct composes in a pipe pipeline", async () => {
 			})
 		),
 	)();
-	expect(res).toStrictEqual(Result.ok({ name: "Alice", valid: "Alice" }));
+	expect(res).toStrictEqual(Result.make.ok({ name: "Alice", valid: "Alice" }));
 });
 
 test("Task.Result.struct returns ok({}) when given an empty object", async () => {
 	const res = await Task.Result.struct({})();
-	expect(res).toStrictEqual(Result.ok({}));
+	expect(res).toStrictEqual(Result.make.ok({}));
 });

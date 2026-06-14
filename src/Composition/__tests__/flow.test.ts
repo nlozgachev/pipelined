@@ -63,7 +63,7 @@ test("flow - integration with Maybe", () => {
 	const safeParseAndDouble = flow(
 		(s: string) => {
 			const n = parseInt(s, 10);
-			return isNaN(n) ? (Maybe.none() as Maybe<number>) : Maybe.some(n);
+			return isNaN(n) ? (Maybe.make.none() as Maybe<number>) : Maybe.make.some(n);
 		},
 		Maybe.map((n: number) => n * 2),
 		Maybe.getOrElse(() => 0),

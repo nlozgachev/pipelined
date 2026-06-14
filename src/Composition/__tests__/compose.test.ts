@@ -65,8 +65,8 @@ test("compose - integration with Maybe", () => {
 
 	const fn = compose(getOrDefault, toUpper);
 
-	expect(fn(Maybe.some("hello"))).toBe("HELLO");
-	expect(fn(Maybe.none())).toBe("none");
+	expect(fn(Maybe.make.some("hello"))).toBe("HELLO");
+	expect(fn(Maybe.make.none())).toBe("none");
 });
 
 test("compose - integration with Result", () => {
@@ -75,8 +75,8 @@ test("compose - integration with Result", () => {
 
 	const fn = compose(getOrDefault, doubleResult);
 
-	expect(fn(Result.ok<number>(5))).toBe(10);
-	expect(fn(Result.err("err") as Result<string, number>)).toBe(0);
+	expect(fn(Result.make.ok<number>(5))).toBe(10);
+	expect(fn(Result.make.err("err") as Result<string, number>)).toBe(0);
 });
 
 // ---------------------------------------------------------------------------

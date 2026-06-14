@@ -11,12 +11,12 @@ import { Deferred, Result, type Task, Task as CoreTask } from "#core";
  * the work function returns an error. If `acquire` itself fails, `release` is
  * skipped — there is nothing to clean up.
  *
- * Build a Resource with `Resource.make` or `Resource.from.Task`, then run it
+ * Build a Resource with `Resource.from.handlers` or `Resource.from.Task`, then run it
  * with `Resource.use`.
  *
  * @example
  * ```ts
- * const dbResource = Resource.make(
+ * const dbResource = Resource.from.handlers(
  *   Task.Result.tryCatch(() => openConnection(config), (e) => new DbError(e)),
  *   (conn) => Task.from.Promise(() => conn.close())
  * );
@@ -31,24 +31,24 @@ import { Deferred, Result, type Task, Task as CoreTask } from "#core";
 export type Resource<E, A> = { readonly acquire: Task.Result<E, A>; readonly release: (a: A) => Task<void>; };
 
 export namespace Resource {
-	/**
-	 * Creates a Resource from an acquire operation that may fail and a release function.
-	 *
-	 * @example
-	 * ```ts
-	 * const fileResource = Resource.make(
-	 *   Task.Result.tryCatch(() => fs.promises.open("data.csv", "r"), toFileError),
-	 *   (handle) => Task.from.Promise(() => handle.close())
-	 * );
-	 * ```
-	 */
-	export const make = <E, A>(acquire: Task.Result<E, A>, release: (a: A) => Task<void>): Resource<E, A> => ({
-		acquire,
-		release,
-	});
-
 	// --- from ---
 	export namespace from {
+		/**
+		 * Creates a Resource from an acquire operation that may fail and a release function.
+		 *
+		 * @example
+		 * ```ts
+		 * const fileResource = Resource.from.handlers(
+		 *   Task.Result.tryCatch(() => fs.promises.open("data.csv", "r"), toFileError),
+		 *   (handle) => Task.from.Promise(() => handle.close())
+		 * );
+		 * ```
+		 */
+		export const handlers = <E, A>(acquire: Task.Result<E, A>, release: (a: A) => Task<void>): Resource<E, A> => ({
+			acquire,
+			release,
+		});
+
 		/**
 		 * Creates a Resource from an acquire operation that cannot fail.
 		 * Use this when opening the resource is guaranteed to succeed, such as
@@ -63,7 +63,7 @@ export namespace Resource {
 		 * ```
 		 */
 		export const Task = <E, A>(acquire: Task<A>, release: (a: A) => Task<void>): Resource<E, A> => ({
-			acquire: CoreTask.map((a: A): Result<E, A> => Result.ok(a))(acquire),
+			acquire: CoreTask.map((a: A): Result<E, A> => Result.make.ok(a))(acquire),
 			release,
 		});
 	}
@@ -86,7 +86,7 @@ export namespace Resource {
 	export const use = <E, A, B>(f: (a: A) => Task.Result<E, B>) => (resource: Resource<E, A>): Task.Result<E, B> =>
 		CoreTask.from.Promise((signal) =>
 			Deferred.to.Promise(resource.acquire(signal)).then(async (acquired) => {
-				if (Result.isErr(acquired)) { return acquired as Result<E, B>; }
+				if (Result.is.err(acquired)) { return acquired as Result<E, B>; }
 				const a = acquired.value;
 				try {
 					const usageResult = await Deferred.to.Promise(f(a)(signal));
@@ -120,18 +120,18 @@ export namespace Resource {
 	): Resource<E, readonly [A, B]> => ({
 		acquire: CoreTask.from.Promise((signal) =>
 			Deferred.to.Promise(resourceA.acquire(signal)).then(async (acquiredA) => {
-				if (Result.isErr(acquiredA)) {
+				if (Result.is.err(acquiredA)) {
 					return acquiredA as Result<E, readonly [A, B]>;
 				}
 				const a = acquiredA.value;
 
 				const acquiredB = await Deferred.to.Promise(resourceB.acquire(signal));
-				if (Result.isErr(acquiredB)) {
+				if (Result.is.err(acquiredB)) {
 					await Deferred.to.Promise(resourceA.release(a)(signal));
 					return acquiredB as Result<E, readonly [A, B]>;
 				}
 
-				return Result.ok([a, acquiredB.value] as const);
+				return Result.make.ok([a, acquiredB.value] as const);
 			})
 		),
 		release: ([a, b]) =>

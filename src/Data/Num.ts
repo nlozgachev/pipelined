@@ -90,9 +90,9 @@ export namespace Num {
 	 * ```
 	 */
 	export const parse = (s: string): Maybe<number> => {
-		if (s.trim() === "") { return Maybe.none(); }
+		if (s.trim() === "") { return Maybe.make.none(); }
 		const n = Number(s);
-		return isNaN(n) ? Maybe.none() : Maybe.some(n);
+		return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 	};
 
 	/**
@@ -138,7 +138,8 @@ export namespace Num {
 	 * pipe([10, 20, 30], Arr.filterMap(Num.divide(10))); // [1, 2, 3]
 	 * ```
 	 */
-	export const divide = (b: number) => (a: number): Maybe<number> => b === 0 ? Maybe.none() : Maybe.some(a / b);
+	export const divide = (b: number) => (a: number): Maybe<number> =>
+		b === 0 ? Maybe.make.none() : Maybe.make.some(a / b);
 
 	/**
 	 * Returns the absolute value of a number.
@@ -207,7 +208,7 @@ export namespace Num {
 	 * ```
 	 */
 	export const remainder = (divisor: number) => (n: number): Maybe<number> =>
-		divisor === 0 ? Maybe.none() : Maybe.some(n % divisor);
+		divisor === 0 ? Maybe.make.none() : Maybe.make.some(n % divisor);
 
 	/**
 	 * Computes the sum of a list of numbers. Returns `0` if the list is empty.
@@ -234,7 +235,7 @@ export namespace Num {
 	 * ```
 	 */
 	export const mean = (ns: readonly number[]): Maybe<number> =>
-		ns.length === 0 ? Maybe.none() : Maybe.some(sum(ns) / ns.length);
+		ns.length === 0 ? Maybe.make.none() : Maybe.make.some(sum(ns) / ns.length);
 
 	/**
 	 * Computes the minimum of a list of numbers. Returns `None` if the list is empty.
@@ -246,12 +247,12 @@ export namespace Num {
 	 * ```
 	 */
 	export const min = (ns: readonly number[]): Maybe<number> => {
-		if (ns.length === 0) { return Maybe.none(); }
+		if (ns.length === 0) { return Maybe.make.none(); }
 		let [result] = ns;
 		for (let i = 1; i < ns.length; i++) {
 			if (ns[i] < result) { result = ns[i]; }
 		}
-		return Maybe.some(result);
+		return Maybe.make.some(result);
 	};
 
 	/**
@@ -264,11 +265,11 @@ export namespace Num {
 	 * ```
 	 */
 	export const max = (ns: readonly number[]): Maybe<number> => {
-		if (ns.length === 0) { return Maybe.none(); }
+		if (ns.length === 0) { return Maybe.make.none(); }
 		let [result] = ns;
 		for (let i = 1; i < ns.length; i++) {
 			if (ns[i] > result) { result = ns[i]; }
 		}
-		return Maybe.some(result);
+		return Maybe.make.some(result);
 	};
 }

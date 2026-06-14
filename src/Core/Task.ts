@@ -443,13 +443,13 @@ export namespace Task {
 			return Promise.race([
 				toPromise(task, controller.signal).then((a): CoreResult<E, A> => {
 					cleanUp();
-					return CoreResult.ok(a);
+					return CoreResult.make.ok(a);
 				}),
 				new Promise<CoreResult<E, A>>((res) => {
 					timerId = setTimeout(() => {
 						controller.abort();
 						cleanUp();
-						res(CoreResult.err(onTimeout()));
+						res(CoreResult.make.err(onTimeout()));
 					}, getMs(duration));
 				}),
 			]);

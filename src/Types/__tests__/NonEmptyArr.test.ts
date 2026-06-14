@@ -24,12 +24,12 @@ test("Arr.NonEmpty.singleton - creates a single-element list", () => {
 
 test("Arr.NonEmpty.from.Array - returns Some for non-empty array", () => {
 	const result = Arr.NonEmpty.from.Array([1, 2]);
-	expect(result).toStrictEqual(Maybe.some([1, 2]));
+	expect(result).toStrictEqual(Maybe.make.some([1, 2]));
 });
 
 test("Arr.NonEmpty.from.Array - returns None for empty array", () => {
 	const result = Arr.NonEmpty.from.Array([]);
-	expect(result).toStrictEqual(Maybe.none());
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
 test("Arr.NonEmpty.head - returns the first element", () => {
@@ -70,10 +70,10 @@ test("Arr.append - appends value to array", () => {
 });
 
 test("Validation failure errors are type-compatible with Arr.NonEmpty", () => {
-	const failedVal = Validation.failed("error");
-	expect(Validation.isFailed(failedVal)).toBe(true);
+	const failedVal = Validation.make.failed("error");
+	expect(Validation.is.failed(failedVal)).toBe(true);
 
-	if (!Validation.isFailed(failedVal)) {
+	if (!Validation.is.failed(failedVal)) {
 		throw new Error("Expected failed validation");
 	}
 

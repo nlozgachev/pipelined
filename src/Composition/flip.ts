@@ -6,13 +6,13 @@
  * ```ts
  * // Original data-last (for pipe)
  * pipe(
- *   Maybe.some(5),
+ *   Maybe.make.some(5),
  *   Maybe.map(n => n * 2)
  * ); // Some(10)
  *
  * // Flipped to data-first
  * const mapFirst = flip(Maybe.map);
- * mapFirst(Maybe.some(5))(n => n * 2); // Some(10)
+ * mapFirst(Maybe.make.some(5))(n => n * 2); // Some(10)
  * ```
  *
  * @see {@link uncurry} for converting curried functions to multi-argument functions

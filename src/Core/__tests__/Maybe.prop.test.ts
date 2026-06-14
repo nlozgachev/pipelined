@@ -6,8 +6,8 @@ import { expect, expectTypeOf, test } from "vitest";
 // Arbitraries
 // ---------------------------------------------------------------------------
 
-const arbSome = fc.integer().map(Maybe.some);
-const arbNone = fc.constant(Maybe.none());
+const arbSome = fc.integer().map(Maybe.make.some);
+const arbNone = fc.constant(Maybe.make.none());
 const arbMaybe = fc.oneof(arbSome, arbNone);
 
 // ---------------------------------------------------------------------------
@@ -34,28 +34,28 @@ test("Maybe.map — composition law", () => {
 
 test("Maybe.chain — left identity", () => {
 	fc.assert(fc.property(fc.integer(), (a) => {
-		const f = (x: number): Maybe<string> => (x > 0 ? Maybe.some(String(x)) : Maybe.none());
-		expect(Maybe.chain(f)(Maybe.some(a))).toStrictEqual(f(a));
+		const f = (x: number): Maybe<string> => (x > 0 ? Maybe.make.some(String(x)) : Maybe.make.none());
+		expect(Maybe.chain(f)(Maybe.make.some(a))).toStrictEqual(f(a));
 	}));
 });
 
 test("Maybe.chain — right identity", () => {
 	fc.assert(fc.property(arbMaybe, (m) => {
-		expect(Maybe.chain(Maybe.some)(m)).toStrictEqual(m);
+		expect(Maybe.chain(Maybe.make.some)(m)).toStrictEqual(m);
 	}));
 });
 
 test("Maybe.chain — associativity", () => {
 	fc.assert(fc.property(arbMaybe, fc.integer(), (m, threshold) => {
-		const f = (x: number): Maybe<number> => (x > 0 ? Maybe.some(x * 2) : Maybe.none());
-		const g = (x: number): Maybe<number> => (x > threshold ? Maybe.some(x + 1) : Maybe.none());
+		const f = (x: number): Maybe<number> => (x > 0 ? Maybe.make.some(x * 2) : Maybe.make.none());
+		const g = (x: number): Maybe<number> => (x > threshold ? Maybe.make.some(x + 1) : Maybe.make.none());
 		expect(Maybe.chain(f)(Maybe.chain(g)(m))).toStrictEqual(Maybe.chain((x: number) => Maybe.chain(f)(g(x)))(m));
 	}));
 });
 
 test("Maybe.chain — short-circuits on None", () => {
 	fc.assert(fc.property(fc.integer(), (a) => {
-		expect(Maybe.chain((_: number) => Maybe.some(a))(Maybe.none())).toStrictEqual(Maybe.none());
+		expect(Maybe.chain((_: number) => Maybe.make.some(a))(Maybe.make.none())).toStrictEqual(Maybe.make.none());
 	}));
 });
 
@@ -72,7 +72,7 @@ test("Maybe.getOrElse — returns value on Some", () => {
 
 test("Maybe.getOrElse — returns fallback on None", () => {
 	fc.assert(fc.property(fc.integer(), (fallback) => {
-		expect(Maybe.getOrElse(() => fallback)(Maybe.none())).toBe(fallback);
+		expect(Maybe.getOrElse(() => fallback)(Maybe.make.none())).toBe(fallback);
 	}));
 });
 
@@ -103,7 +103,7 @@ test("Maybe.tap — always returns the identical reference", () => {
 
 test("Maybe.recover — identity on Some", () => {
 	fc.assert(fc.property(arbSome, (m) => {
-		expect(Maybe.recover(() => Maybe.some(-999))(m)).toBe(m);
+		expect(Maybe.recover(() => Maybe.make.some(-999))(m)).toBe(m);
 	}));
 });
 
@@ -119,13 +119,13 @@ test("Maybe.filter — always-true predicate is identity on Some", () => {
 
 test("Maybe.filter — always-false predicate gives None on Some", () => {
 	fc.assert(fc.property(arbSome, (_m) => {
-		expect(Maybe.filter(() => false)(Maybe.some(0))).toStrictEqual(Maybe.none());
+		expect(Maybe.filter(() => false)(Maybe.make.some(0))).toStrictEqual(Maybe.make.none());
 	}));
 });
 
 test("Maybe.filter — None passes through unchanged", () => {
 	fc.assert(fc.property(arbNone, (m) => {
-		expect(Maybe.filter(() => true)(m)).toStrictEqual(Maybe.none());
+		expect(Maybe.filter(() => true)(m)).toStrictEqual(Maybe.make.none());
 	}));
 });
 
@@ -145,12 +145,12 @@ test("maybe.from.nullable + Maybe.to.nullable — round-trip on non-null value",
 
 test("Maybe.from.Predicate — always-true gives Some with original value", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
-		expect(Maybe.from.Predicate((_: number) => true)(n)).toStrictEqual(Maybe.some(n));
+		expect(Maybe.from.Predicate((_: number) => true)(n)).toStrictEqual(Maybe.make.some(n));
 	}));
 });
 
 test("Maybe.from.Predicate — always-false gives None", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
-		expect(Maybe.from.Predicate((_: number) => false)(n)).toStrictEqual(Maybe.none());
+		expect(Maybe.from.Predicate((_: number) => false)(n)).toStrictEqual(Maybe.make.none());
 	}));
 });

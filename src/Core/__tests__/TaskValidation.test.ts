@@ -37,14 +37,14 @@ test("Task.Validation.failedAll creates a Task that resolves to Invalid with mul
 // ---------------------------------------------------------------------------
 
 test("Task.Validation.fromValidation lifts a Valid into a Task", async () => {
-	await expect(Task.Validation.from.Validation(Validation.passed<string, number>(5))()).resolves.toStrictEqual({
+	await expect(Task.Validation.from.Validation(Validation.make.passed<string, number>(5))()).resolves.toStrictEqual({
 		kind: "Passed",
 		value: 5,
 	});
 });
 
 test("Task.Validation.fromValidation lifts an Invalid into a Task", async () => {
-	await expect(Task.Validation.from.Validation(Validation.failed("e"))()).resolves.toStrictEqual({
+	await expect(Task.Validation.from.Validation(Validation.make.failed("e"))()).resolves.toStrictEqual({
 		kind: "Failed",
 		errors: ["e"],
 	});
@@ -152,11 +152,11 @@ test("Task.Validation.ap propagates the AbortSignal down to both sides", async (
 
 	const left: Task.Validation<string, (n: number) => number> = (signal) => {
 		signalLeft = signal;
-		return Deferred.from.Promise(Promise.resolve(Validation.passed((n: number) => n * 3)));
+		return Deferred.from.Promise(Promise.resolve(Validation.make.passed((n: number) => n * 3)));
 	};
 	const right: Task.Validation<string, number> = (signal) => {
 		signalRight = signal;
-		return Deferred.from.Promise(Promise.resolve(Validation.passed(4)));
+		return Deferred.from.Promise(Promise.resolve(Validation.make.passed(4)));
 	};
 
 	const controller = new AbortController();
@@ -401,11 +401,11 @@ test("Task.Validation.product propagates the AbortSignal down to both validation
 
 	const first: Task.Validation<string, string> = (signal) => {
 		signalFirst = signal;
-		return Deferred.from.Promise(Promise.resolve(Validation.passed("alice")));
+		return Deferred.from.Promise(Promise.resolve(Validation.make.passed("alice")));
 	};
 	const second: Task.Validation<string, number> = (signal) => {
 		signalSecond = signal;
-		return Deferred.from.Promise(Promise.resolve(Validation.passed(30)));
+		return Deferred.from.Promise(Promise.resolve(Validation.make.passed(30)));
 	};
 
 	const controller = new AbortController();
@@ -421,11 +421,11 @@ test("Task.Validation.productAll propagates the AbortSignal down to all validati
 
 	const t1: Task.Validation<string, number> = (signal) => {
 		signal1 = signal;
-		return Deferred.from.Promise(Promise.resolve(Validation.passed(1)));
+		return Deferred.from.Promise(Promise.resolve(Validation.make.passed(1)));
 	};
 	const t2: Task.Validation<string, number> = (signal) => {
 		signal2 = signal;
-		return Deferred.from.Promise(Promise.resolve(Validation.passed(2)));
+		return Deferred.from.Promise(Promise.resolve(Validation.make.passed(2)));
 	};
 
 	const controller = new AbortController();
@@ -439,41 +439,41 @@ test("Task.Validation.productAll propagates the AbortSignal down to all validati
 
 test("Task.Validation.from.nullable returns Valid for non-null value", async () => {
 	const result = await Task.Validation.from.nullable(() => "is null")(42)();
-	expect(result).toStrictEqual(Validation.passed(42));
+	expect(result).toStrictEqual(Validation.make.passed(42));
 });
 
 test("Task.Validation.from.nullable returns Invalid for null", async () => {
 	const result = await Task.Validation.from.nullable(() => "is null")(null)();
-	expect(result).toStrictEqual(Validation.failed("is null"));
+	expect(result).toStrictEqual(Validation.make.failed("is null"));
 });
 
 test("Task.Validation.from.nullable returns Invalid for undefined", async () => {
 	const result = await Task.Validation.from.nullable(() => "is null")(undefined)();
-	expect(result).toStrictEqual(Validation.failed("is null"));
+	expect(result).toStrictEqual(Validation.make.failed("is null"));
 });
 
 // --- fromMaybe ---
 
 test("Task.Validation.fromMaybe returns Valid for Some", async () => {
-	const result = await Task.Validation.from.Maybe(() => "is none")(Maybe.some(42))();
-	expect(result).toStrictEqual(Validation.passed(42));
+	const result = await Task.Validation.from.Maybe(() => "is none")(Maybe.make.some(42))();
+	expect(result).toStrictEqual(Validation.make.passed(42));
 });
 
 test("Task.Validation.fromMaybe returns Invalid for None", async () => {
-	const result = await Task.Validation.from.Maybe(() => "is none")(Maybe.none())();
-	expect(result).toStrictEqual(Validation.failed("is none"));
+	const result = await Task.Validation.from.Maybe(() => "is none")(Maybe.make.none())();
+	expect(result).toStrictEqual(Validation.make.failed("is none"));
 });
 
 // --- fromResult ---
 
 test("Task.Validation.fromResult returns Valid for Ok", async () => {
-	const result = await Task.Validation.from.Result(Result.ok(42))();
-	expect(result).toStrictEqual(Validation.passed(42));
+	const result = await Task.Validation.from.Result(Result.make.ok(42))();
+	expect(result).toStrictEqual(Validation.make.passed(42));
 });
 
 test("Task.Validation.fromResult returns Invalid for Err", async () => {
-	const result = await Task.Validation.from.Result(Result.err("bad"))();
-	expect(result).toStrictEqual(Validation.failed("bad"));
+	const result = await Task.Validation.from.Result(Result.make.err("bad"))();
+	expect(result).toStrictEqual(Validation.make.failed("bad"));
 });
 
 // --- mapError ---
@@ -527,7 +527,7 @@ test("Task.Validation.struct combines record of Passed in parallel", async () =>
 		name: Task.Validation.passed<string, string>("Alice"),
 		age: Task.Validation.passed<string, number>(30),
 	})();
-	expect(result).toStrictEqual(Validation.passed({ name: "Alice", age: 30 }));
+	expect(result).toStrictEqual(Validation.make.passed({ name: "Alice", age: 30 }));
 });
 
 test("Task.Validation.struct accumulates errors from all failed branches", async () => {
@@ -535,5 +535,5 @@ test("Task.Validation.struct accumulates errors from all failed branches", async
 		name: Task.Validation.failed<string, string>("Name required"),
 		age: Task.Validation.failed<string, number>("Age must be positive"),
 	})();
-	expect(result).toStrictEqual(Validation.failedAll(["Name required", "Age must be positive"]));
+	expect(result).toStrictEqual(Validation.make.failedAll(["Name required", "Age must be positive"]));
 });

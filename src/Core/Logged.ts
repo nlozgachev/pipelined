@@ -11,13 +11,13 @@ import { WithLog, WithValue } from "#internal";
  * @example
  * ```ts
  * const program = pipe(
- *   Logged.make<string, number>(0),
+ *   Logged.from.value<string, number>(0),
  *   Logged.chain(n => pipe(
- *     Logged.tell("start"),
+ *     Logged.from.entry("start"),
  *     Logged.map(() => n + 1),
  *   )),
  *   Logged.chain(n => pipe(
- *     Logged.tell("done"),
+ *     Logged.from.entry("done"),
  *     Logged.map(() => n * 10),
  *   )),
  * );
@@ -28,26 +28,29 @@ import { WithLog, WithValue } from "#internal";
 export type Logged<L, A> = WithValue<A> & WithLog<L>;
 
 export namespace Logged {
-	/**
-	 * Wraps a pure value into a `Logged` with an empty log.
-	 *
-	 * @example
-	 * ```ts
-	 * Logged.make<string, number>(42); // { value: 42, log: [] }
-	 * ```
-	 */
-	export const make = <W, A>(value: A): Logged<W, A> => ({ value, log: [] });
+	// --- from ---
+	export namespace from {
+		/**
+		 * Wraps a pure value into a `Logged` with an empty log.
+		 *
+		 * @example
+		 * ```ts
+		 * Logged.from.value<string, number>(42); // { value: 42, log: [] }
+		 * ```
+		 */
+		export const value = <W, A>(val: A): Logged<W, A> => ({ value: val, log: [] });
 
-	/**
-	 * Creates a `Logged` that records a single log entry and produces no
-	 * meaningful value. Use this to append to the log inside a `chain`.
-	 *
-	 * @example
-	 * ```ts
-	 * Logged.tell("operation completed"); // { value: undefined, log: ["operation completed"] }
-	 * ```
-	 */
-	export const tell = <W>(entry: W): Logged<W, undefined> => ({ value: undefined, log: [entry] });
+		/**
+		 * Creates a `Logged` that records a single log entry and produces no
+		 * meaningful value. Use this to append to the log inside a `chain`.
+		 *
+		 * @example
+		 * ```ts
+		 * Logged.from.entry("operation completed"); // { value: undefined, log: ["operation completed"] }
+		 * ```
+		 */
+		export const entry = <W>(logEntry: W): Logged<W, undefined> => ({ value: undefined, log: [logEntry] });
+	}
 
 	/**
 	 * Transforms the value inside a `Logged` without affecting the log.
@@ -55,7 +58,7 @@ export namespace Logged {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Logged.make<string, number>(5),
+	 *   Logged.from.value<string, number>(5),
 	 *   Logged.map(n => n * 2),
 	 * ); // { value: 10, log: [] }
 	 * ```
@@ -75,9 +78,9 @@ export namespace Logged {
 	 * @example
 	 * ```ts
 	 * const result = pipe(
-	 *   Logged.make<string, number>(1),
-	 *   Logged.chain(n => pipe(Logged.tell("step"), Logged.map(() => n + 1))),
-	 *   Logged.chain(n => pipe(Logged.tell("done"), Logged.map(() => n * 10))),
+	 *   Logged.from.value<string, number>(1),
+	 *   Logged.chain(n => pipe(Logged.from.entry("step"), Logged.map(() => n + 1))),
+	 *   Logged.chain(n => pipe(Logged.from.entry("done"), Logged.map(() => n * 10))),
 	 * );
 	 *
 	 * Logged.run(result); // [20, ["step", "done"]]
@@ -116,7 +119,7 @@ export namespace Logged {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Logged.make<string, number>(42),
+	 *   Logged.from.value<string, number>(42),
 	 *   Logged.tap(n => console.log("value:", n)),
 	 * );
 	 * ```
@@ -133,8 +136,8 @@ export namespace Logged {
 	 * @example
 	 * ```ts
 	 * const result = pipe(
-	 *   Logged.make<string, number>(1),
-	 *   Logged.chain(n => pipe(Logged.tell("incremented"), Logged.map(() => n + 1))),
+	 *   Logged.from.value<string, number>(1),
+	 *   Logged.chain(n => pipe(Logged.from.entry("incremented"), Logged.map(() => n + 1))),
 	 * );
 	 *
 	 * const [value, log] = Logged.run(result);
@@ -148,7 +151,7 @@ export namespace Logged {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Logged.make<string, number>(42), Logged.bindTo("value")); // Logged({ value: 42 })
+	 * pipe(Logged.from.value<string, number>(42), Logged.bindTo("value")); // Logged({ value: 42 })
 	 * ```
 	 */
 	export const bindTo = <K extends string>(key: K) => <W, A>(data: Logged<W, A>): Logged<W, { [P in K]: A; }> =>
@@ -160,8 +163,8 @@ export namespace Logged {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Logged.make<string, { a: number }>({ a: 1 }),
-	 *   Logged.bind("b", ({ a }) => Logged.make<string, number>(a + 1))
+	 *   Logged.from.value<string, { a: number }>({ a: 1 }),
+	 *   Logged.bind("b", ({ a }) => Logged.from.value<string, number>(a + 1))
 	 * ); // Logged({ value: { a: 1, b: 2 } })
 	 * ```
 	 */

@@ -46,10 +46,10 @@ at the boundaries of our system.
 import { Result } from "@nlozgachev/pipelined/core";
 
 // Representing a successful outcome
-const success = Result.ok(42); // Result<never, number>
+const success = Result.make.ok(42); // Result<never, number>
 
 // Representing a specific failure
-const failure = Result.err("Connection timed out"); // Result<string, never>
+const failure = Result.make.err("Connection timed out"); // Result<string, never>
 ```
 
 ### Wrapping throwing code with `tryCatch`
@@ -100,8 +100,8 @@ import { pipe } from "@nlozgachev/pipelined/composition";
 
 const double = (n: number) => n * 2;
 
-pipe(Result.ok(5), Result.map(double));     // Ok(10)
-pipe(Result.err("oops"), Result.map(double)); // Err("oops")
+pipe(Result.make.ok(5), Result.map(double));     // Ok(10)
+pipe(Result.make.err("oops"), Result.map(double)); // Err("oops")
 ```
 
 If you chain multiple `map` steps, they will continue to execute sequentially as long as the
@@ -123,7 +123,7 @@ transforms the error inside an `Err` container, leaving `Ok` success values unto
 
 ```ts
 const apiError = pipe(
-  Result.err("connection_refused"),
+  Result.make.err("connection_refused"),
   Result.mapError((code) => ({
     status: 503,
     message: `Database offline: ${code}`,
@@ -143,7 +143,7 @@ To prevent this nesting, we use `chain` to apply the transformation and flatten 
 
 ```ts
 const validateUserExists = (id: string): Result<string, User> =>
-  db.has(id) ? Result.ok(db.get(id)) : Result.err(`User ${id} not found`);
+  db.has(id) ? Result.make.ok(db.get(id)) : Result.make.err(`User ${id} not found`);
 
 const userProfile = pipe(
   parseJson(input),                        // Result<string, unknown>
@@ -170,12 +170,12 @@ Eventually, we must unpack our `Result` to interface with the rest of our applic
 
 ```ts
 pipe(
-  Result.ok(5),
+  Result.make.ok(5),
   Result.getOrElse(() => 0),
 ); // 5
 
 pipe(
-  Result.err("failed"),
+  Result.make.err("failed"),
   Result.getOrElse(() => 0),
 ); // 0
 ```
@@ -281,8 +281,8 @@ carries a typed reason for its failure, whereas `Maybe` models pure absence.
 To discard the error context and convert to a `Maybe`:
 
 ```ts
-const maybeValue = Result.to.Maybe(Result.ok(42)); // Some(42)
-const empty = Result.to.Maybe(Result.err("oops")); // None
+const maybeValue = Result.to.Maybe(Result.make.ok(42)); // Some(42)
+const empty = Result.to.Maybe(Result.make.err("oops")); // None
 ```
 
 Conversely, if you want to lift a `Maybe` into a `Result`, you must supply a typed error to replace
@@ -292,7 +292,7 @@ the implicit absence of a `None`:
 import { Maybe } from "@nlozgachev/pipelined/core";
 
 const resultValue = pipe(
-  Maybe.none(),
+  Maybe.make.none(),
   Maybe.to.Result(() => "Value was absent"),
 ); // Err("Value was absent")
 ```
@@ -330,7 +330,7 @@ readable pipeline.
 
 ```ts
 pipe(
-  Result.ok(42),
+  Result.make.ok(42),
   Result.bindTo("value")
 ); // Ok({ value: 42 })
 ```
@@ -361,8 +361,8 @@ individual field is an `Err`, the entire struct short-circuits to that error imm
 
 ```ts
 const user = Result.struct({
-  name: Result.ok("Alice"),
-  age: Result.ok(30),
+  name: Result.make.ok("Alice"),
+  age: Result.make.ok(30),
   role: Result.from.Predicate(
     (r: string) => r === "admin" || r === "user",
     () => "Invalid role"
@@ -375,9 +375,9 @@ key order:
 
 ```ts
 const failed = Result.struct({
-  a: Result.ok(1),
-  b: Result.err("first fail"),
-  c: Result.err("second fail"),
+  a: Result.make.ok(1),
+  b: Result.make.err("first fail"),
+  c: Result.make.err("second fail"),
 }); // Err("first fail")
 ```
 

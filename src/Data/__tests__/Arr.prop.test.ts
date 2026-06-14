@@ -126,12 +126,12 @@ test("Arr.size — matches native length", () => {
 // ---------------------------------------------------------------------------
 
 test("Arr.head — empty array returns None", () => {
-	expect(Arr.head([])).toStrictEqual(Maybe.none());
+	expect(Arr.head([])).toStrictEqual(Maybe.make.none());
 });
 
 test("Arr.head — non-empty array returns Some(first element)", () => {
 	fc.assert(fc.property(fc.array(fc.integer(), { minLength: 1 }), (xs) => {
-		expect(Arr.head(xs)).toStrictEqual(Maybe.some(xs[0]));
+		expect(Arr.head(xs)).toStrictEqual(Maybe.make.some(xs[0]));
 	}));
 });
 

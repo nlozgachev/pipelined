@@ -73,12 +73,12 @@ flowchart TD
 
 ## Creating pairs
 
-To lift two distinct values into a typed pair, we use `Tuple.make`:
+To lift two distinct values into a typed pair, we use `Tuple.from.pair`:
 
 ```ts
 import { Tuple } from "@nlozgachev/pipelined/core";
 
-const entry = Tuple.make("timeout_seconds", 30); // readonly [string, number]
+const entry = Tuple.from.pair("timeout_seconds", 30); // readonly [string, number]
 ```
 
 Any standard two-element array (such as those returned by `Object.entries()`, `Arr.zip`, or
@@ -90,7 +90,7 @@ We can extract elements from a pair using `Tuple.first` and `Tuple.second`, or r
 using `Tuple.swap`:
 
 ```ts
-const pair = Tuple.make("port", 8080);
+const pair = Tuple.from.pair("port", 8080);
 
 Tuple.first(pair);  // "port"
 Tuple.second(pair); // 8080
@@ -107,7 +107,7 @@ other, or to transform both elements simultaneously:
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 
-const userScore = Tuple.make("alice", 980);
+const userScore = Tuple.from.pair("alice", 980);
 
 const updatedScore = pipe(
   userScore,
@@ -137,7 +137,7 @@ we use `Tuple.fold`. It applies a binary function that merges the two elements:
 
 ```ts
 const localizedPrice = pipe(
-  Tuple.make("fr-FR", 1299),
+  Tuple.from.pair("fr-FR", 1299),
   Tuple.mapSecond(cents => cents / 100), // convert to Euros
   Tuple.fold((locale, euros) =>
     new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" }).format(euros)
@@ -153,7 +153,7 @@ to a plain array using `Tuple.to.Array`:
 
 ```ts
 const loggedPair = pipe(
-  Tuple.make("debug_flag", true),
+  Tuple.from.pair("debug_flag", true),
   Tuple.tap((key, val) => console.log(`Config: ${key} is ${val}`)),
   Tuple.to.Array
 ); // logs "Config: debug_flag is true", returns ["debug_flag", true]

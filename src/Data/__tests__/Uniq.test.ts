@@ -69,12 +69,12 @@ test("Uniq.size returns the number of items", () => {
 // isEmpty
 // ---------------------------------------------------------------------------
 
-test("Uniq.isEmpty returns true for empty set", () => {
-	expect(Uniq.isEmpty(Uniq.empty())).toBe(true);
+test("Uniq.is.empty returns true for empty set", () => {
+	expect(Uniq.is.empty(Uniq.empty())).toBe(true);
 });
 
-test("Uniq.isEmpty returns false for non-empty set", () => {
-	expect(Uniq.isEmpty(Uniq.singleton(1))).toBe(false);
+test("Uniq.is.empty returns false for non-empty set", () => {
+	expect(Uniq.is.empty(Uniq.singleton(1))).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
@@ -361,12 +361,12 @@ test("uniq pipe composition — set operations", () => {
 // Uniq.NonEmpty
 // ---------------------------------------------------------------------------
 
-test("Uniq.isNonEmpty - returns true for non-empty set", () => {
-	expect(Uniq.isNonEmpty(Uniq.singleton(42))).toBe(true);
+test("Uniq.is.nonEmpty - returns true for non-empty set", () => {
+	expect(Uniq.is.nonEmpty(Uniq.singleton(42))).toBe(true);
 });
 
-test("Uniq.isNonEmpty - returns false for empty set", () => {
-	expect(Uniq.isNonEmpty(Uniq.empty())).toBe(false);
+test("Uniq.is.nonEmpty - returns false for empty set", () => {
+	expect(Uniq.is.nonEmpty(Uniq.empty())).toBe(false);
 });
 
 test("Uniq.NonEmpty.singleton - creates a single-element set", () => {

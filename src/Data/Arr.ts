@@ -14,7 +14,7 @@ namespace ArrMaybe {
 	 * ```ts
 	 * const parseNum = (s: string): Maybe<number> => {
 	 *   const n = Number(s);
-	 *   return isNaN(n) ? Maybe.none() : Maybe.some(n);
+	 *   return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 	 * };
 	 *
 	 * pipe(["1", "2", "3"], Arr.Maybe.traverse(parseNum)); // Some([1, 2, 3])
@@ -26,10 +26,10 @@ namespace ArrMaybe {
 		const result = new Array<B>(n);
 		for (let i = 0; i < n; i++) {
 			const mapped = f(data[i]);
-			if (mapped.kind === "None") { return CoreMaybe.none(); }
+			if (mapped.kind === "None") { return CoreMaybe.make.none(); }
 			result[i] = mapped.value;
 		}
-		return CoreMaybe.some(result);
+		return CoreMaybe.make.some(result);
 	};
 
 	/**
@@ -38,8 +38,8 @@ namespace ArrMaybe {
 	 *
 	 * @example
 	 * ```ts
-	 * Arr.Maybe.sequence([Maybe.some(1), Maybe.some(2)]); // Some([1, 2])
-	 * Arr.Maybe.sequence([Maybe.some(1), Maybe.none()]); // None
+	 * Arr.Maybe.sequence([Maybe.make.some(1), Maybe.make.some(2)]); // Some([1, 2])
+	 * Arr.Maybe.sequence([Maybe.make.some(1), Maybe.make.none()]); // None
 	 * ```
 	 */
 	export const sequence = <A>(data: readonly CoreMaybe<A>[]): CoreMaybe<readonly A[]> =>
@@ -55,7 +55,7 @@ namespace ArrResult {
 	 * ```ts
 	 * pipe(
 	 *   [1, 2, 3],
-	 *   Arr.Result.traverse(n => n > 0 ? Result.ok(n) : Result.err("negative"))
+	 *   Arr.Result.traverse(n => n > 0 ? Result.make.ok(n) : Result.make.err("negative"))
 	 * ); // Ok([1, 2, 3])
 	 * ```
 	 */
@@ -68,7 +68,7 @@ namespace ArrResult {
 				if (mapped.kind === "Err") { return mapped; }
 				result[i] = mapped.value;
 			}
-			return CoreResult.ok(result);
+			return CoreResult.make.ok(result);
 		};
 
 	/**
@@ -107,10 +107,10 @@ namespace ArrTaskResult {
 				for (const a of data) {
 					// eslint-disable-next-line no-await-in-loop
 					const r = await Deferred.to.Promise(f(a)());
-					if (CoreResult.isErr(r)) { return r; }
+					if (CoreResult.is.err(r)) { return r; }
 					result.push(r.value);
 				}
-				return CoreResult.ok(result);
+				return CoreResult.make.ok(result);
 			});
 
 	/**
@@ -168,7 +168,7 @@ namespace ArrNonEmpty {
 		 * ```
 		 */
 		export const Array = <A>(data: readonly A[]): CoreMaybe<NonEmptyArr<A>> =>
-			isNonEmptyArr(data) ? CoreMaybe.some(data) : CoreMaybe.none();
+			isNonEmptyArr(data) ? CoreMaybe.make.some(data) : CoreMaybe.make.none();
 	}
 
 	/**
@@ -305,7 +305,7 @@ export namespace Arr {
 	 * ```
 	 */
 	export const head = <A>(data: readonly A[]): CoreMaybe<A> =>
-		data.length > 0 ? CoreMaybe.some(data[0]) : CoreMaybe.none();
+		data.length > 0 ? CoreMaybe.make.some(data[0]) : CoreMaybe.make.none();
 
 	/**
 	 * Returns the last element of an array, or None if the array is empty.
@@ -317,7 +317,7 @@ export namespace Arr {
 	 * ```
 	 */
 	export const last = <A>(data: readonly A[]): CoreMaybe<A> =>
-		data.length > 0 ? CoreMaybe.some(data[data.length - 1]) : CoreMaybe.none();
+		data.length > 0 ? CoreMaybe.make.some(data[data.length - 1]) : CoreMaybe.make.none();
 
 	/**
 	 * Returns all elements except the first, or None if the array is empty.
@@ -329,7 +329,7 @@ export namespace Arr {
 	 * ```
 	 */
 	export const tail = <A>(data: readonly A[]): CoreMaybe<readonly A[]> =>
-		data.length > 0 ? CoreMaybe.some(data.slice(1)) : CoreMaybe.none();
+		data.length > 0 ? CoreMaybe.make.some(data.slice(1)) : CoreMaybe.make.none();
 
 	/**
 	 * Returns all elements except the last, or None if the array is empty.
@@ -341,7 +341,7 @@ export namespace Arr {
 	 * ```
 	 */
 	export const init = <A>(data: readonly A[]): CoreMaybe<readonly A[]> =>
-		data.length > 0 ? CoreMaybe.some(data.slice(0, -1)) : CoreMaybe.none();
+		data.length > 0 ? CoreMaybe.make.some(data.slice(0, -1)) : CoreMaybe.make.none();
 
 	// --- Search ---
 
@@ -355,7 +355,7 @@ export namespace Arr {
 	 */
 	export const findFirst = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): CoreMaybe<A> => {
 		const idx = data.findIndex(predicate);
-		return idx !== -1 ? CoreMaybe.some(data[idx]) : CoreMaybe.none();
+		return idx !== -1 ? CoreMaybe.make.some(data[idx]) : CoreMaybe.make.none();
 	};
 
 	/**
@@ -368,9 +368,9 @@ export namespace Arr {
 	 */
 	export const findLast = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): CoreMaybe<A> => {
 		for (let i = data.length - 1; i >= 0; i--) {
-			if (predicate(data[i])) { return CoreMaybe.some(data[i]); }
+			if (predicate(data[i])) { return CoreMaybe.make.some(data[i]); }
 		}
-		return CoreMaybe.none();
+		return CoreMaybe.make.none();
 	};
 
 	/**
@@ -383,7 +383,7 @@ export namespace Arr {
 	 */
 	export const findIndex = <A>(predicate: (a: A) => boolean) => (data: readonly A[]): CoreMaybe<number> => {
 		const idx = data.findIndex(predicate);
-		return idx !== -1 ? CoreMaybe.some(idx) : CoreMaybe.none();
+		return idx !== -1 ? CoreMaybe.make.some(idx) : CoreMaybe.make.none();
 	};
 
 	// --- Transform ---
@@ -446,7 +446,7 @@ export namespace Arr {
 	 * ```ts
 	 * const parseNum = (s: string): Maybe<number> => {
 	 *   const n = Number(s);
-	 *   return isNaN(n) ? Maybe.none() : Maybe.some(n);
+	 *   return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 	 * };
 	 *
 	 * pipe(["1", "abc", "3"], Arr.filterMap(parseNum)); // [1, 3]
@@ -487,7 +487,7 @@ export namespace Arr {
 	 *
 	 * @example
 	 * ```ts
-	 * Arr.compact([Maybe.some(1), Maybe.none(), Maybe.some(3)]); // [1, 3]
+	 * Arr.compact([Maybe.make.some(1), Maybe.make.none(), Maybe.make.some(3)]); // [1, 3]
 	 * ```
 	 */
 	export const compact = <A>(data: readonly CoreMaybe<A>[]): readonly A[] => {
@@ -506,7 +506,7 @@ export namespace Arr {
 	 *
 	 * @example
 	 * ```ts
-	 * Arr.separate([Result.ok(1), Result.err("bad"), Result.ok(3)]); // [["bad"], [1, 3]]
+	 * Arr.separate([Result.make.ok(1), Result.make.err("bad"), Result.make.ok(3)]); // [["bad"], [1, 3]]
 	 * ```
 	 */
 	export const separate = <E, A>(data: readonly CoreResult<E, A>[]): readonly [readonly E[], readonly A[]] => {
@@ -529,7 +529,7 @@ export namespace Arr {
 	 * ```ts
 	 * pipe(
 	 *   [1, 2, 3, 4],
-	 *   Arr.partitionMap(n => n % 2 === 0 ? Result.ok(n) : Result.err(`odd: ${n}`))
+	 *   Arr.partitionMap(n => n % 2 === 0 ? Result.make.ok(n) : Result.make.err(`odd: ${n}`))
 	 * ); // [["odd: 1", "odd: 3"], [2, 4]]
 	 * ```
 	 */
@@ -804,10 +804,17 @@ export namespace Arr {
 	export const Result = ArrResult;
 	export const Task = ArrTask;
 
-	/**
-	 * Returns true if the array is non-empty (type guard).
-	 */
-	export const isNonEmpty = <A>(data: readonly A[]): data is NonEmpty<A> => isNonEmptyArr(data);
+	export namespace is {
+		/**
+		 * Returns true if the array is empty.
+		 */
+		export const empty = <A>(data: readonly A[]): data is readonly [] => data.length === 0;
+
+		/**
+		 * Returns true if the array is non-empty (type guard).
+		 */
+		export const nonEmpty = <A>(data: readonly A[]): data is NonEmpty<A> => isNonEmptyArr(data);
+	}
 
 	/**
 	 * Prepends a value to the beginning of an array, returning a NonEmptyArr.

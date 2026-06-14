@@ -89,23 +89,23 @@ test("Num.inRange returns false when value is outside range or on the upper boun
 // ---------------------------------------------------------------------------
 
 test("Num.parse returns Some for a valid integer string", () => {
-	expect(Num.parse("42")).toStrictEqual(Maybe.some(42));
+	expect(Num.parse("42")).toStrictEqual(Maybe.make.some(42));
 });
 
 test("Num.parse returns Some for a valid float string", () => {
-	expect(Num.parse("3.14")).toStrictEqual(Maybe.some(3.14));
+	expect(Num.parse("3.14")).toStrictEqual(Maybe.make.some(3.14));
 });
 
 test("Num.parse returns None for a non-numeric string", () => {
-	expect(Num.parse("abc")).toStrictEqual(Maybe.none());
+	expect(Num.parse("abc")).toStrictEqual(Maybe.make.none());
 });
 
 test("Num.parse returns None for an empty string", () => {
-	expect(Num.parse("")).toStrictEqual(Maybe.none());
+	expect(Num.parse("")).toStrictEqual(Maybe.make.none());
 });
 
 test("Num.parse returns None for a whitespace-only string", () => {
-	expect(Num.parse("   ")).toStrictEqual(Maybe.none());
+	expect(Num.parse("   ")).toStrictEqual(Maybe.make.none());
 });
 
 // ---------------------------------------------------------------------------
@@ -149,11 +149,11 @@ test("num.multiply composes with Arr.map", () => {
 // ---------------------------------------------------------------------------
 
 test("Num.divide returns Some for non-zero divisor", () => {
-	expect(pipe(20, Num.divide(4))).toStrictEqual(Maybe.some(5));
+	expect(pipe(20, Num.divide(4))).toStrictEqual(Maybe.make.some(5));
 });
 
 test("Num.divide returns None when divisor is zero", () => {
-	expect(pipe(5, Num.divide(0))).toStrictEqual(Maybe.none());
+	expect(pipe(5, Num.divide(0))).toStrictEqual(Maybe.make.none());
 });
 
 test("num.divide composes with Arr.filterMap", () => {
@@ -249,15 +249,15 @@ test("Num.ceil returns integer unchanged", () => {
 // ---------------------------------------------------------------------------
 
 test("Num.remainder returns Some for the remainder of division", () => {
-	expect(pipe(10, Num.remainder(3))).toStrictEqual(Maybe.some(1));
+	expect(pipe(10, Num.remainder(3))).toStrictEqual(Maybe.make.some(1));
 });
 
 test("Num.remainder returns Some(0) when evenly divisible", () => {
-	expect(pipe(9, Num.remainder(3))).toStrictEqual(Maybe.some(0));
+	expect(pipe(9, Num.remainder(3))).toStrictEqual(Maybe.make.some(0));
 });
 
 test("Num.remainder returns None when divisor is zero", () => {
-	expect(pipe(5, Num.remainder(0))).toStrictEqual(Maybe.none());
+	expect(pipe(5, Num.remainder(0))).toStrictEqual(Maybe.make.none());
 });
 
 test("num.remainder composes with Arr.filterMap", () => {
@@ -282,12 +282,12 @@ test("Num.sum returns 0 for an empty array", () => {
 // ---------------------------------------------------------------------------
 
 test("Num.mean computes the mean of a list of numbers", () => {
-	expect(Num.mean([1, 2, 3])).toStrictEqual(Maybe.some(2));
-	expect(Num.mean([1.5, 2.5, 5])).toStrictEqual(Maybe.some(3));
+	expect(Num.mean([1, 2, 3])).toStrictEqual(Maybe.make.some(2));
+	expect(Num.mean([1.5, 2.5, 5])).toStrictEqual(Maybe.make.some(3));
 });
 
 test("Num.mean returns None for an empty array", () => {
-	expect(Num.mean([])).toStrictEqual(Maybe.none());
+	expect(Num.mean([])).toStrictEqual(Maybe.make.none());
 });
 
 // ---------------------------------------------------------------------------
@@ -295,12 +295,12 @@ test("Num.mean returns None for an empty array", () => {
 // ---------------------------------------------------------------------------
 
 test("Num.min computes the minimum of a list of numbers", () => {
-	expect(Num.min([5, 1, 3])).toStrictEqual(Maybe.some(1));
-	expect(Num.min([-1.5, -5, -3])).toStrictEqual(Maybe.some(-5));
+	expect(Num.min([5, 1, 3])).toStrictEqual(Maybe.make.some(1));
+	expect(Num.min([-1.5, -5, -3])).toStrictEqual(Maybe.make.some(-5));
 });
 
 test("Num.min returns None for an empty array", () => {
-	expect(Num.min([])).toStrictEqual(Maybe.none());
+	expect(Num.min([])).toStrictEqual(Maybe.make.none());
 });
 
 // ---------------------------------------------------------------------------
@@ -308,12 +308,12 @@ test("Num.min returns None for an empty array", () => {
 // ---------------------------------------------------------------------------
 
 test("Num.max computes the maximum of a list of numbers", () => {
-	expect(Num.max([1, 5, 3])).toStrictEqual(Maybe.some(5));
-	expect(Num.max([-1.5, -5, -3])).toStrictEqual(Maybe.some(-1.5));
+	expect(Num.max([1, 5, 3])).toStrictEqual(Maybe.make.some(5));
+	expect(Num.max([-1.5, -5, -3])).toStrictEqual(Maybe.make.some(-1.5));
 });
 
 test("Num.max returns None for an empty array", () => {
-	expect(Num.max([])).toStrictEqual(Maybe.none());
+	expect(Num.max([])).toStrictEqual(Maybe.make.none());
 });
 
 // ---------------------------------------------------------------------------

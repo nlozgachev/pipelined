@@ -430,7 +430,7 @@ pipe(
 import { identity, pipe } from "@nlozgachev/pipelined/composition";
 import { Maybe } from "@nlozgachev/pipelined/core";
 
-pipe(Maybe.some(42), Maybe.fold(() => 0, identity)); // 42
+pipe(Maybe.make.some(42), Maybe.fold(() => 0, identity)); // 42
 ```
 
 `constant` returns a function that always yields the same fixed value, ignoring whatever input is supplied to it:
