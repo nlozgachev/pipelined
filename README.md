@@ -20,6 +20,11 @@ runtime states into simple, transparent data structures that compose. By represe
 `Maybe`, failures as `Result`, lazy asynchronous pipelines as `Task.Result`, and repeated stateful
 interactions as `Op`, the library helps disentangle business logic from control mechanics.
 
+To support these patterns without introducing bloat, the library is designed to be lightweight,
+zero-dependency, and fully tree-shakeable. The core module (`/core`) is under 14 KB gzipped, and the
+entire toolkit is under 21 KB gzipped, making it equally suitable for client and server
+environments.
+
 ## Documentation
 
 Full guides and API reference at **[pipelined.lozgachev.dev](https://pipelined.lozgachev.dev)**.
