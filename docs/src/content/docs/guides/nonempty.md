@@ -45,13 +45,12 @@ Under the hood, non-empty collections leverage TypeScript's type system:
   `readonly [A, ...A[]]`. Because it extends the standard `readonly A[]` interface, it is assignable
   to standard arrays without conversion.
 - **Branded Non-Empty Types**: `Rec.NonEmpty`, `Uniq.NonEmpty`, `Dict.NonEmpty`, and `Str.NonEmpty`
-  utilize the library's `Brand` utility to tag their unbranded counterparts with the phantom
-  `"NonEmpty"` brand tag. This guarantees presence of elements at compile-time while remaining
-  assignable to their unbranded versions:
-  - **`Uniq.NonEmpty<A>`**: `Brand<"NonEmpty", ReadonlySet<A>>`
-  - **`Dict.NonEmpty<K, V>`**: `Brand<"NonEmpty", ReadonlyMap<K, V>>`
-  - **`Rec.NonEmpty<A, K>`**: `Brand<"NonEmpty", Readonly<Record<K, A>>>`
-  - **`Str.NonEmpty`**: `Brand<"NonEmpty", string>`
+  utilize compile-time phantom brand tags. This guarantees the presence of elements at compile-time
+  while remaining directly assignable to their standard, unbranded counterparts:
+  - **`Uniq.NonEmpty<A>`** is assignable to `ReadonlySet<A>`
+  - **`Dict.NonEmpty<K, V>`** is assignable to `ReadonlyMap<K, V>`
+  - **`Rec.NonEmpty<A, K>`** is assignable to `Readonly<Record<K, A>>`
+  - **`Str.NonEmpty`** is assignable to `string`
 
 ---
 
@@ -144,31 +143,23 @@ const list2 = pipe([1, 2], Arr.append(3));  // Arr.NonEmpty<number>: [1, 2, 3]
 
 ## Transformations and Reductions
 
-Standard library mapping functions return standard collections, discarding the compile-time
-guarantee that the collection is non-empty.
+Standard library mapping functions operating on standard collections (such as `Arr.map` or
+`Rec.map`) return standard collections, discarding any compile-time guarantee that the collection is
+non-empty.
 
-To transform the elements of a non-empty collection while maintaining its structural/branded type
-guarantee, use the curried mapping helpers. When calling them directly, the standard overloaded
-mapping functions preserve the type:
-
-```ts
-import { Arr, Rec, Uniq, Dict } from "@nlozgachev/pipelined/data";
-
-const doubledList = Arr.map((n: number) => n * 2)(list1); 
-// typed as Arr.NonEmpty<number>
-
-const updatedRecord = Rec.map((v: number) => v + 10)(maybeRec.value);
-// typed as Rec.NonEmpty<number, "a">
-```
-
-However, when composing operations inside generic `pipe` pipelines, TypeScript's overload resolution
-can lose the non-empty type brand. In pipeline contexts, use the dedicated, non-overloaded
-`NonEmpty.map` and `NonEmpty.mapWithKey` functions to preserve type inference:
+To transform the elements of a non-empty collection while preserving its non-empty type guarantee,
+always use the dedicated mapping helpers under the `NonEmpty` namespace of the module (e.g.,
+`Arr.NonEmpty.map`, `Rec.NonEmpty.map`):
 
 ```ts
 import { Arr, Rec, Uniq, Dict } from "@nlozgachev/pipelined/data";
 import { pipe } from "@nlozgachev/pipelined/composition";
 
+// Direct mapping
+const doubledList = Arr.NonEmpty.map((n: number) => n * 2)(list1); 
+// typed as Arr.NonEmpty<number>
+
+// Pipeline transformation
 const result = pipe(
 	list1,
 	Arr.NonEmpty.map((n) => n * 2),
