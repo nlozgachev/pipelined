@@ -437,68 +437,68 @@ test("Rec.groupBy preserves insertion order within each group", () => {
 });
 
 // =============================================================================
-// Rec.Maybe & Rec.Result
+// Rec.traverse & Rec.sequence
 // =============================================================================
 
-test("Rec.Maybe.traverse - traverses record with Some values", () => {
+test("Rec.traverse.Maybe - traverses record with Some values", () => {
 	const result = pipe(
 		{ a: "1", b: "2" },
-		Rec.Maybe.traverse((s) => (s === "NaN" ? Maybe.make.none() : Maybe.make.some(Number(s)))),
+		Rec.traverse.Maybe((s) => (s === "NaN" ? Maybe.make.none() : Maybe.make.some(Number(s)))),
 	);
 	expect(result).toStrictEqual(Maybe.make.some({ a: 1, b: 2 }));
 });
 
-test("Rec.Maybe.traverse - short-circuits at first None", () => {
+test("Rec.traverse.Maybe - short-circuits at first None", () => {
 	const result = pipe(
 		{ a: "1", b: "NaN", c: "3" },
-		Rec.Maybe.traverse((s) => (s === "NaN" ? Maybe.make.none() : Maybe.make.some(Number(s)))),
+		Rec.traverse.Maybe((s) => (s === "NaN" ? Maybe.make.none() : Maybe.make.some(Number(s)))),
 	);
 	expect(result).toStrictEqual(Maybe.make.none());
 });
 
-test("Rec.Maybe.traverse - returns Some of empty record for empty input", () => {
-	const result = pipe({} as Record<string, string>, Rec.Maybe.traverse((s) => Maybe.make.some(s)));
+test("Rec.traverse.Maybe - returns Some of empty record for empty input", () => {
+	const result = pipe({} as Record<string, string>, Rec.traverse.Maybe((s) => Maybe.make.some(s)));
 	expect(result).toStrictEqual(Maybe.make.some({}));
 });
 
-test("Rec.Maybe.sequence - sequences record of Some values", () => {
-	const result = Rec.Maybe.sequence({ a: Maybe.make.some(1), b: Maybe.make.some(2) });
+test("Rec.sequence.Maybe - sequences record of Some values", () => {
+	const result = Rec.sequence.Maybe({ a: Maybe.make.some(1), b: Maybe.make.some(2) });
 	expect(result).toStrictEqual(Maybe.make.some({ a: 1, b: 2 }));
 });
 
-test("Rec.Maybe.sequence - returns None if any is None", () => {
-	const result = Rec.Maybe.sequence({ a: Maybe.make.some(1), b: Maybe.make.none() });
+test("Rec.sequence.Maybe - returns None if any is None", () => {
+	const result = Rec.sequence.Maybe({ a: Maybe.make.some(1), b: Maybe.make.none() });
 	expect(result).toStrictEqual(Maybe.make.none());
 });
 
-test("Rec.Result.traverse - traverses record with Ok values", () => {
+test("Rec.traverse.Result - traverses record with Ok values", () => {
 	const result = pipe(
 		{ a: 1, b: 2 },
-		Rec.Result.traverse((n) => (n < 0 ? Result.make.err("negative") : Result.make.ok(n * 10))),
+		Rec.traverse.Result((n) => (n < 0 ? Result.make.err("negative") : Result.make.ok(n * 10))),
 	);
 	expect(result).toStrictEqual(Result.make.ok({ a: 10, b: 20 }));
 });
 
-test("Rec.Result.traverse - short-circuits at first Err", () => {
+test("Rec.traverse.Result - short-circuits at first Err", () => {
 	const result = pipe(
 		{ a: 1, b: -2, c: 3 },
-		Rec.Result.traverse((n) => (n < 0 ? Result.make.err("negative") : Result.make.ok(n * 10))),
+		Rec.traverse.Result((n) => (n < 0 ? Result.make.err("negative") : Result.make.ok(n * 10))),
 	);
 	expect(result).toStrictEqual(Result.make.err("negative"));
 });
 
-test("Rec.Result.traverse - returns Ok of empty record for empty input", () => {
-	const result = pipe({} as Record<string, number>, Rec.Result.traverse((n) => Result.make.ok(n)));
+test("Rec.traverse.Result - returns Ok of empty record for empty input", () => {
+	const result = pipe({} as Record<string, number>, Rec.traverse.Result((n) => Result.make.ok(n)));
 	expect(result).toStrictEqual(Result.make.ok({}));
 });
 
-test("Rec.Result.sequence - sequences record of Ok values", () => {
-	const result = Rec.Result.sequence({ a: Result.make.ok(1), b: Result.make.ok(2) });
+test("Rec.sequence.Result - sequences record of Ok values", () => {
+	const result = Rec.sequence.Result({ a: Result.make.ok(1), b: Result.make.ok(2) });
 	expect(result).toStrictEqual(Result.make.ok({ a: 1, b: 2 }));
 });
 
-test("Rec.Result.sequence - returns Err if any is Err", () => {
-	const result = Rec.Result.sequence({ a: Result.make.ok(1), b: Result.make.err("oops") });
+test("Rec.sequence.Result - returns Err if any is Err", () => {
+	const result = Rec.sequence.Result({ a: Result.make.ok(1), b: Result.make.err("oops") });
 	expect(result).toStrictEqual(Result.make.err("oops"));
 });
 

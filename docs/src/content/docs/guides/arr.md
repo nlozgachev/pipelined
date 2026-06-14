@@ -198,7 +198,7 @@ want the entire pipeline to fail.
 
 The `traverse` family executes this inside-out flip automatically during the mapping stage.
 
-### Safe traversal with `Arr.Maybe.traverse`
+### Safe traversal with `Arr.traverse.Maybe`
 
 Maps each element to a `Maybe` and flattens it. If a single element yields `None`, the entire result
 resolves to `None`:
@@ -206,16 +206,16 @@ resolves to `None`:
 ```ts
 pipe(
   ["1", "2", "3"],
-  Arr.Maybe.traverse(parseNumeric),
+  Arr.traverse.Maybe(parseNumeric),
 ); // Some([1, 2, 3])
 
 pipe(
   ["1", "invalid_text", "3"],
-  Arr.Maybe.traverse(parseNumeric),
+  Arr.traverse.Maybe(parseNumeric),
 ); // None (the entire check short-circuits)
 ```
 
-### Safe error traversal with `Arr.Result.traverse`
+### Safe error traversal with `Arr.traverse.Result`
 
 Maps elements to `Result`, returning `Ok` only if every element succeeded, or the first `Err`
 encountered:
@@ -224,34 +224,34 @@ encountered:
 const validateAge = (age: number): Result<string, number> =>
   age >= 18 ? Result.make.ok(age) : Result.make.err(`Age ${age} is underage`);
 
-pipe([20, 25, 30], Arr.Result.traverse(validateAge)); // Ok([20, 25, 30])
-pipe([20, 16, 30], Arr.Result.traverse(validateAge)); // Err("Age 16 is underage")
+pipe([20, 25, 30], Arr.traverse.Result(validateAge)); // Ok([20, 25, 30])
+pipe([20, 16, 30], Arr.traverse.Result(validateAge)); // Err("Age 16 is underage")
 ```
 
-### Asynchronous traversal with `Arr.Task.traverse` and `Arr.Task.Result.traverse`
+### Asynchronous traversal with `Arr.traverse.Task` and `Arr.traverse.Task.Result`
 
-- `Arr.Task.traverse` runs all async tasks in **parallel**, resolving to a `Task<A[]>` once all
+- `Arr.traverse.Task` runs all async tasks in **parallel**, resolving to a `Task<A[]>` once all
   complete.
-- `Arr.Task.Result.traverse` runs tasks **sequentially**, short-circuiting on the first `Err`
+- `Arr.traverse.Task.Result` runs tasks **sequentially**, short-circuiting on the first `Err`
   encountered.
 
 ```ts
 // Parallel user profile fetch:
 pipe(
   userIds,
-  Arr.Task.traverse((id) => fetchUserTask(id)),
+  Arr.traverse.Task((id) => fetchUserTask(id)),
 )(); // Promise<User[]> (all requests execute simultaneously)
 ```
 
 ### Flipping existing structures: `sequence`
 
-If you *already* have an array of containers, you can flip them using `sequence` directly under each
-nested namespace:
+If you *already* have an array of containers, you can flip them using `sequence` directly under the
+new layout:
 
 ```ts
 // Array<Maybe<number>> → Maybe<Array<number>>
-Arr.Maybe.sequence([Maybe.make.some(1), Maybe.make.some(2)]); // Some([1, 2])
-Arr.Maybe.sequence([Maybe.make.some(1), Maybe.make.none()]);   // None
+Arr.sequence.Maybe([Maybe.make.some(1), Maybe.make.some(2)]); // Some([1, 2])
+Arr.sequence.Maybe([Maybe.make.some(1), Maybe.make.none()]);   // None
 ```
 
 ---

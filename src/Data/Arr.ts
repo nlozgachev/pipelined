@@ -1,4 +1,4 @@
-/* eslint-disable no-use-before-define */
+/* eslint-disable no-use-before-define, no-shadow */
 import { Deferred, Equality, Ordering } from "#core";
 import { isNonEmptyArr, type NonEmptyArr } from "#internal";
 import { Maybe as CoreMaybe } from "../Core/Maybe.ts";
@@ -800,9 +800,27 @@ export namespace Arr {
 
 	// --- Traverse / Sequence ---
 
-	export const Maybe = ArrMaybe;
-	export const Result = ArrResult;
-	export const Task = ArrTask;
+	export namespace traverse {
+		export const Maybe = ArrMaybe.traverse;
+		export const Result = ArrResult.traverse;
+		export function Task<A, B>(f: (a: A) => CoreTask<B>): (data: readonly A[]) => CoreTask<readonly B[]> {
+			return ArrTask.traverse(f);
+		}
+		export namespace Task {
+			export const Result = ArrTaskResult.traverse;
+		}
+	}
+
+	export namespace sequence {
+		export const Maybe = ArrMaybe.sequence;
+		export const Result = ArrResult.sequence;
+		export function Task<A>(data: readonly CoreTask<A>[]): CoreTask<readonly A[]> {
+			return ArrTask.sequence(data);
+		}
+		export namespace Task {
+			export const Result = ArrTaskResult.sequence;
+		}
+	}
 
 	export namespace is {
 		/**

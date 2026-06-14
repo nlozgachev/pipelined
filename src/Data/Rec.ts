@@ -522,7 +522,15 @@ export namespace Rec {
 		return result;
 	};
 
-	export const Maybe = RecMaybe;
-	export const Result = RecResult;
+	export namespace traverse {
+		export const Maybe = RecMaybe.traverse;
+		export const Result = RecResult.traverse;
+	}
+
+	export namespace sequence {
+		export const Maybe = RecMaybe.sequence;
+		export const Result = RecResult.sequence;
+	}
+
 	export const NonEmpty = RecNonEmpty;
 }

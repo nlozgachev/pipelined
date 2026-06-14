@@ -167,10 +167,11 @@ Rec.size({ a: 1, b: 2 }); // 2
 ## Traversing and Sequencing Records
 
 When a record contains values that wrap effectful computations, you may want to aggregate those
-individual effects into a single container holding the mapped record. `Rec.Maybe` and `Rec.Result`
-provide namespaces for traversing and sequencing records, short-circuiting on the first failure.
+individual effects into a single container holding the mapped record. `Rec.traverse` and
+`Rec.sequence` provide namespaces for traversing and sequencing records, short-circuiting on the
+first failure.
 
-`Rec.Maybe.traverse` maps a `Maybe`-returning function over the values of a record. If every value
+`Rec.traverse.Maybe` maps a `Maybe`-returning function over the values of a record. If every value
 produces a `Some`, it returns `Some` of the updated record. If any value maps to `None`, the entire
 operation returns `None`:
 
@@ -180,19 +181,19 @@ import { Rec } from "@nlozgachev/pipelined/data";
 
 const parseNum = (s: string) => s === "NaN" ? Maybe.make.none() : Maybe.make.some(Number(s));
 
-pipe({ a: "1", b: "2" }, Rec.Maybe.traverse(parseNum)); // Some({ a: 1, b: 2 })
-pipe({ a: "1", b: "NaN" }, Rec.Maybe.traverse(parseNum)); // None
+pipe({ a: "1", b: "2" }, Rec.traverse.Maybe(parseNum)); // Some({ a: 1, b: 2 })
+pipe({ a: "1", b: "NaN" }, Rec.traverse.Maybe(parseNum)); // None
 ```
 
-`Rec.Maybe.sequence` takes a record where every value is already a `Maybe` and collapses it into a
+`Rec.sequence.Maybe` takes a record where every value is already a `Maybe` and collapses it into a
 single `Maybe` of a record:
 
 ```ts
-Rec.Maybe.sequence({ a: Maybe.make.some(1), b: Maybe.make.some(2) }); // Some({ a: 1, b: 2 })
-Rec.Maybe.sequence({ a: Maybe.make.some(1), b: Maybe.make.none() }); // None
+Rec.sequence.Maybe({ a: Maybe.make.some(1), b: Maybe.make.some(2) }); // Some({ a: 1, b: 2 })
+Rec.sequence.Maybe({ a: Maybe.make.some(1), b: Maybe.make.none() }); // None
 ```
 
-Similarly, `Rec.Result.traverse` and `Rec.Result.sequence` aggregate fallible computations:
+Similarly, `Rec.traverse.Result` and `Rec.sequence.Result` aggregate fallible computations:
 
 ```ts
 import { Result } from "@nlozgachev/pipelined/core";
@@ -200,8 +201,8 @@ import { Result } from "@nlozgachev/pipelined/core";
 const validateStock = (quantity: number) =>
   quantity < 0 ? Result.make.err("Negative stock not allowed") : Result.make.ok(quantity);
 
-pipe({ apples: 10, oranges: 5 }, Rec.Result.traverse(validateStock)); // Ok({ apples: 10, oranges: 5 })
-pipe({ apples: 10, oranges: -1 }, Rec.Result.traverse(validateStock)); // Err("Negative stock not allowed")
+pipe({ apples: 10, oranges: 5 }, Rec.traverse.Result(validateStock)); // Ok({ apples: 10, oranges: 5 })
+pipe({ apples: 10, oranges: -1 }, Rec.traverse.Result(validateStock)); // Err("Negative stock not allowed")
 ```
 
 ---
