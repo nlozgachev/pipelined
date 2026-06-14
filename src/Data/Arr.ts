@@ -800,26 +800,34 @@ export namespace Arr {
 
 	// --- Traverse / Sequence ---
 
+	interface TaskTraverse {
+		<A, B>(f: (a: A) => CoreTask<B>): (data: readonly A[]) => CoreTask<readonly B[]>;
+		Result: typeof ArrTaskResult.traverse;
+	}
+
+	const _traverseTask: TaskTraverse = Object.assign(<A, B>(f: (a: A) => CoreTask<B>) => ArrTask.traverse(f), {
+		Result: ArrTaskResult.traverse,
+	});
+
+	interface TaskSequence {
+		<A>(data: readonly CoreTask<A>[]): CoreTask<readonly A[]>;
+		Result: typeof ArrTaskResult.sequence;
+	}
+
+	const _sequenceTask: TaskSequence = Object.assign(<A>(data: readonly CoreTask<A>[]) => ArrTask.sequence(data), {
+		Result: ArrTaskResult.sequence,
+	});
+
 	export namespace traverse {
 		export const Maybe = ArrMaybe.traverse;
 		export const Result = ArrResult.traverse;
-		export function Task<A, B>(f: (a: A) => CoreTask<B>): (data: readonly A[]) => CoreTask<readonly B[]> {
-			return ArrTask.traverse(f);
-		}
-		export namespace Task {
-			export const Result = ArrTaskResult.traverse;
-		}
+		export const Task = _traverseTask;
 	}
 
 	export namespace sequence {
 		export const Maybe = ArrMaybe.sequence;
 		export const Result = ArrResult.sequence;
-		export function Task<A>(data: readonly CoreTask<A>[]): CoreTask<readonly A[]> {
-			return ArrTask.sequence(data);
-		}
-		export namespace Task {
-			export const Result = ArrTaskResult.sequence;
-		}
+		export const Task = _sequenceTask;
 	}
 
 	export namespace is {
