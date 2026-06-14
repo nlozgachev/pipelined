@@ -1,4 +1,4 @@
-import { Maybe } from "#core";
+import { type Maybe, Maybe as CoreMaybe } from "#core";
 import type { WithError, WithKind, WithValue } from "#internal";
 
 /**
@@ -188,70 +188,73 @@ export namespace Result {
 		return data;
 	};
 
-	/**
-	 * Creates a Result from a predicate applied to a value.
-	 * Returns Ok if the predicate passes, Err from onFalse otherwise.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(5, Result.fromPredicate(n => n > 0, n => `${n} is not positive`));  // Ok(5)
-	 * pipe(-1, Result.fromPredicate(n => n > 0, n => `${n} is not positive`)); // Err("-1 is not positive")
-	 * pipe("", Result.fromPredicate(s => s.length > 0, () => "empty string")); // Err("empty string")
-	 * ```
-	 */
-	export const fromPredicate = <E, A>(pred: (a: A) => boolean, onFalse: (a: A) => E) => (a: A): Result<E, A> =>
-		pred(a) ? ok(a) : err(onFalse(a));
+	// --- from ---
+	export namespace from {
+		/**
+		 * Creates a Result from a predicate applied to a value.
+		 * Returns Ok if the predicate passes, Err from onFalse otherwise.
+		 *
+		 * @example
+		 * ```ts
+		 * pipe(5, Result.from.Predicate(n => n > 0, n => `${n} is not positive`));  // Ok(5)
+		 * pipe(-1, Result.from.Predicate(n => n > 0, n => `${n} is not positive`)); // Err("-1 is not positive")
+		 * pipe("", Result.from.Predicate(s => s.length > 0, () => "empty string")); // Err("empty string")
+		 * ```
+		 */
+		export const Predicate = <E, A>(pred: (a: A) => boolean, onFalse: (a: A) => E) => (a: A): Result<E, A> =>
+			pred(a) ? ok(a) : err(onFalse(a));
 
-	/**
-	 * Creates a Result from a nullable value.
-	 * Returns Ok if the value is not null or undefined, error from onNull otherwise.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(null, Result.fromNullable(() => "is null")); // Err("is null")
-	 * pipe(42, Result.fromNullable(() => "is null"));   // Ok(42)
-	 * ```
-	 */
-	export const fromNullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): Result<E, A> =>
-		value === null || value === undefined ? err(onNull()) : ok(value);
+		/**
+		 * Creates a Result from a nullable value.
+		 * Returns Ok if the value is not null or undefined, error from onNull otherwise.
+		 *
+		 * @example
+		 * ```ts
+		 * pipe(null, Result.from.Nullable(() => "is null")); // Err("is null")
+		 * pipe(42, Result.from.Nullable(() => "is null"));   // Ok(42)
+		 * ```
+		 */
+		export const Nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): Result<E, A> =>
+			value === null || value === undefined ? err(onNull()) : ok(value);
 
-	/**
-	 * Creates a Result from a Maybe.
-	 * Some becomes Ok, None becomes error from onNone.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(Maybe.none(), Result.fromMaybe(() => "is none")); // Err("is none")
-	 * pipe(Maybe.some(42), Result.fromMaybe(() => "is none")); // Ok(42)
-	 * ```
-	 */
-	export const fromMaybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): Result<E, A> =>
-		Maybe.isNone(maybe) ? err(onNone()) : ok(maybe.value);
+		/**
+		 * Creates a Result from a Maybe.
+		 * Some becomes Ok, None becomes error from onNone.
+		 *
+		 * @example
+		 * ```ts
+		 * pipe(Maybe.none(), Result.from.Maybe(() => "is none")); // Err("is none")
+		 * pipe(Maybe.some(42), Result.from.Maybe(() => "is none")); // Ok(42)
+		 * ```
+		 */
+		export const Maybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): Result<E, A> =>
+			CoreMaybe.isNone(maybe) ? err(onNone()) : ok(maybe.value);
 
-	/**
-	 * Wraps a throwing function of any arguments, returning a new function
-	 * that catches errors and returns a Result.
-	 *
-	 * @example
-	 * ```ts
-	 * const safeParse = Result.fromThrowable(
-	 *   (s: string) => JSON.parse(s),
-	 *   (e) => new Error(`Parse error: ${e}`)
-	 * );
-	 *
-	 * safeParse('{"a":1}'); // Ok({ a: 1 })
-	 * safeParse('invalid');  // Err(Error)
-	 * ```
-	 */
-	export const fromThrowable =
-		<Args extends readonly unknown[], A, E>(f: (...args: Args) => A, onError: (e: unknown) => E) =>
-		(...args: Args): Result<E, A> => {
-			try {
-				return ok(f(...args));
-			} catch (error) {
-				return err(onError(error));
-			}
-		};
+		/**
+		 * Wraps a throwing function of any arguments, returning a new function
+		 * that catches errors and returns a Result.
+		 *
+		 * @example
+		 * ```ts
+		 * const safeParse = Result.from.Throwable(
+		 *   (s: string) => JSON.parse(s),
+		 *   (e) => new Error(`Parse error: ${e}`)
+		 * );
+		 *
+		 * safeParse('{"a":1}'); // Ok({ a: 1 })
+		 * safeParse('invalid');  // Err(Error)
+		 * ```
+		 */
+		export const Throwable =
+			<Args extends readonly unknown[], A, E>(f: (...args: Args) => A, onError: (e: unknown) => E) =>
+			(...args: Args): Result<E, A> => {
+				try {
+					return ok(f(...args));
+				} catch (error) {
+					return err(onError(error));
+				}
+			};
+	}
 
 	/**
 	 * Recovers from an error by providing a fallback Result.
@@ -276,17 +279,21 @@ export namespace Result {
 		<E, A, B>(isBlocked: (e: E) => boolean, fallback: () => Result<E, B>) => (data: Result<E, A>): Result<E, A | B> =>
 			isErr(data) && !isBlocked(data.error) ? fallback() : data;
 
-	/**
-	 * Converts a Result to a Maybe.
-	 * Ok becomes Some, Err becomes None (the error is discarded).
-	 *
-	 * @example
-	 * ```ts
-	 * Result.toMaybe(Result.ok(42)); // Some(42)
-	 * Result.toMaybe(Result.err("oops")); // None
-	 * ```
-	 */
-	export const toMaybe = <E, A>(data: Result<E, A>): Maybe<A> => isOk(data) ? Maybe.some(data.value) : Maybe.none();
+	// --- to ---
+	export namespace to {
+		/**
+		 * Converts a Result to a Maybe.
+		 * Ok becomes Some, Err becomes None (the error is discarded).
+		 *
+		 * @example
+		 * ```ts
+		 * Result.to.Maybe(Result.ok(42)); // Some(42)
+		 * Result.to.Maybe(Result.err("oops")); // None
+		 * ```
+		 */
+		export const Maybe = <E, A>(data: Result<E, A>): Maybe<A> =>
+			isOk(data) ? CoreMaybe.some(data.value) : CoreMaybe.none();
+	}
 
 	/**
 	 * Applies a function wrapped in a Result to a value wrapped in a Result.

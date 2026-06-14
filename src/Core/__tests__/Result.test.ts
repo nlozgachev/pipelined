@@ -325,12 +325,12 @@ test("Result.ap returns first Err when both are Err", () => {
 // ---------------------------------------------------------------------------
 
 test("Result.toMaybe converts Ok to Some", () => {
-	const result = Result.toMaybe(Result.ok(42));
+	const result = Result.to.Maybe(Result.ok(42));
 	expect(result).toStrictEqual({ kind: "Some", value: 42 });
 });
 
 test("Result.toMaybe converts Err to None", () => {
-	const result = Result.toMaybe(Result.err("oops"));
+	const result = Result.to.Maybe(Result.err("oops"));
 	expect(result).toStrictEqual({ kind: "None" });
 });
 
@@ -398,23 +398,23 @@ test("Result.tapError returns original Ok unchanged", () => {
 // ---------------------------------------------------------------------------
 
 test("Result.fromPredicate returns Ok when predicate passes", () => {
-	expect(pipe(5, Result.fromPredicate((n) => n > 0, (n) => `${n} is not positive`))).toStrictEqual(Result.ok(5));
+	expect(pipe(5, Result.from.Predicate((n) => n > 0, (n) => `${n} is not positive`))).toStrictEqual(Result.ok(5));
 });
 
 test("Result.fromPredicate returns Err when predicate fails", () => {
-	expect(pipe(-1, Result.fromPredicate((n) => n > 0, (n) => `${n} is not positive`))).toStrictEqual(
+	expect(pipe(-1, Result.from.Predicate((n) => n > 0, (n) => `${n} is not positive`))).toStrictEqual(
 		Result.err("-1 is not positive"),
 	);
 });
 
 test("Result.fromPredicate returns Err for boundary value", () => {
-	expect(pipe(0, Result.fromPredicate((n) => n > 0, () => "must be positive"))).toStrictEqual(
+	expect(pipe(0, Result.from.Predicate((n) => n > 0, () => "must be positive"))).toStrictEqual(
 		Result.err("must be positive"),
 	);
 });
 
 test("Result.fromPredicate works with string predicates", () => {
-	const nonEmpty = Result.fromPredicate((s: string) => s.length > 0, () => "empty string");
+	const nonEmpty = Result.from.Predicate((s: string) => s.length > 0, () => "empty string");
 	expect(pipe("hi", nonEmpty)).toStrictEqual(Result.ok("hi"));
 	expect(pipe("", nonEmpty)).toStrictEqual(Result.err("empty string"));
 });
@@ -422,7 +422,7 @@ test("Result.fromPredicate works with string predicates", () => {
 test("Result.fromPredicate composes in pipe with chain", () => {
 	const result = pipe(
 		-5,
-		Result.fromPredicate((n: number) => n >= 0, (n) => `${n} is negative`),
+		Result.from.Predicate((n: number) => n >= 0, (n) => `${n} is negative`),
 		Result.map((n) => n * 2),
 	);
 	expect(result).toStrictEqual(Result.err("-5 is negative"));
@@ -463,41 +463,41 @@ test("Result.fold — type-safe return type from both branches", () => {
 // --- fromNullable ---
 
 test("Result.fromNullable returns Ok for non-null values", () => {
-	const result = Result.fromNullable(() => "is null")(42);
+	const result = Result.from.Nullable(() => "is null")(42);
 	expect(result).toStrictEqual(Result.ok(42));
 });
 
 test("Result.fromNullable returns Err for null", () => {
-	const result = Result.fromNullable(() => "is null")(null);
+	const result = Result.from.Nullable(() => "is null")(null);
 	expect(result).toStrictEqual(Result.err("is null"));
 });
 
 test("Result.fromNullable returns Err for undefined", () => {
-	const result = Result.fromNullable(() => "is null")(undefined);
+	const result = Result.from.Nullable(() => "is null")(undefined);
 	expect(result).toStrictEqual(Result.err("is null"));
 });
 
 // --- fromMaybe ---
 
 test("Result.fromMaybe returns Ok for Some", () => {
-	const result = Result.fromMaybe(() => "is none")(Maybe.some(42));
+	const result = Result.from.Maybe(() => "is none")(Maybe.some(42));
 	expect(result).toStrictEqual(Result.ok(42));
 });
 
 test("Result.fromMaybe returns Err for None", () => {
-	const result = Result.fromMaybe(() => "is none")(Maybe.none());
+	const result = Result.from.Maybe(() => "is none")(Maybe.none());
 	expect(result).toStrictEqual(Result.err("is none"));
 });
 
 // --- fromThrowable ---
 
 test("Result.fromThrowable creates a safe function that returns Ok when it succeeds", () => {
-	const parse = Result.fromThrowable((s: string) => JSON.parse(s), (e) => `error: ${(e as Error).message}`);
+	const parse = Result.from.Throwable((s: string) => JSON.parse(s), (e) => `error: ${(e as Error).message}`);
 	expect(parse('{"a":1}')).toStrictEqual(Result.ok({ a: 1 }));
 });
 
 test("Result.fromThrowable creates a safe function that returns Err when it throws", () => {
-	const parse = Result.fromThrowable((s: string) => JSON.parse(s), () => "parse error");
+	const parse = Result.from.Throwable((s: string) => JSON.parse(s), () => "parse error");
 	expect(parse("invalid")).toStrictEqual(Result.err("parse error"));
 });
 
@@ -554,7 +554,7 @@ test("Result.struct composes in a pipe pipeline", () => {
 		Result.chain((name) =>
 			Result.struct({
 				name: Result.ok(name),
-				valid: Result.fromPredicate((n: string) => n.length > 0, () => "invalid")(name),
+				valid: Result.from.Predicate((n: string) => n.length > 0, () => "invalid")(name),
 			})
 		),
 	);

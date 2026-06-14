@@ -118,13 +118,13 @@ test("Validation.recover — identity on Valid", () => {
 
 test("Validation.fromPredicate — always-true gives Valid with original value", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
-		expect(Validation.fromPredicate((_: number) => true, () => "bad")(n)).toStrictEqual(Validation.passed(n));
+		expect(Validation.from.Predicate((_: number) => true, () => "bad")(n)).toStrictEqual(Validation.passed(n));
 	}));
 });
 
 test("Validation.fromPredicate — always-false gives Invalid via onFalse", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
-		const result = Validation.fromPredicate((_: number) => false, (x) => `bad:${x}`)(n);
+		const result = Validation.from.Predicate((_: number) => false, (x) => `bad:${x}`)(n);
 		expect(Validation.isFailed(result)).toBe(true);
 		const invalid = result as unknown as { errors: string[]; };
 		expect(invalid.errors[0]).toBe(`bad:${n}`);

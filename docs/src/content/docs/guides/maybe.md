@@ -98,7 +98,7 @@ const empty = Maybe.none(); // Maybe<never>
 
 In practice, you will rarely write `some` or `none` manually. Instead, you will ingest values coming
 from external interfaces — such as third-party libraries, DOM elements, or API payloads — which use
-`null` or `undefined`. For this, we use `fromNullable`:
+`null` or `undefined`. For this, we use `from.Nullable`:
 
 ```ts
 interface AppConfig {
@@ -107,7 +107,7 @@ interface AppConfig {
 
 const config: AppConfig = {};
 
-const theme = Maybe.fromNullable(config.theme); // None
+const theme = Maybe.from.Nullable(config.theme); // None
 ```
 
 ---
@@ -141,7 +141,7 @@ interface User {
 
 const getAvatarFilename = (user: User): Maybe<string> =>
   pipe(
-    Maybe.fromNullable(user.profile),
+    Maybe.from.Nullable(user.profile),
     Maybe.map((p) => p.avatarUrl),
     Maybe.map((url) => url.split("/").pop()),
   );
@@ -301,8 +301,8 @@ For this, we use `recover`. It takes a function that returns another `Maybe` whe
 ```ts
 const getTheme = (userId: string): Maybe<string> =>
   pipe(
-    Maybe.fromNullable(cache.get(`theme:${userId}`)),
-    Maybe.recover(() => Maybe.fromNullable(db.get(`theme:${userId}`))),
+    Maybe.from.Nullable(cache.get(`theme:${userId}`)),
+    Maybe.recover(() => Maybe.from.Nullable(db.get(`theme:${userId}`))),
     Maybe.getOrElse(() => "light"),
   );
 ```
@@ -317,7 +317,7 @@ the database lookup. Only if both fail do we settle for the fallback value `"lig
 A `Maybe` represents absence but does not tell you *why* the value is missing. Sometimes, absence is
 an error, and we need to attach a reason to it.
 
-We can transition from a `Maybe` to a `Result` using `toResult`. We provide a thunk that generates
+We can transition from a `Maybe` to a `Result` using `to.Result`. We provide a thunk that generates
 an error value if the `Maybe` is a `None`:
 
 ```ts
@@ -326,21 +326,21 @@ import { Result } from "@nlozgachev/pipelined/core";
 const parseEmail = (email: string): Maybe<string> =>
   pipe(
     email,
-    Maybe.fromPredicate((e) => e.includes("@")),
+    Maybe.from.Predicate((e) => e.includes("@")),
   );
 
 const signup = (rawEmail: string) =>
   pipe(
     parseEmail(rawEmail),
-    Maybe.toResult(() => "Email address must contain an '@' symbol"),
+    Maybe.to.Result(() => "Email address must contain an '@' symbol"),
   ); // Result<string, string>
 ```
 
 Conversely, if we have a `Result` and want to discard the error context, we can downgrade it to a
-`Maybe` using `fromResult`:
+`Maybe` using `from.Result`:
 
 ```ts
-const maybeValue = Maybe.fromResult(Result.err("An error occurred")); // None
+const maybeValue = Maybe.from.Result(Result.err("An error occurred")); // None
 ```
 
 ---
@@ -354,7 +354,7 @@ clean offset index.
 ```ts
 const getPageOffset = (rawOffset: string | undefined, pageSize: number): number =>
   pipe(
-    Maybe.fromNullable(rawOffset),                     // Maybe<string>
+    Maybe.from.Nullable(rawOffset),                     // Maybe<string>
     Maybe.chain(parseInteger),                         // Maybe<number>
     Maybe.filter((offset) => offset >= 0),             // Maybe<number>
     Maybe.map((offset) => offset * pageSize),          // Maybe<number>

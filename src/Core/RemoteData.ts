@@ -1,4 +1,4 @@
-import { Maybe, Result } from "#core";
+import { type Maybe, Maybe as CoreMaybe, type Result, Result as CoreResult } from "#core";
 import type { WithError, WithKind, WithValue } from "#internal";
 
 /**
@@ -260,54 +260,60 @@ export namespace RemoteData {
 		<E, A, B>(fallback: (e: E) => RemoteData<E, B>) => (data: RemoteData<E, A>): RemoteData<E, A | B> =>
 			isFailure(data) ? fallback(data.error) : data;
 
-	/**
-	 * Converts a RemoteData to a Maybe.
-	 * Success becomes Some, all other states become None.
-	 */
-	export const toMaybe = <E, A>(data: RemoteData<E, A>): Maybe<A> =>
-		isSuccess(data) ? Maybe.some(data.value) : Maybe.none();
+	// --- to ---
+	export namespace to {
+		/**
+		 * Converts a RemoteData to a Maybe.
+		 * Success becomes Some, all other states become None.
+		 */
+		export const Maybe = <E, A>(data: RemoteData<E, A>): Maybe<A> =>
+			isSuccess(data) ? CoreMaybe.some(data.value) : CoreMaybe.none();
 
-	/**
-	 * Converts a RemoteData to a Result.
-	 * Success becomes Ok, Failure becomes Err.
-	 * NotAsked and Loading become Err with the provided fallback error.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   RemoteData.success(42),
-	 *   RemoteData.toResult(() => "not loaded")
-	 * ); // Ok(42)
-	 * ```
-	 */
-	export const toResult = <E>(onNotReady: () => E) => <A>(data: RemoteData<E, A>): Result<E, A> =>
-		isSuccess(data) ? Result.ok(data.value) : Result.err(isFailure(data) ? data.error : onNotReady());
+		/**
+		 * Converts a RemoteData to a Result.
+		 * Success becomes Ok, Failure becomes Err.
+		 * NotAsked and Loading become Err with the provided fallback error.
+		 *
+		 * @example
+		 * ```ts
+		 * pipe(
+		 *   RemoteData.success(42),
+		 *   RemoteData.to.Result(() => "not loaded")
+		 * ); // Ok(42)
+		 * ```
+		 */
+		export const Result = <E>(onNotReady: () => E) => <A>(data: RemoteData<E, A>): Result<E, A> =>
+			isSuccess(data) ? CoreResult.ok(data.value) : CoreResult.err(isFailure(data) ? data.error : onNotReady());
+	}
 
-	/**
-	 * Converts a Result to a RemoteData.
-	 * Ok becomes Success, Err becomes Failure.
-	 *
-	 * @example
-	 * ```ts
-	 * const result = await Task.Result.tryCatch(fetchUser, String)();
-	 * setState(RemoteData.fromResult(result)); // Success(user) or Failure(msg)
-	 * ```
-	 */
-	export const fromResult = <E, A>(data: Result<E, A>): RemoteData<E, A> =>
-		Result.isOk(data) ? success(data.value) : failure(data.error);
+	// --- from ---
+	export namespace from {
+		/**
+		 * Converts a Result to a RemoteData.
+		 * Ok becomes Success, Err becomes Failure.
+		 *
+		 * @example
+		 * ```ts
+		 * const result = await Task.Result.tryCatch(fetchUser, String)();
+		 * setState(RemoteData.from.Result(result)); // Success(user) or Failure(msg)
+		 * ```
+		 */
+		export const Result = <E, A>(data: Result<E, A>): RemoteData<E, A> =>
+			CoreResult.isOk(data) ? success(data.value) : failure(data.error);
 
-	/**
-	 * Converts a Maybe to a RemoteData.
-	 * Some becomes Success, None becomes Failure using the onNone error producer.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(Maybe.some(user), RemoteData.fromMaybe(() => "not found")); // Success(user)
-	 * pipe(Maybe.none(), RemoteData.fromMaybe(() => "not found"));     // Failure("not found")
-	 * ```
-	 */
-	export const fromMaybe = <E>(onNone: () => E) => <A>(data: Maybe<A>): RemoteData<E, A> =>
-		Maybe.isSome(data) ? success(data.value) : failure(onNone());
+		/**
+		 * Converts a Maybe to a RemoteData.
+		 * Some becomes Success, None becomes Failure using the onNone error producer.
+		 *
+		 * @example
+		 * ```ts
+		 * pipe(Maybe.some(user), RemoteData.from.Maybe(() => "not found")); // Success(user)
+		 * pipe(Maybe.none(), RemoteData.from.Maybe(() => "not found"));     // Failure("not found")
+		 * ```
+		 */
+		export const Maybe = <E>(onNone: () => E) => <A>(data: Maybe<A>): RemoteData<E, A> =>
+			CoreMaybe.isSome(data) ? success(data.value) : failure(onNone());
+	}
 
 	/**
 	 * Filters a `Success` value. When the predicate passes, the value is kept. When it fails,

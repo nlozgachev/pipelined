@@ -135,13 +135,13 @@ test("Result.recover — identity on Ok", () => {
 
 test("Result.fromPredicate — always-true gives Ok with original value", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
-		expect(Result.fromPredicate((_: number) => true, () => "bad")(n)).toStrictEqual(Result.ok(n));
+		expect(Result.from.Predicate((_: number) => true, () => "bad")(n)).toStrictEqual(Result.ok(n));
 	}));
 });
 
 test("Result.fromPredicate — always-false gives Error via onFalse", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
-		expect(Result.fromPredicate((_: number) => false, (x) => `bad:${x}`)(n)).toStrictEqual(Result.err(`bad:${n}`));
+		expect(Result.from.Predicate((_: number) => false, (x) => `bad:${x}`)(n)).toStrictEqual(Result.err(`bad:${n}`));
 	}));
 });
 
@@ -152,12 +152,12 @@ test("Result.fromPredicate — always-false gives Error via onFalse", () => {
 test("Result.toMaybe — Ok maps to Some", () => {
 	fc.assert(fc.property(arbOk, (r) => {
 		const o = r as Ok<number>;
-		expect(Result.toMaybe(r)).toStrictEqual(Maybe.some(o.value));
+		expect(Result.to.Maybe(r)).toStrictEqual(Maybe.some(o.value));
 	}));
 });
 
 test("Result.toMaybe — Error maps to None", () => {
 	fc.assert(fc.property(arbErr, (r) => {
-		expect(Result.toMaybe(r)).toStrictEqual(Maybe.none());
+		expect(Result.to.Maybe(r)).toStrictEqual(Maybe.none());
 	}));
 });

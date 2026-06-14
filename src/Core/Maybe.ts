@@ -1,4 +1,4 @@
-import { Result } from "#core";
+import { type Result, Result as CoreResult } from "#core";
 import { WithKind, WithValue } from "#internal";
 
 /**
@@ -44,75 +44,81 @@ export namespace Maybe {
 	 */
 	export const isNone = <A>(data: Maybe<A>): data is None => data.kind === "None";
 
-	/**
-	 * Creates a Maybe from a nullable value.
-	 * Returns None if the value is null or undefined, Some otherwise.
-	 *
-	 * @example
-	 * ```ts
-	 * Maybe.fromNullable(null); // None
-	 * Maybe.fromNullable(42); // Some(42)
-	 * ```
-	 */
-	export const fromNullable = <A>(value: A | null | undefined): Maybe<A> =>
-		value === null || value === undefined ? none() : some(value);
+	// --- to ---
+	export namespace to {
+		/**
+		 * Extracts the value from a Maybe, returning null if None.
+		 */
+		export const Nullable = <A>(data: Maybe<A>): A | null => isSome(data) ? data.value : null;
 
-	/**
-	 * Extracts the value from a Maybe, returning null if None.
-	 */
-	export const toNullable = <A>(data: Maybe<A>): A | null => isSome(data) ? data.value : null;
+		/**
+		 * Extracts the value from a Maybe, returning undefined if None.
+		 */
+		export const Undefined = <A>(data: Maybe<A>): A | undefined => isSome(data) ? data.value : undefined;
 
-	/**
-	 * Extracts the value from a Maybe, returning undefined if None.
-	 */
-	export const toUndefined = <A>(data: Maybe<A>): A | undefined => isSome(data) ? data.value : undefined;
+		/**
+		 * Converts a Maybe to a Result.
+		 * Some becomes Ok, None becomes Err with the provided error.
+		 *
+		 * @example
+		 * ```ts
+		 * pipe(
+		 *   Maybe.some(42),
+		 *   Maybe.to.Result(() => "Value was missing")
+		 * ); // Ok(42)
+		 *
+		 * pipe(
+		 *   Maybe.none(),
+		 *   Maybe.to.Result(() => "Value was missing")
+		 * ); // Err("Value was missing")
+		 * ```
+		 */
+		export const Result = <E>(onNone: () => E) => <A>(data: Maybe<A>): Result<E, A> =>
+			isSome(data) ? CoreResult.ok(data.value) : CoreResult.err(onNone());
+	}
 
-	/**
-	 * Creates a Maybe from a predicate applied to a value.
-	 * Returns Some if the predicate passes, None otherwise.
-	 *
-	 * @example
-	 * ```ts
-	 * Maybe.fromPredicate((n: number) => n >= 18)(21); // Some(21)
-	 * Maybe.fromPredicate((n: number) => n >= 18)(15); // None
-	 *
-	 * pipe("hello", Maybe.fromPredicate((s: string) => s.length > 0)); // Some("hello")
-	 * pipe("", Maybe.fromPredicate((s: string) => s.length > 0));      // None
-	 * ```
-	 */
-	export const fromPredicate = <A>(pred: (a: A) => boolean) => (a: A): Maybe<A> => pred(a) ? some(a) : none();
+	// --- from ---
+	export namespace from {
+		/**
+		 * Creates a Maybe from a nullable value.
+		 * Returns None if the value is null or undefined, Some otherwise.
+		 *
+		 * @example
+		 * ```ts
+		 * Maybe.from.Nullable(null); // None
+		 * Maybe.from.Nullable(42); // Some(42)
+		 * ```
+		 */
+		export const Nullable = <A>(value: A | null | undefined): Maybe<A> =>
+			value === null || value === undefined ? none() : some(value);
 
-	/**
-	 * Converts a Maybe to a Result.
-	 * Some becomes Ok, None becomes Err with the provided error.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   Maybe.some(42),
-	 *   Maybe.toResult(() => "Value was missing")
-	 * ); // Ok(42)
-	 *
-	 * pipe(
-	 *   Maybe.none(),
-	 *   Maybe.toResult(() => "Value was missing")
-	 * ); // Err("Value was missing")
-	 * ```
-	 */
-	export const toResult = <E>(onNone: () => E) => <A>(data: Maybe<A>): Result<E, A> =>
-		isSome(data) ? Result.ok(data.value) : Result.err(onNone());
+		/**
+		 * Creates a Maybe from a predicate applied to a value.
+		 * Returns Some if the predicate passes, None otherwise.
+		 *
+		 * @example
+		 * ```ts
+		 * Maybe.from.Predicate((n: number) => n >= 18)(21); // Some(21)
+		 * Maybe.from.Predicate((n: number) => n >= 18)(15); // None
+		 *
+		 * pipe("hello", Maybe.from.Predicate((s: string) => s.length > 0)); // Some("hello")
+		 * pipe("", Maybe.from.Predicate((s: string) => s.length > 0));      // None
+		 * ```
+		 */
+		export const Predicate = <A>(pred: (a: A) => boolean) => (a: A): Maybe<A> => pred(a) ? some(a) : none();
 
-	/**
-	 * Creates a Maybe from a Result.
-	 * Ok becomes Some, Err becomes None (the error is discarded).
-	 *
-	 * @example
-	 * ```ts
-	 * Maybe.fromResult(Result.ok(42)); // Some(42)
-	 * Maybe.fromResult(Result.err("oops")); // None
-	 * ```
-	 */
-	export const fromResult = <E, A>(data: Result<E, A>): Maybe<A> => Result.isOk(data) ? some(data.value) : none();
+		/**
+		 * Creates a Maybe from a Result.
+		 * Ok becomes Some, Err becomes None (the error is discarded).
+		 *
+		 * @example
+		 * ```ts
+		 * Maybe.from.Result(Result.ok(42)); // Some(42)
+		 * Maybe.from.Result(Result.err("oops")); // None
+		 * ```
+		 */
+		export const Result = <E, A>(data: Result<E, A>): Maybe<A> => CoreResult.isOk(data) ? some(data.value) : none();
+	}
 
 	/**
 	 * Transforms the value inside a Maybe if it exists.

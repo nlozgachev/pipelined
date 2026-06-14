@@ -52,29 +52,29 @@ test("Validation.failed creates an Invalid from a single error", () => {
 // ---------------------------------------------------------------------------
 
 test("Validation.fromPredicate returns Valid when predicate passes", () => {
-	expect(pipe("Alice", Validation.fromPredicate((s) => s.length > 0, () => "required"))).toStrictEqual({
+	expect(pipe("Alice", Validation.from.Predicate((s) => s.length > 0, () => "required"))).toStrictEqual({
 		kind: "Passed",
 		value: "Alice",
 	});
 });
 
 test("Validation.fromPredicate returns Invalid when predicate fails", () => {
-	expect(pipe("", Validation.fromPredicate((s) => s.length > 0, () => "required"))).toStrictEqual({
+	expect(pipe("", Validation.from.Predicate((s) => s.length > 0, () => "required"))).toStrictEqual({
 		kind: "Failed",
 		errors: ["required"],
 	});
 });
 
 test("Validation.fromPredicate passes the value to onFalse", () => {
-	expect(pipe(-1, Validation.fromPredicate((n) => n >= 0, (n) => `${n} is negative`))).toStrictEqual({
+	expect(pipe(-1, Validation.from.Predicate((n) => n >= 0, (n) => `${n} is negative`))).toStrictEqual({
 		kind: "Failed",
 		errors: ["-1 is negative"],
 	});
 });
 
 test("Validation.fromPredicate composes with ap for multi-field validation", () => {
-	const validateName = Validation.fromPredicate((s: string) => s.length > 0, () => "Name required");
-	const validateAge = Validation.fromPredicate((n: number) => n >= 0, () => "Age invalid");
+	const validateName = Validation.from.Predicate((s: string) => s.length > 0, () => "Name required");
+	const validateAge = Validation.from.Predicate((n: number) => n >= 0, () => "Age invalid");
 	const result = pipe(
 		Validation.passed<string, (name: string) => (age: number) => { name: string; age: number; }>(
 			(name: string) => (age: number) => ({ name, age })
@@ -510,15 +510,15 @@ test("Validation.productAll with single element returns singleton array", () => 
 // ---------------------------------------------------------------------------
 
 test("Validation.toResult converts Valid to Ok", () => {
-	expect(Validation.toResult(Validation.passed(42))).toStrictEqual({ kind: "Ok", value: 42 });
+	expect(Validation.to.Result(Validation.passed(42))).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
 test("Validation.toResult converts Invalid to Err with error list", () => {
-	expect(Validation.toResult(Validation.failed("oops"))).toStrictEqual({ kind: "Err", error: ["oops"] });
+	expect(Validation.to.Result(Validation.failed("oops"))).toStrictEqual({ kind: "Err", error: ["oops"] });
 });
 
 test("Validation.toResult preserves all accumulated errors in Err", () => {
-	expect(Validation.toResult(Validation.failedAll(["a", "b", "c"]))).toStrictEqual({
+	expect(Validation.to.Result(Validation.failedAll(["a", "b", "c"]))).toStrictEqual({
 		kind: "Err",
 		error: ["a", "b", "c"],
 	});
@@ -529,15 +529,15 @@ test("Validation.toResult preserves all accumulated errors in Err", () => {
 // ---------------------------------------------------------------------------
 
 test("Validation.toMaybe converts Valid to Some", () => {
-	expect(Validation.toMaybe(Validation.passed(42))).toStrictEqual({ kind: "Some", value: 42 });
+	expect(Validation.to.Maybe(Validation.passed(42))).toStrictEqual({ kind: "Some", value: 42 });
 });
 
 test("Validation.toMaybe converts Invalid to None", () => {
-	expect(Validation.toMaybe(Validation.failed("oops"))).toStrictEqual({ kind: "None" });
+	expect(Validation.to.Maybe(Validation.failed("oops"))).toStrictEqual({ kind: "None" });
 });
 
 test("Validation.toMaybe discards all errors on Invalid", () => {
-	expect(Validation.toMaybe(Validation.failedAll(["a", "b"]))).toStrictEqual({ kind: "None" });
+	expect(Validation.to.Maybe(Validation.failedAll(["a", "b"]))).toStrictEqual({ kind: "None" });
 });
 
 // ---------------------------------------------------------------------------
@@ -545,11 +545,11 @@ test("Validation.toMaybe discards all errors on Invalid", () => {
 // ---------------------------------------------------------------------------
 
 test("Validation.fromResult converts Ok to Valid", () => {
-	expect(Validation.fromResult(Result.ok(42))).toStrictEqual({ kind: "Passed", value: 42 });
+	expect(Validation.from.Result(Result.ok(42))).toStrictEqual({ kind: "Passed", value: 42 });
 });
 
 test("Validation.fromResult converts Err to Invalid with single-element error list", () => {
-	expect(Validation.fromResult(Result.err("bad"))).toStrictEqual({ kind: "Failed", errors: ["bad"] });
+	expect(Validation.from.Result(Result.err("bad"))).toStrictEqual({ kind: "Failed", errors: ["bad"] });
 });
 
 // ---------------------------------------------------------------------------
@@ -600,29 +600,29 @@ test("Validation.fold — return type matches branch return types", () => {
 // --- fromNullable ---
 
 test("Validation.fromNullable returns Valid for non-null values", () => {
-	const result = Validation.fromNullable(() => "is null")(42);
+	const result = Validation.from.Nullable(() => "is null")(42);
 	expect(result).toStrictEqual(Validation.passed(42));
 });
 
 test("Validation.fromNullable returns Invalid for null", () => {
-	const result = Validation.fromNullable(() => "is null")(null);
+	const result = Validation.from.Nullable(() => "is null")(null);
 	expect(result).toStrictEqual(Validation.failed("is null"));
 });
 
 test("Validation.fromNullable returns Invalid for undefined", () => {
-	const result = Validation.fromNullable(() => "is null")(undefined);
+	const result = Validation.from.Nullable(() => "is null")(undefined);
 	expect(result).toStrictEqual(Validation.failed("is null"));
 });
 
 // --- fromMaybe ---
 
 test("Validation.fromMaybe returns Valid for Some", () => {
-	const result = Validation.fromMaybe(() => "is none")(Maybe.some(42));
+	const result = Validation.from.Maybe(() => "is none")(Maybe.some(42));
 	expect(result).toStrictEqual(Validation.passed(42));
 });
 
 test("Validation.fromMaybe returns Invalid for None", () => {
-	const result = Validation.fromMaybe(() => "is none")(Maybe.none());
+	const result = Validation.from.Maybe(() => "is none")(Maybe.none());
 	expect(result).toStrictEqual(Validation.failed("is none"));
 });
 
@@ -650,7 +650,7 @@ test("Validation.struct composes in a pipe pipeline", () => {
 			passed: (name) =>
 				Validation.struct({
 					name: Validation.passed(name),
-					valid: Validation.fromPredicate((n: string) => n.length > 0, () => "invalid")(name),
+					valid: Validation.from.Predicate((n: string) => n.length > 0, () => "invalid")(name),
 				}),
 			failed: (errs) => Validation.failedAll(errs),
 		}),

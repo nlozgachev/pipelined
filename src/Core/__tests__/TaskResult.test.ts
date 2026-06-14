@@ -509,54 +509,54 @@ test("Task.Result.run passes the signal to the task", async () => {
 // --- fromNullable ---
 
 test("Task.Result.fromNullable returns Ok for non-null value", async () => {
-	const result = await Task.Result.fromNullable(() => "is null")(42)();
+	const result = await Task.Result.from.Nullable(() => "is null")(42)();
 	expect(result).toStrictEqual(Result.ok(42));
 });
 
 test("Task.Result.fromNullable returns Err for null", async () => {
-	const result = await Task.Result.fromNullable(() => "is null")(null)();
+	const result = await Task.Result.from.Nullable(() => "is null")(null)();
 	expect(result).toStrictEqual(Result.err("is null"));
 });
 
 test("Task.Result.fromNullable returns Err for undefined", async () => {
-	const result = await Task.Result.fromNullable(() => "is null")(undefined)();
+	const result = await Task.Result.from.Nullable(() => "is null")(undefined)();
 	expect(result).toStrictEqual(Result.err("is null"));
 });
 
 // --- fromMaybe ---
 
 test("Task.Result.fromMaybe returns Ok for Some", async () => {
-	const result = await Task.Result.fromMaybe(() => "is none")(Maybe.some(42))();
+	const result = await Task.Result.from.Maybe(() => "is none")(Maybe.some(42))();
 	expect(result).toStrictEqual(Result.ok(42));
 });
 
 test("Task.Result.fromMaybe returns Err for None", async () => {
-	const result = await Task.Result.fromMaybe(() => "is none")(Maybe.none())();
+	const result = await Task.Result.from.Maybe(() => "is none")(Maybe.none())();
 	expect(result).toStrictEqual(Result.err("is none"));
 });
 
 // --- fromResult ---
 
 test("Task.Result.fromResult returns Ok for Ok", async () => {
-	const result = await Task.Result.fromResult(Result.ok(42))();
+	const result = await Task.Result.from.Result(Result.ok(42))();
 	expect(result).toStrictEqual(Result.ok(42));
 });
 
 test("Task.Result.fromResult returns Err for Err", async () => {
-	const result = await Task.Result.fromResult(Result.err("bad"))();
+	const result = await Task.Result.from.Result(Result.err("bad"))();
 	expect(result).toStrictEqual(Result.err("bad"));
 });
 
 // --- fromThrowable ---
 
 test("Task.Result.fromThrowable returns Ok when it succeeds", async () => {
-	const parse = Task.Result.fromThrowable((s: string) => Promise.resolve(JSON.parse(s)), () => "parse error");
+	const parse = Task.Result.from.Throwable((s: string) => Promise.resolve(JSON.parse(s)), () => "parse error");
 	const result = await parse('{"a":1}')();
 	expect(result).toStrictEqual(Result.ok({ a: 1 }));
 });
 
 test("Task.Result.fromThrowable returns Err when it throws", async () => {
-	const fetch = Task.Result.fromThrowable(
+	const fetch = Task.Result.from.Throwable(
 		(_url: string) => Promise.reject(new Error("network error")),
 		(e) => (e as Error).message,
 	);
@@ -654,7 +654,7 @@ test("Task.Result.struct composes in a pipe pipeline", async () => {
 		Task.Result.chain((name) =>
 			Task.Result.struct({
 				name: Task.Result.ok<string, string>(name),
-				valid: Task.Result.fromResult(Result.fromPredicate((n: string) => n.length > 0, () => "invalid")(name)),
+				valid: Task.Result.from.Result(Result.from.Predicate((n: string) => n.length > 0, () => "invalid")(name)),
 			})
 		),
 	)();

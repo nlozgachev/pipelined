@@ -1,4 +1,13 @@
-import { Deferred, Maybe, Result, Task, Validation } from "#core";
+import {
+	Deferred,
+	type Maybe,
+	Maybe as CoreMaybe,
+	type Result,
+	type Task,
+	Task as CoreTask,
+	type Validation,
+	Validation as CoreValidation,
+} from "#core";
 import { isNonEmptyArr, type NonEmptyArr, type Thenable } from "#internal";
 
 /**
@@ -28,45 +37,50 @@ export namespace TaskValidation {
 	/**
 	 * Wraps a value in a passed Task.Validation.
 	 */
-	export const passed = <E, A>(value: A): TaskValidation<E, A> => Task.resolve(Validation.passed(value));
+	export const passed = <E, A>(value: A): TaskValidation<E, A> => CoreTask.resolve(CoreValidation.passed(value));
 
 	/**
 	 * Creates a failed Task.Validation with a single error.
 	 */
-	export const failed = <E, A>(error: E): TaskValidation<E, A> => Task.resolve(Validation.failed(error));
+	export const failed = <E, A>(error: E): TaskValidation<E, A> => CoreTask.resolve(CoreValidation.failed(error));
 
 	/**
 	 * Creates a failed Task.Validation from multiple errors.
 	 */
 	export const failedAll = <E, A>(errors: NonEmptyArr<E>): TaskValidation<E, A> =>
-		Task.resolve(Validation.failedAll(errors));
+		CoreTask.resolve(CoreValidation.failedAll(errors));
 
-	/**
-	 * Lifts a Validation into a Task.Validation.
-	 */
-	export const fromValidation = <E, A>(validation: Validation<E, A>): TaskValidation<E, A> => Task.resolve(validation);
+	// --- from ---
+	export namespace from {
+		/**
+		 * Lifts a Validation into a Task.Validation.
+		 */
+		export const Validation = <E, A>(validation: Validation<E, A>): TaskValidation<E, A> => CoreTask.resolve(validation);
 
-	/**
-	 * Creates a Task.Validation from a nullable value.
-	 * If the value is null or undefined, returns Failed with the error from onNull.
-	 * Otherwise, returns Passed.
-	 */
-	export const fromNullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskValidation<E, A> =>
-		Task.resolve(value === null || value === undefined ? Validation.failed(onNull()) : Validation.passed(value));
+		/**
+		 * Creates a Task.Validation from a nullable value.
+		 * If the value is null or undefined, returns Failed with the error from onNull.
+		 * Otherwise, returns Passed.
+		 */
+		export const Nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskValidation<E, A> =>
+			CoreTask.resolve(
+				value === null || value === undefined ? CoreValidation.failed(onNull()) : CoreValidation.passed(value),
+			);
 
-	/**
-	 * Creates a Task.Validation from a Maybe.
-	 * Some becomes Passed, None becomes Failed with the error from onNone.
-	 */
-	export const fromMaybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): TaskValidation<E, A> =>
-		Task.resolve(Maybe.isNone(maybe) ? Validation.failed(onNone()) : Validation.passed(maybe.value));
+		/**
+		 * Creates a Task.Validation from a Maybe.
+		 * Some becomes Passed, None becomes Failed with the error from onNone.
+		 */
+		export const Maybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): TaskValidation<E, A> =>
+			CoreTask.resolve(CoreMaybe.isNone(maybe) ? CoreValidation.failed(onNone()) : CoreValidation.passed(maybe.value));
 
-	/**
-	 * Creates a Task.Validation from a Result.
-	 * Ok becomes Passed, Err(e) becomes Failed([e]).
-	 */
-	export const fromResult = <E, A>(result: Result<E, A>): TaskValidation<E, A> =>
-		Task.resolve(Validation.fromResult(result));
+		/**
+		 * Creates a Task.Validation from a Result.
+		 * Ok becomes Passed, Err(e) becomes Failed([e]).
+		 */
+		export const Result = <E, A>(result: Result<E, A>): TaskValidation<E, A> =>
+			CoreTask.resolve(CoreValidation.from.Result(result));
+	}
 
 	/**
 	 * Creates a Task.Validation from a Promise-returning function.
@@ -86,15 +100,15 @@ export namespace TaskValidation {
 		f: (signal?: AbortSignal) => Thenable<A>,
 		onError: (e: unknown) => E,
 	): TaskValidation<E, A> =>
-		Task.from((signal) =>
-			Promise.resolve(f(signal)).then(Validation.passed<E, A>).catch((error) => Validation.failed(onError(error)))
+		CoreTask.from((signal) =>
+			Promise.resolve(f(signal)).then(CoreValidation.passed<E, A>).catch((error) => CoreValidation.failed(onError(error)))
 		);
 
 	/**
 	 * Transforms the success value inside a Task.Validation.
 	 */
 	export const map = <E, A, B>(f: (a: A) => B) => (data: TaskValidation<E, A>): TaskValidation<E, B> =>
-		Task.map(Validation.map<A, B>(f))(data);
+		CoreTask.map(CoreValidation.map<A, B>(f))(data);
 
 	/**
 	 * Applies a function wrapped in a Task.Validation to a value wrapped in a
@@ -112,9 +126,9 @@ export namespace TaskValidation {
 	 */
 	export const ap =
 		<E, A>(arg: TaskValidation<E, A>) => <B>(data: TaskValidation<E, (a: A) => B>): TaskValidation<E, B> =>
-			Task.from((signal) =>
+			CoreTask.from((signal) =>
 				Promise.all([Deferred.toPromise(data(signal)), Deferred.toPromise(arg(signal))]).then(([vf, va]) =>
-					Validation.ap(va)(vf)
+					CoreValidation.ap(va)(vf)
 				)
 			);
 
@@ -123,7 +137,7 @@ export namespace TaskValidation {
 	 */
 	export const fold =
 		<E, A, B>(onFailed: (errors: NonEmptyArr<E>) => B, onPassed: (a: A) => B) => (data: TaskValidation<E, A>): Task<B> =>
-			Task.map(Validation.fold<E, A, B>(onFailed, onPassed))(data);
+			CoreTask.map(CoreValidation.fold<E, A, B>(onFailed, onPassed))(data);
 
 	/**
 	 * Pattern matches on a Task.Validation, returning a Task of the result.
@@ -141,21 +155,21 @@ export namespace TaskValidation {
 	 */
 	export const match =
 		<E, A, B>(cases: { passed: (a: A) => B; failed: (errors: NonEmptyArr<E>) => B; }) =>
-		(data: TaskValidation<E, A>): Task<B> => Task.map(Validation.match<E, A, B>(cases))(data);
+		(data: TaskValidation<E, A>): Task<B> => CoreTask.map(CoreValidation.match<E, A, B>(cases))(data);
 
 	/**
 	 * Returns the success value or a default value if the Task.Validation is failed.
 	 * The default can be a different type, widening the result to `Task<A | B>`.
 	 */
 	export const getOrElse = <E, A, B>(defaultValue: () => B) => (data: TaskValidation<E, A>): Task<A | B> =>
-		Task.map(Validation.getOrElse<E, A, B>(defaultValue))(data);
+		CoreTask.map(CoreValidation.getOrElse<E, A, B>(defaultValue))(data);
 
 	/**
 	 * Executes a side effect on the success value without changing the Task.Validation.
 	 * Useful for logging or debugging.
 	 */
 	export const tap = <E, A>(f: (a: A) => void) => (data: TaskValidation<E, A>): TaskValidation<E, A> =>
-		Task.map(Validation.tap<E, A>(f))(data);
+		CoreTask.map(CoreValidation.tap<E, A>(f))(data);
 
 	/**
 	 * Recovers from a Failed state by providing a fallback Task.Validation.
@@ -165,8 +179,10 @@ export namespace TaskValidation {
 	export const recover =
 		<E, A, B>(fallback: (errors: NonEmptyArr<E>) => TaskValidation<E, B>) =>
 		(data: TaskValidation<E, A>): TaskValidation<E, A | B> =>
-			Task.chain((validation: Validation<E, A>) =>
-				Validation.isPassed(validation) ? Task.resolve(validation as Validation<E, A | B>) : fallback(validation.errors)
+			CoreTask.chain((validation: Validation<E, A>) =>
+				CoreValidation.isPassed(validation)
+					? CoreTask.resolve(validation as Validation<E, A | B>)
+					: fallback(validation.errors)
 			)(data);
 
 	/**
@@ -186,9 +202,9 @@ export namespace TaskValidation {
 		first: TaskValidation<E, A>,
 		second: TaskValidation<E, B>,
 	): TaskValidation<E, readonly [A, B]> =>
-		Task.from((signal) =>
+		CoreTask.from((signal) =>
 			Promise.all([Deferred.toPromise(first(signal)), Deferred.toPromise(second(signal))]).then(([va, vb]) =>
-				Validation.product(va, vb)
+				CoreValidation.product(va, vb)
 			)
 		);
 
@@ -207,10 +223,10 @@ export namespace TaskValidation {
 	 * ```
 	 */
 	export const productAll = <E, A>(data: NonEmptyArr<TaskValidation<E, A>>): TaskValidation<E, readonly A[]> =>
-		Task.from((signal) =>
+		CoreTask.from((signal) =>
 			Promise.all(data.map((t) => Deferred.toPromise(t(signal)))).then((results) => {
 				const [first, ...rest] = results;
-				return Validation.productAll([first!, ...rest]);
+				return CoreValidation.productAll([first!, ...rest]);
 			})
 		);
 
@@ -226,7 +242,7 @@ export namespace TaskValidation {
 	 * ```
 	 */
 	export const mapError = <E, F, A>(f: (e: E) => F) => (data: TaskValidation<E, A>): TaskValidation<F, A> =>
-		Task.map(Validation.mapError<E, F, A>(f))(data);
+		CoreTask.map(CoreValidation.mapError<E, F, A>(f))(data);
 
 	/**
 	 * Executes a side effect on the accumulated errors without changing the Task.Validation.
@@ -241,7 +257,7 @@ export namespace TaskValidation {
 	 */
 	export const tapError =
 		<E, A>(f: (errors: NonEmptyArr<E>) => void) => (data: TaskValidation<E, A>): TaskValidation<E, A> =>
-			Task.map(Validation.tapError<E, A>(f))(data);
+			CoreTask.map(CoreValidation.tapError<E, A>(f))(data);
 
 	/**
 	 * Combines a record of Task.Validations into a single Task.Validation of a record.
@@ -258,7 +274,7 @@ export namespace TaskValidation {
 	export const struct = <E, R extends Record<string, any>>(
 		fields: { [K in keyof R]: TaskValidation<E, R[K]>; },
 	): TaskValidation<E, R> =>
-		Task.from((signal) => {
+		CoreTask.from((signal) => {
 			const keys = Object.keys(fields);
 			const promises = keys.map((key) => Deferred.toPromise(fields[key](signal)));
 			return Promise.all(promises).then((results) => {
@@ -266,13 +282,13 @@ export namespace TaskValidation {
 				const errors: E[] = [];
 				for (let i = 0; i < keys.length; i++) {
 					const res = results[i] as Validation<E, any>;
-					if (Validation.isPassed(res)) {
+					if (CoreValidation.isPassed(res)) {
 						record[keys[i] as keyof R] = res.value;
 					} else {
 						errors.push(...res.errors);
 					}
 				}
-				return isNonEmptyArr(errors) ? Validation.failedAll(errors) : Validation.passed(record);
+				return isNonEmptyArr(errors) ? CoreValidation.failedAll(errors) : CoreValidation.passed(record);
 			});
 		});
 }

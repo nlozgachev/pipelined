@@ -1,4 +1,12 @@
-import { Deferred, Maybe, Result, Task } from "#core";
+import {
+	Deferred,
+	type Maybe,
+	Maybe as CoreMaybe,
+	type Result,
+	Result as CoreResult,
+	type Task,
+	Task as CoreTask,
+} from "#core";
 import type { Thenable } from "#internal";
 
 /**
@@ -20,40 +28,43 @@ export namespace TaskResult {
 	/**
 	 * Wraps a value in a successful Task.Result.
 	 */
-	export const ok = <E, A>(value: A): TaskResult<E, A> => Task.resolve(Result.ok(value));
+	export const ok = <E, A>(value: A): TaskResult<E, A> => CoreTask.resolve(CoreResult.ok(value));
 
 	/**
 	 * Creates a failed Task.Result with the given error.
 	 */
-	export const err = <E, A>(error: E): TaskResult<E, A> => Task.resolve(Result.err(error));
+	export const err = <E, A>(error: E): TaskResult<E, A> => CoreTask.resolve(CoreResult.err(error));
 
-	/**
-	 * Creates a Task.Result from a nullable value.
-	 * Returns Ok if the value is not null or undefined, err from onNull otherwise.
-	 */
-	export const fromNullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskResult<E, A> =>
-		Task.resolve(value === null || value === undefined ? Result.err(onNull()) : Result.ok(value));
+	// --- from ---
+	export namespace from {
+		/**
+		 * Creates a Task.Result from a nullable value.
+		 * Returns Ok if the value is not null or undefined, err from onNull otherwise.
+		 */
+		export const Nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskResult<E, A> =>
+			CoreTask.resolve(value === null || value === undefined ? CoreResult.err(onNull()) : CoreResult.ok(value));
 
-	/**
-	 * Creates a Task.Result from a Maybe.
-	 * Some becomes Ok, None becomes err from onNone.
-	 */
-	export const fromMaybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): TaskResult<E, A> =>
-		Task.resolve(Maybe.isNone(maybe) ? Result.err(onNone()) : Result.ok(maybe.value));
+		/**
+		 * Creates a Task.Result from a Maybe.
+		 * Some becomes Ok, None becomes err from onNone.
+		 */
+		export const Maybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): TaskResult<E, A> =>
+			CoreTask.resolve(CoreMaybe.isNone(maybe) ? CoreResult.err(onNone()) : CoreResult.ok(maybe.value));
 
-	/**
-	 * Lifts a Result into a Task.Result.
-	 */
-	export const fromResult = <E, A>(result: Result<E, A>): TaskResult<E, A> => Task.resolve(result);
+		/**
+		 * Lifts a Result into a Task.Result.
+		 */
+		export const Result = <E, A>(result: Result<E, A>): TaskResult<E, A> => CoreTask.resolve(result);
 
-	/**
-	 * Wraps a Promise-returning function of any arguments, returning a new function
-	 * that catches rejections and returns a Task.Result.
-	 */
-	export const fromThrowable =
-		<Args extends readonly unknown[], A, E>(f: (...args: Args) => Promise<A>, onError: (e: unknown) => E) =>
-		(...args: Args): TaskResult<E, A> =>
-			Task.from(() => f(...args).then(Result.ok).catch((error) => Result.err(onError(error))));
+		/**
+		 * Wraps a Promise-returning function of any arguments, returning a new function
+		 * that catches rejections and returns a Task.Result.
+		 */
+		export const Throwable =
+			<Args extends readonly unknown[], A, E>(f: (...args: Args) => Promise<A>, onError: (e: unknown) => E) =>
+			(...args: Args): TaskResult<E, A> =>
+				CoreTask.from(() => f(...args).then(CoreResult.ok).catch((error) => CoreResult.err(onError(error))));
+	}
 
 	/**
 	 * Creates a Task.Result from a function that may throw.
@@ -73,40 +84,42 @@ export namespace TaskResult {
 		f: (signal?: AbortSignal) => Thenable<A>,
 		onError: (e: unknown) => E,
 	): TaskResult<E, A> =>
-		Task.from((signal) => Promise.resolve(f(signal)).then(Result.ok).catch((error) => Result.err(onError(error))));
+		CoreTask.from((signal) =>
+			Promise.resolve(f(signal)).then(CoreResult.ok).catch((error) => CoreResult.err(onError(error)))
+		);
 
 	/**
 	 * Transforms the success value inside a Task.Result.
 	 */
 	export const map = <E, A, B>(f: (a: A) => B) => (data: TaskResult<E, A>): TaskResult<E, B> =>
-		Task.map(Result.map<E, A, B>(f))(data);
+		CoreTask.map(CoreResult.map<E, A, B>(f))(data);
 
 	/**
 	 * Transforms the error value inside a Task.Result.
 	 */
 	export const mapError = <E, F, A>(f: (e: E) => F) => (data: TaskResult<E, A>): TaskResult<F, A> =>
-		Task.map(Result.mapError<E, F, A>(f))(data);
+		CoreTask.map(CoreResult.mapError<E, F, A>(f))(data);
 
 	/**
 	 * Chains Task.Result computations. If the first succeeds, passes the value to f.
 	 * If the first fails, propagates the error.
 	 */
 	export const chain = <E, A, B>(f: (a: A) => TaskResult<E, B>) => (data: TaskResult<E, A>): TaskResult<E, B> =>
-		Task.chain((result: Result<E, A>) => Result.isOk(result) ? f(result.value) : Task.resolve(Result.err(result.error)))(
-			data,
-		);
+		CoreTask.chain((result: Result<E, A>) =>
+			CoreResult.isOk(result) ? f(result.value) : CoreTask.resolve(CoreResult.err(result.error))
+		)(data);
 
 	/**
 	 * Extracts the value from a Task.Result by providing handlers for both cases.
 	 */
 	export const fold = <E, A, B>(onErr: (e: E) => B, onOk: (a: A) => B) => (data: TaskResult<E, A>): Task<B> =>
-		Task.map(Result.fold(onErr, onOk))(data);
+		CoreTask.map(CoreResult.fold(onErr, onOk))(data);
 
 	/**
 	 * Pattern matches on a Task.Result, returning a Task of the result.
 	 */
 	export const match = <E, A, B>(cases: { err: (e: E) => B; ok: (a: A) => B; }) => (data: TaskResult<E, A>): Task<B> =>
-		Task.map(Result.match<E, A, B>(cases))(data);
+		CoreTask.map(CoreResult.match<E, A, B>(cases))(data);
 
 	/**
 	 * Recovers from an error by providing a fallback Task.Result.
@@ -114,8 +127,8 @@ export namespace TaskResult {
 	 */
 	export const recover =
 		<E, A, B>(fallback: (e: E) => TaskResult<E, B>) => (data: TaskResult<E, A>): TaskResult<E, A | B> =>
-			Task.chain((result: Result<E, A>) =>
-				Result.isErr(result) ? fallback(result.error) : Task.resolve(result as Result<E, A | B>)
+			CoreTask.chain((result: Result<E, A>) =>
+				CoreResult.isErr(result) ? fallback(result.error) : CoreTask.resolve(result as Result<E, A | B>)
 			)(data);
 
 	/**
@@ -123,14 +136,14 @@ export namespace TaskResult {
 	 * The default can be a different type, widening the result to `Task<A | B>`.
 	 */
 	export const getOrElse = <E, A, B>(defaultValue: () => B) => (data: TaskResult<E, A>): Task<A | B> =>
-		Task.map(Result.getOrElse<E, A, B>(defaultValue))(data);
+		CoreTask.map(CoreResult.getOrElse<E, A, B>(defaultValue))(data);
 
 	/**
 	 * Executes a side effect on the success value without changing the Task.Result.
 	 * Useful for logging or debugging.
 	 */
 	export const tap = <E, A>(f: (a: A) => void) => (data: TaskResult<E, A>): TaskResult<E, A> =>
-		Task.map(Result.tap<E, A>(f))(data);
+		CoreTask.map(CoreResult.tap<E, A>(f))(data);
 
 	/**
 	 * Executes a side effect on the error value without changing the Task.Result.
@@ -146,16 +159,16 @@ export namespace TaskResult {
 	 * ```
 	 */
 	export const tapError = <E, A>(f: (e: E) => void) => (data: TaskResult<E, A>): TaskResult<E, A> =>
-		Task.map(Result.tapError<E, A>(f))(data);
+		CoreTask.map(CoreResult.tapError<E, A>(f))(data);
 
 	/**
 	 * Applies a function wrapped in a Task.Result to a value wrapped in a Task.Result.
 	 * Both Tasks run in parallel.
 	 */
 	export const ap = <E, A>(arg: TaskResult<E, A>) => <B>(data: TaskResult<E, (a: A) => B>): TaskResult<E, B> =>
-		Task.from((signal) =>
+		CoreTask.from((signal) =>
 			Promise.all([Deferred.toPromise(data(signal)), Deferred.toPromise(arg(signal))]).then(([of_, oa]) =>
-				Result.ap(oa)(of_)
+				CoreResult.ap(oa)(of_)
 			)
 		);
 
@@ -222,19 +235,19 @@ export namespace TaskResult {
 	export const struct = <E, R extends Record<string, any>>(
 		fields: { [K in keyof R]: TaskResult<E, R[K]>; },
 	): TaskResult<E, R> =>
-		Task.from((signal) => {
+		CoreTask.from((signal) => {
 			const keys = Object.keys(fields);
 			const promises = keys.map((key) => Deferred.toPromise(fields[key](signal)));
 			return Promise.all(promises).then((results) => {
 				const record = {} as R;
 				for (let i = 0; i < keys.length; i++) {
 					const res = results[i];
-					if (Result.isErr(res)) {
+					if (CoreResult.isErr(res)) {
 						return res;
 					}
 					record[keys[i] as keyof R] = res.value;
 				}
-				return Result.ok(record);
+				return CoreResult.ok(record);
 			});
 		});
 }

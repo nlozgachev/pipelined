@@ -1,4 +1,5 @@
 {
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
 	"plugins": [
 		"vitest"
 	],
@@ -60,6 +61,7 @@
 		"no-underscore-dangle": "off",
 		"require-unicode-regexp": "off",
 		"no-await-in-loop": "off",
-		"vitest/max-expects": "off"
+		"vitest/max-expects": "off",
+		"new-cap": "off"
 	}
 }

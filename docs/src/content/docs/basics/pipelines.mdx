@@ -64,13 +64,13 @@ import { Maybe } from "@nlozgachev/pipelined/core";
 
 const displayName = pipe(
   users.get(userId),             // User | undefined
-  Maybe.fromNullable,            // Maybe<User>
+  Maybe.from.Nullable,            // Maybe<User>
   Maybe.map((u) => u.name),      // Maybe<string>
   Maybe.getOrElse(() => "guest"), // string
 );
 ```
 
-Notice that `Maybe.fromNullable` is passed directly as a value, without wrapping it in an arrow function. 
+Notice that `Maybe.from.Nullable` is passed directly as a value, without wrapping it in an arrow function. 
 
 Furthermore, `Maybe.map((u) => u.name)` is invoked with only a mapping function. It returns a new function that is waiting for the `Maybe` value, which `pipe` supplies. This is made possible by the data-last convention.
 

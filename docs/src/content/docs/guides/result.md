@@ -69,13 +69,13 @@ const parseJson = (s: string): Result<string, unknown> =>
 The second argument is a mapper function that intercepts the thrown exception (which is of type
 `unknown`) and converts it into your designated error type `E`.
 
-### Constructing from predicates with `fromPredicate`
+### Constructing from predicates with `from.Predicate`
 
 When you have a plain value and a condition that determines whether that value is valid,
-`Result.fromPredicate` lifts the value into `Result` without requiring an explicit `if/else` block:
+`Result.from.Predicate` lifts the value into `Result` without requiring an explicit `if/else` block:
 
 ```ts
-const validateAge = Result.fromPredicate(
+const validateAge = Result.from.Predicate(
   (n: number) => n >= 18,
   (n) => `Age ${n} is below the required threshold of 18`,
 );
@@ -281,8 +281,8 @@ carries a typed reason for its failure, whereas `Maybe` models pure absence.
 To discard the error context and convert to a `Maybe`:
 
 ```ts
-const maybeValue = Result.toMaybe(Result.ok(42)); // Some(42)
-const empty = Result.toMaybe(Result.err("oops")); // None
+const maybeValue = Result.to.Maybe(Result.ok(42)); // Some(42)
+const empty = Result.to.Maybe(Result.err("oops")); // None
 ```
 
 Conversely, if you want to lift a `Maybe` into a `Result`, you must supply a typed error to replace
@@ -293,7 +293,7 @@ import { Maybe } from "@nlozgachev/pipelined/core";
 
 const resultValue = pipe(
   Maybe.none(),
-  Maybe.toResult(() => "Value was absent"),
+  Maybe.to.Result(() => "Value was absent"),
 ); // Err("Value was absent")
 ```
 

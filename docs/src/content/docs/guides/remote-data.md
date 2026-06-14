@@ -207,11 +207,11 @@ pipe(
 
 ### Downgrading to Maybe or Result
 
-To discard all error and loading information, you can convert to `Maybe` using `toMaybe`. Only
+To discard all error and loading information, you can convert to `Maybe` using `to.Maybe`. Only
 `Success` becomes a `Some`:
 
 ```ts
-const maybeUser = RemoteData.toMaybe(userDataState); // Some(user) or None
+const maybeUser = RemoteData.to.Maybe(userDataState); // Some(user) or None
 ```
 
 To convert to a `Result`, you must provide a fallback error to represent what should happen if the
@@ -220,25 +220,24 @@ data is not yet loaded:
 ```ts
 const resultUser = pipe(
   userDataState,
-  RemoteData.toResult(() => "Data has not loaded yet"),
+  RemoteData.to.Result(() => "Data has not loaded yet"),
 ); // Ok(user) or Err("Data has not loaded yet")
 ```
 
-### Storing async outcomes with `fromResult`
+### Storing async outcomes with `from.Result`
 
 When you trigger an asynchronous operation (e.g. using a `Task.Result`), you obtain a standard
 `Result<E, A>` when it resolves. Storing this directly into your component's state as `RemoteData`
 is highly common.
 
-Instead of writing a verbose manual match block, you can use `fromResult` to lift the `Result` into
-the `RemoteData` lifecycle:
+Refactor it using `from.Result` to lift the `Result` into the `RemoteData` lifecycle:
 
 ```ts
 // In your async execution block:
 const result = await fetchUserProfileTask();
 
 // Passed directly to state:
-setDataState(RemoteData.fromResult(result)); // Success(user) or Failure(error)
+setDataState(RemoteData.from.Result(result)); // Success(user) or Failure(error)
 ```
 
 ---

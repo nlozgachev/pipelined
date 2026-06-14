@@ -1,4 +1,4 @@
-import { Maybe, Result } from "#core";
+import { type Maybe, Maybe as CoreMaybe, type Result, Result as CoreResult } from "#core";
 import { isNonEmptyArr, type NonEmptyArr, type WithErrors, type WithKind, type WithValue } from "#internal";
 
 /**
@@ -72,51 +72,69 @@ export namespace Validation {
 	 */
 	export const isFailed = <E, A>(data: Validation<E, A>): data is Failed<E> => data.kind === "Failed";
 
-	/**
-	 * Creates a Validation from a predicate applied to a value.
-	 * Returns Passed if the predicate passes, Failed from `onFalse` otherwise.
-	 *
-	 * @example
-	 * ```ts
-	 * const validateName = Validation.fromPredicate(
-	 *   (s: string) => s.length > 0,
-	 *   () => "Name is required"
-	 * );
-	 *
-	 * validateName("Alice"); // Passed("Alice")
-	 * validateName("");      // Failed(["Name is required"])
-	 * ```
-	 */
-	export const fromPredicate = <E, A>(pred: (a: A) => boolean, onFalse: (a: A) => E) => (a: A): Validation<E, A> =>
-		pred(a) ? passed(a) : failed(onFalse(a));
+	// --- from ---
+	export namespace from {
+		/**
+		 * Creates a Validation from a predicate applied to a value.
+		 * Returns Passed if the predicate passes, Failed from `onFalse` otherwise.
+		 *
+		 * @example
+		 * ```ts
+		 * const validateName = Validation.from.Predicate(
+		 *   (s: string) => s.length > 0,
+		 *   () => "Name is required"
+		 * );
+		 *
+		 * validateName("Alice"); // Passed("Alice")
+		 * validateName("");      // Failed(["Name is required"])
+		 * ```
+		 */
+		export const Predicate = <E, A>(pred: (a: A) => boolean, onFalse: (a: A) => E) => (a: A): Validation<E, A> =>
+			pred(a) ? passed(a) : failed(onFalse(a));
 
-	/**
-	 * Creates a Validation from a nullable value.
-	 * If the value is null or undefined, returns Failed with the error from onNull.
-	 * Otherwise, returns Passed.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(null, Validation.fromNullable(() => "is null")); // Failed(["is null"])
-	 * pipe(42, Validation.fromNullable(() => "is null"));   // Passed(42)
-	 * ```
-	 */
-	export const fromNullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): Validation<E, A> =>
-		value === null || value === undefined ? failed(onNull()) : passed(value);
+		/**
+		 * Creates a Validation from a nullable value.
+		 * If the value is null or undefined, returns Failed with the error from onNull.
+		 * Otherwise, returns Passed.
+		 *
+		 * @example
+		 * ```ts
+		 * pipe(null, Validation.from.Nullable(() => "is null")); // Failed(["is null"])
+		 * pipe(42, Validation.from.Nullable(() => "is null"));   // Passed(42)
+		 * ```
+		 */
+		export const Nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): Validation<E, A> =>
+			value === null || value === undefined ? failed(onNull()) : passed(value);
 
-	/**
-	 * Creates a Validation from a Maybe.
-	 * If the Maybe is None, returns Failed with the error from onNone.
-	 * Otherwise, returns Passed.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(Maybe.none(), Validation.fromMaybe(() => "is none")); // Failed(["is none"])
-	 * pipe(Maybe.some(42), Validation.fromMaybe(() => "is none")); // Passed(42)
-	 * ```
-	 */
-	export const fromMaybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): Validation<E, A> =>
-		Maybe.isNone(maybe) ? failed(onNone()) : passed(maybe.value);
+		/**
+		 * Creates a Validation from a Maybe.
+		 * If the Maybe is None, returns Failed with the error from onNone.
+		 * Otherwise, returns Passed.
+		 *
+		 * @example
+		 * ```ts
+		 * pipe(Maybe.none(), Validation.from.Maybe(() => "is none")); // Failed(["is none"])
+		 * pipe(Maybe.some(42), Validation.from.Maybe(() => "is none")); // Passed(42)
+		 * ```
+		 */
+		export const Maybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): Validation<E, A> =>
+			CoreMaybe.isNone(maybe) ? failed(onNone()) : passed(maybe.value);
+
+		/**
+		 * Converts a `Result` to a `Validation`. `Ok` becomes `Passed`; `Err(e)` becomes `Failed([e])`.
+		 *
+		 * Useful when bridging from error-short-circuiting `Result` pipelines into
+		 * error-accumulating `Validation` pipelines.
+		 *
+		 * @example
+		 * ```ts
+		 * Validation.from.Result(Result.ok(42));       // Passed(42)
+		 * Validation.from.Result(Result.err("bad"));   // Failed(["bad"])
+		 * ```
+		 */
+		export const Result = <E, A>(data: Result<E, A>): Validation<E, A> =>
+			data.kind === "Ok" ? passed(data.value) : failed(data.error);
+	}
 
 	/**
 	 * Transforms the success value inside a Validation.
@@ -278,46 +296,34 @@ export namespace Validation {
 		<E, A, B>(isBlocked: (e: E) => boolean, fallback: () => Validation<E, B>) =>
 		(data: Validation<E, A>): Validation<E, A | B> => isFailed(data) && !data.errors.some(isBlocked) ? fallback() : data;
 
-	/**
-	 * Converts a Validation to a Result.
-	 * Passed becomes Ok, Failed becomes Err with the accumulated error list.
-	 *
-	 * @example
-	 * ```ts
-	 * Validation.toResult(Validation.passed(42));        // Ok(42)
-	 * Validation.toResult(Validation.failed("oops"));  // Err(["oops"])
-	 * ```
-	 */
-	export const toResult = <E, A>(data: Validation<E, A>): Result<NonEmptyArr<E>, A> =>
-		isPassed(data) ? Result.ok(data.value) : Result.err(data.errors);
+	// --- to ---
+	export namespace to {
+		/**
+		 * Converts a Validation to a Result.
+		 * Passed becomes Ok, Failed becomes Err with the accumulated error list.
+		 *
+		 * @example
+		 * ```ts
+		 * Validation.to.Result(Validation.passed(42));        // Ok(42)
+		 * Validation.to.Result(Validation.failed("oops"));  // Err(["oops"])
+		 * ```
+		 */
+		export const Result = <E, A>(data: Validation<E, A>): Result<NonEmptyArr<E>, A> =>
+			isPassed(data) ? CoreResult.ok(data.value) : CoreResult.err(data.errors);
 
-	/**
-	 * Converts a Validation to a Maybe. `Passed` becomes `Some`; `Failed` becomes `None`
-	 * (errors are discarded).
-	 *
-	 * @example
-	 * ```ts
-	 * Validation.toMaybe(Validation.passed(42));       // Some(42)
-	 * Validation.toMaybe(Validation.failed("bad"));  // None
-	 * ```
-	 */
-	export const toMaybe = <E, A>(data: Validation<E, A>): Maybe<A> =>
-		isPassed(data) ? Maybe.some(data.value) : Maybe.none();
-
-	/**
-	 * Converts a `Result` to a `Validation`. `Ok` becomes `Passed`; `Err(e)` becomes `Failed([e])`.
-	 *
-	 * Useful when bridging from error-short-circuiting `Result` pipelines into
-	 * error-accumulating `Validation` pipelines.
-	 *
-	 * @example
-	 * ```ts
-	 * Validation.fromResult(Result.ok(42));       // Passed(42)
-	 * Validation.fromResult(Result.err("bad"));   // Failed(["bad"])
-	 * ```
-	 */
-	export const fromResult = <E, A>(data: Result<E, A>): Validation<E, A> =>
-		data.kind === "Ok" ? passed(data.value) : failed(data.error);
+		/**
+		 * Converts a Validation to a Maybe. `Passed` becomes `Some`; `Failed` becomes `None`
+		 * (errors are discarded).
+		 *
+		 * @example
+		 * ```ts
+		 * Validation.to.Maybe(Validation.passed(42));       // Some(42)
+		 * Validation.to.Maybe(Validation.failed("bad"));  // None
+		 * ```
+		 */
+		export const Maybe = <E, A>(data: Validation<E, A>): Maybe<A> =>
+			isPassed(data) ? CoreMaybe.some(data.value) : CoreMaybe.none();
+	}
 
 	/**
 	 * Combines two independent Validation instances into a tuple.

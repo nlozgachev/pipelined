@@ -59,12 +59,12 @@ const multipleFails = Validation.failedAll([
 ]);
 ```
 
-### Constructing checks with `fromPredicate`
+### Constructing checks with `from.Predicate`
 
-You can build reusable, rule-specific validation checkers using `fromPredicate`:
+You can build reusable, rule-specific validation checkers using `from.Predicate`:
 
 ```ts
-const validatePasswordLength = Validation.fromPredicate(
+const validatePasswordLength = Validation.from.Predicate(
   (s: string) => s.length >= 8,
   (s) => `Password of length ${s.length} is too short (minimum 8 characters)`,
 );
@@ -259,19 +259,19 @@ other modules.
 ### Discarding errors to Maybe
 
 If you only care about obtaining a valid value and do not need to report the reasons for failure,
-you can downgrade the `Validation` to a `Maybe` using `toMaybe`:
+you can downgrade the `Validation` to a `Maybe` using `to.Maybe`:
 
 ```ts
-const maybeValidData = Validation.toMaybe(formValidation); // Some(data) or None
+const maybeValidData = Validation.to.Maybe(formValidation); // Some(data) or None
 ```
 
 ### Bridging from Result
 
 When incorporating an operation that throws or fail-fast checks (like a `Result` parser) into an
-accumulating validation flow, you can lift it using `fromResult`:
+accumulating validation flow, you can lift it using `from.Result`:
 
 ```ts
-const emailCheck = Validation.fromResult(parseEmail(input)); // Passed(email) or Failed([err])
+const emailCheck = Validation.from.Result(parseEmail(input)); // Passed(email) or Failed([err])
 ```
 
 The single error from the `Err` is wrapped in a type-safe `Arr.NonEmpty` automatically.
@@ -282,12 +282,12 @@ The single error from the `Err` is wrapped in a type-safe `Arr.NonEmpty` automat
 established that the data is 100% valid, you typically need to run sequential side effects that can
 fail (like saving to a database, sending a request, or writing to disk).
 
-For this, you should hand off execution to a `Result` pipeline using `toResult`:
+For this, you should hand off execution to a `Result` pipeline using `to.Result`:
 
 ```ts
 pipe(
   Validation.productAll([validateName(form.name), validateEmail(form.email)]),
-  Validation.toResult, // Passed becomes Ok, Failed becomes Err([errors...])
+  Validation.to.Result, // Passed becomes Ok, Failed becomes Err([errors...])
   Result.chain((data) => db.saveUser(data)), // Sequential, fail-fast side effect
   Result.getOrElse(() => null),
 );
@@ -325,7 +325,7 @@ we cannot gather all errors across all branches at the same time.
 For sequenced pipelines that depend on prior steps, you should use `Result` (which naturally
 supports `bind` and `bindTo` for fail-fast chaining). If you need to validate independent inputs,
 keep them in `Validation`. Once the data is validated, you can cleanly hand it off to a `Result`
-pipeline using `Validation.toResult` to perform sequential actions.
+pipeline using `Validation.to.Result` to perform sequential actions.
 
 ---
 
@@ -339,8 +339,8 @@ Unlike `Result.struct` or `Maybe.struct` (which short-circuit on the first failu
 
 ```ts
 const validatedUser = Validation.struct({
-  name: Validation.fromPredicate((s: string) => s.length > 0, () => "Name is required")(""),
-  age: Validation.fromPredicate((n: number) => n >= 18, () => "Must be at least 18")(16),
+  name: Validation.from.Predicate((s: string) => s.length > 0, () => "Name is required")(""),
+  age: Validation.from.Predicate((n: number) => n >= 18, () => "Must be at least 18")(16),
   role: Validation.passed("user"),
 }); 
 // Failed(["Name is required", "Must be at least 18"])

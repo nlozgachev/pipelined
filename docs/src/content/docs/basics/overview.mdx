@@ -25,7 +25,7 @@ import { Maybe } from "@nlozgachev/pipelined/core";
 
 const city = pipe(
   users.get(userId),                 // User | undefined
-  Maybe.fromNullable,                // Maybe<User>
+  Maybe.from.Nullable,                // Maybe<User>
   Maybe.map((u) => u.address),       // Maybe<Address>
   Maybe.map((a) => a.city),          // Maybe<string>
   Maybe.getOrElse(() => "Unknown"),  // string

@@ -65,7 +65,7 @@ const getClient = (userId: string) =>
   pipe(
     userId,
     fetchConfig,
-    Maybe.chain(config => Maybe.fromNullable(config.database.connectionString)),
+    Maybe.chain(config => Maybe.from.Nullable(config.database.connectionString)),
     Maybe.chain(connect)
   );
 ```

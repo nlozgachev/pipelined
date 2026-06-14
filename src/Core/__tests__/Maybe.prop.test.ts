@@ -135,7 +135,7 @@ test("Maybe.filter — None passes through unchanged", () => {
 
 test("maybe.fromNullable + Maybe.toNullable — round-trip on non-null value", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
-		expect(Maybe.toNullable(Maybe.fromNullable(n))).toBe(n);
+		expect(Maybe.to.Nullable(Maybe.from.Nullable(n))).toBe(n);
 	}));
 });
 
@@ -145,12 +145,12 @@ test("maybe.fromNullable + Maybe.toNullable — round-trip on non-null value", (
 
 test("Maybe.fromPredicate — always-true gives Some with original value", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
-		expect(Maybe.fromPredicate((_: number) => true)(n)).toStrictEqual(Maybe.some(n));
+		expect(Maybe.from.Predicate((_: number) => true)(n)).toStrictEqual(Maybe.some(n));
 	}));
 });
 
 test("Maybe.fromPredicate — always-false gives None", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
-		expect(Maybe.fromPredicate((_: number) => false)(n)).toStrictEqual(Maybe.none());
+		expect(Maybe.from.Predicate((_: number) => false)(n)).toStrictEqual(Maybe.none());
 	}));
 });

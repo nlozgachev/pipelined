@@ -402,13 +402,13 @@ test("remoteData.recover preserves Success typed as RemoteData<E, A | B>", () =>
 // ---------------------------------------------------------------------------
 
 test("remoteData.toMaybe returns Some for Success", () => {
-	expect(RemoteData.toMaybe(RemoteData.success(42))).toStrictEqual({ kind: "Some", value: 42 });
+	expect(RemoteData.to.Maybe(RemoteData.success(42))).toStrictEqual({ kind: "Some", value: 42 });
 });
 
 test("remoteData.toMaybe returns None for non-Success", () => {
-	expect(RemoteData.toMaybe(RemoteData.notAsked())).toStrictEqual({ kind: "None" });
-	expect(RemoteData.toMaybe(RemoteData.loading())).toStrictEqual({ kind: "None" });
-	expect(RemoteData.toMaybe(RemoteData.failure("e"))).toStrictEqual({ kind: "None" });
+	expect(RemoteData.to.Maybe(RemoteData.notAsked())).toStrictEqual({ kind: "None" });
+	expect(RemoteData.to.Maybe(RemoteData.loading())).toStrictEqual({ kind: "None" });
+	expect(RemoteData.to.Maybe(RemoteData.failure("e"))).toStrictEqual({ kind: "None" });
 });
 
 // ---------------------------------------------------------------------------
@@ -417,18 +417,18 @@ test("remoteData.toMaybe returns None for non-Success", () => {
 
 test("remoteData.toResult returns Ok for Success", () => {
 	const data: RemoteData<string, number> = RemoteData.success(42);
-	const result = pipe(data, RemoteData.toResult(() => "not ready"));
+	const result = pipe(data, RemoteData.to.Result(() => "not ready"));
 	expect(result).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
 test("remoteData.toResult returns Err with original error for Failure", () => {
 	const data: RemoteData<string, number> = RemoteData.failure("bad");
-	const result = pipe(data, RemoteData.toResult(() => "not ready"));
+	const result = pipe(data, RemoteData.to.Result(() => "not ready"));
 	expect(result).toStrictEqual({ kind: "Err", error: "bad" });
 });
 
 test("remoteData.toResult returns Err with fallback for NotAsked/Loading", () => {
-	const handler = RemoteData.toResult<string>(() => "not ready");
+	const handler = RemoteData.to.Result<string>(() => "not ready");
 	expect(handler(RemoteData.notAsked())).toStrictEqual({ kind: "Err", error: "not ready" });
 	expect(handler(RemoteData.loading())).toStrictEqual({ kind: "Err", error: "not ready" });
 });
@@ -453,21 +453,21 @@ test("remoteData composes well in a pipe chain", () => {
 // ---------------------------------------------------------------------------
 
 test("remoteData.fromResult converts Ok to Success", () => {
-	expect(RemoteData.fromResult(Result.ok(42))).toStrictEqual(RemoteData.success(42));
+	expect(RemoteData.from.Result(Result.ok(42))).toStrictEqual(RemoteData.success(42));
 });
 
 test("remoteData.fromResult converts Err to Failure", () => {
-	expect(RemoteData.fromResult(Result.err("oops"))).toStrictEqual(RemoteData.failure("oops"));
+	expect(RemoteData.from.Result(Result.err("oops"))).toStrictEqual(RemoteData.failure("oops"));
 });
 
 test("remoteData.fromResult preserves complex value types", () => {
-	expect(RemoteData.fromResult(Result.ok({ id: 1, name: "Alice" }))).toStrictEqual(
+	expect(RemoteData.from.Result(Result.ok({ id: 1, name: "Alice" }))).toStrictEqual(
 		RemoteData.success({ id: 1, name: "Alice" }),
 	);
 });
 
 test("remoteData.fromResult preserves complex error types", () => {
-	expect(RemoteData.fromResult(Result.err({ code: 404 }))).toStrictEqual(RemoteData.failure({ code: 404 }));
+	expect(RemoteData.from.Result(Result.err({ code: 404 }))).toStrictEqual(RemoteData.failure({ code: 404 }));
 });
 
 // ---------------------------------------------------------------------------
@@ -475,25 +475,25 @@ test("remoteData.fromResult preserves complex error types", () => {
 // ---------------------------------------------------------------------------
 
 test("remoteData.fromMaybe converts Some to Success", () => {
-	expect(RemoteData.fromMaybe(() => "missing")(Maybe.some(42))).toStrictEqual(RemoteData.success(42));
+	expect(RemoteData.from.Maybe(() => "missing")(Maybe.some(42))).toStrictEqual(RemoteData.success(42));
 });
 
 test("remoteData.fromMaybe converts None to Failure using onNone", () => {
-	expect(RemoteData.fromMaybe(() => "missing")(Maybe.none())).toStrictEqual(RemoteData.failure("missing"));
+	expect(RemoteData.from.Maybe(() => "missing")(Maybe.none())).toStrictEqual(RemoteData.failure("missing"));
 });
 
 test("remoteData.fromMaybe preserves complex value types", () => {
-	expect(RemoteData.fromMaybe(() => "not found")(Maybe.some({ id: 1, name: "Alice" }))).toStrictEqual(
+	expect(RemoteData.from.Maybe(() => "not found")(Maybe.some({ id: 1, name: "Alice" }))).toStrictEqual(
 		RemoteData.success({ id: 1, name: "Alice" }),
 	);
 });
 
 test("remoteData.fromMaybe composes in pipe", () => {
-	expect(pipe(Maybe.some(5), RemoteData.fromMaybe(() => "no value"))).toStrictEqual(RemoteData.success(5));
+	expect(pipe(Maybe.some(5), RemoteData.from.Maybe(() => "no value"))).toStrictEqual(RemoteData.success(5));
 });
 
 test("remoteData.fromMaybe curried handler can be assigned and reused", () => {
-	const toRemote = RemoteData.fromMaybe(() => "missing");
+	const toRemote = RemoteData.from.Maybe(() => "missing");
 	expect(toRemote(Maybe.some(1))).toStrictEqual(RemoteData.success(1));
 	expect(toRemote(Maybe.none())).toStrictEqual(RemoteData.failure("missing"));
 });

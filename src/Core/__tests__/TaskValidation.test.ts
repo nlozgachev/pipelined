@@ -37,14 +37,14 @@ test("Task.Validation.failedAll creates a Task that resolves to Invalid with mul
 // ---------------------------------------------------------------------------
 
 test("Task.Validation.fromValidation lifts a Valid into a Task", async () => {
-	await expect(Task.Validation.fromValidation(Validation.passed<string, number>(5))()).resolves.toStrictEqual({
+	await expect(Task.Validation.from.Validation(Validation.passed<string, number>(5))()).resolves.toStrictEqual({
 		kind: "Passed",
 		value: 5,
 	});
 });
 
 test("Task.Validation.fromValidation lifts an Invalid into a Task", async () => {
-	await expect(Task.Validation.fromValidation(Validation.failed("e"))()).resolves.toStrictEqual({
+	await expect(Task.Validation.from.Validation(Validation.failed("e"))()).resolves.toStrictEqual({
 		kind: "Failed",
 		errors: ["e"],
 	});
@@ -438,41 +438,41 @@ test("Task.Validation.productAll propagates the AbortSignal down to all validati
 // --- fromNullable ---
 
 test("Task.Validation.fromNullable returns Valid for non-null value", async () => {
-	const result = await Task.Validation.fromNullable(() => "is null")(42)();
+	const result = await Task.Validation.from.Nullable(() => "is null")(42)();
 	expect(result).toStrictEqual(Validation.passed(42));
 });
 
 test("Task.Validation.fromNullable returns Invalid for null", async () => {
-	const result = await Task.Validation.fromNullable(() => "is null")(null)();
+	const result = await Task.Validation.from.Nullable(() => "is null")(null)();
 	expect(result).toStrictEqual(Validation.failed("is null"));
 });
 
 test("Task.Validation.fromNullable returns Invalid for undefined", async () => {
-	const result = await Task.Validation.fromNullable(() => "is null")(undefined)();
+	const result = await Task.Validation.from.Nullable(() => "is null")(undefined)();
 	expect(result).toStrictEqual(Validation.failed("is null"));
 });
 
 // --- fromMaybe ---
 
 test("Task.Validation.fromMaybe returns Valid for Some", async () => {
-	const result = await Task.Validation.fromMaybe(() => "is none")(Maybe.some(42))();
+	const result = await Task.Validation.from.Maybe(() => "is none")(Maybe.some(42))();
 	expect(result).toStrictEqual(Validation.passed(42));
 });
 
 test("Task.Validation.fromMaybe returns Invalid for None", async () => {
-	const result = await Task.Validation.fromMaybe(() => "is none")(Maybe.none())();
+	const result = await Task.Validation.from.Maybe(() => "is none")(Maybe.none())();
 	expect(result).toStrictEqual(Validation.failed("is none"));
 });
 
 // --- fromResult ---
 
 test("Task.Validation.fromResult returns Valid for Ok", async () => {
-	const result = await Task.Validation.fromResult(Result.ok(42))();
+	const result = await Task.Validation.from.Result(Result.ok(42))();
 	expect(result).toStrictEqual(Validation.passed(42));
 });
 
 test("Task.Validation.fromResult returns Invalid for Err", async () => {
-	const result = await Task.Validation.fromResult(Result.err("bad"))();
+	const result = await Task.Validation.from.Result(Result.err("bad"))();
 	expect(result).toStrictEqual(Validation.failed("bad"));
 });
 
