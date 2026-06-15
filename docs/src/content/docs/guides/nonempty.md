@@ -75,7 +75,7 @@ const singleMap = Dict.NonEmpty.singleton("admin", true); // Dict.NonEmpty<strin
 
 ### Refinement (Type Guards)
 
-You can refine standard collections or strings using module-level `isNonEmpty` type guards. Inside
+You can refine standard collections or strings using module-level `is.nonEmpty` type guards. Inside
 the conditional blocks, TypeScript automatically narrows the types:
 
 ```ts
