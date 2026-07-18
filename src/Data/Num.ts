@@ -17,6 +17,111 @@ import { Maybe } from "#core";
  * ```
  */
 export namespace Num {
+	export namespace is {
+		/**
+		 * Returns `true` when the number is equal to zero.
+		 *
+		 * @example
+		 * ```ts
+		 * Num.is.zero(0); // true
+		 * Num.is.zero(5); // false
+		 * ```
+		 */
+		export const zero = (n: number): boolean => n === 0;
+
+		/**
+		 * Returns `true` when the number is a whole integer.
+		 *
+		 * @example
+		 * ```ts
+		 * Num.is.integer(5);    // true
+		 * Num.is.integer(3.14); // false
+		 * ```
+		 */
+		export const integer = (n: number): boolean => Number.isInteger(n);
+
+		/**
+		 * Returns `true` when the number is a finite float (fractional number).
+		 *
+		 * @example
+		 * ```ts
+		 * Num.is.float(3.14); // true
+		 * Num.is.float(5);    // false
+		 * ```
+		 */
+		export const float = (n: number): boolean => Number.isFinite(n) && !Number.isInteger(n);
+
+		/**
+		 * Returns `true` when the number is finite (not `Infinity`, `-Infinity`, or `NaN`).
+		 *
+		 * @example
+		 * ```ts
+		 * Num.is.finite(42);       // true
+		 * Num.is.finite(Infinity); // false
+		 * ```
+		 */
+		export const finite = (n: number): boolean => Number.isFinite(n);
+
+		/**
+		 * Returns `true` when the value is `NaN`.
+		 *
+		 * @example
+		 * ```ts
+		 * Num.is.nan(NaN); // true
+		 * Num.is.nan(42);  // false
+		 * ```
+		 */
+		export const nan = (n: number): boolean => Number.isNaN(n);
+
+		/**
+		 * Returns `true` when the number is an even integer.
+		 *
+		 * @example
+		 * ```ts
+		 * Num.is.even(4);   // true
+		 * Num.is.even(3);   // false
+		 * Num.is.even(2.5); // false
+		 * ```
+		 */
+		export const even = (n: number): boolean => Number.isInteger(n) && n % 2 === 0;
+
+		/**
+		 * Returns `true` when the number is an odd integer.
+		 *
+		 * @example
+		 * ```ts
+		 * Num.is.odd(3);   // true
+		 * Num.is.odd(4);   // false
+		 * Num.is.odd(2.5); // false
+		 * ```
+		 */
+		export const odd = (n: number): boolean => Number.isInteger(n) && n % 2 !== 0;
+
+		/**
+		 * Returns `true` when the number is strictly greater than zero.
+		 *
+		 * @example
+		 * ```ts
+		 * Num.is.positive(5);  // true
+		 * Num.is.positive(0);  // false
+		 * Num.is.positive(-5); // false
+		 * ```
+		 */
+		export const positive = (n: number): boolean => n > 0;
+
+		/**
+		 * Returns `true` when the number is strictly less than zero.
+		 *
+		 * @example
+		 * ```ts
+		 * Num.is.negative(-5); // true
+		 * Num.is.negative(0);  // false
+		 * Num.is.negative(5);  // false
+		 * ```
+		 */
+		export const negative = (n: number): boolean => n < 0;
+	}
+
 	/**
 	 * Generates an array of numbers from `from` to `to` (both inclusive),
 	 * stepping by `step` (default `1`). If `step` is negative or zero, or `from > to`,

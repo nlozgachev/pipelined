@@ -4,6 +4,81 @@ import { Arr, Num } from "#data";
 import { expect, test } from "vitest";
 
 // ---------------------------------------------------------------------------
+// is
+// ---------------------------------------------------------------------------
+
+test("Num.is.zero identifies 0 correctly", () => {
+	expect(Num.is.zero(0)).toBe(true);
+	expect(Num.is.zero(-0)).toBe(true);
+	expect(Num.is.zero(1)).toBe(false);
+	expect(Num.is.zero(-1)).toBe(false);
+});
+
+test("Num.is.integer identifies whole integers", () => {
+	expect(Num.is.integer(5)).toBe(true);
+	expect(Num.is.integer(-10)).toBe(true);
+	expect(Num.is.integer(0)).toBe(true);
+	expect(Num.is.integer(3.14)).toBe(false);
+	expect(Num.is.integer(NaN)).toBe(false);
+	expect(Num.is.integer(Infinity)).toBe(false);
+});
+
+test("Num.is.float identifies finite floats", () => {
+	expect(Num.is.float(3.14)).toBe(true);
+	expect(Num.is.float(-0.5)).toBe(true);
+	expect(Num.is.float(5)).toBe(false);
+	expect(Num.is.float(0)).toBe(false);
+	expect(Num.is.float(NaN)).toBe(false);
+	expect(Num.is.float(Infinity)).toBe(false);
+});
+
+test("Num.is.finite identifies finite numbers", () => {
+	expect(Num.is.finite(42)).toBe(true);
+	expect(Num.is.finite(-3.14)).toBe(true);
+	expect(Num.is.finite(0)).toBe(true);
+	expect(Num.is.finite(Infinity)).toBe(false);
+	expect(Num.is.finite(-Infinity)).toBe(false);
+	expect(Num.is.finite(NaN)).toBe(false);
+});
+
+test("Num.is.nan identifies NaN", () => {
+	expect(Num.is.nan(NaN)).toBe(true);
+	expect(Num.is.nan(42)).toBe(false);
+	expect(Num.is.nan(Infinity)).toBe(false);
+});
+
+test("Num.is.even identifies even integers", () => {
+	expect(Num.is.even(4)).toBe(true);
+	expect(Num.is.even(-2)).toBe(true);
+	expect(Num.is.even(0)).toBe(true);
+	expect(Num.is.even(3)).toBe(false);
+	expect(Num.is.even(-1)).toBe(false);
+	expect(Num.is.even(2.5)).toBe(false);
+});
+
+test("Num.is.odd identifies odd integers", () => {
+	expect(Num.is.odd(3)).toBe(true);
+	expect(Num.is.odd(-1)).toBe(true);
+	expect(Num.is.odd(4)).toBe(false);
+	expect(Num.is.odd(0)).toBe(false);
+	expect(Num.is.odd(2.5)).toBe(false);
+});
+
+test("Num.is.positive identifies positive numbers", () => {
+	expect(Num.is.positive(5)).toBe(true);
+	expect(Num.is.positive(0.1)).toBe(true);
+	expect(Num.is.positive(0)).toBe(false);
+	expect(Num.is.positive(-5)).toBe(false);
+});
+
+test("Num.is.negative identifies negative numbers", () => {
+	expect(Num.is.negative(-5)).toBe(true);
+	expect(Num.is.negative(-0.1)).toBe(true);
+	expect(Num.is.negative(0)).toBe(false);
+	expect(Num.is.negative(5)).toBe(false);
+});
+
+// ---------------------------------------------------------------------------
 // range
 // ---------------------------------------------------------------------------
 

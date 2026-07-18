@@ -129,6 +129,33 @@ const isInHalfOpenRange = pipe(10, Num.inRange(1, 10)); // false (10 is excluded
 const isWithinHalfOpenRange = pipe(5, Num.inRange(1, 10)); // true
 ```
 
+## Numeric predicates (`Num.is`)
+
+The `Num.is` sub-namespace provides boolean predicates for inspecting number characteristics within
+pipelines:
+
+```ts
+Num.is.zero(0);        // true
+Num.is.integer(42);    // true
+Num.is.float(3.14);    // true
+Num.is.finite(100);    // true
+Num.is.nan(NaN);       // true
+Num.is.even(4);        // true
+Num.is.odd(3);         // true
+Num.is.positive(5);    // true
+Num.is.negative(-5);   // true
+```
+
+These predicates compose seamlessly with array helpers like `Arr.filter`:
+
+```ts
+pipe(
+  [-2, -1, 0, 1, 2, 3, 3.14],
+  Arr.filter(Num.is.positive),
+  Arr.filter(Num.is.integer),
+); // [1, 2, 3]
+```
+
 ## Generating sequences
 
 To build sequences of numbers without manual `for` loops or pre-allocating arrays, we use
