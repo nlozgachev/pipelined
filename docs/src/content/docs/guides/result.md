@@ -62,7 +62,7 @@ a clean `Result`:
 const parseJson = (s: string): Result<string, unknown> =>
   Result.tryCatch(
     () => JSON.parse(s),
-    (error) => `Malformed JSON payload: ${error}`,
+    { onError: (error) => `Malformed JSON payload: ${error}` },
   );
 ```
 

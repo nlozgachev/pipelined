@@ -95,7 +95,7 @@ import { Task } from "@nlozgachev/pipelined/core";
 const fetchUser = (id: string): Task.Result<string, User> =>
   Task.Result.tryCatch(
     (signal) => fetch(`/users/${id}`, { signal }).then((r) => r.json()),
-    (e) => `Network failure: ${e}`,
+    { onError: (e) => `Network failure: ${e}` },
   );
 
 const greeting = pipe(

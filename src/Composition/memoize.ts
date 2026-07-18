@@ -20,12 +20,13 @@
  * // With custom key function for objects
  * const fetchUser = memoize(
  *   (opts: { id: string }) => fetch(`/users/${opts.id}`),
- *   opts => opts.id
+ *   { key: (opts) => opts.id }
  * );
  * ```
  */
-export const memoize = <A, B>(f: (a: A) => B, keyFn: (a: A) => unknown = (a) => a): (a: A) => B => {
+export const memoize = <A, B>(f: (a: A) => B, options?: { readonly key?: (a: A) => unknown; }): (a: A) => B => {
 	const cache = new Map<unknown, B>();
+	const keyFn = options?.key ?? ((a) => a);
 
 	return (a: A): B => {
 		const key = keyFn(a);

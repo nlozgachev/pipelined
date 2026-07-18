@@ -410,50 +410,52 @@ export namespace Task {
 	 * ```ts
 	 * pipe(
 	 *   heavyComputation,
-	 *   Task.timeout(Duration.seconds(5), () => "timed out"),
+	 *   Task.timeout({ duration: Duration.seconds(5), onTimeout: () => "timed out" }),
 	 *   Task.Result.chain(processResult)
 	 * );
 	 * ```
 	 */
-	export const timeout = <E>(duration: Duration, onTimeout: () => E) => <A>(task: Task<A>): Task<CoreResult<E, A>> =>
-		from.Promise((outerSignal) => {
-			const controller = new AbortController();
-			let timerId: ReturnType<typeof setTimeout> | undefined;
+	export const timeout =
+		<E>(options: { duration: Duration; onTimeout: () => E; }) => <A>(task: Task<A>): Task<CoreResult<E, A>> =>
+			from.Promise((outerSignal) => {
+				const { duration, onTimeout } = options;
+				const controller = new AbortController();
+				let timerId: ReturnType<typeof setTimeout> | undefined;
 
-			let cleanUp = () => {};
+				let cleanUp = () => {};
 
-			const onOuterAbort = () => {
-				cleanUp();
-				controller.abort();
-			};
-
-			cleanUp = () => {
-				clearTimeout(timerId);
-				outerSignal?.removeEventListener("abort", onOuterAbort);
-			};
-
-			if (outerSignal) {
-				if (outerSignal.aborted) {
-					controller.abort();
-				} else {
-					outerSignal.addEventListener("abort", onOuterAbort, { once: true });
-				}
-			}
-
-			return Promise.race([
-				toPromise(task, controller.signal).then((a): CoreResult<E, A> => {
+				const onOuterAbort = () => {
 					cleanUp();
-					return CoreResult.make.ok(a);
-				}),
-				new Promise<CoreResult<E, A>>((res) => {
-					timerId = setTimeout(() => {
+					controller.abort();
+				};
+
+				cleanUp = () => {
+					clearTimeout(timerId);
+					outerSignal?.removeEventListener("abort", onOuterAbort);
+				};
+
+				if (outerSignal) {
+					if (outerSignal.aborted) {
 						controller.abort();
+					} else {
+						outerSignal.addEventListener("abort", onOuterAbort, { once: true });
+					}
+				}
+
+				return Promise.race([
+					toPromise(task, controller.signal).then((a): CoreResult<E, A> => {
 						cleanUp();
-						res(CoreResult.make.err(onTimeout()));
-					}, getMs(duration));
-				}),
-			]);
-		});
+						return CoreResult.make.ok(a);
+					}),
+					new Promise<CoreResult<E, A>>((res) => {
+						timerId = setTimeout(() => {
+							controller.abort();
+							cleanUp();
+							res(CoreResult.make.err(onTimeout()));
+						}, getMs(duration));
+					}),
+				]);
+			});
 
 	/**
 	 * Creates a Task paired with an `abort` handle. Calling `abort()` cancels the

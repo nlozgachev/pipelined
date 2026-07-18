@@ -55,7 +55,7 @@ test("memoize - custom key function", () => {
 	const getLabel = memoize((opts: { id: number; label: string; }) => {
 		callCount++;
 		return opts.label.toUpperCase();
-	}, (opts) => opts.id);
+	}, { key: (opts) => opts.id });
 
 	expect(getLabel({ id: 1, label: "hello" })).toBe("HELLO");
 	expect(callCount).toBe(1);

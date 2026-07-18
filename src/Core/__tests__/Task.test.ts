@@ -366,20 +366,23 @@ test("Task.sequential short-circuits early when the signal is aborted", async ()
 // ---------------------------------------------------------------------------
 
 test("task.timeout returns Ok when task resolves before timeout", async () => {
-	const result = await pipe(Task.resolve(42), Task.timeout(Duration.milliseconds(100), () => "timed out"))();
+	const result = await pipe(
+		Task.resolve(42),
+		Task.timeout({ duration: Duration.milliseconds(100), onTimeout: () => "timed out" }),
+	)();
 	expect(result).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
 test("Task.timeout returns Err when task exceeds timeout", async () => {
 	const slow = Task.from.Promise<number>(() => new Promise((r) => setTimeout(() => r(42), 200)));
-	const result = await pipe(slow, Task.timeout(Duration.milliseconds(10), () => "timed out"))();
+	const result = await pipe(slow, Task.timeout({ duration: Duration.milliseconds(10), onTimeout: () => "timed out" }))();
 	expect(result).toStrictEqual({ kind: "Err", error: "timed out" });
 });
 
 test("Task.timeout uses the onTimeout return value as the error", async () => {
 	const slow = Task.from.Promise<number>(() => new Promise((r) => setTimeout(() => r(42), 200)));
 	const error = new Error("request timed out");
-	const result = await pipe(slow, Task.timeout(Duration.milliseconds(10), () => error))();
+	const result = await pipe(slow, Task.timeout({ duration: Duration.milliseconds(10), onTimeout: () => error }))();
 	expect(result).toStrictEqual({ kind: "Err", error });
 });
 
@@ -561,7 +564,7 @@ test("Task.timeout aborts the inner task when the deadline fires", async () => {
 		innerSignal = signal;
 		return new Promise<number>((r) => setTimeout(() => r(42), 200));
 	});
-	await pipe(slow, Task.timeout(Duration.milliseconds(10), () => "timed out"))();
+	await pipe(slow, Task.timeout({ duration: Duration.milliseconds(10), onTimeout: () => "timed out" }))();
 	expect(innerSignal?.aborted).toBe(true);
 });
 
@@ -572,7 +575,7 @@ test("Task.timeout wires the outer signal to the inner task", async () => {
 		innerSignal = signal;
 		return new Promise<number>((r) => setTimeout(() => r(42), 200));
 	});
-	const composed = pipe(slow, Task.timeout(Duration.milliseconds(500), () => "timed out"));
+	const composed = pipe(slow, Task.timeout({ duration: Duration.milliseconds(500), onTimeout: () => "timed out" }));
 	const running = composed(outerController.signal);
 	// Abort via the outer signal before the deadline
 	outerController.abort();
@@ -684,7 +687,9 @@ test("Task.timeout removes the outer signal listener after normal completion", a
 		innerSignal = signal;
 		return Promise.resolve(42);
 	});
-	await pipe(fast, Task.timeout(Duration.milliseconds(500), () => "timed out"))(outerController.signal);
+	await pipe(fast, Task.timeout({ duration: Duration.milliseconds(500), onTimeout: () => "timed out" }))(
+		outerController.signal,
+	);
 	// Task completed before the deadline — listener should have been removed
 	outerController.abort();
 	expect(innerSignal?.aborted).toBe(false);
@@ -817,7 +822,9 @@ test("Task.timeout aborts the inner task when the outer signal is already aborte
 		innerSignal = signal;
 		return Promise.resolve(42);
 	});
-	const result = await pipe(task, Task.timeout(Duration.milliseconds(500), () => "timed out"))(controller.signal);
+	const result = await pipe(task, Task.timeout({ duration: Duration.milliseconds(500), onTimeout: () => "timed out" }))(
+		controller.signal,
+	);
 	expect(innerSignal?.aborted).toBe(true);
 	expect(result).toStrictEqual({ kind: "Ok", value: 42 });
 });

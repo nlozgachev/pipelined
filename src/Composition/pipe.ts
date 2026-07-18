@@ -30,7 +30,7 @@ import type { Awaitable } from "#internal";
  *
  * // Error handling with Result
  * const parsed = pipe(
- *   Result.tryCatch(() => JSON.parse('{"value": 42}'), () => "Invalid JSON"),
+ *   Result.tryCatch(() => JSON.parse('{"value": 42}'), { onError: () => "Invalid JSON" }),
  *   Result.map((data: { value: number }) => data.value),
  *   Result.getOrElse(() => null)
  * ); // 42

@@ -25,15 +25,14 @@ test("Task.Result.err creates a Task that resolves to Err", async () => {
 // ---------------------------------------------------------------------------
 
 test("Task.Result.tryCatch returns Ok when Promise resolves", async () => {
-	const result = await Task.Result.tryCatch(() => Promise.resolve(42), (e) => `Error: ${e}`)();
+	const result = await Task.Result.tryCatch(() => Promise.resolve(42), { onError: (e) => `Error: ${e}` })();
 	expect(result).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
 test("Task.Result.tryCatch returns Err when Promise rejects", async () => {
-	const result = await Task.Result.tryCatch(
-		() => Promise.reject(new Error("boom")),
-		(e: unknown) => (e as Error).message,
-	)();
+	const result = await Task.Result.tryCatch(() => Promise.reject(new Error("boom")), {
+		onError: (e: unknown) => (e as Error).message,
+	})();
 	expect(result).toStrictEqual({ kind: "Err", error: "boom" });
 });
 
@@ -43,7 +42,7 @@ test("taskResult.tryCatch catches synchronous throws in async functions", async 
 		async () => {
 			throw new Error("sync throw");
 		},
-		(e) => (e as Error).message,
+		{ onError: (e) => (e as Error).message },
 	)();
 	expect(result).toStrictEqual({ kind: "Err", error: "sync throw" });
 });
@@ -303,7 +302,7 @@ test("taskResult pipe short-circuits on Err", async () => {
 
 test("taskResult tryCatch integrates with pipe chain", async () => {
 	const result = await pipe(
-		Task.Result.tryCatch(() => Promise.resolve(42), (e) => `Error: ${e}`),
+		Task.Result.tryCatch(() => Promise.resolve(42), { onError: (e) => `Error: ${e}` }),
 		Task.Result.map((n: number) => n + 8),
 		Task.Result.getOrElse(() => 0),
 	)();
@@ -320,7 +319,7 @@ test("Task.Result.tryCatch receives the AbortSignal from the call site", async (
 	const task = Task.Result.tryCatch((signal) => {
 		receivedSignal = signal;
 		return Promise.resolve(42);
-	}, String);
+	}, { onError: String });
 	await task(controller.signal);
 	expect(receivedSignal).toBe(controller.signal);
 });
@@ -341,7 +340,9 @@ test("Task.Result.recover value flows into subsequent map steps", async () => {
 test("Task.Result.mapError normalizes the error type before recover acts on it", async () => {
 	type ApiError = { code: number; msg: string; };
 	const result = await pipe(
-		Task.Result.tryCatch(() => Promise.reject(new Error("service unavailable")), (e) => (e as Error).message),
+		Task.Result.tryCatch(() => Promise.reject(new Error("service unavailable")), {
+			onError: (e) => (e as Error).message,
+		}),
 		Task.Result.mapError((msg: string): ApiError => ({ code: 503, msg })),
 		Task.Result.recover((e: ApiError) =>
 			e.code >= 500 ? Task.Result.ok<ApiError, string>("cached") : Task.Result.err<ApiError, string>(e)
@@ -365,7 +366,7 @@ test("Task.Result.tap runs its side effect at the correct point in the chain", a
 
 test("Task.Result.match handles the ok path at the end of a composed chain", async () => {
 	const result = await pipe(
-		Task.Result.tryCatch(() => Promise.resolve(10), String),
+		Task.Result.tryCatch(() => Promise.resolve(10), { onError: String }),
 		Task.Result.map((n: number) => n * 2),
 		Task.Result.chain((n: number) =>
 			n > 15 ? Task.Result.ok<string, number>(n) : Task.Result.err<string, number>("too small")
@@ -377,7 +378,7 @@ test("Task.Result.match handles the ok path at the end of a composed chain", asy
 
 test("Task.Result.match handles the err path at the end of a composed chain", async () => {
 	const result = await pipe(
-		Task.Result.tryCatch(() => Promise.resolve(5), String),
+		Task.Result.tryCatch(() => Promise.resolve(5), { onError: String }),
 		Task.Result.map((n: number) => n * 2),
 		Task.Result.chain((n: number) =>
 			n > 15 ? Task.Result.ok<string, number>(n) : Task.Result.err<string, number>("too small")
@@ -389,7 +390,7 @@ test("Task.Result.match handles the err path at the end of a composed chain", as
 
 test("Task.Result.fold receives the transformed error from a prior mapError", async () => {
 	const result = await pipe(
-		Task.Result.tryCatch(() => Promise.reject(new Error("boom")), (e: unknown) => (e as Error).message),
+		Task.Result.tryCatch(() => Promise.reject(new Error("boom")), { onError: (e: unknown) => (e as Error).message }),
 		Task.Result.mapError((msg: string) => msg.toUpperCase()),
 		Task.Result.fold((e: string) => `error: ${e}`, (_: number) => "ok"),
 	)();
@@ -553,16 +554,17 @@ test("Task.Result.fromResult returns Err for Err", async () => {
 // --- fromThrowable ---
 
 test("Task.Result.fromThrowable returns Ok when it succeeds", async () => {
-	const parse = Task.Result.from.throwable((s: string) => Promise.resolve(JSON.parse(s)), () => "parse error");
+	const parse = Task.Result.from.throwable((s: string) => Promise.resolve(JSON.parse(s)), {
+		onError: () => "parse error",
+	});
 	const result = await parse('{"a":1}')();
 	expect(result).toStrictEqual(Result.make.ok({ a: 1 }));
 });
 
 test("Task.Result.fromThrowable returns Err when it throws", async () => {
-	const fetch = Task.Result.from.throwable(
-		(_url: string) => Promise.reject(new Error("network error")),
-		(e) => (e as Error).message,
-	);
+	const fetch = Task.Result.from.throwable((_url: string) => Promise.reject(new Error("network error")), {
+		onError: (e) => (e as Error).message,
+	});
 	const result = await fetch("/api")();
 	expect(result).toStrictEqual(Result.make.err("network error"));
 });

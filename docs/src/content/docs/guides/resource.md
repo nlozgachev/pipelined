@@ -57,7 +57,7 @@ import { Resource, Task } from "@nlozgachev/pipelined/core";
 const dbResource = Resource.from.handlers(
   Task.Result.tryCatch(
     () => openConnection({ host: "db.local" }),
-    (error) => new Error(`DB connection failed: ${error}`),
+    { onError: (error) => new Error(`DB connection failed: ${error}`) },
   ),
   (connection) => Task.from.Promise(() => connection.close()),
 );
@@ -94,7 +94,7 @@ const products = await pipe(
   Resource.use((connection) =>
     Task.Result.tryCatch(
       () => connection.query("SELECT * FROM products"),
-      (error) => new Error(`Query failed: ${error}`),
+      { onError: (error) => new Error(`Query failed: ${error}`) },
     )
   ),
 )(); // Resolves to Result<Error, Product[]>
@@ -136,7 +136,7 @@ const result = await pipe(
         await cache.set("profile_123", user);
         return user;
       },
-      (error) => new Error(`Database lookup failed: ${error}`),
+      { onError: (error) => new Error(`Database lookup failed: ${error}`) },
     )
   ),
 )();
@@ -163,7 +163,7 @@ const result = await pipe(
       Resource.use((transaction) =>
         Task.Result.tryCatch(
           () => executeDatabaseWrite(transaction, orderData),
-          (error) => new Error(`Write failed: ${error}`),
+          { onError: (error) => new Error(`Write failed: ${error}`) },
         )
       ),
     )

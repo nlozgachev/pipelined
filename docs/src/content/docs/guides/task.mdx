@@ -235,7 +235,7 @@ import { Task } from "@nlozgachev/pipelined/core";
 const fetchProfile = (userId: string): Task.Result<string, User> =>
   Task.Result.tryCatch(
     (signal) => fetch(`/users/${userId}`, { signal }).then((r) => r.json()),
-    (error) => `Could not fetch user: ${error}`,
+    { onError: (error) => `Could not fetch user: ${error}` },
   );
 
 const userDisplayName = pipe(
@@ -254,9 +254,9 @@ When sequencing multiple `Task.Result` steps, `Task.Result.chain` propagates the
 ```ts
 const fetchReport = (reportId: string): Task.Result<string, Report> =>
   pipe(
-    Task.Result.tryCatch((sig) => initiateJob(reportId, sig), String),
-    Task.Result.chain((job) => Task.Result.tryCatch((sig) => checkJobStatus(job.id, sig), String)),
-    Task.Result.chain((status) => Task.Result.tryCatch((sig) => downloadData(status.url, sig), String)),
+    Task.Result.tryCatch((sig) => initiateJob(reportId, sig), { onError: String }),
+    Task.Result.chain((job) => Task.Result.tryCatch((sig) => checkJobStatus(job.id, sig), { onError: String })),
+    Task.Result.chain((status) => Task.Result.tryCatch((sig) => downloadData(status.url, sig), { onError: String })),
   );
 
 const controller = new AbortController();

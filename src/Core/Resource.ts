@@ -17,7 +17,7 @@ import { Deferred, Result, type Task, Task as CoreTask } from "#core";
  * @example
  * ```ts
  * const dbResource = Resource.from.handlers(
- *   Task.Result.tryCatch(() => openConnection(config), (e) => new DbError(e)),
+ *   Task.Result.tryCatch(() => openConnection(config), { onError: (e) => new DbError(e) }),
  *   (conn) => Task.from.Promise(() => conn.close())
  * );
  *
@@ -39,7 +39,7 @@ export namespace Resource {
 		 * @example
 		 * ```ts
 		 * const fileResource = Resource.from.handlers(
-		 *   Task.Result.tryCatch(() => fs.promises.open("data.csv", "r"), toFileError),
+		 *   Task.Result.tryCatch(() => fs.promises.open("data.csv", "r"), { onError: toFileError }),
 		 *   (handle) => Task.from.Promise(() => handle.close())
 		 * );
 		 * ```

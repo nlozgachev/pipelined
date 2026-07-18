@@ -57,19 +57,19 @@ test("Result.is.err returns false for Ok", () => {
 // ---------------------------------------------------------------------------
 
 test("Result.tryCatch returns Ok when function succeeds", () => {
-	const result = Result.tryCatch(() => JSON.parse('{"a":1}'), (e) => `Parse error: ${e}`);
+	const result = Result.tryCatch(() => JSON.parse('{"a":1}'), { onError: (e) => `Parse error: ${e}` });
 	expect(result).toStrictEqual({ kind: "Ok", value: { a: 1 } });
 });
 
 test("Result.tryCatch returns Err when function throws", () => {
-	const result = Result.tryCatch(() => JSON.parse("invalid json!!!"), () => "Parse error");
+	const result = Result.tryCatch(() => JSON.parse("invalid json!!!"), { onError: () => "Parse error" });
 	expect(result).toStrictEqual({ kind: "Err", error: "Parse error" });
 });
 
 test("Result.tryCatch passes the thrown error to onError", () => {
 	const result = Result.tryCatch(() => {
 		throw new Error("boom");
-	}, (e) => (e as Error).message);
+	}, { onError: (e) => (e as Error).message });
 	expect(result).toStrictEqual({ kind: "Err", error: "boom" });
 });
 
@@ -498,12 +498,14 @@ test("Result.fromMaybe returns Err for None", () => {
 // --- fromThrowable ---
 
 test("Result.fromThrowable creates a safe function that returns Ok when it succeeds", () => {
-	const parse = Result.from.throwable((s: string) => JSON.parse(s), (e: unknown) => `error: ${(e as Error).message}`);
+	const parse = Result.from.throwable((s: string) => JSON.parse(s), {
+		onError: (e: unknown) => `error: ${(e as Error).message}`,
+	});
 	expect(parse('{"a":1}')).toStrictEqual(Result.make.ok({ a: 1 }));
 });
 
 test("Result.fromThrowable creates a safe function that returns Err when it throws", () => {
-	const parse = Result.from.throwable((s: string) => JSON.parse(s), () => "parse error");
+	const parse = Result.from.throwable((s: string) => JSON.parse(s), { onError: () => "parse error" });
 	expect(parse("invalid")).toStrictEqual(Result.make.err("parse error"));
 });
 

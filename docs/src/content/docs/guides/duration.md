@@ -139,7 +139,7 @@ const delayedTask = pipe(
 // 2. Setting a computation timeout
 const guardedTask = pipe(
   fetchLargeDataset,
-  Task.timeout(Duration.seconds(10), () => "timeout_error")
+  Task.timeout({ duration: Duration.seconds(10), onTimeout: () => "timeout_error" })
 );
 
 // 3. Scheduling a recurring poll

@@ -56,15 +56,15 @@ export namespace Result {
 	 * const parseJson = (s: string): Result<string, unknown> =>
 	 *   Result.tryCatch(
 	 *     () => JSON.parse(s),
-	 *     (e) => `Parse error: ${e}`
+	 *     { onError: (e) => `Parse error: ${e}` }
 	 *   );
 	 * ```
 	 */
-	export const tryCatch = <E, A>(f: () => A, onError: (e: unknown) => E): Result<E, A> => {
+	export const tryCatch = <E, A>(f: () => A, options: { onError: (e: unknown) => E; }): Result<E, A> => {
 		try {
 			return make.ok(f());
 		} catch (error) {
-			return make.err(onError(error));
+			return make.err(options.onError(error));
 		}
 	};
 
@@ -242,7 +242,7 @@ export namespace Result {
 		 * ```ts
 		 * const safeParse = Result.from.throwable(
 		 *   (s: string) => JSON.parse(s),
-		 *   (e) => new Error(`Parse error: ${e}`)
+		 *   { onError: (e) => new Error(`Parse error: ${e}`) }
 		 * );
 		 *
 		 * safeParse('{"a":1}'); // Ok({ a: 1 })
@@ -250,12 +250,12 @@ export namespace Result {
 		 * ```
 		 */
 		export const throwable =
-			<Args extends readonly unknown[], A, E>(f: (...args: Args) => A, onError: (e: unknown) => E) =>
+			<Args extends readonly unknown[], A, E>(f: (...args: Args) => A, options: { onError: (e: unknown) => E; }) =>
 			(...args: Args): Result<E, A> => {
 				try {
 					return make.ok(f(...args));
 				} catch (error) {
-					return make.err(onError(error));
+					return make.err(options.onError(error));
 				}
 			};
 	}

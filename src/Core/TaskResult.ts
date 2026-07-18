@@ -18,7 +18,7 @@ import type { Thenable } from "#internal";
  * const fetchUser = (id: string): Task.Result<Error, User> =>
  *   Task.Result.tryCatch(
  *     (signal) => fetch(`/users/${id}`, { signal }).then(r => r.json()),
- *     (e) => new Error(`Failed to fetch user: ${e}`)
+ *     { onError: (e) => new Error(`Failed to fetch user: ${e}`) }
  *   );
  * ```
  */
@@ -61,10 +61,13 @@ export namespace TaskResult {
 		 * that catches rejections and returns a Task.Result.
 		 */
 		export const throwable =
-			<Args extends readonly unknown[], A, E>(f: (...args: Args) => Promise<A>, onError: (e: unknown) => E) =>
+			<Args extends readonly unknown[], A, E>(
+				f: (...args: Args) => Promise<A>,
+				options: { onError: (e: unknown) => E; },
+			) =>
 			(...args: Args): TaskResult<E, A> =>
 				CoreTask.from.Promise(() =>
-					f(...args).then(CoreResult.make.ok).catch((error) => CoreResult.make.err(onError(error)))
+					f(...args).then(CoreResult.make.ok).catch((error) => CoreResult.make.err(options.onError(error)))
 				);
 	}
 
@@ -78,16 +81,16 @@ export namespace TaskResult {
 	 * const fetchUser = (id: string): Task.Result<string, User> =>
 	 *   Task.Result.tryCatch(
 	 *     (signal) => fetch(`/users/${id}`, { signal }).then(r => r.json()),
-	 *     String
+	 *     { onError: String }
 	 *   );
 	 * ```
 	 */
 	export const tryCatch = <E, A>(
 		f: (signal?: AbortSignal) => Thenable<A>,
-		onError: (e: unknown) => E,
+		options: { onError: (e: unknown) => E; },
 	): TaskResult<E, A> =>
 		CoreTask.from.Promise((signal) =>
-			Promise.resolve(f(signal)).then(CoreResult.make.ok).catch((error) => CoreResult.make.err(onError(error)))
+			Promise.resolve(f(signal)).then(CoreResult.make.ok).catch((error) => CoreResult.make.err(options.onError(error)))
 		);
 
 	/**
