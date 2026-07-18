@@ -1,5 +1,5 @@
 import { pipe } from "#composition";
-import { Maybe, Result } from "#core";
+import { Maybe, Result, Validation } from "#core";
 import { expect, test } from "vitest";
 
 // ---------------------------------------------------------------------------
@@ -584,4 +584,45 @@ test("Result.struct ignores inherited prototype properties", () => {
 test("Result.struct returns ok({}) when given an empty object", () => {
 	const res = Result.struct({});
 	expect(res).toStrictEqual(Result.make.ok({}));
+});
+
+// --- transposeMaybe ---
+
+test("Result.transposeMaybe swaps Ok(Some) to Some(Ok)", () => {
+	const res = Result.transposeMaybe(Result.make.ok(Maybe.make.some(42)));
+	expect(res).toStrictEqual(Maybe.make.some(Result.make.ok(42)));
+});
+
+test("Result.transposeMaybe swaps Ok(None) to None", () => {
+	const res = Result.transposeMaybe(Result.make.ok(Maybe.make.none()));
+	expect(res).toStrictEqual(Maybe.make.none());
+});
+
+test("Result.transposeMaybe swaps Err(e) to Some(Err(e))", () => {
+	const res = Result.transposeMaybe(Result.make.err("error"));
+	expect(res).toStrictEqual(Maybe.make.some(Result.make.err("error")));
+});
+
+// --- Validation conversions ---
+
+test("Result.from.Validation converts Passed to Ok", () => {
+	const res = Result.from.Validation((errs: readonly string[]) => errs.join(", "))(Validation.make.passed(42));
+	expect(res).toStrictEqual(Result.make.ok(42));
+});
+
+test("Result.from.Validation converts Failed to Err using combineErrors", () => {
+	const res = Result.from.Validation((errs: readonly string[]) => errs.join("; "))(
+		Validation.make.failedAll(["err1", "err2"]),
+	);
+	expect(res).toStrictEqual(Result.make.err("err1; err2"));
+});
+
+test("Result.to.Validation converts Ok to Passed", () => {
+	const res = Result.to.Validation(Result.make.ok(42));
+	expect(res).toStrictEqual(Validation.make.passed(42));
+});
+
+test("Result.to.Validation converts Err to Failed with array error", () => {
+	const res = Result.to.Validation(Result.make.err("oops"));
+	expect(res).toStrictEqual(Validation.make.failed("oops"));
 });

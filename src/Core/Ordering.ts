@@ -83,4 +83,25 @@ export namespace Ordering {
 	 * ```
 	 */
 	export const by = <A, B>(f: (b: B) => A) => (ord: Ordering<A>): Ordering<B> => (a, b) => ord(f(a), f(b));
+
+	/**
+	 * Combines a list of orderings into a single composite comparator.
+	 * Evaluates each ordering in sequence until a non-zero comparison result is found.
+	 *
+	 * @example
+	 * ```ts
+	 * const byName = pipe(Ordering.string, Ordering.by((u: User) => u.name));
+	 * const byAge  = pipe(Ordering.number, Ordering.by((u: User) => u.age));
+	 * const sortUsers = Ordering.byFields([byName, byAge]);
+	 * ```
+	 */
+	export const byFields = <A>(orderings: ReadonlyArray<Ordering<A>>): Ordering<A> => (a, b) => {
+		for (let i = 0; i < orderings.length; i++) {
+			const res = orderings[i](a, b);
+			if (res !== 0) {
+				return res;
+			}
+		}
+		return 0;
+	};
 }

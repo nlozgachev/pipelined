@@ -103,3 +103,31 @@ test("Ordering.by orders objects by an extracted field", () => {
 	expect(byName({ name: "Bob" }, { name: "Alice" })).toBeGreaterThan(0);
 	expect(byName({ name: "Alice" }, { name: "Alice" })).toBe(0);
 });
+
+// ---------------------------------------------------------------------------
+// byFields
+// ---------------------------------------------------------------------------
+
+test("Ordering.byFields evaluates field orderings sequentially", () => {
+	type User = { dept: string; age: number; name: string; };
+	const byDept = pipe(Ordering.string, Ordering.by((u: User) => u.dept));
+	const byAge = pipe(Ordering.number, Ordering.by((u: User) => u.age));
+	const byName = pipe(Ordering.string, Ordering.by((u: User) => u.name));
+
+	const comparator = Ordering.byFields([byDept, byAge, byName]);
+
+	const u1: User = { dept: "Eng", age: 30, name: "Bob" };
+	const u2: User = { dept: "Eng", age: 30, name: "Alice" };
+	const u3: User = { dept: "Eng", age: 25, name: "Charlie" };
+	const u4: User = { dept: "Sales", age: 40, name: "Dave" };
+
+	expect(comparator(u1, u4)).toBeLessThan(0); // Eng < Sales
+	expect(comparator(u3, u1)).toBeLessThan(0); // 25 < 30
+	expect(comparator(u2, u1)).toBeLessThan(0); // Alice < Bob
+	expect(comparator(u1, u1)).toBe(0);
+});
+
+test("Ordering.byFields returns 0 for empty orderings list", () => {
+	const comparator = Ordering.byFields<number>([]);
+	expect(comparator(1, 2)).toBe(0);
+});

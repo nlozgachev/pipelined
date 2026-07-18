@@ -686,3 +686,17 @@ test("Validation.struct returns passed({}) when given an empty object", () => {
 	const res = Validation.struct({});
 	expect(res).toStrictEqual(Validation.make.passed({}));
 });
+
+// --- to.Result with combineErrors ---
+
+test("Validation.to.Result(combineErrors) converts Passed to Ok", () => {
+	const res = Validation.to.Result((errs: readonly string[]) => errs.join(", "))(Validation.make.passed(42));
+	expect(res).toStrictEqual(Result.make.ok(42));
+});
+
+test("Validation.to.Result(combineErrors) converts Failed to Err with combined errors", () => {
+	const res = Validation.to.Result((errs: readonly string[]) => errs.join("; "))(
+		Validation.make.failedAll(["err1", "err2"]),
+	);
+	expect(res).toStrictEqual(Result.make.err("err1; err2"));
+});

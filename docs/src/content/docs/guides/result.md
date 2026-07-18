@@ -297,6 +297,38 @@ const resultValue = pipe(
 ); // Err("Value was absent")
 ```
 
+### Swapping container contexts: transposeMaybe
+
+When working with operations that return nested optional results (such as `Result<E, Maybe<A>>`),
+`Result.transposeMaybe` swaps the outer and inner contexts, producing `Maybe<Result<E, A>>`:
+
+```ts
+Result.transposeMaybe(Result.make.ok(Maybe.make.some(42))); // Some(Ok(42))
+Result.transposeMaybe(Result.make.ok(Maybe.make.none()));   // None
+Result.transposeMaybe(Result.make.err("DB error"));         // Some(Err("DB error"))
+```
+
+---
+
+## Interoperability with Validation
+
+While `Result` is designed for fail-fast error propagation, `Validation` accumulates all errors
+across independent fields. You can convert between the two representations seamlessly using
+`Result.from.Validation` and `Result.to.Validation`:
+
+```ts
+import { Validation } from "@nlozgachev/pipelined/core";
+
+// Convert error-accumulating Validation into a fail-fast Result with a combined error string:
+const failFastResult = pipe(
+  validationOutcome,
+  Result.from.Validation((errors) => errors.join("; ")),
+);
+
+// Lift a fail-fast Result into a Validation container:
+const validation = Result.to.Validation(Result.make.err("invalid_id")); // Failed(["invalid_id"])
+```
+
 ---
 
 ## Accumulating values: bind / bindTo

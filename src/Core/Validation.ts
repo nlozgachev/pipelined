@@ -306,16 +306,29 @@ export namespace Validation {
 	export namespace to {
 		/**
 		 * Converts a Validation to a Result.
-		 * Passed becomes Ok, Failed becomes Err with the accumulated error list.
+		 * Passed becomes Ok.
+		 * Direct call converts Failed to Err with accumulated error list `NonEmptyArr<E>`.
+		 * Curried call converts Failed to Err with combined error `E2` via `combineErrors`.
 		 *
 		 * @example
 		 * ```ts
 		 * Validation.to.Result(Validation.make.passed(42));        // Ok(42)
 		 * Validation.to.Result(Validation.make.failed("oops"));  // Err(["oops"])
+		 * pipe(Validation.make.failed("oops"), Validation.to.Result(errors => errors.join(", "))); // Err("oops")
 		 * ```
 		 */
-		export const Result = <E, A>(data: Validation<E, A>): Result<NonEmptyArr<E>, A> =>
-			is.passed(data) ? CoreResult.make.ok(data.value) : CoreResult.make.err(data.errors);
+		export function Result<E1, E2, A>(
+			combineErrors: (errors: NonEmptyArr<E1>) => E2,
+		): (val: Validation<E1, A>) => CoreResult<E2, A>;
+		export function Result<E, A>(data: Validation<E, A>): CoreResult<NonEmptyArr<E>, A>;
+		export function Result<E1, E2, A>(arg: ((errors: NonEmptyArr<E1>) => E2) | Validation<E1, A>): any {
+			if (typeof arg === "function") {
+				const combine = arg;
+				return (val: Validation<E1, A>): CoreResult<E2, A> =>
+					is.passed(val) ? CoreResult.make.ok(val.value) : CoreResult.make.err(combine(val.errors));
+			}
+			return is.passed(arg) ? CoreResult.make.ok(arg.value) : CoreResult.make.err(arg.errors);
+		}
 
 		/**
 		 * Converts a Validation to a Maybe. `Passed` becomes `Some`; `Failed` becomes `None`

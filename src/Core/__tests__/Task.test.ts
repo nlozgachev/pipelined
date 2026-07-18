@@ -906,3 +906,21 @@ test("Task.bind accumulates values key-by-key in a pipeline", async () => {
 	)();
 	expect(result).toStrictEqual({ a: 2, b: 6, c: 8 });
 });
+
+// --- memoize ---
+
+test("Task.memoize executes task only once across multiple calls", async () => {
+	let calls = 0;
+	const task: Task<number> = () => {
+		calls++;
+		return Deferred.from.Promise(Promise.resolve(calls));
+	};
+	const memoized = Task.memoize(task);
+
+	const v1 = await memoized();
+	const v2 = await memoized();
+
+	expect(v1).toBe(1);
+	expect(v2).toBe(1);
+	expect(calls).toBe(1);
+});

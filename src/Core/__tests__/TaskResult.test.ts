@@ -1,5 +1,6 @@
 import { pipe } from "#composition";
 import { Deferred, Maybe, Result, Task } from "#core";
+import { Duration, RetryPolicy } from "#types";
 import { expect, expectTypeOf, test } from "vitest";
 
 // ---------------------------------------------------------------------------
@@ -669,4 +670,82 @@ test("Task.Result.struct composes in a pipe pipeline", async () => {
 test("Task.Result.struct returns ok({}) when given an empty object", async () => {
 	const res = await Task.Result.struct({})();
 	expect(res).toStrictEqual(Result.make.ok({}));
+});
+
+// --- retry ---
+
+test("Task.Result.retry returns Ok on first attempt without retrying", async () => {
+	let calls = 0;
+	const task: Task.Result<string, number> = () => {
+		calls++;
+		return Deferred.from.Promise(Promise.resolve(Result.make.ok(42)));
+	};
+	const policy = RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(10) });
+	const result = await pipe(task, Task.Result.retry(policy))();
+
+	expect(result).toStrictEqual(Result.make.ok(42));
+	expect(calls).toBe(1);
+});
+
+test("Task.Result.retry retries on Err until success", async () => {
+	let calls = 0;
+	const task: Task.Result<string, number> = () => {
+		calls++;
+		return Deferred.from.Promise(
+			Promise.resolve(calls < 3 ? Result.make.err(`attempt ${calls} failed`) : Result.make.ok(42)),
+		);
+	};
+	const policy = RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(1) });
+	const result = await pipe(task, Task.Result.retry(policy))();
+
+	expect(result).toStrictEqual(Result.make.ok(42));
+	expect(calls).toBe(3);
+});
+
+test("Task.Result.retry returns final Err after exhausting attempts", async () => {
+	let calls = 0;
+	const task: Task.Result<string, number> = () => {
+		calls++;
+		return Deferred.from.Promise(Promise.resolve(Result.make.err(`attempt ${calls} failed`)));
+	};
+	const policy = RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(1) });
+	const result = await pipe(task, Task.Result.retry(policy))();
+
+	expect(result).toStrictEqual(Result.make.err("attempt 3 failed"));
+	expect(calls).toBe(3);
+});
+
+test("Task.Result.retry stops early when call site AbortSignal is aborted", async () => {
+	let calls = 0;
+	const controller = new AbortController();
+	const task: Task.Result<string, number> = () => {
+		calls++;
+		if (calls === 1) {
+			controller.abort();
+		}
+		return Deferred.from.Promise(Promise.resolve(Result.make.err("failed")));
+	};
+	const policy = RetryPolicy.constant({ attempts: 5, delay: Duration.milliseconds(50) });
+	const result = await pipe(task, Task.Result.retry(policy))(controller.signal);
+
+	expect(result).toStrictEqual(Result.make.err("failed"));
+	expect(calls).toBe(1);
+});
+
+// --- memoize ---
+
+test("Task.Result.memoize executes task only once across multiple invocations", async () => {
+	let calls = 0;
+	const task: Task.Result<string, number> = () => {
+		calls++;
+		return Deferred.from.Promise(Promise.resolve(Result.make.ok(calls)));
+	};
+	const memoized = Task.Result.memoize(task);
+
+	const res1 = await memoized();
+	const res2 = await memoized();
+
+	expect(res1).toStrictEqual(Result.make.ok(1));
+	expect(res2).toStrictEqual(Result.make.ok(1));
+	expect(calls).toBe(1);
 });

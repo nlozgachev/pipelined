@@ -114,6 +114,30 @@ const byDeptAndSalary: Ordering<Employee> = pipe(
 
 ---
 
+## Multi-Column Sorting: byFields
+
+When you need to aggregate an arbitrary list of field comparators — such as multi-column data tables
+where users can sort by dynamic combinations of columns — `Ordering.byFields` combines an array of
+`Ordering<A>` instances into a single composite comparator:
+
+```ts
+const byDepartment = pipe(Ordering.string, Ordering.by((e: Employee) => e.department));
+const bySalary = pipe(Ordering.number, Ordering.by((e: Employee) => e.salary));
+const byName = pipe(Ordering.string, Ordering.by((e: Employee) => e.name));
+
+// Combines an array of field comparators into a single ordering:
+const multiColumnSort: Ordering<Employee> = Ordering.byFields([
+  byDepartment,
+  bySalary,
+  byName,
+]);
+```
+
+It evaluates each comparator sequentially until it finds a non-zero comparison result,
+short-circuiting early once a tie is broken.
+
+---
+
 ## Practical Application: Immutable Sorting
 
 `Arr.sortWith` accepts any `Ordering<A>` instance and returns a **fresh, sorted array**, avoiding

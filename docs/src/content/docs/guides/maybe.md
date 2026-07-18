@@ -343,6 +343,17 @@ Conversely, if we have a `Result` and want to discard the error context, we can 
 const maybeValue = Maybe.from.Result(Result.make.err("An error occurred")); // None
 ```
 
+### Swapping container contexts: transposeResult
+
+When working with optional operations that return fallible results (such as `Maybe<Result<E, A>>`),
+`Maybe.transposeResult` swaps the outer and inner contexts, producing `Result<E, Maybe<A>>`:
+
+```ts
+Maybe.transposeResult(Maybe.make.some(Result.make.ok(42)));  // Ok(Some(42))
+Maybe.transposeResult(Maybe.make.some(Result.make.err("e"))); // Err("e")
+Maybe.transposeResult(Maybe.make.none());                     // Ok(None)
+```
+
 ---
 
 ## Composition in practice

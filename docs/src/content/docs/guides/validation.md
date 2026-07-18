@@ -282,16 +282,21 @@ The single error from the `Err` is wrapped in a type-safe `Arr.NonEmpty` automat
 established that the data is 100% valid, you typically need to run sequential side effects that can
 fail (like saving to a database, sending a request, or writing to disk).
 
-For this, you should hand off execution to a `Result` pipeline using `to.Result`:
+For this, you should hand off execution to a `Result` pipeline using `to.Result`. If you want to
+merge accumulated validation errors into a single error string or composite error object, pass a
+combiner function to `to.Result`:
 
 ```ts
 pipe(
   Validation.productAll([validateName(form.name), validateEmail(form.email)]),
-  Validation.to.Result, // Passed becomes Ok, Failed becomes Err([errors...])
+  Validation.to.Result((errors) => errors.join("; ")), // Passed becomes Ok, Failed becomes Err("err1; err2")
   Result.chain((data) => db.saveUser(data)), // Sequential, fail-fast side effect
   Result.getOrElse(() => null),
 );
 ```
+
+Calling `Validation.to.Result` without arguments retains the raw `Arr.NonEmpty<E>` error list inside
+`Err`.
 
 This hand-off represents a highly common, elegant pattern in production applications: use
 `Validation` to gather all input friction, convert to `Result` once the data is clean, and use

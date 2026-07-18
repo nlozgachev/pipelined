@@ -546,6 +546,27 @@ export namespace Task {
 				map<B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
 			)(data);
 
+	/**
+	 * Creates a memoized version of a Task. The task is executed at most once on first call,
+	 * and its resolved value is cached for all subsequent calls.
+	 *
+	 * @example
+	 * ```ts
+	 * const loadToken = Task.memoize(fetchAuthToken);
+	 * const token1 = await loadToken(); // fetches token
+	 * const token2 = await loadToken(); // returns cached token immediately
+	 * ```
+	 */
+	export const memoize = <A>(task: Task<A>): Task<A> => {
+		let cached: Deferred<A> | null = null;
+		return (signal?: AbortSignal) => {
+			if (cached === null) {
+				cached = task(signal);
+			}
+			return cached;
+		};
+	};
+
 	export type Maybe<A> = TaskMaybe<A>;
 	export const Maybe = TaskMaybe;
 

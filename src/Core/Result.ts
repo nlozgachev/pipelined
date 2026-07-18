@@ -1,5 +1,5 @@
-import { type Maybe, Maybe as CoreMaybe } from "#core";
-import type { WithError, WithKind, WithValue } from "#internal";
+import { type Maybe, Maybe as CoreMaybe, type Validation, Validation as CoreValidation } from "#core";
+import type { NonEmptyArr, WithError, WithKind, WithValue } from "#internal";
 
 /**
  * Result represents a value that can be one of two types: a success (Ok) or a failure (Err).
@@ -258,6 +258,19 @@ export namespace Result {
 					return make.err(options.onError(error));
 				}
 			};
+
+		/**
+		 * Converts a `Validation` to a `Result`, combining accumulated errors using `combineErrors`.
+		 * `Passed(a)` becomes `Ok(a)`; `Failed(errors)` becomes `Err(combineErrors(errors))`.
+		 *
+		 * @example
+		 * ```ts
+		 * Result.from.Validation((errors) => errors.join(", "))(Validation.make.failed("error1")); // Err("error1")
+		 * ```
+		 */
+		export const Validation =
+			<E1, E2, A>(combineErrors: (errors: NonEmptyArr<E1>) => E2) => (val: Validation<E1, A>): Result<E2, A> =>
+				CoreValidation.is.passed(val) ? make.ok(val.value) : make.err(combineErrors(val.errors));
 	}
 
 	/**
@@ -297,7 +310,33 @@ export namespace Result {
 		 */
 		export const Maybe = <E, A>(data: Result<E, A>): Maybe<A> =>
 			is.ok(data) ? CoreMaybe.make.some(data.value) : CoreMaybe.make.none();
+		/**
+		 * Converts a `Result` to a `Validation`. `Ok(a)` becomes `Passed(a)`; `Err(e)` becomes `Failed([e])`.
+		 *
+		 * @example
+		 * ```ts
+		 * Result.to.Validation(Result.make.ok(42));     // Passed(42)
+		 * Result.to.Validation(Result.make.err("bad")); // Failed(["bad"])
+		 * ```
+		 */
+		export const Validation = <E, A>(data: Result<E, A>): Validation<E, A> => CoreValidation.from.Result(data);
 	}
+
+	/**
+	 * Swaps the outer `Result` and inner `Maybe` context.
+	 * `Ok(Some(a))` becomes `Some(Ok(a))`, `Ok(None)` becomes `None`, and `Err(e)` becomes `Some(Err(e))`.
+	 *
+	 * @example
+	 * ```ts
+	 * Result.transposeMaybe(Result.make.ok(Maybe.make.some(42))); // Some(Ok(42))
+	 * Result.transposeMaybe(Result.make.ok(Maybe.make.none()));   // None
+	 * Result.transposeMaybe(Result.make.err("error"));           // Some(Err("error"))
+	 * ```
+	 */
+	export const transposeMaybe = <E, A>(data: Result<E, Maybe<A>>): Maybe<Result<E, A>> =>
+		is.err(data)
+			? CoreMaybe.make.some(data)
+			: (CoreMaybe.is.some(data.value) ? CoreMaybe.make.some(make.ok(data.value.value)) : CoreMaybe.make.none());
 
 	/**
 	 * Applies a function wrapped in a Result to a value wrapped in a Result.

@@ -313,4 +313,22 @@ export namespace Maybe {
 		}
 		return make.some(result);
 	};
+
+	/**
+	 * Swaps the outer `Maybe` and inner `Result` context.
+	 * `Some(Ok(a))` becomes `Ok(Some(a))`, `Some(Err(e))` becomes `Err(e)`, and `None` becomes `Ok(None)`.
+	 *
+	 * @example
+	 * ```ts
+	 * Maybe.transposeResult(Maybe.make.some(Result.make.ok(42)));  // Ok(Some(42))
+	 * Maybe.transposeResult(Maybe.make.some(Result.make.err("e"))); // Err("e")
+	 * Maybe.transposeResult(Maybe.make.none());                     // Ok(None)
+	 * ```
+	 */
+	export const transposeResult = <E, A>(data: Maybe<Result<E, A>>): Result<E, Maybe<A>> =>
+		is.none(data)
+			? CoreResult.make.ok(make.none())
+			: (CoreResult.is.ok(data.value)
+				? CoreResult.make.ok(make.some(data.value.value))
+				: CoreResult.make.err(data.value.error));
 }
