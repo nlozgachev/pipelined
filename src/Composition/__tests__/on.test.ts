@@ -1,5 +1,8 @@
-import { on, pipe } from "#composition";
 import { expect, test } from "vitest";
+import { on } from "../on.ts";
+import { pipe } from "../pipe.ts";
+
+// --- on ---
 
 test("on - projects both arguments before calling the binary function", () => {
 	const compareByLength = on((a: number, b: number) => a - b, (s: string) => s.length);

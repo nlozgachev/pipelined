@@ -17,8 +17,8 @@ namespace ArrMaybe {
 	 *   return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 	 * };
 	 *
-	 * pipe(["1", "2", "3"], Arr.Maybe.traverse(parseNum)); // Some([1, 2, 3])
-	 * pipe(["1", "x", "3"], Arr.Maybe.traverse(parseNum)); // None
+	 * pipe(["1", "2", "3"], Arr.traverse.Maybe(parseNum)); // Some([1, 2, 3])
+	 * pipe(["1", "x", "3"], Arr.traverse.Maybe(parseNum)); // None
 	 * ```
 	 */
 	export const traverse = <A, B>(f: (a: A) => CoreMaybe<B>) => (data: readonly A[]): CoreMaybe<readonly B[]> => {
@@ -38,8 +38,8 @@ namespace ArrMaybe {
 	 *
 	 * @example
 	 * ```ts
-	 * Arr.Maybe.sequence([Maybe.make.some(1), Maybe.make.some(2)]); // Some([1, 2])
-	 * Arr.Maybe.sequence([Maybe.make.some(1), Maybe.make.none()]); // None
+	 * Arr.sequence.Maybe([Maybe.make.some(1), Maybe.make.some(2)]); // Some([1, 2])
+	 * Arr.sequence.Maybe([Maybe.make.some(1), Maybe.make.none()]); // None
 	 * ```
 	 */
 	export const sequence = <A>(data: readonly CoreMaybe<A>[]): CoreMaybe<readonly A[]> =>
@@ -55,7 +55,7 @@ namespace ArrResult {
 	 * ```ts
 	 * pipe(
 	 *   [1, 2, 3],
-	 *   Arr.Result.traverse(n => n > 0 ? Result.make.ok(n) : Result.make.err("negative"))
+	 *   Arr.traverse.Result((n: number) => n > 0 ? Result.make.ok(n) : Result.make.err("negative"))
 	 * ); // Ok([1, 2, 3])
 	 * ```
 	 */
@@ -74,6 +74,12 @@ namespace ArrResult {
 	/**
 	 * Collects an array of Results into a Result of array.
 	 * Returns the first Err if any element is Err.
+	 *
+	 * @example
+	 * ```ts
+	 * Arr.sequence.Result([Result.make.ok(1), Result.make.ok(2)]); // Ok([1, 2])
+	 * Arr.sequence.Result([Result.make.ok(1), Result.make.err("bad")]); // Err("bad")
+	 * ```
 	 */
 	export const sequence = <E, A>(data: readonly CoreResult<E, A>[]): CoreResult<E, readonly A[]> =>
 		traverse<E, CoreResult<E, A>, A>((a) => a)(data);
@@ -91,12 +97,12 @@ namespace ArrTaskResult {
 	 *
 	 * pipe(
 	 *   [1, 2, 3],
-	 *   Arr.Task.Result.traverse(validate)
+	 *   Arr.traverse.Task.Result(validate)
 	 * )(); // Deferred<Ok([1, 2, 3])>
 	 *
 	 * pipe(
 	 *   [1, -1, 3],
-	 *   Arr.Task.Result.traverse(validate)
+	 *   Arr.traverse.Task.Result(validate)
 	 * )(); // Deferred<Err("non-positive")>
 	 * ```
 	 */
@@ -116,6 +122,14 @@ namespace ArrTaskResult {
 	/**
 	 * Collects an array of Task.Results into a Task.Result of array.
 	 * Returns the first Err if any element is Err, runs sequentially.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   [Task.Result.ok(1), Task.Result.ok(2)],
+	 *   Arr.sequence.Task.Result
+	 * )(); // Deferred<Ok([1, 2])>
+	 * ```
 	 */
 	export const sequence = <E, A>(data: readonly CoreTask<CoreResult<E, A>>[]): CoreTask<CoreResult<E, readonly A[]>> =>
 		traverse<E, CoreTask<CoreResult<E, A>>, A>((a) => a)(data);
@@ -129,7 +143,7 @@ namespace ArrTask {
 	 * ```ts
 	 * pipe(
 	 *   [1, 2, 3],
-	 *   Arr.Task.traverse(n => Task.resolve(n * 2))
+	 *   Arr.traverse.Task((n: number) => Task.resolve(n * 2))
 	 * )(); // Promise<[2, 4, 6]>
 	 * ```
 	 */
@@ -138,6 +152,14 @@ namespace ArrTask {
 
 	/**
 	 * Collects an array of Tasks into a Task of array. Runs in parallel.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   [Task.resolve(1), Task.resolve(2)],
+	 *   Arr.sequence.Task
+	 * )(); // Deferred<[1, 2]>
+	 * ```
 	 */
 	export const sequence = <A>(data: readonly CoreTask<A>[]): CoreTask<readonly A[]> =>
 		traverse<CoreTask<A>, A>((a) => a)(data);
@@ -206,7 +228,7 @@ namespace ArrNonEmpty {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe([1, 2, 3, 4] as NonEmptyArr<number>, Arr.NonEmpty.reduce((a, b) => a + b)); // 10
+	 * pipe([1, 2, 3, 4] as Arr.NonEmpty<number>, Arr.NonEmpty.reduce((a: number, b: number) => a + b)); // 10
 	 * ```
 	 */
 	export const reduce = <A>(f: (acc: A, a: A) => A) => (data: NonEmptyArr<A>): A => data.reduce(f);
@@ -652,6 +674,8 @@ export namespace Arr {
 	 * ```ts
 	 * pipe([3, 1, 2], Arr.sortWith(Ordering.number)); // [1, 2, 3]
 	 *
+	 * type Product = { price: number };
+	 * const products: Product[] = [{ price: 20 }, { price: 10 }];
 	 * const byPrice = pipe(Ordering.number, Ordering.by((p: Product) => p.price));
 	 * pipe(products, Arr.sortWith(byPrice));
 	 * ```
@@ -686,7 +710,7 @@ export namespace Arr {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe([1, 2], Arr.zipWith((a, b) => a + b, ["a", "b"])); // ["1a", "2b"]
+	 * pipe([1, 2], Arr.zipWith((a: number, b: string) => `${a}${b}`)(["a", "b"])); // ["1a", "2b"]
 	 * ```
 	 */
 	export const zipWith =
@@ -833,11 +857,23 @@ export namespace Arr {
 	export namespace is {
 		/**
 		 * Returns true if the array is empty.
+		 *
+		 * @example
+		 * ```ts
+		 * Arr.is.empty([]);  // true
+		 * Arr.is.empty([1]); // false
+		 * ```
 		 */
 		export const empty = <A>(data: readonly A[]): data is readonly [] => data.length === 0;
 
 		/**
 		 * Returns true if the array is non-empty (type guard).
+		 *
+		 * @example
+		 * ```ts
+		 * Arr.is.nonEmpty([1, 2]); // true
+		 * Arr.is.nonEmpty([]);     // false
+		 * ```
 		 */
 		export const nonEmpty = <A>(data: readonly A[]): data is NonEmpty<A> => isNonEmptyArr(data);
 	}
@@ -864,6 +900,11 @@ export namespace Arr {
 
 	/**
 	 * Returns the length of an array.
+	 *
+	 * @example
+	 * ```ts
+	 * Arr.size([1, 2, 3]); // 3
+	 * ```
 	 */
 	export const size = <A>(data: readonly A[]): number => data.length;
 
@@ -1030,6 +1071,208 @@ export namespace Arr {
 	export const splitAt = (index: number) => <A>(data: readonly A[]): readonly [readonly A[], readonly A[]] => {
 		const i = Math.max(0, index);
 		return [data.slice(0, i), data.slice(i)];
+	};
+
+	/**
+	 * Partitions an array by applying a function returning `Maybe<B>`.
+	 * Elements returning `None` are gathered into `failures` (original `A` values);
+	 * elements returning `Some(b)` are gathered into `successes` (`B` values).
+	 *
+	 * @example
+	 * ```ts
+	 * const parseNumber = (s: string) => isNaN(Number(s)) ? Maybe.make.none() : Maybe.make.some(Number(s));
+	 * pipe(["1", "abc", "3"], Arr.partitionMaybe(parseNumber)); // [["abc"], [1, 3]]
+	 * ```
+	 */
+	export const partitionMaybe =
+		<A, B>(f: (a: A) => CoreMaybe<B>) =>
+		(data: readonly A[]): readonly [failures: readonly A[], successes: readonly B[]] => {
+			const failures: A[] = [];
+			const successes: B[] = [];
+			for (let i = 0; i < data.length; i++) {
+				const res = f(data[i]);
+				if (res.kind === "Some") {
+					successes.push(res.value);
+				} else {
+					failures.push(data[i]);
+				}
+			}
+			return [failures, successes];
+		};
+
+	/**
+	 * Safely looks up an element by index. Supports negative indices counting back from the end.
+	 * Returns `None` if the index is out of bounds.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe([10, 20, 30], Arr.at(1));  // Some(20)
+	 * pipe([10, 20, 30], Arr.at(-1)); // Some(30)
+	 * pipe([10, 20, 30], Arr.at(5));  // None
+	 * ```
+	 */
+	export const at = (index: number) => <A>(data: readonly A[]): CoreMaybe<A> => {
+		const targetIndex = index < 0 ? data.length + index : index;
+		if (targetIndex < 0 || targetIndex >= data.length) {
+			return CoreMaybe.make.none();
+		}
+		return CoreMaybe.make.some(data[targetIndex]);
+	};
+
+	/**
+	 * Finds the first element in an array for which `f` returns `Some(b)`.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   ["1", "a", "2"],
+	 *   Arr.findMap((s) => isNaN(Number(s)) ? Maybe.make.none() : Maybe.make.some(Number(s)))
+	 * ); // Some(1)
+	 * ```
+	 */
+	export const findMap = <A, B>(f: (a: A) => CoreMaybe<B>) => (data: readonly A[]): CoreMaybe<B> => {
+		for (let i = 0; i < data.length; i++) {
+			const res = f(data[i]);
+			if (res.kind === "Some") {
+				return res;
+			}
+		}
+		return CoreMaybe.make.none();
+	};
+
+	/**
+	 * Indexes elements of an array into a `ReadonlyMap<K, A>` using a key extraction function.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   [{ id: 1, name: "Alice" }, { id: 2, name: "Bob" }],
+	 *   Arr.indexBy((u) => u.id)
+	 * ); // ReadonlyMap { 1 => { id: 1, name: "Alice" }, 2 => { id: 2, name: "Bob" } }
+	 * ```
+	 */
+	export const indexBy = <A, K>(keyFn: (a: A) => K) => (data: readonly A[]): ReadonlyMap<K, A> => {
+		const map = new globalThis.Map<K, A>();
+		for (let i = 0; i < data.length; i++) {
+			map.set(keyFn(data[i]), data[i]);
+		}
+		return map;
+	};
+
+	/**
+	 * Counts occurrences of each element in an array, returning a `ReadonlyMap<A, number>`.
+	 *
+	 * @example
+	 * ```ts
+	 * Arr.frequencies(["a", "b", "a", "c", "b", "a"]);
+	 * // ReadonlyMap { "a" => 3, "b" => 2, "c" => 1 }
+	 * ```
+	 */
+	export const frequencies = <A>(data: readonly A[]): ReadonlyMap<A, number> => {
+		const map = new globalThis.Map<A, number>();
+		for (let i = 0; i < data.length; i++) {
+			const item = data[i];
+			map.set(item, (map.get(item) ?? 0) + 1);
+		}
+		return map;
+	};
+
+	/**
+	 * Groups consecutive elements that share the same key returned by `keyFn`.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   [1, 1, 2, 3, 3, 1],
+	 *   Arr.chunkBy((n) => n)
+	 * ); // [[1, 1], [2], [3, 3], [1]]
+	 * ```
+	 */
+	export const chunkBy = <A, K>(keyFn: (a: A) => K) => (data: readonly A[]): readonly (readonly A[])[] => {
+		if (data.length === 0) { return []; }
+		const result: A[][] = [];
+		let currentChunk: A[] = [data[0]];
+		let currentKey = keyFn(data[0]);
+
+		for (let i = 1; i < data.length; i++) {
+			const item = data[i];
+			const key = keyFn(item);
+			if (Object.is(key, currentKey)) {
+				currentChunk.push(item);
+			} else {
+				result.push(currentChunk);
+				currentChunk = [item];
+				currentKey = key;
+			}
+		}
+		result.push(currentChunk);
+		return result;
+	};
+
+	/**
+	 * Removes consecutive duplicate elements.
+	 * An optional `Equality<A>` can be provided (defaults to `Object.is`).
+	 *
+	 * @example
+	 * ```ts
+	 * Arr.dedupeAdjacent()([1, 1, 2, 2, 1, 3]); // [1, 2, 1, 3]
+	 * ```
+	 */
+	export const dedupeAdjacent =
+		<A>(eq: Equality<A> = (a, b) => Object.is(a, b)) => (data: readonly A[]): readonly A[] => {
+			if (data.length === 0) { return []; }
+			const result: A[] = [data[0]];
+			for (let i = 1; i < data.length; i++) {
+				if (!eq(data[i], result[result.length - 1])) {
+					result.push(data[i]);
+				}
+			}
+			return result;
+		};
+
+	/**
+	 * Produces a sliding window of `size` elements over an array, advancing by `step` (default `1`).
+	 * Returns an empty array if `size <= 0` or `size > data.length`.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe([1, 2, 3, 4], Arr.windowed(2)); // [[1, 2], [2, 3], [3, 4]]
+	 * pipe([1, 2, 3, 4], Arr.windowed(2, { step: 2 })); // [[1, 2], [3, 4]]
+	 * ```
+	 */
+	export const windowed =
+		(size: number, options?: { step?: number; }) => <A>(data: readonly A[]): readonly (readonly A[])[] => {
+			const step = options?.step ?? 1;
+			if (size <= 0 || step <= 0 || data.length < size) { return []; }
+			const result: A[][] = [];
+			for (let i = 0; i <= data.length - size; i += step) {
+				result.push(data.slice(i, i + size));
+			}
+			return result;
+		};
+
+	/**
+	 * Generates an array from an initial seed state until `f` returns `None`.
+	 *
+	 * @example
+	 * ```ts
+	 * Arr.unfold(1, (n) => n > 3 ? Maybe.make.none() : Maybe.make.some([n, n + 1]));
+	 * // [1, 2, 3]
+	 * ```
+	 */
+	export const unfold = <A, S>(initial: S, f: (state: S) => CoreMaybe<readonly [A, S]>): readonly A[] => {
+		const result: A[] = [];
+		let currentState = initial;
+		while (true) {
+			const next = f(currentState);
+			if (next.kind === "None") {
+				break;
+			}
+			const [item, nextState] = next.value;
+			result.push(item);
+			currentState = nextState;
+		}
+		return result;
 	};
 
 	export const NonEmpty = ArrNonEmpty;

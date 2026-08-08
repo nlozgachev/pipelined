@@ -1,7 +1,7 @@
-import { pipe } from "#composition";
-import { Maybe } from "#core";
-import { Dict } from "#data";
 import { expect, expectTypeOf, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Maybe } from "../../Core/Maybe.ts";
+import { Dict } from "../Dict.ts";
 
 // ---------------------------------------------------------------------------
 // empty
@@ -393,6 +393,31 @@ test("Dict.reduceWithKey folds using both key and value", () => {
 		Dict.from.entries([["a", 1], ["b", 2]]),
 	);
 	expect(result).toBe("a:1 b:2 ");
+});
+
+// ---------------------------------------------------------------------------
+// mergeWith
+// ---------------------------------------------------------------------------
+
+test("Dict.mergeWith combines maps uncurried and curried on key collisions", () => {
+	const combine = Dict.mergeWith((a: number, b: number) => a + b);
+	const map1 = Dict.from.entries([["a", 1], ["b", 2]]);
+	const map2 = Dict.from.entries([["b", 3], ["c", 4]]);
+
+	expect(combine(map1, map2)).toStrictEqual(Dict.from.entries([["a", 1], ["b", 5], ["c", 4]]));
+	expect(pipe(map1, combine(map2))).toStrictEqual(Dict.from.entries([["a", 1], ["b", 5], ["c", 4]]));
+});
+
+// --- mapEntries & mapKeys ---
+
+test("Dict.mapEntries transforms keys and values simultaneously", () => {
+	const res = pipe(Dict.from.entries([["a", 1], ["b", 2]]), Dict.mapEntries((k, v) => [k.toUpperCase(), v * 10]));
+	expect(res).toStrictEqual(Dict.from.entries([["A", 10], ["B", 20]]));
+});
+
+test("Dict.mapKeys transforms keys while preserving values", () => {
+	const res = pipe(Dict.from.entries([["a", 1], ["b", 2]]), Dict.mapKeys((k) => k.toUpperCase()));
+	expect(res).toStrictEqual(Dict.from.entries([["A", 1], ["B", 2]]));
 });
 
 // ---------------------------------------------------------------------------

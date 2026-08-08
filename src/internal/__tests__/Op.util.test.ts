@@ -3,9 +3,12 @@
  * These test the building blocks in isolation — runWithRetry, execute, cancellableWait,
  * and the strategy factories — rather than routing every assertion through Op.interpret.
  */
-import { Deferred, Op, Result } from "#core";
-import { Duration } from "#types";
 import { expect, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Deferred } from "../../Core/Deferred.ts";
+import { Op } from "../../Core/Op.ts";
+import { Result } from "../../Core/Result.ts";
+import { Duration } from "../../Types/Duration.ts";
 import {
 	cancellableWait,
 	execute,
@@ -19,7 +22,7 @@ import {
 	makeRestartable,
 	makeThrottled,
 	runWithRetry,
-} from "../Op.util";
+} from "../Op.util.ts";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -478,3 +481,84 @@ test("makeDebounced (trailing): onRetrying guard suppresses stale Retrying state
 	expect(retryingStates).toHaveLength(1);
 	expect(retryingStates[0]).toStrictEqual({ kind: "Retrying", attempt: 1, lastError: "fail" });
 });
+
+// ---------------------------------------------------------------------------
+// pipe composition
+// ---------------------------------------------------------------------------
+
+test("cancellableWait composes with pipe to delay execution", async () => {
+	const c = new AbortController();
+	const result = await pipe(
+		Duration.milliseconds(10),
+		(d) => cancellableWait(d, c.signal),
+		(p) => p.then(() => "done"),
+	);
+	expect(result).toBe("done");
+});
+
+test("execute composes with Deferred.to.Promise in a pipe chain", async () => {
+	const controller = new AbortController();
+	const outcome = await pipe(
+		execute(successOp(), 100, controller),
+		Deferred.to.Promise,
+	);
+	expect(outcome).toStrictEqual({ kind: "OpOk", value: 100 });
+});
+
+test("mode runners emit Retrying states when retrying with retryOptions", async () => {
+	const failingOp = Op.create(
+		(_signal) => (_input: number) => Promise.reject(new Error("err")),
+		(e) => (e as Error).message,
+	);
+	const retryOpt = { attempts: 2, backoff: Duration.milliseconds(1) };
+
+	// makeRestartable
+	const latestManager = makeRestartable(failingOp, undefined, retryOpt);
+	const latestStates: Op.State<string, number>[] = [];
+	latestManager.subscribe((s) => latestStates.push(s));
+	await Deferred.to.Promise(latestManager.run(1));
+	expect(latestStates.some((s) => s.kind === "Retrying")).toBe(true);
+
+	// makeExclusive with cooldown
+	const exhaustManager = makeExclusive(failingOp, undefined, retryOpt);
+	const exhaustStates: Op.State<string, number>[] = [];
+	exhaustManager.subscribe((s) => exhaustStates.push(s));
+	await Deferred.to.Promise(exhaustManager.run(1));
+	expect(exhaustStates.some((s) => s.kind === "Retrying")).toBe(true);
+
+	// makeConcurrent
+	const parallelManager = makeConcurrent(failingOp, 2, "drop", retryOpt);
+	const parallelStates: Op.State<string, number>[] = [];
+	parallelManager.subscribe((s) => parallelStates.push(s));
+	await Deferred.to.Promise(parallelManager.run(1));
+	expect(parallelStates.some((s) => s.kind === "Retrying")).toBe(true);
+
+	// makeQueue
+	const queueManager = makeQueue(failingOp, undefined, undefined, undefined, undefined, retryOpt);
+	const queueStates: Op.State<string, number>[] = [];
+	queueManager.subscribe((s) => queueStates.push(s));
+	await Deferred.to.Promise(queueManager.run(1));
+	expect(queueStates.some((s) => s.kind === "Retrying")).toBe(true);
+
+	// makeDebounced (leading)
+	const debounceManager = makeDebounced(failingOp, Duration.milliseconds(5), true, undefined, retryOpt);
+	const debounceStates: Op.State<string, number>[] = [];
+	debounceManager.subscribe((s) => debounceStates.push(s));
+	await Deferred.to.Promise(debounceManager.run(1));
+	expect(debounceStates.some((s) => s.kind === "Retrying")).toBe(true);
+
+	// makeBuffered
+	const batchManager = makeBuffered(failingOp, 5, retryOpt);
+	const batchStates: Op.State<string, number>[] = [];
+	batchManager.subscribe((s) => batchStates.push(s));
+	await Deferred.to.Promise(batchManager.run(1));
+	expect(batchStates.some((s) => s.kind === "Retrying")).toBe(true);
+
+	// makeThrottled
+	const throttleManager = makeThrottled(failingOp, Duration.milliseconds(5), false, retryOpt);
+	const throttleStates: Op.State<string, number>[] = [];
+	throttleManager.subscribe((s) => throttleStates.push(s));
+	await Deferred.to.Promise(throttleManager.run(1));
+	expect(throttleStates.some((s) => s.kind === "Retrying")).toBe(true);
+});
+

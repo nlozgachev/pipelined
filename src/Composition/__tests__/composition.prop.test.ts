@@ -1,6 +1,9 @@
-import { curry, curry3, flow, memoize, pipe } from "#composition";
 import fc from "fast-check";
 import { expect, test } from "vitest";
+import { curry, curry3 } from "../curry.ts";
+import { flow } from "../flow.ts";
+import { memoize } from "../memoize.ts";
+import { pipe } from "../pipe.ts";
 
 // ---------------------------------------------------------------------------
 // pipe

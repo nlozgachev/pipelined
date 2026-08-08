@@ -103,4 +103,38 @@ export namespace Combinable {
 	 */
 	export const fold = <A>(c: Combinable<A>) => (data: readonly A[]): A =>
 		data.reduce((acc, x) => c.combine(x)(acc), c.empty);
+
+	/**
+	 * Derives a `Combinable` for a record of fields from field-level `Combinable` instances.
+	 *
+	 * @example
+	 * ```ts
+	 * const StatsCombinable = Combinable.struct({
+	 *   count: Combinable.sum,
+	 *   tags: Combinable.array<string>(),
+	 * });
+	 * ```
+	 */
+	export const struct = <R extends Record<string, unknown>>(
+		fields: { [K in keyof R]: Combinable<R[K]>; },
+	): Combinable<R> => {
+		const empty = {} as R;
+		for (const key in fields) {
+			if (Object.hasOwn(fields, key)) {
+				empty[key] = fields[key].empty;
+			}
+		}
+		return {
+			empty,
+			combine: (b) => (a) => {
+				const result = {} as R;
+				for (const key in fields) {
+					if (Object.hasOwn(fields, key)) {
+						result[key] = fields[key].combine(b[key])(a[key]);
+					}
+				}
+				return result;
+			},
+		};
+	};
 }

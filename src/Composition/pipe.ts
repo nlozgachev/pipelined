@@ -359,37 +359,99 @@ async function async(a: unknown, ...fns: ReadonlyArray<(x: unknown) => Awaitable
 export interface pipe {
 	/**
 	 * Executes a function on the piped value if a predicate is met, otherwise returns the value unchanged.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   4,
+	 *   pipe.when(n => n % 2 === 0, n => n * 2)
+	 * ); // 8
+	 * ```
 	 */
 	readonly when: <A>(predicate: (a: A) => boolean, onTrue: (a: A) => A) => (a: A) => A;
 
 	/**
 	 * Executes a function on the piped value if a predicate is NOT met, otherwise returns the value unchanged.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   5,
+	 *   pipe.unless(n => n % 2 === 0, n => n * 2)
+	 * ); // 10
+	 * ```
 	 */
 	readonly unless: <A>(predicate: (a: A) => boolean, onFalse: (a: A) => A) => (a: A) => A;
 
 	/**
 	 * Executes one of two functions based on a predicate, acting as a functional if-else/ternary helper.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   5,
+	 *   pipe.either(n => n >= 0, n => `+${n}`, n => `${n}`)
+	 * ); // "+5"
+	 * ```
 	 */
 	readonly either: <A, B>(predicate: (a: A) => boolean, onTrue: (a: A) => B, onFalse: (a: A) => B) => (a: A) => B;
 
 	/**
 	 * Creates a pipeline step that wraps a throwing function in a try/catch, returning a fallback value if an error occurs.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   '{"a":1}',
+	 *   pipe.try(s => JSON.parse(s), () => null)
+	 * ); // { a: 1 }
+	 * ```
 	 */
 	readonly try: <A, B, C>(f: (a: A) => B, onError: (error: unknown, value: A) => C) => (a: A) => B | C;
 
 	/**
 	 * Builds an object by applying a record of field-level transformer functions to the piped input.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   { name: "Alice", age: 25 },
+	 *   pipe.struct({
+	 *     name: u => u.name,
+	 *     isAdult: u => u.age >= 18
+	 *   })
+	 * ); // { name: "Alice", isAdult: true }
+	 * ```
 	 */
 	readonly struct: <A, R extends Record<string, unknown>>(fields: { [K in keyof R]: (a: A) => R[K]; }) => (a: A) => R;
 
 	/**
 	 * Pipes a value through a sequence of operations, short-circuiting and propagating
 	 * null or undefined immediately if any intermediate step evaluates to nil.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe.safe(
+	 *   { address: { city: "Paris" } },
+	 *   user => user.address,
+	 *   address => address.city,
+	 *   city => city.length
+	 * ); // 5
+	 * ```
 	 */
 	readonly safe: typeof safe;
 
 	/**
 	 * Pipes a value through a sequence of operations, supporting asynchronous transitions at any step.
+	 *
+	 * @example
+	 * ```ts
+	 * await pipe.async(
+	 *   42,
+	 *   n => Promise.resolve(`user-${n}`),
+	 *   name => name.toUpperCase()
+	 * ); // "USER-42"
+	 * ```
 	 */
 	readonly async: typeof async;
 }

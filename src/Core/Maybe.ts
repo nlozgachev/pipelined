@@ -28,11 +28,21 @@ export namespace Maybe {
 	export namespace make {
 		/**
 		 * Creates a Some containing the given value.
+		 *
+		 * @example
+		 * ```ts
+		 * Maybe.make.some(42); // Some(42)
+		 * ```
 		 */
 		export const some = <A>(value: A): Some<A> => ({ kind: "Some", value });
 
 		/**
 		 * Creates a None (empty Maybe).
+		 *
+		 * @example
+		 * ```ts
+		 * Maybe.make.none(); // None
+		 * ```
 		 */
 		export const none = (): None => _none;
 	}
@@ -40,11 +50,27 @@ export namespace Maybe {
 	export namespace is {
 		/**
 		 * Type guard that checks if a Maybe is Some.
+		 *
+		 * @example
+		 * ```ts
+		 * const value = Maybe.make.some(42);
+		 * if (Maybe.is.some(value)) {
+		 *   console.log(value.value); // 42
+		 * }
+		 * ```
 		 */
 		export const some = <A>(data: Maybe<A>): data is Some<A> => data.kind === "Some";
 
 		/**
 		 * Type guard that checks if a Maybe is None.
+		 *
+		 * @example
+		 * ```ts
+		 * const value = Maybe.make.none();
+		 * if (Maybe.is.none(value)) {
+		 *   console.log("No value present");
+		 * }
+		 * ```
 		 */
 		export const none = <A>(data: Maybe<A>): data is None => data.kind === "None";
 	}
@@ -53,11 +79,23 @@ export namespace Maybe {
 	export namespace to {
 		/**
 		 * Extracts the value from a Maybe, returning null if None.
+		 *
+		 * @example
+		 * ```ts
+		 * Maybe.to.nullable(Maybe.make.some(42)); // 42
+		 * Maybe.to.nullable(Maybe.make.none());   // null
+		 * ```
 		 */
 		export const nullable = <A>(data: Maybe<A>): A | null => is.some(data) ? data.value : null;
 
 		/**
 		 * Extracts the value from a Maybe, returning undefined if None.
+		 *
+		 * @example
+		 * ```ts
+		 * Maybe.to.undefined(Maybe.make.some(42)); // 42
+		 * Maybe.to.undefined(Maybe.make.none());   // undefined
+		 * ```
 		 */
 		export const undefined = <A>(data: Maybe<A>): A | undefined => is.some(data) ? data.value : globalThis.undefined;
 
@@ -239,6 +277,12 @@ export namespace Maybe {
 	/**
 	 * Recovers from a None by providing a fallback Maybe.
 	 * The fallback can produce a different type, widening the result to `Maybe<A | B>`.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Maybe.make.none(), Maybe.recover(() => Maybe.make.some(42))); // Some(42)
+	 * pipe(Maybe.make.some(10), Maybe.recover(() => Maybe.make.some(42))); // Some(10)
+	 * ```
 	 */
 	export const recover = <A, B>(fallback: () => Maybe<B>) => (data: Maybe<A>): Maybe<A | B> =>
 		is.some(data) ? data : fallback();

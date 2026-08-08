@@ -1,4 +1,5 @@
 import { WithLog, WithValue } from "#internal";
+import type { Lens } from "./Lens.ts";
 
 /**
  * A value paired with an accumulated log.
@@ -174,4 +175,19 @@ export namespace Logged {
 			chain<W, A, A & { [P in K]: B; }>((a) =>
 				map<W, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
 			)(data);
+
+	/**
+	 * Focuses a Logged computation's value transformation using a Lens.
+	 *
+	 * @example
+	 * ```ts
+	 * const nameLens = Lens.from.property<{ name: string }>()("name");
+	 * const logged = Logged.from.value<string, { name: string }>({ name: "alice" });
+	 * pipe(logged, Logged.focus(nameLens)(s => s.toUpperCase()));
+	 * ```
+	 */
+	export const focus = <S, A>(lens: Lens<S, A>) => <W>(f: (a: A) => A) => (data: Logged<W, S>): Logged<W, S> => ({
+		value: lens.set(f(lens.get(data.value)))(data.value),
+		log: data.log,
+	});
 }

@@ -1,3 +1,5 @@
+import type { Lens } from "./Lens.ts";
+
 /**
  * A synchronous computation that threads a piece of mutable state `S` through
  * a pipeline without exposing mutation at call sites.
@@ -243,4 +245,21 @@ export namespace State {
 			chain<S, A, A & { [P in K]: B; }>((a) =>
 				map<S, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
 			)(data);
+
+	/**
+	 * Focuses a State computation on a sub-state using a Lens.
+	 *
+	 * @example
+	 * ```ts
+	 * type AppState = { count: number; name: string };
+	 * const countLens = Lens.from.property<AppState>()("count");
+	 * const increment = State.modify((c: number) => c + 1);
+	 * const focusedProgram = pipe(increment, State.focus(countLens));
+	 * ```
+	 */
+	export const focus = <S, A>(lens: Lens<S, A>) => <B>(stateOp: State<A, B>): State<S, B> => (s: S) => {
+		const subState = lens.get(s);
+		const [b, newSubState] = stateOp(subState);
+		return [b, lens.set(newSubState)(s)];
+	};
 }

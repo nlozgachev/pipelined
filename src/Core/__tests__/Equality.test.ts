@@ -1,6 +1,6 @@
-import { pipe } from "#composition";
-import { Equality } from "#core";
 import { expect, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Equality } from "../Equality.ts";
 
 // ---------------------------------------------------------------------------
 // string
@@ -112,4 +112,43 @@ test("Equality.and returns false when the second check fails", () => {
 	const byRole = pipe(Equality.string, Equality.by((u: User) => u.role));
 	const eq = pipe(byName, Equality.and(byRole));
 	expect(eq({ name: "Alice", role: "admin" }, { name: "Alice", role: "user" })).toBe(false);
+});
+
+// --- struct & tuple ---
+
+test("Equality.struct compares objects field-by-field", () => {
+	const userEq = Equality.struct({ id: Equality.string, age: Equality.number });
+	expect(userEq({ id: "1", age: 20 }, { id: "1", age: 20 })).toBe(true);
+	expect(userEq({ id: "1", age: 20 }, { id: "1", age: 21 })).toBe(false);
+});
+
+test("Equality.tuple compares tuples element-by-element", () => {
+	const pairEq = Equality.tuple(Equality.string, Equality.number);
+	expect(pairEq(["a", 1], ["a", 1])).toBe(true);
+	expect(pairEq(["a", 1], ["a", 2])).toBe(false);
+	expect(pairEq(["a", 1] as any, ["a", 1, "extra"] as any)).toBe(false);
+});
+
+// --- side-effect isolation ---
+
+test("Equality.by executes side effect function during comparison", () => {
+	let called = false;
+	const eq = Equality.by((x: number) => {
+		called = true;
+		return x;
+	})(Equality.number);
+	eq(1, 1);
+	expect(called).toBe(true);
+});
+
+test("Equality.and short-circuits side effect if first comparison fails", () => {
+	let called = false;
+	const first = () => false;
+	const second = () => {
+		called = true;
+		return true;
+	};
+	const eq = pipe(first, Equality.and(second));
+	eq(1, 2);
+	expect(called).toBe(false);
 });

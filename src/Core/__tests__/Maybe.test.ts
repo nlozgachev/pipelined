@@ -1,6 +1,7 @@
-import { pipe } from "#composition";
-import { Maybe, Result } from "#core";
 import { expect, expectTypeOf, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Maybe } from "../Maybe.ts";
+import { Result } from "../Result.ts";
 
 // ---------------------------------------------------------------------------
 // of / some

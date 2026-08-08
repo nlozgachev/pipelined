@@ -14,7 +14,7 @@ import { Duration } from "../Types/Duration";
  *   tap(x => console.log("Before map:", x)),
  *   Maybe.map(n => n * 2),
  *   tap(x => console.log("After map:", x)),
- *   Maybe.getOrElse(0)
+ *   Maybe.getOrElse(() => 0)
  * );
  * // logs: "Before map: { kind: 'Some', value: 5 }"
  * // logs: "After map: { kind: 'Some', value: 10 }"
@@ -171,6 +171,10 @@ export namespace tap {
 	 *
 	 * @example
 	 * ```ts
+	 * const user = { id: 1 };
+	 * const saveToDatabase = async (u: typeof user) => {};
+	 * const logError = (err: unknown) => console.error(err);
+	 *
 	 * pipe(
 	 *   user,
 	 *   tap.async(async (u) => {
@@ -194,6 +198,11 @@ export namespace tap {
 	 *
 	 * @example
 	 * ```ts
+	 * const data = [1, 2, 3];
+	 * const processData = (d: typeof data) => d.map(n => n * 2);
+	 * const fetchData = async (d: typeof data) => d.length;
+	 * const metrics = { histogram: (name: string, ms: number) => {} };
+	 *
 	 * // Time a synchronous computation
 	 * pipe(
 	 *   data,

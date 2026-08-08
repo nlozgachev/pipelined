@@ -1,7 +1,8 @@
-import { pipe } from "#composition";
-import { Maybe, Result } from "#core";
-import { Rec } from "#data";
 import { expect, expectTypeOf, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Maybe } from "../../Core/Maybe.ts";
+import { Result } from "../../Core/Result.ts";
+import { Rec } from "../Rec.ts";
 
 // =============================================================================
 // Transform: map, mapWithKey, filter, filterWithKey
@@ -367,6 +368,33 @@ test("compact - returns all values when none are None", () => {
 test("compact - empty input returns empty output", () => {
 	const result = Rec.compact({});
 	expect(result).toStrictEqual({});
+});
+
+// --- mergeWith ---
+
+test("Rec.mergeWith combines records uncurried and curried on key collisions", () => {
+	const combine = Rec.mergeWith((a: number, b: number) => a + b);
+	expect(combine({ a: 1, b: 2 }, { b: 3, c: 4 })).toStrictEqual({ a: 1, b: 5, c: 4 });
+	expect(pipe({ a: 1, b: 2 }, combine({ b: 3, c: 4 }))).toStrictEqual({ a: 1, b: 5, c: 4 });
+});
+
+// --- mapEntries & updateIn ---
+
+test("Rec.mapEntries transforms key and value pairs simultaneously", () => {
+	const res = pipe({ a: 1, b: 2 }, Rec.mapEntries((k, v) => [k.toUpperCase(), v * 10]));
+	expect(res).toStrictEqual({ A: 10, B: 20 });
+});
+
+test("Rec.updateIn immutably updates deep nested record paths", () => {
+	const data = { user: { profile: { age: 30 } } };
+	const res = pipe(data, Rec.updateIn(["user", "profile", "age"], (n: number) => n + 1));
+	expect(res).toStrictEqual({ user: { profile: { age: 31 } } });
+	expect(data.user.profile.age).toBe(30); // immutability preserved
+});
+
+test("Rec.updateIn creates missing intermediate objects when path does not exist", () => {
+	const res = pipe({}, Rec.updateIn(["a", "b", "c"], (val: number | undefined) => (val ?? 0) + 1));
+	expect(res).toStrictEqual({ a: { b: { c: 1 } } });
 });
 
 // =============================================================================

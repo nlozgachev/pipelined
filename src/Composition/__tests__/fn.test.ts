@@ -1,3 +1,5 @@
+import { expect, test } from "vitest";
+import { flow } from "../flow.ts";
 import {
 	and,
 	constant,
@@ -7,12 +9,12 @@ import {
 	constUndefined,
 	constVoid,
 	defaultTo,
-	flow,
 	identity,
 	once,
 	or,
-} from "#composition";
-import { expect, test } from "vitest";
+	tuple,
+	untuple,
+} from "../fn.ts";
 
 // --- identity ---
 
@@ -320,4 +322,18 @@ test("defaultTo - pipeline integration with flow", () => {
 	expect(getName({ name: "Alice" })).toBe("ALICE");
 	expect(getName({ name: null })).toBe("GUEST");
 	expect(getName({})).toBe("GUEST");
+});
+
+// --- tuple & untuple ---
+
+test("tuple converts a multi-argument function into a single tuple function", () => {
+	const add = (a: number, b: number) => a + b;
+	const addTuple = tuple(add);
+	expect(addTuple([2, 3])).toBe(5);
+});
+
+test("untuple converts a tuple function into a multi-argument function", () => {
+	const addTuple = ([a, b]: readonly [number, number]) => a + b;
+	const add = untuple(addTuple);
+	expect(add(2, 3)).toBe(5);
 });

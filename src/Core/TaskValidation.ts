@@ -36,16 +36,34 @@ export type TaskValidation<E, A> = Task<Validation<E, A>>;
 export namespace TaskValidation {
 	/**
 	 * Wraps a value in a passed Task.Validation.
+	 *
+	 * @example
+	 * ```ts
+	 * const task = Task.Validation.passed(42);
+	 * const res = await task(); // Passed(42)
+	 * ```
 	 */
 	export const passed = <E, A>(value: A): TaskValidation<E, A> => CoreTask.resolve(CoreValidation.make.passed(value));
 
 	/**
 	 * Creates a failed Task.Validation with a single error.
+	 *
+	 * @example
+	 * ```ts
+	 * const task = Task.Validation.failed("invalid");
+	 * const res = await task(); // Failed(["invalid"])
+	 * ```
 	 */
 	export const failed = <E, A>(error: E): TaskValidation<E, A> => CoreTask.resolve(CoreValidation.make.failed(error));
 
 	/**
 	 * Creates a failed Task.Validation from multiple errors.
+	 *
+	 * @example
+	 * ```ts
+	 * const task = Task.Validation.failedAll(["err1", "err2"]);
+	 * const res = await task(); // Failed(["err1", "err2"])
+	 * ```
 	 */
 	export const failedAll = <E, A>(errors: NonEmptyArr<E>): TaskValidation<E, A> =>
 		CoreTask.resolve(CoreValidation.make.failedAll(errors));
@@ -54,6 +72,11 @@ export namespace TaskValidation {
 	export namespace from {
 		/**
 		 * Lifts a Validation into a Task.Validation.
+		 *
+		 * @example
+		 * ```ts
+		 * Task.Validation.from.Validation(Validation.make.passed(42));
+		 * ```
 		 */
 		export const Validation = <E, A>(validation: Validation<E, A>): TaskValidation<E, A> => CoreTask.resolve(validation);
 
@@ -61,6 +84,12 @@ export namespace TaskValidation {
 		 * Creates a Task.Validation from a nullable value.
 		 * If the value is null or undefined, returns Failed with the error from onNull.
 		 * Otherwise, returns Passed.
+		 *
+		 * @example
+		 * ```ts
+		 * Task.Validation.from.nullable(() => "missing")(42);   // resolves to Passed(42)
+		 * Task.Validation.from.nullable(() => "missing")(null); // resolves to Failed(["missing"])
+		 * ```
 		 */
 		export const nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskValidation<E, A> =>
 			CoreTask.resolve(
@@ -70,6 +99,12 @@ export namespace TaskValidation {
 		/**
 		 * Creates a Task.Validation from a Maybe.
 		 * Some becomes Passed, None becomes Failed with the error from onNone.
+		 *
+		 * @example
+		 * ```ts
+		 * Task.Validation.from.Maybe(() => "empty")(Maybe.make.some(42)); // resolves to Passed(42)
+		 * Task.Validation.from.Maybe(() => "empty")(Maybe.make.none());   // resolves to Failed(["empty"])
+		 * ```
 		 */
 		export const Maybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): TaskValidation<E, A> =>
 			CoreTask.resolve(
@@ -79,6 +114,12 @@ export namespace TaskValidation {
 		/**
 		 * Creates a Task.Validation from a Result.
 		 * Ok becomes Passed, Err(e) becomes Failed([e]).
+		 *
+		 * @example
+		 * ```ts
+		 * Task.Validation.from.Result(Result.make.ok(42));     // resolves to Passed(42)
+		 * Task.Validation.from.Result(Result.make.err("bad")); // resolves to Failed(["bad"])
+		 * ```
 		 */
 		export const Result = <E, A>(result: Result<E, A>): TaskValidation<E, A> =>
 			CoreTask.resolve(CoreValidation.from.Result(result));

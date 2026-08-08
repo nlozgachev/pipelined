@@ -65,28 +65,66 @@ export namespace These {
 	export namespace is {
 		/**
 		 * Type guard — checks if a These holds only a first value.
+		 *
+		 * @example
+		 * ```ts
+		 * const val = These.make.first(42);
+		 * if (These.is.first(val)) {
+		 *   console.log(val.first); // 42
+		 * }
+		 * ```
 		 */
 		export const first = <A, B>(data: These<A, B>): data is TheseFirst<A> => data.kind === "First";
 
 		/**
 		 * Type guard — checks if a These holds only a second value.
+		 *
+		 * @example
+		 * ```ts
+		 * const val = These.make.second("warning");
+		 * if (These.is.second(val)) {
+		 *   console.log(val.second); // "warning"
+		 * }
+		 * ```
 		 */
 		export const second = <A, B>(data: These<A, B>): data is TheseSecond<B> => data.kind === "Second";
 
 		/**
 		 * Type guard — checks if a These holds both values simultaneously.
+		 *
+		 * @example
+		 * ```ts
+		 * const val = These.make.both(42, "warning");
+		 * if (These.is.both(val)) {
+		 *   console.log(val.first, val.second); // 42 "warning"
+		 * }
+		 * ```
 		 */
 		export const both = <A, B>(data: These<A, B>): data is TheseBoth<A, B> => data.kind === "Both";
 	}
 
 	/**
 	 * Returns true if the These contains a first value (First or Both).
+	 *
+	 * @example
+	 * ```ts
+	 * These.hasFirst(These.make.first(42));       // true
+	 * These.hasFirst(These.make.both(42, "warn"));// true
+	 * These.hasFirst(These.make.second("warn"));  // false
+	 * ```
 	 */
 	export const hasFirst = <A, B>(data: These<A, B>): data is TheseFirst<A> | TheseBoth<A, B> =>
 		data.kind === "First" || data.kind === "Both";
 
 	/**
 	 * Returns true if the These contains a second value (Second or Both).
+	 *
+	 * @example
+	 * ```ts
+	 * These.hasSecond(These.make.second("warn"));  // true
+	 * These.hasSecond(These.make.both(42, "warn"));// true
+	 * These.hasSecond(These.make.first(42));       // false
+	 * ```
 	 */
 	export const hasSecond = <A, B>(data: These<A, B>): data is TheseSecond<B> | TheseBoth<A, B> =>
 		data.kind === "Second" || data.kind === "Both";

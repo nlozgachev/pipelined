@@ -1,6 +1,6 @@
-import { pipe } from "#composition";
-import { Tuple } from "#core";
 import { expect, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Tuple } from "../Tuple.ts";
 
 // ---------------------------------------------------------------------------
 // make
@@ -222,4 +222,29 @@ test("tuple tap does not interrupt pipeline", () => {
 	);
 	expect(logged).toBe("product@9.99");
 	expect(result).toBe("product: 11.99");
+});
+
+// --- side-effect isolation ---
+
+test("Tuple.tap executes side effect callback with pair elements", () => {
+	let called = false;
+	pipe(
+		Tuple.from.pair("hello", 42),
+		Tuple.tap(() => {
+			called = true;
+		}),
+	);
+	expect(called).toBe(true);
+});
+
+test("Tuple.mapFirst executes side effect callback on first element", () => {
+	let called = false;
+	pipe(
+		Tuple.from.pair("hello", 42),
+		Tuple.mapFirst((s) => {
+			called = true;
+			return s.toUpperCase();
+		}),
+	);
+	expect(called).toBe(true);
 });

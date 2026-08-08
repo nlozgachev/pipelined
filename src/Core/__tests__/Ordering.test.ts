@@ -1,6 +1,6 @@
-import { pipe } from "#composition";
-import { Ordering } from "#core";
 import { expect, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Ordering } from "../Ordering.ts";
 
 // ---------------------------------------------------------------------------
 // string
@@ -130,4 +130,39 @@ test("Ordering.byFields evaluates field orderings sequentially", () => {
 test("Ordering.byFields returns 0 for empty orderings list", () => {
 	const comparator = Ordering.byFields<number>([]);
 	expect(comparator(1, 2)).toBe(0);
+});
+
+// --- tuple ---
+
+test("Ordering.tuple orders tuples lexicographically", () => {
+	const pairOrd = Ordering.tuple(Ordering.string, Ordering.number);
+	expect(pairOrd(["a", 1], ["a", 2])).toBeLessThan(0);
+	expect(pairOrd(["b", 1], ["a", 2])).toBeGreaterThan(0);
+	expect(pairOrd(["a", 1], ["a", 1])).toBe(0);
+});
+
+// --- side-effect isolation ---
+
+test("Ordering.thenBy executes second ordering when first returns 0", () => {
+	let called = false;
+	const first = () => 0;
+	const second = () => {
+		called = true;
+		return 1;
+	};
+	const ord = pipe(first, Ordering.thenBy(second));
+	ord("a", "b");
+	expect(called).toBe(true);
+});
+
+test("Ordering.thenBy short-circuits second ordering when first is decisive", () => {
+	let called = false;
+	const first = () => -1;
+	const second = () => {
+		called = true;
+		return 1;
+	};
+	const ord = pipe(first, Ordering.thenBy(second));
+	ord("a", "b");
+	expect(called).toBe(false);
 });

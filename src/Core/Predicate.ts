@@ -170,4 +170,31 @@ export namespace Predicate {
 		 */
 		export const Refinement = <A, B extends A>(r: Refinement<A, B>): Predicate<A> => r;
 	}
+
+	/**
+	 * Performs declarative conditional branching over `[predicate, handler]` pairs,
+	 * returning the handler result of the first matching predicate or evaluating the fallback.
+	 *
+	 * @example
+	 * ```ts
+	 * const classifyNumber = Predicate.match(
+	 *   [
+	 *     [(n: number) => n < 0, () => "negative"],
+	 *     [(n: number) => n === 0, () => "zero"],
+	 *   ],
+	 *   () => "positive",
+	 * );
+	 * classifyNumber(-5); // "negative"
+	 * ```
+	 */
+	export const match =
+		<A, B>(branches: ReadonlyArray<readonly [Predicate<A>, (a: A) => B]>, fallback: (a: A) => B) => (a: A): B => {
+			for (let i = 0; i < branches.length; i++) {
+				const [p, h] = branches[i];
+				if (p(a)) {
+					return h(a);
+				}
+			}
+			return fallback(a);
+		};
 }

@@ -1,7 +1,7 @@
-import { Maybe } from "#core";
-import { Arr } from "#data";
 import fc from "fast-check";
 import { expect, test } from "vitest";
+import { Maybe } from "../../Core/Maybe.ts";
+import { Arr } from "../Arr.ts";
 
 // ---------------------------------------------------------------------------
 // reverse

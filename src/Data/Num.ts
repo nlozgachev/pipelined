@@ -377,4 +377,19 @@ export namespace Num {
 		}
 		return Maybe.make.some(result);
 	};
+
+	/**
+	 * Formats a number using `Intl.NumberFormat`. Returns `None` when `n` is `NaN` or non-finite.
+	 * Data-last curried signature.
+	 *
+	 * @example
+	 * ```ts
+	 * const formatCurrency = Num.format({ style: "currency", currency: "USD" }, "en-US");
+	 * pipe(1234.5, formatCurrency); // Some("$1,234.50")
+	 * pipe(NaN, formatCurrency);    // None
+	 * ```
+	 */
+	export const format =
+		(options?: Intl.NumberFormatOptions, locales?: string | string[]) => (n: number): Maybe<string> =>
+			!Number.isFinite(n) ? Maybe.make.none() : Maybe.make.some(new Intl.NumberFormat(locales, options).format(n));
 }

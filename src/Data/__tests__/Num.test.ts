@@ -1,7 +1,8 @@
-import { pipe } from "#composition";
-import { Maybe } from "#core";
-import { Arr, Num } from "#data";
 import { expect, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Maybe } from "../../Core/Maybe.ts";
+import { Arr } from "../Arr.ts";
+import { Num } from "../Num.ts";
 
 // ---------------------------------------------------------------------------
 // is
@@ -407,4 +408,19 @@ test("num folding composes in a pipe", () => {
 test("num pipe composition - range, map, filter", () => {
 	const result = pipe(Num.range(1, 10), Arr.map(Num.multiply(2)), Arr.filter(Num.between(6, 14)));
 	expect(result).toStrictEqual([6, 8, 10, 12, 14]);
+});
+
+// ---------------------------------------------------------------------------
+// format
+// ---------------------------------------------------------------------------
+
+test("Num.format formats a finite number into a string", () => {
+	const fmt = Num.format({ style: "decimal" }, "en-US");
+	expect(fmt(1234.5)).toStrictEqual(Maybe.make.some("1,234.5"));
+});
+
+test("Num.format returns None for NaN or non-finite numbers", () => {
+	const fmt = Num.format();
+	expect(fmt(NaN)).toStrictEqual(Maybe.make.none());
+	expect(fmt(Infinity)).toStrictEqual(Maybe.make.none());
 });

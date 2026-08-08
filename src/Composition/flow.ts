@@ -13,6 +13,8 @@ import type { Awaitable } from "#internal";
  *
  * @example
  * ```ts
+ * type User = { name: string };
+ *
  * // Create a reusable transformation
  * const processUser = flow(
  *   (user: User) => user.name,
@@ -370,37 +372,108 @@ function async(...fns: ReadonlyArray<(x: unknown) => Awaitable<unknown>>): (a: u
 export interface flow {
 	/**
 	 * Executes a function on the piped value if a predicate is met, otherwise returns the value unchanged.
+	 *
+	 * @example
+	 * ```ts
+	 * const doubleIfEven = flow.when(
+	 *   (n: number) => n % 2 === 0,
+	 *   n => n * 2
+	 * );
+	 * doubleIfEven(4); // 8
+	 * doubleIfEven(5); // 5
+	 * ```
 	 */
 	readonly when: <A>(predicate: (a: A) => boolean, onTrue: (a: A) => A) => (a: A) => A;
 
 	/**
 	 * Executes a function on the piped value if a predicate is NOT met, otherwise returns the value unchanged.
+	 *
+	 * @example
+	 * ```ts
+	 * const doubleIfOdd = flow.unless(
+	 *   (n: number) => n % 2 === 0,
+	 *   n => n * 2
+	 * );
+	 * doubleIfOdd(5); // 10
+	 * doubleIfOdd(4); // 4
+	 * ```
 	 */
 	readonly unless: <A>(predicate: (a: A) => boolean, onFalse: (a: A) => A) => (a: A) => A;
 
 	/**
 	 * Executes one of two functions based on a predicate, acting as a functional if-else/ternary helper.
+	 *
+	 * @example
+	 * ```ts
+	 * const formatNumber = flow.either(
+	 *   (n: number) => n >= 0,
+	 *   n => `+${n}`,
+	 *   n => `${n}`
+	 * );
+	 * formatNumber(5);  // "+5"
+	 * formatNumber(-3); // "-3"
+	 * ```
 	 */
 	readonly either: <A, B>(predicate: (a: A) => boolean, onTrue: (a: A) => B, onFalse: (a: A) => B) => (a: A) => B;
 
 	/**
 	 * Creates a pipeline step that wraps a throwing function in a try/catch, returning a fallback value if an error occurs.
+	 *
+	 * @example
+	 * ```ts
+	 * const safeParse = flow.try(
+	 *   (s: string) => JSON.parse(s),
+	 *   (_err, _s) => null
+	 * );
+	 * safeParse('{"a":1}'); // { a: 1 }
+	 * safeParse('invalid'); // null
+	 * ```
 	 */
 	readonly try: <A, B, C>(f: (a: A) => B, onError: (error: unknown, value: A) => C) => (a: A) => B | C;
 
 	/**
 	 * Builds an object by applying a record of field-level transformer functions to the piped input.
+	 *
+	 * @example
+	 * ```ts
+	 * type User = { name: string; age: number };
+	 * const summarizeUser = flow.struct<User, { name: string; isAdult: boolean }>({
+	 *   name: u => u.name,
+	 *   isAdult: u => u.age >= 18,
+	 * });
+	 * summarizeUser({ name: "Alice", age: 25 }); // { name: "Alice", isAdult: true }
+	 * ```
 	 */
 	readonly struct: <A, R extends Record<string, unknown>>(fields: { [K in keyof R]: (a: A) => R[K]; }) => (a: A) => R;
 
 	/**
 	 * Pipes a value through a sequence of operations, short-circuiting and propagating
 	 * null or undefined immediately if any intermediate step evaluates to nil.
+	 *
+	 * @example
+	 * ```ts
+	 * const getCityLength = flow.safe(
+	 *   (user: { address?: { city?: string } }) => user.address,
+	 *   address => address.city,
+	 *   city => city.length
+	 * );
+	 * getCityLength({ address: { city: "Paris" } }); // 5
+	 * getCityLength({});                            // undefined
+	 * ```
 	 */
 	readonly safe: typeof safe;
 
 	/**
 	 * Pipes a value through a sequence of operations, supporting asynchronous transitions at any step.
+	 *
+	 * @example
+	 * ```ts
+	 * const processId = flow.async(
+	 *   (id: number) => Promise.resolve(`user-${id}`),
+	 *   name => name.toUpperCase()
+	 * );
+	 * await processId(42); // "USER-42"
+	 * ```
 	 */
 	readonly async: typeof async;
 }

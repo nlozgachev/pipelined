@@ -552,8 +552,8 @@ export namespace Task {
 	 *
 	 * @example
 	 * ```ts
-	 * const loadToken = Task.memoize(fetchAuthToken);
-	 * const token1 = await loadToken(); // fetches token
+	 * const loadToken = Task.memoize(loadAuthToken);
+	 * const token1 = await loadToken(); // loads token
 	 * const token2 = await loadToken(); // returns cached token immediately
 	 * ```
 	 */
@@ -565,6 +565,46 @@ export namespace Task {
 			}
 			return cached;
 		};
+	};
+
+	/**
+	 * Monitors progress of a Task by calling `onProgress(0)` before execution and `onProgress(1)` upon completion.
+	 *
+	 * @example
+	 * ```ts
+	 * const taskWithProgress = pipe(
+	 *   readTask,
+	 *   Task.withProgress((ratio) => console.log(`Progress: ${ratio * 100}%`))
+	 * );
+	 * ```
+	 */
+	export const withProgress =
+		<A>(onProgress: (ratio: number) => void) => (task: Task<A>): Task<A> => (signal?: AbortSignal) => {
+			onProgress(0);
+			const d = task(signal);
+			return Deferred.from.Promise(
+				Deferred.to.Promise(d).then((res) => {
+					onProgress(1);
+					return res;
+				}),
+			);
+		};
+
+	export type LabeledTask<L extends string, A> = Task<A> & { readonly label: L; };
+
+	/**
+	 * Attaches a read-only `.label` property to a Task, preserving the literal string generic type for IDE tooltips.
+	 *
+	 * @example
+	 * ```ts
+	 * const labeledTask = pipe(readTask, Task.withLabel("readUser"));
+	 * console.log(labeledTask.label); // "readUser"
+	 * ```
+	 */
+	export const withLabel = <L extends string>(label: L) => <A>(task: Task<A>): LabeledTask<L, A> => {
+		const fn = ((signal?: AbortSignal) => task(signal)) as LabeledTask<L, A>;
+		Object.defineProperty(fn, "label", { value: label, writable: false, enumerable: true, configurable: true });
+		return fn;
 	};
 
 	export type Maybe<A> = TaskMaybe<A>;

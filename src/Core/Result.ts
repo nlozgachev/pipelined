@@ -26,11 +26,21 @@ export namespace Result {
 	export namespace make {
 		/**
 		 * Creates a successful Result with the given value.
+		 *
+		 * @example
+		 * ```ts
+		 * Result.make.ok(42); // Ok(42)
+		 * ```
 		 */
 		export const ok = <A>(value: A): Ok<A> => ({ kind: "Ok", value });
 
 		/**
 		 * Creates a failed Result with the given error.
+		 *
+		 * @example
+		 * ```ts
+		 * Result.make.err("Error message"); // Err("Error message")
+		 * ```
 		 */
 		export const err = <E>(e: E): Err<E> => ({ kind: "Err", error: e });
 	}
@@ -38,11 +48,27 @@ export namespace Result {
 	export namespace is {
 		/**
 		 * Type guard that checks if a Result is Ok.
+		 *
+		 * @example
+		 * ```ts
+		 * const res = Result.make.ok(42);
+		 * if (Result.is.ok(res)) {
+		 *   console.log(res.value); // 42
+		 * }
+		 * ```
 		 */
 		export const ok = <E, A>(data: Result<E, A>): data is Ok<A> => data.kind === "Ok";
 
 		/**
 		 * Type guard that checks if a Result is Err.
+		 *
+		 * @example
+		 * ```ts
+		 * const res = Result.make.err("failed");
+		 * if (Result.is.err(res)) {
+		 *   console.log(res.error); // "failed"
+		 * }
+		 * ```
 		 */
 		export const err = <E, A>(data: Result<E, A>): data is Err<E> => data.kind === "Err";
 	}
@@ -411,4 +437,37 @@ export namespace Result {
 		}
 		return make.ok(result);
 	};
+
+	/**
+	 * Narrows an `Ok` value with a predicate, converting to `Err(onFail(a))` if the predicate returns false.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Result.make.ok(15),
+	 *   Result.ensure((n) => n >= 18, (n) => `Age ${n} is below 18`)
+	 * ); // Err("Age 15 is below 18")
+	 * ```
+	 */
+	export const ensure =
+		<A, E2>(predicate: (a: A) => boolean, onFail: (a: A) => E2) => <E1>(data: Result<E1, A>): Result<E1 | E2, A> =>
+			is.err(data) ? data : (predicate(data.value) ? data : make.err(onFail(data.value)));
+
+	/**
+	 * Transforms both branches of a Result simultaneously.
+	 * Applies `onErr` to `Err` values and `onOk` to `Ok` values.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Result.make.ok(5),
+	 *   Result.bimap(
+	 *     (e) => `Error: ${e}`,
+	 *     (n) => n * 2
+	 *   )
+	 * ); // Ok(10)
+	 * ```
+	 */
+	export const bimap = <E1, E2, A, B>(onErr: (e: E1) => E2, onOk: (a: A) => B) => (data: Result<E1, A>): Result<E2, B> =>
+		is.ok(data) ? make.ok(onOk(data.value)) : make.err(onErr(data.error));
 }

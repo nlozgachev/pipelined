@@ -67,11 +67,27 @@ export namespace Validation {
 	export namespace is {
 		/**
 		 * Type guard that checks if a Validation is passed.
+		 *
+		 * @example
+		 * ```ts
+		 * const v = Validation.make.passed(42);
+		 * if (Validation.is.passed(v)) {
+		 *   console.log(v.value); // 42
+		 * }
+		 * ```
 		 */
 		export const passed = <E, A>(data: Validation<E, A>): data is Passed<A> => data.kind === "Passed";
 
 		/**
 		 * Type guard that checks if a Validation is failed.
+		 *
+		 * @example
+		 * ```ts
+		 * const v = Validation.make.failed("invalid");
+		 * if (Validation.is.failed(v)) {
+		 *   console.log(v.errors); // ["invalid"]
+		 * }
+		 * ```
 		 */
 		export const failed = <E, A>(data: Validation<E, A>): data is Failed<E> => data.kind === "Failed";
 	}
@@ -178,8 +194,8 @@ export namespace Validation {
 	 *
 	 * pipe(
 	 *   Validation.make.passed(add),
-	 *   Validation.ap(Validation.make.failed<string, number>("bad a")),
-	 *   Validation.ap(Validation.make.failed<string, number>("bad b"))
+	 *   Validation.ap(Validation.make.failed<string>("bad a")),
+	 *   Validation.ap(Validation.make.failed<string>("bad b"))
 	 * ); // Failed(["bad a", "bad b"])
 	 * ```
 	 */
@@ -191,6 +207,31 @@ export namespace Validation {
 			? make.failedAll(data.errors)
 			: make.failedAll([...data.errors, ...arg.errors] as NonEmptyArr<E>);
 	};
+
+	/**
+	 * Applies a function wrapped in a Validation to a value wrapped in a Validation,
+	 * using a custom error concatenator function when both sides fail.
+	 *
+	 * @example
+	 * ```ts
+	 * const concat = (e1: NonEmptyArr<string>, e2: NonEmptyArr<string>): NonEmptyArr<string> =>
+	 *   [...e1, ...e2];
+	 * pipe(fnVal, Validation.apCustom(concat)(argVal));
+	 * ```
+	 */
+	export const apCustom =
+		<E1, E2, E3>(concat: (e1: NonEmptyArr<E1>, e2: NonEmptyArr<E2>) => NonEmptyArr<E3>) =>
+		<A>(arg: Validation<E2, A>) =>
+		<B>(data: Validation<E1, (a: A) => B>): Validation<E3, B> => {
+			if (is.passed(data)) {
+				return is.passed(arg)
+					? make.passed(data.value(arg.value))
+					: make.failedAll(arg.errors as unknown as NonEmptyArr<E3>);
+			}
+			return is.passed(arg)
+				? make.failedAll(data.errors as unknown as NonEmptyArr<E3>)
+				: make.failedAll(concat(data.errors, arg.errors));
+		};
 
 	/**
 	 * Extracts the value from a Validation by providing handlers for both cases.

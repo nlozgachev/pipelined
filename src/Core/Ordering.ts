@@ -104,4 +104,25 @@ export namespace Ordering {
 		}
 		return 0;
 	};
+
+	/**
+	 * Derives a lexicographical tuple ordering from positional `Ordering` comparators.
+	 *
+	 * @example
+	 * ```ts
+	 * const pairOrd = Ordering.tuple(Ordering.string, Ordering.number);
+	 * pairOrd(["a", 1], ["a", 2]); // negative
+	 * ```
+	 */
+	export const tuple =
+		<T extends readonly unknown[]>(...orderings: { [K in keyof T]: Ordering<T[K]>; }): Ordering<T> => (a, b) => {
+			const len = Math.min(a.length, b.length);
+			for (let i = 0; i < len; i++) {
+				const res = orderings[i](a[i], b[i]);
+				if (res !== 0) {
+					return res;
+				}
+			}
+			return a.length - b.length;
+		};
 }

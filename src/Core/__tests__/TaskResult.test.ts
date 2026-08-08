@@ -1,7 +1,11 @@
-import { pipe } from "#composition";
-import { Deferred, Maybe, Result, Task } from "#core";
-import { Duration, RetryPolicy } from "#types";
 import { expect, expectTypeOf, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Duration } from "../../Types/Duration.ts";
+import { RetryPolicy } from "../../Types/RetryPolicy.ts";
+import { Deferred } from "../Deferred.ts";
+import { Maybe } from "../Maybe.ts";
+import { Result } from "../Result.ts";
+import { Task } from "../Task.ts";
 
 // ---------------------------------------------------------------------------
 // of
@@ -748,4 +752,69 @@ test("Task.Result.memoize executes task only once across multiple invocations", 
 	expect(res1).toStrictEqual(Result.make.ok(1));
 	expect(res2).toStrictEqual(Result.make.ok(1));
 	expect(calls).toBe(1);
+});
+
+// --- timeout ---
+
+test("Task.Result.timeout resolves to task Ok when task finishes before duration", async () => {
+	const task: Task.Result<string, number> = () => Deferred.from.Promise(Promise.resolve(Result.make.ok(42)));
+	const res = await pipe(
+		task,
+		Task.Result.timeout({ duration: Duration.milliseconds(100), onTimeout: () => "timed_out" }),
+	)();
+
+	expect(res).toStrictEqual(Result.make.ok(42));
+});
+
+test("Task.Result.timeout resolves to Err(onTimeout()) when task exceeds duration", async () => {
+	const task: Task.Result<string, number> = () =>
+		Deferred.from.Promise(new Promise((resolve) => setTimeout(() => resolve(Result.make.ok(42)), 100)));
+	const res = await pipe(
+		task,
+		Task.Result.timeout({ duration: Duration.milliseconds(10), onTimeout: () => "timed_out" }),
+	)();
+
+	expect(res).toStrictEqual(Result.make.err("timed_out"));
+});
+
+test("Task.Result.timeout handles pre-aborted signal", async () => {
+	const controller = new AbortController();
+	controller.abort();
+	const task: Task.Result<string, number> = (sig) =>
+		Deferred.from.Promise(Promise.resolve(sig?.aborted ? Result.make.err("aborted") : Result.make.ok(42)));
+
+	const res = await pipe(
+		task,
+		Task.Result.timeout({ duration: Duration.milliseconds(100), onTimeout: () => "timed_out" }),
+	)(controller.signal);
+
+	expect(res).toStrictEqual(Result.make.err("aborted"));
+});
+
+test("Task.Result.retry aborts during wait delay", async () => {
+	const controller = new AbortController();
+	let attempts = 0;
+	const failingTask: Task.Result<string, number> = () => {
+		attempts++;
+		if (attempts === 1) {
+			setTimeout(() => controller.abort(), 10);
+		}
+		return Deferred.from.Promise(Promise.resolve(Result.make.err("fail")));
+	};
+
+	const policy = RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(100) });
+	const res = await pipe(failingTask, Task.Result.retry(policy))(controller.signal);
+	expect(res).toStrictEqual(Result.make.err("fail"));
+});
+
+// --- allSettled ---
+
+test("Task.Result.allSettled collects all Ok and Err results in parallel", async () => {
+	const t1: Task.Result<string, number> = () => Deferred.from.Promise(Promise.resolve(Result.make.ok(1)));
+	const t2: Task.Result<string, number> = () => Deferred.from.Promise(Promise.resolve(Result.make.err("e2")));
+	const t3: Task.Result<string, number> = () => Deferred.from.Promise(Promise.resolve(Result.make.ok(3)));
+
+	const res = await Task.Result.allSettled([t1, t2, t3])();
+
+	expect(res).toStrictEqual([Result.make.ok(1), Result.make.err("e2"), Result.make.ok(3)]);
 });

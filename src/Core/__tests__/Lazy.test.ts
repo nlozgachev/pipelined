@@ -1,6 +1,6 @@
-import { pipe } from "#composition";
-import { Lazy } from "#core";
 import { expect, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Lazy } from "../Lazy.ts";
 
 // ---------------------------------------------------------------------------
 // from + evaluate
@@ -162,4 +162,30 @@ test("lazy composes map, chain, and tap in a pipe", () => {
 	expect(log).toStrictEqual([]);
 	expect(Lazy.evaluate(lazy)).toBe("result: 10");
 	expect(log).toStrictEqual(["tapped: 10"]);
+});
+
+// --- side-effect isolation ---
+
+test("Lazy.from defers side effect until evaluate is called", () => {
+	let called = false;
+	const lazy = Lazy.from(() => {
+		called = true;
+		return 42;
+	});
+	expect(called).toBe(false);
+	Lazy.evaluate(lazy);
+	expect(called).toBe(true);
+});
+
+test("Lazy.tap executes side effect when evaluated", () => {
+	let called = false;
+	const lazy = pipe(
+		Lazy.from(() => 10),
+		Lazy.tap(() => {
+			called = true;
+		}),
+	);
+	expect(called).toBe(false);
+	Lazy.evaluate(lazy);
+	expect(called).toBe(true);
 });

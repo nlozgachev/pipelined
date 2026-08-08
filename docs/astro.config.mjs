@@ -86,9 +86,16 @@ export default defineConfig({
 			}, {
 				label: "Collection utilities",
 				collapsed: false,
-				items: [{ slug: "guides/arr" }, { slug: "guides/str" }, { slug: "guides/num" }, { slug: "guides/rec" }, {
-					slug: "guides/dict",
-				}, { slug: "guides/uniq" }],
+				items: [
+					{ slug: "guides/arr" },
+					{ slug: "guides/str" },
+					{ slug: "guides/num" },
+					{ slug: "guides/bignum" },
+					{ slug: "guides/rec" },
+					{ slug: "guides/dict" },
+					{ slug: "guides/uniq" },
+					{ slug: "guides/json" },
+				],
 			}, {
 				label: "Appendix",
 				items: [{ slug: "appendix/motivation" }, { slug: "appendix/influences" }, { slug: "appendix/benchmarks" }],

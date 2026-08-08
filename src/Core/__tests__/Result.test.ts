@@ -1,6 +1,8 @@
-import { pipe } from "#composition";
-import { Maybe, Result, Validation } from "#core";
 import { expect, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Maybe } from "../Maybe.ts";
+import { Result } from "../Result.ts";
+import { Validation } from "../Validation.ts";
 
 // ---------------------------------------------------------------------------
 // of / ok
@@ -625,4 +627,36 @@ test("Result.to.Validation converts Ok to Passed", () => {
 test("Result.to.Validation converts Err to Failed with array error", () => {
 	const res = Result.to.Validation(Result.make.err("oops"));
 	expect(res).toStrictEqual(Validation.make.failed("oops"));
+});
+
+// --- ensure ---
+
+test("Result.ensure preserves Ok when predicate passes", () => {
+	const res = pipe(Result.make.ok(42), Result.ensure((n) => n > 0, (n) => `Must be positive: ${n}`));
+	expect(res).toStrictEqual(Result.make.ok(42));
+});
+
+test("Result.ensure converts Ok to Err when predicate fails", () => {
+	const res = pipe(Result.make.ok(-5), Result.ensure((n) => n > 0, (n) => `Must be positive: ${n}`));
+	expect(res).toStrictEqual(Result.make.err("Must be positive: -5"));
+});
+
+test("Result.ensure passes through Err unchanged", () => {
+	const res = pipe(
+		Result.make.err("initial_error"),
+		Result.ensure((n: number) => n > 0, (n) => `Must be positive: ${n}`),
+	);
+	expect(res).toStrictEqual(Result.make.err("initial_error"));
+});
+
+// --- bimap ---
+
+test("Result.bimap applies onOk to Ok values", () => {
+	const res = pipe(Result.make.ok(5), Result.bimap((e) => `Err: ${e}`, (n) => n * 2));
+	expect(res).toStrictEqual(Result.make.ok(10));
+});
+
+test("Result.bimap applies onErr to Err values", () => {
+	const res = pipe(Result.make.err("oops"), Result.bimap((e) => `Err: ${e}`, (n: number) => n * 2));
+	expect(res).toStrictEqual(Result.make.err("Err: oops"));
 });

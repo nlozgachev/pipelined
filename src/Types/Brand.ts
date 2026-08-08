@@ -43,6 +43,8 @@ export namespace Brand {
 	 *
 	 * @example
 	 * ```ts
+	 * type UserId = Brand<"UserId", string>;
+	 * const toUserId = Brand.wrap<"UserId", string>();
 	 * const userId: UserId = toUserId("user-123");
 	 * const raw: string = Brand.unwrap(userId); // "user-123"
 	 * ```

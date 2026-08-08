@@ -20,24 +20,47 @@ export type TaskMaybe<A> = Task<Maybe<A>>;
 export namespace TaskMaybe {
 	/**
 	 * Wraps a value in a Some inside a Task.
+	 *
+	 * @example
+	 * ```ts
+	 * const task = Task.Maybe.some(42);
+	 * const res = await task(); // Some(42)
+	 * ```
 	 */
 	export const some = <A>(value: A): TaskMaybe<A> => CoreTask.resolve(CoreMaybe.make.some(value));
 
 	/**
 	 * Creates a Task.Maybe that resolves to None.
+	 *
+	 * @example
+	 * ```ts
+	 * const task = Task.Maybe.none();
+	 * const res = await task(); // None
+	 * ```
 	 */
 	export const none = <A = never>(): TaskMaybe<A> => CoreTask.resolve(CoreMaybe.make.none());
 
 	// --- from ---
 	export namespace from {
 		/**
-		 * Lifts an Option into a Task.Maybe.
+		 * Lifts a Maybe into a Task.Maybe.
+		 *
+		 * @example
+		 * ```ts
+		 * Task.Maybe.from.Maybe(Maybe.make.some(42));
+		 * ```
 		 */
 		export const Maybe = <A>(option: Maybe<A>): TaskMaybe<A> => CoreTask.resolve(option);
 
 		/**
 		 * Creates a Task.Maybe from a nullable value.
 		 * Returns Some if the value is not null or undefined, None otherwise.
+		 *
+		 * @example
+		 * ```ts
+		 * Task.Maybe.from.nullable(42);   // resolves to Some(42)
+		 * Task.Maybe.from.nullable(null); // resolves to None
+		 * ```
 		 */
 		export const nullable = <A>(value: A | null | undefined): TaskMaybe<A> =>
 			CoreTask.resolve(CoreMaybe.from.nullable(value));
@@ -45,11 +68,22 @@ export namespace TaskMaybe {
 		/**
 		 * Creates a Task.Maybe from a Result.
 		 * Ok becomes Some, Error becomes None (the error value is discarded).
+		 *
+		 * @example
+		 * ```ts
+		 * Task.Maybe.from.Result(Result.make.ok(42)); // resolves to Some(42)
+		 * Task.Maybe.from.Result(Result.make.err("e")); // resolves to None
+		 * ```
 		 */
 		export const Result = <E, A>(result: Result<E, A>): TaskMaybe<A> => CoreTask.resolve(CoreResult.to.Maybe(result));
 
 		/**
 		 * Lifts a Task into a Task.Maybe by wrapping its result in Some.
+		 *
+		 * @example
+		 * ```ts
+		 * Task.Maybe.from.Task(Task.resolve(42)); // resolves to Some(42)
+		 * ```
 		 */
 		export const Task = <A>(task: Task<A>): TaskMaybe<A> => CoreTask.map(CoreMaybe.make.some)(task);
 	}

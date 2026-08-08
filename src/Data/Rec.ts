@@ -20,8 +20,8 @@ namespace RecMaybe {
 	 * @example
 	 * ```ts
 	 * const parseNum = (s: string) => s === "NaN" ? Maybe.make.none() : Maybe.make.some(Number(s));
-	 * pipe({ a: "1", b: "2" }, Rec.Maybe.traverse(parseNum)); // Some({ a: 1, b: 2 })
-	 * pipe({ a: "1", b: "NaN" }, Rec.Maybe.traverse(parseNum)); // None
+	 * pipe({ a: "1", b: "2" }, Rec.traverse.Maybe(parseNum)); // Some({ a: 1, b: 2 })
+	 * pipe({ a: "1", b: "NaN" }, Rec.traverse.Maybe(parseNum)); // None
 	 * ```
 	 */
 	export const traverse =
@@ -45,8 +45,8 @@ namespace RecMaybe {
 	 *
 	 * @example
 	 * ```ts
-	 * Rec.Maybe.sequence({ a: Maybe.make.some(1), b: Maybe.make.some(2) }); // Some({ a: 1, b: 2 })
-	 * Rec.Maybe.sequence({ a: Maybe.make.some(1), b: Maybe.make.none() }); // None
+	 * Rec.sequence.Maybe({ a: Maybe.make.some(1), b: Maybe.make.some(2) }); // Some({ a: 1, b: 2 })
+	 * Rec.sequence.Maybe({ a: Maybe.make.some(1), b: Maybe.make.none() }); // None
 	 * ```
 	 */
 	export const sequence = <A>(data: Readonly<Record<string, CoreMaybe<A>>>): CoreMaybe<Readonly<Record<string, A>>> =>
@@ -62,8 +62,8 @@ namespace RecResult {
 	 * @example
 	 * ```ts
 	 * const checkPositive = (n: number) => n < 0 ? Result.make.err("negative") : Result.make.ok(n);
-	 * pipe({ a: 1, b: 2 }, Rec.Result.traverse(checkPositive)); // Ok({ a: 1, b: 2 })
-	 * pipe({ a: 1, b: -2 }, Rec.Result.traverse(checkPositive)); // Err("negative")
+	 * pipe({ a: 1, b: 2 }, Rec.traverse.Result(checkPositive)); // Ok({ a: 1, b: 2 })
+	 * pipe({ a: 1, b: -2 }, Rec.traverse.Result(checkPositive)); // Err("negative")
 	 * ```
 	 */
 	export const traverse =
@@ -88,8 +88,8 @@ namespace RecResult {
 	 *
 	 * @example
 	 * ```ts
-	 * Rec.Result.sequence({ a: Result.make.ok(1), b: Result.make.ok(2) }); // Ok({ a: 1, b: 2 })
-	 * Rec.Result.sequence({ a: Result.make.ok(1), b: Result.make.err("oops") }); // Err("oops")
+	 * Rec.sequence.Result({ a: Result.make.ok(1), b: Result.make.ok(2) }); // Ok({ a: 1, b: 2 })
+	 * Rec.sequence.Result({ a: Result.make.ok(1), b: Result.make.err("oops") }); // Err("oops")
 	 * ```
 	 */
 	export const sequence = <E, A>(
@@ -214,11 +214,23 @@ export namespace Rec {
 	export namespace is {
 		/**
 		 * Returns true if the record has no keys.
+		 *
+		 * @example
+		 * ```ts
+		 * Rec.is.empty({});       // true
+		 * Rec.is.empty({ a: 1 }); // false
+		 * ```
 		 */
 		export const empty = <A>(data: Readonly<Record<string, A>>): boolean => Object.keys(data).length === 0;
 
 		/**
 		 * Type guard to check if a record is non-empty.
+		 *
+		 * @example
+		 * ```ts
+		 * Rec.is.nonEmpty({ a: 1 }); // true
+		 * Rec.is.nonEmpty({});       // false
+		 * ```
 		 */
 		export const nonEmpty = _isNonEmpty;
 	}
@@ -252,6 +264,17 @@ export namespace Rec {
 			return result as unknown as Readonly<Record<K, B>>;
 		};
 
+	/**
+	 * Maps each value in a record with a function returning a `Maybe`, keeping only `Some` values.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   { a: 1, b: 2, c: 3 },
+	 *   Rec.filterMap((n) => (n % 2 === 0 ? Maybe.make.some(n * 10) : Maybe.make.none()))
+	 * ); // { b: 20 }
+	 * ```
+	 */
 	export const filterMap =
 		<A, B>(f: (a: A) => CoreMaybe<B>) => (data: Readonly<Record<string, A>>): Readonly<Record<string, B>> => {
 			const recordKeys = Object.keys(data);
@@ -363,18 +386,33 @@ export namespace Rec {
 
 	/**
 	 * Returns all keys of a record.
+	 *
+	 * @example
+	 * ```ts
+	 * Rec.keys({ a: 1, b: 2 }); // ["a", "b"]
+	 * ```
 	 */
 	export const keys = <T extends Record<string, unknown>>(data: T): readonly (keyof T & string)[] =>
 		Object.keys(data) as (keyof T & string)[];
 
 	/**
 	 * Returns all values of a record.
+	 *
+	 * @example
+	 * ```ts
+	 * Rec.values({ a: 1, b: 2 }); // [1, 2]
+	 * ```
 	 */
 	export const values = <T extends Record<string, unknown>>(data: T): readonly T[keyof T & string][] =>
 		Object.values(data) as T[keyof T & string][];
 
 	/**
 	 * Returns all key-value pairs of a record.
+	 *
+	 * @example
+	 * ```ts
+	 * Rec.entries({ a: 1, b: 2 }); // [["a", 1], ["b", 2]]
+	 * ```
 	 */
 	export const entries = <T extends Record<string, unknown>>(data: T): readonly (readonly [keyof T, T[keyof T]])[] =>
 		Object.entries(data) as unknown as (readonly [keyof T, T[keyof T]])[];
@@ -479,7 +517,61 @@ export namespace Rec {
 		});
 
 	/**
+	 * Merges two records using a custom combination function on key collisions.
+	 * Supports both uncurried `Rec.mergeWith(combine)(first, second)` and curried `pipe(first, Rec.mergeWith(combine)(second))`.
+	 *
+	 * @example
+	 * ```ts
+	 * const combineStats = Rec.mergeWith((a: number, b: number) => a + b);
+	 * combineStats({ a: 1, b: 2 }, { b: 3, c: 4 }); // { a: 1, b: 5, c: 4 }
+	 * pipe({ a: 1, b: 2 }, combineStats({ b: 3, c: 4 })); // { a: 1, b: 5, c: 4 }
+	 * ```
+	 */
+	export function mergeWith<A>(
+		combine: (a: A, b: A) => A,
+	): {
+		(second: Readonly<Record<string, A>>): (first: Readonly<Record<string, A>>) => Readonly<Record<string, A>>;
+		(first: Readonly<Record<string, A>>, second: Readonly<Record<string, A>>): Readonly<Record<string, A>>;
+	};
+	export function mergeWith<A>(
+		combine: (a: A, b: A) => A,
+	): (arg1: Readonly<Record<string, A>>, arg2?: Readonly<Record<string, A>>) => any {
+		return (arg1: Readonly<Record<string, A>>, arg2?: Readonly<Record<string, A>>): any => {
+			if (arg2 !== undefined) {
+				const first = arg1;
+				const second = arg2;
+				const result: Record<string, A> = { ...first };
+				for (const [k, v] of Object.entries(second)) {
+					if (Object.hasOwn(result, k)) {
+						result[k] = combine(result[k], v);
+					} else {
+						result[k] = v;
+					}
+				}
+				return result;
+			}
+			const second = arg1;
+			return (first: Readonly<Record<string, A>>): Readonly<Record<string, A>> => {
+				const result: Record<string, A> = { ...first };
+				for (const [k, v] of Object.entries(second)) {
+					if (Object.hasOwn(result, k)) {
+						result[k] = combine(result[k], v);
+					} else {
+						result[k] = v;
+					}
+				}
+				return result;
+			};
+		};
+	}
+
+	/**
 	 * Returns the number of keys in a record.
+	 *
+	 * @example
+	 * ```ts
+	 * Rec.size({ a: 1, b: 2 }); // 2
+	 * ```
 	 */
 	export const size = <A>(data: Readonly<Record<string, A>>): number => Object.keys(data).length;
 
@@ -521,6 +613,53 @@ export namespace Rec {
 		}
 		return result;
 	};
+
+	/**
+	 * Transforms key and value pairs simultaneously.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   { a: 1, b: 2 },
+	 *   Rec.mapEntries((k, v) => [k.toUpperCase(), v * 10])
+	 * ); // { A: 10, B: 20 }
+	 * ```
+	 */
+	export const mapEntries =
+		<A, K2 extends string, B>(f: (key: string, value: A) => readonly [K2, B]) =>
+		(data: Readonly<Record<string, A>>): Readonly<Record<K2, B>> => {
+			const result = {} as Record<K2, B>;
+			for (const [k, v] of Object.entries(data)) {
+				const [newKey, newVal] = f(k, v);
+				Object.defineProperty(result, newKey, { value: newVal, writable: true, enumerable: true, configurable: true });
+			}
+			return result;
+		};
+
+	/**
+	 * Immutably updates a value at a deep nested path inside a record.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   { user: { profile: { age: 30 } } },
+	 *   Rec.updateIn(["user", "profile", "age"], (n: number) => n + 1)
+	 * ); // { user: { profile: { age: 31 } } }
+	 * ```
+	 */
+	export const updateIn =
+		<T>(path: readonly [string, ...string[]], f: (val: T) => T) =>
+		(data: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> => {
+			const updateNode = (obj: any, keys: readonly string[]): any => {
+				const [head, ...tail] = keys;
+				if (tail.length === 0) {
+					return { ...obj, [head]: f(obj?.[head]) };
+				}
+				const child = obj && typeof obj === "object" && head in obj ? obj[head] : {};
+				return { ...obj, [head]: updateNode(child, tail) };
+			};
+			return updateNode(data, path);
+		};
 
 	export namespace traverse {
 		export const Maybe = RecMaybe.traverse;

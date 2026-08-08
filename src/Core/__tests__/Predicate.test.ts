@@ -1,6 +1,7 @@
-import { pipe } from "#composition";
-import { Predicate, Refinement } from "#core";
 import { expect, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Predicate } from "../Predicate.ts";
+import { Refinement } from "../Refinement.ts";
 
 // ---------------------------------------------------------------------------
 // Shared test predicates
@@ -225,4 +226,41 @@ test("Predicate.from.Refinement result composes with and/or", () => {
 	expect(combined("hello world")).toBe(true);
 	expect(combined("hi")).toBe(false);
 	expect(combined("")).toBe(false);
+});
+
+// --- match ---
+
+test("Predicate.match branches over predicate-handler pairs with fallback", () => {
+	const classify = Predicate.match<number, string>(
+		[[(n) => n < 0, () => "negative"], [(n) => n === 0, () => "zero"]],
+		() => "positive",
+	);
+
+	expect(classify(-5)).toBe("negative");
+	expect(classify(0)).toBe("zero");
+	expect(classify(10)).toBe("positive");
+});
+
+// --- side-effect isolation ---
+
+test("Predicate.and executes side effect in second predicate when first passes", () => {
+	let called = false;
+	const first = () => true;
+	const second = () => {
+		called = true;
+		return true;
+	};
+	pipe(first, Predicate.and(second))(42);
+	expect(called).toBe(true);
+});
+
+test("Predicate.and short-circuits side effect in second predicate when first fails", () => {
+	let called = false;
+	const first = () => false;
+	const second = () => {
+		called = true;
+		return true;
+	};
+	pipe(first, Predicate.and(second))(42);
+	expect(called).toBe(false);
 });

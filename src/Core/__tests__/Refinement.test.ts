@@ -1,6 +1,8 @@
-import { pipe } from "#composition";
-import { Maybe, Refinement, Result } from "#core";
 import { expect, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Maybe } from "../Maybe.ts";
+import { Refinement } from "../Refinement.ts";
+import { Result } from "../Result.ts";
 
 // ---------------------------------------------------------------------------
 // Phantom brand types — each uses a unique symbol so intersections don't collapse
@@ -160,4 +162,28 @@ test("Refinement.to.Result works in a pipe chain with composed refinements", () 
 		kind: "Err",
 		error: "3 failed",
 	});
+});
+
+// --- side-effect isolation ---
+
+test("Refinement.and executes second refinement when first passes", () => {
+	let called = false;
+	const first = Refinement.from.predicate(() => true);
+	const second = Refinement.from.predicate(() => {
+		called = true;
+		return true;
+	});
+	pipe(first, Refinement.and(second))(42);
+	expect(called).toBe(true);
+});
+
+test("Refinement.and short-circuits second refinement when first fails", () => {
+	let called = false;
+	const first = Refinement.from.predicate(() => false);
+	const second = Refinement.from.predicate(() => {
+		called = true;
+		return true;
+	});
+	pipe(first, Refinement.and(second))(42);
+	expect(called).toBe(false);
 });

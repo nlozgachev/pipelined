@@ -91,4 +91,49 @@ export namespace Equality {
 	 * ```
 	 */
 	export const and = <A>(eq2: Equality<A>) => (eq1: Equality<A>): Equality<A> => (a, b) => eq1(a, b) && eq2(a, b);
+
+	/**
+	 * Derives deep equality for a record from field-level `Equality` checkers.
+	 *
+	 * @example
+	 * ```ts
+	 * const userEq = Equality.struct({
+	 *   id: Equality.string,
+	 *   age: Equality.number,
+	 * });
+	 * ```
+	 */
+	export const struct =
+		<R extends Record<string, unknown>>(fields: { [K in keyof R]: Equality<R[K]>; }): Equality<R> => (a, b) => {
+			for (const key in fields) {
+				if (Object.hasOwn(fields, key)) {
+					if (!fields[key](a[key], b[key])) {
+						return false;
+					}
+				}
+			}
+			return true;
+		};
+
+	/**
+	 * Derives element-wise equality for a tuple from positional `Equality` checkers.
+	 *
+	 * @example
+	 * ```ts
+	 * const pairEq = Equality.tuple(Equality.string, Equality.number);
+	 * pairEq(["a", 1], ["a", 1]); // true
+	 * ```
+	 */
+	export const tuple =
+		<T extends readonly unknown[]>(...equalities: { [K in keyof T]: Equality<T[K]>; }): Equality<T> => (a, b) => {
+			if (a.length !== b.length) {
+				return false;
+			}
+			for (let i = 0; i < equalities.length; i++) {
+				if (!equalities[i](a[i], b[i])) {
+					return false;
+				}
+			}
+			return true;
+		};
 }

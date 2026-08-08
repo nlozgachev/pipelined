@@ -1,10 +1,12 @@
-import { Maybe, Op, Result } from "#core";
-import { Duration } from "#types";
 import { expect, expectTypeOf, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Duration } from "../../Types/Duration.ts";
+import { Deferred } from "../Deferred.ts";
+import { Maybe } from "../Maybe.ts";
+import { Op } from "../Op.ts";
+import { Result } from "../Result.ts";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+// --- Helpers ---
 
 /** Op that resolves with the input value after an optional delay. */
 const delayedOp = (delayMs = 0): Op<number, string, number> =>
@@ -46,9 +48,7 @@ const runAndCollect = <I, E, A, S extends Op.State<E, A>>(manager: Op.Manager<I,
 	});
 };
 
-// ---------------------------------------------------------------------------
-// Op.create
-// ---------------------------------------------------------------------------
+// --- Op.create ---
 
 test("Op.create produces an Op with a _factory function", () => {
 	const op = Op.create((_signal) => () => Promise.resolve(1), String);
@@ -68,9 +68,7 @@ test("op.create void: manager.run() accepts no arguments", async () => {
 	expect(result).toStrictEqual(Op.ok(99));
 });
 
-// ---------------------------------------------------------------------------
-// Op.lift
-// ---------------------------------------------------------------------------
+// --- Op.lift ---
 
 test("Op.lift creates a manager from a plain async function", async () => {
 	const op = Op.lift((n: number, _signal: AbortSignal) => Promise.resolve(n * 2));
@@ -99,9 +97,7 @@ test("Op.lift passes the signal to the async function", async () => {
 	expect(capturedSignal).toBeInstanceOf(AbortSignal);
 });
 
-// ---------------------------------------------------------------------------
-// Outcome constructors
-// ---------------------------------------------------------------------------
+// --- Outcome constructors ---
 
 test("Op.ok creates an Ok outcome", () => {
 	expect(Op.ok(42)).toStrictEqual({ kind: "OpOk", value: 42 });
@@ -118,9 +114,7 @@ test("Op.nil creates a Nil outcome with the given reason", () => {
 	expect(Op.nil("evicted")).toStrictEqual({ kind: "OpNil", reason: "evicted" });
 });
 
-// ---------------------------------------------------------------------------
-// Type guards
-// ---------------------------------------------------------------------------
+// --- Type guards ---
 
 test("Op.isOk returns true only for Ok", () => {
 	const ok = Op.ok(1) as Op.Outcome<string, number>;
@@ -187,9 +181,7 @@ test("Op.isRetrying returns true only for Retrying state", async () => {
 	expect(sawRetrying).toBe(true);
 });
 
-// ---------------------------------------------------------------------------
-// match
-// ---------------------------------------------------------------------------
+// --- match ---
 
 const matchCases = { ok: (v: number) => `ok:${v}`, err: (e: string) => `err:${e}`, nil: () => "nil" };
 
@@ -205,9 +197,7 @@ test("Op.match handles Nil", () => {
 	expect(Op.match(matchCases)(Op.nil("aborted"))).toBe("nil");
 });
 
-// ---------------------------------------------------------------------------
-// fold
-// ---------------------------------------------------------------------------
+// --- fold ---
 
 test("Op.fold handles all three cases", () => {
 	const fold = Op.fold((e: string) => `err:${e}`, () => "nil", (v: number) => `ok:${v}`);
@@ -216,9 +206,7 @@ test("Op.fold handles all three cases", () => {
 	expect(fold(Op.nil("aborted"))).toBe("nil");
 });
 
-// ---------------------------------------------------------------------------
-// getOrElse
-// ---------------------------------------------------------------------------
+// --- getOrElse ---
 
 test("Op.getOrElse returns value for Ok", () => {
 	expect(Op.getOrElse(() => 0)(Op.ok(42))).toBe(42);
@@ -232,9 +220,7 @@ test("Op.getOrElse returns default for Nil", () => {
 	expect(Op.getOrElse(() => 0)(Op.nil("aborted") as Op.Outcome<string, number>)).toBe(0);
 });
 
-// ---------------------------------------------------------------------------
-// map
-// ---------------------------------------------------------------------------
+// --- map ---
 
 test("Op.map transforms Ok value", () => {
 	expect(Op.map((n: number) => n * 2)(Op.ok(5))).toStrictEqual(Op.ok(10));
@@ -250,9 +236,7 @@ test("Op.map passes Nil through — same reference", () => {
 	expect(Op.map((n: number) => n * 2)(outcome)).toBe(outcome);
 });
 
-// ---------------------------------------------------------------------------
-// mapError
-// ---------------------------------------------------------------------------
+// --- mapError ---
 
 test("Op.mapError transforms Err", () => {
 	const outcome = Op.err("oops") as Op.Outcome<string, number>;
@@ -269,9 +253,7 @@ test("Op.mapError passes Nil through — same reference", () => {
 	expect(Op.mapError((e: string) => e.toUpperCase())(outcome)).toBe(outcome);
 });
 
-// ---------------------------------------------------------------------------
-// chain
-// ---------------------------------------------------------------------------
+// --- chain ---
 
 test("Op.chain runs f on Ok and returns new Outcome", () => {
 	const outcome = Op.ok(5) as Op.Outcome<string, number>;
@@ -300,9 +282,7 @@ test("Op.chain does not call f on Nil — same reference", () => {
 	expect(result).toBe(outcome);
 });
 
-// ---------------------------------------------------------------------------
-// tap
-// ---------------------------------------------------------------------------
+// --- tap ---
 
 test("Op.tap runs side effect on Ok and returns unchanged outcome", () => {
 	let seen: number | undefined;
@@ -332,9 +312,7 @@ test("Op.tap does not run on Nil", () => {
 	expect(called).toBe(false);
 });
 
-// ---------------------------------------------------------------------------
-// recover
-// ---------------------------------------------------------------------------
+// --- recover ---
 
 test("Op.recover provides fallback on Err", () => {
 	const outcome = Op.err("oops") as Op.Outcome<string, number>;
@@ -363,9 +341,7 @@ test("Op.recover does not call f on Nil — same reference", () => {
 	expect(result).toBe(outcome);
 });
 
-// ---------------------------------------------------------------------------
-// toResult
-// ---------------------------------------------------------------------------
+// --- toResult ---
 
 test("op.toResult converts Ok to Result.make.ok", () => {
 	expect(Op.to.Result(() => "no-result")(Op.ok(1))).toStrictEqual(Result.make.ok(1));
@@ -381,9 +357,7 @@ test("Op.to.Result converts Nil via onNil", () => {
 	expect(Op.to.Result(() => "no-result")(outcome)).toStrictEqual(Result.make.err("no-result"));
 });
 
-// ---------------------------------------------------------------------------
-// toMaybe
-// ---------------------------------------------------------------------------
+// --- toMaybe ---
 
 test("Op.to.Maybe converts Ok to Some", () => {
 	expect(Op.to.Maybe(Op.ok(7))).toStrictEqual(Maybe.make.some(7));
@@ -397,9 +371,7 @@ test("Op.to.Maybe converts Nil to None", () => {
 	expect(Op.to.Maybe(Op.nil("aborted") as Op.Outcome<string, number>)).toStrictEqual(Maybe.make.none());
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — restartable
-// ---------------------------------------------------------------------------
+// --- Op.interpret — restartable ---
 
 test("Op.interpret restartable emits Pending then Ok on success", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "restartable" });
@@ -465,9 +437,7 @@ test("Op.interpret restartable subscribe fires immediately with current non-Idle
 	manager.abort();
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — restartable with retry
-// ---------------------------------------------------------------------------
+// --- Op.interpret — restartable with retry ---
 
 test("Op.interpret restartable with retry emits Retrying between attempts", async () => {
 	let calls = 0;
@@ -511,9 +481,7 @@ test("Op.interpret restartable with retry respects when guard", async () => {
 	expect(states.at(-1)).toStrictEqual({ kind: "OpErr", error: "non-retryable" });
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — restartable with timeout
-// ---------------------------------------------------------------------------
+// --- Op.interpret — restartable with timeout ---
 
 test("Op.interpret restartable with timeout emits Err when deadline fires", async () => {
 	const manager = Op.interpret(delayedOp(100), {
@@ -533,9 +501,7 @@ test("Op.interpret restartable with timeout resolves Ok when op finishes in time
 	expect(states).toStrictEqual([{ kind: "Pending" }, { kind: "OpOk", value: 42 }]);
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — restartable with retry + timeout
-// ---------------------------------------------------------------------------
+// --- Op.interpret — restartable with retry + timeout ---
 
 test("Op.interpret restartable retry + timeout — deadline wraps entire retry sequence", async () => {
 	let calls = 0;
@@ -560,9 +526,7 @@ test("Op.interpret restartable retry + timeout — deadline wraps entire retry s
 	expect(calls).toBeLessThan(10);
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — exclusive
-// ---------------------------------------------------------------------------
+// --- Op.interpret — exclusive ---
 
 test("Op.interpret exclusive emits Pending then Ok on success", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "exclusive" });
@@ -600,9 +564,7 @@ test("Op.interpret exclusive abort emits Nil", async () => {
 	expect(states).toStrictEqual([{ kind: "Pending" }, { kind: "OpNil", reason: "aborted" }]);
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — queue
-// ---------------------------------------------------------------------------
+// --- Op.interpret — queue ---
 
 test("Op.interpret queue runs calls in submission order", async () => {
 	const results: number[] = [];
@@ -666,9 +628,7 @@ test("Op.interpret queue abort drains queue — emits Nil", async () => {
 	expect(manager.state).toStrictEqual({ kind: "OpNil", reason: "aborted" });
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — buffered
-// ---------------------------------------------------------------------------
+// --- Op.interpret — buffered ---
 
 test("Op.interpret buffered in-flight always completes before waiting slot runs", async () => {
 	const manager = Op.interpret(delayedOp(30), { strategy: "buffered" });
@@ -723,9 +683,7 @@ test("Op.interpret buffered abort emits Nil", async () => {
 	expect(manager.state).toStrictEqual({ kind: "OpNil", reason: "aborted" });
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — debounced
-// ---------------------------------------------------------------------------
+// --- Op.interpret — debounced ---
 
 test("Op.interpret debounced waits for idle period before running", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "debounced", duration: Duration.milliseconds(20) });
@@ -764,9 +722,7 @@ test("Op.interpret debounced abort cancels pending timer — state stays Idle", 
 	expect(manager.state).toStrictEqual({ kind: "Idle" });
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — once
-// ---------------------------------------------------------------------------
+// --- Op.interpret — once ---
 
 test("Op.interpret once emits Pending then Ok on success", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "once" });
@@ -839,9 +795,7 @@ test("Op.interpret once with retry — retries on Err, then settles", async () =
 	expect(states.at(-1)).toStrictEqual({ kind: "OpOk", value: 99 });
 });
 
-// ---------------------------------------------------------------------------
-// Per-invocation results — run() returns Deferred<Outcome>
-// ---------------------------------------------------------------------------
+// --- Per-invocation results — run() returns Deferred<Outcome> ---
 
 test("Op.interpret restartable run() returns the invocation's outcome", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "restartable" });
@@ -1004,9 +958,7 @@ test("Op.interpret once subscribe after run started fires immediately with curre
 	manager.abort();
 });
 
-// ---------------------------------------------------------------------------
-// Op.all and Op.race
-// ---------------------------------------------------------------------------
+// --- Op.all and Op.race ---
 
 test("Op.all resolves when all invocations settle", async () => {
 	const manager = Op.interpret(delayedOp(10), { strategy: "queue" });
@@ -1031,9 +983,7 @@ test("Op.race resolves to the first invocation that settles", async () => {
 	expect(winner).toStrictEqual({ kind: "OpNil", reason: "replaced" });
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — throttled (leading-only)
-// ---------------------------------------------------------------------------
+// --- Op.interpret — throttled (leading-only) ---
 
 test("Op.interpret throttled fires immediately on the first run()", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "throttled", duration: Duration.milliseconds(50) });
@@ -1075,9 +1025,7 @@ test("Op.interpret throttled subscribe after run started fires immediately with 
 	manager.abort();
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — throttled (trailing: true)
-// ---------------------------------------------------------------------------
+// --- Op.interpret — throttled (trailing: true) ---
 
 test("Op.interpret throttled trailing fires trailing call after cooldown", async () => {
 	let calls = 0;
@@ -1127,9 +1075,7 @@ test("Op.interpret throttled trailing abort() clears in-flight and buffered", as
 	await expect(p2).resolves.toStrictEqual({ kind: "OpNil", reason: "aborted" });
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — concurrent
-// ---------------------------------------------------------------------------
+// --- Op.interpret — concurrent ---
 
 test("Op.interpret concurrent n=2 runs two operations in parallel", async () => {
 	const manager = Op.interpret(delayedOp(20), { strategy: "concurrent", n: 2, overflow: "drop" });
@@ -1175,9 +1121,7 @@ test("Op.interpret concurrent overflow queue emits Queued state for waiting run(
 	expect(states).toContainEqual({ kind: "Queued", position: 0 });
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — keyed (exclusive perKey)
-// ---------------------------------------------------------------------------
+// --- Op.interpret — keyed (exclusive perKey) ---
 
 test("Op.interpret keyed exclusive: different keys run in parallel", async () => {
 	const manager = Op.interpret(delayedOp(20), { strategy: "keyed", key: (n) => n, perKey: "exclusive" });
@@ -1260,9 +1204,7 @@ test("Op.interpret keyed exclusive: subscriber fires with snapshot on each trans
 	expect(snapshots.at(-1)?.get(1)).toStrictEqual({ kind: "OpOk", value: 1 });
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — keyed (restartable perKey)
-// ---------------------------------------------------------------------------
+// --- Op.interpret — keyed (restartable perKey) ---
 
 test("Op.interpret keyed restartable: same key while in-flight cancels previous", async () => {
 	const manager = Op.interpret(delayedOp(50), { strategy: "keyed", key: (n) => n, perKey: "restartable" });
@@ -1282,20 +1224,18 @@ test("Op.interpret keyed restartable: different keys still run in parallel", asy
 test("Op.interpret keyed type: run() return type for exclusive is narrowed correctly", () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "keyed", key: (n: number) => n, perKey: "exclusive" });
 	expectTypeOf(manager.run).returns.toEqualTypeOf<
-		import("#core").Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.DroppedNil>
+		Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.DroppedNil>
 	>();
 });
 
 test("Op.interpret keyed type: run() return type for restartable is narrowed correctly", () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "keyed", key: (n: number) => n, perKey: "restartable" });
 	expectTypeOf(manager.run).returns.toEqualTypeOf<
-		import("#core").Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.ReplacedNil>
+		Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.ReplacedNil>
 	>();
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — debounced leading edge
-// ---------------------------------------------------------------------------
+// --- Op.interpret — debounced leading edge ---
 
 test("Op.interpret debounced with leading: true fires immediately on first call", async () => {
 	const manager = Op.interpret(delayedOp(), {
@@ -1343,9 +1283,7 @@ test("Op.interpret debounced with leading: true intermediate calls get EvictedNi
 	await expect(p3).resolves.toStrictEqual({ kind: "OpOk", value: 3 }); // trailing
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — debounced maxWait
-// ---------------------------------------------------------------------------
+// --- Op.interpret — debounced maxWait ---
 
 test("Op.interpret debounced with maxWait fires after maxWait even without quiet period", async () => {
 	let calls = 0;
@@ -1369,9 +1307,7 @@ test("Op.interpret debounced with maxWait fires after maxWait even without quiet
 	expect(calls).toBe(1); // forced by maxWait
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — restartable minInterval
-// ---------------------------------------------------------------------------
+// --- Op.interpret — restartable minInterval ---
 
 test("Op.interpret restartable with minInterval delays restart until interval elapses", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "restartable", minInterval: Duration.milliseconds(80) });
@@ -1398,9 +1334,7 @@ test("Op.interpret restartable with minInterval: rapid re-run cancels previous a
 	await expect(p3).resolves.toStrictEqual({ kind: "OpOk", value: 3 });
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — exclusive cooldown
-// ---------------------------------------------------------------------------
+// --- Op.interpret — exclusive cooldown ---
 
 test("Op.interpret exclusive with cooldown drops calls during post-completion cooldown", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "exclusive", cooldown: Duration.milliseconds(60) });
@@ -1428,9 +1362,7 @@ test("Op.interpret exclusive with cooldown: abort clears cooldown so next run su
 	await expect(p2).resolves.toStrictEqual({ kind: "OpOk", value: 2 });
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — buffered size
-// ---------------------------------------------------------------------------
+// --- Op.interpret — buffered size ---
 
 test("Op.interpret buffered with size: 2 holds two waiting calls", async () => {
 	const manager = Op.interpret(delayedOp(30), { strategy: "buffered", size: 2 });
@@ -1462,9 +1394,7 @@ test("Op.interpret buffered with size: 2 processes buffer in FIFO order", async 
 	expect(order).toStrictEqual([1, 2, 3]); // FIFO
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — queue maxSize and overflow
-// ---------------------------------------------------------------------------
+// --- Op.interpret — queue maxSize and overflow ---
 
 test("Op.interpret queue with maxSize drops new calls when queue is full", async () => {
 	const manager = Op.interpret(delayedOp(30), { strategy: "queue", maxSize: 1 });
@@ -1490,9 +1420,7 @@ test("Op.interpret queue with overflow: replace-last evicts queue tail on overfl
 	await expect(p3).resolves.toStrictEqual({ kind: "OpOk", value: 3 });
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — queue dedupe
-// ---------------------------------------------------------------------------
+// --- Op.interpret — queue dedupe ---
 
 test("Op.interpret queue with dedupe drops duplicate queued items", async () => {
 	const manager = Op.interpret(delayedOp(30), { strategy: "queue", dedupe: (a, b) => a === b });
@@ -1506,9 +1434,7 @@ test("Op.interpret queue with dedupe drops duplicate queued items", async () => 
 	await expect(p3).resolves.toStrictEqual({ kind: "OpOk", value: 2 }); // ran with input 2
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — queue concurrency
-// ---------------------------------------------------------------------------
+// --- Op.interpret — queue concurrency ---
 
 test("Op.interpret queue with concurrency: 2 runs two items in-flight simultaneously", async () => {
 	const startTimes: number[] = [];
@@ -1532,9 +1458,7 @@ test("Op.interpret queue with concurrency: 2 runs two items in-flight simultaneo
 	expect(startTimes[1]! - startTimes[0]!).toBeLessThan(10);
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — queue overflow + dedupe combined
-// ---------------------------------------------------------------------------
+// --- Op.interpret — queue overflow + dedupe combined ---
 
 test("Op.interpret queue with overflow: replace-last and dedupe produces DroppedNil and EvictedNil", async () => {
 	const manager = Op.interpret(delayedOp(30), {
@@ -1557,9 +1481,7 @@ test("Op.interpret queue with overflow: replace-last and dedupe produces Dropped
 	await expect(p5).resolves.toStrictEqual({ kind: "OpOk", value: 30 });
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — retry with queue, buffered, debounced, throttled, concurrent
-// ---------------------------------------------------------------------------
+// --- Op.interpret — retry with queue, buffered, debounced, throttled, concurrent ---
 
 test("Op.interpret queue with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
@@ -1664,9 +1586,7 @@ test("Op.interpret concurrent with retry emits Retrying states between attempts"
 	expect(states[3]).toStrictEqual({ kind: "OpErr", error: "fail" });
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — manager.state getter for exclusive and concurrent
-// ---------------------------------------------------------------------------
+// --- Op.interpret — manager.state getter for exclusive and concurrent ---
 
 test("op.interpret exclusive manager.state returns current state", async () => {
 	const manager = Op.interpret(delayedOp(20), { strategy: "exclusive" });
@@ -1703,9 +1623,7 @@ test("Op.interpret concurrent subscribe after run started fires immediately with
 	manager.abort();
 });
 
-// ---------------------------------------------------------------------------
-// Op.interpret — default parameter values (Op.ts branch coverage)
-// ---------------------------------------------------------------------------
+// --- Op.interpret — default parameter values (Op.ts branch coverage) ---
 
 test("Op.interpret debounced without ms or leading uses ms=0 and leading=false defaults", async () => {
 	// Exercises options.ms ?? 0 and options.leading ?? false in the interpret switch
@@ -1741,9 +1659,7 @@ test("Op.interpret keyed without key or perKey uses identity key and exclusive d
 	await expect(p1).resolves.toStrictEqual({ kind: "OpOk", value: 1 });
 });
 
-// ---------------------------------------------------------------------------
-// runWithRetry — numeric backoff (lines 56, 70-73)
-// ---------------------------------------------------------------------------
+// --- runWithRetry — numeric backoff (lines 56, 70-73) ---
 
 test("Op.interpret restartable with numeric backoff emits Retrying with nextRetryIn", async () => {
 	// Covers the `backoff` as a plain number branch (line 56) and the ms>0 nextRetryIn path (lines 70-73)
@@ -1778,9 +1694,7 @@ test("Op.interpret exclusive with numeric backoff emits Retrying with nextRetryI
 	expect(states[1]).toStrictEqual({ kind: "Retrying", attempt: 1, lastError: "fail", nextRetryIn: 50 });
 });
 
-// ---------------------------------------------------------------------------
-// abort() on idle manager — false branch of `if (currentState.kind !== "Idle")`
-// ---------------------------------------------------------------------------
+// --- abort() on idle manager — false branch of `if (currentState.kind !== "Idle")` ---
 
 test("Op.interpret restartable abort() on idle manager is a no-op", () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "restartable" });
@@ -1894,9 +1808,7 @@ test("op.interpret throttled manager.state returns current state", async () => {
 	expect(manager.state).toStrictEqual({ kind: "OpOk", value: 1 });
 });
 
-// ---------------------------------------------------------------------------
-// Debounced with leading=true: abort() while leading execution is in-flight
-// ---------------------------------------------------------------------------
+// --- Debounced with leading=true: abort() while leading execution is in-flight ---
 
 test("Op.interpret debounced leading abort() while in-flight resolves with AbortedNil", async () => {
 	// Covers line 560: `if (leadingController !== controller) return` true branch in fireLeading.then()
@@ -1911,9 +1823,7 @@ test("Op.interpret debounced leading abort() while in-flight resolves with Abort
 	await expect(p).resolves.toStrictEqual({ kind: "OpNil", reason: "aborted" });
 });
 
-// ---------------------------------------------------------------------------
-// manager.reset
-// ---------------------------------------------------------------------------
+// --- manager.reset ---
 
 test("manager.reset returns state to Idle after Ok", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "restartable" });
@@ -1939,9 +1849,7 @@ test("manager.reset does nothing when already Idle", () => {
 	expect(manager.state.kind).toBe("Idle");
 });
 
-// ---------------------------------------------------------------------------
-// manager.poll
-// ---------------------------------------------------------------------------
+// --- manager.poll ---
 
 test("manager.poll runs immediately on first call", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "restartable" });
@@ -2155,9 +2063,7 @@ test("keyed manager.poll runs immediately and can be stopped", async () => {
 	expect(manager.state.size).toBeGreaterThan(0);
 });
 
-// ---------------------------------------------------------------------------
-// wire
-// ---------------------------------------------------------------------------
+// --- wire ---
 
 test("Op.wire calls f when source reaches OpOk", async () => {
 	const source = Op.interpret(delayedOp(), { strategy: "restartable" });
@@ -2186,9 +2092,7 @@ test("Op.wire stop handle removes the subscription", async () => {
 	expect(received).toStrictEqual([]);
 });
 
-// ---------------------------------------------------------------------------
-// Duration Support
-// ---------------------------------------------------------------------------
+// --- Duration Support ---
 
 test("duration support: debounced strategy with Duration", async () => {
 	const manager = Op.interpret(delayedOp(), {
@@ -2275,4 +2179,27 @@ test("duration support: manager.poll with Duration interval", async () => {
 	});
 	stop();
 	expect(Op.isOk(manager.state)).toBe(true);
+});
+
+// --- pipe composition ---
+
+test("Op outcome composes in a pipe with map, chain, and recover", () => {
+	const outcome = Op.ok(5) as Op.Outcome<string, number>;
+	const result = pipe(
+		outcome,
+		Op.map((n) => n * 2),
+		Op.chain((n) => (n > 5 ? Op.ok(n + 1) : Op.err("too small"))),
+		Op.recover(() => Op.ok(0)),
+	);
+	expect(result).toStrictEqual(Op.ok(11));
+});
+
+test("Op outcome composes in a pipe with mapError and to.Result", () => {
+	const outcome = Op.err("fail") as Op.Outcome<string, number>;
+	const res = pipe(
+		outcome,
+		Op.mapError((e) => `error: ${e}`),
+		Op.to.Result(() => "nil"),
+	);
+	expect(res).toStrictEqual(Result.make.err("error: fail"));
 });

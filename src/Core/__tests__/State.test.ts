@@ -1,6 +1,7 @@
-import { pipe } from "#composition";
-import { State } from "#core";
 import { expect, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Lens } from "../Lens.ts";
+import { State } from "../State.ts";
 
 // ---------------------------------------------------------------------------
 // resolve
@@ -238,4 +239,43 @@ test("State.bind accumulates values key-by-key in a pipeline", () => {
 	const [value, state] = State.run(99)(result);
 	expect(value).toStrictEqual({ a: 2, b: 6, c: 8 });
 	expect(state).toBe(99);
+});
+
+// --- focus ---
+
+test("State.focus focuses a state computation on a sub-state via Lens", () => {
+	type AppState = { count: number; name: string; };
+	const countLens = Lens.from.property<AppState>()("count");
+	const increment = State.modify((c: number) => c + 1);
+
+	const program = pipe(increment, State.focus(countLens));
+	const [value, nextState] = State.run<AppState>({ count: 10, name: "test" })(program);
+	expect(value).toBeUndefined();
+	expect(nextState).toStrictEqual({ count: 11, name: "test" });
+});
+
+// --- side-effect isolation ---
+
+test("State.tap executes side effect callback when run", () => {
+	let called = false;
+	const program = pipe(
+		State.resolve<number, number>(42),
+		State.tap(() => {
+			called = true;
+		}),
+	);
+	expect(called).toBe(false);
+	State.run(0)(program);
+	expect(called).toBe(true);
+});
+
+test("State.modify executes state transformation function when run", () => {
+	let called = false;
+	const program = State.modify<number>((s) => {
+		called = true;
+		return s + 1;
+	});
+	expect(called).toBe(false);
+	State.run(0)(program);
+	expect(called).toBe(true);
 });

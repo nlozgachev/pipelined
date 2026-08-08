@@ -48,6 +48,9 @@ export const memoize = <A, B>(f: (a: A) => B, options?: { readonly key?: (a: A) 
  *
  * @example
  * ```ts
+ * type User = { id: number; name: string };
+ * const expensiveOperation = (u: User) => u.name.toUpperCase();
+ *
  * const processUser = memoizeWeak((user: User) => {
  *   return expensiveOperation(user);
  * });

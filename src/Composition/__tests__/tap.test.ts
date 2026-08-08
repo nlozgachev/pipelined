@@ -1,6 +1,7 @@
-import { pipe, tap } from "#composition";
-import { Deferred } from "#core";
 import { expect, test, vi } from "vitest";
+import { Deferred } from "../../Core/Deferred.ts";
+import { pipe } from "../pipe.ts";
+import { tap } from "../tap.ts";
 
 test("tap - side effect executes", () => {
 	let sideEffect = 0;
@@ -379,3 +380,17 @@ test("tap.time - times Deferred function and triggers onFinish asynchronously", 
 	await new Promise((resolve) => setTimeout(resolve, 15));
 	expect(finishedDuration).not.toBeNull();
 });
+
+test("tap.log handles circular objects gracefully using fallback formatting", () => {
+	const circular: any = { name: "test" };
+	circular.self = circular;
+
+	let loggedMsg = "";
+	const logger = (msg: string) => {
+		loggedMsg = msg;
+	};
+
+	tap.log({ logger })(circular);
+	expect(loggedMsg).toBe("[object Object]");
+});
+

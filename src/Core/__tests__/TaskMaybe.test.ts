@@ -1,6 +1,8 @@
-import { pipe } from "#composition";
-import { Maybe, Result, Task } from "#core";
 import { expect, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Maybe } from "../Maybe.ts";
+import { Result } from "../Result.ts";
+import { Task } from "../Task.ts";
 
 // ---------------------------------------------------------------------------
 // of
@@ -43,7 +45,7 @@ test("Task.Maybe.fromTask wraps a Task result in Some", async () => {
 // tryCatch
 // ---------------------------------------------------------------------------
 
-test("taskMaybe.tryCatch returns Some when Promise resolves", async () => {
+test("Task.Maybe.tryCatch returns Some when Promise resolves", async () => {
 	await expect(Task.Maybe.tryCatch(() => Promise.resolve(99))()).resolves.toStrictEqual({ kind: "Some", value: 99 });
 });
 
@@ -95,7 +97,7 @@ test("Task.Maybe.chain applies function when Some", async () => {
 	expect(result).toStrictEqual({ kind: "Some", value: 10 });
 });
 
-test("taskMaybe.chain propagates None without calling function", async () => {
+test("Task.Maybe.chain propagates None without calling function", async () => {
 	let called = false;
 	await pipe(
 		Task.Maybe.none<number>(),
@@ -107,7 +109,7 @@ test("taskMaybe.chain propagates None without calling function", async () => {
 	expect(called).toBe(false);
 });
 
-test("taskMaybe.chain returns None when function returns None", async () => {
+test("Task.Maybe.chain returns None when function returns None", async () => {
 	await expect(pipe(Task.Maybe.some(5), Task.Maybe.chain((_n: number) => Task.Maybe.none()))()).resolves.toStrictEqual({
 		kind: "None",
 	});
@@ -218,7 +220,7 @@ test("Task.Maybe.getOrElse returns Some value typed as A | B when Some", async (
 // tap
 // ---------------------------------------------------------------------------
 
-test("taskMaybe.tap executes side effect on Some and returns original", async () => {
+test("Task.Maybe.tap executes side effect on Some and returns original", async () => {
 	let seen = 0;
 	const result = await pipe(
 		Task.Maybe.some(5),
@@ -275,7 +277,7 @@ test("Task.Maybe.toResult returns Ok for Some", async () => {
 	});
 });
 
-test("taskMaybe.toResult returns Err for None using onNone", async () => {
+test("Task.Maybe.toResult returns Err for None using onNone", async () => {
 	await expect(pipe(Task.Maybe.none<number>(), Task.Maybe.to.Result(() => "missing"))()).resolves.toStrictEqual({
 		kind: "Err",
 		error: "missing",
@@ -286,7 +288,7 @@ test("taskMaybe.toResult returns Err for None using onNone", async () => {
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("taskMaybe composes well in a pipe chain", async () => {
+test("Task.Maybe composes well in a pipe chain", async () => {
 	const result = await pipe(
 		Task.Maybe.some(5),
 		Task.Maybe.map((n: number) => n * 2),
@@ -297,7 +299,7 @@ test("taskMaybe composes well in a pipe chain", async () => {
 	expect(result).toBe(11);
 });
 
-test("taskMaybe pipe short-circuits on None", async () => {
+test("Task.Maybe pipe short-circuits on None", async () => {
 	const result = await pipe(
 		Task.Maybe.some(2),
 		Task.Maybe.filter((n: number) => n > 5),

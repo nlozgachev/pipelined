@@ -1,5 +1,7 @@
-import { not } from "#composition";
 import { expect, test } from "vitest";
+import { not } from "../not.ts";
+
+// --- not ---
 
 test("not - negates a predicate function", () => {
 	const isEven = (n: number) => n % 2 === 0;

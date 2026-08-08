@@ -1,11 +1,15 @@
-import { pipe } from "#composition";
-import { Equality, Maybe, Ordering, Result, Task } from "#core";
-import { Arr } from "#data";
 import { expect, expectTypeOf, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Equality } from "../../Core/Equality.ts";
+import { Maybe } from "../../Core/Maybe.ts";
+import { Ordering } from "../../Core/Ordering.ts";
+import { Result } from "../../Core/Result.ts";
+import { Task } from "../../Core/Task.ts";
+import { Validation } from "../../Core/Validation.ts";
+import { isNonEmptyArr, type NonEmptyArr } from "../../internal/InternalTypes.ts";
+import { Arr } from "../Arr.ts";
 
-// =============================================================================
-// Safe access: head, last, tail, init
-// =============================================================================
+// --- Safe access: head, last, tail, init ---
 
 test("head - returns Some of the first element for a non-empty array", () => {
 	const result = Arr.head([10, 20, 30]);
@@ -67,9 +71,7 @@ test("init - returns None for an empty array", () => {
 	expect(result).toStrictEqual(Maybe.make.none());
 });
 
-// =============================================================================
-// Search: findFirst, findLast, findIndex
-// =============================================================================
+// --- Search: findFirst, findLast, findIndex ---
 
 test("findFirst - returns Some of the first matching element", () => {
 	const result = pipe([1, 2, 3, 4, 5], Arr.findFirst((n) => n > 3));
@@ -126,9 +128,7 @@ test("findIndex - returns None for an empty array", () => {
 	expect(result).toStrictEqual(Maybe.make.none());
 });
 
-// =============================================================================
-// Transform: map, filter, partition, groupBy, uniq, uniqBy, sortBy
-// =============================================================================
+// --- Transform: map, filter, partition, groupBy, uniq, uniqBy, sortBy ---
 
 test("map - transforms each element", () => {
 	const result = pipe([1, 2, 3], Arr.map((n) => n * 10));
@@ -140,9 +140,7 @@ test("map - returns empty array for empty input", () => {
 	expect(result).toStrictEqual([]);
 });
 
-// =============================================================================
-// mapWithIndex
-// =============================================================================
+// --- mapWithIndex ---
 
 test("Arr.mapWithIndex provides zero-based index alongside each element", () => {
 	expect(pipe(["a", "b", "c"], Arr.mapWithIndex((i, s) => `${i}:${s}`))).toStrictEqual(["0:a", "1:b", "2:c"]);
@@ -179,9 +177,7 @@ test("filter - returns empty array for empty input", () => {
 	expect(result).toStrictEqual([]);
 });
 
-// =============================================================================
-// filterMap
-// =============================================================================
+// --- filterMap ---
 
 test("Arr.filterMap collects Some values and discards None", () => {
 	const parseNum = (s: string): Maybe<number> => {
@@ -300,9 +296,7 @@ test("sortBy - falls back to spread+sort when toSorted is unavailable", () => {
 	expect(Arr.sortBy((a: number, b: number) => a - b)(arr)).toStrictEqual([1, 2, 3]);
 });
 
-// =============================================================================
-// Combine: zip, zipWith, intersperse, chunksOf, flatten, flatMap
-// =============================================================================
+// --- Combine: zip, zipWith, intersperse, chunksOf, flatten, flatMap ---
 
 test("zip - pairs elements from two arrays", () => {
 	const result = pipe([1, 2, 3], Arr.zip(["a", "b", "c"]));
@@ -453,9 +447,7 @@ test("flatMap - empty array returns empty array", () => {
 	expect(result).toStrictEqual([]);
 });
 
-// =============================================================================
-// Reduce
-// =============================================================================
+// --- Reduce ---
 
 test("reduce - sums numbers", () => {
 	const result = pipe([1, 2, 3, 4], Arr.reduce(0, (acc, n) => acc + n));
@@ -480,9 +472,7 @@ test("reduce - builds an object from entries", () => {
 	expect(result).toStrictEqual({ a: 1, b: 2, c: 3 });
 });
 
-// =============================================================================
-// Traverse / Sequence (Option)
-// =============================================================================
+// --- Traverse / Sequence (Option) ---
 
 test("traverse - all Some results in Some of array", () => {
 	const parseNum = (s: string): Maybe<number> => {
@@ -533,9 +523,7 @@ test("sequence - empty array results in Some of empty array", () => {
 	expect(result).toStrictEqual(Maybe.make.some([]));
 });
 
-// =============================================================================
-// Traverse / Sequence (Result)
-// =============================================================================
+// --- Traverse / Sequence (Result) ---
 
 test("traverseResult - all Ok results in Ok of array", () => {
 	const validate = (n: number): Result<string, number> => n > 0 ? Result.make.ok(n) : Result.make.err("not positive");
@@ -580,9 +568,7 @@ test("sequenceResult - empty array results in Ok of empty array", () => {
 	expect(result).toStrictEqual(Result.make.ok([]));
 });
 
-// =============================================================================
-// Traverse / Sequence (Task - async)
-// =============================================================================
+// --- Traverse / Sequence (Task - async) ---
 
 test("traverseTask - maps elements to tasks and runs in parallel", async () => {
 	const result = await pipe([1, 2, 3], Arr.traverse.Task((n) => Task.resolve(n * 10)))();
@@ -623,9 +609,7 @@ test("sequenceTask - preserves order despite different completion times", async 
 	expect(result).toStrictEqual(["slow", "fast", "medium"]);
 });
 
-// =============================================================================
-// traverseTaskResult / sequenceTaskResult
-// =============================================================================
+// --- traverseTaskResult / sequenceTaskResult ---
 
 test("traverseTaskResult - all succeed returns Ok of results", async () => {
 	const validate = (n: number): Task<Result<string, number>> =>
@@ -667,9 +651,7 @@ test("sequenceTaskResult - returns first Err", async () => {
 	expect(result).toStrictEqual(Result.make.err("oops"));
 });
 
-// =============================================================================
-// Predicates: isNonEmpty, some, every
-// =============================================================================
+// --- Predicates: isNonEmpty, some, every ---
 
 test("isNonEmpty - returns true for non-empty array", () => {
 	expect(Arr.is.nonEmpty([1, 2, 3])).toBe(true);
@@ -713,9 +695,7 @@ test("every - returns true for empty array (vacuous truth)", () => {
 	expect(result).toBe(true);
 });
 
-// =============================================================================
-// Slicing: reverse, take, drop, takeWhile, dropWhile
-// =============================================================================
+// --- Slicing: reverse, take, drop, takeWhile, dropWhile ---
 
 test("reverse - reverses elements", () => {
 	const result = Arr.reverse([1, 2, 3]);
@@ -736,9 +716,7 @@ test("reverse - single element returns same", () => {
 	expect(Arr.reverse([42])).toStrictEqual([42]);
 });
 
-// =============================================================================
-// insertAt
-// =============================================================================
+// --- insertAt ---
 
 test("insertAt - inserts at start", () => {
 	expect(pipe([1, 2, 3], Arr.insertAt(0, 99))).toStrictEqual([99, 1, 2, 3]);
@@ -775,9 +753,7 @@ test("insertAt - falls back to spread+splice when toSpliced is unavailable", () 
 	expect(Arr.insertAt(1, 99)(arr)).toStrictEqual([1, 99, 2, 3]);
 });
 
-// =============================================================================
-// removeAt
-// =============================================================================
+// --- removeAt ---
 
 test("removeAt - removes at start", () => {
 	expect(pipe([1, 2, 3], Arr.removeAt(0))).toStrictEqual([2, 3]);
@@ -891,9 +867,7 @@ test("dropWhile - empty array returns empty", () => {
 	expect(result).toStrictEqual([]);
 });
 
-// =============================================================================
-// scan
-// =============================================================================
+// --- scan ---
 
 test("scan - returns running totals of a sum", () => {
 	expect(pipe([1, 2, 3], Arr.scan(0, (acc, n) => acc + n))).toStrictEqual([1, 3, 6]);
@@ -916,9 +890,7 @@ test("scan - works with non-numeric accumulators", () => {
 	expect(pipe(["a", "b", "c"], Arr.scan("", (acc, s) => acc + s))).toStrictEqual(["a", "ab", "abc"]);
 });
 
-// =============================================================================
-// splitAt
-// =============================================================================
+// --- splitAt ---
 
 test("splitAt - splits array at a given index", () => {
 	expect(pipe([1, 2, 3, 4], Arr.splitAt(2))).toStrictEqual([[1, 2], [3, 4]]);
@@ -944,9 +916,7 @@ test("splitAt - empty array returns two empty arrays", () => {
 	expect(pipe([], Arr.splitAt(2))).toStrictEqual([[], []]);
 });
 
-// =============================================================================
-// Size
-// =============================================================================
+// --- Size ---
 
 test("size - returns length of array", () => {
 	expect(Arr.size([1, 2, 3])).toBe(3);
@@ -960,9 +930,7 @@ test("size - returns 1 for single-element array", () => {
 	expect(Arr.size(["only"])).toBe(1);
 });
 
-// =============================================================================
-// Composition with pipe
-// =============================================================================
+// --- Composition with pipe ---
 
 test("pipe composition - filter, map, head", () => {
 	const result = pipe([1, 2, 3, 4, 5], Arr.filter((n) => n > 2), Arr.map((n) => n * 10), Arr.head);
@@ -984,9 +952,7 @@ test("pipe composition - flatMap, uniq, sortBy", () => {
 	expect(result).toStrictEqual([1, 2, 3, 4]);
 });
 
-// =============================================================================
-// uniqWith
-// =============================================================================
+// --- uniqWith ---
 
 test("uniqWith - removes duplicates using custom equality", () => {
 	type Point = { x: number; y: number; };
@@ -1007,9 +973,7 @@ test("uniqWith - returns empty array for empty input", () => {
 	expect(pipe([] as number[], Arr.uniqWith(Equality.number))).toStrictEqual([]);
 });
 
-// =============================================================================
-// sortWith
-// =============================================================================
+// --- sortWith ---
 
 test("sortWith - sorts ascending with Ordering.number", () => {
 	expect(pipe([3, 1, 2], Arr.sortWith(Ordering.number))).toStrictEqual([1, 2, 3]);
@@ -1044,9 +1008,7 @@ test("sortWith - falls back to sort when toSorted is unavailable", () => {
 	}
 });
 
-// =============================================================================
-// compact
-// =============================================================================
+// --- compact ---
 
 test("Arr.compact extracts values from Some and discards None", () => {
 	const input = [Maybe.make.some(1), Maybe.make.none(), Maybe.make.some(2), Maybe.make.none(), Maybe.make.some(3)];
@@ -1063,9 +1025,7 @@ test("Arr.compact returns all values when no None present", () => {
 	expect(Arr.compact(input)).toStrictEqual(["a", "b", "c"]);
 });
 
-// =============================================================================
-// separate
-// =============================================================================
+// --- separate ---
 
 test("Arr.separate splits Results into errors and successes", () => {
 	const input = [Result.make.ok(1), Result.make.err("bad"), Result.make.ok(2), Result.make.err("worse")];
@@ -1086,9 +1046,7 @@ test("Arr.separate returns only successes when all are Ok", () => {
 	expect(Arr.separate(input)).toStrictEqual([[], [1, 2, 3]]);
 });
 
-// =============================================================================
-// partitionMap
-// =============================================================================
+// --- partitionMap ---
 
 test("Arr.partitionMap maps and separates in one pass", () => {
 	const classify = (n: number): Result<string, number> =>
@@ -1113,9 +1071,7 @@ test("Arr.partitionMap composes in pipe", () => {
 	expect(result).toStrictEqual([["abc", "def"], [1, 3]]);
 });
 
-// =============================================================================
-// prepend / append
-// =============================================================================
+// --- prepend / append ---
 
 test("Arr.prepend - prepends an element to an array", () => {
 	const result = pipe([1, 2], Arr.prepend(0));
@@ -1137,9 +1093,45 @@ test("Arr.append - appends to an empty array", () => {
 	expect(result).toStrictEqual([42]);
 });
 
-// =============================================================================
-// Arr.NonEmpty
-// =============================================================================
+// --- Arr.NonEmpty ---
+
+test("isNonEmptyArr - returns true for non-empty array", () => {
+	expect(isNonEmptyArr([1, 2, 3])).toBe(true);
+});
+
+test("isNonEmptyArr - returns false for empty array", () => {
+	expect(isNonEmptyArr([])).toBe(false);
+});
+
+test("Arr.NonEmpty.map on NonEmptyArr - maps values type-safely", () => {
+	const list: NonEmptyArr<number> = [1, 2, 3];
+	const result: NonEmptyArr<number> = Arr.NonEmpty.map((n: number) => n * 2)(list);
+	expect(result).toStrictEqual([2, 4, 6]);
+});
+
+test("Arr.NonEmpty.concat on NonEmptyArr - concatenates list with array", () => {
+	const list: NonEmptyArr<number> = [1, 2];
+	const result: NonEmptyArr<number> = Arr.NonEmpty.concat([3, 4])(list);
+	expect(result).toStrictEqual([1, 2, 3, 4]);
+});
+
+test("Validation failure errors are type-compatible with Arr.NonEmpty", () => {
+	const failedVal = Validation.make.failed("error");
+	expect(Validation.is.failed(failedVal)).toBe(true);
+
+	if (!Validation.is.failed(failedVal)) {
+		throw new Error("Expected failed validation");
+	}
+
+	const { errors } = failedVal;
+	const typedErrors: Arr.NonEmpty<string> = errors;
+	expect(typedErrors).toStrictEqual(["error"]);
+
+	const firstError = Arr.NonEmpty.head(errors);
+	expect(firstError).toBe("error");
+
+	expectTypeOf(errors).toEqualTypeOf<Arr.NonEmpty<string>>();
+});
 
 test("Arr.NonEmpty.singleton - creates a single-element non-empty array", () => {
 	const result = Arr.NonEmpty.singleton(42);
@@ -1223,4 +1215,81 @@ test("Arr.NonEmpty pipe composition", () => {
 	);
 	expect(result).toStrictEqual([6, 5, 4, 0, 2]);
 	expectTypeOf(result).toEqualTypeOf<readonly [number, ...number[]]>();
+});
+
+// --- partitionMaybe ---
+
+test("Arr.partitionMaybe separates None inputs from Some outputs", () => {
+	const parseNumber = (s: string) => (isNaN(Number(s)) ? Maybe.make.none() : Maybe.make.some(Number(s)));
+	const [failures, successes] = pipe(["1", "abc", "3"], Arr.partitionMaybe(parseNumber));
+	expect(failures).toStrictEqual(["abc"]);
+	expect(successes).toStrictEqual([1, 3]);
+});
+
+// --- at ---
+
+test("Arr.at looks up elements by positive and negative index", () => {
+	expect(pipe([10, 20, 30], Arr.at(1))).toStrictEqual(Maybe.make.some(20));
+	expect(pipe([10, 20, 30], Arr.at(-1))).toStrictEqual(Maybe.make.some(30));
+	expect(pipe([10, 20, 30], Arr.at(5))).toStrictEqual(Maybe.make.none());
+	expect(pipe([10, 20, 30], Arr.at(-5))).toStrictEqual(Maybe.make.none());
+});
+
+// --- findMap ---
+
+test("Arr.findMap returns first Some transformed value", () => {
+	const parseNumber = (s: string) => (isNaN(Number(s)) ? Maybe.make.none() : Maybe.make.some(Number(s)));
+	expect(pipe(["a", "2", "3"], Arr.findMap(parseNumber))).toStrictEqual(Maybe.make.some(2));
+	expect(pipe(["a", "b"], Arr.findMap(parseNumber))).toStrictEqual(Maybe.make.none());
+});
+
+// --- indexBy ---
+
+test("Arr.indexBy indexes array elements into Map by key", () => {
+	const users = [{ id: 1, name: "Alice" }, { id: 2, name: "Bob" }];
+	const map = pipe(users, Arr.indexBy((u) => u.id));
+	expect(map.get(1)).toStrictEqual({ id: 1, name: "Alice" });
+	expect(map.get(2)).toStrictEqual({ id: 2, name: "Bob" });
+});
+
+// --- frequencies ---
+
+test("Arr.frequencies counts element occurrences", () => {
+	const map = Arr.frequencies(["a", "b", "a", "c", "b", "a"]);
+	expect(map.get("a")).toBe(3);
+	expect(map.get("b")).toBe(2);
+	expect(map.get("c")).toBe(1);
+});
+
+// --- chunkBy ---
+
+test("Arr.chunkBy groups consecutive elements by key", () => {
+	const res = pipe([1, 1, 2, 3, 3, 1], Arr.chunkBy((n) => n));
+	expect(res).toStrictEqual([[1, 1], [2], [3, 3], [1]]);
+	expect(pipe([], Arr.chunkBy((n) => n))).toStrictEqual([]);
+});
+
+// --- dedupeAdjacent ---
+
+test("Arr.dedupeAdjacent drops consecutive duplicate elements", () => {
+	const res = Arr.dedupeAdjacent()([1, 1, 2, 2, 1, 3]);
+	expect(res).toStrictEqual([1, 2, 1, 3]);
+	expect(Arr.dedupeAdjacent()([])).toStrictEqual([]);
+});
+
+// --- windowed ---
+
+test("Arr.windowed creates sliding windows with size and step", () => {
+	expect(pipe([1, 2, 3, 4], Arr.windowed(2))).toStrictEqual([[1, 2], [2, 3], [3, 4]]);
+	expect(pipe([1, 2, 3, 4], Arr.windowed(2, { step: 2 }))).toStrictEqual([[1, 2], [3, 4]]);
+	expect(pipe([1, 2, 3, 4], Arr.windowed(0))).toStrictEqual([]);
+	expect(pipe([1, 2, 3, 4], Arr.windowed(2, { step: 0 }))).toStrictEqual([]);
+	expect(pipe([], Arr.windowed(2))).toStrictEqual([]);
+});
+
+// --- unfold ---
+
+test("Arr.unfold generates array from seed until None", () => {
+	const res = Arr.unfold(1, (n) => (n > 3 ? Maybe.make.none() : Maybe.make.some([n, n + 1])));
+	expect(res).toStrictEqual([1, 2, 3]);
 });

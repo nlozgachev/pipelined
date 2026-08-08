@@ -1,6 +1,8 @@
-import { pipe } from "#composition";
-import { Maybe, Result, Validation } from "#core";
 import { expect, expectTypeOf, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Maybe } from "../Maybe.ts";
+import { Result } from "../Result.ts";
+import { Validation } from "../Validation.ts";
 
 // ---------------------------------------------------------------------------
 // passed
@@ -197,6 +199,30 @@ test("Validation.ap succeeds when all validations pass", () => {
 		Validation.ap(Validation.make.passed<string, number>(30)),
 	);
 	expect(result).toStrictEqual({ kind: "Passed", value: { name: "Alice", email: "alice@example.com", age: 30 } });
+});
+
+// --- apCustom ---
+
+test("Validation.apCustom uses custom error concatenator when accumulating errors", () => {
+	const fnVal = Validation.make.failed<string>("err1") as Validation<string, (n: number) => number>;
+	const argVal = Validation.make.failed<string>("err2") as Validation<string, number>;
+
+	const concat = (e1: readonly [string, ...string[]], e2: readonly [string, ...string[]]) =>
+		[...e1, ...e2].map((s) => s.toUpperCase()) as unknown as readonly [string, ...string[]];
+
+	const result = pipe(fnVal, Validation.apCustom(concat)(argVal));
+	expect(result).toStrictEqual(Validation.make.failedAll(["ERR1", "ERR2"]));
+});
+
+test("Validation.apCustom handles Passed fnVal with Passed or Failed argVal", () => {
+	const fnVal = Validation.make.passed<string, (n: number) => number>((n) => n * 2);
+	const argPassed = Validation.make.passed<string, number>(5);
+	const argFailed = Validation.make.failed<string>("err1");
+
+	const concat = (e1: readonly [string, ...string[]], e2: readonly [string, ...string[]]) => [...e1, ...e2] as any;
+
+	expect(pipe(fnVal, Validation.apCustom(concat)(argPassed))).toStrictEqual(Validation.make.passed(10));
+	expect(pipe(fnVal, Validation.apCustom(concat)(argFailed))).toStrictEqual(Validation.make.failed("err1"));
 });
 
 // ---------------------------------------------------------------------------

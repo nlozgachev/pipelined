@@ -107,6 +107,12 @@ export namespace Uniq {
 
 		/**
 		 * Type guard to check if a unique collection is non-empty.
+		 *
+		 * @example
+		 * ```ts
+		 * Uniq.is.nonEmpty(Uniq.from.Array([1, 2])); // true
+		 * Uniq.is.nonEmpty(Uniq.empty());            // false
+		 * ```
 		 */
 		export const nonEmpty = <A>(s: ReadonlySet<A>): s is NonEmpty<A> => s.size > 0;
 	}
@@ -339,7 +345,7 @@ export namespace Uniq {
 	 *
 	 * @example
 	 * ```ts
-	 * Uniq.reduce(0, (acc, n) => acc + n)(Uniq.from.Array([1, 2, 3])); // 6
+	 * Uniq.reduce(0, (acc, n: number) => acc + n)(Uniq.from.Array([1, 2, 3])); // 6
 	 * ```
 	 */
 	export const reduce = <A, B>(init: B, f: (acc: B, a: A) => B) => (s: ReadonlySet<A>): B => {

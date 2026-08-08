@@ -35,21 +35,41 @@ export namespace RemoteData {
 	export namespace make {
 		/**
 		 * Creates a NotAsked RemoteData.
+		 *
+		 * @example
+		 * ```ts
+		 * RemoteData.make.notAsked(); // NotAsked
+		 * ```
 		 */
 		export const notAsked = (): NotAsked => _notAsked;
 
 		/**
 		 * Creates a Loading RemoteData.
+		 *
+		 * @example
+		 * ```ts
+		 * RemoteData.make.loading(); // Loading
+		 * ```
 		 */
 		export const loading = (): Loading => _loading;
 
 		/**
 		 * Creates a Failure RemoteData with the given error.
+		 *
+		 * @example
+		 * ```ts
+		 * RemoteData.make.failure("Network error"); // Failure("Network error")
+		 * ```
 		 */
 		export const failure = <E>(error: E): Failure<E> => ({ kind: "Failure", error });
 
 		/**
 		 * Creates a Success RemoteData with the given value.
+		 *
+		 * @example
+		 * ```ts
+		 * RemoteData.make.success(42); // Success(42)
+		 * ```
 		 */
 		export const success = <A>(value: A): Success<A> => ({ kind: "Success", value });
 	}
@@ -57,21 +77,53 @@ export namespace RemoteData {
 	export namespace is {
 		/**
 		 * Type guard that checks if a RemoteData is NotAsked.
+		 *
+		 * @example
+		 * ```ts
+		 * const data = RemoteData.make.notAsked();
+		 * if (RemoteData.is.notAsked(data)) {
+		 *   console.log("Data fetch not initiated");
+		 * }
+		 * ```
 		 */
 		export const notAsked = <E, A>(data: RemoteData<E, A>): data is NotAsked => data.kind === "NotAsked";
 
 		/**
 		 * Type guard that checks if a RemoteData is Loading.
+		 *
+		 * @example
+		 * ```ts
+		 * const data = RemoteData.make.loading();
+		 * if (RemoteData.is.loading(data)) {
+		 *   console.log("Data is loading");
+		 * }
+		 * ```
 		 */
 		export const loading = <E, A>(data: RemoteData<E, A>): data is Loading => data.kind === "Loading";
 
 		/**
 		 * Type guard that checks if a RemoteData is Failure.
+		 *
+		 * @example
+		 * ```ts
+		 * const data = RemoteData.make.failure("Failed");
+		 * if (RemoteData.is.failure(data)) {
+		 *   console.log(data.error); // "Failed"
+		 * }
+		 * ```
 		 */
 		export const failure = <E, A>(data: RemoteData<E, A>): data is Failure<E> => data.kind === "Failure";
 
 		/**
 		 * Type guard that checks if a RemoteData is Success.
+		 *
+		 * @example
+		 * ```ts
+		 * const data = RemoteData.make.success(42);
+		 * if (RemoteData.is.success(data)) {
+		 *   console.log(data.value); // 42
+		 * }
+		 * ```
 		 */
 		export const success = <E, A>(data: RemoteData<E, A>): data is Success<A> => data.kind === "Success";
 	}

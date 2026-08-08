@@ -1,6 +1,7 @@
-import { pipe } from "#composition";
-import { Lens, Optional } from "#core";
 import { expect, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Lens } from "../Lens.ts";
+import { Optional } from "../Optional.ts";
 
 type Address = { city: string; zip: string; };
 type User = { name: string; age: number; address: Address; };
@@ -163,3 +164,32 @@ test("lens.toOptional composes with Optional.andThen", () => {
 
 	expect(userLandmarkOpt.get(alice)).toStrictEqual({ kind: "None" });
 });
+
+// --- side-effect isolation ---
+
+test("Lens.modify executes side effect during modification", () => {
+	let called = false;
+	const ageLens = Lens.from.property<User>()("age");
+	pipe(
+		alice,
+		Lens.modify(ageLens)((age) => {
+			called = true;
+			return age + 1;
+		}),
+	);
+	expect(called).toBe(true);
+});
+
+test("Lens.from.accessors getter executes side effect", () => {
+	let called = false;
+	const nameLens = Lens.from.accessors(
+		(u: User) => {
+			called = true;
+			return u.name;
+		},
+		(name) => (u) => ({ ...u, name }),
+	);
+	nameLens.get(alice);
+	expect(called).toBe(true);
+});
+

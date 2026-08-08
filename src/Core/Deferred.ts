@@ -59,4 +59,31 @@ export namespace Deferred {
 		export const Promise = <A>(d: Deferred<A>): globalThis.Promise<A> =>
 			new globalThis.Promise<A>((resolve) => d.then(resolve));
 	}
+
+	/**
+	 * Combines an array or tuple of `Deferred` values into a single `Deferred` of a tuple.
+	 * Resolves when all input `Deferred`s resolve.
+	 *
+	 * @example
+	 * ```ts
+	 * const [a, b] = await Deferred.all([d1, d2]);
+	 * ```
+	 */
+	export const all = <T extends readonly Deferred<unknown>[]>(
+		deferreds: T,
+	): Deferred<{ [K in keyof T]: T[K] extends Deferred<infer A> ? A : never; }> =>
+		from.Promise(globalThis.Promise.all(deferreds.map((d) => to.Promise(d)))) as Deferred<
+			{ [K in keyof T]: T[K] extends Deferred<infer A> ? A : never; }
+		>;
+
+	/**
+	 * Races multiple `Deferred` values and resolves with the first one to settle.
+	 *
+	 * @example
+	 * ```ts
+	 * const winner = await Deferred.race([d1, d2]);
+	 * ```
+	 */
+	export const race = <A>(deferreds: ReadonlyArray<Deferred<A>>): Deferred<A> =>
+		from.Promise(globalThis.Promise.race(deferreds.map((d) => to.Promise(d))));
 }

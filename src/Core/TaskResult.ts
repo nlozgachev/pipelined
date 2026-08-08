@@ -28,11 +28,23 @@ export type TaskResult<E, A> = Task<Result<E, A>>;
 export namespace TaskResult {
 	/**
 	 * Wraps a value in a successful Task.Result.
+	 *
+	 * @example
+	 * ```ts
+	 * const task = Task.Result.ok(42);
+	 * const res = await task(); // Ok(42)
+	 * ```
 	 */
 	export const ok = <E, A>(value: A): TaskResult<E, A> => CoreTask.resolve(CoreResult.make.ok(value));
 
 	/**
 	 * Creates a failed Task.Result with the given error.
+	 *
+	 * @example
+	 * ```ts
+	 * const task = Task.Result.err("failed");
+	 * const res = await task(); // Err("failed")
+	 * ```
 	 */
 	export const err = <E, A>(error: E): TaskResult<E, A> => CoreTask.resolve(CoreResult.make.err(error));
 
@@ -41,6 +53,12 @@ export namespace TaskResult {
 		/**
 		 * Creates a Task.Result from a nullable value.
 		 * Returns Ok if the value is not null or undefined, err from onNull otherwise.
+		 *
+		 * @example
+		 * ```ts
+		 * Task.Result.from.nullable(() => "missing")(42);   // resolves to Ok(42)
+		 * Task.Result.from.nullable(() => "missing")(null); // resolves to Err("missing")
+		 * ```
 		 */
 		export const nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskResult<E, A> =>
 			CoreTask.resolve(value === null || value === undefined ? CoreResult.make.err(onNull()) : CoreResult.make.ok(value));
@@ -48,12 +66,23 @@ export namespace TaskResult {
 		/**
 		 * Creates a Task.Result from a Maybe.
 		 * Some becomes Ok, None becomes err from onNone.
+		 *
+		 * @example
+		 * ```ts
+		 * Task.Result.from.Maybe(() => "empty")(Maybe.make.some(42)); // resolves to Ok(42)
+		 * Task.Result.from.Maybe(() => "empty")(Maybe.make.none());   // resolves to Err("empty")
+		 * ```
 		 */
 		export const Maybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): TaskResult<E, A> =>
 			CoreTask.resolve(CoreMaybe.is.none(maybe) ? CoreResult.make.err(onNone()) : CoreResult.make.ok(maybe.value));
 
 		/**
 		 * Lifts a Result into a Task.Result.
+		 *
+		 * @example
+		 * ```ts
+		 * Task.Result.from.Result(Result.make.ok(42)); // resolves to Ok(42)
+		 * ```
 		 */
 		export const Result = <E, A>(result: Result<E, A>): TaskResult<E, A> => CoreTask.resolve(result);
 
@@ -312,4 +341,61 @@ export namespace TaskResult {
 	 * ```
 	 */
 	export const memoize = <E, A>(task: TaskResult<E, A>): TaskResult<E, A> => CoreTask.memoize(task);
+
+	/**
+	 * Times out a fallible task, resolving to `Err(onTimeout())` if the duration elapses
+	 * before the task completes.
+	 *
+	 * @example
+	 * ```ts
+	 * const fetchWithTimeout = pipe(
+	 *   fetchTask,
+	 *   Task.Result.timeout({ duration: Duration.seconds(5), onTimeout: () => "Request timed out" })
+	 * );
+	 * ```
+	 */
+	export const timeout =
+		<E2>(options: { duration: Duration; onTimeout: () => E2; }) =>
+		<E1, A>(task: TaskResult<E1, A>): TaskResult<E1 | E2, A> =>
+			CoreTask.from.Promise((signal) => {
+				const ms = Duration.to.milliseconds(options.duration);
+				return new Promise<Result<E1 | E2, A>>((resolve) => {
+					// eslint-disable-next-line prefer-const
+					let timerId: ReturnType<typeof setTimeout> | undefined;
+					const onAbort = () => {
+						clearTimeout(timerId);
+					};
+
+					if (signal) {
+						if (signal.aborted) {
+							return Deferred.to.Promise(task(signal)).then(resolve);
+						}
+						signal.addEventListener("abort", onAbort, { once: true });
+					}
+
+					timerId = setTimeout(() => {
+						signal?.removeEventListener("abort", onAbort);
+						resolve(CoreResult.make.err(options.onTimeout()));
+					}, ms);
+
+					Deferred.to.Promise(task(signal)).then((res) => {
+						clearTimeout(timerId);
+						signal?.removeEventListener("abort", onAbort);
+						resolve(res);
+					});
+				});
+			});
+
+	/**
+	 * Runs a list of fallible tasks in parallel and collects all outcomes (`Ok` and `Err`)
+	 * without short-circuiting on failure.
+	 *
+	 * @example
+	 * ```ts
+	 * const results = await Task.Result.allSettled([task1, task2, task3])();
+	 * // [Ok(val1), Err(err2), Ok(val3)]
+	 * ```
+	 */
+	export const allSettled = <E, A>(tasks: ReadonlyArray<TaskResult<E, A>>): CoreTask<ReadonlyArray<Result<E, A>>> =>
+		CoreTask.from.Promise((signal) => Promise.all(tasks.map((task) => Deferred.to.Promise(task(signal)))));
 }

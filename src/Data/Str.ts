@@ -297,5 +297,38 @@ export namespace Str {
 		}
 	};
 
+	/**
+	 * Converts the first character of a string to lower case.
+	 *
+	 * @example
+	 * ```ts
+	 * Str.uncapitalize("Hello"); // "hello"
+	 * Str.uncapitalize("");      // ""
+	 * ```
+	 */
+	export const uncapitalize = (s: string): string => s.length === 0 ? "" : s.charAt(0).toLowerCase() + s.slice(1);
+
+	/**
+	 * Truncates a string to a maximum length, appending an optional suffix (default `"..."`).
+	 * Data-last curried signature.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe("Hello, world!", Str.truncate({ length: 8 })); // "Hello..."
+	 * pipe("Hello", Str.truncate({ length: 10 }));        // "Hello"
+	 * pipe("Hello, world!", Str.truncate({ length: 8, suffix: "…" })); // "Hello, w…"
+	 * ```
+	 */
+	export const truncate = (options: { length: number; suffix?: string; }) => (s: string): string => {
+		const { length: targetLength, suffix = "..." } = options;
+		if (s.length <= targetLength) {
+			return s;
+		}
+		if (targetLength <= suffix.length) {
+			return suffix.slice(0, targetLength);
+		}
+		return s.slice(0, targetLength - suffix.length) + suffix;
+	};
+
 	export const NonEmpty = StrNonEmpty;
 }

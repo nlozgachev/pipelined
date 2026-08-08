@@ -1,5 +1,6 @@
-import { Duration, RetryPolicy } from "#types";
 import { expect, test } from "vitest";
+import { Duration } from "../Duration.ts";
+import { RetryPolicy } from "../RetryPolicy.ts";
 
 // --- RetryPolicy.constant ---
 

@@ -1,7 +1,8 @@
-import { pipe } from "#composition";
-import { Deferred, Task } from "#core";
-import { Duration } from "#types";
 import { expect, expectTypeOf, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Duration } from "../../Types/Duration.ts";
+import { Deferred } from "../Deferred.ts";
+import { Task } from "../Task.ts";
 
 // ---------------------------------------------------------------------------
 // of
@@ -923,4 +924,25 @@ test("Task.memoize executes task only once across multiple calls", async () => {
 	expect(v1).toBe(1);
 	expect(v2).toBe(1);
 	expect(calls).toBe(1);
+});
+
+// --- withProgress ---
+
+test("Task.withProgress calls progress callback with 0 and 1", async () => {
+	const progress: number[] = [];
+	const task = pipe(Task.resolve(42), Task.withProgress((ratio) => progress.push(ratio)));
+
+	const res = await task();
+	expect(res).toBe(42);
+	expect(progress).toStrictEqual([0, 1]);
+});
+
+// --- withLabel ---
+
+test("Task.withLabel attaches read-only label property to task function", async () => {
+	const task = pipe(Task.resolve(100), Task.withLabel("myCustomTask"));
+
+	expect(task.label).toBe("myCustomTask");
+	const res = await task();
+	expect(res).toBe(100);
 });

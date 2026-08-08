@@ -1,7 +1,8 @@
-import { pipe } from "#composition";
-import { Maybe, Result } from "#core";
-import { Str } from "#data";
 import { expect, expectTypeOf, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Maybe } from "../../Core/Maybe.ts";
+import { Result } from "../../Core/Result.ts";
+import { Str } from "../Str.ts";
 
 // ---------------------------------------------------------------------------
 // split
@@ -406,4 +407,20 @@ test("Str.NonEmpty.from.String - returns Some for non-empty string", () => {
 test("Str.NonEmpty.from.String - returns None for empty string", () => {
 	const result = Str.NonEmpty.from.String("");
 	expect(result.kind).toBe("None");
+});
+
+// --- uncapitalize ---
+
+test("Str.uncapitalize lowercases the first character", () => {
+	expect(Str.uncapitalize("Hello")).toBe("hello");
+	expect(Str.uncapitalize("")).toBe("");
+});
+
+// --- truncate ---
+
+test("Str.truncate truncates strings exceeding length", () => {
+	expect(pipe("Hello, world!", Str.truncate({ length: 8 }))).toBe("Hello...");
+	expect(pipe("Hello", Str.truncate({ length: 10 }))).toBe("Hello");
+	expect(pipe("Hello, world!", Str.truncate({ length: 8, suffix: "…" }))).toBe("Hello, …");
+	expect(pipe("Hello, world!", Str.truncate({ length: 2 }))).toBe("..");
 });

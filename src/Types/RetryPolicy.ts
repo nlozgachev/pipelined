@@ -2,6 +2,14 @@ import { Duration } from "./Duration.ts";
 
 /**
  * An immutable policy describing retry limits and backoff delay strategies.
+ *
+ * @example
+ * ```ts
+ * const policy: RetryPolicy = RetryPolicy.constant({
+ *   attempts: 3,
+ *   delay: Duration.seconds(1),
+ * });
+ * ```
  */
 export type RetryPolicy = { readonly attempts: number; readonly getDelay: (attempt: number) => Duration; };
 

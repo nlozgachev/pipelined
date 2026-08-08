@@ -1,6 +1,7 @@
-import { pipe } from "#composition";
-import { Logged } from "#core";
 import { expect, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Lens } from "../Lens.ts";
+import { Logged } from "../Logged.ts";
 
 // ---------------------------------------------------------------------------
 // make
@@ -199,4 +200,40 @@ test("Logged.bind accumulates values key-by-key in a pipeline", () => {
 	const [value, log] = Logged.run(result);
 	expect(value).toStrictEqual({ a: 2, b: 6, c: 8 });
 	expect(log).toStrictEqual(["logged b", "logged c"]);
+});
+
+// --- focus ---
+
+test("Logged.focus focuses a value transformation via Lens", () => {
+	const nameLens = Lens.from.property<{ name: string; }>()("name");
+	const input = Logged.from.value<string, { name: string; }>({ name: "alice" });
+	const result = pipe(input, Logged.focus(nameLens)((s) => s.toUpperCase()));
+
+	expect(result.value).toStrictEqual({ name: "ALICE" });
+	expect(result.log).toStrictEqual([]);
+});
+
+// --- side-effect isolation ---
+
+test("Logged.tap executes side effect callback", () => {
+	let called = false;
+	pipe(
+		Logged.from.value<string, number>(42),
+		Logged.tap(() => {
+			called = true;
+		}),
+	);
+	expect(called).toBe(true);
+});
+
+test("Logged.map executes side effect callback", () => {
+	let called = false;
+	pipe(
+		Logged.from.value<string, number>(42),
+		Logged.map((n) => {
+			called = true;
+			return n * 2;
+		}),
+	);
+	expect(called).toBe(true);
 });

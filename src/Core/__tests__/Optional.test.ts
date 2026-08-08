@@ -1,6 +1,7 @@
-import { pipe } from "#composition";
-import { Lens, Optional } from "#core";
 import { expect, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Lens } from "../Lens.ts";
+import { Optional } from "../Optional.ts";
 
 type Profile = { username: string; bio?: string; };
 
@@ -286,4 +287,32 @@ test("Optional.andThenLens set is a no-op when optional focus is absent", () => 
 
 	const region: Region = {};
 	expect(pipe(region, Optional.set(capitalNameOpt)("Lyon"))).toStrictEqual(region);
+});
+
+// --- side-effect isolation ---
+
+test("Optional.modify executes side effect when focus is present", () => {
+	let called = false;
+	const bioOpt = Optional.from.property<Profile>()("bio");
+	pipe(
+		{ username: "alice", bio: "hello" },
+		Optional.modify(bioOpt)((s) => {
+			called = true;
+			return s.toUpperCase();
+		}),
+	);
+	expect(called).toBe(true);
+});
+
+test("Optional.modify does not execute side effect when focus is absent", () => {
+	let called = false;
+	const bioOpt = Optional.from.property<Profile>()("bio");
+	pipe(
+		{ username: "alice" },
+		Optional.modify(bioOpt)((s) => {
+			called = true;
+			return s.toUpperCase();
+		}),
+	);
+	expect(called).toBe(false);
 });

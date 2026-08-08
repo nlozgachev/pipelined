@@ -140,6 +140,12 @@ export namespace Dict {
 
 		/**
 		 * Type guard to check if a dictionary is non-empty.
+		 *
+		 * @example
+		 * ```ts
+		 * Dict.is.nonEmpty(Dict.from.entries([["a", 1]])); // true
+		 * Dict.is.nonEmpty(Dict.empty());                 // false
+		 * ```
 		 */
 		export const nonEmpty = <K, V>(m: ReadonlyMap<K, V>): m is NonEmpty<K, V> => m.size > 0;
 	}
@@ -227,8 +233,8 @@ export namespace Dict {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Dict.from.Entries([["a", 1]]), Dict.has("a")); // true
-	 * pipe(Dict.from.Entries([["a", 1]]), Dict.has("b")); // false
+	 * pipe(Dict.from.entries([["a", 1]]), Dict.has("a")); // true
+	 * pipe(Dict.from.entries([["a", 1]]), Dict.has("b")); // false
 	 * ```
 	 */
 	export const has = <K>(key: K) => <V>(m: ReadonlyMap<K, V>): boolean => m.has(key);
@@ -238,8 +244,8 @@ export namespace Dict {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Dict.from.Entries([["a", 1]]), Dict.lookup("a")); // Some(1)
-	 * pipe(Dict.from.Entries([["a", 1]]), Dict.lookup("b")); // None
+	 * pipe(Dict.from.entries([["a", 1]]), Dict.lookup("a")); // Some(1)
+	 * pipe(Dict.from.entries([["a", 1]]), Dict.lookup("b")); // None
 	 * ```
 	 */
 	export const lookup = <K>(key: K) => <V>(m: ReadonlyMap<K, V>): Maybe<V> =>
@@ -250,7 +256,7 @@ export namespace Dict {
 	 *
 	 * @example
 	 * ```ts
-	 * Dict.size(Dict.from.Entries([["a", 1], ["b", 2]])); // 2
+	 * Dict.size(Dict.from.entries([["a", 1], ["b", 2]])); // 2
 	 * ```
 	 */
 	export const size = <K, V>(m: ReadonlyMap<K, V>): number => m.size;
@@ -260,7 +266,7 @@ export namespace Dict {
 	 *
 	 * @example
 	 * ```ts
-	 * Dict.keys(Dict.from.Entries([["a", 1], ["b", 2]])); // ["a", "b"]
+	 * Dict.keys(Dict.from.entries([["a", 1], ["b", 2]])); // ["a", "b"]
 	 * ```
 	 */
 	export const keys = <K, V>(m: ReadonlyMap<K, V>): readonly K[] => [...m.keys()];
@@ -270,7 +276,7 @@ export namespace Dict {
 	 *
 	 * @example
 	 * ```ts
-	 * Dict.values(Dict.from.Entries([["a", 1], ["b", 2]])); // [1, 2]
+	 * Dict.values(Dict.from.entries([["a", 1], ["b", 2]])); // [1, 2]
 	 * ```
 	 */
 	export const values = <K, V>(m: ReadonlyMap<K, V>): readonly V[] => [...m.values()];
@@ -280,7 +286,7 @@ export namespace Dict {
 	 *
 	 * @example
 	 * ```ts
-	 * Dict.entries(Dict.from.Entries([["a", 1], ["b", 2]])); // [["a", 1], ["b", 2]]
+	 * Dict.entries(Dict.from.entries([["a", 1], ["b", 2]])); // [["a", 1], ["b", 2]]
 	 * ```
 	 */
 	export const entries = <K, V>(m: ReadonlyMap<K, V>): readonly (readonly [K, V])[] => [...m.entries()];
@@ -295,7 +301,7 @@ export namespace Dict {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Dict.from.Entries([["a", 1]]), Dict.insert("b", 2));
+	 * pipe(Dict.from.entries([["a", 1]]), Dict.insert("b", 2));
 	 * // ReadonlyMap { "a" => 1, "b" => 2 }
 	 * ```
 	 */
@@ -311,7 +317,7 @@ export namespace Dict {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Dict.from.Entries([["a", 1], ["b", 2]]), Dict.remove("a"));
+	 * pipe(Dict.from.entries([["a", 1], ["b", 2]]), Dict.remove("a"));
 	 * // ReadonlyMap { "b" => 2 }
 	 * ```
 	 */
@@ -330,11 +336,9 @@ export namespace Dict {
 	 *
 	 * @example
 	 * ```ts
-	 * import { Maybe } from "@nlozgachev/pipelined/core";
-	 *
-	 * const increment = (opt: Maybe<number>) => Maybe.getOrElse(() => 0)(opt) + 1;
-	 * pipe(Dict.from.Entries([["views", 5]]), Dict.upsert("views", increment)); // { views: 6 }
-	 * pipe(Dict.from.Entries([["views", 5]]), Dict.upsert("likes", increment)); // { views: 5, likes: 1 }
+	 * const increment = (opt: Maybe<number>) => pipe(opt, Maybe.getOrElse(() => 0)) + 1;
+	 * pipe(Dict.from.entries([["views", 5]]), Dict.upsert("views", increment)); // { views: 6 }
+	 * pipe(Dict.from.entries([["views", 5]]), Dict.upsert("likes", increment)); // { views: 5, likes: 1 }
 	 * ```
 	 */
 	export const upsert = <K, V>(key: K, f: (existing: Maybe<V>) => V) => (m: ReadonlyMap<K, V>): ReadonlyMap<K, V> => {
@@ -352,7 +356,7 @@ export namespace Dict {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Dict.from.Entries([["a", 1], ["b", 2]]), Dict.map(n => n * 2));
+	 * pipe(Dict.from.entries([["a", 1], ["b", 2]]), Dict.map(n => n * 2));
 	 * // ReadonlyMap { "a" => 2, "b" => 4 }
 	 * ```
 	 */
@@ -369,7 +373,7 @@ export namespace Dict {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Dict.from.Entries([["a", 1], ["b", 2]]), Dict.mapWithKey((k, v) => `${k}:${v}`));
+	 * pipe(Dict.from.entries([["a", 1], ["b", 2]]), Dict.mapWithKey((k, v) => `${k}:${v}`));
 	 * // ReadonlyMap { "a" => "a:1", "b" => "b:2" }
 	 * ```
 	 */
@@ -386,7 +390,7 @@ export namespace Dict {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Dict.from.Entries([["a", 1], ["b", 3], ["c", 0]]), Dict.filter(n => n > 0));
+	 * pipe(Dict.from.entries([["a", 1], ["b", 3], ["c", 0]]), Dict.filter(n => n > 0));
 	 * // ReadonlyMap { "a" => 1, "b" => 3 }
 	 * ```
 	 */
@@ -404,7 +408,7 @@ export namespace Dict {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Dict.from.Entries([["a", 1], ["b", 2]]), Dict.filterWithKey((k, v) => k !== "a" && v > 0));
+	 * pipe(Dict.from.entries([["a", 1], ["b", 2]]), Dict.filterWithKey((k, v) => k !== "a" && v > 0));
 	 * // ReadonlyMap { "b" => 2 }
 	 * ```
 	 */
@@ -423,9 +427,7 @@ export namespace Dict {
 	 *
 	 * @example
 	 * ```ts
-	 * import { Maybe } from "@nlozgachev/pipelined/core";
-	 *
-	 * Dict.compact(Dict.from.Entries([
+	 * Dict.compact(Dict.from.entries<string, Maybe<number>>([
 	 *   ["a", Maybe.make.some(1)],
 	 *   ["b", Maybe.make.none()],
 	 *   ["c", Maybe.make.some(3)],
@@ -475,8 +477,8 @@ export namespace Dict {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Dict.from.Entries([["a", 1], ["b", 2]]),
-	 *   Dict.union(Dict.from.Entries([["b", 3], ["c", 4]])),
+	 *   Dict.from.entries([["a", 1], ["b", 2]]),
+	 *   Dict.union(Dict.from.entries([["b", 3], ["c", 4]])),
 	 * );
 	 * // ReadonlyMap { "a" => 1, "b" => 3, "c" => 4 }
 	 * ```
@@ -496,8 +498,8 @@ export namespace Dict {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Dict.from.Entries([["a", 1], ["b", 2], ["c", 3]]),
-	 *   Dict.intersection(Dict.from.Entries([["b", 99], ["c", 0]])),
+	 *   Dict.from.entries([["a", 1], ["b", 2], ["c", 3]]),
+	 *   Dict.intersection(Dict.from.entries([["b", 99], ["c", 0]])),
 	 * );
 	 * // ReadonlyMap { "b" => 2, "c" => 3 }
 	 * ```
@@ -516,8 +518,8 @@ export namespace Dict {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Dict.from.Entries([["a", 1], ["b", 2], ["c", 3]]),
-	 *   Dict.difference(Dict.from.Entries([["b", 0]])),
+	 *   Dict.from.entries([["a", 1], ["b", 2], ["c", 3]]),
+	 *   Dict.difference(Dict.from.entries([["b", 0]])),
 	 * );
 	 * // ReadonlyMap { "a" => 1, "c" => 3 }
 	 * ```
@@ -540,8 +542,8 @@ export namespace Dict {
 	 *
 	 * @example
 	 * ```ts
-	 * Dict.reduce(0, (acc, value) => acc + value)(
-	 *   Dict.from.Entries([["a", 1], ["b", 2], ["c", 3]])
+	 * Dict.reduce(0, (acc, value: number) => acc + value)(
+	 *   Dict.from.entries([["a", 1], ["b", 2], ["c", 3]])
 	 * ); // 6
 	 * ```
 	 */
@@ -560,7 +562,7 @@ export namespace Dict {
 	 * @example
 	 * ```ts
 	 * Dict.reduceWithKey("", (acc, value, key) => acc + key + ":" + value + " ")(
-	 *   Dict.from.Entries([["a", 1], ["b", 2]])
+	 *   Dict.from.entries([["a", 1], ["b", 2]])
 	 * ); // "a:1 b:2 "
 	 * ```
 	 */
@@ -571,6 +573,57 @@ export namespace Dict {
 		}
 		return acc;
 	};
+
+	/**
+	 * Merges two maps using a custom combination function on key collisions.
+	 * Supports both uncurried `Dict.mergeWith(combine)(first, second)` and curried `pipe(first, Dict.mergeWith(combine)(second))`.
+	 *
+	 * @example
+	 * ```ts
+	 * const combineStats = Dict.mergeWith((a: number, b: number) => a + b);
+	 * const map1 = Dict.from.entries([["a", 1], ["b", 2]]);
+	 * const map2 = Dict.from.entries([["b", 3], ["c", 4]]);
+	 * combineStats(map1, map2);
+	 * pipe(map1, combineStats(map2));
+	 * ```
+	 */
+	export function mergeWith<K, V>(
+		combine: (a: V, b: V) => V,
+	): {
+		(second: ReadonlyMap<K, V>): (first: ReadonlyMap<K, V>) => ReadonlyMap<K, V>;
+		(first: ReadonlyMap<K, V>, second: ReadonlyMap<K, V>): ReadonlyMap<K, V>;
+	};
+	export function mergeWith<K, V>(
+		combine: (a: V, b: V) => V,
+	): (arg1: ReadonlyMap<K, V>, arg2?: ReadonlyMap<K, V>) => any {
+		return (arg1: ReadonlyMap<K, V>, arg2?: ReadonlyMap<K, V>): any => {
+			if (arg2 !== undefined) {
+				const first = arg1;
+				const second = arg2;
+				const res = new globalThis.Map<K, V>(first);
+				for (const [k, v] of second) {
+					if (res.has(k)) {
+						res.set(k, combine(res.get(k)!, v));
+					} else {
+						res.set(k, v);
+					}
+				}
+				return res;
+			}
+			const second = arg1;
+			return (first: ReadonlyMap<K, V>): ReadonlyMap<K, V> => {
+				const res = new globalThis.Map<K, V>(first);
+				for (const [k, v] of second) {
+					if (res.has(k)) {
+						res.set(k, combine(res.get(k)!, v));
+					} else {
+						res.set(k, v);
+					}
+				}
+				return res;
+			};
+		};
+	}
 
 	// ---------------------------------------------------------------------------
 	// Convert
@@ -583,11 +636,53 @@ export namespace Dict {
 		 *
 		 * @example
 		 * ```ts
-		 * Dict.to.Record(Dict.from.Entries([["a", 1], ["b", 2]])); // { a: 1, b: 2 }
+		 * Dict.to.Record(Dict.from.entries([["a", 1], ["b", 2]])); // { a: 1, b: 2 }
 		 * ```
 		 */
 		export const Record = <V>(m: ReadonlyMap<string, V>): Readonly<Record<string, V>> => Object.fromEntries(m);
 	}
+
+	/**
+	 * Transforms key and value pairs simultaneously into a new ReadonlyMap.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Dict.from.entries([["a", 1], ["b", 2]]),
+	 *   Dict.mapEntries((k, v) => [k.toUpperCase(), v * 10])
+	 * ); // Map { "A" => 10, "B" => 20 }
+	 * ```
+	 */
+	export const mapEntries =
+		<K1, V1, K2, V2>(f: (key: K1, value: V1) => readonly [K2, V2]) => (
+			data: ReadonlyMap<K1, V1>,
+		): ReadonlyMap<K2, V2> => {
+			const res = new globalThis.Map<K2, V2>();
+			for (const [k, v] of data) {
+				const [nk, nv] = f(k, v);
+				res.set(nk, nv);
+			}
+			return res;
+		};
+
+	/**
+	 * Transforms keys of a ReadonlyMap while preserving values.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Dict.from.entries([["a", 1], ["b", 2]]),
+	 *   Dict.mapKeys((k) => k.toUpperCase())
+	 * ); // Map { "A" => 1, "B" => 2 }
+	 * ```
+	 */
+	export const mapKeys = <K1, K2, V>(f: (key: K1) => K2) => (data: ReadonlyMap<K1, V>): ReadonlyMap<K2, V> => {
+		const res = new globalThis.Map<K2, V>();
+		for (const [k, v] of data) {
+			res.set(f(k), v);
+		}
+		return res;
+	};
 
 	export const NonEmpty = DictNonEmpty;
 }

@@ -1,6 +1,9 @@
-import { Maybe, type Ok as ResultOk, RemoteData, Result, Validation } from "#core";
 import fc from "fast-check";
 import { expect, test } from "vitest";
+import { Maybe } from "../Maybe.ts";
+import { RemoteData } from "../RemoteData.ts";
+import { type Ok as ResultOk, Result } from "../Result.ts";
+import { Validation } from "../Validation.ts";
 
 // ---------------------------------------------------------------------------
 // Arbitraries

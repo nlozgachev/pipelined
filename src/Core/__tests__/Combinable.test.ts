@@ -1,6 +1,7 @@
-import { pipe } from "#composition";
-import { Combinable, Maybe } from "#core";
 import { expect, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Combinable } from "../Combinable.ts";
+import { Maybe } from "../Maybe.ts";
 
 // ---------------------------------------------------------------------------
 // string
@@ -148,3 +149,51 @@ test("Combinable.fold works in a pipe with Maybe values", () => {
 	);
 	expect(result).toStrictEqual(Maybe.make.some(6));
 });
+
+// --- struct ---
+
+test("Combinable.struct combines record structures by field combinables", () => {
+	const Stats = Combinable.struct({ count: Combinable.sum, tags: Combinable.array<string>() });
+
+	expect(Stats.empty).toStrictEqual({ count: 0, tags: [] });
+	const res = Stats.combine({ count: 5, tags: ["b"] })({ count: 10, tags: ["a"] });
+	expect(res).toStrictEqual({ count: 15, tags: ["a", "b"] });
+});
+
+test("Combinable.struct ignores prototype properties on fields definition", () => {
+	const proto = { protoField: Combinable.sum };
+	const fields = Object.create(proto);
+	fields.count = Combinable.sum;
+	const structCombinable = Combinable.struct(fields);
+	expect(structCombinable.empty).toStrictEqual({ count: 0 });
+	expect(structCombinable.combine({ count: 5 })({ count: 10 })).toStrictEqual({ count: 15 });
+});
+
+// --- side-effect isolation ---
+
+test("Combinable.fold executes side effects during combination", () => {
+	let called = false;
+	const custom: Combinable<number> = {
+		empty: 0,
+		combine: (b) => (a) => {
+			called = true;
+			return a + b;
+		},
+	};
+	pipe([1, 2], Combinable.fold(custom));
+	expect(called).toBe(true);
+});
+
+test("Combinable.fold does not execute side effects on empty array", () => {
+	let called = false;
+	const custom: Combinable<number> = {
+		empty: 0,
+		combine: (b) => (a) => {
+			called = true;
+			return a + b;
+		},
+	};
+	pipe([], Combinable.fold(custom));
+	expect(called).toBe(false);
+});
+

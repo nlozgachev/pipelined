@@ -21,19 +21,54 @@ export const identity = <A>(a: A): A => a;
  */
 export const constant = <A>(a: A) => (): A => a;
 
-/** Always returns `true`. */
+/**
+ * Always returns `true`.
+ *
+ * @example
+ * ```ts
+ * constTrue(); // true
+ * ```
+ */
 export const constTrue = (): true => true;
 
-/** Always returns `false`. */
+/**
+ * Always returns `false`.
+ *
+ * @example
+ * ```ts
+ * constFalse(); // false
+ * ```
+ */
 export const constFalse = (): false => false;
 
-/** Always returns `null`. */
+/**
+ * Always returns `null`.
+ *
+ * @example
+ * ```ts
+ * constNull(); // null
+ * ```
+ */
 export const constNull = (): null => null;
 
-/** Always returns `undefined`. */
+/**
+ * Always returns `undefined`.
+ *
+ * @example
+ * ```ts
+ * constUndefined(); // undefined
+ * ```
+ */
 export const constUndefined = (): undefined => undefined;
 
-/** Always returns `void`. */
+/**
+ * Always returns `void`.
+ *
+ * @example
+ * ```ts
+ * constVoid(); // undefined
+ * ```
+ */
 export const constVoid = (): void => {};
 
 /**
@@ -106,9 +141,33 @@ export const once = <A>(f: () => A): () => A => {
  * const getName = flow(
  *   (u: { name?: string | null }) => u.name,
  *   defaultTo("Guest"),
- *   name => name.toUpperCase()
+ *   (name: string) => name.toUpperCase()
  * ); // returns string
  * ```
  */
 export const defaultTo = <B>(fallback: B) => <A>(a: A): NonNullable<A> | B =>
 	a === null || a === undefined ? fallback : (a as NonNullable<A>);
+
+/**
+ * Converts a function taking multiple arguments into a function taking a single tuple argument.
+ *
+ * @example
+ * ```ts
+ * const add = (a: number, b: number) => a + b;
+ * const addTuple = tuple(add);
+ * addTuple([2, 3]); // 5
+ * ```
+ */
+export const tuple = <Args extends readonly unknown[], R>(f: (...args: Args) => R) => (args: Args): R => f(...args);
+
+/**
+ * Converts a function taking a single tuple argument into a function taking multiple arguments.
+ *
+ * @example
+ * ```ts
+ * const addTuple = ([a, b]: readonly [number, number]) => a + b;
+ * const add = untuple(addTuple);
+ * add(2, 3); // 5
+ * ```
+ */
+export const untuple = <Args extends readonly unknown[], R>(f: (args: Args) => R) => (...args: Args): R => f(args);

@@ -15,10 +15,12 @@
  * numbers.filter(not(isEven)); // [1, 3, 5]
  *
  * // In pipelines
+ * const users = [{ name: "Alice", isAdmin: false }, { name: "Bob", isAdmin: true }];
+ * const isAdmin = (u: { name: string; isAdmin: boolean }) => u.isAdmin;
  * pipe(
  *   users,
- *   Array.filter(not(isAdmin)),
- *   Array.map(u => u.name)
+ *   Arr.filter(not(isAdmin)),
+ *   Arr.map((u: { name: string; isAdmin: boolean }) => u.name)
  * );
  * ```
  */

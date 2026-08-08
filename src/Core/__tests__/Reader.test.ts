@@ -1,6 +1,6 @@
-import { pipe } from "#composition";
-import { Reader } from "#core";
 import { expect, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
+import { Reader } from "../Reader.ts";
 
 type Config = { baseUrl: string; apiKey: string; timeout: number; };
 
@@ -230,3 +230,33 @@ test("Reader.bind accumulates values key-by-key in a pipeline", () => {
 	)(testConfig);
 	expect(result).toStrictEqual({ a: 2, b: 6, c: 8 });
 });
+
+// --- side-effect isolation ---
+
+test("Reader.tap executes side effect callback when reader is run", () => {
+	let called = false;
+	const reader = pipe(
+		Reader.resolve<Config, number>(42),
+		Reader.tap(() => {
+			called = true;
+		}),
+	);
+	expect(called).toBe(false);
+	reader(testConfig);
+	expect(called).toBe(true);
+});
+
+test("Reader.map executes side effect callback when reader is run", () => {
+	let called = false;
+	const reader = pipe(
+		Reader.resolve<Config, number>(10),
+		Reader.map((n) => {
+			called = true;
+			return n * 2;
+		}),
+	);
+	expect(called).toBe(false);
+	reader(testConfig);
+	expect(called).toBe(true);
+});
+
