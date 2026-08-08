@@ -92,6 +92,27 @@ export namespace Validation {
 		export const failed = <E, A>(data: Validation<E, A>): data is Failed<E> => data.kind === "Failed";
 	}
 
+	/**
+	 * Creates a Validation from a function that may throw.
+	 * Catches any errors and transforms them using the onError function into a Failed validation.
+	 *
+	 * @example
+	 * ```ts
+	 * const parseJson = (s: string): Validation<string, unknown> =>
+	 *   Validation.tryCatch(
+	 *     () => JSON.parse(s),
+	 *     { onError: (e) => `Parse error: ${e}` }
+	 *   );
+	 * ```
+	 */
+	export const tryCatch = <E, A>(f: () => A, options: { onError: (e: unknown) => E; }): Validation<E, A> => {
+		try {
+			return make.passed(f());
+		} catch (error) {
+			return make.failed(options.onError(error));
+		}
+	};
+
 	// --- from ---
 	export namespace from {
 		/**

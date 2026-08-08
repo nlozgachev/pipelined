@@ -138,6 +138,14 @@ test("Result.chain propagates Err without calling function", () => {
 	expect(called).toBe(false);
 });
 
+test("Result.chain supports error union widening", () => {
+	const step1: Result<"ERR_A", number> = Result.make.ok(42);
+	const step2 = (_n: number): Result<"ERR_B", string> => Result.make.err("ERR_B");
+
+	const res: Result<"ERR_A" | "ERR_B", string> = pipe(step1, Result.chain(step2));
+	expect(res).toStrictEqual({ kind: "Err", error: "ERR_B" });
+});
+
 // ---------------------------------------------------------------------------
 // fold
 // ---------------------------------------------------------------------------

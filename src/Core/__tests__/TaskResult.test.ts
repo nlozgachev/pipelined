@@ -818,3 +818,27 @@ test("Task.Result.allSettled collects all Ok and Err results in parallel", async
 
 	expect(res).toStrictEqual([Result.make.ok(1), Result.make.err("e2"), Result.make.ok(3)]);
 });
+
+test("Task.Result.make creates ok and err tasks", async () => {
+	const okTask = Task.Result.make.ok(42);
+	const errTask = Task.Result.make.err("failed");
+
+	await expect(okTask()).resolves.toStrictEqual(Result.make.ok(42));
+	await expect(errTask()).resolves.toStrictEqual(Result.make.err("failed"));
+});
+
+test("Task.Result.chain supports error union widening", async () => {
+	const step1: Task.Result<"ERR_A", number> = Task.Result.ok(42);
+	const step2 = (_n: number): Task.Result<"ERR_B", string> => Task.Result.err("ERR_B");
+
+	const res: Result<"ERR_A" | "ERR_B", string> = await pipe(step1, Task.Result.chain(step2))();
+	expect(res).toStrictEqual({ kind: "Err", error: "ERR_B" });
+});
+
+test("Task.Result.to.Maybe converts Ok to Some and Err to None", async () => {
+	const okTask = Task.Result.ok<string, number>(42);
+	const errTask = Task.Result.err<string, number>("oops");
+
+	await expect(Task.Result.to.Maybe(okTask)()).resolves.toStrictEqual({ kind: "Some", value: 42 });
+	await expect(Task.Result.to.Maybe(errTask)()).resolves.toStrictEqual({ kind: "None" });
+});

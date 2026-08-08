@@ -395,3 +395,11 @@ test("Task.Maybe.struct returns None if any key yields None", async () => {
 	const result = await Task.Maybe.struct({ name: Task.Maybe.some("Alice"), age: Task.Maybe.none<number>() })();
 	expect(result).toStrictEqual(Maybe.make.none());
 });
+
+test("Task.Maybe.make creates some and none tasks", async () => {
+	const someTask = Task.Maybe.make.some(42);
+	const noneTask = Task.Maybe.make.none();
+
+	await expect(someTask()).resolves.toStrictEqual(Maybe.make.some(42));
+	await expect(noneTask()).resolves.toStrictEqual(Maybe.make.none());
+});

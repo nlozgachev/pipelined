@@ -488,20 +488,13 @@ test("makeDebounced (trailing): onRetrying guard suppresses stale Retrying state
 
 test("cancellableWait composes with pipe to delay execution", async () => {
 	const c = new AbortController();
-	const result = await pipe(
-		Duration.milliseconds(10),
-		(d) => cancellableWait(d, c.signal),
-		(p) => p.then(() => "done"),
-	);
+	const result = await pipe(Duration.milliseconds(10), (d) => cancellableWait(d, c.signal), (p) => p.then(() => "done"));
 	expect(result).toBe("done");
 });
 
 test("execute composes with Deferred.to.Promise in a pipe chain", async () => {
 	const controller = new AbortController();
-	const outcome = await pipe(
-		execute(successOp(), 100, controller),
-		Deferred.to.Promise,
-	);
+	const outcome = await pipe(execute(successOp(), 100, controller), Deferred.to.Promise);
 	expect(outcome).toStrictEqual({ kind: "OpOk", value: 100 });
 });
 
@@ -561,4 +554,3 @@ test("mode runners emit Retrying states when retrying with retryOptions", async 
 	await Deferred.to.Promise(throttleManager.run(1));
 	expect(throttleStates.some((s) => s.kind === "Retrying")).toBe(true);
 });
-

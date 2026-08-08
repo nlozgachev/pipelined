@@ -2196,10 +2196,6 @@ test("Op outcome composes in a pipe with map, chain, and recover", () => {
 
 test("Op outcome composes in a pipe with mapError and to.Result", () => {
 	const outcome = Op.err("fail") as Op.Outcome<string, number>;
-	const res = pipe(
-		outcome,
-		Op.mapError((e) => `error: ${e}`),
-		Op.to.Result(() => "nil"),
-	);
+	const res = pipe(outcome, Op.mapError((e) => `error: ${e}`), Op.to.Result(() => "nil"));
 	expect(res).toStrictEqual(Result.make.err("error: fail"));
 });

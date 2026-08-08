@@ -94,11 +94,7 @@ test("Deferred.race resolves with the first settled Deferred", async () => {
 // --- pipe composition ---
 
 test("Deferred composes in a pipe with from.Promise and to.Promise", async () => {
-	const result = await pipe(
-		Promise.resolve(42),
-		Deferred.from.Promise,
-		Deferred.to.Promise,
-	);
+	const result = await pipe(Promise.resolve(42), Deferred.from.Promise, Deferred.to.Promise);
 	expect(result).toBe(42);
 });
 
@@ -110,5 +106,3 @@ test("Deferred.all composes in a pipe chain", async () => {
 	);
 	expect(result).toStrictEqual(["a", "b"]);
 });
-
-

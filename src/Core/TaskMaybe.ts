@@ -27,18 +27,32 @@ export namespace TaskMaybe {
 	 * const res = await task(); // Some(42)
 	 * ```
 	 */
-	export const some = <A>(value: A): TaskMaybe<A> => CoreTask.resolve(CoreMaybe.make.some(value));
+	export namespace make {
+		/**
+		 * Creates a Task.Maybe that resolves to Some(value).
+		 *
+		 * @example
+		 * ```ts
+		 * const task = Task.Maybe.make.some(42);
+		 * const res = await task(); // Some(42)
+		 * ```
+		 */
+		export const some = <A>(value: A): TaskMaybe<A> => CoreTask.resolve(CoreMaybe.make.some(value));
 
-	/**
-	 * Creates a Task.Maybe that resolves to None.
-	 *
-	 * @example
-	 * ```ts
-	 * const task = Task.Maybe.none();
-	 * const res = await task(); // None
-	 * ```
-	 */
-	export const none = <A = never>(): TaskMaybe<A> => CoreTask.resolve(CoreMaybe.make.none());
+		/**
+		 * Creates a Task.Maybe that resolves to None.
+		 *
+		 * @example
+		 * ```ts
+		 * const task = Task.Maybe.make.none();
+		 * const res = await task(); // None
+		 * ```
+		 */
+		export const none = <A = never>(): TaskMaybe<A> => CoreTask.resolve(CoreMaybe.make.none());
+	}
+
+	export const { some } = make;
+	export const { none } = make;
 
 	// --- from ---
 	export namespace from {

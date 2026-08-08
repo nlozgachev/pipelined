@@ -182,14 +182,10 @@ test("Lens.modify executes side effect during modification", () => {
 
 test("Lens.from.accessors getter executes side effect", () => {
 	let called = false;
-	const nameLens = Lens.from.accessors(
-		(u: User) => {
-			called = true;
-			return u.name;
-		},
-		(name) => (u) => ({ ...u, name }),
-	);
+	const nameLens = Lens.from.accessors((u: User) => {
+		called = true;
+		return u.name;
+	}, (name) => (u) => ({ ...u, name }));
 	nameLens.get(alice);
 	expect(called).toBe(true);
 });
-

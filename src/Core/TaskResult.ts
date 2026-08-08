@@ -6,6 +6,7 @@ import {
 	Result as CoreResult,
 	type Task,
 	Task as CoreTask,
+	type TaskMaybe,
 } from "#core";
 import type { Thenable } from "#internal";
 import { Duration, type RetryPolicy } from "#types";
@@ -26,27 +27,32 @@ import { Duration, type RetryPolicy } from "#types";
 export type TaskResult<E, A> = Task<Result<E, A>>;
 
 export namespace TaskResult {
-	/**
-	 * Wraps a value in a successful Task.Result.
-	 *
-	 * @example
-	 * ```ts
-	 * const task = Task.Result.ok(42);
-	 * const res = await task(); // Ok(42)
-	 * ```
-	 */
-	export const ok = <E, A>(value: A): TaskResult<E, A> => CoreTask.resolve(CoreResult.make.ok(value));
+	export namespace make {
+		/**
+		 * Wraps a value in a successful Task.Result.
+		 *
+		 * @example
+		 * ```ts
+		 * const task = Task.Result.make.ok(42);
+		 * const res = await task(); // Ok(42)
+		 * ```
+		 */
+		export const ok = <E, A>(value: A): TaskResult<E, A> => CoreTask.resolve(CoreResult.make.ok(value));
 
-	/**
-	 * Creates a failed Task.Result with the given error.
-	 *
-	 * @example
-	 * ```ts
-	 * const task = Task.Result.err("failed");
-	 * const res = await task(); // Err("failed")
-	 * ```
-	 */
-	export const err = <E, A>(error: E): TaskResult<E, A> => CoreTask.resolve(CoreResult.make.err(error));
+		/**
+		 * Creates a failed Task.Result with the given error.
+		 *
+		 * @example
+		 * ```ts
+		 * const task = Task.Result.make.err("failed");
+		 * const res = await task(); // Err("failed")
+		 * ```
+		 */
+		export const err = <E, A>(error: E): TaskResult<E, A> => CoreTask.resolve(CoreResult.make.err(error));
+	}
+
+	export const { ok } = make;
+	export const { err } = make;
 
 	// --- from ---
 	export namespace from {
@@ -101,6 +107,20 @@ export namespace TaskResult {
 				);
 	}
 
+	// --- to ---
+	export namespace to {
+		/**
+		 * Converts a Task.Result to a Task.Maybe, dropping the error value on Err.
+		 *
+		 * @example
+		 * ```ts
+		 * const taskResult = Task.Result.ok(42);
+		 * const taskMaybe = pipe(taskResult, Task.Result.to.Maybe);
+		 * ```
+		 */
+		export const Maybe = <E, A>(data: TaskResult<E, A>): TaskMaybe<A> => CoreTask.map(CoreResult.to.Maybe)(data);
+	}
+
 	/**
 	 * Creates a Task.Result from a function that may throw.
 	 * Catches any errors and transforms them using the onError function.
@@ -139,10 +159,13 @@ export namespace TaskResult {
 	 * Chains Task.Result computations. If the first succeeds, passes the value to f.
 	 * If the first fails, propagates the error.
 	 */
-	export const chain = <E, A, B>(f: (a: A) => TaskResult<E, B>) => (data: TaskResult<E, A>): TaskResult<E, B> =>
-		CoreTask.chain((result: Result<E, A>) =>
-			CoreResult.is.ok(result) ? f(result.value) : CoreTask.resolve(CoreResult.make.err(result.error))
-		)(data);
+	export const chain =
+		<E1, E2, A, B>(f: (a: A) => TaskResult<E2, B>) => (data: TaskResult<E1, A>): TaskResult<E1 | E2, B> =>
+			CoreTask.chain((result: Result<E1, A>) =>
+				CoreResult.is.ok(result)
+					? f(result.value)
+					: CoreTask.resolve(CoreResult.make.err(result.error) as Result<E1 | E2, B>)
+			)(data);
 
 	/**
 	 * Extracts the value from a Task.Result by providing handlers for both cases.
@@ -250,7 +273,7 @@ export namespace TaskResult {
 	export const bind =
 		<K extends string, E, A, B>(key: K, f: (a: A) => TaskResult<E, B>) =>
 		(data: TaskResult<E, A>): TaskResult<E, A & { [P in K]: B; }> =>
-			chain<E, A, A & { [P in K]: B; }>((a) =>
+			chain<E, E, A, A & { [P in K]: B; }>((a) =>
 				map<E, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
 			)(data);
 

@@ -726,3 +726,15 @@ test("Validation.to.Result(combineErrors) converts Failed to Err with combined e
 	);
 	expect(res).toStrictEqual(Result.make.err("err1; err2"));
 });
+
+test("Validation.tryCatch returns Passed when thunk succeeds", () => {
+	const res = Validation.tryCatch(() => 42, { onError: String });
+	expect(res).toStrictEqual(Validation.make.passed(42));
+});
+
+test("Validation.tryCatch returns Failed when thunk throws", () => {
+	const res = Validation.tryCatch(() => {
+		throw new Error("BOOM");
+	}, { onError: (e) => (e as Error).message });
+	expect(res).toStrictEqual(Validation.make.failed("BOOM"));
+});

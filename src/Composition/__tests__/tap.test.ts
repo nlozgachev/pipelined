@@ -393,4 +393,3 @@ test("tap.log handles circular objects gracefully using fallback formatting", ()
 	tap.log({ logger })(circular);
 	expect(loggedMsg).toBe("[object Object]");
 });
-

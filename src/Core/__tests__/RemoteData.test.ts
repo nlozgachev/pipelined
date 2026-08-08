@@ -135,6 +135,14 @@ test("remoteData.chain propagates NotAsked", () => {
 	expect(result).toStrictEqual({ kind: "NotAsked" });
 });
 
+test("remoteData.chain supports error union widening", () => {
+	const step1: RemoteData<"ERR_A", number> = RemoteData.make.success(42);
+	const step2 = (_n: number): RemoteData<"ERR_B", string> => RemoteData.make.failure("ERR_B");
+
+	const res: RemoteData<"ERR_A" | "ERR_B", string> = pipe(step1, RemoteData.chain(step2));
+	expect(res).toStrictEqual({ kind: "Failure", error: "ERR_B" });
+});
+
 // ---------------------------------------------------------------------------
 // ap
 // ---------------------------------------------------------------------------

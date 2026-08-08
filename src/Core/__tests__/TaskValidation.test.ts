@@ -511,3 +511,13 @@ test("Task.Validation.struct accumulates errors from all failed branches", async
 	})();
 	expect(result).toStrictEqual(Validation.make.failedAll(["Name required", "Age must be positive"]));
 });
+
+test("Task.Validation.make creates passed, failed, and failedAll tasks", async () => {
+	const passedTask = Task.Validation.make.passed(42);
+	const failedTask = Task.Validation.failed("err1");
+	const failedAllTask = Task.Validation.make.failedAll(["err1", "err2"]);
+
+	await expect(passedTask()).resolves.toStrictEqual(Validation.make.passed(42));
+	await expect(failedTask()).resolves.toStrictEqual(Validation.make.failed("err1"));
+	await expect(failedAllTask()).resolves.toStrictEqual(Validation.make.failedAll(["err1", "err2"]));
+});

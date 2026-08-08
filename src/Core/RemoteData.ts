@@ -163,8 +163,9 @@ export namespace RemoteData {
 	 * );
 	 * ```
 	 */
-	export const chain = <E, A, B>(f: (a: A) => RemoteData<E, B>) => (data: RemoteData<E, A>): RemoteData<E, B> =>
-		is.success(data) ? f(data.value) : (data as RemoteData<E, B>);
+	export const chain =
+		<E1, E2, A, B>(f: (a: A) => RemoteData<E2, B>) => (data: RemoteData<E1, A>): RemoteData<E1 | E2, B> =>
+			is.success(data) ? f(data.value) : (data as RemoteData<E1 | E2, B>);
 
 	/**
 	 * Applies a function wrapped in a RemoteData to a value wrapped in a RemoteData.

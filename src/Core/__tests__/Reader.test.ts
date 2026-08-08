@@ -259,4 +259,3 @@ test("Reader.map executes side effect callback when reader is run", () => {
 	reader(testConfig);
 	expect(called).toBe(true);
 });
-

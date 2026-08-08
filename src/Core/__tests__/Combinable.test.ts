@@ -196,4 +196,3 @@ test("Combinable.fold does not execute side effects on empty array", () => {
 	pipe([], Combinable.fold(custom));
 	expect(called).toBe(false);
 });
-

@@ -34,39 +34,45 @@ import { isNonEmptyArr, type NonEmptyArr, type Thenable } from "#internal";
 export type TaskValidation<E, A> = Task<Validation<E, A>>;
 
 export namespace TaskValidation {
-	/**
-	 * Wraps a value in a passed Task.Validation.
-	 *
-	 * @example
-	 * ```ts
-	 * const task = Task.Validation.passed(42);
-	 * const res = await task(); // Passed(42)
-	 * ```
-	 */
-	export const passed = <E, A>(value: A): TaskValidation<E, A> => CoreTask.resolve(CoreValidation.make.passed(value));
+	export namespace make {
+		/**
+		 * Wraps a value in a passed Task.Validation.
+		 *
+		 * @example
+		 * ```ts
+		 * const task = Task.Validation.make.passed(42);
+		 * const res = await task(); // Passed(42)
+		 * ```
+		 */
+		export const passed = <E, A>(value: A): TaskValidation<E, A> => CoreTask.resolve(CoreValidation.make.passed(value));
 
-	/**
-	 * Creates a failed Task.Validation with a single error.
-	 *
-	 * @example
-	 * ```ts
-	 * const task = Task.Validation.failed("invalid");
-	 * const res = await task(); // Failed(["invalid"])
-	 * ```
-	 */
-	export const failed = <E, A>(error: E): TaskValidation<E, A> => CoreTask.resolve(CoreValidation.make.failed(error));
+		/**
+		 * Creates a failed Task.Validation with a single error.
+		 *
+		 * @example
+		 * ```ts
+		 * const task = Task.Validation.make.failed("invalid");
+		 * const res = await task(); // Failed(["invalid"])
+		 * ```
+		 */
+		export const failed = <E, A>(error: E): TaskValidation<E, A> => CoreTask.resolve(CoreValidation.make.failed(error));
 
-	/**
-	 * Creates a failed Task.Validation from multiple errors.
-	 *
-	 * @example
-	 * ```ts
-	 * const task = Task.Validation.failedAll(["err1", "err2"]);
-	 * const res = await task(); // Failed(["err1", "err2"])
-	 * ```
-	 */
-	export const failedAll = <E, A>(errors: NonEmptyArr<E>): TaskValidation<E, A> =>
-		CoreTask.resolve(CoreValidation.make.failedAll(errors));
+		/**
+		 * Creates a failed Task.Validation from multiple errors.
+		 *
+		 * @example
+		 * ```ts
+		 * const task = Task.Validation.make.failedAll(["err1", "err2"]);
+		 * const res = await task(); // Failed(["err1", "err2"])
+		 * ```
+		 */
+		export const failedAll = <E, A>(errors: NonEmptyArr<E>): TaskValidation<E, A> =>
+			CoreTask.resolve(CoreValidation.make.failedAll(errors));
+	}
+
+	export const { passed } = make;
+	export const { failed } = make;
+	export const { failedAll } = make;
 
 	// --- from ---
 	export namespace from {
