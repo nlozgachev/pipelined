@@ -15,6 +15,7 @@ export * from "./RemoteData";
 export * from "./Resource";
 export * from "./Result";
 export * from "./State";
+export * from "./Stream";
 export * from "./Task";
 export * from "./TaskMaybe";
 export * from "./TaskResult";

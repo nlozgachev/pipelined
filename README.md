@@ -18,11 +18,12 @@ In mainstream TypeScript, code is often burdened by implicit control flow: unche
 manual null propagation, and unhandled asynchronous failures. `pipelined` turns these complex
 runtime states into simple, transparent data structures that compose. By representing optionality as
 `Maybe`, failures as `Result`, lazy asynchronous pipelines as `Task.Result`, and repeated stateful
-interactions as `Op`, the library helps disentangle business logic from control mechanics.
+interactions as `Op` and `Stream`, the library helps disentangle business logic from control
+mechanics.
 
 To support these patterns without introducing bloat, the library is designed to be lightweight,
-zero-dependency, and fully tree-shakeable. The core module (`/core`) is under 14 KB gzipped, and the
-entire toolkit is under 21 KB gzipped, making it equally suitable for client and server
+zero-dependency, and fully tree-shakeable. The core module (`/core`) is under 16 KB gzipped, and the
+entire toolkit is under 25 KB gzipped, making it equally suitable for client and server
 environments.
 
 ## Documentation
@@ -303,6 +304,57 @@ The system supports a variety of built-in strategies — `restartable`, `exclusi
 `throttled`, `queue`, `buffered`, `concurrent`, `keyed`, and `once` — making the integration of
 complex async scenarios highly predictable.
 
+## Example: typed event streaming and sequence reduction
+
+Decoupling event producers from stateful event consumers often leads to untyped event emitters or
+complex ad-hoc state machines. `Stream` models event pipelines with typed message schemas, sequence
+pattern matching, and state reduction:
+
+```ts
+import { Stream } from "@nlozgachev/pipelined/core";
+
+type UserFlowMessages = {
+  sessionStarted: { sessionId: string };
+  stepCompleted: { stepName: string };
+  flowFinished: { totalTimeMs: number };
+};
+
+const flowStream = Stream.make<UserFlowMessages>();
+
+// Match sequence: sessionStarted -> stepCompleted -> flowFinished
+const sub = Stream.listen(
+  flowStream,
+  ["sessionStarted", "stepCompleted", "flowFinished"],
+  { ordered: true },
+).reduce(
+  (msg, state) => {
+    if (msg.kind === "flowFinished") {
+      return { completedFlows: state.completedFlows + 1 };
+    }
+    return state;
+  },
+  { completedFlows: 0 },
+);
+
+// Emit typed messages to the stream
+Stream.emit(flowStream, {
+  kind: "sessionStarted",
+  value: { sessionId: "sess-101" },
+});
+
+Stream.emit(flowStream, {
+  kind: "stepCompleted",
+  value: { stepName: "onboarding" },
+});
+
+Stream.emit(flowStream, {
+  kind: "flowFinished",
+  value: { totalTimeMs: 4200 },
+});
+
+sub.getState(); // { completedFlows: 1 }
+```
+
 ## What is included
 
 The library covers the full spectrum of state and control flow scenarios encountered in production
@@ -322,8 +374,9 @@ provides a strongly-typed, immutable two-element pair.
 handled by `Task.Result`, `Task.Maybe`, and `Task.Validation`. For managing stateful, recurring
 asynchronous operations with complex scheduling, `Op` implements named concurrency strategies such
 as `restartable`, `exclusive`, `debounced`, `throttled`, and `queue`, handling retries, timeouts,
-and signal propagation automatically. `Deferred` represents a lightweight, infallible asynchronous
-value that is guaranteed to always resolve without rejection.
+and signal propagation automatically. `Stream` provides typed event streaming, sequence pattern
+matching, state reduction, and structural forwarding across channels. `Deferred` represents a
+lightweight, infallible asynchronous value that is guaranteed to always resolve without rejection.
 
 ### Optics and environment state
 
