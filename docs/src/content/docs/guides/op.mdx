@@ -5,9 +5,9 @@ description: Separate what an asynchronous operation does from how it executes, 
 
 import { Aside } from '@astrojs/starlight/components'
 
-Asynchronous coordination is one of the most persistent sources of accidental complexity in modern application development. 
+Asynchronous coordination is one of the most persistent sources of accidental complexity in modern application development.
 
-Consider a standard search-as-you-type autocomplete input. A user types rapidly, firing three search queries in rapid succession. Because of internet latency, the first network request takes longer to resolve than the third. When the first request eventually lands last, it overwrites the newer search results with stale data. 
+Consider a standard search-as-you-type autocomplete input. A user types rapidly, firing three search queries in rapid succession. Because of internet latency, the first network request takes longer to resolve than the third. When the first request eventually lands last, it overwrites the newer search results with stale data.
 
 We know how to fix this: we must cancel the outstanding in-flight request whenever a new search is triggered. But implementing this usually complects our codebase. The cancellation logic—juggling `AbortController` instances, keeping track of active requests with `useRef` handles, and writing cleanup hooks—becomes tangled directly into our UI components and raw network calls.
 
@@ -161,17 +161,17 @@ The execution strategy dictates what happens when `run()` is triggered while an 
 
 Use this simple breakdown to select a strategy:
 
-*   **Only run once** (e.g. initial page setup) $\rightarrow$ `once`
-*   **Segment by input key** (e.g. independently load different rows) $\rightarrow$ `keyed`
-*   **Run multiple operations in parallel** (e.g. bulk file uploads) $\rightarrow$ `concurrent`
+*   **Only run once** (e.g. initial page setup) → `once`
+*   **Segment by input key** (e.g. independently load different rows) → `keyed`
+*   **Run multiple operations in parallel** (e.g. bulk file uploads) → `concurrent`
 *   **Run one-at-a-time**:
-    *   *Cancel* the active one and restart $\rightarrow$ `restartable`
-    *   *Ignore* the new one until the active completes $\rightarrow$ `exclusive`
-    *   *Queue* all calls and run them in order $\rightarrow$ `queue`
-    *   *Buffer* calls, keeping only the latest pending one $\rightarrow$ `buffered`
+    *   *Cancel* the active one and restart → `restartable`
+    *   *Ignore* the new one until the active completes → `exclusive`
+    *   *Queue* all calls and run them in order → `queue`
+    *   *Buffer* calls, keeping only the latest pending one → `buffered`
 *   **Rate-limit or delay calls**:
-    *   Wait for the user to stop typing $\rightarrow$ `debounced`
-    *   Fire immediately, then enforce a cooldown $\rightarrow$ `throttled`
+    *   Wait for the user to stop typing → `debounced`
+    *   Fire immediately, then enforce a cooldown → `throttled`
 
 ---
 
@@ -226,7 +226,7 @@ With `overflow: "queue"`, subsequent callers see a `Queued` state carrying a `po
 
 ### Segmented execution with `keyed`
 
-`keyed` manages an independent state machine for every key extracted from your input. 
+`keyed` manages an independent state machine for every key extracted from your input.
 
 Unlike other strategies that hold a single state, `manager.state` on a `keyed` manager is a `ReadonlyMap` of keys to states, and the subscriber receives a fresh map snapshot on every state change:
 

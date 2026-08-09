@@ -5,7 +5,7 @@ description: Represent type-narrowing predicates as composable, first-class valu
 
 import { Aside } from '@astrojs/starlight/components'
 
-TypeScript features outstanding support for control flow analysis. When you write a runtime assertion like `typeof x === "string"` or `x !== null`, the compiler understands the condition and narrows the type of `x` inside that specific block. 
+TypeScript features outstanding support for control flow analysis. When you write a runtime assertion like `typeof x === "string"` or `x !== null`, the compiler understands the condition and narrows the type of `x` inside that specific block.
 
 However, these inline checks are highly localized. They do not compose.
 
@@ -16,7 +16,7 @@ If you write a type guard `isNonEmpty(s)` in one module and `isValidEmail(s)` in
 function validateInput(raw: string) {
   if (raw.length > 0 && raw.includes("@")) {
     // The compiler knows the checks passed, but the combination is not named or reusable
-    sendVerificationEmail(raw); 
+    sendVerificationEmail(raw);
   }
 }
 ```
@@ -64,7 +64,7 @@ Because refinements are first-class values, we can combine them using logical op
 
 ### Chaining in sequence with `compose`
 
-When you have a pipeline of narrowing steps where the output of check A becomes the input of check B (e.g. `string` $\rightarrow$ `NonEmpty` $\rightarrow$ `Trimmed`), you can chain them using `compose`:
+When you have a pipeline of narrowing steps where the output of check A becomes the input of check B (e.g. `string` → `NonEmpty` → `Trimmed`), you can chain them using `compose`:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
