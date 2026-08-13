@@ -791,6 +791,21 @@ test("Task.Result.timeout handles pre-aborted signal", async () => {
 	expect(res).toStrictEqual(Result.make.err("aborted"));
 });
 
+test("Task.Result.timeout handles signal aborted during execution", async () => {
+	const controller = new AbortController();
+	const task: Task.Result<string, number> = () => {
+		setTimeout(() => controller.abort(), 10);
+		return Deferred.from.Promise(new Promise((resolve) => setTimeout(() => resolve(Result.make.ok(42)), 50)));
+	};
+
+	const res = await pipe(
+		task,
+		Task.Result.timeout({ duration: Duration.milliseconds(100), onTimeout: () => "timed_out" }),
+	)(controller.signal);
+
+	expect(res).toStrictEqual(Result.make.ok(42));
+});
+
 test("Task.Result.retry aborts during wait delay", async () => {
 	const controller = new AbortController();
 	let attempts = 0;

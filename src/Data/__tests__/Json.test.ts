@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { Json } from "../Json.ts";
 
 // --- parse ---
@@ -12,6 +12,16 @@ test("Json.parse returns Err(SyntaxError) for invalid JSON", () => {
 	const result = Json.parse("{invalid}");
 	expect(result.kind).toBe("Err");
 	expect(result.kind === "Err" ? result.error : undefined).toBeInstanceOf(SyntaxError);
+});
+
+test("Json.parse wraps non-SyntaxError exception into SyntaxError", () => {
+	const spy = vi.spyOn(JSON, "parse").mockImplementationOnce(() => {
+		throw new Error("custom non-syntax error");
+	});
+	const result = Json.parse("{}");
+	expect(result.kind).toBe("Err");
+	expect(result.kind === "Err" ? result.error : undefined).toBeInstanceOf(SyntaxError);
+	spy.mockRestore();
 });
 
 // --- stringify ---

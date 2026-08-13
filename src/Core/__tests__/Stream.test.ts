@@ -284,6 +284,48 @@ test("Stream.listen reset option accepts array of event kinds and resets sequenc
 	expect(sequenceFiredCount).toBe(0);
 });
 
+test("Stream.listen reset option accepts single string and resets sequence tracking", () => {
+	const s = Stream.make<TestSchema>();
+	let sequenceFiredCount = 0;
+
+	Stream.listen(s, ["A", "B"], { ordered: true, reset: "C" }).tap(() => {
+		sequenceFiredCount++;
+	});
+
+	// Send A
+	Stream.emit(s, { kind: "A", value: { value: 1 } });
+	// Send C (single reset string)
+	Stream.emit(s, { kind: "C", value: { flag: true } });
+	// Send B -> should not fire because sequence was reset by C
+	Stream.emit(s, { kind: "B", value: { text: "after reset" } });
+
+	expect(sequenceFiredCount).toBe(0);
+});
+
+test("Stream.listen relaxed ordered sequence resets correctly when event from eventList is received out of order", () => {
+	const s = Stream.make<TestSchema>();
+	let count = 0;
+
+	Stream.listen(s, ["A", "B", "C"], { ordered: true }).tap(() => {
+		count++;
+	});
+
+	// Emit A then A then B then C -> the second A resets sequenceIndex to 1, then B -> 2, C -> fires
+	Stream.emit(s, { kind: "A", value: { value: 1 } });
+	Stream.emit(s, { kind: "A", value: { value: 2 } });
+	Stream.emit(s, { kind: "B", value: { text: "b" } });
+	Stream.emit(s, { kind: "C", value: { flag: true } });
+	expect(count).toBe(1);
+
+	// Emit A then C (not B) -> sequenceIndex becomes 0 because C !== A
+	count = 0;
+	Stream.emit(s, { kind: "A", value: { value: 1 } });
+	Stream.emit(s, { kind: "C", value: { flag: true } });
+	Stream.emit(s, { kind: "B", value: { text: "b" } });
+	Stream.emit(s, { kind: "C", value: { flag: true } });
+	expect(count).toBe(0);
+});
+
 test("Stream.listen ordered sequence matches when an optional step is present", () => {
 	const s = Stream.make<TestSchema>();
 	let count = 0;

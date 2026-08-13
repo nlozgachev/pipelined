@@ -225,6 +225,14 @@ test("Validation.apCustom handles Passed fnVal with Passed or Failed argVal", ()
 	expect(pipe(fnVal, Validation.apCustom(concat)(argFailed))).toStrictEqual(Validation.make.failed("err1"));
 });
 
+test("Validation.apCustom handles Failed fnVal with Passed argVal", () => {
+	const fnVal = Validation.make.failed<string>("err1") as Validation<string, (n: number) => number>;
+	const argPassed = Validation.make.passed<string, number>(5);
+	const concat = (e1: readonly [string, ...string[]], e2: readonly [string, ...string[]]) => [...e1, ...e2] as any;
+
+	expect(pipe(fnVal, Validation.apCustom(concat)(argPassed))).toStrictEqual(Validation.make.failed("err1"));
+});
+
 // ---------------------------------------------------------------------------
 // fold
 // ---------------------------------------------------------------------------

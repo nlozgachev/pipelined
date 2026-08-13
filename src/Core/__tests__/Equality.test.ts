@@ -122,6 +122,13 @@ test("Equality.struct compares objects field-by-field", () => {
 	expect(userEq({ id: "1", age: 20 }, { id: "1", age: 21 })).toBe(false);
 });
 
+test("Equality.struct ignores inherited prototype properties in fields definition", () => {
+	const proto = { inherited: Equality.string };
+	const fields = Object.assign(Object.create(proto), { id: Equality.string });
+	const eq = Equality.struct(fields);
+	expect(eq({ id: "1" } as any, { id: "1" } as any)).toBe(true);
+});
+
 test("Equality.tuple compares tuples element-by-element", () => {
 	const pairEq = Equality.tuple(Equality.string, Equality.number);
 	expect(pairEq(["a", 1], ["a", 1])).toBe(true);

@@ -393,3 +393,34 @@ test("tap.log handles circular objects gracefully using fallback formatting", ()
 	tap.log({ logger })(circular);
 	expect(loggedMsg).toBe("[object Object]");
 });
+
+test("tap.time logs to console when label config is provided and function throws", () => {
+	const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+	const throwingFn = () => {
+		throw new Error("sync crash");
+	};
+
+	expect(() => {
+		pipe(42, tap.time(throwingFn, { label: "err-label" }));
+	}).toThrow("sync crash");
+
+	expect(spy).toHaveBeenCalledWith(expect.any(String));
+	spy.mockRestore();
+});
+
+test("tap.time logs to console when label config is provided and async function rejects", async () => {
+	const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+	let capturedPromise: Promise<any> | null = null;
+	const asyncRejectFn = (_n: number) => {
+		capturedPromise = (async () => {
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			throw new Error("async reject");
+		})();
+		return capturedPromise;
+	};
+
+	pipe(10, tap.time(asyncRejectFn, { label: "async-err-label" }));
+	await expect(capturedPromise).rejects.toThrow("async reject");
+	expect(spy).toHaveBeenCalledWith(expect.any(String));
+	spy.mockRestore();
+});

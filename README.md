@@ -15,11 +15,13 @@ npm add @nlozgachev/pipelined
 ## Possibly maybe
 
 In mainstream TypeScript, code is often burdened by implicit control flow: unchecked exceptions,
-manual null propagation, and unhandled asynchronous failures. `pipelined` turns these complex
-runtime states into simple, transparent data structures that compose. By representing optionality as
-`Maybe`, failures as `Result`, lazy asynchronous pipelines as `Task.Result`, and repeated stateful
-interactions as `Op` and `Stream`, the library helps disentangle business logic from control
-mechanics.
+manual null propagation, unhandled asynchronous failures, UI state race conditions, and deeply
+nested spread operators. `pipelined` turns these complex runtime states into transparent, composable
+data structures.
+
+By representing optionality as `Maybe`, failures as `Result`, multi-field errors as `Validation`,
+lazy asynchronous workflows as `Task.Result`, request concurrency as `Op`, and event pipelines as
+`Stream`, the library disentangles business logic from control mechanics.
 
 To support these patterns without introducing bloat, the library is designed to be lightweight,
 zero-dependency, and fully tree-shakeable. The core module (`/core`) is under 16 KB gzipped, and the
@@ -30,7 +32,11 @@ environments.
 
 Full guides and API reference at **[pipelined.lozgachev.dev](https://pipelined.lozgachev.dev)**.
 
-## Example: composing optional values
+---
+
+## Examples
+
+### Composing optional values
 
 `null` checks accumulate fast. Each one is a conditional branch that the type system can't help you
 forget. `Maybe<A>` turns absence into a value that composes — the same operations apply whether or
@@ -45,7 +51,7 @@ const parseDiscount = (raw: string): string =>
   pipe(
     raw,
     Str.trim,
-    Num.parse, // "10" → Some(10), "abc" → None
+    Num.parse, // "15" → Some(15), "abc" → None
     Maybe.filter((n) => n >= 0 && n <= 100), // out of range → None
     Maybe.map((n) => `${n}% off`),
     Maybe.getOrElse(() => "No discount"),
@@ -58,7 +64,7 @@ parseDiscount("abc"); // "No discount"
 
 Every step that sees `None` is skipped. The fallback runs once, at the end.
 
-## Example: typed async errors
+### Typed async errors and cancellation
 
 In JavaScript, asynchronous exceptions bypass the static type system, leaving unhandled rejections
 as invisible runtime risks. `Task.Result<E, A>` represents fallible asynchronous computations as
@@ -69,6 +75,8 @@ function signature, ensuring that failures are handled before compile time:
 import { pipe } from "@nlozgachev/pipelined/composition";
 import { Result, Task } from "@nlozgachev/pipelined/core";
 
+type User = { id: string; name: string };
+type Post = { id: string; title: string };
 type ApiError = { status: number; message: string };
 
 const fetchUser = (id: string): Task.Result<ApiError, User> =>
@@ -78,14 +86,14 @@ const fetchUser = (id: string): Task.Result<ApiError, User> =>
         if (!r.ok) throw { status: r.status, message: r.statusText };
         return r.json() as Promise<User>;
       }),
-    (e) => e as ApiError,
+    { onError: (e) => e as ApiError },
   );
 
 const fetchPosts = (userId: string): Task.Result<ApiError, Post[]> =>
   Task.Result.tryCatch(
     (signal) =>
       fetch(`/users/${userId}/posts`, { signal }).then((r) => r.json()),
-    (e) => e as ApiError,
+    { onError: (e) => e as ApiError },
   );
 
 // Chain two requests — the AbortSignal propagates to both automatically
@@ -116,7 +124,7 @@ if (Result.is.ok(result)) {
 }
 ```
 
-## Example: transforming data
+### Transforming data collections
 
 Standard JavaScript arrays and records routinely return `undefined` on out-of-bounds access or
 missing keys. The utility modules in `pipelined` wrap these operations with data-last, curried
@@ -156,7 +164,83 @@ replaces a `map` followed by a `filter`. `Arr.head` returns `Maybe<Item>` rather
 `Item | undefined`, so the absence is explicit in the type and the rest of the pipeline handles it
 the same way.
 
-## Example: retry, timeout, and cancellation
+### Multi-field form validation
+
+In web forms and batch data ingestion, failing fast on the first error produces poor user
+experiences. `Validation<E, A>` accumulates all errors across independent fields simultaneously:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Validation } from "@nlozgachev/pipelined/core";
+import { Str } from "@nlozgachev/pipelined/data";
+
+type SignupForm = { username: string; email: string };
+
+const validateUsername = (name: string): Validation<string, string> =>
+  pipe(
+    name,
+    Str.trim,
+    Validation.from.Predicate(
+      (s) => s.length >= 3,
+      () => "Username must be at least 3 characters",
+    ),
+  );
+
+const validateEmail = (email: string): Validation<string, string> =>
+  pipe(
+    email,
+    Str.trim,
+    Validation.from.Predicate(
+      (s) => s.includes("@"),
+      () => "Email must contain an @ symbol",
+    ),
+  );
+
+const validateSignup = (form: SignupForm) =>
+  Validation.struct({
+    username: validateUsername(form.username),
+    email: validateEmail(form.email),
+  });
+
+const outcome = validateSignup({ username: "a", email: "invalid" });
+
+if (Validation.is.failed(outcome)) {
+  console.log(outcome.errors);
+  // ["Username must be at least 3 characters", "Email must contain an @ symbol"]
+}
+```
+
+### Eliminating impossible UI states
+
+Managing asynchronous data in UI components with separate boolean flags (`isLoading`, `isError`,
+`data`) leads to contradictory combinations (like showing a spinner alongside an error alert).
+`RemoteData` models the complete 4-state lifecycle explicitly:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { RemoteData } from "@nlozgachev/pipelined/core";
+
+type UserProfile = { name: string };
+type FetchError = { message: string };
+
+const renderUI = (state: RemoteData<FetchError, UserProfile>): string =>
+  pipe(
+    state,
+    RemoteData.match({
+      notAsked: () => "Click to load profile",
+      loading: () => "Loading...",
+      failure: (err) => `Failed: ${err.message}`,
+      success: (user) => `Welcome, ${user.name}!`,
+    }),
+  );
+
+renderUI(RemoteData.make.notAsked()); // "Click to load profile"
+renderUI(RemoteData.make.loading()); // "Loading..."
+renderUI(RemoteData.make.failure({ message: "Network down" })); // "Failed: Network down"
+renderUI(RemoteData.make.success({ name: "Alice" })); // "Welcome, Alice!"
+```
+
+### Managing request lifecycles, retries, and timeouts
 
 Handling robust network interactions — including retry attempts, backoff timing, timeouts, and
 signal-driven cancellation — typically requires complex, stateful code that is highly prone to
@@ -236,13 +320,11 @@ if (Op.isOk(outcome)) {
 fetchUser.abort();
 ```
 
-## Example: repeated UI interactions
+### Repeated UI interactions and concurrency strategies
 
 User interfaces frequently trigger repeated asynchronous events: a search input firing on every
-keystroke, a submit button clicked multiple times, or a polling loop that must terminate when a
-newer request starts. Managing these concurrency scenarios traditionally requires complex, ad-hoc
-state machines. `Op` simplifies this by allowing developers to declare the concurrency strategy as a
-simple configuration choice:
+keystroke, a submit button clicked multiple times, or background draft auto-saving. `Op` lets you
+declare the concurrency strategy as a clean configuration choice:
 
 **Search — cancel the previous call when the user types:**
 
@@ -259,7 +341,7 @@ const searchOp = Op.create(
 );
 
 const search = Op.interpret(searchOp, {
-  strategy: "restartable", // new call cancels the previous one
+  strategy: "restartable", // new call cancels the previous in-flight request
   retry: { attempts: 2, backoff: Duration.milliseconds(300) },
 });
 
@@ -273,7 +355,7 @@ search.subscribe((state) => {
 input.addEventListener("input", (e) => search.run(e.currentTarget.value));
 ```
 
-**Form submit — drop concurrent submissions:**
+**Form submit — drop concurrent duplicate submissions:**
 
 ```ts
 const submitOp = Op.create(
@@ -301,14 +383,13 @@ form.addEventListener("submit", (e) => {
 ```
 
 The system supports a variety of built-in strategies — `restartable`, `exclusive`, `debounced`,
-`throttled`, `queue`, `buffered`, `concurrent`, `keyed`, and `once` — making the integration of
-complex async scenarios highly predictable.
+`throttled`, `queue`, `buffered`, `concurrent`, `keyed`, and `once`.
 
-## Example: typed event streaming and sequence reduction
+### Event streaming, sequence funnels, and queue safety
 
 Decoupling event producers from stateful event consumers often leads to untyped event emitters or
-complex ad-hoc state machines. `Stream` models event pipelines with typed message schemas, sequence
-pattern matching, and state reduction:
+recursive call stack crashes during event cascades. `Stream` models in-memory event pipelines with
+typed message schemas, multi-step sequence pattern matching, and causal FIFO queue dispatching:
 
 ```ts
 import { Stream } from "@nlozgachev/pipelined/core";
@@ -317,15 +398,16 @@ type UserFlowMessages = {
   sessionStarted: { sessionId: string };
   stepCompleted: { stepName: string };
   flowFinished: { totalTimeMs: number };
+  flowCancelled: { reason: string };
 };
 
 const flowStream = Stream.make<UserFlowMessages>();
 
-// Match sequence: sessionStarted -> stepCompleted -> flowFinished
+// Pattern-match the complete multi-step funnel
 const sub = Stream.listen(
   flowStream,
   ["sessionStarted", "stepCompleted", "flowFinished"],
-  { ordered: true },
+  { ordered: true, reset: "flowCancelled" },
 ).reduce(
   (msg, state) => {
     if (msg.kind === "flowFinished") {
@@ -355,62 +437,135 @@ Stream.emit(flowStream, {
 sub.getState(); // { completedFlows: 1 }
 ```
 
-## What is included
+`Stream` executes cascading events iteratively using an internal queue with $O(1)$ stack overhead,
+completely preventing stack overflow crashes and out-of-order re-entrant execution.
 
-The library covers the full spectrum of state and control flow scenarios encountered in production
-applications.
+### Deep immutable updates without spread boilerplate
 
-### Core context containers
+Modifying deeply nested properties in state trees normally requires tedious spread syntax. `Lens`
+and `Optional` turn nested paths into first-class values:
 
-`Maybe` represents explicit optionality without null checks. `Result` handles synchronous, typed
-success and failure, while `Validation` accumulates multiple errors. `RemoteData` tracks the four
-states of an asynchronous data fetch (`NotAsked`, `Loading`, `Failure`, `Success`), `These` handles
-inclusive-OR scenarios containing a first value, a second, or both simultaneously, and `Tuple`
-provides a strongly-typed, immutable two-element pair.
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Lens } from "@nlozgachev/pipelined/core";
 
-### Asynchronous operations
+type Address = { city: string; zip: string };
+type User = { name: string; address: Address };
 
-`Task` represents a lazy, infallible asynchronous computation. Fallible asynchronous workflows are
-handled by `Task.Result`, `Task.Maybe`, and `Task.Validation`. For managing stateful, recurring
-asynchronous operations with complex scheduling, `Op` implements named concurrency strategies such
-as `restartable`, `exclusive`, `debounced`, `throttled`, and `queue`, handling retries, timeouts,
-and signal propagation automatically. `Stream` provides typed event streaming, sequence pattern
-matching, state reduction, and structural forwarding across channels. `Deferred` represents a
-lightweight, infallible asynchronous value that is guaranteed to always resolve without rejection.
+const user: User = {
+  name: "Alice",
+  address: { city: "Berlin", zip: "10115" },
+};
 
-### Optics and environment state
+const addressLens = Lens.from.property<User>()("address");
+const cityLens = Lens.from.property<Address>()("city");
+const userCityLens = pipe(addressLens, Lens.andThen(cityLens));
 
-`Lens` and `Optional` provide a simple concrete interface for safe, nested immutable data updates.
-Environment-dependent calculations and explicit state threading are supported by the `Reader` and
-`State` abstractions, while `Logged` enables side-effect-free data logging, and `Lazy` implements
-synchronous memoized thunks.
+// Immutably modify deep property in one line
+const updatedUser = pipe(
+  user,
+  Lens.modify(userCityLens)((c) => c.toUpperCase()),
+);
 
-### Algebraic and logic abstractions
+updatedUser.address.city; // "BERLIN"
+```
 
-For general type-safe comparisons and algebraic operations, the library includes `Equality` for
-composable object and primitive comparisons, `Ordering` for sorting comparators, and `Combinable`
-for structural monoids (allowing folding collections with a neutral starting point). Composable
-boolean checks and type guards are supported by `Predicate` and `Refinement` abstractions.
+### Nominal type safety and security boundaries
 
-### Optimized utilities
+TypeScript's structural typing allows accidental parameter swapping (such as passing an `OrderId`
+into a `UserId` slot). `Brand` creates nominal types with smart constructor validation gates at zero
+runtime cost:
 
-Custom, performance-optimized utility modules (`Arr`, `Rec`, `Dict`, `Uniq`, `Num`, `Str`) wrap
-standard JavaScript types to return explicit types like `Maybe` and support data-last currying.
-Functions are composed using `pipe` and `flow`, which are enriched with high-level composition
-helpers like `when`, `unless`, `either`, `safe`, and `async` to support robust, expressive
-pipelines.
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Result } from "@nlozgachev/pipelined/core";
+import { Brand } from "@nlozgachev/pipelined/types";
 
-### Nominal branding, durations, and non-empty collections
+type UserId = Brand<"UserId", string>;
+type OrderId = Brand<"OrderId", string>;
+type Email = Brand<"Email", string>;
 
-Compile-time nominal typing with zero runtime overhead is provided by `Brand`. `Duration` safely
-models and converts time durations (seconds, milliseconds, etc.). `Arr.NonEmpty` and `Rec.NonEmpty`
-guarantee that an array or record is never empty, eliminating defensive length/emptiness checks at
-runtime.
+const parseEmail = (raw: string): Result<string, Email> =>
+  raw.includes("@")
+    ? Result.make.ok(raw as Email)
+    : Result.make.err("Invalid email address");
+
+const sendReceipt = (userId: UserId, orderId: OrderId, email: Email) =>
+  `Sent to ${email} for order ${orderId} by user ${userId}`;
+
+const user = "usr_100" as UserId;
+const order = "ord_500" as OrderId;
+const email = parseEmail("alice@example.com");
+
+if (Result.is.ok(email)) {
+  sendReceipt(user, order, email.value);
+  // Type checker prevents: sendReceipt(order, user, email.value)
+}
+```
+
+---
+
+## Quick Reference
+
+| Problem to Solve                                              | Module                        | Import Path                         |
+| ------------------------------------------------------------- | ----------------------------- | ----------------------------------- |
+| Optional values without `null` / `undefined` checks           | `Maybe`                       | `@nlozgachev/pipelined/core`        |
+| Synchronous typed errors without `try`/`catch`                | `Result`                      | `@nlozgachev/pipelined/core`        |
+| Multi-field form and batch validation error accumulation      | `Validation`                  | `@nlozgachev/pipelined/core`        |
+| Lazy async workflows with automatic `AbortSignal`             | `Task.Result`, `Task`         | `@nlozgachev/pipelined/core`        |
+| Infallible async return container for tasks                   | `Deferred`                    | `@nlozgachev/pipelined/core`        |
+| Eliminating impossible UI loading/error/data states           | `RemoteData`                  | `@nlozgachev/pipelined/core`        |
+| Managing request race conditions, retries, and locks          | `Op`                          | `@nlozgachev/pipelined/core`        |
+| In-memory event streaming, sequence funnels & queue safety    | `Stream`                      | `@nlozgachev/pipelined/core`        |
+| Deep nested immutable updates without spread boilerplate      | `Lens`, `Optional`            | `@nlozgachev/pipelined/core`        |
+| Implicit dependency injection without prop drilling           | `Reader`                      | `@nlozgachev/pipelined/core`        |
+| Pure state transitions, tokenizers, and parsers               | `State`                       | `@nlozgachev/pipelined/core`        |
+| Deterministic bracket cleanup (DB pools, file locks)          | `Resource`                    | `@nlozgachev/pipelined/core`        |
+| Deferred computation memoized on first access                 | `Lazy`                        | `@nlozgachev/pipelined/core`        |
+| Pure calculation audit trails and decision logging            | `Logged`                      | `@nlozgachev/pipelined/core`        |
+| Inclusive-OR data modeling and two-way sync diffs             | `These`                       | `@nlozgachev/pipelined/core`        |
+| Deep structural equality & React component memoization        | `Equality`                    | `@nlozgachev/pipelined/core`        |
+| Multi-column table sorting with tiebreakers                   | `Ordering`                    | `@nlozgachev/pipelined/core`        |
+| Composable boolean filter pipelines & authorization policies  | `Predicate`                   | `@nlozgachev/pipelined/core`        |
+| Runtime type narrowing & custom type guard composition        | `Refinement`                  | `@nlozgachev/pipelined/core`        |
+| Merging configurations & metric structures (Monoids)          | `Combinable`                  | `@nlozgachev/pipelined/core`        |
+| Strongly-typed immutable pair manipulation                    | `Tuple`                       | `@nlozgachev/pipelined/core`        |
+| Point-free, bounds-safe array transformations                 | `Arr`, `Arr.NonEmpty`         | `@nlozgachev/pipelined/data`        |
+| Type-safe object manipulation & key migration                 | `Rec`, `Rec.NonEmpty`         | `@nlozgachev/pipelined/data`        |
+| Insertion-ordered maps with non-string keys                   | `Dict`, `Dict.NonEmpty`       | `@nlozgachev/pipelined/data`        |
+| Immutable sets & role/permission algebra                      | `Uniq`                        | `@nlozgachev/pipelined/data`        |
+| String sanitization, numeric conversion & slug parsing        | `Str`                         | `@nlozgachev/pipelined/data`        |
+| Boundary clamping & division-by-zero protection               | `Num`                         | `@nlozgachev/pipelined/data`        |
+| Financial ledger arithmetic without float precision drift     | `BigNum`                      | `@nlozgachev/pipelined/data`        |
+| Safe JSON parsing & circular reference protection             | `Json`                        | `@nlozgachev/pipelined/data`        |
+| Nominal typing & security boundary gates                      | `Brand`                       | `@nlozgachev/pipelined/types`       |
+| Explicit, unit-safe time spans & timeout policies             | `Duration`, `RetryPolicy`     | `@nlozgachev/pipelined/types`       |
+| Left-to-right value pipeline execution                        | `pipe`                        | `@nlozgachev/pipelined/composition` |
+| Left-to-right and right-to-left function composition          | `flow`, `compose`             | `@nlozgachev/pipelined/composition` |
+| Currying, uncurrying, and argument flipping                   | `curry`, `uncurry`, `flip`    | `@nlozgachev/pipelined/composition` |
+| Multi-branch argument routing and combining                   | `converge`, `juxt`, `on`      | `@nlozgachev/pipelined/composition` |
+| Pure function memoization, predicates & pipeline side-effects | `memoize`, `tap`, `not`, `fn` | `@nlozgachev/pipelined/composition` |
+
+---
+
+## Package Architecture and Performance
+
+`pipelined` is structured into 4 isolated, tree-shakeable entry points:
+
+- **`@nlozgachev/pipelined/core`**: Core context containers, async runtimes, optics, and logic
+  abstractions (<16 KB gzipped).
+- **`@nlozgachev/pipelined/data`**: Curried, data-last utilities for collections, numbers, strings,
+  and JSON (<13 KB gzipped).
+- **`@nlozgachev/pipelined/composition`**: Pure higher-order function combinators (`pipe`, `flow`,
+  `compose`, `curry`, `uncurry`, `converge`, `juxt`, `memoize`, `tap`, `on`, `not`, `flip`, `fn`)
+  (<4 KB gzipped).
+- **`@nlozgachev/pipelined/types`**: Type-level utilities (`Brand`, `Duration`, `RetryPolicy`) (<2
+  KB gzipped).
 
 Every utility in the library is benchmarked against its native equivalent. The data-last currying
-adds a small function call overhead, which is the expected cost of composability. For operations
-where native overhead is significant, custom implementations are used that often run faster than
-their native counterparts.
+adds a negligible function call overhead, which is the expected cost of composability. For
+operations where native overhead is significant, custom implementations are used that often run
+faster than their native counterparts.
 
 ## License
 
