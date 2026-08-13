@@ -242,18 +242,25 @@ setDataState(RemoteData.from.Result(result)); // Success(user) or Failure(error)
 
 ---
 
-## When to use RemoteData
+## Problems it solves
 
-### Use RemoteData when:
-
-- **You are driving a UI**: You need to render different elements for loading spinners, error
-  messages, idle states, and actual content.
-- **You value state safety**: You want the compiler to prevent invalid states, like having stale
-  data displayed while showing a contradictory error banner.
-- **You want unified state**: Juggling three or four different state flags in your components makes
-  the rendering code hard to read and trace.
-
-### Keep using simple flags when:
-
-- **The lifecycle has no idle or failed states**: For very simple local computations that are either
-  immediately present or not (use `Maybe` or plain optional chaining instead).
+- **Eliminating impossible UI states**: Managing asynchronous data in UI components with separate
+  variables (`isLoading`, `isError`, `data`, `errorMessage`) creates impossible combinations, like
+  displaying a loading spinner alongside an error banner and stale data. `RemoteData` unifies these
+  into a single four-state discriminated union (`Initial`, `Pending`, `Failure`, `Success`),
+  guaranteeing impossible states cannot be represented.
+- **Exhaustive view branch rendering**: Interactive components in frontend frameworks require
+  distinct presentations for idle states, loading skeletons, error recovery cards, and populated
+  content. `RemoteData.match` and `RemoteData.fold` enforce exhaustive handling of each lifecycle
+  stage at compile time, eliminating blank screens caused by unhandled loading or error conditions.
+- **Coordinating multi-resource dashboard widgets**: When a dashboard widget depends on multiple
+  asynchronous queries (such as user permissions, account metrics, and activity logs),
+  `RemoteData.struct` and `RemoteData.all` merge their lifecycles cleanly, ensuring data views
+  render only when every dependency succeeds.
+- **Transforming loaded state without flickering (`RemoteData.map`)**: In client state stores,
+  formatting or filtering already-loaded records (e.g. applying a local text filter to a fetched
+  product catalog) should not reset the UI to a loading state. `RemoteData.map` applies
+  transformations purely to the `Success` payload while leaving other lifecycle states intact.
+- **Seamless integration with asynchronous results (`from.Result`)**: Bridging async API endpoints
+  into UI component state via `RemoteData.from.Result` converts raw network outcomes into rendering
+  states in a single line, eliminating boilerplate dispatch routines.

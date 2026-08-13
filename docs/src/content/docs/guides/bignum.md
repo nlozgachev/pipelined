@@ -48,15 +48,20 @@ const total = pipe(
 
 ---
 
-## When to use BigNum
+## Problems it solves
 
-### Use BigNum when:
-
-- **Parsing unvalidated inputs**: Reading large integer IDs, currency values in cents, or
-  cryptographic hashes from user input or HTTP parameters without risk of thrown exceptions.
-- **Performing pipelines over BigInts**: Chaining math operations with `pipe` using data-last
-  combinators (`add`, `sub`, `mul`, `div`, `mod`, `clamp`, `inRange`).
-
-### Use Num when:
-
-- Standard 64-bit floating point numbers (`number`) are sufficient for your domain calculation.
+- **Financial ledger arithmetic without precision drift**: In billing systems, crypto ledgers, and
+  ecommerce platforms, calculating money using standard floating-point numbers produces subtle
+  rounding errors. `BigNum` provides exact integer arithmetic for cents, basis points, and wei using
+  `bigint`.
+- **Crypto token and subunit scaling without float loss**: Scaling crypto tokens (such as converting
+  between Ether and 18-decimal-place Wei, or Bitcoin and Satoshis) exceeds JavaScript's
+  `Number.MAX_SAFE_INTEGER` (which caps at ~9 quadrillion). `BigNum` handles arbitrarily large
+  integers with mathematical precision.
+- **Safe parsing of 64-bit database identifiers and snowflake IDs**: Calling `BigInt()` on untrusted
+  query strings or JSON tokens throws runtime exceptions on invalid characters. `BigNum.from.string`
+  returns `Maybe<bigint>`, safely handling unvalidated input at API boundaries without try/catch
+  blocks.
+- **Pipelined BigInt transformations and boundary clamping**: Chaining mathematical adjustments
+  (such as calculating fee tiers, applying percentage splits, and clamping transaction minimums)
+  inside `pipe` using curried, data-last combinators (`BigNum.add`, `BigNum.mul`, `BigNum.clamp`).

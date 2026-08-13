@@ -88,18 +88,22 @@ original `Deferred`.
 
 ---
 
-## When to use Deferred
+## Problems it solves
 
-### Use Deferred when:
-
-- **The async work cannot fail**: You want the function signature to explicitly document that a task
-  is infallible, preventing callers from writing dead error-handling branches.
-- **You want to restrict chaining**: You want to pass an async value to a consumer and structurally
-  prevent them from attaching `.catch()` or `.then()` chains.
-
-### Keep using standard Promises when:
-
-- **The task can genuinely fail**: The operation could time out or lose connection, and you want to
-  let the Promise reject or model it using a `Result` type.
-- **You require chaining**: You need to chain multiple `.then()` or `.finally()` blocks directly on
-  the async handle.
+- **Infallible return container for `Task` and `Op.run()`**: When executing a lazy `Task<A>` or
+  running an `Op` invocation, the operation handles errors internally and is guaranteed never to
+  reject. Returning `Promise<A>` misleadingly implies that rejection is possible, forcing callers to
+  write redundant error handlers or silence linter warnings. `Deferred` provides an awaitable handle
+  that communicates certainty at the type level.
+- **Eliminating uncaught rejection crashes**: Standard Promises allow rejections to bubble up if
+  `.catch()` is omitted, risking uncaught promise rejection crashes in Node.js processes or
+  unhandled window errors in browsers. Because `Deferred` structurally excludes `.catch()` and
+  rejection handlers by construction, operations returning `Deferred` cannot produce unhandled
+  rejections.
+- **Preventing arbitrary promise chaining and mutation**: Passing raw promises across library or
+  plugin boundaries allows consumers to attach arbitrary `.then()` chains or mutate execution order.
+  `Deferred` wraps async values into a nominal, read-only container that supports direct awaiting
+  and structured coordination (`Deferred.all`, `Deferred.race`) without uncontrolled chaining.
+- **Safe Promise bridge conversions (`from.Promise`, `to.Promise`)**: Interfacing with external
+  libraries that require native Promises while ensuring error recovery and fallbacks are handled
+  upfront at the conversion boundary.

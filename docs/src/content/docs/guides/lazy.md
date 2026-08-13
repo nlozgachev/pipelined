@@ -108,20 +108,17 @@ Lazy.evaluate(priceCatalog); // returns cached value instantly — no console.lo
 
 ---
 
-## When to use Lazy
+## Problems it solves
 
-### Use Lazy when:
-
-- **The operation is expensive and optional**: You have a synchronous calculation (like reading
-  schema specs or parsing configs) that is only required in specific execution branches.
-- **You require single-run memoization**: You want a computation to run at most once per request or
-  application lifecycle, caching the outcome for all subsequent steps.
-
-### Keep using other types when:
-
-- **The task is asynchronous**: Never use `Lazy` for network or database tasks — use `Task` instead.
-- **The side effect must repeat**: If an operation needs to execute a side effect on every single
-  call (such as returning a fresh timestamp or generating a new random index), use a standard
-  function thunk `() => A`.
-- **The value is always required immediately**: If a value is guaranteed to be consumed instantly at
-  startup, evaluate it directly rather than wrapping it in the lazy container.
+- **Deferring expensive startup computations**: Compiling large regular expression suites, parsing
+  extensive localization dictionaries, or validating JSON schemas at application startup degrades
+  boot performance. `Lazy` postpones execution until a code path explicitly calls for the value,
+  skipping the work entirely if that branch is not reached.
+- **Request-scoped derivation memoization**: Within an HTTP request handler or calculation pipeline,
+  multiple helper functions may require the same derived data (such as a decoded auth token payload,
+  a compiled discount table, or a permission matrix). `Lazy` computes the value on the first access
+  and caches the outcome for all subsequent steps within the request lifecycle.
+- **Safe deferred dependency pipelines**: In modular services, constructing values that depend on
+  other computed settings can trigger eager initialization ordering issues. `Lazy` allows
+  transformation pipelines to be assembled point-free and evaluated only when downstream consumers
+  require them.

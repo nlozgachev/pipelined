@@ -159,16 +159,10 @@ const totalLength = pipe(
 ); // 16
 ```
 
-## When to use Uniq vs Standard Set
+## Problems it solves
 
-### Use Uniq when
-
-- You are writing functional pipelines using `pipe` and need data-last, curried operations.
-- You want to guarantee immutability across your application layers, ensuring that functions cannot accidentally modify collections passed to them.
-- You require fast, pure set operations like `union`, `intersection`, or `difference` without managing temporary variables or copying sets.
-- You benefit from reference-equality optimizations (where unchanged operations return the exact same object reference).
-
-### Use Standard Set when
-
-- You are writing highly critical, mutable, performance-sensitive loops where the overhead of allocating new object references must be avoided.
-- You are interfacing with third-party libraries that expect a mutable `Set` and actively mutate it.
+- **Managing unique collections in immutable state trees**: In React, Vue, or Zustand state models, mutating native `Set` objects in place bypasses change detection and causes UI rendering bugs. `Uniq` enforces structural immutability, returning fresh references on updates while reusing existing references when operations produce no changes.
+- **Permission algebra and role reconciliation**: In role-based access control (RBAC), applications frequently need to compute missing permissions (`Uniq.difference`), combine group privileges (`Uniq.union`), or find overlapping scopes (`Uniq.intersection`). `Uniq` provides pure, point-free set algebra operations.
+- **Entitlement and prerequisite checks (`Uniq.subset`)**: Verifying that a user's permission set covers all required scopes for an API endpoint or that a cart's tags meet promotional prerequisites in a single declarative comparison.
+- **Deduplicating tag lists and selected filters**: In search filter components and tag editors, adding, toggling, or removing selected items inside `pipe` pipelines without managing temporary arrays or mutable set instances.
+- **Point-free set mapping and aggregation**: Transforming or filtering unique collections (such as mapping user IDs to names while maintaining uniqueness) with `Uniq.map`, `Uniq.filter`, and `Uniq.reduce`.

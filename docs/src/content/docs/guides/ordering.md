@@ -173,17 +173,19 @@ const sortedUsers = pipe(
 
 ---
 
-## When to use Ordering
+## Problems it solves
 
-### Use Ordering when:
-
-- **Sorting by multiple criteria**: You want to chain multiple sort keys and tiebreakers point-free.
-- **Executing immutable sorts**: You are sorting arrays inside reactive pipelines where mutating the
-  original source would trigger unintended rendering bugs.
-- **Adapting nested properties**: You want to reuse core primitive comparators across complex object
-  shapes using `by`.
-
-### Keep using standard arrow inline functions when:
-
-- **Executing a single, local sort**: You are sorting a primitive array (like numbers) within a
-  narrow, one-off synchronous scope where structural composition is unnecessary.
+- **Multi-column table sorting with tiebreakers**: In data grids and table views, users frequently
+  sort records by multiple criteria (such as status first, then created date descending, then name
+  ascending). Writing chained ternary comparator callbacks manually is error-prone. `Ordering.by`
+  and `Ordering.then` combine atomic sorting rules into readable tiebreaker pipelines.
+- **Preventing in-place array mutation**: Native `Array.prototype.sort()` mutates the source array
+  in place, causing race conditions and UI state bugs in reactive stores. Pairing `Ordering`
+  comparators with `Arr.sortWith` produces a new sorted array while preserving the original dataset
+  immutably.
+- **Custom priority hierarchies and status rankings**: Sorting domain entities by non-alphabetical
+  business rules (such as `urgent` > `high` > `medium` > `low`) with composable custom comparators.
+- **Reusable and reversible comparator definitions**: Instead of redefining inline sorting callbacks
+  across different endpoints and components, `Ordering` allows domain comparators (such as
+  chronological order or priority rankings) to be named, shared, and reversed via
+  `Ordering.reverse`.

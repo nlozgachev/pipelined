@@ -149,20 +149,19 @@ const pollingTask = pipe(
 );
 ```
 
-## When to use Duration
+## Problems it solves
 
-### Use Duration when
-
-- You are writing or configuring time-based logic — such as debounces, throttling, retry backoffs,
-  connection timeouts, or cache TTL policies.
-- You want to eliminate ambiguous time parameters (e.g. `timeout: number`) from your internal APIs
-  and prevent caller-side unit errors.
-- You are using core `pipelined` time utilities like `Task.delay`, `Task.timeout`, or `Op`
-  schedules, which enforce `Duration` at the compiler level.
-
-### Use raw numbers when
-
-- You are writing low-level utility functions that interface directly with raw, un-branded system
-  timestamps (such as `Date.now()`).
-- You are optimizing performance-critical rendering frames or real-time simulation loops where the
-  instantiation of intermediate branded types would introduce garbage collection overhead.
+- **Eliminating time unit ambiguity in configurations**: When configuring HTTP timeouts, debounce
+  intervals, cache TTLs, or retry backoffs, accepting raw numbers forces developers to guess whether
+  the function expects seconds or milliseconds. Passing `5` instead of `5000` leads to premature
+  timeout failures in production. `Duration` makes time units explicit (`Duration.seconds(5)`,
+  `Duration.minutes(10)`).
+- **Safe duration arithmetic and rate-limit comparisons**: Calculating total timeout budgets, adding
+  exponential backoff delays with jitter, or comparing elapsed spans using raw numbers risks mixing
+  millisecond and second units. `Duration` provides unit-safe arithmetic (`Duration.add`,
+  `Duration.times`) and comparisons.
+- **Cache TTL and session expiry policies**: Calculating cache eviction deadlines or token validity
+  spans in security middlewares without manual millisecond multiplier math (`Duration.hours(2)`).
+- **Unified time modeling across async utilities**: Core asynchronous combinators (such as
+  `Task.timeout`, `Task.delay`, and `Op` repeat schedules) enforce `Duration` at the type level,
+  establishing a single consistent time model across the entire application.

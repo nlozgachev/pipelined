@@ -205,17 +205,16 @@ All logs produced at each key-binding step are automatically concatenated in seq
 
 ---
 
-## When to use Logged
+## Problems it solves
 
-### Use Logged when:
-
-- **The log is an essential output**: You are building rules engines, payload validators, or data
-  migrators where the audit trail or warnings log must be returned to the caller or database.
-- **You require pure, testable traces**: You want to assert on log traces programmatically in unit
-  tests without setting up global console mocks or capturing standard output.
-
-### Keep using standard logging libraries when:
-
-- **Logs are purely for development diagnostics**: You are writing generic debugging logs that only
-  humans will read in development, and the trace has no first-class programmatic value in
-  production.
+- **Auditable calculation engines**: In tax estimation, pricing engines, and compliance evaluations,
+  business logic must output both a calculated result and an explicit audit trail explaining how
+  each step was determined. `Logged` pairs the computed value with an accumulated log array purely,
+  without relying on side-effecting global loggers.
+- **Data migration and non-fatal warning accumulation**: When importing legacy datasets or
+  sanitizing user inputs, entries often contain non-fatal warnings (such as deprecated formats or
+  fallback defaults applied) that must be surfaced alongside transformed data. `Logged` preserves
+  these diagnostic records across pipeline steps.
+- **Deterministic, mock-free log testing**: Asserting that a workflow logged specific decisions
+  normally requires intercepting stdout or mocking logger instances. `Logged` treats logs as
+  first-class returned data, allowing unit tests to assert directly on trace arrays.

@@ -121,19 +121,19 @@ const totalScores = pipe(
 
 ---
 
-## When to use Combinable
+## Problems it solves
 
-### Use Combinable when:
-
-- **Aggregating homogeneous collections**: Summing a list of numbers, appending string blocks,
-  merging record overlays, or folding a list of optional values.
-- **Creating reusable folder functions**: You want to name and reuse an aggregation rule point-free
-  across multiple list reductions rather than writing manual `Array.prototype.reduce` callbacks at
-  each call site.
-
-### Keep using Array.reduce directly when:
-
-- **Folding heterogeneous values**: You are reducing values of one type `A` to yield a completely
-  different type `B` (e.g. converting a list of raw strings into a structured lookup map). In this
-  case, `Combinable` is structurally incompatible — use standard `Array.prototype.reduce` or
-  specialized dict builders instead.
+- **Aggregating distributed telemetry and metric reports**: In telemetry and reporting services,
+  merging multiple event payloads (such as summing total request counts, combining latency tallies,
+  and aggregating error counts) often requires repetitive reducer loops. `Combinable.struct`
+  combines complex metric records automatically based on field-level rules.
+- **Hierarchical configuration merging**: In applications loading layered configurations (such as
+  default settings overlaid with environment variables and tenant-specific overrides),
+  `Combinable.record` merges configuration layers cleanly while preserving immutability.
+- **Aggregating sparse or optional metrics (`Combinable.maybe`)**: Folding streams of optional data
+  (such as user ratings or partial session durations) where missing values (`None`) are safely
+  ignored while valid numbers are accumulated.
+- **Reusable collection reduction strategies**: Instead of re-writing `Array.prototype.reduce`
+  callbacks with manual initial values across multiple call sites, `Combinable` provides named,
+  reusable aggregation strategies (`Combinable.sum`, `Combinable.concat`, `Combinable.maybe`) for
+  point-free list folding.

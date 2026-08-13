@@ -176,21 +176,21 @@ closed.
 
 ---
 
-## When to use Resource
+## Problems it solves
 
-### Use Resource when:
-
-- **Managing active assets**: Opening and closing file descriptors, network sockets, or database
-  pools.
-- **Acquiring locks**: Coordinating concurrency where a critical section must acquire and release a
-  mutex.
-- **Tying lifetimes**: Starting and stopping background worker threads or child processes associated
-  with a request's lifetime.
-- **Composing cleanups**: You want the assurance that multiple async resources are safely torn down
-  in reverse order without writing nested, complex error-handling blocks.
-
-### Keep using try/finally when:
-
-- **The scope is strictly local and synchronous**: Inside a simple, short function where a
-  synchronous resource is opened and immediately closed on the next line, and never leaves the
-  function body.
+- **Database transaction and connection lifecycle safety**: Acquiring database connections and
+  running transactional mutations requires strict cleanup: committing on success and rolling back on
+  failure. `Resource` guarantees that release callbacks always execute, preventing orphaned
+  connections or locked tables even when errors occur during execution.
+- **Temporary files, socket descriptors, and child processes**: Batch workers and CLI tools often
+  create scratch directories, open streaming file descriptors, or spawn background child processes.
+  `Resource.make` binds allocation with automated cleanup, ensuring external OS assets are disposed
+  of as soon as execution leaves scope.
+- **Distributed mutex locks and lease coordination**: In concurrent worker clusters where jobs
+  require exclusive access to shared resources, acquiring a distributed lock (e.g. via Redis) must
+  be paired with guaranteed lock release upon completion or unexpected failure. `Resource`
+  encapsulates lease acquisition and release into a clean, safe bracket.
+- **Composing interdependent resources in reverse teardown order**: When a workflow requires
+  acquiring resource A (a connection pool), resource B (a distributed lock), and resource C (a
+  temporary staging file), teardown must occur in exact reverse order (C, then B, then A).
+  `Resource` manages nested resource composition and enforces reverse-order cleanup automatically.

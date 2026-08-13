@@ -217,13 +217,21 @@ const sslCertOptional = pipe(
 );
 ```
 
-## When to use Optional vs Lens
+## Problems it solves
 
-Use the following reference to select the correct tool for your data path:
-
-| Situation                                                            | Tool                                        |
-| :------------------------------------------------------------------- | :------------------------------------------ |
-| The target property is required and always present                   | `Lens.from.property`                        |
-| The target property is declared as optional (`key?: T`)              | `Optional.from.property`                    |
-| The target is a specific element within an array (`arr[i]`)          | `Optional.index`                            |
-| The path starts with required fields and ends with an optional field | `Lens.andThenOptional` or `Lens.toOptional` |
+- **Updating optional nested properties safely**: In user preference trees and optional
+  configuration blocks (such as `user?.preferences?.notifications?.emailDigest`), modifying an
+  optional leaf requires multiple existence checks to avoid modifying non-existent objects.
+  `Optional` safely retrieves values as `Maybe` and immutably modifies target fields only when the
+  path is present.
+- **Conditional modifications without creating phantom fields (`Optional.modify`)**: Applying
+  updates (such as trimming an optional nickname or incrementing an optional retry count) should
+  only take place if the field already exists. `Optional.modify` applies functions to existing
+  targets without creating unwanted default properties.
+- **Modifying specific items in nested array state**: Updating an element at an index inside an
+  array nested inside state (such as `cart.items[index].quantity`) requires cloning the array,
+  checking bounds, and spreading parent objects. `Optional.index` allows direct, boundary-safe
+  updates to indexed collection elements.
+- **Composing guaranteed and optional paths**: Real-world domain models mix required structural
+  wrappers with optional fields. `Optional` connects guaranteed paths (`Lens`) with optional leaves
+  (`Optional`), providing a unified, type-safe pipeline for deep reads and writes.

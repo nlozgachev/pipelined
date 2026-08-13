@@ -180,13 +180,9 @@ const validateEmailInput = (raw: string): Result<string, EmailString> =>
 
 ---
 
-## When to use Refinement
+## Problems it solves
 
-### Use Refinement when:
-*   **Modeling Domain Invariants**: You want to represent clean guarantees (e.g. non-empty string, valid formatted input, positive number) as named, composable types.
-*   **Combining guards**: You have multiple distinct checks and want to combine them point-free (`and`, `or`, `compose`) without writing manual function boilerplate.
-*   **Integrating with Pipelines**: You want to feed assertions directly into `Maybe` or `Result` flows using `toFilter` or `toResult`.
-
-### Keep using Predicates or standard guards when:
-*   **Type narrowing is not needed**: If you are combining basic filters (like checking if a number is greater than 10) and do not need the type system to carry a specialized nominal brand downstream, use `Predicate<A>` instead.
-*   **The check is strictly local**: If you are performing a simple one-off check (e.g. `typeof x === "string"`) in a single conditional statement that will never be composed or passed around, standard TypeScript guards are simpler and add zero overhead.
+- **Narrowing unvalidated inputs at API boundaries**: Inbound HTTP payloads, environment variables, and route parameters arrive as `unknown` or raw strings. `Refinement` encapsulates TypeScript custom type guards (`x is T`) into first-class functions that statically narrow types while verifying data at runtime.
+- **Composing multi-step narrowing rules**: Combining multiple structural type checks (such as verifying a payload is a non-null object, that a specific property exists, and that the property matches a branded type) often requires verbose nested guard functions. `Refinement.and` and `Refinement.compose` chain type-narrowing rules point-free.
+- **Lightweight runtime schema validation**: Validating parsed JSON tokens, localStorage entries, or WebSocket frames without bundling heavy schema libraries, maintaining full TypeScript type narrowing with zero external overhead.
+- **Bridging runtime checks into `Maybe` and `Result` pipelines**: Transforming raw input into narrowed domain types inside pipelines using `Refinement.to.Maybe` or `Refinement.to.Result`, safely converting unverified data into typed values with explicit error messages on failure.

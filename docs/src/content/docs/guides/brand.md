@@ -132,20 +132,23 @@ function sendInvoice(email: Email) {
 
 ---
 
-## When to use Brand
+## Problems it solves
 
-### Use Brand when:
-
-- **Preventing identifier mixing**: You want to distinguish between `UserId`, `OrderId`, and
-  `ProductId` to prevent query mismatches.
-- **Enforcing validation invariants**: You want to lock down validated domains like `Email`, `Slug`,
-  or `SecureHtml` using smart constructors.
-- **Distinguishing metrics**: You want to prevent arithmetic errors by separating units like
-  `Seconds`, `Meters`, or `Kilograms`.
-
-### Keep using raw types when:
-
-- **Structural compatibility is desired**: You are modeling objects where structural compatibility
-  is the intended architectural behavior.
-- **Working with complex structures**: You are wrapping rich object models that already carry
-  sufficient type distinction through their interface structures.
+- **Preventing accidental identifier swapping**: In database queries and service calls, functions
+  often accept multiple string IDs (such as `senderId`, `recipientId`, and `organizationId`).
+  Because standard TypeScript uses structural typing, swapping these arguments goes unnoticed by the
+  compiler. `Brand` creates distinct nominal types (like `UserId` and `AccountId`) that catch
+  parameter mismatches at compile time with zero runtime overhead.
+- **Enforcing validation boundaries with smart constructors**: Functions that accept emails, slugs,
+  or formatted telephone numbers often repeat regex checks defensively or assume incoming strings
+  are valid. `Brand` pairs nominal types with smart constructors, ensuring that once a string passes
+  validation at the API edge, downstream business logic can rely on that invariant without
+  re-validating.
+- **Security-critical input sanitization**: Distinguishing sanitized, safe HTML (`SanitizedHtml`) or
+  safe SQL fragments from raw user-submitted text prevents XSS and injection vulnerabilities by
+  enforcing at compile time that raw strings cannot be passed directly into dangerous rendering or
+  query APIs.
+- **Eliminating unit and currency mixups**: In calculations involving units (such as `Milliseconds`
+  vs `Seconds`, or `UsdCents` vs `EurCents`), raw numbers allow arithmetic across incompatible
+  units. `Brand` attaches compile-time units to primitives, preventing mathematical bugs across
+  domain layers.

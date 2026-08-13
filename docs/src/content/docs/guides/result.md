@@ -415,24 +415,27 @@ const failed = Result.struct({
 
 ---
 
-## When to use Result vs try/catch
+## Problems it solves
 
-The choice between typed results and runtime exceptions is a structural architectural decision.
-
-### Use Result when:
-
-- **The failure is expected**: Validating input, parsing configurations, or lookup misses are
-  typical domain events, not structural system failures.
-- **The error type matters**: You want callers of a module to immediately know what can go wrong and
-  be forced by the compiler to handle it.
-- **You value composition**: You are building linear chains of operations using `pipe` where
-  failures should propagate naturally.
-
-### Keep using try/catch when:
-
-- **The error is catastrophic**: Database connection dropouts, out-of-memory errors, or system
-  initialization failures represent unrecoverable states where the process should log and exit
-  immediately.
-- **The boundary expects it**: When interfacing with external codebases, framework routers, or
-  third-party libraries that rely on throwing exceptions. Convert exceptions to `Result` immediately
-  at these boundaries.
+- **Domain service error modeling**: In workflows such as user authentication, checkout processing,
+  or inventory allocation, business failures (like expired sessions, insufficient balance, or
+  duplicate registrations) are expected application outcomes. `Result` models every failure as an
+  explicit, typed data variant, requiring callers to handle specific failure modes without relying
+  on untyped `catch` blocks.
+- **Untyped exception containment at system boundaries**: Third-party packages, system calls, and
+  external parsers often throw untyped runtime exceptions that bubble up unexpectedly. Wrapping
+  these boundaries with `Result.tryCatch` captures runtime exceptions immediately, converting them
+  into typed, inspectable values before they enter application logic.
+- **Sequential fallible pipelines**: Coordinating a sequence of operations—such as reading
+  configuration text, parsing JSON, validating schema constraints, and generating
+  credentials—requires each step to succeed before running the next. `Result` composes these steps
+  linearly via `pipe` and `Result.chain`, short-circuiting automatically on the first failure while
+  preserving type safety across all intermediate values.
+- **Error normalization across subsystem boundaries (`Result.mapError`)**: In complex features that
+  touch the network, database drivers, and disk storage, each subsystem produces distinct error
+  types. `Result.mapError` translates low-level transport errors into a cohesive domain error union
+  at the boundary, ensuring internal business logic deals only with relevant application errors.
+- **Combining multiple fallible steps (`Result.struct`)**: When bootstrapping a service that
+  requires multiple independent config entries (such as database port, API key, and host URL),
+  `Result.struct` combines individual `Result` values into a verified configuration record,
+  succeeding only if all keys resolve and short-circuiting on the first bad value.

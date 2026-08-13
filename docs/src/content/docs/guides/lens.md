@@ -210,23 +210,23 @@ const themeOptional = pipe(
 
 See the [Optional guide](/guides/optional) for details on navigating optional paths.
 
-## When to use Lens vs Standard JavaScript
+## Problems it solves
 
-### Use Lens when
-
-- You work with deeply nested data structures that must be updated immutably (e.g., in React state,
-  Redux stores, or pure domain services).
-- You want to reuse specific data paths across different parts of your application (such as reading
-  and writing to the same config path in validation, parsing, and UI forms).
-- You want to eliminate boilerplate spread syntax (`...`) and make deep updates highly readable and
-  refactor-safe.
-- You want to compose complex paths dynamically out of smaller, well-tested path segments.
-
-### Use Standard JavaScript when
-
-- Your data structures are completely flat or only one level deep; plain object spreads
-  (`{ ...obj, key: value }`) are simple and carry no extra abstraction overhead.
-- You are working in a performance-critical loop where the allocation of intermediate functions and
-  setter closures would introduce unwanted CPU or garbage collection overhead.
-- You are working in an codebase where mutation is the accepted paradigm and side effects are
-  managed through other boundaries.
+- **Deep immutable updates without spread boilerplate**: In React, Redux, or Zustand state trees,
+  modifying nested properties three or four levels deep requires multiple levels of spread operators
+  (`{ ...state, user: { ...state.user, settings: { ... } } }`). `Lens` encapsulates bidirectional
+  get/set operations, enabling single-line immutable updates at any depth.
+- **Decoupling child UI components with sub-model focusing**: Passing an entire global state tree to
+  a child form component couples it to the root schema. Passing a focused `Lens<State, Address>`
+  allows the child component to read and update only its specific sub-model while remaining
+  completely agnostic of the parent container structure.
+- **Atomic property modifications (`Lens.modify`)**: Applying pure transformation functions directly
+  to nested fields (such as incrementing counters, trimming strings, or appending items to nested
+  lists) via `Lens.modify` without extracting the value first.
+- **Reusable bidirectional property bindings in forms**: In form controllers and settings editors,
+  field components need to both read nested values for rendering and immutably write back user
+  inputs on change. `Lens` turns nested data paths into first-class values that can be passed
+  directly to form inputs, validation routines, and persistence layers.
+- **Composable data path navigation**: Individual lenses targeting sub-models can be combined using
+  `Lens.andThen`, allowing complex domain access paths to be assembled dynamically from small,
+  modular path definitions.

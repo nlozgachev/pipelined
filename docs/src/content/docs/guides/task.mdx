@@ -470,12 +470,10 @@ const profilePromise = Deferred.to.Promise(fetchProfile("123")()); // Promise<Re
 
 ---
 
-## When to use Task vs async/await
+## Problems it solves
 
-### Use Task when:
-*   **You need composition**: You want to define, combine, or delay asynchronous steps point-free inside `pipe` chains before triggering execution.
-*   **You need concurrency controls**: You require parallel, raced, or ordered sequential queues (`Task.all`, `Task.race`, `Task.sequential`).
-*   **You want typed errors**: You want compiler-enforced error handling via `Task.Result` rather than catching untyped exceptions in standard `async/await` blocks.
-
-### Keep using async/await when:
-*   **Operations are standalone**: Simple, linear scripts or internal functions where functional composition and pipelining add zero architectural value.
+- **Composing lazy asynchronous workflows**: In background workers and server endpoints, asynchronous pipelines often involve multiple sequential steps (such as acquiring auth tokens, querying profile data, fetching permission lists, and writing audit records). Native promises execute eagerly upon creation. `Task` encapsulates asynchronous operations as lazy descriptions, enabling modular pipeline composition and transformation before initiating network or I/O work.
+- **Coordinated concurrency and fallback racing**: When aggregating data across distributed backends or caching layers, applications need fine-grained concurrency control. `Task` provides structured combinators like `Task.all` for parallel fan-out, `Task.race` for racing primary against fallback sources, and `Task.sequential` for queue execution, all while preserving functional purity.
+- **Compiler-enforced async error handling with `Task.Result`**: Network calls and disk I/O naturally produce domain failures. Standard `Promise.reject` discards TypeScript type information, allowing unhandled rejections to bubble up. `Task.Result` pairs lazy asynchronous execution with typed errors, ensuring the outer task always resolves safely while forcing callers to handle specific failure variants.
+- **Time-bound operations and scheduled polling (`Task.timeout`, `Task.delay`, `Task.repeat`)**: Wrapping external network calls with timeout boundaries typically involves race hackery with `setTimeout` and cleanup listeners. `Task.timeout` attaches strict duration limits returning typed `Result` errors on expiration, while `Task.delay` and `Task.repeat` configure scheduled interval polling cleanly.
+- **Asynchronous optionality with `Task.Maybe`**: When loading cached tokens or reading optional database settings asynchronously, missing entries are expected. `Task.Maybe` threads async execution and optional absence together, allowing callers to map, chain, and recover without nested promise-and-null checks.

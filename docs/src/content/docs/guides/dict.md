@@ -201,21 +201,21 @@ const totalScore = pipe(
 
 ---
 
-## When to use Dict
+## Problems it solves
 
-### Use Dict when:
-
-- **Keys are non-strings**: You need to associate values using numbers, objects, or custom symbols
-  as keys.
-- **Order matters**: You require guaranteed insertion-order iteration over key-value entries.
-- **Lookup safety is desired**: You want lookups to explicitly return `Maybe` containers rather than
-  nullable values.
-- **Operating in pipelines**: You are transforming, filtering, or merging key-value maps point-free
-  inside `pipe` chains.
-
-### Keep using plain objects (Rec) when:
-
-- **Keys are always strings**: You are working directly with standard JSON payloads or API
-  responses.
-- **You require object transformations**: You need structural operations like `pick`, `omit`, or
-  `mapKeys` (which are strictly designed for plain objects).
+- **Entity caching with non-string keys**: Plain JavaScript objects coerce all keys into strings,
+  which corrupts numeric database IDs, UUIDs, or symbol identifiers. `Dict` preserves typed
+  non-string keys while providing guaranteed insertion-order iteration.
+- **Safe map lookup in pipeline chains**: Calling `.get(key)` on a standard `Map` returns
+  `V | undefined`, which easily escapes into downstream arithmetic or method calls. `Dict.get` wraps
+  lookups in `Maybe<V>`, enforcing compile-time absence handling before values can be used.
+- **Insertion-ordered processing queues**: When maintaining a registry of background tasks or event
+  handlers where execution order must strictly match insertion order, `Dict` guarantees
+  deterministic iteration order.
+- **Point-free transformation of key-value stores**: Filtering expired cache entries, merging
+  configuration layers, or transforming map values in data pipelines normally requires converting to
+  arrays and back. `Dict` provides data-last combinators (`Dict.map`, `Dict.filter`, `Dict.reduce`)
+  that compose directly inside `pipe`.
+- **Dictionary set algebra (`Dict.union`, `Dict.intersection`, `Dict.difference`)**: Reconciling
+  local offline entity stores with remote server state by finding updated, overlapping, or removed
+  map entries purely.

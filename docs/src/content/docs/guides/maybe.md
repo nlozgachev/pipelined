@@ -461,23 +461,29 @@ const failed = Maybe.struct({
 
 ---
 
-## When to use Maybe vs null
+## Problems it solves
 
-The introduction of `Maybe` into a codebase is a structural decision. It is not always the correct
-choice for every line of code.
-
-### Use Maybe when:
-
-- **The pipeline is long**: You have multiple steps of transformations, filtering, and recovery that
-  could each result in absence.
-- **The type is public**: You want absence to be explicitly declared in your module signatures,
-  forcing callers to acknowledge it.
-- **You value composition**: You want to compose operations using `pipe` and clean, pure functions.
-
-### Keep using null or undefined when:
-
-- **The scope is local**: Inside a small, internal function where a simple ternary or `??` operator
-  is easier to read and has zero performance overhead.
-- **The boundary expects it**: When writing low-level wrappers directly interfacing with large
-  third-party libraries (e.g., database drivers) that heavily rely on `null` returns. Convert to
-  `Maybe` only once the data passes this boundary.
+- **Deeply nested payload extraction**: In client applications and API consumers, parsing responses
+  often requires drilling through multiple layers of optional data (such as
+  `user?.profile?.preferences?.theme`). When an intermediate property is absent, optional chaining
+  yields an ambiguous `undefined` that easily leaks into downstream computations. `Maybe` turns
+  optional paths into composable values that can be mapped, filtered, and transformed without manual
+  null checks at each layer.
+- **Multi-step lookup and filter pipelines**: When querying in-memory caches, searching array
+  elements by criteria, or looking up record keys, missing entries are standard domain occurrences.
+  Wrapping lookups in `Maybe` allows subsequent processing steps (such as formatting display values,
+  calculating tax rates, or applying discounts) to chain linearly, automatically bypassing
+  downstream steps when an item is missing.
+- **Combining multiple independent optional inputs (`Maybe.struct`)**: In search panels and report
+  generators, an operation often requires multiple optional parameters (such as `startDate`,
+  `endDate`, and `regionId`) to all be present before executing a query. `Maybe.struct` combines an
+  object of individual `Maybe` fields into a single `Maybe<Record>`, resolving to `Some` only if
+  every required field is present and short-circuiting on the first `None`.
+- **Filtering missing entries from collection streams (`Maybe.compact`)**: When resolving an array
+  of identifiers against a local cache or search index, some IDs match while others yield `None`.
+  `Arr.compact` and `Maybe` combinators filter out all absent entries and unwrap the present values
+  into a dense array in a single point-free step.
+- **Explicit public module contracts**: In shared domain services and library interfaces, returning
+  `null` or `undefined` permits callers to inadvertently ignore missing values until a runtime error
+  triggers downstream. Returning `Maybe<A>` elevates absence into an explicit type guarantee,
+  ensuring callers handle both presence and absence at compile time.

@@ -307,18 +307,28 @@ dedicated [NonEmpty Guide](../nonempty).
 
 ---
 
-## When to use Arr
+## Problems it solves
 
-### Use Arr when:
-
-- **Operating inside pipelines**: You are sequencing steps point-free inside `pipe` or `flow` chains
-  and want to avoid noisy data-first method wrappers.
-- **Accessing indices safely**: You want to avoid runtime `undefined` crashes and explicitly capture
-  absence via `Maybe`.
-- **Flipping async collections**: You need to traverse an array with fallible or asynchronous steps,
-  mapping `Array<Task.Result<E, A>>` to `Task.Result<E, A[]>` cleanly.
-
-### Keep using native array methods when:
-
-- **Writing simple local logic**: Inside a single, self-contained function body where structural
-  pipelining is not utilized, and basic `.map()` or `.filter()` chains are already clear.
+- **Point-free transformation in data pipelines**: In API response formatters and event processors,
+  transforming arrays with native methods often requires verbose arrow wrapper functions inside
+  `pipe` chains. `Arr` provides data-last combinators (`Arr.map`, `Arr.filterMap`, `Arr.chunk`,
+  `Arr.groupBy`) that compose cleanly into linear pipelines.
+- **Safe element extraction and out-of-bounds protection**: Native indexing (`arr[i]`) returns
+  `undefined` at runtime without requiring compile-time handling. `Arr.head`, `Arr.last`, and
+  `Arr.lookup` return `Maybe<A>`, ensuring out-of-bounds accesses are safely handled before
+  accessing properties.
+- **Batch chunking for rate-limited APIs (`Arr.chunk`)**: When submitting bulk inserts to a database
+  or making external API calls with payload size limits, large arrays must be partitioned into
+  smaller batches. `Arr.chunk` splits collections into fixed-size segments point-free.
+- **Categorization and dual-partitioning (`Arr.groupBy`, `Arr.partition`)**: In UI dashboards and
+  report generators, records often need to be split into active/inactive buckets (`Arr.partition`)
+  or organized by category keys (`Arr.groupBy`) for sectioned list rendering.
+- **Simultaneous mapping and filtering (`Arr.filterMap`, `Arr.compact`)**: Extracting valid data
+  from dirty datasets (such as parsing strings to numbers and discarding unparseable rows) typically
+  requires separate `.map()` and `.filter()` passes. `Arr.filterMap` executes transformation and
+  filtering in a single efficient pass.
+- **Traversing collections of fallible or asynchronous steps**: When running batch operations (such
+  as validating an array of input records or fetching details for a list of IDs), standard mapping
+  produces `Array<Task.Result<E, A>>`. `Arr.traverseTaskResult` sequences or parallels the
+  collection into a single `Task.Result<E, A[]>`, handling failures and collection inversion
+  automatically.

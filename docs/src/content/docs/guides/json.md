@@ -47,11 +47,16 @@ const failed = Json.stringify(circular); // Err(TypeError: Converting circular s
 
 ---
 
-## When to use Json
+## Problems it solves
 
-### Use Json when:
-
-- **Ingesting raw API payloads**: You are parsing incoming HTTP body text or reading JSON
-  configuration files and want typed `Result` error handling.
-- **Serializing dynamic state**: You are serializing state payloads for network transmission or
-  local storage without throwing runtime errors on unexpected inputs.
+- **Safe parsing of untrusted webhook and API payloads**: Calling native `JSON.parse()` on malformed
+  HTTP request bodies or corrupted cache entries throws runtime exceptions that crash endpoints if
+  not surrounded by `try/catch`. `Json.parse` returns a typed `Result<Error, unknown>`, turning
+  parse errors into ordinary failure variants.
+- **Resilient serialization for local storage and caching**: Serializing dynamic application state
+  to `localStorage` or network sockets can throw unexpected exceptions if objects contain circular
+  references or unsupported types. `Json.stringify` returns a `Result<Error, string>`, preventing
+  unhandled runtime crashes during state persistence.
+- **Seamless pipeline integration**: Raw JSON strings can be parsed and piped directly into schema
+  validators, `Refinement` guards, or `Maybe`/`Result` pipelines without temporary variables or
+  enclosing try-catch statements.

@@ -213,22 +213,22 @@ const averageValidScore = pipe(
 );
 ```
 
-## When to use Num vs standard operators
+## Problems it solves
 
-### Use Num when
-
-- You are operating on numbers within a functional pipeline using `pipe` or array helpers like
-  `Arr.map` and `Arr.filter`.
-- You are parsing untrusted strings (e.g. query parameters, CSV fields, or form inputs) and want to
-  avoid boilerplate `isNaN` or `NaN` checks.
-- You need safe statistical calculations (`mean`, `min`, `max`) that gracefully handle empty
-  collections without returning `Infinity` or `NaN`.
-- You want to eliminate inline math boundaries and replace them with clear, readable predicates like
-  `clamp` and `between`.
-
-### Use standard operators when
-
-- You are writing simple, isolated mathematical formulas (like `x * y + z`) inside a standard
-  function body where currying and piping add unnecessary complexity.
-- You are writing low-level, high-throughput numerical algorithms where the micro-overhead of
-  allocating `Maybe` objects or curried function wrappers would impact performance.
+- **Sanitizing and clamping untrusted numeric inputs**: When extracting pagination offsets, page
+  limits, or price filter boundaries from query strings, numbers can fall outside permitted domain
+  ranges. `Num.parse` and `Num.clamp` sanitize and constrain values point-free in pipeline
+  workflows.
+- **Safe statistical computations without `Infinity` or `NaN`**: Calling standard functions like
+  `Math.min()` on an empty collection returns `Infinity`, while dividing by an empty list length
+  yields `NaN`. `Num.min`, `Num.max`, `Num.mean`, and `Num.median` return `Maybe<number>`,
+  guaranteeing that empty datasets are handled explicitly.
+- **Division-by-zero protection in progress calculations**: Calculating task percentages (e.g.
+  `completed / total`) when `total === 0` produces `NaN` or `Infinity` in standard JavaScript,
+  causing broken UI progress bars. `Num.divide` guards against division by zero safely.
+- **Coordinate and bounding box constraints in charts and maps**: Clamping cursor offsets, zoom
+  levels, or viewport coordinates within min/max thresholds (`Num.clamp`, `Num.inRange`) without
+  writing manual ternary chains.
+- **Point-free mathematical pipelines**: In shopping cart calculations, currency conversions, and
+  rate adjustments, combining arithmetic operations (`Num.add`, `Num.multiply`, `Num.round`) inside
+  `pipe` keeps mathematical transformations readable without temporary variables.

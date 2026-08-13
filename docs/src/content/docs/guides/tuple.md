@@ -159,18 +159,21 @@ const loggedPair = pipe(
 ); // logs "Config: debug_flag is true", returns ["debug_flag", true]
 ```
 
-## When to use Tuple vs native destructuring
+## Problems it solves
 
-### Use Tuple when
-
-- Two values travel together as a single unit through a multi-step functional pipeline.
-- You need to perform conditional or sequential maps on either side of the pair using curried
-  operations in `pipe`.
-- You are consuming the output of array zip operations (`Arr.zip`) and need to project or merge the
-  resulting pairs.
-- You want to transition cleanly from a pair to a single collapsed value using `fold`.
-
-### Use native destructuring when
-
-- The scope of the pair is local, short-lived, and you are only performing a single operation on the
-  values. For example, `const [x, y] = coordinates; return x + y;` is simple and direct.
+- **Threading paired values through data pipelines**: In workflows where two values travel together
+  (such as key/value pairs, coordinate points, or authentication tokens paired with expiration
+  timestamps), transforming one or both values inside `pipe` with native arrays requires manual
+  destructuring and rebuilding. `Tuple.mapFirst`, `Tuple.mapSecond`, and `Tuple.mapBoth` transform
+  tuple elements point-free.
+- **Key-value pair swapping for inverted indexes (`Tuple.swap`)**: When building inverse lookup
+  dictionaries from key-value entries (such as mapping IDs to usernames, then inverting to map
+  usernames to IDs), `Tuple.swap` flips pair positions cleanly inside array pipelines.
+- **Processing zipped collection pairs**: When combining two datasets using `Arr.zip` (such as
+  pairing CSV header names with row values, or timestamps with metric samples), `Tuple` combinators
+  enable modular mapping, swapping, and filtering over the resulting pairs.
+- **Bridging paired data with multi-argument functions (`Tuple.curry`, `Tuple.uncurry`)**: Adapting
+  binary domain functions (like `calculateDistance(x, y)`) to accept tuple structures directly from
+  upstream pipelines without manual glue functions.
+- **Atomic pair folding**: Collapsing two-element pairs into computed domain objects or formatted
+  strings using `Tuple.fold` without manual index accesses or temporary variables.

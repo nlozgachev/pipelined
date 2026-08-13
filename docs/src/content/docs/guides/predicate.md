@@ -181,19 +181,19 @@ determined.
 
 ---
 
-## When to use Predicate
+## Problems it solves
 
-### Use Predicate when:
-
-- **Combining simple checks**: You want to negate (`not`), intersect (`and`), or branch (`or`)
-  boolean checks point-free without writing manual arrow wrappers.
-- **Reusing primitive checks**: You want to define atomic logic on `string` or `number` and project
-  it onto deeply nested records using `using`.
-- **Aggregating rules**: You have a variable-length list of validation checks that must all pass
-  (`all`) or of which at least one must pass (`any`).
-
-### Keep using Refinement when:
-
-- **Type narrowing is required**: You are asserting system boundaries (e.g. confirming that an
-  `unknown` payload is a `User` or that a `string` is a branded `Email`), and subsequent pipeline
-  steps require the narrowed type.
+- **Composing complex search and catalog filters**: In ecommerce catalogs and search panels,
+  filtering criteria often combine multiple rules (such as
+  `inStock AND (isDiscounted OR isFeatured) AND NOT isArchived`). `Predicate.and`, `Predicate.or`,
+  and `Predicate.not` build dynamic filter pipelines without nested inline boolean expressions.
+- **Authorization and security guard rules**: Combining multi-condition permission checks (such as
+  `isAuthenticated AND (hasAdminRole OR isResourceOwner) AND NOT isAccountSuspended`) into reusable,
+  testable policy functions.
+- **Projecting atomic checks onto nested domain records**: Instead of re-implementing checks across
+  different object structures, `Predicate.using` allows developers to define simple checks on
+  primitives (such as `Str.isNonEmpty` or `Num.greaterThan(0)`) and project them cleanly onto
+  specific entity properties.
+- **Short-circuiting rule evaluations with `all` and `any`**: When checking an array of security or
+  domain conditions against a request, `Predicate.all` and `Predicate.any` short-circuit execution
+  as soon as a passing or failing state is determined, skipping unnecessary downstream evaluations.

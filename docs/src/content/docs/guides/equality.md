@@ -159,18 +159,19 @@ const uniqueEvents = pipe(
 
 ---
 
-## When to use Equality
+## Problems it solves
 
-### Use Equality when:
-
-- **Comparing complex data structures**: You are diffing object records, deeply comparing nested
-  arrays, or validating calendar dates.
-- **Performing custom deduplication**: You need to filter unique objects based on structurally
-  matched fields using helpers like `Arr.uniqWith`.
-- **Composing checks**: You want to name small, individual field checkers and build exact matchers
-  cleanly using `and`.
-
-### Keep using `===` directly when:
-
-- **Comparing primitives**: You are comparing plain `string`, `number`, or `boolean` variables
-  within a narrow, non-pipelined scope.
+- **UI change detection without redundant re-renders**: In UI component memoization (such as React
+  `memo` or custom state selectors), comparing object props with `===` triggers false-positive
+  renders because fresh object references are created on each pass. `Equality.struct` and
+  `Equality.array` compare fields structurally, preventing unnecessary re-renders.
+- **Deduplicating event streams by compound keys**: When filtering activity feeds or telemetry
+  queues, deduplicating items based on multiple fields (such as `userId` + `action` + `entityId`)
+  requires explicit equality definitions. `Equality.struct` and `Equality.and` compose field
+  comparators for use with collection helpers like `Arr.uniqWith`.
+- **Projected property and normalized comparisons (`Equality.by`)**: Comparing domain models by
+  specific projected properties (such as comparing users by email address case-insensitively, or
+  orders by currency value) without writing repetitive equality callbacks.
+- **Accurate Date and value-object comparisons**: Comparing JavaScript `Date` instances with `===`
+  tests reference identity rather than chronological time, causing identical dates to evaluate as
+  unequal. `Equality.date` provides accurate timestamp comparisons across domain models.

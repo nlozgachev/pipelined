@@ -182,22 +182,23 @@ const cleanedTags = pipe(
 // ["typescript", "functional", "pipe"]
 ```
 
-## When to use Str vs prototype methods
+## Problems it solves
 
-### Use Str when
-
-- You are transforming strings within a functional pipeline using `pipe` and want to keep a
-  consistent point-free style.
-- You are mapping or filtering collections of strings and want clean, named predicates instead of
-  inline lambdas.
-- You are parsing numeric strings and want to handle validation safety explicitly using the `Maybe`
-  type.
-- You need to parse multi-line inputs or space-separated lists, utilizing `lines` and `words` to
-  handle edge cases automatically.
-
-### Use prototype methods when
-
-- You are writing a simple, self-contained statement in imperative code where direct method calls
-  are highly readable.
-- You need locale-sensitive comparisons or transformations (e.g. `localeCompare`,
-  `toLocaleLowerCase`).
+- **Form input sanitization in data pipelines**: When cleaning user input (such as trimming
+  whitespace, normalizing casing, removing special characters, or splitting comma-delimited tags),
+  native string methods require writing manual arrow wrappers inside `pipe`. `Str` provides curried,
+  data-last combinators (`Str.trim`, `Str.toLowerCase`, `Str.split`, `Str.replace`) that chain
+  seamlessly.
+- **Safe numeric string conversion**: Parsing numbers from HTTP parameters or form text with
+  `Number()` or `parseInt()` yields `NaN` on invalid input without static compiler warnings.
+  `Str.toNumber` and `Str.toInteger` return `Maybe<number>`, ensuring non-numeric inputs are handled
+  safely before doing math.
+- **URL slug generation and search normalisation**: Building SEO-friendly article slugs or
+  normalising search queries by chaining case conversion, whitespace collapsing, and character
+  replacement point-free.
+- **Named string predicates in array pipelines**: Filtering arrays of strings (such as finding lines
+  starting with prefixes, non-empty tags, or matching extensions) with named predicates
+  (`Str.isNonEmpty`, `Str.startsWith`, `Str.contains`) without writing inline lambda wrappers.
+- **Cross-platform multi-line and token text parsing**: Splitting text into lines or words often
+  breaks on mixed CRLF/LF line endings or multiple consecutive whitespace characters. `Str.lines`
+  and `Str.words` handle cross-platform line breaks and variable spacing automatically.

@@ -220,20 +220,25 @@ const mapValues = Dict.NonEmpty.values(updatedMap); // Arr.NonEmpty<number>
 
 ---
 
-## When to use Non-Empty Collections
+## Problems it solves
 
-### Use Non-Empty collections when:
-
-- **Accumulating errors**: You want to gather multiple validation failures (like in the `Validation`
-  type) and guarantee that a failure variant contains at least one error.
-- **Requiring payloads**: A function or API route demands at least one record (e.g., bulk-updating
-  items or running database transactions).
-- **Safe head access**: You need to safely extract elements without checking for `undefined` or
-  throwing runtime boundaries.
-
-### Keep using standard collections when:
-
-- **Absence of elements is valid**: A list or record representing filters, tags, or optional
-  configurations is naturally permitted to be empty.
-- **Interfacing with third-party libraries**: Downstream APIs only consume standard collections, and
-  the overhead of checking boundaries is not justified by the application logic.
+- **Enforcing non-empty batch payloads at API boundaries**: Endpoints and service methods (such as
+  bulk database mutations, multi-item checkouts, or batch deletion jobs) require at least one item
+  to execute validly. Requiring `Arr.NonEmpty<A>` or `Rec.NonEmpty<K, V>` guarantees presence at
+  compile time, eliminating defensive `if (arr.length === 0)` checks across internal layers.
+- **Guaranteeing error payloads in validation failures**: When a validation or multi-rule check
+  fails, the failure container must contain at least one error message. Returning an empty error
+  list is an impossible state that confuses UI renderers. `Validation` utilizes non-empty
+  collections to ensure failure variants always contain actionable errors.
+- **Navigation breadcrumbs and hierarchical trees**: Data models like navigation trails or
+  organizational hierarchies always possess at least one root node. Modeling breadcrumbs as
+  `Arr.NonEmpty<Crumb>` guarantees that extracting the active leaf (`Arr.NonEmpty.last`) or root
+  (`Arr.NonEmpty.head`) is always safe and immediate.
+- **Guaranteed non-empty record keys (`Rec.NonEmpty.keys`)**: Extracting keys or values from a
+  verified non-empty dictionary returns `Arr.NonEmpty<K>`, preserving non-empty guarantees across
+  subsequent transformation stages.
+- **Eliminating mathematically undefined operations on empty sets**: Operations like finding
+  extremes (`Math.min(...[]) === Infinity`), reducing collections without fallback values, or
+  computing statistical averages (`sum / length` producing `NaN` on empty arrays) are mathematically
+  undefined on empty collections. `NonEmpty` collections guarantee at least one element exists,
+  making `head`, `min`, `max`, and reduction operations structurally safe and non-optional.

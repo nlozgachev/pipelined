@@ -415,20 +415,28 @@ const validatedProfile = pipe(
 
 ---
 
-## When to use Validation vs Result
+## Problems it solves
 
-### Use Validation when:
-
-- **Checks are independent**: Validating form fields, structural payload parsing, or configuration
-  sheets.
-- **You need comprehensive feedback**: You want to display all errors at once to a user or log them
-  all to an audit sheet.
-- **The combinations are parallel**: You are fanning out data to multiple checkers simultaneously.
-
-### Use Result when:
-
-- **Checks are dependent**: Validating step B requires step A to have succeeded (e.g. validating an
-  address requires the user record to have been successfully fetched first).
-- **You want to fail-fast**: Halting execution immediately at the first sign of friction is the
-  desired control flow behavior.
-- **The operation is a side effect**: Writing files, connecting to networks, or querying databases.
+- **Multi-field web form validation**: In registration forms, profile editors, and checkout panels,
+  users frequently submit multiple invalid fields at once. Short-circuiting error handlers stop on
+  the first error, forcing frustrating trial-and-error submissions. `Validation` aggregates all
+  field errors into a single collection, allowing UIs to render feedback on every invalid input
+  simultaneously.
+- **Batch data ingestion and bulk import diagnostics**: When importing CSV spreadsheets, parsing
+  configuration files, or validating batch API payloads, systems need a full accounting of all
+  invalid records. `Validation.struct` and `Validation.all` evaluate all records in parallel,
+  gathering every schema and domain violation into a complete diagnostic report rather than halting
+  on row one.
+- **Multi-rule entity policy checks**: When evaluating complex entity constraints (such as password
+  strength requirements, credit assessment criteria, or compliance checklists), `Validation` runs
+  all checks independently and reports every unmet condition at once for comprehensive user
+  feedback.
+- **Bridging validation accumulation with fail-fast execution (`toResult`, `fromResult`)**: In web
+  endpoints, validating an incoming request body requires accumulating all field errors with
+  `Validation`, but subsequent database operations require fail-fast sequential chaining with
+  `Result`. `Validation.toResult` bridges these patterns cleanly, preserving all collected errors
+  while transitioning into standard sequential pipelines.
+- **Contextual error tagging across nested forms (`Validation.mapError`)**: In nested forms and
+  multi-step wizards, child components validate their own sub-fields. `Validation.mapError` allows
+  parent forms to namespace child errors (e.g. prefixing `address.zipCode`) before merging, keeping
+  error messages structured and localized.

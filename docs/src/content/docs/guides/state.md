@@ -254,18 +254,26 @@ The underlying state transition threads behind the scenes key-by-key perfectly.
 
 ---
 
-## When to use State
+## Problems it solves
 
-### Use State when:
-
-- **Threading state is noisy**: You have a sequence of operations that need to read and update a
-  shared state, and passing it manually clutters your signatures.
-- **You require isolation**: You want to test stateful algorithms (such as compilers, parsers, or
-  status simulators) in pure isolation with predictable starting values.
-- **You value purity**: You want to avoid shared mutable variables and race conditions.
-
-### Keep using plain mutable variables when:
-
-- **The state is strictly local**: Inside a narrow function body where a simple
-  `let count = 0; count++` is clear, does not escape the function, and requires no external
-  composition.
+- **Stateful parsers and tokenizers**: When writing custom data parsers, markdown tokenizers, or
+  protocol decoders, each operation consumes input, advances cursor offsets, and yields syntax
+  nodes. Managing this with shared mutable counters creates fragile off-by-one bugs. `State` models
+  every step as a pure transition that yields a computed value alongside an updated state object.
+- **Sequential ID generation and seed tracking**: In simulations, workflow step engines, or game
+  loops, operations need to generate incremental IDs, advance random seeds, or track fuel/quota
+  budgets without relying on global mutable state. `State` threads accumulated updates sequentially
+  from one step to the next.
+- **Sub-state isolation and modular transitions (`State.focus`)**: In complex state machines,
+  writing transitions that know about the entire root state couples domain helpers to top-level
+  schemas. Pairing `State` with `Lens` via `State.focus(lens)` allows reusable operations to
+  transform isolated sub-properties (such as updating an inventory or cart sub-model) while running
+  seamlessly against the global state tree.
+- **Multi-step wizard flows and branch rollbacks**: In complex onboarding wizards and financial
+  questionnaires, user responses dictate subsequent questions and update a growing payload. Because
+  `State` transitions produce fresh state values without mutating the original, implementing
+  branching navigation, back-tracking, and undo/redo snapshots requires zero defensive cloning.
+- **Deterministic state testing**: Mutable state can leak across unit tests or cause subtle ordering
+  issues. Because `State` computations are pure functions, tests can execute any sequence of steps
+  with an exact initial state and deterministically verify both the final state and intermediate
+  values.

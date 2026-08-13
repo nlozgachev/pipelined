@@ -271,20 +271,27 @@ const userProfile = pipe(
 
 ---
 
-## When to use Reader
+## Problems it solves
 
-### Use Reader when:
-
-- **You suffer from parameter drilling**: Multiple nested functions require access to the same
-  context configuration, and you want to clean up their type signatures.
-- **You want clean dependency injection**: You are building modular components with narrow
-  environment dependencies and want to compose them using `local`.
-- **You run different environments**: You need to run the same business pipeline against production
-  configs, local mocks, or test environments.
-
-### Keep passing arguments directly when:
-
-- **The dependency is localized**: Only one or two functions need the value, and the drilling
-  overhead is negligible.
-- **The value is dynamic**: The value changes frequently between calls (if a value alters during
-  execution, it belongs in the function argument channel, not the environment context).
+- **Eliminating dependency drilling**: Low-level domain functions frequently need access to shared
+  runtime context (such as database pools, tenant identifiers, feature flags, or logger instances).
+  Passing context manually across layers clutters signatures and couples intermediate callers.
+  `Reader` threads configuration dependencies implicitly through pipelines, keeping function
+  signatures focused on domain data.
+- **Multi-tenant and multi-environment execution**: Applications operating across multi-tenant
+  partitions, staging clusters, or local dev environments need to run the same business logic
+  against varying configurations. `Reader` decouples computation definitions from environment
+  values, allowing the exact same pipeline to run against distinct runtime configs.
+- **Contextual scoping and override layers (`Reader.local`)**: In request pipelines, sub-operations
+  often require modified contexts (such as attaching a child correlation trace ID, adjusting a
+  timeout window, or running a query in an impersonated user scope). `Reader.local` transforms or
+  overrides the environment for a specific sub-pipeline without affecting outer callers.
+- **Accumulating multi-step contextual pipelines (`Reader.bindTo`, `Reader.bind`)**: When assembling
+  a workflow that depends on multiple resolved environment values or sequential contextual steps
+  (such as reading tenant flags, building connection strings, and compiling headers), `bindTo` and
+  `bind` accumulate contextual results into a structured object step-by-step without losing access
+  to the shared environment.
+- **Deterministic testing without mock libraries**: Rather than relying on global environment
+  variables, singleton containers, or complex mock frameworks, `Reader` makes environmental
+  requirements visible in the type signature, enabling unit tests to pass mock environments directly
+  during execution.

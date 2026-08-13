@@ -238,16 +238,21 @@ pipe(
 
 ---
 
-## When to use These
+## Problems it solves
 
-### Use These when:
-
-- **Modeling an inclusive-OR relation**: You have two independent values of different types where
-  *any combination is possible and valid*, and neither side represents an error or an exception.
-- **Reconciling dual sources**: Synchronizing records between two independent data sources (like
-  local and remote databases) where edits can exist in either or both.
-
-### Keep using Result instead when:
-
-- **The states are mutually exclusive**: The operation represents a strict success-or-failure
-  outcome. If an error occurs, there is no useful success data to preserve.
+- **Two-way offline and remote synchronization**: When synchronizing records between local offline
+  stores (such as SQLite or IndexedDB) and a remote server, changes may exist exclusively locally
+  (new offline drafts), exclusively remotely (cloud updates), or concurrently on both sides (merge
+  conflicts). `These` models inclusive three-way states (`This`, `That`, `Both`) without ambiguous
+  nullable flags.
+- **Partial success with non-fatal warnings**: In batch processing and API transformations, an
+  operation often successfully parses a payload while also encountering non-fatal warnings or
+  recoverable format issues. `These` allows functions to return both the valid payload and the
+  collected warnings, avoiding the need to either fail the entire operation or discard diagnostic
+  details.
+- **Reconciling diff patches with custom strategies**: When calculating database differences between
+  two snapshot versions, `These.fold` and `These.match` handle additions (`This`), deletions
+  (`That`), and modifications (`Both`) with clean, case-specific logic.
+- **Multi-channel communication delivery**: In notification systems where alerts can be dispatched
+  via Email, SMS, or both channels simultaneously, `These` models valid communication options and
+  tracks per-channel delivery statuses cleanly.

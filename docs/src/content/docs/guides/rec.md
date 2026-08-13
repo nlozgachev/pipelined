@@ -263,18 +263,21 @@ For more details on operating with guaranteed non-empty data structures, see the
 
 ---
 
-## When to use Rec
+## Problems it solves
 
-### Use Rec when:
-
-- **Operating inside pipelines**: You are transforming, filtering, or merging records point-free
-  inside `pipe` chains.
-- **You require type-safe picks or omits**: You want the compiler to statically track exactly which
-  properties exist after keys are picked or omitted.
-- **Safe key retrieval is required**: You want to avoid accidental `undefined` runtime crashes by
-  capturing key absence as a `Maybe` container.
-
-### Keep using standard object notation when:
-
-- **The operation is a simple, local one-liner**: Inside a narrow function body where standard
-  dot-notation `obj.key` or spreads `{ ...obj }` are already clear and require no composition.
+- **Type-safe payload sanitization**: When preparing API responses, stripping private data (such as
+  password hashes, secret tokens, or internal flags) using `Rec.omit` or retaining allowed fields
+  via `Rec.pick` narrows the TypeScript type statically, preventing accidental access to omitted
+  properties downstream.
+- **Transforming record values in ingestion pipelines**: When processing dynamic dictionaries (such
+  as converting string prices to numbers or status strings to enums), `Rec.map` and `Rec.filter`
+  apply transformations point-free within `pipe` workflows while preserving key structure.
+- **Payload key migration and renaming (`Rec.mapKeys`)**: When ingesting third-party webhook
+  payloads or migrating legacy API schemas (such as converting `snake_case` keys to `camelCase`),
+  `Rec.mapKeys` transforms object keys immutably across entire dictionaries.
+- **Safe dynamic property retrieval**: When looking up runtime keys in configuration objects, user
+  attributes, or localized string tables, direct index access (`obj[key]`) returns `undefined`
+  without static warnings. `Rec.get` returns a `Maybe<V>`, requiring explicit presence handling
+  before operating on values.
+- **Merging multi-layer configuration records**: Combining default theme tokens with user style
+  overrides or merging localized message catalogs without mutating input objects.
