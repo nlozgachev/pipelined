@@ -77,6 +77,46 @@ test("Stream.emit throws error if listener throws and no onError handler is prov
 	expect(() => Stream.emit(s, { kind: "A", value: { value: 1 } })).toThrow("uncaught error");
 });
 
+// --- Re-entrant Emissions & Trampoline Queue ---
+
+test("Stream.emit processes re-entrant emissions breadth-first", () => {
+	const s = Stream.make<TestSchema>();
+	const log: string[] = [];
+
+	Stream.listen(s, "A").tap(() => {
+		log.push("L1: A");
+		Stream.emit(s, { kind: "B", value: { text: "from L1" } });
+	});
+
+	Stream.listen(s, "A").tap(() => {
+		log.push("L2: A");
+	});
+
+	Stream.listen(s, "B").tap(() => {
+		log.push("L3: B");
+	});
+
+	Stream.emit(s, { kind: "A", value: { value: 1 } });
+
+	// Breadth-first: L2 receives A before L3 receives B
+	expect(log).toStrictEqual(["L1: A", "L2: A", "L3: B"]);
+});
+
+test("Stream.emit processes deep re-entrant emission cascades without stack overflow", () => {
+	const s = Stream.make<TestSchema>();
+	let count = 0;
+
+	Stream.listen(s, "A").tap(() => {
+		count++;
+		if (count < 1000) {
+			Stream.emit(s, { kind: "A", value: { value: count } });
+		}
+	});
+
+	Stream.emit(s, { kind: "A", value: { value: 0 } });
+	expect(count).toBe(1000);
+});
+
 // --- Stream.listen & reduce / tap ---
 
 test("Stream.listen reduce accumulates state over matching events", () => {
@@ -242,6 +282,36 @@ test("Stream.listen reset option accepts array of event kinds and resets sequenc
 	Stream.emit(s, { kind: "B", value: { text: "after reset" } });
 
 	expect(sequenceFiredCount).toBe(0);
+});
+
+test("Stream.listen ordered sequence matches when an optional step is present", () => {
+	const s = Stream.make<TestSchema>();
+	let count = 0;
+
+	Stream.listen(s, ["A", "B", "C"], { ordered: true, optional: "B" }).tap(() => {
+		count++;
+	});
+
+	Stream.emit(s, { kind: "A", value: { value: 1 } });
+	Stream.emit(s, { kind: "B", value: { text: "present" } });
+	Stream.emit(s, { kind: "C", value: { flag: true } });
+
+	expect(count).toBe(1);
+});
+
+test("Stream.listen ordered sequence matches when an optional step is skipped", () => {
+	const s = Stream.make<TestSchema>();
+	let count = 0;
+
+	Stream.listen(s, ["A", "B", "C"], { ordered: true, optional: ["B"] }).tap(() => {
+		count++;
+	});
+
+	// A -> C (skipping optional B)
+	Stream.emit(s, { kind: "A", value: { value: 1 } });
+	Stream.emit(s, { kind: "C", value: { flag: true } });
+
+	expect(count).toBe(1);
 });
 
 // --- Stream.forward ---

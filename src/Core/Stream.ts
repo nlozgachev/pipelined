@@ -43,6 +43,10 @@ export type Stream<S extends Record<string, unknown>> = {
 	readonly options?: Stream.Options;
 	/** @internal */
 	readonly _listeners: Set<(msg: Stream.Message<S>) => void>;
+	/** @internal */
+	readonly _queue: Array<Stream.Message<S>>;
+	/** @internal */
+	_isEmitting: boolean;
 };
 
 export namespace Stream {
@@ -70,6 +74,8 @@ export namespace Stream {
 		readonly once?: boolean;
 		/** Event kind(s) that reset sequence tracking to index 0. */
 		readonly reset?: (keyof S & string) | ReadonlyArray<keyof S & string>;
+		/** Event kind(s) in the sequence that may be present or skipped. */
+		readonly optional?: (keyof S & string) | ReadonlyArray<keyof S & string>;
 	};
 
 	/**
@@ -115,10 +121,14 @@ export namespace Stream {
 	export const make = <S extends Record<string, unknown>>(options?: Options): Stream<S> => ({
 		options,
 		_listeners: new Set(),
+		_queue: [],
+		_isEmitting: false,
 	});
 
 	/**
 	 * Emits a message payload to one or more target streams.
+	 *
+	 * Uses a synchronous breadth-first trampoline queue to handle re-entrant emissions deterministically.
 	 *
 	 * @example
 	 * ```ts
@@ -141,16 +151,27 @@ export namespace Stream {
 		const msg = message as Message<S>;
 
 		for (const stream of targets) {
-			const listeners = Array.from(stream._listeners) as Array<(msg: Message<S>) => void>;
-			for (const listener of listeners) {
+			stream._queue.push(msg);
+			if (!stream._isEmitting) {
+				stream._isEmitting = true;
 				try {
-					listener(msg);
-				} catch (err) {
-					if (stream.options?.onError) {
-						stream.options.onError(err);
-					} else {
-						throw err;
+					while (stream._queue.length > 0) {
+						const nextMsg = stream._queue.shift()!;
+						const listeners = Array.from(stream._listeners) as Array<(msg: Message<S>) => void>;
+						for (const listener of listeners) {
+							try {
+								listener(nextMsg);
+							} catch (err) {
+								if (stream.options?.onError) {
+									stream.options.onError(err);
+								} else {
+									throw err;
+								}
+							}
+						}
 					}
+				} finally {
+					stream._isEmitting = false;
 				}
 			}
 		}
@@ -215,6 +236,9 @@ export namespace Stream {
 		const resetKinds = options?.reset
 			? new Set<string>(Array.isArray(options.reset) ? options.reset : [options.reset])
 			: null;
+		const optionalKinds = options?.optional
+			? new Set<string>(Array.isArray(options.optional) ? options.optional : [options.optional])
+			: null;
 
 		const createMatcher = (onMatch: (msg: Message<S>) => void) => {
 			let sequenceIndex = 0;
@@ -234,8 +258,23 @@ export namespace Stream {
 					return;
 				}
 
-				// Ordered sequence matching
-				const expectedKind = eventList[sequenceIndex];
+				// Ordered sequence matching with optional step support
+				let expectedKind = eventList[sequenceIndex];
+
+				if (expectedKind !== msg.kind && optionalKinds !== null) {
+					let lookaheadIndex = sequenceIndex;
+					while (
+						lookaheadIndex < eventList.length
+						&& optionalKinds.has(eventList[lookaheadIndex])
+						&& eventList[lookaheadIndex] !== msg.kind
+					) {
+						lookaheadIndex++;
+					}
+					if (lookaheadIndex < eventList.length && eventList[lookaheadIndex] === msg.kind) {
+						sequenceIndex = lookaheadIndex;
+						expectedKind = eventList[sequenceIndex];
+					}
+				}
 
 				if (msg.kind === expectedKind) {
 					sequenceIndex++;

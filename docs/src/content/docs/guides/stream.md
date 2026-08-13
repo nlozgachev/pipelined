@@ -12,12 +12,14 @@ boilerplate for basic event sequence tracking.
 messages, match specific event sequences, accumulate state over time, and forward events between
 streams without manual callback management.
 
-The design of `Stream` draws inspiration from three functional paradigms:
+The design of `Stream` draws inspiration from key functional programming patterns:
 
-- **Erlang / Elixir (`gen_statem`)**: State machine pattern matching on sequences of incoming typed
-  messages.
-- **Clojure (`core.async`)**: Decoupled message channels for event distribution.
-- **Haskell FRP (`scanl`)**: Incremental state reduction over a sequence of discrete events.
+- **Functional Reactive Programming (FRP)**: Incremental state reduction over a stream of discrete
+  events (`scanl`).
+- **Event-Driven State Machines**: Sequence pattern matching and reset rules over typed message
+  kinds.
+- **Typed Pub/Sub Messaging**: Strongly-typed payload schemas, broadcasting, and structural channel
+  forwarding.
 
 ---
 
@@ -103,6 +105,7 @@ import { Stream } from "@nlozgachev/pipelined/core";
 // - strict: requires strictly consecutive events without intermediary events
 // - once: automatically unsubscribes after the first match
 // - reset: event kind(s) that reset sequence tracking to index 0
+// - optional: event kind(s) in sequence that may be present or skipped
 
 const sequenceListener = Stream.listen(
   authStream,
@@ -110,8 +113,9 @@ const sequenceListener = Stream.listen(
   {
     ordered: true,
     strict: false,
+    optional: ["emailEntered"],
     reset: "sessionStarted",
-  }
+  },
 );
 ```
 
@@ -218,10 +222,53 @@ stopForwarding();
 
 ---
 
-## When to Use Stream
+## Synchronous Breadth-First Dispatch
 
-- Decoupling event producers from event consumers across application modules.
-- Tracking multi-step event sequences (e.g. user action flows or onboarding steps) without manual
-  state machines.
-- Accumulating state over time from incoming discrete events.
-- Structurally piping events between feature-level streams and global telemetry channels.
+When a listener callback emits a new message during event handling (`Stream.emit` called within a
+subscriber), `Stream` dispatches messages using a synchronous breadth-first trampoline queue.
+
+Rather than invoking re-entrant emissions recursively on the call stack, nested messages are
+appended to the stream's internal queue. The active dispatch loop delivers the current message to
+all registered listeners completely before processing subsequent messages in sequence.
+
+This architecture guarantees two core runtime properties:
+
+- **Strict Causal Ordering**: Parallel subscribers always receive messages in exact chronological
+  sequence. A subscriber will never observe a re-entrantly emitted message before finishing its
+  processing of the preceding event.
+- **Stack Overflow Prevention**: Deeply cascading re-entrant emissions run sequentially inside a
+  flat queue using O(1) stack space, preventing call stack exhaustion without introducing
+  asynchronous microtask delays.
+
+---
+
+## Problems it solves
+
+- **Decoupling event producers from subscribers**: In modular architectures, components (such as
+  auth controllers, shopping carts, or WebSocket clients) need to broadcast lifecycle events without
+  hardcoded references to UI banners, logging sinks, or analytics trackers. `Stream` provides a
+  typed, memory-safe event broker that completely decouples event sources from consumers.
+- **Pattern-matching multi-step event sequences (`Stream.listen`)**: Tracking complex multi-event
+  flows (such as detecting a multi-step checkout sequence: `userRegistered` → `planSelected` →
+  `paymentSubmitted`, or keyboard shortcut combos) normally requires ad-hoc boolean flags and
+  timeout handles. `Stream.listen` matches ordered or strict event sequences natively, with
+  configurable reset events (`reset: "cartEmptied"`).
+- **Preventing re-entrant message reordering**: When an event listener reacts to an incoming event
+  by immediately emitting a new event, standard event emitters execute listeners recursively. This
+  can cause secondary events to finish before primary events, scrambling chronological order.
+  `Stream` uses causal queue dispatching to guarantee strict FIFO ordering across all subscribers.
+- **Eliminating stack overflow crashes during event cascades**: Cascading domain events (where event
+  A triggers event B, which triggers event C) can easily exceed JavaScript's call stack limits in
+  recursive emitter implementations. `Stream` executes nested dispatches iteratively using an
+  internal queue with O(1) stack overhead.
+- **State reduction over matched event streams (`.reduce()`)**: In dashboard widgets and activity
+  trackers, components need to compute live derived state (such as counting unread notifications or
+  summing active cart totals) from a stream of discrete events. Calling `.reduce()` on a listener
+  accumulates state over time synchronously without external mutable state stores.
+- **Structural stream forwarding and subsystem aggregation (`Stream.forward`)**: In modular
+  applications, child feature modules maintain local event streams. `Stream.forward` bridges and
+  forwards filtered or renamed events from isolated module streams into a central application event
+  bus without manual event plumbing.
+- **Memory leak prevention with explicit listener disposal**: Every subscription returns a clean
+  disposal function that removes the listener instantly, preventing dangling references and memory
+  leaks when UI views unmount.
