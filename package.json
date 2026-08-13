@@ -18,7 +18,7 @@
 	"types": "./dist/index.d.ts",
 	"sideEffects": false,
 	"engines": {
-		"node": ">=24"
+		"node": ">=24.19.0"
 	},
 	"files": [
 		"dist"
@@ -68,24 +68,44 @@
 		"docs:build": "pnpm --filter pipelined-docs build"
 	},
 	"devDependencies": {
-		"@size-limit/file": "12.1.0",
-		"@types/node": "25.9.3",
-		"@vitest/coverage-v8": "4.1.8",
-		"bumpp": "11.1.0",
-		"dprint": "0.54.0",
-		"fast-check": "4.8.0",
-		"oxlint": "1.69.0",
-		"size-limit": "12.1.0",
+		"@size-limit/file": "13.0.3",
+		"@types/node": "26.2.0",
+		"@vitest/coverage-v8": "4.1.10",
+		"bumpp": "12.2.0",
+		"dprint": "0.55.2",
+		"fast-check": "4.9.0",
+		"oxlint": "1.78.0",
+		"size-limit": "13.0.3",
 		"tsup": "8.5.1",
 		"typescript": "6.0.3",
-		"vitest": "4.1.8"
+		"vitest": "4.1.10"
 	},
 	"size-limit": [
-		{ "path": "dist/index.js", "limit": "25 KB", "gzip": true },
-		{ "path": "dist/core.js", "limit": "16 KB", "gzip": true },
-		{ "path": "dist/composition.js", "limit": "4 KB", "gzip": true },
-		{ "path": "dist/data.js", "limit": "13 KB", "gzip": true },
-		{ "path": "dist/types.js", "limit": "2 KB", "gzip": true }
+		{
+			"path": "dist/index.js",
+			"limit": "25 KB",
+			"gzip": true
+		},
+		{
+			"path": "dist/core.js",
+			"limit": "16 KB",
+			"gzip": true
+		},
+		{
+			"path": "dist/composition.js",
+			"limit": "4 KB",
+			"gzip": true
+		},
+		{
+			"path": "dist/data.js",
+			"limit": "13 KB",
+			"gzip": true
+		},
+		{
+			"path": "dist/types.js",
+			"limit": "2 KB",
+			"gzip": true
+		}
 	],
 	"packageManager": "pnpm@11.6.0+sha512.9a36518224080c6fe5165afdcfe79bfa118c29be703f3f462b1e32efe1e98e47e8750b148e08286250aad4113cc7993ca413c4e2cd447752708c2ee5751bc95f"
 }

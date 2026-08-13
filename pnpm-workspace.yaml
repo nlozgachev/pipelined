@@ -7,7 +7,7 @@ blockExoticSubdeps: true
 saveExact: true
 
 shellEmulator: true
-nodeVersion: 24.0.0
+nodeVersion: 24.19.0
 engineStrict: true
 optimisticRepeatInstall: true
 verifyDepsBeforeRun: true
