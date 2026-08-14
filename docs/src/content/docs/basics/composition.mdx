@@ -37,7 +37,7 @@ const toSlug = flow(
 const slugs = ["  Alice  ", "  Bob  "].map(toSlug); // ["alice", "bob"]
 ```
 
-`compose` is the right-to-left counterpart of `flow`. While `flow(f, g)` executes `f` first and `g` second, `compose(g, f)` runs them in reverse order, matching traditional mathematical notation ($g \circ f$):
+`compose` is the right-to-left counterpart of `flow`. While `flow(f, g)` executes `f` first and `g` second, `compose(g, f)` runs them in reverse order, matching traditional mathematical notation `(g ∘ f)`:
 
 ```ts
 import { compose, flow } from "@nlozgachev/pipelined/composition";

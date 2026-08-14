@@ -3,7 +3,7 @@ title: Stream — Typed Event Sequences & State Reduction
 description: Decouple event emission from sequence matching, state reduction, and structural forwarding.
 ---
 
-Applications often need to coordinate decoupled events happening in different places—such as form
+Applications often need to coordinate decoupled events happening in different places — such as form
 step transitions, authentication handshakes, and UI user action tracking. Standard event emitters
 leave message payloads untyped, while complex reactive stream libraries introduce heavy operator
 boilerplate for basic event sequence tracking.

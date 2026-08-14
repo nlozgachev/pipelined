@@ -437,7 +437,7 @@ Stream.emit(flowStream, {
 sub.getState(); // { completedFlows: 1 }
 ```
 
-`Stream` executes cascading events iteratively using an internal queue with $O(1)$ stack overhead,
+`Stream` executes cascading events iteratively using an internal queue with O(1) stack overhead,
 completely preventing stack overflow crashes and out-of-order re-entrant execution.
 
 ### Deep immutable updates without spread boilerplate
@@ -562,10 +562,10 @@ if (Result.is.ok(email)) {
 - **`@nlozgachev/pipelined/types`**: Type-level utilities (`Brand`, `Duration`, `RetryPolicy`) (<2
   KB gzipped).
 
-Every utility in the library is benchmarked against its native equivalent. The data-last currying
-adds a negligible function call overhead, which is the expected cost of composability. For
-operations where native overhead is significant, custom implementations are used that often run
-faster than their native counterparts.
+Every utility in the library is benchmarked against its native equivalent. While currying introduces
+a small function call overhead for composability, the library uses custom algorithms for
+data-structure methods whenever the native JavaScript implementations are slower, ensuring the
+fastest execution path possible.
 
 ## License
 

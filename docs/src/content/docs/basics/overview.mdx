@@ -62,7 +62,7 @@ const route = pipe(
 
 ## Collecting multiple failures
 
-When we validate a complex data structure—like a registration form—we often want to present the user with a list of all errors.
+When we validate a complex data structure — like a registration form — we often want to present the user with a list of all errors.
 
 If we use a standard `Result` or `try/catch` pattern, the program short-circuits at the very first failure. This is correct for sequential business logic, but frustrating for user interfaces where displaying only one error at a time forces a slow, trial-and-error cycle of form submission.
 
@@ -84,7 +84,7 @@ If both fields are invalid, both validation errors are gathered and returned tog
 
 ## Asynchronous operations with typed errors
 
-An asynchronous operation in standard JavaScript is represented by a `Promise`. Promises are eager—they begin executing the moment they are created—and they can reject with any value.
+An asynchronous operation in standard JavaScript is represented by a `Promise`. Promises are eager — they begin executing the moment they are created — and they can reject with any value.
 
 `Task.Result<E, A>` is a lazy, infallible blueprint for an asynchronous operation that eventually yields a `Result<E, A>`. Because it is lazy, nothing runs until we explicitly invoke it. Because it is infallible at the promise level, the outer `Task` always resolves successfully, carrying our typed `Result` inside.
 

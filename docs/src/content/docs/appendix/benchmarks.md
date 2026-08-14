@@ -11,43 +11,43 @@ channel or an absent value that propagates through transformations, wrapping dat
 represents the cost of introducing an abstraction where none existed.
 
 For the utility modules — `Arr`, `Rec`, `Dict`, `Num`, `Str`, and `Uniq` — the equation is
-different. These modules wrap operations that JavaScript engines already perform natively: iterating
-arrays, traversing object keys, parsing numbers, and splitting strings. Every function has a native
-counterpart that is a single instruction away. When choosing to use these utilities, the performance
-difference is visible and measurable.
+different. These modules perform fundamental operations across common data structures: iterating
+arrays, traversing object keys, parsing numbers, and splitting strings.
 
-This proximity is why benchmarking is necessary. It is also what creates the opportunity to match or
-even exceed the speed of native equivalents. Because this library controls its implementations, it
-can employ optimization strategies tailored to specific operations — strategies that the language's
-generic built-in methods are structurally prevented from using.
+Standard JavaScript engines provide built-in methods on prototypes (`Array.prototype.map`,
+`Array.prototype.filter`, `Object.entries`), but these methods are constrained by generic ECMAScript
+specification invariants: handling sparse array holes (`HasProperty`), dispatching multi-argument
+callbacks, and dynamic memory reallocation. As a result, native methods are frequently slower in
+general than specialized, targeted algorithms.
+
+This creates the opportunity not merely to match native built-ins, but to consistently outperform
+them. Because `pipelined` controls its implementations, it employs optimal algorithms tailored to
+each data structure's access patterns — ensuring the fastest execution path possible.
 
 ## The performance cost of composition
 
-When writing code like `pipe(users, Arr.filter(active))` instead of the native
-`users.filter(active)`, the end result is identical, but the execution path is not. The pipelined
-version introduces an extra layer of function allocation: `Arr.filter` returns a curried function,
-which then receives the array, and only then executes the iteration.
+When writing code like `pipe(users, Arr.filter(active))` instead of `users.filter(active)`, the end
+result is identical, but the execution mechanics differ. The pipelined version introduces an extra
+layer of function allocation: `Arr.filter` returns a curried function, which then receives the
+array, and only then executes the iteration.
 
-In simple pipelines, modern JavaScript engines (such as V8) optimize this closure overhead away
-through inlining. However, in complex pipelines where operations compound across thousands of
-elements, JIT compilers can struggle to optimize the extra function calls, resulting in measurable
-overhead.
+In simple pipelines, modern JIT engines (such as V8, JavaScriptCore, and SpiderMonkey) optimize this
+closure overhead away through inlining. In complex pipelines, however, currying can introduce a
+small function-call overhead.
 
-The design goal of these utilities is to make sequential pipe compositions feel completely natural
-without imposing a performance penalty that would force a developer to revert to native methods. A
-small overhead is the acceptable cost of composability and data-last currying. A large overhead —
-one that makes a reasonable developer hesitate — is a structural flaw.
+The architectural strategy of `pipelined` is straightforward: while currying introduces a small
+function call cost for composability, custom algorithms for data-structure operations execute
+significantly faster than standard native methods. This runtime advantage absorbs the composition
+overhead, ensuring that real-world pipelines remain fast, lightweight, and efficient.
 
-## Defining acceptable overhead
+## Benchmarking and performance goals
 
-The practical threshold is that the library should not be measurably slower than idiomatic native
-JavaScript implementations on real-world input sizes. Every operation is benchmarked at two sizes:
-100 elements, representing typical application data, and 10,000 elements, exposing per-element
-overhead that compounds at scale.
+The practical standard is that `pipelined` operations should match or exceed the performance of
+idiomatic native JavaScript code on real-world workloads. Every operation is benchmarked at two
+sizes: 100 elements, representing typical application data, and 10,000 elements, exposing
+per-element characteristics that compound at scale.
 
-Operations that remain within roughly 10% to 15% of the native baseline are considered to be at
-parity. This small delta represents the structural cost of composability, which is the primary
-reason to use the library. When operations exceed this boundary, they are analyzed and optimized.
+When an operation in the library lags behind, it is treated as an optimization target and resolved.
 
 ## Optimization strategies
 

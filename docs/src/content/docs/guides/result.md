@@ -426,11 +426,11 @@ const failed = Result.struct({
   external parsers often throw untyped runtime exceptions that bubble up unexpectedly. Wrapping
   these boundaries with `Result.tryCatch` captures runtime exceptions immediately, converting them
   into typed, inspectable values before they enter application logic.
-- **Sequential fallible pipelines**: Coordinating a sequence of operations—such as reading
-  configuration text, parsing JSON, validating schema constraints, and generating
-  credentials—requires each step to succeed before running the next. `Result` composes these steps
-  linearly via `pipe` and `Result.chain`, short-circuiting automatically on the first failure while
-  preserving type safety across all intermediate values.
+- **Sequential fallible pipelines**: Coordinating a sequence of operations — such as reading
+  configuration text, parsing JSON, validating schema constraints, and generating credentials —
+  requires each step to succeed before running the next. `Result` composes these steps linearly via
+  `pipe` and `Result.chain`, short-circuiting automatically on the first failure while preserving
+  type safety across all intermediate values.
 - **Error normalization across subsystem boundaries (`Result.mapError`)**: In complex features that
   touch the network, database drivers, and disk storage, each subsystem produces distinct error
   types. `Result.mapError` translates low-level transport errors into a cohesive domain error union

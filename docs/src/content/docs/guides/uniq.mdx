@@ -5,7 +5,7 @@ description: Immutable, pipeline-ready operations for collections of unique valu
 
 import { Aside } from '@astrojs/starlight/components'
 
-Uniqueness is a common requirement in data modeling. We often need to track a collection of items where duplicates have no meaning—such as a list of active user roles, a set of enabled feature flags, or a collection of tags assigned to an article.
+Uniqueness is a common requirement in data modeling. We often need to track a collection of items where duplicates have no meaning — such as a list of active user roles, a set of enabled feature flags, or a collection of tags assigned to an article.
 
 In standard JavaScript, the native `Set` object provides this behavior. However, the native `Set` API is built entirely around mutation. Adding or removing an item modifies the collection in place. This makes it difficult to reason about the state of our data over time, as any function that receives a set can alter its contents under our feet.
 
@@ -144,7 +144,7 @@ const backendOnly = pipe(backendRoles, Uniq.difference(frontendRoles));
 
 ## Folding and converting to standard types
 
-When it is time to leave the immutable context—either to serialize data for an API or to interface with a library that requires standard arrays—we can fold or convert our collection:
+When it is time to leave the immutable context — either to serialize data for an API or to interface with a library that requires standard arrays — we can fold or convert our collection:
 
 ```ts
 const activeFlags = Uniq.from.Array(["logging", "analytics"]);

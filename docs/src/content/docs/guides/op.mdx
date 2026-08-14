@@ -9,7 +9,7 @@ Asynchronous coordination is one of the most persistent sources of accidental co
 
 Consider a standard search-as-you-type autocomplete input. A user types rapidly, firing three search queries in rapid succession. Because of internet latency, the first network request takes longer to resolve than the third. When the first request eventually lands last, it overwrites the newer search results with stale data.
 
-We know how to fix this: we must cancel the outstanding in-flight request whenever a new search is triggered. But implementing this usually complects our codebase. The cancellation logic—juggling `AbortController` instances, keeping track of active requests with `useRef` handles, and writing cleanup hooks—becomes tangled directly into our UI components and raw network calls.
+We know how to fix this: we must cancel the outstanding in-flight request whenever a new search is triggered. But implementing this usually complects our codebase. The cancellation logic — juggling `AbortController` instances, keeping track of active requests with `useRef` handles, and writing cleanup hooks — becomes tangled directly into our UI components and raw network calls.
 
 `Op<I, E, A>` solves this by cleanly separating these concerns:
 
@@ -60,7 +60,7 @@ const fetchUserOp = Op.create(
 The `AbortSignal` is not optional boilerplate. It is the exact handle that every concurrency strategy uses to tear down obsolete or cancelled operations. If you choose to ignore the signal, the underlying factory operation will continue to run to completion and resolve, producing stale side effects and waste network bandwidth.
 </Aside>
 
-Defining an `Op` does not run anything. It is a pure blueprint—nothing executes until we interpret the blueprint and trigger it.
+Defining an `Op` does not run anything. It is a pure blueprint — nothing executes until we interpret the blueprint and trigger it.
 
 ### Lifting plain async functions with `lift`
 

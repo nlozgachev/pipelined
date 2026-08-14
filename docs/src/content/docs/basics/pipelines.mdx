@@ -56,7 +56,7 @@ TypeScript infers the type of the value at each step. If one of your functions r
 
 ## Steps as pure functions
 
-Any unary function—a function that accepts a single argument—can be passed as a step in a pipeline. This includes inline lambda functions, named functions, or partially-applied library helpers:
+Any unary function — a function that accepts a single argument — can be passed as a step in a pipeline. This includes inline lambda functions, named functions, or partially-applied library helpers:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -78,7 +78,7 @@ Furthermore, `Maybe.map((u) => u.name)` is invoked with only a mapping function.
 
 ## Reusable pipelines with flow
 
-`pipe` evaluates immediately, producing a result. `flow` operates the same way but defers execution—it returns a new, reusable function:
+`pipe` evaluates immediately, producing a result. `flow` operates the same way but defers execution — it returns a new, reusable function:
 
 ```ts
 import { flow } from "@nlozgachev/pipelined/composition";
@@ -136,7 +136,7 @@ This design allows library functions to slot directly into `pipe` and `flow` wit
 
 ## Side effects with tap
 
-When you want to inspect a value mid-pipeline—such as logging it or updating an analytics tracker—without altering the data or breaking the chain, you can use `tap`:
+When you want to inspect a value mid-pipeline — such as logging it or updating an analytics tracker — without altering the data or breaking the chain, you can use `tap`:
 
 ```ts
 import { pipe, tap } from "@nlozgachev/pipelined/composition";
