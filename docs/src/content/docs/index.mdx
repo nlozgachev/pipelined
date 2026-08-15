@@ -15,17 +15,23 @@ hero:
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-<CardGrid>
-  <Card title="Precise types" >
-    Replace `T | null`, `try/catch`, and loading state flag soup with types that make valid states explicit and invalid ones unrepresentable.
+<CardGrid stagger>
+  <Card title="Explicit Errors & Absence">
+    Replace unchecked exceptions, silent null propagation, and trial-and-error form submissions with typed containers that either fail fast or accumulate errors across fields simultaneously.
   </Card>
-  <Card title="Consistent API" >
-    Every type follows the same conventions — `map`, `chain`, `match`, `getOrElse`. Learn one, pick up the rest quickly.
+  <Card title="Resilient Async & Concurrency">
+    Eliminate in-flight race conditions and unhandled rejections. Lazy tasks thread `AbortSignal` automatically, `Op` manages declarative concurrency (`restartable`, `exclusive`, retries, timeouts), and `Stream` matches multi-step event funnels with stack-safe queues.
   </Card>
-  <Card title="Composition first" >
-    All operations are designed to work with `pipe` and `flow`. Logic reads top to bottom, in the order it executes.
+  <Card title="Eliminate Impossible States">
+    Replace contradictory loading/error boolean combinations with 4-state `RemoteData` pattern matching. Model inclusive-OR sync states with `These`, and prevent parameter mixups with zero-runtime-cost `Brand` nominal IDs.
   </Card>
-  <Card title="Data utils included" >
-    Curried array, record, string, and number utilities that compose directly with `pipe` — no wrapper functions needed.
+  <Card title="Deep Optics & Clean State">
+    Update deeply nested state trees in a single line without spread boilerplate (`Lens`). Inject runtime dependencies without prop drilling (`Reader`), and isolate modular sub-state transitions (`State.focus`).
+  </Card>
+  <Card title="Linear Composition First">
+    Logic reads top-to-bottom in the exact order it executes. Enriched with 13 higher-order combinators and high-performance collection utilities (`Arr`, `Rec`, `Dict`, `Uniq`, `Str`, `Num`, `BigNum`, `Json`) that compose point-free.
+  </Card>
+  <Card title="Zero Jargon, Zero Dependencies">
+    Built for TypeScript developers who want rock-solid safety without category-theory gatekeeping. Plain discriminated unions, zero external dependencies, 100% tree-shakeable, and optimized algorithms that outperform standard native methods.
   </Card>
 </CardGrid>
