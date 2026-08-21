@@ -62,6 +62,7 @@
 		"require-unicode-regexp": "off",
 		"no-await-in-loop": "off",
 		"vitest/max-expects": "off",
-		"new-cap": "off"
+		"new-cap": "off",
+		"one-var": "off"
 	}
 }

@@ -130,7 +130,7 @@ export namespace Result {
 	 * pipe(Result.make.ok(-1), Result.chain(validatePositive)); // Err("Must be positive")
 	 * ```
 	 */
-	export const chain = <E1, E2, A, B>(f: (a: A) => Result<E2, B>) => (data: Result<E1, A>): Result<E1 | E2, B> =>
+	export const chain = <E2, A, B>(f: (a: A) => Result<E2, B>) => <E1 = never>(data: Result<E1, A>): Result<E1 | E2, B> =>
 		is.ok(data) ? f(data.value) : data;
 
 	/**
@@ -406,7 +406,7 @@ export namespace Result {
 	export const bind =
 		<K extends string, E, A, B>(key: K, f: (a: A) => Result<E, B>) =>
 		(data: Result<E, A>): Result<E, A & { [P in K]: B; }> =>
-			chain<E, E, A, A & { [P in K]: B; }>((a) =>
+			chain<E, A, A & { [P in K]: B; }>((a) =>
 				map<E, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
 			)(data);
 
@@ -450,7 +450,8 @@ export namespace Result {
 	 * ```
 	 */
 	export const ensure =
-		<A, E2>(predicate: (a: A) => boolean, onFail: (a: A) => E2) => <E1>(data: Result<E1, A>): Result<E1 | E2, A> =>
+		<A, E2>(predicate: (a: A) => boolean, onFail: (a: A) => E2) =>
+		<E1 = never>(data: Result<E1, A>): Result<E1 | E2, A> =>
 			is.err(data) ? data : (predicate(data.value) ? data : make.err(onFail(data.value)));
 
 	/**

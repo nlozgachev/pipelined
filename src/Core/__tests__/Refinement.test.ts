@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Maybe } from "../Maybe.ts";
 import { Refinement } from "../Refinement.ts";
@@ -22,6 +22,14 @@ const isNonEmpty: Refinement<string, NonEmptyString> = Refinement.from.predicate
 const isTrimmed: Refinement<NonEmptyString, TrimmedString> = Refinement.from.predicate((s) => s === s.trim());
 const isPositive: Refinement<number, PositiveNumber> = Refinement.from.predicate((n) => n > 0);
 const isEven: Refinement<number, EvenNumber> = Refinement.from.predicate((n) => n % 2 === 0);
+
+test("Refinement type propagation check for to.Maybe and to.Result", () => {
+	const mb = Refinement.to.Maybe(isNonEmpty)("hello");
+	expectTypeOf(mb).toEqualTypeOf<Maybe<NonEmptyString>>();
+
+	const res = Refinement.to.Result(isNonEmpty, () => "EMPTY")("hello");
+	expectTypeOf(res).toEqualTypeOf<Result<string, NonEmptyString>>();
+});
 
 // ---------------------------------------------------------------------------
 // make

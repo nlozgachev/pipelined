@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Maybe } from "../Maybe.ts";
 import { Result } from "../Result.ts";
@@ -144,6 +144,23 @@ test("Result.chain supports error union widening", () => {
 
 	const res: Result<"ERR_A" | "ERR_B", string> = pipe(step1, Result.chain(step2));
 	expect(res).toStrictEqual({ kind: "Err", error: "ERR_B" });
+});
+
+test("Result.chain infers exact error union without collapsing to unknown", () => {
+	const step1 = Result.make.err("ERR_A" as const);
+	const step2 = (_: unknown) => Result.make.err("ERR_B" as const);
+
+	const res = pipe(step1, Result.chain(step2));
+
+	expectTypeOf(res).toEqualTypeOf<Result<"ERR_A" | "ERR_B", unknown>>();
+	expect(res).toStrictEqual({ kind: "Err", error: "ERR_A" });
+});
+
+test("Result.ensure infers exact error union without collapsing to unknown", () => {
+	const step1 = Result.make.ok(15) as Result<"ERR_A", number>;
+	const res = pipe(step1, Result.ensure((n) => n >= 18, (n) => `Underage: ${n}` as const));
+
+	expectTypeOf(res).toEqualTypeOf<Result<"ERR_A" | `Underage: ${number}`, number>>();
 });
 
 // ---------------------------------------------------------------------------

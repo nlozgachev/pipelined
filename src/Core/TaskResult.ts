@@ -6,10 +6,10 @@ import {
 	Result as CoreResult,
 	type Task,
 	Task as CoreTask,
-	type TaskMaybe,
 } from "#core";
 import type { Thenable } from "#internal";
 import { Duration, type RetryPolicy } from "#types";
+import { type TaskMaybe } from "./TaskMaybe.ts";
 
 /**
  * A Task that can fail with an error of type E or succeed with a value of type A.
@@ -160,7 +160,7 @@ export namespace TaskResult {
 	 * If the first fails, propagates the error.
 	 */
 	export const chain =
-		<E1, E2, A, B>(f: (a: A) => TaskResult<E2, B>) => (data: TaskResult<E1, A>): TaskResult<E1 | E2, B> =>
+		<E2, A, B>(f: (a: A) => TaskResult<E2, B>) => <E1 = never>(data: TaskResult<E1, A>): TaskResult<E1 | E2, B> =>
 			CoreTask.chain((result: Result<E1, A>) =>
 				CoreResult.is.ok(result)
 					? f(result.value)
@@ -273,7 +273,7 @@ export namespace TaskResult {
 	export const bind =
 		<K extends string, E, A, B>(key: K, f: (a: A) => TaskResult<E, B>) =>
 		(data: TaskResult<E, A>): TaskResult<E, A & { [P in K]: B; }> =>
-			chain<E, E, A, A & { [P in K]: B; }>((a) =>
+			chain<E, A, A & { [P in K]: B; }>((a) =>
 				map<E, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
 			)(data);
 
@@ -379,7 +379,7 @@ export namespace TaskResult {
 	 */
 	export const timeout =
 		<E2>(options: { duration: Duration; onTimeout: () => E2; }) =>
-		<E1, A>(task: TaskResult<E1, A>): TaskResult<E1 | E2, A> =>
+		<E1 = never, A = unknown>(task: TaskResult<E1, A>): TaskResult<E1 | E2, A> =>
 			CoreTask.from.Promise((signal) => {
 				const ms = Duration.to.milliseconds(options.duration);
 				return new Promise<Result<E1 | E2, A>>((resolve) => {

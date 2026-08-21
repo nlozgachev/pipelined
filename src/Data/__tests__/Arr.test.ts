@@ -614,7 +614,9 @@ test("sequenceTask - preserves order despite different completion times", async 
 test("traverseTaskResult - all succeed returns Ok of results", async () => {
 	const validate = (n: number): Task<Result<string, number>> =>
 		n > 0 ? Task.resolve(Result.make.ok(n)) : Task.resolve(Result.make.err("non-positive"));
-	const result = await pipe([1, 2, 3], Arr.traverse.Task.Result(validate))();
+	const taskRes = pipe([1, 2, 3], Arr.traverse.Task.Result(validate));
+	expectTypeOf(taskRes).toEqualTypeOf<Task<Result<string, readonly number[]>>>();
+	const result = await taskRes();
 	expect(result).toStrictEqual(Result.make.ok([1, 2, 3]));
 });
 

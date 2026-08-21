@@ -1,8 +1,18 @@
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 import { Deferred } from "../../Core/Deferred.ts";
 import { Maybe } from "../../Core/Maybe.ts";
 import { Result } from "../../Core/Result.ts";
 import { pipe } from "../pipe.ts";
+
+test("pipe - multi-stage error union propagation", () => {
+	const step1: Result<"ERR_A", string> = Result.make.ok("start");
+	const step2 = (_: string): Result<"ERR_B", string> => Result.make.err("ERR_B" as const);
+
+	const res = pipe(step1, Result.chain(step2), Result.ensure((s: string) => s.length > 0, () => "ERR_C" as const));
+
+	expectTypeOf(res).toMatchTypeOf<Result<"ERR_A" | "ERR_B" | "ERR_C", string>>();
+	expect(res).toStrictEqual({ kind: "Err", error: "ERR_B" });
+});
 
 test("pipe - single value (identity)", () => {
 	expect(pipe(42)).toBe(42);

@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Maybe } from "../Maybe.ts";
 import { RemoteData } from "../RemoteData.ts";
@@ -141,6 +141,16 @@ test("remoteData.chain supports error union widening", () => {
 
 	const res: RemoteData<"ERR_A" | "ERR_B", string> = pipe(step1, RemoteData.chain(step2));
 	expect(res).toStrictEqual({ kind: "Failure", error: "ERR_B" });
+});
+
+test("remoteData.chain infers exact error union without collapsing to unknown", () => {
+	const step1 = RemoteData.make.failure("ERR_A" as const);
+	const step2 = (_: unknown) => RemoteData.make.failure("ERR_B" as const);
+
+	const res = pipe(step1, RemoteData.chain(step2));
+
+	expectTypeOf(res).toEqualTypeOf<RemoteData<"ERR_A" | "ERR_B", unknown>>();
+	expect(res).toStrictEqual({ kind: "Failure", error: "ERR_A" });
 });
 
 // ---------------------------------------------------------------------------

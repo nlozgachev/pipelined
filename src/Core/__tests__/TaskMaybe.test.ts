@@ -1,8 +1,15 @@
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Maybe } from "../Maybe.ts";
 import { Result } from "../Result.ts";
 import { Task } from "../Task.ts";
+
+test("Task.Maybe type equality check", async () => {
+	const tm = Task.Maybe.some<number>(42);
+	expectTypeOf(tm).toEqualTypeOf<Task.Maybe<number>>();
+	const res = await tm();
+	expectTypeOf(res).toEqualTypeOf<Maybe<number>>();
+});
 
 // ---------------------------------------------------------------------------
 // of

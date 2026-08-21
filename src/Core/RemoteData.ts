@@ -164,7 +164,7 @@ export namespace RemoteData {
 	 * ```
 	 */
 	export const chain =
-		<E1, E2, A, B>(f: (a: A) => RemoteData<E2, B>) => (data: RemoteData<E1, A>): RemoteData<E1 | E2, B> =>
+		<E2, A, B>(f: (a: A) => RemoteData<E2, B>) => <E1 = never>(data: RemoteData<E1, A>): RemoteData<E1 | E2, B> =>
 			is.success(data) ? f(data.value) : (data as RemoteData<E1 | E2, B>);
 
 	/**

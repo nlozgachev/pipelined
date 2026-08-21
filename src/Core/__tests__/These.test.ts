@@ -1,6 +1,18 @@
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { These, TheseBoth } from "../These.ts";
+
+test("These type propagation check for chainFirst, chainSecond, and mapBoth", () => {
+	const t1: These<number, string> = These.make.both(42, "warning");
+	const res1 = pipe(t1, These.chainFirst((n) => These.make.first(n > 0)));
+	expectTypeOf(res1).toEqualTypeOf<These<boolean, string>>();
+
+	const res2 = pipe(t1, These.chainSecond((s) => These.make.second(s.length)));
+	expectTypeOf(res2).toEqualTypeOf<These<number, number>>();
+
+	const res3 = pipe(t1, These.mapBoth((n) => n > 0, (s) => s.length));
+	expectTypeOf(res3).toEqualTypeOf<These<boolean, number>>();
+});
 
 // ---------------------------------------------------------------------------
 // first / second / both

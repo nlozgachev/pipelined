@@ -1,10 +1,17 @@
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Deferred } from "../Deferred.ts";
 import { Maybe } from "../Maybe.ts";
 import { Result } from "../Result.ts";
 import { Task } from "../Task.ts";
 import { Validation } from "../Validation.ts";
+
+test("Task.Validation type equality check", async () => {
+	const tv = Task.Validation.passed<string, number>(42);
+	expectTypeOf(tv).toEqualTypeOf<Task.Validation<string, number>>();
+	const res = await tv();
+	expectTypeOf(res).toEqualTypeOf<Validation<string, number>>();
+});
 
 // --- valid ---
 

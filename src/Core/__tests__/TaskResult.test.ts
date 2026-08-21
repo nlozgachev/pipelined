@@ -850,6 +850,29 @@ test("Task.Result.chain supports error union widening", async () => {
 	expect(res).toStrictEqual({ kind: "Err", error: "ERR_B" });
 });
 
+test("Task.Result.chain infers exact error union without collapsing to unknown", async () => {
+	const step1 = Task.Result.err("ERR_A" as const);
+	const step2 = (_: unknown) => Task.Result.err("ERR_B" as const);
+
+	const taskRes = pipe(step1, Task.Result.chain(step2));
+	expectTypeOf(taskRes).toEqualTypeOf<Task.Result<"ERR_A" | "ERR_B", unknown>>();
+	const res = await taskRes();
+
+	expectTypeOf(res).toEqualTypeOf<Result<"ERR_A" | "ERR_B", unknown>>();
+	expect(res).toStrictEqual({ kind: "Err", error: "ERR_A" });
+});
+
+test("Task.Result.timeout infers exact error union without collapsing to unknown", async () => {
+	const step1: Task.Result<"ERR_A", number> = Task.Result.ok(42);
+	const taskRes = pipe(
+		step1,
+		Task.Result.timeout({ duration: Duration.milliseconds(100), onTimeout: () => "TIMEOUT" as const }),
+	);
+
+	const res = await taskRes();
+	expectTypeOf(res).toEqualTypeOf<Result<"ERR_A" | "TIMEOUT", number>>();
+});
+
 test("Task.Result.to.Maybe converts Ok to Some and Err to None", async () => {
 	const okTask = Task.Result.ok<string, number>(42);
 	const errTask = Task.Result.err<string, number>("oops");
