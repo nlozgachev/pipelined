@@ -301,7 +301,7 @@ export namespace Validation {
 	 * pipe(Validation.make.failed("oops"), Validation.getOrElse(() => null)); // null — typed as number | null
 	 * ```
 	 */
-	export const getOrElse = <E, A, B>(defaultValue: () => B) => (data: Validation<E, A>): A | B =>
+	export const getOrElse = <B>(defaultValue: () => B) => <E, A>(data: Validation<E, A>): A | B =>
 		is.passed(data) ? data.value : defaultValue();
 
 	/**
@@ -345,7 +345,7 @@ export namespace Validation {
 	 * The fallback can produce a different success type, widening the result to `Validation<E, A | B>`.
 	 */
 	export const recover =
-		<E, A, B>(fallback: (errors: NonEmptyArr<E>) => Validation<E, B>) => (data: Validation<E, A>): Validation<E, A | B> =>
+		<E, B>(fallback: (errors: NonEmptyArr<E>) => Validation<E, B>) => <A>(data: Validation<E, A>): Validation<E, A | B> =>
 			is.passed(data) ? data : fallback(data.errors);
 
 	/**
@@ -361,8 +361,9 @@ export namespace Validation {
 	 * ```
 	 */
 	export const recoverUnless =
-		<E, A, B>(isBlocked: (e: E) => boolean, fallback: () => Validation<E, B>) =>
-		(data: Validation<E, A>): Validation<E, A | B> => is.failed(data) && !data.errors.some(isBlocked) ? fallback() : data;
+		<E, B>(isBlocked: (e: E) => boolean, fallback: () => Validation<E, B>) =>
+		<A>(data: Validation<E, A>): Validation<E, A | B> =>
+			is.failed(data) && !data.errors.some(isBlocked) ? fallback() : data;
 
 	// --- to ---
 	export namespace to {

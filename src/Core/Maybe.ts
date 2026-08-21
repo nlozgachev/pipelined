@@ -240,7 +240,7 @@ export namespace Maybe {
 	 * pipe(Maybe.make.none<string>(), Maybe.getOrElse(() => null)); // null — typed as string | null
 	 * ```
 	 */
-	export const getOrElse = <A, B>(defaultValue: () => B) => (data: Maybe<A>): A | B =>
+	export const getOrElse = <B>(defaultValue: () => B) => <A>(data: Maybe<A>): A | B =>
 		is.some(data) ? data.value : defaultValue();
 
 	/**
@@ -284,7 +284,7 @@ export namespace Maybe {
 	 * pipe(Maybe.make.some(10), Maybe.recover(() => Maybe.make.some(42))); // Some(10)
 	 * ```
 	 */
-	export const recover = <A, B>(fallback: () => Maybe<B>) => (data: Maybe<A>): Maybe<A | B> =>
+	export const recover = <B>(fallback: () => Maybe<B>) => <A>(data: Maybe<A>): Maybe<A | B> =>
 		is.some(data) ? data : fallback();
 
 	/**

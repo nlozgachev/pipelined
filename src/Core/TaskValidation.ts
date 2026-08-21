@@ -212,8 +212,8 @@ export namespace TaskValidation {
 	 * Returns the success value or a default value if the Task.Validation is failed.
 	 * The default can be a different type, widening the result to `Task<A | B>`.
 	 */
-	export const getOrElse = <E, A, B>(defaultValue: () => B) => (data: TaskValidation<E, A>): Task<A | B> =>
-		CoreTask.map(CoreValidation.getOrElse<E, A, B>(defaultValue))(data);
+	export const getOrElse = <B>(defaultValue: () => B) => <E, A>(data: TaskValidation<E, A>): Task<A | B> =>
+		CoreTask.map(CoreValidation.getOrElse<B>(defaultValue))(data);
 
 	/**
 	 * Executes a side effect on the success value without changing the Task.Validation.
@@ -228,8 +228,8 @@ export namespace TaskValidation {
 	 * The fallback can produce a different success type, widening the result to `Task.Validation<E, A | B>`.
 	 */
 	export const recover =
-		<E, A, B>(fallback: (errors: NonEmptyArr<E>) => TaskValidation<E, B>) =>
-		(data: TaskValidation<E, A>): TaskValidation<E, A | B> =>
+		<E, B>(fallback: (errors: NonEmptyArr<E>) => TaskValidation<E, B>) =>
+		<A>(data: TaskValidation<E, A>): TaskValidation<E, A | B> =>
 			CoreTask.chain((validation: Validation<E, A>) =>
 				CoreValidation.is.passed(validation)
 					? CoreTask.resolve(validation as Validation<E, A | B>)

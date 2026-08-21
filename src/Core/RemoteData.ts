@@ -271,7 +271,7 @@ export namespace RemoteData {
 	 * pipe(RemoteData.make.loading<string, number>(), RemoteData.getOrElse(() => null)); // null — typed as number | null
 	 * ```
 	 */
-	export const getOrElse = <E, A, B>(defaultValue: () => B) => (data: RemoteData<E, A>): A | B =>
+	export const getOrElse = <B>(defaultValue: () => B) => <E, A>(data: RemoteData<E, A>): A | B =>
 		is.success(data) ? data.value : defaultValue();
 
 	/**
@@ -314,7 +314,7 @@ export namespace RemoteData {
 	 * The fallback can produce a different success type, widening the result to `RemoteData<E, A | B>`.
 	 */
 	export const recover =
-		<E, A, B>(fallback: (e: E) => RemoteData<E, B>) => (data: RemoteData<E, A>): RemoteData<E, A | B> =>
+		<E, B>(fallback: (e: E) => RemoteData<E, B>) => <A>(data: RemoteData<E, A>): RemoteData<E, A | B> =>
 			is.failure(data) ? fallback(data.error) : data;
 
 	// --- to ---

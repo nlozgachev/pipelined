@@ -180,8 +180,8 @@ export namespace TaskMaybe {
 	 * Returns the value or a default if the Task.Maybe resolves to None.
 	 * The default can be a different type, widening the result to `Task<A | B>`.
 	 */
-	export const getOrElse = <A, B>(defaultValue: () => B) => (data: TaskMaybe<A>): Task<A | B> =>
-		CoreTask.map(CoreMaybe.getOrElse<A, B>(defaultValue))(data);
+	export const getOrElse = <B>(defaultValue: () => B) => <A>(data: TaskMaybe<A>): Task<A | B> =>
+		CoreTask.map(CoreMaybe.getOrElse<B>(defaultValue))(data);
 
 	/**
 	 * Executes a side effect on the value without changing the Task.Maybe.
@@ -253,7 +253,7 @@ export namespace TaskMaybe {
 	 * ); // Task.Maybe(42)
 	 * ```
 	 */
-	export const recover = <A, B>(fallback: () => TaskMaybe<B>) => (data: TaskMaybe<A>): TaskMaybe<A | B> =>
+	export const recover = <B>(fallback: () => TaskMaybe<B>) => <A>(data: TaskMaybe<A>): TaskMaybe<A | B> =>
 		CoreTask.chain<Maybe<A>, Maybe<A | B>>((maybe) => (CoreMaybe.is.none(maybe) ? fallback() : CoreTask.resolve(maybe)))(
 			data,
 		);

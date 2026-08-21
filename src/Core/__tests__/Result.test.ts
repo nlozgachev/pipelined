@@ -479,7 +479,7 @@ test("Result.mapError — type-safe return type on mapped error output", () => {
 
 test("Result.getOrElse — type-safe widening to A | B", () => {
 	const r: Result<string, number> = Result.make.err("e");
-	const fn = Result.getOrElse<string, number, null>((): null => null);
+	const fn = Result.getOrElse<null>((): null => null);
 	const result = fn(r);
 	expect(result).toBeNull();
 });
