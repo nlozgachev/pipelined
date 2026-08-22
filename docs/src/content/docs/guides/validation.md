@@ -431,11 +431,11 @@ const validatedProfile = pipe(
   strength requirements, credit assessment criteria, or compliance checklists), `Validation` runs
   all checks independently and reports every unmet condition at once for comprehensive user
   feedback.
-- **Bridging validation accumulation with fail-fast execution (`toResult`, `fromResult`)**: In web
-  endpoints, validating an incoming request body requires accumulating all field errors with
-  `Validation`, but subsequent database operations require fail-fast sequential chaining with
-  `Result`. `Validation.toResult` bridges these patterns cleanly, preserving all collected errors
-  while transitioning into standard sequential pipelines.
+- **Bridging validation accumulation with fail-fast execution (`Validation.to.Result`,
+  `Validation.from.Result`)**: In web endpoints, validating an incoming request body requires
+  accumulating all field errors with `Validation`, but subsequent database operations require
+  fail-fast sequential chaining with `Result`. `Validation.to.Result` bridges these patterns
+  cleanly, preserving all collected errors while transitioning into standard sequential pipelines.
 - **Contextual error tagging across nested forms (`Validation.mapError`)**: In nested forms and
   multi-step wizards, child components validate their own sub-fields. `Validation.mapError` allows
   parent forms to namespace child errors (e.g. prefixing `address.zipCode`) before merging, keeping

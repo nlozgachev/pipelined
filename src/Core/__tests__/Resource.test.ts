@@ -36,10 +36,10 @@ test("Resource.use passes the acquired value to the function", async () => {
 test("Resource.use calls release after the function succeeds", async () => {
 	let released = false;
 	const resource = Resource.from.handlers(Task.Result.ok<string, number>(1), (_n) =>
-		Task.from.Promise(() => {
+		Task.tryCatch(() => {
 			released = true;
 			return Promise.resolve(undefined as void);
-		}));
+		}, { onError: () => {} }));
 	await pipe(resource, Resource.use((_n) => Task.Result.ok<string, void>(undefined)))();
 	expect(released).toBe(true);
 });
@@ -47,10 +47,10 @@ test("Resource.use calls release after the function succeeds", async () => {
 test("Resource.use calls release with the acquired value", async () => {
 	let releasedWith: number | null = null;
 	const resource = Resource.from.handlers(Task.Result.ok<string, number>(99), (n) =>
-		Task.from.Promise(() => {
+		Task.tryCatch(() => {
 			releasedWith = n;
 			return Promise.resolve(undefined as void);
-		}));
+		}, { onError: () => {} }));
 	await pipe(resource, Resource.use((_n) => Task.Result.ok<string, void>(undefined)))();
 	expect(releasedWith).toBe(99);
 });
@@ -62,10 +62,10 @@ test("Resource.use calls release with the acquired value", async () => {
 test("Resource.use calls release even when the function returns Err", async () => {
 	let released = false;
 	const resource = Resource.from.handlers(Task.Result.ok<string, number>(5), (_n) =>
-		Task.from.Promise(() => {
+		Task.tryCatch(() => {
 			released = true;
 			return Promise.resolve(undefined as void);
-		}));
+		}, { onError: () => {} }));
 	const result = await pipe(resource, Resource.use((_n) => Task.Result.err<string, void>("something went wrong")))();
 	expect(released).toBe(true);
 	expect(result).toStrictEqual({ kind: "Err", error: "something went wrong" });
@@ -76,10 +76,10 @@ test("Resource.use does not call release when acquire fails", async () => {
 	const resource = Resource.from.handlers(
 		Task.Result.err<string, number>("cannot connect"),
 		(_n) =>
-			Task.from.Promise(() => {
+			Task.tryCatch(() => {
 				released = true;
 				return Promise.resolve(undefined as void);
-			}),
+			}, { onError: () => {} }),
 	);
 	const result = await pipe(resource, Resource.use((_n) => Task.Result.ok<string, void>(undefined)))();
 	expect(released).toBe(false);
@@ -128,15 +128,15 @@ test("Resource.combine presents both acquired values as a tuple", async () => {
 test("Resource.combine releases second resource before first", async () => {
 	const order: string[] = [];
 	const rA = Resource.from.handlers(Task.Result.ok<string, string>("A"), (_s) =>
-		Task.from.Promise(() => {
+		Task.tryCatch(() => {
 			order.push("release-A");
 			return Promise.resolve(undefined as void);
-		}));
+		}, { onError: () => {} }));
 	const rB = Resource.from.handlers(Task.Result.ok<string, string>("B"), (_s) =>
-		Task.from.Promise(() => {
+		Task.tryCatch(() => {
 			order.push("release-B");
 			return Promise.resolve(undefined as void);
-		}));
+		}, { onError: () => {} }));
 	await pipe(Resource.combine(rA, rB), Resource.use((_pair) => Task.Result.ok<string, void>(undefined)))();
 	expect(order).toStrictEqual(["release-B", "release-A"]);
 });
@@ -144,10 +144,10 @@ test("Resource.combine releases second resource before first", async () => {
 test("Resource.combine releases first resource when second acquire fails", async () => {
 	let releasedA = false;
 	const rA = Resource.from.handlers(Task.Result.ok<string, string>("A"), (_s) =>
-		Task.from.Promise(() => {
+		Task.tryCatch(() => {
 			releasedA = true;
 			return Promise.resolve(undefined as void);
-		}));
+		}, { onError: () => {} }));
 	const rB = Resource.from.handlers(
 		Task.Result.err<string, string>("B failed"),
 		(_s) => Task.resolve(undefined as void),
@@ -199,10 +199,10 @@ test("resource composes with Task.Result operations inside use", async () => {
 test("Resource.use works with fromTask resource", async () => {
 	let released = false;
 	const resource = Resource.from.Task<string, string>(Task.resolve("handle"), (_s) =>
-		Task.from.Promise(() => {
+		Task.tryCatch(() => {
 			released = true;
 			return Promise.resolve(undefined as void);
-		}));
+		}, { onError: () => {} }));
 	const result = await pipe(resource, Resource.use((handle) => Task.Result.ok<string, string>(`used: ${handle}`)))();
 	expect(result).toStrictEqual({ kind: "Ok", value: "used: handle" });
 	expect(released).toBe(true);

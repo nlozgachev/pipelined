@@ -18,7 +18,7 @@ import { Deferred, Result, type Task, Task as CoreTask } from "#core";
  * ```ts
  * const dbResource = Resource.from.handlers(
  *   Task.Result.tryCatch(() => openConnection(config), { onError: (e) => new DbError(e) }),
- *   (conn) => Task.from.Promise(() => conn.close())
+ *   (conn) => Task.tryCatch(() => conn.close(), { onError: () => {} })
  * );
  *
  * const result = await pipe(
@@ -40,7 +40,7 @@ export namespace Resource {
 		 * ```ts
 		 * const fileResource = Resource.from.handlers(
 		 *   Task.Result.tryCatch(() => fs.promises.open("data.csv", "r"), { onError: toFileError }),
-		 *   (handle) => Task.from.Promise(() => handle.close())
+		 *   (handle) => Task.tryCatch(() => handle.close(), { onError: () => {} })
 		 * );
 		 * ```
 		 */
@@ -57,8 +57,8 @@ export namespace Resource {
 		 * @example
 		 * ```ts
 		 * const timerResource = Resource.from.Task<never, Timer>(
-		 *   Task.from.Promise(() => Promise.resolve(startTimer())),
-		 *   (timer) => Task.from.Promise(() => Promise.resolve(timer.stop()))
+		 *   Task.tryCatch(() => Promise.resolve(startTimer()), { onError: () => defaultTimer }),
+		 *   (timer) => Task.tryCatch(() => Promise.resolve(timer.stop()), { onError: () => {} })
 		 * );
 		 * ```
 		 */
@@ -83,19 +83,20 @@ export namespace Resource {
 	 * // conn is closed whether the query succeeds or fails
 	 * ```
 	 */
-	export const use = <E, A, B>(f: (a: A) => Task.Result<E, B>) => (resource: Resource<E, A>): Task.Result<E, B> =>
-		CoreTask.from.Promise((signal) =>
-			Deferred.to.Promise(resource.acquire(signal)).then(async (acquired) => {
-				if (Result.is.err(acquired)) { return acquired as Result<E, B>; }
-				const a = acquired.value;
-				try {
-					const usageResult = await Deferred.to.Promise(f(a)(signal));
-					return usageResult;
-				} finally {
-					await Deferred.to.Promise(resource.release(a)(signal));
-				}
-			})
-		);
+	export const use =
+		<E, A, B>(f: (a: A) => Task.Result<E, B>) => (resource: Resource<E, A>): Task.Result<E, B> => (signal) =>
+			Deferred.from.Promise(
+				Deferred.to.Promise(resource.acquire(signal)).then(async (acquired) => {
+					if (Result.is.err(acquired)) { return acquired as Result<E, B>; }
+					const a = acquired.value;
+					try {
+						const usageResult = await Deferred.to.Promise(f(a)(signal));
+						return usageResult;
+					} finally {
+						await Deferred.to.Promise(resource.release(a)(signal));
+					}
+				}),
+			);
 
 	/**
 	 * Acquires two resources in sequence and presents them as a tuple.
@@ -118,25 +119,26 @@ export namespace Resource {
 		resourceA: Resource<E, A>,
 		resourceB: Resource<E, B>,
 	): Resource<E, readonly [A, B]> => ({
-		acquire: CoreTask.from.Promise((signal) =>
-			Deferred.to.Promise(resourceA.acquire(signal)).then(async (acquiredA) => {
-				if (Result.is.err(acquiredA)) {
-					return acquiredA as Result<E, readonly [A, B]>;
-				}
-				const a = acquiredA.value;
+		acquire: (signal) =>
+			Deferred.from.Promise(
+				Deferred.to.Promise(resourceA.acquire(signal)).then(async (acquiredA) => {
+					if (Result.is.err(acquiredA)) {
+						return acquiredA as Result<E, readonly [A, B]>;
+					}
+					const a = acquiredA.value;
 
-				const acquiredB = await Deferred.to.Promise(resourceB.acquire(signal));
-				if (Result.is.err(acquiredB)) {
-					await Deferred.to.Promise(resourceA.release(a)(signal));
-					return acquiredB as Result<E, readonly [A, B]>;
-				}
+					const acquiredB = await Deferred.to.Promise(resourceB.acquire(signal));
+					if (Result.is.err(acquiredB)) {
+						await Deferred.to.Promise(resourceA.release(a)(signal));
+						return acquiredB as Result<E, readonly [A, B]>;
+					}
 
-				return Result.make.ok([a, acquiredB.value] as const);
-			})
-		),
-		release: ([a, b]) =>
-			CoreTask.from.Promise((signal) =>
-				Deferred.to.Promise(resourceB.release(b)(signal)).then(() => Deferred.to.Promise(resourceA.release(a)(signal)))
+					return Result.make.ok([a, acquiredB.value] as const);
+				}),
+			),
+		release: ([a, b]) => (signal) =>
+			Deferred.from.Promise(
+				Deferred.to.Promise(resourceB.release(b)(signal)).then(() => Deferred.to.Promise(resourceA.release(a)(signal))),
 			),
 	});
 }

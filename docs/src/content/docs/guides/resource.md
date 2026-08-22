@@ -59,7 +59,7 @@ const dbResource = Resource.from.handlers(
     () => openConnection({ host: "db.local" }),
     { onError: (error) => new Error(`DB connection failed: ${error}`) },
   ),
-  (connection) => Task.from.Promise(() => connection.close()),
+  (connection) => Task.tryCatch(() => connection.close(), { onError: () => {} }),
 );
 ```
 
@@ -73,8 +73,8 @@ a local timer — we can use `fromTask` to skip error mapping:
 
 ```ts
 const lockResource = Resource.from.Task<never, Lock>(
-  Task.from.Promise(() => Promise.resolve(acquireLock("process_orders"))),
-  (lock) => Task.from.Promise(() => Promise.resolve(lock.release())),
+  Task.tryCatch(() => Promise.resolve(acquireLock("process_orders")), { onError: () => defaultLock }),
+  (lock) => Task.tryCatch(() => Promise.resolve(lock.release()), { onError: () => {} }),
 );
 ```
 

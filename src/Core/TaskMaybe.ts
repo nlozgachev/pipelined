@@ -114,10 +114,8 @@ export namespace TaskMaybe {
 	 * );
 	 * ```
 	 */
-	export const tryCatch = <A>(f: (signal?: AbortSignal) => Thenable<A>): TaskMaybe<A> =>
-		CoreTask.from.Promise((signal) =>
-			Promise.resolve(f(signal)).then(CoreMaybe.make.some).catch(() => CoreMaybe.make.none())
-		);
+	export const tryCatch = <A>(f: (signal?: AbortSignal) => Thenable<A>): TaskMaybe<A> => (signal) =>
+		Deferred.from.Promise(Promise.resolve(f(signal)).then(CoreMaybe.make.some).catch(() => CoreMaybe.make.none()));
 
 	/**
 	 * Transforms the value inside a Task.Maybe.
@@ -146,11 +144,11 @@ export namespace TaskMaybe {
 	 * Applies a function wrapped in a Task.Maybe to a value wrapped in a Task.Maybe.
 	 * Both Tasks run in parallel.
 	 */
-	export const ap = <A>(arg: TaskMaybe<A>) => <B>(data: TaskMaybe<(a: A) => B>): TaskMaybe<B> =>
-		CoreTask.from.Promise((signal) =>
+	export const ap = <A>(arg: TaskMaybe<A>) => <B>(data: TaskMaybe<(a: A) => B>): TaskMaybe<B> => (signal) =>
+		Deferred.from.Promise(
 			Promise.all([Deferred.to.Promise(data(signal)), Deferred.to.Promise(arg(signal))]).then(([of_, oa]) =>
 				CoreMaybe.ap(oa)(of_)
-			)
+			),
 		);
 
 	/**
@@ -270,20 +268,21 @@ export namespace TaskMaybe {
 	 * }); // Task.Maybe({ name: "Alice", age: 30 })
 	 * ```
 	 */
-	export const struct = <R extends Record<string, any>>(fields: { [K in keyof R]: TaskMaybe<R[K]>; }): TaskMaybe<R> =>
-		CoreTask.from.Promise((signal) => {
-			const keys = Object.keys(fields);
-			const promises = keys.map((key) => Deferred.to.Promise(fields[key](signal)));
-			return Promise.all(promises).then((results) => {
-				const record = {} as R;
-				for (let i = 0; i < keys.length; i++) {
-					const res = results[i] as Maybe<any>;
-					if (CoreMaybe.is.none(res)) {
-						return res;
+	export const struct =
+		<R extends Record<string, any>>(fields: { [K in keyof R]: TaskMaybe<R[K]>; }): TaskMaybe<R> => (signal) =>
+			Deferred.from.Promise((() => {
+				const keys = Object.keys(fields);
+				const promises = keys.map((key) => Deferred.to.Promise(fields[key](signal)));
+				return Promise.all(promises).then((results) => {
+					const record = {} as R;
+					for (let i = 0; i < keys.length; i++) {
+						const res = results[i] as Maybe<any>;
+						if (CoreMaybe.is.none(res)) {
+							return res;
+						}
+						record[keys[i] as keyof R] = res.value;
 					}
-					record[keys[i] as keyof R] = res.value;
-				}
-				return CoreMaybe.make.some(record);
-			});
-		});
+					return CoreMaybe.make.some(record);
+				});
+			})());
 }

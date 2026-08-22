@@ -55,11 +55,15 @@ We lift asynchronous values into a `Task` context depending on whether they are 
 // Resolving immediately
 const constantTask = Task.resolve(42); // Task<number>
 
-// Wrapping a Promise-returning function
-const fetchTimestamp = Task.from.Promise(() => Promise.resolve(Date.now())); // Task<number>
-```
+Because standard Promises in JavaScript are fallible by definition, `Task.tryCatch` is the canonical intake for operations that may reject or throw an exception, trapping errors with a fallback handler to ensure the returned `Task<A>` is infallible and never throws:
 
-`Task.from` is a clear, explicit alias for wrapping a promise factory `() => Promise<A>`. It serves as the primary gateway for lifting standard async library calls into our functional system.
+```ts
+// Trapping errors with a fallback handler
+const loadConfig = Task.tryCatch(
+  () => configStore.get("default"),
+  { onError: () => DEFAULT_CONFIG },
+); // Task<Config>
+```
 
 ---
 
@@ -90,7 +94,10 @@ When a transformation itself returns another `Task`, we use `chain` to execute t
 const getSessionUserId = (): Task<string> => Task.resolve("user_abc");
 
 const fetchUserPreferences = (userId: string): Task<Preferences> =>
-  Task.from.Promise(() => preferencesService.get(userId));
+  Task.tryCatch(
+    () => preferencesService.get(userId),
+    { onError: () => DEFAULT_PREFERENCES },
+  );
 
 const userPrefs = pipe(
   getSessionUserId(),
@@ -305,7 +312,10 @@ Because `Task` and `Task.Result` are lazy thunks, calling a task multiple times 
 
 ```ts
 const fetchToken = Task.memoize(
-  Task.from.Promise(() => fetch("/auth/token").then((r) => r.json()))
+  Task.tryCatch(
+    () => fetchAuthToken(),
+    { onError: () => "ANONYMOUS_TOKEN" },
+  )
 );
 
 // First invocation triggers the network request:

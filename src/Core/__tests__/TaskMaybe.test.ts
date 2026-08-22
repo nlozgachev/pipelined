@@ -1,5 +1,6 @@
 import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import { Deferred } from "../Deferred.ts";
 import { Maybe } from "../Maybe.ts";
 import { Result } from "../Result.ts";
 import { Task } from "../Task.ts";
@@ -155,15 +156,21 @@ test("Task.Maybe.ap propagates the AbortSignal to both sides", async () => {
 	let signal1: AbortSignal | undefined;
 	let signal2: AbortSignal | undefined;
 
-	const fnTask = Task.from.Promise((signal) => {
-		signal1 = signal;
-		return Promise.resolve(Maybe.make.some((n: number) => n * 3));
-	});
+	const fnTask = (signal?: AbortSignal) =>
+		Deferred.from.Promise(
+			Promise.resolve(Maybe.make.some((n: number) => n * 3)).then((res) => {
+				signal1 = signal;
+				return res;
+			}),
+		);
 
-	const argTask = Task.from.Promise((signal) => {
-		signal2 = signal;
-		return Promise.resolve(Maybe.make.some(4));
-	});
+	const argTask = (signal?: AbortSignal) =>
+		Deferred.from.Promise(
+			Promise.resolve(Maybe.make.some(4)).then((res) => {
+				signal2 = signal;
+				return res;
+			}),
+		);
 
 	await pipe(fnTask, Task.Maybe.ap(argTask))(controller.signal);
 

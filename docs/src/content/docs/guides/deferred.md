@@ -34,7 +34,7 @@ Two deliberate design choices make `Deferred` work:
 
 ---
 
-## Wrapping Promises with fromPromise
+## Wrapping Promises with Deferred.from.Promise
 
 `Deferred.from.Promise` is the gateway constructor. It wraps a standard `Promise` that you are
 confident will never reject, lifting it into the infallible `Deferred` type:
@@ -48,8 +48,8 @@ const themeState: Deferred<string> = Deferred.from.Promise(
 );
 ```
 
-When you call `fromPromise`, you are asserting to the compiler that the underlying Promise is
-infallible. If the Promise does reject, that rejection behaves exactly like an unhandled Promise
+When you call `Deferred.from.Promise`, you are asserting to the compiler that the underlying Promise
+is infallible. If the Promise does reject, that rejection behaves exactly like an unhandled Promise
 rejection at runtime. Only wrap Promises that are guaranteed to succeed, such as those that have
 already resolved their errors using defaults or fallback strategies.
 
@@ -70,11 +70,11 @@ automatically.
 
 ---
 
-## Interoperability: toPromise
+## Interoperability: Deferred.to.Promise
 
 If you need to pass a `Deferred` value to an external library or a third-party API that strictly
 checks `instanceof Promise` rather than accepting generic thenables, you can convert it using
-`toPromise`:
+`Deferred.to.Promise`:
 
 ```ts
 const userSession = Deferred.from.Promise(sessionStore.get("userId"));

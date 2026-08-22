@@ -1,7 +1,7 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 
-const r = (p: string) => path.resolve(__dirname, p);
+const r = (p: string) => path.resolve(import.meta.dirname, p);
 
 export default defineConfig({
 	resolve: {

@@ -145,9 +145,9 @@ const parseTitle = (raw: string): Maybe<NonEmptyString> =>
   ); // Some(NonEmptyString) or None
 ```
 
-### Entering Result contexts with `toResult`
+### Entering Result contexts with `Refinement.to.Result`
 
-`toResult` converts a refinement into a mapping function `(a: A) => Result<E, B>`. It allows you to assert a type and attach a typed error if the check fails:
+`Refinement.to.Result` converts a refinement into a mapping function `(a: A) => Result<E, B>`. It allows you to assert a type and attach a typed error if the check fails:
 
 ```ts
 import { Result } from "@nlozgachev/pipelined/core";

@@ -44,7 +44,8 @@ export namespace TaskValidation {
 		 * const res = await task(); // Passed(42)
 		 * ```
 		 */
-		export const passed = <E, A>(value: A): TaskValidation<E, A> => CoreTask.resolve(CoreValidation.make.passed(value));
+		export const passed = <E = never, A = unknown>(value: A): TaskValidation<E, A> =>
+			CoreTask.resolve(CoreValidation.make.passed(value));
 
 		/**
 		 * Creates a failed Task.Validation with a single error.
@@ -55,7 +56,8 @@ export namespace TaskValidation {
 		 * const res = await task(); // Failed(["invalid"])
 		 * ```
 		 */
-		export const failed = <E, A>(error: E): TaskValidation<E, A> => CoreTask.resolve(CoreValidation.make.failed(error));
+		export const failed = <E, A = never>(error: E): TaskValidation<E, A> =>
+			CoreTask.resolve(CoreValidation.make.failed(error));
 
 		/**
 		 * Creates a failed Task.Validation from multiple errors.
@@ -66,7 +68,7 @@ export namespace TaskValidation {
 		 * const res = await task(); // Failed(["err1", "err2"])
 		 * ```
 		 */
-		export const failedAll = <E, A>(errors: NonEmptyArr<E>): TaskValidation<E, A> =>
+		export const failedAll = <E, A = never>(errors: NonEmptyArr<E>): TaskValidation<E, A> =>
 			CoreTask.resolve(CoreValidation.make.failedAll(errors));
 	}
 
@@ -135,25 +137,30 @@ export namespace TaskValidation {
 	 * Creates a Task.Validation from a Promise-returning function.
 	 * Catches any errors and transforms them using the onError function.
 	 * The factory optionally receives an `AbortSignal` forwarded from the call site.
+	/**
+	 * Creates a Task.Validation from a Promise-returning thunk that may throw or reject.
+	 * Catches any errors and transforms them using the `onError` function into a Failed validation.
+	 * The thunk optionally receives an `AbortSignal` forwarded from the call site.
 	 *
 	 * @example
 	 * ```ts
-	 * const fetchUser = (id: string): Task.Validation<string, User> =>
-	 *   Task.Validation.tryCatch(
-	 *     (signal) => fetch(`/users/${id}`, { signal }).then(r => r.json()),
-	 *     e => `Failed to fetch user: ${e}`
-	 *   );
+	 * const loadConfig = Task.Validation.tryCatch(
+	 *   (signal) => configStore.get("default", { signal }),
+	 *   { onError: (e) => `Failed to load config: ${e}` }
+	 * );
 	 * ```
 	 */
-	export const tryCatch = <E, A>(
-		f: (signal?: AbortSignal) => Thenable<A>,
-		onError: (e: unknown) => E,
-	): TaskValidation<E, A> =>
-		CoreTask.from.Promise((signal) =>
-			Promise.resolve(f(signal)).then(CoreValidation.make.passed<E, A>).catch((error) =>
-				CoreValidation.make.failed(onError(error))
-			)
-		);
+	export const tryCatch =
+		<E, A>(
+			f: (signal?: AbortSignal) => Thenable<A>,
+			options: { onError: (error: unknown) => E; },
+		): TaskValidation<E, A> =>
+		(signal) =>
+			Deferred.from.Promise(
+				globalThis.Promise.resolve().then(async () => f(signal)).then(CoreValidation.make.passed<E, A>).catch((error) =>
+					CoreValidation.make.failed<E>(options.onError(error))
+				),
+			);
 
 	/**
 	 * Transforms the success value inside a Task.Validation.
@@ -176,11 +183,11 @@ export namespace TaskValidation {
 	 * ```
 	 */
 	export const ap =
-		<E, A>(arg: TaskValidation<E, A>) => <B>(data: TaskValidation<E, (a: A) => B>): TaskValidation<E, B> =>
-			CoreTask.from.Promise((signal) =>
+		<E, A>(arg: TaskValidation<E, A>) => <B>(data: TaskValidation<E, (a: A) => B>): TaskValidation<E, B> => (signal) =>
+			Deferred.from.Promise(
 				Promise.all([Deferred.to.Promise(data(signal)), Deferred.to.Promise(arg(signal))]).then(([vf, va]) =>
 					CoreValidation.ap(va)(vf)
-				)
+				),
 			);
 
 	/**
@@ -249,15 +256,14 @@ export namespace TaskValidation {
 	 * )(); // Passed(["Alice", 30]) or Failed([...errors])
 	 * ```
 	 */
-	export const product = <E, A, B>(
-		first: TaskValidation<E, A>,
-		second: TaskValidation<E, B>,
-	): TaskValidation<E, readonly [A, B]> =>
-		CoreTask.from.Promise((signal) =>
-			Promise.all([Deferred.to.Promise(first(signal)), Deferred.to.Promise(second(signal))]).then(([va, vb]) =>
-				CoreValidation.product(va, vb)
-			)
-		);
+	export const product =
+		<E, A, B>(first: TaskValidation<E, A>, second: TaskValidation<E, B>): TaskValidation<E, readonly [A, B]> =>
+		(signal) =>
+			Deferred.from.Promise(
+				Promise.all([Deferred.to.Promise(first(signal)), Deferred.to.Promise(second(signal))]).then(([va, vb]) =>
+					CoreValidation.product(va, vb)
+				),
+			);
 
 	/**
 	 * Runs all Task.Validations concurrently and collects results.
@@ -273,13 +279,14 @@ export namespace TaskValidation {
 	 * ])(); // Passed([name, email, age]) or Failed([...all errors])
 	 * ```
 	 */
-	export const productAll = <E, A>(data: NonEmptyArr<TaskValidation<E, A>>): TaskValidation<E, readonly A[]> =>
-		CoreTask.from.Promise((signal) =>
-			Promise.all(data.map((t) => Deferred.to.Promise(t(signal)))).then((results) => {
-				const [first, ...rest] = results;
-				return CoreValidation.productAll([first!, ...rest]);
-			})
-		);
+	export const productAll =
+		<E, A>(data: NonEmptyArr<TaskValidation<E, A>>): TaskValidation<E, readonly A[]> => (signal) =>
+			Deferred.from.Promise(
+				Promise.all(data.map((t) => Deferred.to.Promise(t(signal)))).then((results) => {
+					const [first, ...rest] = results;
+					return CoreValidation.productAll([first!, ...rest]);
+				}),
+			);
 
 	/**
 	 * Transforms all accumulated errors inside a Task.Validation.
@@ -322,24 +329,24 @@ export namespace TaskValidation {
 	 * }); // Task.Validation({ name: "Alice", age: 30 })
 	 * ```
 	 */
-	export const struct = <E, R extends Record<string, any>>(
-		fields: { [K in keyof R]: TaskValidation<E, R[K]>; },
-	): TaskValidation<E, R> =>
-		CoreTask.from.Promise((signal) => {
-			const keys = Object.keys(fields);
-			const promises = keys.map((key) => Deferred.to.Promise(fields[key](signal)));
-			return Promise.all(promises).then((results) => {
-				const record = {} as R;
-				const errors: E[] = [];
-				for (let i = 0; i < keys.length; i++) {
-					const res = results[i] as Validation<E, any>;
-					if (CoreValidation.is.passed(res)) {
-						record[keys[i] as keyof R] = res.value;
-					} else {
-						errors.push(...res.errors);
+	export const struct =
+		<E, R extends Record<string, any>>(fields: { [K in keyof R]: TaskValidation<E, R[K]>; }): TaskValidation<E, R> =>
+		(signal) =>
+			Deferred.from.Promise((() => {
+				const keys = Object.keys(fields);
+				const promises = keys.map((key) => Deferred.to.Promise(fields[key](signal)));
+				return Promise.all(promises).then((results) => {
+					const record = {} as R;
+					const errors: E[] = [];
+					for (let i = 0; i < keys.length; i++) {
+						const res = results[i] as Validation<E, any>;
+						if (CoreValidation.is.passed(res)) {
+							record[keys[i] as keyof R] = res.value;
+						} else {
+							errors.push(...res.errors);
+						}
 					}
-				}
-				return isNonEmptyArr(errors) ? CoreValidation.make.failedAll(errors) : CoreValidation.make.passed(record);
-			});
-		});
+					return isNonEmptyArr(errors) ? CoreValidation.make.failedAll(errors) : CoreValidation.make.passed(record);
+				});
+			})());
 }

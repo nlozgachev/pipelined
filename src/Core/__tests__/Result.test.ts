@@ -522,20 +522,6 @@ test("Result.fromMaybe returns Err for None", () => {
 	expect(result).toStrictEqual(Result.make.err("is none"));
 });
 
-// --- fromThrowable ---
-
-test("Result.fromThrowable creates a safe function that returns Ok when it succeeds", () => {
-	const parse = Result.from.throwable((s: string) => JSON.parse(s), {
-		onError: (e: unknown) => `error: ${(e as Error).message}`,
-	});
-	expect(parse('{"a":1}')).toStrictEqual(Result.make.ok({ a: 1 }));
-});
-
-test("Result.fromThrowable creates a safe function that returns Err when it throws", () => {
-	const parse = Result.from.throwable((s: string) => JSON.parse(s), { onError: () => "parse error" });
-	expect(parse("invalid")).toStrictEqual(Result.make.err("parse error"));
-});
-
 // --- bindTo ---
 
 test("Result.bindTo wraps a value in an accumulator object", () => {

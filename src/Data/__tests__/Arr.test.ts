@@ -582,7 +582,7 @@ test("traverseTask - empty array resolves to empty array", async () => {
 
 test("traverseTask - handles async operations", async () => {
 	const delayedDouble = (n: number): Task<number> =>
-		Task.from.Promise(() => new Promise<number>((resolve) => setTimeout(() => resolve(n * 2), 10)));
+		Task.tryCatch(() => new Promise<number>((resolve) => setTimeout(() => resolve(n * 2), 10)), { onError: () => 0 });
 
 	const result = await pipe([1, 2, 3], Arr.traverse.Task(delayedDouble))();
 	expect(result).toStrictEqual([2, 4, 6]);
@@ -601,9 +601,9 @@ test("sequenceTask - empty array resolves to empty array", async () => {
 
 test("sequenceTask - preserves order despite different completion times", async () => {
 	const tasks: Task<string>[] = [
-		Task.from.Promise(() => new Promise<string>((resolve) => setTimeout(() => resolve("slow"), 30))),
-		Task.from.Promise(() => new Promise<string>((resolve) => setTimeout(() => resolve("fast"), 5))),
-		Task.from.Promise(() => new Promise<string>((resolve) => setTimeout(() => resolve("medium"), 15))),
+		Task.tryCatch(() => new Promise<string>((resolve) => setTimeout(() => resolve("slow"), 30)), { onError: () => "" }),
+		Task.tryCatch(() => new Promise<string>((resolve) => setTimeout(() => resolve("fast"), 5)), { onError: () => "" }),
+		Task.tryCatch(() => new Promise<string>((resolve) => setTimeout(() => resolve("medium"), 15)), { onError: () => "" }),
 	];
 	const result = await Arr.sequence.Task(tasks)();
 	expect(result).toStrictEqual(["slow", "fast", "medium"]);
@@ -623,10 +623,10 @@ test("traverseTaskResult - all succeed returns Ok of results", async () => {
 test("traverseTaskResult - first error short-circuits", async () => {
 	const order: number[] = [];
 	const validate = (n: number): Task<Result<string, number>> =>
-		Task.from.Promise(() => {
+		Task.tryCatch(() => {
 			order.push(n);
 			return Promise.resolve(n > 0 ? Result.make.ok(n) : Result.make.err("non-positive"));
-		});
+		}, { onError: () => Result.make.err("failed") });
 	const result = await pipe([1, -1, 3], Arr.traverse.Task.Result(validate))();
 	expect(result).toStrictEqual(Result.make.err("non-positive"));
 	expect(order).toStrictEqual([1, -1]); // 3 was not processed

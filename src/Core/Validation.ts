@@ -93,16 +93,15 @@ export namespace Validation {
 	}
 
 	/**
-	 * Creates a Validation from a function that may throw.
-	 * Catches any errors and transforms them using the onError function into a Failed validation.
+	 * Creates a Validation from a synchronous thunk that may throw.
+	 * Catches any errors and transforms them using the `onError` function into a Failed validation.
 	 *
 	 * @example
 	 * ```ts
-	 * const parseJson = (s: string): Validation<string, unknown> =>
-	 *   Validation.tryCatch(
-	 *     () => JSON.parse(s),
-	 *     { onError: (e) => `Parse error: ${e}` }
-	 *   );
+	 * const result = Validation.tryCatch(
+	 *   () => JSON.parse(rawString),
+	 *   { onError: (e) => `Parse error: ${e}` }
+	 * );
 	 * ```
 	 */
 	export const tryCatch = <E, A>(f: () => A, options: { onError: (e: unknown) => E; }): Validation<E, A> => {

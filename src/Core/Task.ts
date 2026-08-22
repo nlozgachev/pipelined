@@ -53,6 +53,8 @@ export type Task<A> = (signal?: AbortSignal) => Deferred<A>;
 // so that combinators can use Promise chaining (.then, Promise.all, Promise.race, etc.)
 // internally without leaking that primitive through the public API.
 const toPromise = <A>(task: Task<A>, signal?: AbortSignal): Promise<A> => Deferred.to.Promise(task(signal));
+const fromPromise = <A>(f: (signal?: AbortSignal) => Thenable<A>): Task<A> => (signal?: AbortSignal) =>
+	Deferred.from.Promise(f(signal));
 
 const getMs = (duration: Duration): number => Duration.to.milliseconds(duration);
 
@@ -71,18 +73,6 @@ export namespace Task {
 	// --- from ---
 	export namespace from {
 		/**
-		 * Creates a Task from a function that returns a Promise.
-		 * The factory optionally receives an `AbortSignal` forwarded from the call site.
-		 *
-		 * @example
-		 * ```ts
-		 * const getTimestamp = Task.from.Promise(() => Promise.resolve(Date.now()));
-		 * ```
-		 */
-		export const Promise = <A>(f: (signal?: AbortSignal) => Thenable<A>): Task<A> => (signal?: AbortSignal) =>
-			Deferred.from.Promise(f(signal));
-
-		/**
 		 * Creates a Task from a lazy synchronous thunk.
 		 * Unlike `Task.resolve(f())`, `from.sync` does not evaluate `f` until the Task is called.
 		 *
@@ -96,6 +86,24 @@ export namespace Task {
 	}
 
 	/**
+	 * Wraps a Promise-returning thunk that may throw or reject,
+	 * trapping errors with a fallback function and returning a guaranteed `Task<A>`.
+	 *
+	 * @example
+	 * ```ts
+	 * const loadConfig = Task.tryCatch(
+	 *   () => configStore.get("default"),
+	 *   { onError: () => DEFAULT_CONFIG }
+	 * );
+	 * ```
+	 */
+	export const tryCatch = <A>(
+		f: (signal?: AbortSignal) => globalThis.Promise<A>,
+		options: { onError: (error: unknown) => A; },
+	): Task<A> =>
+		fromPromise((signal) => globalThis.Promise.resolve().then(() => f(signal)).catch((err) => options.onError(err)));
+
+	/**
 	 * Transforms the value inside a Task.
 	 *
 	 * @example
@@ -107,7 +115,7 @@ export namespace Task {
 	 * ```
 	 */
 	export const map = <A, B>(f: (a: A) => B) => (data: Task<A>): Task<B> =>
-		from.Promise((signal) => toPromise(data, signal).then(f));
+		fromPromise((signal) => toPromise(data, signal).then(f));
 
 	/**
 	 * Chains Task computations. Passes the resolved value of the first Task to f.
@@ -125,7 +133,7 @@ export namespace Task {
 	 * ```
 	 */
 	export const chain = <A, B>(f: (a: A) => Task<B>) => (data: Task<A>): Task<B> =>
-		from.Promise((signal) => toPromise(data, signal).then((a) => toPromise(f(a), signal)));
+		fromPromise((signal) => toPromise(data, signal).then((a) => toPromise(f(a), signal)));
 
 	/**
 	 * Applies a function wrapped in a Task to a value wrapped in a Task.
@@ -142,7 +150,7 @@ export namespace Task {
 	 * ```
 	 */
 	export const ap = <A>(arg: Task<A>) => <B>(data: Task<(a: A) => B>): Task<B> =>
-		from.Promise((signal) => Promise.all([toPromise(data, signal), toPromise(arg, signal)]).then(([f, a]) => f(a)));
+		fromPromise((signal) => Promise.all([toPromise(data, signal), toPromise(arg, signal)]).then(([f, a]) => f(a)));
 
 	/**
 	 * Executes a side effect on the value without changing the Task.
@@ -158,7 +166,7 @@ export namespace Task {
 	 * ```
 	 */
 	export const tap = <A>(f: (a: A) => void) => (data: Task<A>): Task<A> =>
-		from.Promise((signal) =>
+		fromPromise((signal) =>
 			toPromise(data, signal).then((a) => {
 				f(a);
 				return a;
@@ -177,7 +185,7 @@ export namespace Task {
 	export const all = <T extends readonly Task<unknown>[]>(
 		tasks: T,
 	): Task<{ [K in keyof T]: T[K] extends Task<infer A> ? A : never; }> =>
-		from.Promise((signal) =>
+		fromPromise((signal) =>
 			Promise.all(tasks.map((t) => toPromise(t, signal))) as Promise<
 				{ [K in keyof T]: T[K] extends Task<infer A> ? A : never; }
 			>
@@ -196,7 +204,7 @@ export namespace Task {
 	 * ```
 	 */
 	export const delay = (duration: Duration) => <A>(data: Task<A>): Task<A> =>
-		from.Promise((signal) =>
+		fromPromise((signal) =>
 			new Promise<A>((res) => {
 				// eslint-disable-next-line prefer-const
 				let timerId: ReturnType<typeof setTimeout> | undefined;
@@ -232,7 +240,7 @@ export namespace Task {
 	 * ```
 	 */
 	export const repeat = (options: { times: number; delay?: Duration; }) => <A>(task: Task<A>): Task<readonly A[]> =>
-		from.Promise((signal) => {
+		fromPromise((signal) => {
 			const { times, delay: delayDuration } = options;
 			if (times <= 0) { return Promise.resolve([]); }
 			const results: A[] = [];
@@ -281,7 +289,7 @@ export namespace Task {
 	 */
 	export const repeatUntil =
 		<A>(options: { when: (a: A) => boolean; delay?: Duration; maxAttempts?: number; }) => (task: Task<A>): Task<A> =>
-			from.Promise((signal) => {
+			fromPromise((signal) => {
 				const { when: predicate, delay: delayDuration, maxAttempts } = options;
 				const wait = (): Promise<void> =>
 					new Promise((r) => {
@@ -320,8 +328,8 @@ export namespace Task {
 	 *
 	 * @example
 	 * ```ts
-	 * const fast = Task.from.Promise(() => new Promise<string>(r => setTimeout(() => r("fast"), 10)));
-	 * const slow = Task.from.Promise(() => new Promise<string>(r => setTimeout(() => r("slow"), 200)));
+	 * const fast = Task.resolve("fast");
+	 * const slow = Task.delay(Duration.milliseconds(200))(Task.resolve("slow"));
 	 *
 	 * await Task.race([fast, slow])(); // "fast"
 	 * ```
@@ -330,7 +338,7 @@ export namespace Task {
 		if (tasks.length === 0) {
 			return () => Deferred.from.Promise(new Promise(() => {}));
 		}
-		return from.Promise((outerSignal) => {
+		return fromPromise((outerSignal) => {
 			const controllers = tasks.map(() => new AbortController());
 			const onOuterAbort = () => {
 				for (const ctrl of controllers) { ctrl.abort(); }
@@ -369,7 +377,7 @@ export namespace Task {
 	 * ```
 	 */
 	export const sequence = <A>(tasks: ReadonlyArray<Task<A>>): Task<ReadonlyArray<A>> =>
-		from.Promise((signal) => Promise.all(tasks.map((t) => toPromise(t, signal))));
+		fromPromise((signal) => Promise.all(tasks.map((t) => toPromise(t, signal))));
 
 	/**
 	 * Runs an array of Tasks one at a time in order, collecting all results.
@@ -378,17 +386,14 @@ export namespace Task {
 	 * @example
 	 * ```ts
 	 * let log: number[] = [];
-	 * const makeTask = (n: number) => Task.from.Promise(() => {
-	 *   log.push(n);
-	 *   return Promise.resolve(n);
-	 * });
+	 * const makeTask = (n: number) => Task.resolve(n);
 	 *
 	 * await Task.sequential([makeTask(1), makeTask(2), makeTask(3)])();
 	 * // log = [1, 2, 3] — tasks ran in order
 	 * ```
 	 */
 	export const sequential = <A>(tasks: ReadonlyArray<Task<A>>): Task<ReadonlyArray<A>> =>
-		from.Promise(async (signal) => {
+		fromPromise(async (signal) => {
 			const results: A[] = [];
 			for (const task of tasks) {
 				if (signal?.aborted) {
@@ -417,7 +422,7 @@ export namespace Task {
 	 */
 	export const timeout =
 		<E>(options: { duration: Duration; onTimeout: () => E; }) => <A>(task: Task<A>): Task<CoreResult<E, A>> =>
-			from.Promise((outerSignal) => {
+			fromPromise((outerSignal) => {
 				const { duration, onTimeout } = options;
 				const controller = new AbortController();
 				let timerId: ReturnType<typeof setTimeout> | undefined;

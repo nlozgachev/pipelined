@@ -330,7 +330,7 @@ If a retry policy is active, the manager's state automatically expands to includ
 
 At boundaries, you can map an `Outcome` back to other library primitives.
 
-`toResult` maps `Ok` to `Ok` and `Err` to `Err`. Because `Result` has no concept of cancellations, you must provide a fallback error to represent `Nil` states:
+`Op.to.Result` maps `Ok` to `Ok` and `Err` to `Err`. Because `Result` has no concept of cancellations, you must provide a fallback error to represent `Nil` states:
 
 ```ts
 const resultOutcome = pipe(
@@ -339,7 +339,7 @@ const resultOutcome = pipe(
 ); // Result<ApiError, A>
 ```
 
-`toMaybe` maps `Ok` to `Some` and maps both `Err` and `Nil` states to `None`:
+`Op.to.Maybe` maps `Ok` to `Some` and maps both `Err` and `Nil` states to `None`:
 
 ```ts
 const maybeOutcome = Op.to.Maybe(outcome); // Some(A) or None

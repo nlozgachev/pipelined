@@ -107,8 +107,10 @@ namespace ArrTaskResult {
 	 * ```
 	 */
 	export const traverse =
-		<E, A, B>(f: (a: A) => CoreTask<CoreResult<E, B>>) => (data: readonly A[]): CoreTask<CoreResult<E, readonly B[]>> =>
-			CoreTask.from.Promise(async () => {
+		<E, A, B>(f: (a: A) => CoreTask<CoreResult<E, B>>) =>
+		(data: readonly A[]): CoreTask<CoreResult<E, readonly B[]>> =>
+		() =>
+			Deferred.from.Promise((async () => {
 				const result: B[] = [];
 				for (const a of data) {
 					// eslint-disable-next-line no-await-in-loop
@@ -117,7 +119,7 @@ namespace ArrTaskResult {
 					result.push(r.value);
 				}
 				return CoreResult.make.ok(result);
-			});
+			})());
 
 	/**
 	 * Collects an array of Task.Results into a Task.Result of array.
@@ -147,8 +149,8 @@ namespace ArrTask {
 	 * )(); // Promise<[2, 4, 6]>
 	 * ```
 	 */
-	export const traverse = <A, B>(f: (a: A) => CoreTask<B>) => (data: readonly A[]): CoreTask<readonly B[]> =>
-		CoreTask.from.Promise(() => Promise.all(data.map((a) => Deferred.to.Promise(f(a)()))));
+	export const traverse = <A, B>(f: (a: A) => CoreTask<B>) => (data: readonly A[]): CoreTask<readonly B[]> => () =>
+		Deferred.from.Promise(Promise.all(data.map((a) => Deferred.to.Promise(f(a)()))));
 
 	/**
 	 * Collects an array of Tasks into a Task of array. Runs in parallel.

@@ -16,6 +16,7 @@
 		"pipe"
 	],
 	"types": "./dist/index.d.ts",
+	"type": "module",
 	"sideEffects": false,
 	"engines": {
 		"node": ">=24.19.0"

@@ -56,15 +56,14 @@ test("Task.Validation.fromValidation lifts an Invalid into a Task", async () => 
 // --- tryCatch ---
 
 test("Task.Validation.tryCatch returns Valid when Promise resolves", async () => {
-	await expect(Task.Validation.tryCatch(() => Promise.resolve(42), (e) => String(e))()).resolves.toStrictEqual({
-		kind: "Passed",
-		value: 42,
-	});
+	await expect(Task.Validation.tryCatch(() => Promise.resolve(42), { onError: (e) => String(e) })()).resolves
+		.toStrictEqual({ kind: "Passed", value: 42 });
 });
 
 test("Task.Validation.tryCatch returns Invalid when Promise rejects", async () => {
-	await expect(Task.Validation.tryCatch(() => Promise.reject(new Error("boom")), (e) => (e as Error).message)()).resolves
-		.toStrictEqual({ kind: "Failed", errors: ["boom"] });
+	await expect(
+		Task.Validation.tryCatch(() => Promise.reject(new Error("boom")), { onError: (e) => (e as Error).message })(),
+	).resolves.toStrictEqual({ kind: "Failed", errors: ["boom"] });
 });
 
 test("Task.Validation.tryCatch catches async throws", async () => {
@@ -74,7 +73,7 @@ test("Task.Validation.tryCatch catches async throws", async () => {
 			async () => {
 				throw new Error("bang");
 			},
-			(e) => (e as Error).message,
+			{ onError: (e) => (e as Error).message },
 		)(),
 	).resolves.toStrictEqual({ kind: "Failed", errors: ["bang"] });
 });
@@ -84,7 +83,7 @@ test("Task.Validation.tryCatch receives the AbortSignal from the call site", asy
 	const task = Task.Validation.tryCatch((signal) => {
 		receivedSignal = signal;
 		return Promise.resolve(42);
-	}, (e) => String(e));
+	}, { onError: (e) => String(e) });
 	const controller = new AbortController();
 	await task(controller.signal);
 	expect(receivedSignal).toBe(controller.signal);

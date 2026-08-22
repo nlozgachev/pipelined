@@ -77,13 +77,16 @@ export namespace Result {
 	 * Creates a Result from a function that may throw.
 	 * Catches any errors and transforms them using the onError function.
 	 *
+	/**
+	 * Creates a Result from a synchronous thunk that may throw.
+	 * Catches any errors and transforms them using the `onError` function.
+	 *
 	 * @example
 	 * ```ts
-	 * const parseJson = (s: string): Result<string, unknown> =>
-	 *   Result.tryCatch(
-	 *     () => JSON.parse(s),
-	 *     { onError: (e) => `Parse error: ${e}` }
-	 *   );
+	 * const result = Result.tryCatch(
+	 *   () => JSON.parse(rawString),
+	 *   { onError: (e) => `Parse error: ${e}` }
+	 * );
 	 * ```
 	 */
 	export const tryCatch = <E, A>(f: () => A, options: { onError: (e: unknown) => E; }): Result<E, A> => {
@@ -259,31 +262,6 @@ export namespace Result {
 		 */
 		export const Maybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): Result<E, A> =>
 			CoreMaybe.is.none(maybe) ? make.err(onNone()) : make.ok(maybe.value);
-
-		/**
-		 * Wraps a throwing function of any arguments, returning a new function
-		 * that catches errors and returns a Result.
-		 *
-		 * @example
-		 * ```ts
-		 * const safeParse = Result.from.throwable(
-		 *   (s: string) => JSON.parse(s),
-		 *   { onError: (e) => new Error(`Parse error: ${e}`) }
-		 * );
-		 *
-		 * safeParse('{"a":1}'); // Ok({ a: 1 })
-		 * safeParse('invalid');  // Err(Error)
-		 * ```
-		 */
-		export const throwable =
-			<Args extends readonly unknown[], A, E>(f: (...args: Args) => A, options: { onError: (e: unknown) => E; }) =>
-			(...args: Args): Result<E, A> => {
-				try {
-					return make.ok(f(...args));
-				} catch (error) {
-					return make.err(options.onError(error));
-				}
-			};
 
 		/**
 		 * Converts a `Validation` to a `Result`, combining accumulated errors using `combineErrors`.

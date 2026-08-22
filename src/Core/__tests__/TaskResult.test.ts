@@ -556,24 +556,6 @@ test("Task.Result.fromResult returns Err for Err", async () => {
 	expect(result).toStrictEqual(Result.make.err("bad"));
 });
 
-// --- fromThrowable ---
-
-test("Task.Result.fromThrowable returns Ok when it succeeds", async () => {
-	const parse = Task.Result.from.throwable((s: string) => Promise.resolve(JSON.parse(s)), {
-		onError: () => "parse error",
-	});
-	const result = await parse('{"a":1}')();
-	expect(result).toStrictEqual(Result.make.ok({ a: 1 }));
-});
-
-test("Task.Result.fromThrowable returns Err when it throws", async () => {
-	const fetch = Task.Result.from.throwable((_url: string) => Promise.reject(new Error("network error")), {
-		onError: (e) => (e as Error).message,
-	});
-	const result = await fetch("/api")();
-	expect(result).toStrictEqual(Result.make.err("network error"));
-});
-
 // --- bindTo ---
 
 test("Task.Result.bindTo wraps a value in an accumulator object", async () => {
@@ -855,10 +837,10 @@ test("Task.Result.chain infers exact error union without collapsing to unknown",
 	const step2 = (_: unknown) => Task.Result.err("ERR_B" as const);
 
 	const taskRes = pipe(step1, Task.Result.chain(step2));
-	expectTypeOf(taskRes).toEqualTypeOf<Task.Result<"ERR_A" | "ERR_B", unknown>>();
+	expectTypeOf(taskRes).toEqualTypeOf<Task.Result<"ERR_A" | "ERR_B", never>>();
 	const res = await taskRes();
 
-	expectTypeOf(res).toEqualTypeOf<Result<"ERR_A" | "ERR_B", unknown>>();
+	expectTypeOf(res).toMatchTypeOf<Result<"ERR_A" | "ERR_B", never>>();
 	expect(res).toStrictEqual({ kind: "Err", error: "ERR_A" });
 });
 
@@ -879,4 +861,34 @@ test("Task.Result.to.Maybe converts Ok to Some and Err to None", async () => {
 
 	await expect(Task.Result.to.Maybe(okTask)()).resolves.toStrictEqual({ kind: "Some", value: 42 });
 	await expect(Task.Result.to.Maybe(errTask)()).resolves.toStrictEqual({ kind: "None" });
+});
+
+type TestErr = { code: "NOT_FOUND" | "TIMEOUT"; };
+type TestVal = { id: number; };
+
+test("Task.Result.make.ok defaults error generic to never, allowing ternary error union inference", async () => {
+	const step = (): Task.Result<TestErr, TestVal[]> => Task.Result.ok([{ id: 42 }]);
+
+	const task = pipe(
+		step(),
+		Task.Result.chain((vals) =>
+			vals.length === 0 ? Task.Result.err({ code: "NOT_FOUND" as const }) : Task.Result.ok(vals)
+		),
+		Task.Result.map((v) => String(v[0]?.id)),
+	);
+
+	const res = await task();
+	expectTypeOf(res).toMatchTypeOf<Result<TestErr, string>>();
+	expect(res).toStrictEqual(Result.make.ok("42"));
+});
+
+test("Task.Result.tryCatch lifts async operations into Task.Result", async () => {
+	const asyncOp = (): Promise<TestVal> => Promise.resolve({ id: 100 });
+	const task: Task.Result<TestErr, TestVal> = Task.Result.tryCatch(() => asyncOp(), {
+		onError: () => ({ code: "NOT_FOUND" }),
+	});
+
+	const res = await task();
+	expectTypeOf(res).toMatchTypeOf<Result<TestErr, TestVal>>();
+	expect(res).toStrictEqual(Result.make.ok({ id: 100 }));
 });

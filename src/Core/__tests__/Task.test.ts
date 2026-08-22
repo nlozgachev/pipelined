@@ -4,6 +4,9 @@ import { Duration } from "../../Types/Duration.ts";
 import { Deferred } from "../Deferred.ts";
 import { Task } from "../Task.ts";
 
+const fromPromise = <A>(f: (signal?: AbortSignal) => Promise<A>): Task<A> => (signal?: AbortSignal) =>
+	Deferred.from.Promise(f(signal));
+
 // ---------------------------------------------------------------------------
 // of
 // ---------------------------------------------------------------------------
@@ -14,24 +17,29 @@ test("task.resolve creates a Task that resolves to the given value", async () =>
 });
 
 // ---------------------------------------------------------------------------
-// from
+// from / tryCatch
 // ---------------------------------------------------------------------------
 
-test("task.from creates a Task from a function returning a Promise", async () => {
-	const task = Task.from.Promise(() => Promise.resolve(99));
-	const result = await task();
-	expect(result).toBe(99);
-});
-
-test("Task.from is lazy - does not execute until called", async () => {
+test("Task.tryCatch is lazy - does not execute until called", async () => {
 	let executed = false;
-	const task = Task.from.Promise(() => {
+	const task = Task.tryCatch(() => {
 		executed = true;
 		return Promise.resolve(1);
-	});
+	}, { onError: () => 0 });
 	expect(executed).toBe(false);
 	await task();
 	expect(executed).toBe(true);
+});
+
+test("Task.tryCatch traps async throws/rejections and resolves to fallback value", async () => {
+	const taskSuccess = Task.tryCatch(() => Promise.resolve(42), { onError: () => 0 });
+	const okVal = await taskSuccess();
+	expectTypeOf(okVal).toEqualTypeOf<number>();
+	expect(okVal).toBe(42);
+
+	const taskFail = Task.tryCatch(() => Promise.reject(new Error("network error")), { onError: () => 0 });
+	const fallbackVal = await taskFail();
+	expect(fallbackVal).toBe(0);
 });
 
 // ---------------------------------------------------------------------------
@@ -91,8 +99,8 @@ test("Task.ap applies a Task function to a Task value", async () => {
 
 test("Task.ap runs Tasks in parallel", async () => {
 	const start = Date.now();
-	const slowValue = Task.from.Promise(() => new Promise<number>((resolve) => setTimeout(() => resolve(10), 50)));
-	const slowFn = Task.from.Promise(() =>
+	const slowValue = fromPromise(() => new Promise<number>((resolve) => setTimeout(() => resolve(10), 50)));
+	const slowFn = fromPromise(() =>
 		new Promise<(n: number) => number>((resolve) => setTimeout(() => resolve((n: number) => n * 2), 50))
 	);
 
@@ -153,8 +161,8 @@ test("Task.all with empty array returns empty array", async () => {
 });
 
 test("task.all preserves order regardless of completion time", async () => {
-	const slow = Task.from.Promise(() => new Promise<string>((resolve) => setTimeout(() => resolve("slow"), 50)));
-	const fast = Task.from.Promise(() => new Promise<string>((resolve) => setTimeout(() => resolve("fast"), 10)));
+	const slow = fromPromise(() => new Promise<string>((resolve) => setTimeout(() => resolve("slow"), 50)));
+	const fast = fromPromise(() => new Promise<string>((resolve) => setTimeout(() => resolve("fast"), 10)));
 
 	const result = await Task.all([slow, fast] as const)();
 	expect(result).toStrictEqual(["slow", "fast"]);
@@ -162,9 +170,9 @@ test("task.all preserves order regardless of completion time", async () => {
 
 test("Task.all runs Tasks in parallel (not sequentially)", async () => {
 	const start = Date.now();
-	const t1 = Task.from.Promise(() => new Promise<number>((resolve) => setTimeout(() => resolve(1), 50)));
-	const t2 = Task.from.Promise(() => new Promise<number>((resolve) => setTimeout(() => resolve(2), 50)));
-	const t3 = Task.from.Promise(() => new Promise<number>((resolve) => setTimeout(() => resolve(3), 50)));
+	const t1 = fromPromise(() => new Promise<number>((resolve) => setTimeout(() => resolve(1), 50)));
+	const t2 = fromPromise(() => new Promise<number>((resolve) => setTimeout(() => resolve(2), 50)));
+	const t3 = fromPromise(() => new Promise<number>((resolve) => setTimeout(() => resolve(3), 50)));
 
 	const result = await Task.all([t1, t2, t3] as const)();
 	const elapsed = Date.now() - start;
@@ -230,15 +238,15 @@ test("task is lazy and only executes when invoked", () => {
 // ---------------------------------------------------------------------------
 
 test("Task.race resolves with the fastest Task", async () => {
-	const fast = Task.from.Promise<string>(() => new Promise((r) => setTimeout(() => r("fast"), 10)));
-	const slow = Task.from.Promise<string>(() => new Promise((r) => setTimeout(() => r("slow"), 100)));
+	const fast = fromPromise<string>(() => new Promise((r) => setTimeout(() => r("fast"), 10)));
+	const slow = fromPromise<string>(() => new Promise((r) => setTimeout(() => r("slow"), 100)));
 	const result = await Task.race([fast, slow])();
 	expect(result).toBe("fast");
 });
 
 test("Task.race resolves immediately when a resolved Task is included", async () => {
 	const immediate = Task.resolve("immediate");
-	const slow = Task.from.Promise<string>(() => new Promise((r) => setTimeout(() => r("slow"), 100)));
+	const slow = fromPromise<string>(() => new Promise((r) => setTimeout(() => r("slow"), 100)));
 	const result = await Task.race([slow, immediate])();
 	expect(result).toBe("immediate");
 });
@@ -250,8 +258,8 @@ test("Task.race with a single Task resolves to its value", async () => {
 
 test("Task.race starts all Tasks immediately (parallel, not sequential)", async () => {
 	const start = Date.now();
-	const t1 = Task.from.Promise<number>(() => new Promise((r) => setTimeout(() => r(1), 50)));
-	const t2 = Task.from.Promise<number>(() => new Promise((r) => setTimeout(() => r(2), 10)));
+	const t1 = fromPromise<number>(() => new Promise((r) => setTimeout(() => r(1), 50)));
+	const t2 = fromPromise<number>(() => new Promise((r) => setTimeout(() => r(2), 10)));
 	const result = await Task.race([t1, t2])();
 	const elapsed = Date.now() - start;
 	expect(result).toBe(2);
@@ -271,7 +279,7 @@ test("Task.race aborts all subtasks when an already-aborted outer signal is pass
 	controller.abort();
 	const seen: AbortSignal[] = [];
 	const makeTask = (n: number) =>
-		Task.from.Promise<number>((signal) => {
+		fromPromise<number>((signal) => {
 			if (signal) { seen.push(signal); }
 			return new Promise<number>((r) => {
 				const id = setTimeout(() => r(n), 500);
@@ -291,7 +299,7 @@ test("Task.race aborts remaining subtasks when the outer signal aborts mid-fligh
 	const controller = new AbortController();
 	const seen: AbortSignal[] = [];
 	const makeTask = (n: number) =>
-		Task.from.Promise<number>((signal) => {
+		fromPromise<number>((signal) => {
 			if (signal) { seen.push(signal); }
 			return new Promise<number>((r) => {
 				const id = setTimeout(() => r(n), 500);
@@ -325,7 +333,7 @@ test("Task.sequential with empty array returns empty array", async () => {
 test("Task.sequential executes each Task only after the previous resolves", async () => {
 	const order: number[] = [];
 	const makeTask = (n: number, ms: number) =>
-		Task.from.Promise<number>(() =>
+		fromPromise<number>(() =>
 			new Promise((r) =>
 				setTimeout(() => {
 					order.push(n);
@@ -348,7 +356,7 @@ test("Task.sequential short-circuits early when the signal is aborted", async ()
 	const controller = new AbortController();
 
 	const makeTask = (n: number) =>
-		Task.from.Promise<number>(() => {
+		fromPromise<number>(() => {
 			order.push(n);
 			if (n === 2) {
 				controller.abort();
@@ -375,13 +383,13 @@ test("task.timeout returns Ok when task resolves before timeout", async () => {
 });
 
 test("Task.timeout returns Err when task exceeds timeout", async () => {
-	const slow = Task.from.Promise<number>(() => new Promise((r) => setTimeout(() => r(42), 200)));
+	const slow = fromPromise<number>(() => new Promise((r) => setTimeout(() => r(42), 200)));
 	const result = await pipe(slow, Task.timeout({ duration: Duration.milliseconds(10), onTimeout: () => "timed out" }))();
 	expect(result).toStrictEqual({ kind: "Err", error: "timed out" });
 });
 
 test("Task.timeout uses the onTimeout return value as the error", async () => {
-	const slow = Task.from.Promise<number>(() => new Promise((r) => setTimeout(() => r(42), 200)));
+	const slow = fromPromise<number>(() => new Promise((r) => setTimeout(() => r(42), 200)));
 	const error = new Error("request timed out");
 	const result = await pipe(slow, Task.timeout({ duration: Duration.milliseconds(10), onTimeout: () => error }))();
 	expect(result).toStrictEqual({ kind: "Err", error });
@@ -393,7 +401,7 @@ test("Task.timeout uses the onTimeout return value as the error", async () => {
 
 test("Task.repeat runs the task the given number of times", async () => {
 	let calls = 0;
-	const task = Task.from.Promise(() => {
+	const task = fromPromise(() => {
 		calls++;
 		return Promise.resolve(calls);
 	});
@@ -409,7 +417,7 @@ test("task.repeat with times: 1 runs once and returns single-element array", asy
 
 test("task.repeat with times: 0 returns empty array without running", async () => {
 	let calls = 0;
-	const task = Task.from.Promise(() => {
+	const task = fromPromise(() => {
 		calls++;
 		return Promise.resolve(42);
 	});
@@ -420,7 +428,7 @@ test("task.repeat with times: 0 returns empty array without running", async () =
 
 test("Task.repeat collects results in order", async () => {
 	let n = 0;
-	const task = Task.from.Promise(() => Promise.resolve(n++));
+	const task = fromPromise(() => Promise.resolve(n++));
 	const result = await pipe(task, Task.repeat({ times: 4 }))();
 	expect(result).toStrictEqual([0, 1, 2, 3]);
 });
@@ -440,7 +448,7 @@ test("task.repeat inserts delay between runs but not after the last", async () =
 
 test("task.repeatUntil returns immediately when predicate holds on first run", async () => {
 	let calls = 0;
-	const task = Task.from.Promise(() => {
+	const task = fromPromise(() => {
 		calls++;
 		return Promise.resolve(42);
 	});
@@ -451,7 +459,7 @@ test("task.repeatUntil returns immediately when predicate holds on first run", a
 
 test("Task.repeatUntil keeps running until predicate holds", async () => {
 	let calls = 0;
-	const task = Task.from.Promise(() => {
+	const task = fromPromise(() => {
 		calls++;
 		return Promise.resolve(calls);
 	});
@@ -463,14 +471,14 @@ test("Task.repeatUntil keeps running until predicate holds", async () => {
 test("task.repeatUntil returns the value that satisfied the predicate", async () => {
 	const values = ["a", "b", "stop", "c"];
 	let i = 0;
-	const task = Task.from.Promise(() => Promise.resolve(values[i++]));
+	const task = fromPromise(() => Promise.resolve(values[i++]));
 	const result = await pipe(task, Task.repeatUntil({ when: (s) => s === "stop" }))();
 	expect(result).toBe("stop");
 });
 
 test("Task.repeatUntil inserts delay between runs", async () => {
 	let calls = 0;
-	const task = Task.from.Promise(() => {
+	const task = fromPromise(() => {
 		calls++;
 		return Promise.resolve(calls);
 	});
@@ -493,7 +501,7 @@ test("Task.repeatUntil stops after maxAttempts even if predicate never holds", a
 test("Task.repeatUntil stops when the signal aborts during a run", async () => {
 	const controller = new AbortController();
 	let count = 0;
-	const task = Task.from.Promise(() => {
+	const task = fromPromise(() => {
 		count++;
 		if (count === 2) { controller.abort(); }
 		return Promise.resolve(count);
@@ -510,7 +518,7 @@ test("Task.repeatUntil stops when the signal aborts during a run", async () => {
 test("Task.from receives the AbortSignal from the call site", async () => {
 	const controller = new AbortController();
 	let receivedSignal: AbortSignal | undefined;
-	const task = Task.from.Promise((signal) => {
+	const task = fromPromise((signal) => {
 		receivedSignal = signal;
 		return Promise.resolve(1);
 	});
@@ -520,7 +528,7 @@ test("Task.from receives the AbortSignal from the call site", async () => {
 
 test("Task.from called without signal receives undefined", async () => {
 	let receivedSignal: AbortSignal | undefined;
-	const task = Task.from.Promise((signal) => {
+	const task = fromPromise((signal) => {
 		receivedSignal = signal;
 		return Promise.resolve(1);
 	});
@@ -531,7 +539,7 @@ test("Task.from called without signal receives undefined", async () => {
 test("Task.map threads signal to the inner task", async () => {
 	const controller = new AbortController();
 	let receivedSignal: AbortSignal | undefined;
-	const base = Task.from.Promise((signal) => {
+	const base = fromPromise((signal) => {
 		receivedSignal = signal;
 		return Promise.resolve(1);
 	});
@@ -542,12 +550,12 @@ test("Task.map threads signal to the inner task", async () => {
 test("Task.chain threads signal to both tasks", async () => {
 	const controller = new AbortController();
 	const signals: Array<AbortSignal | undefined> = [];
-	const t1 = Task.from.Promise((signal) => {
+	const t1 = fromPromise((signal) => {
 		signals.push(signal);
 		return Promise.resolve(1);
 	});
 	const t2 = (n: number) =>
-		Task.from.Promise((signal) => {
+		fromPromise((signal) => {
 			signals.push(signal);
 			return Promise.resolve(n + 1);
 		});
@@ -561,7 +569,7 @@ test("Task.chain threads signal to both tasks", async () => {
 
 test("Task.timeout aborts the inner task when the deadline fires", async () => {
 	let innerSignal: AbortSignal | undefined;
-	const slow = Task.from.Promise((signal) => {
+	const slow = fromPromise((signal) => {
 		innerSignal = signal;
 		return new Promise<number>((r) => setTimeout(() => r(42), 200));
 	});
@@ -572,7 +580,7 @@ test("Task.timeout aborts the inner task when the deadline fires", async () => {
 test("Task.timeout wires the outer signal to the inner task", async () => {
 	const outerController = new AbortController();
 	let innerSignal: AbortSignal | undefined;
-	const slow = Task.from.Promise((signal) => {
+	const slow = fromPromise((signal) => {
 		innerSignal = signal;
 		return new Promise<number>((r) => setTimeout(() => r(42), 200));
 	});
@@ -684,7 +692,7 @@ test("Task.abortable second call cancels first in-flight call", async () => {
 test("Task.timeout removes the outer signal listener after normal completion", async () => {
 	const outerController = new AbortController();
 	let innerSignal: AbortSignal | undefined;
-	const fast = Task.from.Promise((signal) => {
+	const fast = fromPromise((signal) => {
 		innerSignal = signal;
 		return Promise.resolve(42);
 	});
@@ -777,7 +785,7 @@ test("Task.delay resolves early when the signal is aborted", async () => {
 test("Task.repeat resolves early with accumulated results if aborted", async () => {
 	const controller = new AbortController();
 	let count = 0;
-	const task = Task.from.Promise(() => {
+	const task = fromPromise(() => {
 		count++;
 		return Promise.resolve(count);
 	});
@@ -793,7 +801,7 @@ test("Task.repeat resolves early with accumulated results if aborted", async () 
 test("Task.repeatUntil resolves early with the last value if aborted", async () => {
 	const controller = new AbortController();
 	let count = 0;
-	const task = Task.from.Promise(() => {
+	const task = fromPromise(() => {
 		count++;
 		return Promise.resolve(count);
 	});
@@ -819,7 +827,7 @@ test("Task.timeout aborts the inner task when the outer signal is already aborte
 	const controller = new AbortController();
 	controller.abort();
 	let innerSignal: AbortSignal | undefined;
-	const task = Task.from.Promise((signal) => {
+	const task = fromPromise((signal) => {
 		innerSignal = signal;
 		return Promise.resolve(42);
 	});
@@ -836,7 +844,7 @@ test("Task.timeout aborts the inner task when the outer signal is already aborte
 
 test("Task.sequence runs tasks concurrently and collects results", async () => {
 	const order: number[] = [];
-	const t1 = Task.from.Promise<number>(() =>
+	const t1 = fromPromise<number>(() =>
 		new Promise((r) =>
 			setTimeout(() => {
 				order.push(1);
@@ -844,7 +852,7 @@ test("Task.sequence runs tasks concurrently and collects results", async () => {
 			}, 30)
 		)
 	);
-	const t2 = Task.from.Promise<number>(() =>
+	const t2 = fromPromise<number>(() =>
 		new Promise((r) =>
 			setTimeout(() => {
 				order.push(2);
@@ -852,7 +860,7 @@ test("Task.sequence runs tasks concurrently and collects results", async () => {
 			}, 10)
 		)
 	);
-	const t3 = Task.from.Promise<number>(() =>
+	const t3 = fromPromise<number>(() =>
 		new Promise((r) =>
 			setTimeout(() => {
 				order.push(3);
@@ -879,7 +887,7 @@ test("Task.sequence forwards the AbortSignal to all tasks", async () => {
 	const signals: Array<AbortSignal | undefined> = [];
 
 	const makeTask = () =>
-		Task.from.Promise<number>((signal) => {
+		fromPromise<number>((signal) => {
 			signals.push(signal);
 			return Promise.resolve(1);
 		});
