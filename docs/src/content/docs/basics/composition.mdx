@@ -507,12 +507,12 @@ fibonacci(40); // Computed and cached
 fibonacci(40); // Returned instantly from cache
 ```
 
-For complex object keys, you can supply a custom key-generator function to evaluate equivalence structurally:
+For complex object keys, you can supply a custom key-generator function to evaluate equivalence structurally, or specify a `maxSize` parameter to constrain memory usage via least-recently-used (LRU) eviction:
 
 ```ts
 const loadProfile = memoize(
   (opts: { userId: string }) => fetchProfile(opts.userId),
-  { key: (opts) => opts.userId },
+  { key: (opts) => opts.userId, maxSize: 500 },
 );
 ```
 

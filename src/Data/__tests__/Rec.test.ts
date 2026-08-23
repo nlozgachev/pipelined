@@ -370,6 +370,24 @@ test("compact - empty input returns empty output", () => {
 	expect(result).toStrictEqual({});
 });
 
+test("mapKeys and compact safely handle __proto__ keys without prototype pollution", () => {
+	const input = JSON.parse('{"__proto__": {"polluted": true}}');
+	const mapped = pipe(input, Rec.mapKeys((k) => k));
+	expect(Object.keys(mapped)).toStrictEqual(["__proto__"]);
+	expect((mapped as any).polluted).toBeUndefined();
+
+	const compactInput: Record<string, Maybe<any>> = {};
+	Object.defineProperty(compactInput, "__proto__", {
+		value: Maybe.make.some({ polluted: true }),
+		writable: true,
+		enumerable: true,
+		configurable: true,
+	});
+	const compacted = Rec.compact(compactInput);
+	expect(Object.keys(compacted)).toStrictEqual(["__proto__"]);
+	expect((compacted as any).polluted).toBeUndefined();
+});
+
 // --- mergeWith ---
 
 test("Rec.mergeWith combines records uncurried and curried on key collisions", () => {

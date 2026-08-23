@@ -58,6 +58,7 @@ test("memoize - custom key function", () => {
 	}, { key: (opts) => opts.id });
 
 	expect(getLabel({ id: 1, label: "hello" })).toBe("HELLO");
+	expect(getLabel({ id: 1, label: "changed" })).toBe("HELLO"); // Cached by id
 	expect(callCount).toBe(1);
 
 	// Same id, different label object -- should use cache
@@ -67,6 +68,34 @@ test("memoize - custom key function", () => {
 	// Different id -- should compute
 	expect(getLabel({ id: 2, label: "world" })).toBe("WORLD");
 	expect(callCount).toBe(2);
+});
+
+test("memoize - maxSize LRU eviction evicts oldest entry when max limit reached", () => {
+	let callCount = 0;
+	const cached = memoize((n: number) => {
+		callCount++;
+		return n * 10;
+	}, { maxSize: 2 });
+
+	expect(cached(1)).toBe(10);
+	expect(cached(2)).toBe(20);
+	expect(callCount).toBe(2);
+
+	// Key 1 is accessed, refreshing its LRU priority (now keys order: 2, 1)
+	expect(cached(1)).toBe(10);
+	expect(callCount).toBe(2);
+
+	// Key 3 is added -> exceeds maxSize 2 -> evicts key 2 (oldest)
+	expect(cached(3)).toBe(30);
+	expect(callCount).toBe(3);
+
+	// Key 1 is still cached
+	expect(cached(1)).toBe(10);
+	expect(callCount).toBe(3);
+
+	// Key 2 was evicted, so calling 2 recomputes
+	expect(cached(2)).toBe(20);
+	expect(callCount).toBe(4);
 });
 
 test("memoize - default key uses argument directly", () => {

@@ -22,21 +22,46 @@
  *   (opts: { id: string }) => fetch(`/users/${opts.id}`),
  *   { key: (opts) => opts.id }
  * );
+ * // With bounded cache size (LRU eviction)
+ * const bounded = memoize(
+ *   (n: number) => n * 2,
+ *   { maxSize: 100 }
+ * );
  * ```
  */
-export const memoize = <A, B>(f: (a: A) => B, options?: { readonly key?: (a: A) => unknown; }): (a: A) => B => {
+export const memoize = <A, B>(f: (a: A) => B, options?: {
+	readonly key?: (a: A) => unknown;
+	/**
+	 * Maximum number of entries to store in the cache before evicting the least recently used (LRU) entry.
+	 */
+	readonly maxSize?: number;
+}): (a: A) => B => {
 	const cache = new Map<unknown, B>();
 	const keyFn = options?.key ?? ((a) => a);
+	const maxSize = options?.maxSize;
 
 	return (a: A): B => {
 		const key = keyFn(a);
 
 		if (cache.has(key)) {
-			return cache.get(key)!;
+			const cached = cache.get(key)!;
+			if (maxSize !== undefined) {
+				cache.delete(key);
+				cache.set(key, cached);
+			}
+			return cached;
 		}
 
 		const result = f(a);
 		cache.set(key, result);
+
+		if (maxSize !== undefined && cache.size > maxSize) {
+			const firstKey = cache.keys().next().value;
+			if (firstKey !== undefined) {
+				cache.delete(firstKey);
+			}
+		}
+
 		return result;
 	};
 };

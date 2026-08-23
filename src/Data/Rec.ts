@@ -11,6 +11,14 @@ export type NonEmptyRecord<A, K extends string = string> = Brand<NonEmpty<"Rec">
 const _isNonEmpty = <A, K extends string>(data: Readonly<Record<K, A>>): data is NonEmptyRecord<A, K> =>
 	Object.keys(data).length > 0;
 
+const _setKey = <A>(record: Record<string, A>, key: string, value: A): void => {
+	if (key === "__proto__") {
+		Object.defineProperty(record, key, { value, writable: true, enumerable: true, configurable: true });
+	} else {
+		record[key] = value;
+	}
+};
+
 namespace RecMaybe {
 	/**
 	 * Map a function that returns a `Maybe` over each value of a record,
@@ -27,6 +35,9 @@ namespace RecMaybe {
 	export const traverse =
 		<A, B>(f: (a: A) => CoreMaybe<B>) => (data: Readonly<Record<string, A>>): CoreMaybe<Readonly<Record<string, B>>> => {
 			const recordKeys = Object.keys(data);
+			if (recordKeys.length === 0) {
+				return { kind: "Some", value: {} };
+			}
 			const result: Record<string, B> = {};
 			for (let i = 0; i < recordKeys.length; i++) {
 				const key = recordKeys[i];
@@ -34,7 +45,7 @@ namespace RecMaybe {
 				if (maybeVal.kind === "None") {
 					return maybeVal;
 				}
-				Object.defineProperty(result, key, { value: maybeVal.value, writable: true, enumerable: true, configurable: true });
+				_setKey(result, key, maybeVal.value);
 			}
 			return { kind: "Some", value: result };
 		};
@@ -77,7 +88,7 @@ namespace RecResult {
 				if (res.kind === "Err") {
 					return res;
 				}
-				Object.defineProperty(result, key, { value: res.value, writable: true, enumerable: true, configurable: true });
+				_setKey(result, key, res.value);
 			}
 			return { kind: "Ok", value: result };
 		};
@@ -283,12 +294,7 @@ export namespace Rec {
 			for (let i = 0; i < recordKeys.length; i++) {
 				const maybeVal = f(recordValues[i]);
 				if (maybeVal.kind === "Some") {
-					Object.defineProperty(result, recordKeys[i], {
-						value: maybeVal.value,
-						writable: true,
-						enumerable: true,
-						configurable: true,
-					});
+					_setKey(result, recordKeys[i], maybeVal.value);
 				}
 			}
 			return result;
@@ -310,16 +316,7 @@ export namespace Rec {
 			const result: Record<string, B> = Object.create(Object.getPrototypeOf(data));
 			for (let i = 0; i < recordKeys.length; i++) {
 				const key = recordKeys[i];
-				if (key === "__proto__") {
-					Object.defineProperty(result, "__proto__", {
-						value: f(key, recordValues[i]),
-						writable: true,
-						enumerable: true,
-						configurable: true,
-					});
-				} else {
-					result[key] = f(key, recordValues[i]);
-				}
+				_setKey(result, key, f(key, recordValues[i]));
 			}
 			return result as unknown as Readonly<Record<K, B>>;
 		};
@@ -339,12 +336,7 @@ export namespace Rec {
 			const result: Record<string, A> = Object.create(Object.getPrototypeOf(data));
 			for (let i = 0; i < recordKeys.length; i++) {
 				if (predicate(recordValues[i])) {
-					Object.defineProperty(result, recordKeys[i], {
-						value: recordValues[i],
-						writable: true,
-						enumerable: true,
-						configurable: true,
-					});
+					_setKey(result, recordKeys[i], recordValues[i]);
 				}
 			}
 			return result;
@@ -366,7 +358,7 @@ export namespace Rec {
 			const result: Record<string, A> = {};
 			for (const [k, v] of Object.entries(data)) {
 				if (predicate(k, v)) {
-					Object.defineProperty(result, k, { value: v, writable: true, enumerable: true, configurable: true });
+					_setKey(result, k, v);
 				}
 			}
 			return result;
@@ -454,7 +446,7 @@ export namespace Rec {
 				if (Object.hasOwn(result, key)) {
 					result[key].push(item);
 				} else {
-					Object.defineProperty(result, key, { value: [item], writable: true, enumerable: true, configurable: true });
+					_setKey(result, key, [item]);
 				}
 			}
 			return result;
@@ -472,7 +464,7 @@ export namespace Rec {
 		const result = {} as Pick<A, K>;
 		for (const key of pickedKeys) {
 			if (Object.hasOwn(data, key)) {
-				Object.defineProperty(result, key, { value: data[key], writable: true, enumerable: true, configurable: true });
+				_setKey(result, key, data[key]);
 			}
 		}
 		return result;
@@ -491,12 +483,7 @@ export namespace Rec {
 		const result = {} as Record<string, unknown>;
 		for (const key of Object.keys(data)) {
 			if (!omitSet.has(key)) {
-				Object.defineProperty(result, key, {
-					value: (data as Record<string, unknown>)[key],
-					writable: true,
-					enumerable: true,
-					configurable: true,
-				});
+				_setKey(result, key, (data as Record<string, unknown>)[key]);
 			}
 		}
 		return result as Omit<A, K>;
@@ -587,9 +574,12 @@ export namespace Rec {
 	 */
 	export const mapKeys =
 		(f: (key: string) => string) => <A>(data: Readonly<Record<string, A>>): Readonly<Record<string, A>> => {
+			const keys = Object.keys(data);
+			if (keys.length === 0) { return data; }
 			const result: Record<string, A> = {};
-			for (const [k, v] of Object.entries(data)) {
-				Object.defineProperty(result, f(k), { value: v, writable: true, enumerable: true, configurable: true });
+			for (let i = 0; i < keys.length; i++) {
+				const k = keys[i];
+				_setKey(result, f(k), data[k]);
 			}
 			return result;
 		};
@@ -605,10 +595,14 @@ export namespace Rec {
 	 * ```
 	 */
 	export const compact = <A>(data: Readonly<Record<string, CoreMaybe<A>>>): Readonly<Record<string, A>> => {
+		const keys = Object.keys(data);
+		if (keys.length === 0) { return {}; }
 		const result: Record<string, A> = {};
-		for (const [k, v] of Object.entries(data)) {
+		for (let i = 0; i < keys.length; i++) {
+			const k = keys[i];
+			const v = data[k];
 			if (v.kind === "Some") {
-				Object.defineProperty(result, k, { value: v.value, writable: true, enumerable: true, configurable: true });
+				_setKey(result, k, v.value);
 			}
 		}
 		return result;
@@ -628,10 +622,13 @@ export namespace Rec {
 	export const mapEntries =
 		<A, K2 extends string, B>(f: (key: string, value: A) => readonly [K2, B]) =>
 		(data: Readonly<Record<string, A>>): Readonly<Record<K2, B>> => {
+			const keys = Object.keys(data);
+			if (keys.length === 0) { return {} as Record<K2, B>; }
 			const result = {} as Record<K2, B>;
-			for (const [k, v] of Object.entries(data)) {
-				const [newKey, newVal] = f(k, v);
-				Object.defineProperty(result, newKey, { value: newVal, writable: true, enumerable: true, configurable: true });
+			for (let i = 0; i < keys.length; i++) {
+				const k = keys[i];
+				const [newKey, newVal] = f(k, data[k]);
+				_setKey(result, newKey, newVal);
 			}
 			return result;
 		};

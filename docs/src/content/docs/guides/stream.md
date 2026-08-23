@@ -95,7 +95,8 @@ Stream.emit([authStream, analyticsStream], {
 ## Listening & Sequence Matching
 
 `Stream.listen` registers subscribers on a stream for a single message kind or a sequence of message
-kinds. Matching options control sequence ordering, strictness, and auto-resetting.
+kinds. Matching options control sequence ordering, strictness, and auto-resetting. Subscribing the
+exact same listener function reference multiple times is idempotent and automatically deduplicated.
 
 ```ts
 import { Stream } from "@nlozgachev/pipelined/core";

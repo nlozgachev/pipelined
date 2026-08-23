@@ -260,8 +260,9 @@ export namespace Str {
 		 * ```
 		 */
 		int: (s: string): Maybe<number> => {
-			const n = parseInt(s, 10);
-			return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
+			if (s.length === 0) { return Maybe.make.none(); }
+			const n = Number.parseInt(s, 10);
+			return Number.isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 		},
 
 		/**
@@ -275,8 +276,9 @@ export namespace Str {
 		 * ```
 		 */
 		float: (s: string): Maybe<number> => {
-			const n = parseFloat(s);
-			return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
+			if (s.length === 0) { return Maybe.make.none(); }
+			const n = Number.parseFloat(s);
+			return Number.isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 		},
 	};
 

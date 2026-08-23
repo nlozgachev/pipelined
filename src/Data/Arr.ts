@@ -601,7 +601,7 @@ export namespace Arr {
 	 * Arr.uniq([1, 2, 2, 3, 1]); // [1, 2, 3]
 	 * ```
 	 */
-	export const uniq = <A>(data: readonly A[]): readonly A[] => [...new Set(data)];
+	export const uniq = <A>(data: readonly A[]): readonly A[] => (data.length <= 1 ? data : [...new Set(data)]);
 
 	/**
 	 * Removes duplicate elements by comparing the result of a key function.
