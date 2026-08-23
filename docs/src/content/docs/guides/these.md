@@ -3,27 +3,13 @@ title: These — Inclusive OR
 description: Model inclusive-OR scenarios where you have a first value, a second value, or both coexisting simultaneously.
 ---
 
-In software modeling, we typically combine types in two common ways.
+TypeScript models exclusive-OR states with discriminated unions (`A | B`) and product states with
+objects (`{ a: A; b: B }`). However, operations like data synchronization, diff engines, and
+non-fatal warnings require modeling inclusive-OR states: having a first value, a second value, or
+both simultaneously.
 
-The first is when **both** values must always be present. We do this every day using standard
-objects or tuples:
-
-```ts
-type User = { name: string; age: number }; // both must be present
-```
-
-The second is when we have **one value or the other, but never both**. We do this using standard
-union types or `Result<E, A>`:
-
-```ts
-type Status = "active" | "inactive"; // one or the other
-```
-
-But what about the inclusive-OR? What if you need to represent a situation where you might have
-value A, you might have value B, or you might have both coexisting simultaneously?
-
-This is the purpose of `These<A, B>`. It is the structural representation of the inclusive-OR,
-offering three distinct variants:
+`These<A, B>` represents inclusive-OR as a discriminated union of three variants: `First<A>`,
+`Second<B>`, and `Both<A, B>`: offering three distinct variants:
 
 - `First(a)` — only the first value is present.
 - `Second(b)` — only the second value is present.
@@ -31,7 +17,7 @@ offering three distinct variants:
 
 ```mermaid
 flowchart TD
-    Start[Data Presence Check] --> Choice{What is present?}
+    Start([Data Presence Check]) --> Choice{What is present?}
     Choice -->|Only A| First[First A]
     Choice -->|Only B| Second[Second B]
     Choice -->|Both A and B| Both[Both A B]
@@ -139,7 +125,7 @@ a `Both` variant, the coexisting second value is dropped, and the pipeline yield
 step returns:
 
 ```ts
-const lookupEmailMetaData = (email: string): These<EmailMeta, PhoneNumber> => 
+const lookupEmailMetaData = (email: string): These<EmailMeta, PhoneNumber> =>
   These.make.first(fetchMetadata(email));
 
 pipe(

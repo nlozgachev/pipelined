@@ -3,29 +3,12 @@ title: RemoteData — Loading States
 description: Explicitly model the four states of an asynchronous data lifecycle, replacing conflicting boolean flags with type-safe state transitions.
 ---
 
-Every asynchronous data-fetching lifecycle has exactly four distinct phases: before the request
-begins, while the request is in flight, when the request fails, and when the request succeeds.
+Representing asynchronous UI state with independent boolean flags (`data`, `isLoading`, `error`)
+allows impossible state combinations (such as `isLoading: true` while an `error` is displayed) and
+makes initial un-fetched states ambiguous.
 
-In typical applications, we attempt to model these phases by distributing them across several
-independent variables:
-
-```ts
-const [data, setData] = useState<User | null>(null);
-const [isLoading, setIsLoading] = useState(false);
-const [error, setError] = useState<Error | null>(null);
-```
-
-While this flag-based model is familiar, it is structurally fragile. Because these variables are
-independent, they permit combinations of states that make no logical sense in the real world. For
-example, your types allow `isLoading` to be `true` while `error` is present, or both `data` and
-`error` to be `null` simultaneously.
-
-Furthermore, this flag soup fails to name the "before it starts" state. "We haven't asked for the
-data yet" is represented by `data: null`, `isLoading: false`, and `error: null`, which is identical
-to the representation of "we requested it and found nothing."
-
-`RemoteData<E, A>` solves this by modeling these lifecycles as a single, explicit data structure
-containing four mutually exclusive states: `NotAsked`, `Loading`, `Failure<E>`, and `Success<A>`.
+`RemoteData<E, A>` models the complete request lifecycle as a discriminated union of four mutually
+exclusive states: `NotAsked`, `Loading`, `Failure<E>`, and `Success<A>`:
 
 ```mermaid
 stateDiagram-v2

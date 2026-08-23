@@ -3,20 +3,12 @@ title: Lazy — Memoized Computations
 description: Defer expensive synchronous calculations to first use, caching the result automatically for all subsequent evaluations.
 ---
 
-When developing software, we frequently face a design trade-off between eager evaluation and
-repeated execution.
+Evaluating expensive synchronous operations (such as large config parsing or regex compilation)
+eagerly at startup increases initialization time, while plain thunks (`() => A`) recompute on every
+call.
 
-Consider a heavy synchronous operation, such as parsing a large local configuration payload or
-compiling a complex regular expression sheet. If we evaluate it eagerly at startup, we pay the
-computational cost immediately, even if the specific code path that requires the configuration is
-never executed.
-
-If we attempt to defer it by wrapping it in a standard function thunk `() => A`, we solve the
-startup problem, but we introduce a new friction: the operation is executed and re-computed on
-**every single call**, wasting CPU cycles over and over.
-
-`Lazy<A>` represents the elegant middle ground. It is a simple data structure that wraps a
-synchronous computation:
+`Lazy<A>` defers execution until first accessed via `.get()` and caches the result for all
+subsequent evaluations:
 
 ```ts
 type Lazy<A> = {

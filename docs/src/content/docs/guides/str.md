@@ -14,7 +14,7 @@ anonymous arrow functions (e.g., `s => s.trim()`), which breaks the natural flow
 introduces visual noise.
 
 `Str` provides standard string operations as pure, curried, data-last functions. It turns prototype
-operations into modular building blocks that fit seamlessly into pipelines, alongside safe numeric
+operations into modular building blocks that fit directly into pipelines, alongside safe numeric
 parsers that model parsing failures using the `Maybe` type.
 
 ## The problem with prototype chaining and unsafe parsing
@@ -188,7 +188,7 @@ const cleanedTags = pipe(
   whitespace, normalizing casing, removing special characters, or splitting comma-delimited tags),
   native string methods require writing manual arrow wrappers inside `pipe`. `Str` provides curried,
   data-last combinators (`Str.trim`, `Str.toLowerCase`, `Str.split`, `Str.replace`) that chain
-  seamlessly.
+  directly.
 - **Safe numeric string conversion**: Parsing numbers from HTTP parameters or form text with
   `Number()` or `parseInt()` yields `NaN` on invalid input without static compiler warnings.
   `Str.toNumber` and `Str.toInteger` return `Maybe<number>`, ensuring non-numeric inputs are handled

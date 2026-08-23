@@ -70,9 +70,9 @@ const displayName = pipe(
 );
 ```
 
-Notice that `Maybe.from.nullable` is passed directly as a value, without wrapping it in an arrow function.
+`Maybe.from.nullable` is passed directly as a function reference without an arrow wrapper.
 
-Furthermore, `Maybe.map((u) => u.name)` is invoked with only a mapping function. It returns a new function that is waiting for the `Maybe` value, which `pipe` supplies. This is made possible by the data-last convention.
+`Maybe.map((u) => u.name)` is invoked with only a mapping function. It returns a function waiting for the `Maybe` value, which `pipe` supplies. This is enabled by data-last currying.
 
 ---
 

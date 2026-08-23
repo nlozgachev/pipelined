@@ -1,23 +1,21 @@
 ---
 title: Designing with states
-description: The situations every TypeScript application encounters, and the data structures that name them.
+description: Model runtime states explicitly with typed data structures for absence, failure, async execution, concurrency, and events.
 ---
 
-TypeScript is an exceptional language for describing the shape of data, but it leaves a notable gap when it comes to describing the *states* our applications are actually in.
+Standard TypeScript models runtime conditions with untyped exceptions (`throw`), missing pointers (`null`/`undefined`), and raw promises (`Promise`). In multi-step pipelines, these primitives force defensive branching and obscure edge cases in type signatures.
 
-We are provided with excellent low-level primitives: `null` and `undefined` for absence, `try/catch` blocks for errors, and `Promise` for asynchronous operations. These are mechanisms, not models. Because the language does not provide first-class structures to carry the semantic meaning of these states, every project is forced to invent its own ad-hoc conventions.
-
-**pipelined** gives these common programming situations names. By representing these states as data structures rather than keywords or language constructs, we make them explicit, composable, and visible in our types.
+`@nlozgachev/pipelined/core` represents these runtime states as explicit discriminated unions.
 
 ---
 
-## A value that may not be present
+## 1. Synchronous Data Containers
 
-We spend a significant amount of our day querying databases, searching maps, and checking configurations for values that might not be there. In standard TypeScript, we represent this with `T | null` or `T | undefined`.
+### Absent Values: `Maybe<A>`
 
-This is easy to write, but it forces the caller of a function to immediately stop and write conditional logic. If they forget, strict mode may warn them, but the checking logic itself remains intertwined with the happy path of the program.
+Accessing missing properties, dictionary keys, or query results yields `undefined` or `null`. Handling these with manual `if` guards interrupts linear pipeline composition.
 
-`Maybe<A>` is a data structure representing this choice: it is either `Some<A>` (a value is present) or `None` (it is not). Transformations on a `Maybe` automatically bypass the absent case, allowing us to describe our logic linearly:
+`Maybe<A>` represents optionality as a discriminated union: `Some<A>` (value present) or `None` (empty). Subsequent mapping steps run only when a value exists:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -32,15 +30,11 @@ const city = pipe(
 );
 ```
 
-If any step produces a `None`, the subsequent steps are skipped and `getOrElse` provides the fallback. The presence check is decoupled from the business logic.
+### Typed Synchronous Failures: `Result<E, A>`
 
----
+Functions can throw exceptions of type `unknown` at any statement without indicating the failure in their return type. Callers must either wrap calls in `try/catch` or risk unhandled runtime crashes.
 
-## An operation that can fail
-
-Exceptions in JavaScript are wild. They can be thrown by any statement, and their type is always `unknown`. Nothing in a function’s signature indicates to the caller that it might throw, leading to unhandled runtime failures or defensive `try/catch` blocks cluttering our code.
-
-`Result<E, A>` models a synchronous operation that can fail. It is either `Ok<A>` (representing success) or `Err<E>` (a typed failure). By returning a `Result`, we bring the error into the type signature itself, forcing the compiler to verify that the failure is handled.
+`Result<E, A>` brings failure into the return type: `Ok<A>` for success or `Err<E>` for typed errors.
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -58,15 +52,11 @@ const route = pipe(
 );
 ```
 
----
+### Accumulating Multiple Errors: `Validation<E, A>`
 
-## Collecting multiple failures
+`Result` short-circuits on the first failure. While correct for sequential steps, this is counterproductive for form validation and schema parsing where users need a list of all invalid fields at once.
 
-When we validate a complex data structure — like a registration form — we often want to present the user with a list of all errors.
-
-If we use a standard `Result` or `try/catch` pattern, the program short-circuits at the very first failure. This is correct for sequential business logic, but frustrating for user interfaces where displaying only one error at a time forces a slow, trial-and-error cycle of form submission.
-
-`Validation<E, A>` is a data structure designed specifically to accumulate errors. It is either `Passed<A>` or `Failed<E>`. When we combine multiple validation values, their failures accumulate instead of short-circuiting:
+`Validation<E, A>` evaluates independent checks and accumulates all failures into a non-empty array (`NonEmptyArr<E>`):
 
 ```ts
 import { Validation } from "@nlozgachev/pipelined/core";
@@ -78,15 +68,15 @@ const validateAge = (n: number): Validation<string, number> =>
   n >= 0 ? Validation.make.passed(n) : Validation.make.failed("Age must be non-negative");
 ```
 
-If both fields are invalid, both validation errors are gathered and returned together, enabling clean, comprehensive user feedback.
-
 ---
 
-## Asynchronous operations with typed errors
+## 2. Asynchronous Execution & UI States
 
-An asynchronous operation in standard JavaScript is represented by a `Promise`. Promises are eager — they begin executing the moment they are created — and they can reject with any value.
+### Lazy Infallible Blueprints: `Task.Result<E, A>`
 
-`Task.Result<E, A>` is a lazy, infallible blueprint for an asynchronous operation that eventually yields a `Result<E, A>`. Because it is lazy, nothing runs until we explicitly invoke it. Because it is infallible at the promise level, the outer `Task` always resolves successfully, carrying our typed `Result` inside.
+Standard `Promise<T>` begins execution immediately upon instantiation and rejects with untyped errors.
+
+`Task.Result<E, A>` is a zero-argument function that executes only when called and resolves to a `Result<E, A>`, guaranteeing the outer promise never rejects:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -104,27 +94,15 @@ const greeting = pipe(
   Task.Result.getOrElse(() => "Welcome, guest"),
 );
 
-// Execution is deferred. Nothing has run yet.
-const result = await greeting(); // "Hello, Alice" (never throws)
+// Execution occurs on invocation; always resolves
+const result = await greeting(); // "Hello, Alice"
 ```
 
----
+### Explicit UI Lifecycle States: `RemoteData<E, A>`
 
-## The four states of a data fetch
+Modeling async request state with multiple boolean flags (`isLoading`, `error`, `data`) permits invalid combinations, such as displaying a stale error message while a new request is loading.
 
-Consider how we typically model a data-fetching operation in UI state:
-
-```ts
-interface State {
-  isLoading: boolean;
-  data: User | null;
-  error: Error | null;
-}
-```
-
-This model is fragile. It permits invalid combinations: `isLoading` could be `true` while `data` is present, or both `error` and `data` could be `null` simultaneously. Furthermore, the state of "we haven't requested the data yet" is indistinguishable from "we requested it and found nothing."
-
-`RemoteData<E, A>` represents these states explicitly. It is a union of exactly four constructors: `NotAsked`, `Loading`, `Failure<E>`, and `Success<A>`. The compiler enforces that every state is accounted for:
+`RemoteData<E, A>` defines the four mutually exclusive states of an asynchronous operation:
 
 ```ts
 import { RemoteData } from "@nlozgachev/pipelined/core";
@@ -139,23 +117,145 @@ const renderUI = RemoteData.match({
 
 ---
 
-## Unified Drawer Architecture
+## 3. Concurrency Strategies & Event Pipelines
 
-To keep the root namespaces of each module clean, predictable, and focused on operational combinators (like `map`, `chain`, and `filter`), **pipelined** organizes instantiation, serialization, and inspection under four standardized "drawer" namespaces:
+### Declarative Async Concurrency: `Op<I, E, A>`
 
-| Drawer | Purpose | Examples |
-| :--- | :--- | :--- |
-| **`make.*`** | Instantiates specific variant states of a sum type. | `Result.make.ok(42)`<br/>`Maybe.make.some(5)` |
-| **`from.*`** | Instantiates a type from another format, component, or nullable representation. | `Maybe.from.nullable(val)`<br/>`Tuple.from.pair(a, b)` |
-| **`to.*`** | Converts/serializes a type back to another format or language primitive. | `Maybe.to.nullable(maybe)`<br/>`Result.to.Maybe(result)` |
-| **`is.*`** | Inspects states, runs predicates, or performs type guard checks. | `Result.is.ok(result)`<br/>`Arr.is.empty(array)` |
+Managing in-flight request cancellation, debouncing, and retries in UI components typically requires manual `AbortController` handles and state flags.
 
-By separating these creation and check concerns into drawers, you always know where to find constructors and serializations without cluttering your IDE autocompletion for day-to-day mapping and piping logic.
+`Op<I, E, A>` separates the async task definition from its execution policy:
+
+```ts
+import { Op } from "@nlozgachev/pipelined/core";
+
+// 1. Define the task once
+const searchApi = Op.create(
+  (signal) => (query: string) =>
+    fetch(`/api/search?q=${query}`, { signal }).then((r) => r.json()),
+  (err) => `Search failed: ${err}`,
+);
+
+// 2. Configure execution strategy (cancels previous request on new input)
+const searchRunner = Op.interpret(searchApi, {
+  strategy: "restartable",
+  retry: { attempts: 2 },
+});
+```
+
+### Typed Event Sequences: `Stream<S>`
+
+Standard event emitters leave message payloads untyped, while complex reactive stream frameworks introduce heavy operators for basic event coordination.
+
+`Stream<S>` provides a type-safe event pipeline for matching event sequences and accumulating state over time:
+
+```ts
+import { Stream } from "@nlozgachev/pipelined/core";
+
+type AppEvents = {
+  login: { userId: string };
+  logout: void;
+};
+
+const authStream = Stream.create<AppEvents>();
+
+// Subscribe to typed events
+authStream.on("login", ({ userId }) => {
+  console.log(`User logged in: ${userId}`);
+});
+```
 
 ---
 
-## The journey ahead
+## State Selection Decision Matrix
 
-These structures are not abstract mathematical exercises. They are simple, practical designs that bring clarity to standard programming patterns.
+Use this matrix to pick the right data structure for your scenario:
 
-To understand how to sequence these transformations linearly, read [Thinking in pipelines](/basics/pipelines), which covers the mechanics of `pipe`, `flow`, and the data-last design that enables them. If you already have a specific problem to solve, you can head directly to the in-depth guides for each module.
+| Situation | Recommended Type | Success State | Failure / Empty State | Execution / Nature |
+| :--- | :--- | :--- | :--- | :--- |
+| Optional value, cache miss, or nullable property | **`Maybe<A>`** | `Some<A>` | `None` | Synchronous, short-circuits |
+| Fallible synchronous business logic | **`Result<E, A>`** | `Ok<A>` | `Err<E>` | Synchronous, short-circuits |
+| Multi-field validation (forms, configs) | **`Validation<E, A>`** | `Passed<A>` | `Failed<NonEmptyArr<E>>` | Synchronous, accumulates |
+| Lazy async operation with typed error channel | **`Task.Result<E, A>`** | `Ok<A>` | `Err<E>` | Asynchronous, deferred |
+| UI data request lifecycle tracking | **`RemoteData<E, A>`** | `Success<A>` | `Failure<E>`, `Loading`, `NotAsked` | State union for UI render |
+| Async task needing cancellation, concurrency, or retries | **`Op<I, E, A>`** | `Ok<A>` | `Err<E>` | Interpreted execution engine |
+| Typed pub/sub event pipeline & state accumulation | **`Stream<S>`** | `Message<S>` | N/A | Reactive event bus |
+
+---
+
+## Universal Operations Across Structures
+
+Every data container in `pipelined` shares a consistent, predictable set of combinator names. Once you learn how an operation behaves on `Maybe`, you already know how it works across `Result`, `Validation`, `Task.Result`, and `RemoteData`:
+
+| Operation | Purpose | Example |
+| :--- | :--- | :--- |
+| **`map`** | Transforms the inner success value while preserving the container structure. | `Result.map((n) => n * 2)` |
+| **`mapError`** | Transforms the error payload without modifying success values. | `Result.mapError((e) => e.message)` |
+| **`chain`** | Sequences a function returning another container, flattening nested layers. | `Maybe.chain((user) => lookup(user.id))` |
+| **`getOrElse`** | Unwraps the value, falling back to a default thunk if absent or failed. | `Maybe.getOrElse(() => DEFAULT_USER)` |
+| **`match`** | Exhaustively unwraps all variants using a named-case object. | `RemoteData.match({ loading, success, failure, notAsked })` |
+| **`fold`** | Exhaustively unwraps all variants using positional callbacks. | `Result.fold(onErr, onOk)` |
+| **`tap`** | Intercepts the success value for side effects without modifying the data. | `Task.Result.tap((u) => log(u.id))` |
+| **`recover`** | Catches a failure variant and substitutes a fallback container. | `Result.recover((err) => Result.make.ok(cached))` |
+
+### Standardized Drawer Namespaces
+
+To keep root module namespaces clean and focused on pipeline combinators, instantiation, conversions, and type guards are organized into four standard drawers across every module:
+
+| Drawer | Purpose | Examples |
+| :--- | :--- | :--- |
+| **`make.*`** | Instantiates a specific variant of a discriminated union. | `Result.make.ok(42)`<br/>`Maybe.make.some(5)`<br/>`RemoteData.make.loading()` |
+| **`from.*`** | Converts external types or primitives into the container. | `Maybe.from.nullable(val)`<br/>`Result.from.Validation(fn)`<br/>`Tuple.from.pair(a, b)` |
+| **`to.*`** | Converts the container back to language primitives or other containers. | `Maybe.to.nullable(maybe)`<br/>`Result.to.Maybe(result)`<br/>`Str.to.number(str)` |
+| **`is.*`** | Type guard predicates for conditional branching and filtering. | `Result.is.ok(result)`<br/>`Arr.is.empty(array)`<br/>`Num.is.even(n)` |
+
+---
+
+## End-to-End Workflow
+
+In a real-world feature, these modules compose across boundaries: validating user input, executing a cancellable network call, and updating UI state:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Op, RemoteData, Validation } from "@nlozgachev/pipelined/core";
+
+// 1. Validate form fields independently (Validation)
+const validateSignup = (name: string, email: string) =>
+  Validation.struct({
+    name: name.trim() ? Validation.make.passed(name) : Validation.make.failed("Name required"),
+    email: email.includes("@") ? Validation.make.passed(email) : Validation.make.failed("Invalid email"),
+  });
+
+// 2. Define an async submission operation with cancellation (Op)
+const submitUserOp = Op.interpret(
+  Op.create(
+    (signal) => (payload: { name: string; email: string }) =>
+      fetch("/api/register", {
+        method: "POST",
+        body: JSON.stringify(payload),
+        signal,
+      }).then((r) => r.json()),
+    (err) => `Registration error: ${err}`,
+  ),
+  { strategy: "exclusive" }, // Prevents double-clicks while in flight
+);
+
+// 3. UI State transitions (RemoteData)
+let uiState: RemoteData<string, { id: string }> = RemoteData.make.notAsked();
+
+const handleRegister = async (name: string, email: string) => {
+  const validation = validateSignup(name, email);
+
+  if (Validation.is.failed(validation)) {
+    uiState = RemoteData.make.failure(validation.errors.join(", "));
+    return;
+  }
+
+  uiState = RemoteData.make.loading();
+  const outcome = await submitUserOp(validation.value);
+
+  uiState = pipe(
+    outcome,
+    RemoteData.from.Result,
+  );
+};
+```

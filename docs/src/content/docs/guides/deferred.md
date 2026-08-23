@@ -3,18 +3,11 @@ title: Deferred — Infallible Async Values
 description: Model asynchronous computations that are guaranteed to resolve successfully, structurally excluding rejection and chaining at the type level.
 ---
 
-In JavaScript, `Promise<A>` is the universal container for any asynchronous value. While highly
-convenient, a Promise is structurally over-specified for operations that are **infallible** —
-computations that are guaranteed to resolve successfully, such as reading an in-memory cache,
-applying a pure transformation, or looking up config defaults.
+Standard JavaScript `Promise<A>` exposes `.catch()` and `.finally()`, implying that any asynchronous
+operation might reject. For operations that are guaranteed to resolve successfully (such as timer
+delays, in-memory caches, or pure computations), this creates dead error-handling paths.
 
-By exposing `.catch()` and `.finally()`, a `Promise` always implies that rejection is a possibility.
-For infallible computations, this is a design mismatch. It forces callers to either ignore the
-theoretical possibility of failure or write unnecessary, dead error-handling code that will never be
-executed.
-
-`Deferred<A>` solves this mismatch. It represents an asynchronous value that will eventually resolve
-to an `A`, but it is structurally incapable of rejecting:
+`Deferred<A>` represents an awaitable asynchronous value that is structurally typed to never reject:
 
 ```ts
 type Deferred<A> = {

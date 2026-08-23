@@ -3,32 +3,13 @@ title: Logged — Accumulated Logs
 description: Pair computations with a log that accumulates automatically as you chain transformations, keeping logging pure, testable, and side-effect-free.
 ---
 
-Many systems require a record of how a computation arrived at its result: an audit trail of
-decisions made by a complex business rules engine, a diagnostic trace of steps inside a data
-transformation pipeline, or warning notices gathered during validation.
+Collecting audit logs or diagnostic traces during computations typically requires either manually
+threading an array of log messages through every function or calling impure side effects
+(`console.log`) that complicate unit testing.
 
-If we want to keep our code pure and testable, we typically resort to threading a log array
-manually:
-
-```ts
-// Manual log threading:
-function formatUsername(username: string, log: string[]): [string, string[]] {
-  const result = username.trim().toLowerCase();
-  return [result, [...log, `Normalized: ${username} to ${result}`]];
-}
-```
-
-This is incredibly noisy. Every single function in the chain must accept the log as a parameter and
-forward it, even when the function's core mathematical logic has nothing to do with logging. If you
-add or remove a transformation step, you must manually adjust all variable threads.
-
-The typical alternative is to inject a logging framework and call side effects (like `console.log`)
-directly mid-function. While this removes parameter noise, it introduces global side effects. Our
-functions are no longer pure; they cannot be tested in isolation without mocking the global output
-stream, and we cannot programmatically inspect the logs to assert on business rules.
-
-`Logged<W, A>` offers a clean, functional alternative. It is a simple data structure that pairs a
-value `A` with an accumulated read-only array of log entries `W`:
+`Logged<W, A>` pairs a computed value `A` with an accumulated log `W` (defaulting to `string[]`).
+Operations on `Logged` append log entries automatically as transformations are chained: value `A`
+with an accumulated read-only array of log entries `W`:
 
 ```ts
 type Logged<W, A> = {

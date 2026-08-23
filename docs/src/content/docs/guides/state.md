@@ -3,12 +3,10 @@ title: State — Stateful Computations
 description: Thread immutable state through a sequence of transformations cleanly, replacing local mutations and parameter drilling with pure state transitions.
 ---
 
-One of the fundamental pillars of functional programming is that pure functions do not mutate state.
-Yet, many common programming tasks are inherently stateful. Generating sequential IDs, building up a
-complex graph node-by-node, simulating a stack machine, or compiling a shopping cart all require a
-way to track changes over time.
+Many programming tasks—such as parsing, sequential ID generation, and simulations—require updating
+state across a sequence of steps.
 
-To keep our functions pure, we are typically forced to thread the state manually:
+To keep functions pure without mutable globals, state is typically threaded manually via tuples:
 
 ```ts
 // Threading state explicitly:
@@ -268,7 +266,7 @@ The underlying state transition threads behind the scenes key-by-key perfectly.
   writing transitions that know about the entire root state couples domain helpers to top-level
   schemas. Pairing `State` with `Lens` via `State.focus(lens)` allows reusable operations to
   transform isolated sub-properties (such as updating an inventory or cart sub-model) while running
-  seamlessly against the global state tree.
+  directly against the global state tree.
 - **Multi-step wizard flows and branch rollbacks**: In complex onboarding wizards and financial
   questionnaires, user responses dictate subsequent questions and update a growing payload. Because
   `State` transitions produce fresh state values without mutating the original, implementing

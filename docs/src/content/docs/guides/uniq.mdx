@@ -5,17 +5,13 @@ description: Immutable, pipeline-ready operations for collections of unique valu
 
 import { Aside } from '@astrojs/starlight/components'
 
-Uniqueness is a common requirement in data modeling. We often need to track a collection of items where duplicates have no meaning — such as a list of active user roles, a set of enabled feature flags, or a collection of tags assigned to an article.
+JavaScript's native `Set` API is mutable: `.add()` and `.delete()` modify collections in place, requiring defensive copying (`new Set(existing)`) to prevent accidental mutations across function boundaries.
 
-In standard JavaScript, the native `Set` object provides this behavior. However, the native `Set` API is built entirely around mutation. Adding or removing an item modifies the collection in place. This makes it difficult to reason about the state of our data over time, as any function that receives a set can alter its contents under our feet.
+`Uniq` provides curried, immutable operations over sets. Every operation returns a fresh collection, preserving the original set.
 
-`Uniq` treats uniqueness as an immutable value. Instead of modifying a set in place, operations on `Uniq` return a new, independent set, leaving the original collection completely untouched.
+## The problem with mutable sets
 
-## The problem with mutation in sets
-
-Consider a scenario where we manage a user's permissions. We might want to temporarily grant a permission for a specific operation, or calculate a new set of permissions without altering the user's permanent profile.
-
-With the native `Set` API, we are forced to manually copy the set to avoid accidental side effects:
+Managing permission sets without immutable operations requires manual copying:
 
 ```ts
 const userPermissions = new Set(["read", "write"]);

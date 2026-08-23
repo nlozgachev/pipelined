@@ -3,20 +3,13 @@ title: Lens — Nested Updates
 description: Focus on a required field in nested data structures to read, set, and modify values immutably.
 ---
 
-Managing nested state is one of the most common sources of complexity in frontend and backend
-applications. When our data structures grow beyond simple flat objects, updating a single deeply
-nested field becomes surprisingly difficult to do safely and cleanly.
+Updating deeply nested properties immutably in standard TypeScript requires nested object spread
+syntax (`{ ...a, b: { ...a.b, c: ... } }`), which becomes verbose and error-prone.
 
-In standard JavaScript, we are faced with a frustrating choice: mutate the data structure in place
-and risk unpredictable side effects, or write verbose, fragile chains of nested object spreads to
-perform an immutable update.
+`Lens<S, A>` models a bidirectional path to a required property `A` inside a parent structure `S`,
+enabling immutable reads, writes, and modifications with a single reusable optic.
 
-`Lens` offers an elegant alternative by treating the path to a nested field as a first-class,
-reusable value. A lens acts as a telescope focused on a specific part of a larger structure,
-allowing us to read, overwrite, or modify that part immutably without manually traversing the
-nesting every time.
-
-## The problem with deep nesting and mutation
+## The problem with deep nesting and object spreads
 
 Consider an application configuration that manages database connections and connection pools:
 
@@ -174,9 +167,8 @@ const nextConfig = pipe(
 );
 ```
 
-Notice that the original `config` object remains completely unchanged. `nextConfig` is a new object
-where only the database, pool, and max property references have been updated — all other properties
-(like `env` or `database.host`) are shared by reference, ensuring excellent memory efficiency.
+The original `config` object remains unchanged. `nextConfig` is a new object where only the modified
+path references have been updated; unchanged subtrees are preserved by reference.
 
 ## Reaching fields that might be absent
 

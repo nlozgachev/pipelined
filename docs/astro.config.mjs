@@ -15,7 +15,29 @@ export default defineConfig({
 		"/api/data/namespaces/str/functions": "/api/data/namespaces/str/functions/endswith",
 	},
 	integrations: [
-		mermaid(),
+		mermaid({
+			theme: "base",
+			autoTheme: false,
+			mermaidConfig: {
+				theme: "base",
+				themeVariables: {
+					darkMode: true,
+					background: "#18181b",
+					mainBkg: "#1f1f23",
+					nodeBorder: "#52525b",
+					clusterBkg: "#18181b",
+					lineColor: "#71717a",
+					defaultLinkColor: "#71717a",
+					arrowheadColor: "#3b82f6",
+					nodeTextColor: "#f4f4f5",
+					edgeLabelBackground: "#27272a",
+					labelBackground: "#27272a",
+					textColor: "#f4f4f5",
+					fontFamily: "ui-sans-serif, system-ui, sans-serif",
+				},
+				flowchart: { curve: "linear", htmlLabels: true },
+			},
+		}),
 		starlight({
 			title: "pipelined",
 			favicon: "favicon.svg",

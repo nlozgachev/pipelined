@@ -23,6 +23,10 @@ import { Brand } from "@nlozgachev/pipelined/types";
 
 <ExportsTable />
 
+### Tree-Shaking
+
+All entry points are published with `"sideEffects": false`. Modern bundlers (Vite, Rollup, webpack, esbuild, Next.js, Turbopack) automatically tree-shake unused functions and modules, bundling only the specific symbols imported by your application.
+
 ## Requirements
 
 - **Node.js** 18.0.0 or later (also compatible with Bun, Deno, and modern browser environments)

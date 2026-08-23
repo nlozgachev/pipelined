@@ -1,28 +1,22 @@
 ---
 title: Op — Managing Async Operations
-description: Separate what an asynchronous operation does from how it executes, configuring concurrency, timeouts, and retries in a single pure blueprint.
+description: Decouple async task definitions from execution strategies like concurrency, retries, and timeouts.
 ---
 
 import { Aside } from '@astrojs/starlight/components'
 
-Asynchronous coordination is one of the most persistent sources of accidental complexity in modern application development.
+Rapid asynchronous operations—such as search autocomplete—can result in out-of-order network responses overwriting newer data. Manually managing cancellation with `AbortController` and component state adds significant boilerplate.
 
-Consider a standard search-as-you-type autocomplete input. A user types rapidly, firing three search queries in rapid succession. Because of internet latency, the first network request takes longer to resolve than the third. When the first request eventually lands last, it overwrites the newer search results with stale data.
+`Op<I, E, A>` decouples the asynchronous operation from its execution strategy:
 
-We know how to fix this: we must cancel the outstanding in-flight request whenever a new search is triggered. But implementing this usually complects our codebase. The cancellation logic — juggling `AbortController` instances, keeping track of active requests with `useRef` handles, and writing cleanup hooks — becomes tangled directly into our UI components and raw network calls.
-
-`Op<I, E, A>` solves this by cleanly separating these concerns:
-
-*   **What to do**: The core async work is defined once, in isolation, using `Op.create`.
-*   **How to run it**: The concurrency, retry, and timeout strategies are configured later using `Op.interpret`.
-
-By decoupling the *description* of the asynchronous work from its *execution strategy*, we write clean, testable logic and change how it runs without modifying a single line of business code.
+*   **Task Definition**: The core asynchronous work is defined once using `Op.create`.
+*   **Execution Strategy**: Concurrency models (`restartable`, `exclusive`, `parallel`), retries with backoff, and timeouts are configured via `Op.interpret`.
 
 ---
 
 ## Creating an Op
 
-To define our async task, we use `Op.create`. It takes an asynchronous factory function and an error mapper:
+`Op.create` defines an operation by accepting an asynchronous factory function and an error mapper:
 
 ```ts
 import { Op } from "@nlozgachev/pipelined/core";
@@ -40,9 +34,9 @@ const fetchUser = Op.create(
 );
 ```
 
-The factory function receives an `AbortSignal` and returns a function waiting for your input value. Threading the signal through to cancellable operations (like `fetch`) is critical.
+The factory function receives an `AbortSignal` and returns a function waiting for input. Pass this signal to cancellable operations (such as `fetch`).
 
-If your asynchronous function is defined elsewhere, you can pass the signal as an argument instead of capturing it inside an inline closure:
+If the async function is defined elsewhere, pass the signal as an argument:
 
 ```ts
 async function getUserData(id: string, signal: AbortSignal): Promise<User> {
@@ -57,10 +51,10 @@ const fetchUserOp = Op.create(
 ```
 
 <Aside type="caution">
-The `AbortSignal` is not optional boilerplate. It is the exact handle that every concurrency strategy uses to tear down obsolete or cancelled operations. If you choose to ignore the signal, the underlying factory operation will continue to run to completion and resolve, producing stale side effects and waste network bandwidth.
+The `AbortSignal` is required for concurrency strategies to cancel obsolete in-flight requests. Ignoring the signal allows underlying operations to continue running, wasting bandwidth.
 </Aside>
 
-Defining an `Op` does not run anything. It is a pure blueprint — nothing executes until we interpret the blueprint and trigger it.
+`Op` definitions are lazy blueprints; execution begins only when interpreted and triggered.
 
 ### Lifting plain async functions with `lift`
 

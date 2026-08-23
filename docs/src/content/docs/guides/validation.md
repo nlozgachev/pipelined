@@ -3,32 +3,13 @@ title: Validation — Accumulating Errors
 description: Collect all validation failures in one pass, ensuring a complete overview of errors rather than failing fast on the first one.
 ---
 
-We have all experienced a frustrating user interface pattern: you fill out a long form, hit submit,
-and are presented with a red validation error indicating your password is too short. You fix it,
-submit again, only to be told that your email address is malformed. You fix that, submit once more,
-and receive a third warning about your postal code.
+Using fail-fast error structures (`Result`, `try/catch`) for form or schema validation
+short-circuits on the first failure, hiding subsequent field errors until previous ones are
+corrected.
 
-This trial-and-error cycle is the direct result of a design choice in our code. When we use standard
-`try/catch` blocks, conditional guards, or `Result` containers to validate input, we are using a
-**fail-fast** model. This model short-circuits at the very first failure:
-
-```ts
-// Result-based short-circuiting:
-pipe(
-  validateName(form.name),
-  Result.chain(() => validateEmail(form.email)),
-  Result.chain(() => validateAge(form.age)),
-);
-```
-
-If `validateName` fails, the execution stops. The subsequent checks for `email` and `age` are never
-even evaluated. While this short-circuiting behavior is correct for sequential operations where step
-B depends on the success of step A, it is highly unhelpful for validating independent data fields in
-forms, API payloads, or configuration files.
-
-`Validation<E, A>` is a data structure designed specifically to address this problem. It represents
-either a `Passed<A>` success or a `Failed<E>` failure containing a list of accumulated errors.
-Instead of short-circuiting, it runs all checks independently and merges all errors together.
+`Validation<E, A>` models validation outcomes as a discriminated union: `Passed<A>` (valid value) or
+`Failed<E>` (accumulated non-empty list of errors). Instead of short-circuiting, it evaluates
+independent checks and merges all failures together.
 
 ---
 

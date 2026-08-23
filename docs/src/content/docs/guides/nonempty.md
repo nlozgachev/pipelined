@@ -3,15 +3,13 @@ title: Non-Empty Collections — Compile-Time Guarantees
 description: Prevent boundary errors and eliminate defensive checks with compile-time guarantees that a collection, string, or record contains at least one element.
 ---
 
-In software systems, we frequently operate on collections, strings, or records under the semantic
-assumption that there is at least one item to process. For example, a validation pipeline must
-return a list of errors only if at least one error occurred, and a bulk database update requires at
-least one record to persist.
+Functions that operate on collections often assume at least one element exists (such as `head`,
+`min`, `max`, or bulk database inserts). Because standard arrays (`readonly T[]`) can be empty,
+functions must either return `undefined`, throw runtime errors, or require defensive length checks.
 
-Standard TypeScript represents these as standard read-only arrays `readonly T[]`, sets, maps,
-strings, or records. However, because standard collections are structurally permitted to be empty
-(`[]`, `{}`, `new Set()`, etc.), our codebases become littered with defensive checks, runtime
-exceptions, and nullable/undefined handling:
+`NonEmpty` provides compile-time branded types—`NonEmptyArr<A>`, `NonEmptyStr`, `NonEmptySet<A>`,
+`NonEmptyMap<K, V>`, `NonEmptyRec<K, V>`, and `NonEmptyDict<V>`—guaranteeing that a collection
+contains at least one element:
 
 ```ts
 function getFirstItem<T>(items: readonly T[]): T {

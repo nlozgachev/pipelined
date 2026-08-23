@@ -3,12 +3,11 @@ title: Reader — Shared Contexts
 description: Model computations that read from a shared environment, eliminating parameter drilling and making dependency injection clean and testable.
 ---
 
-In software architecture, certain values belong to the context of a pipeline rather than to any
-single, individual function. A database connection pool, a global API configuration, a user's
-language locale, or a feature flag sheet are typical examples.
+Passing shared configuration, database pools, or request contexts through deep call hierarchies
+leads to parameter drilling, coupling intermediate helper functions to ambient dependencies.
 
-When we build pipelines, these values frequently end up threaded through every single function
-signature as an extra parameter:
+`Reader<R, A>` models a computation that reads from a shared environment `R` to produce `A`
+(`(r: R) => A`), enabling dependency injection without manual parameter threading:
 
 ```ts
 function formatUrl(config: ApiConfig, path: string): string {

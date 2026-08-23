@@ -3,57 +3,40 @@ title: Design and influences
 description: Where the ideas in pipelined come from, how the internals are structured, and why things are the way they are.
 ---
 
-This page is for readers who want to understand the library at a deeper level — the decisions behind
-the API, the structural patterns used throughout, and the prior work that shaped them. None of this
-is required to use the library effectively. Think of it as the author's notes at the back of the
-book.
+This document details the architectural decisions behind the API, the structural patterns used
+across modules, and the prior work in functional programming that shaped `pipelined`.
 
 ## Where the ideas come from
 
 ### Haskell
 
-Most of the core types in this library descend, in some form, from Haskell. `Either` became
-`Result`, and the `IO` type — a lazy, composable wrapper around side effects — inspired `Task`. The
-naming convention of `map` and `chain` follows Haskell's vocabulary (translated from `fmap` and
-`>>=` into names that describe what they do rather than where they come from). `fold` is an
-eliminator — it collapses a type by providing a handler for each case — corresponding to Haskell's
-`maybe :: b -> (a -> b) -> Maybe a -> b` and `either :: (a -> c) -> (b -> c) -> Either a b -> c`.
+Most core types in this library descend from Haskell. `Either` inspired `Result`, and the `IO`
+type—a lazy, composable representation of side effects—inspired `Task`. Combinators like `map` and
+`chain` adapt Haskell's `fmap` and `>>=` into names describing concrete operations. `fold` collapses
+a type by requiring a handler for each case, corresponding to Haskell's `maybe` and `either`
+eliminators.
 
-`These` comes from a Haskell library of the same name. It represents the inclusive-OR case: a value
-that can carry an error, a result, or both simultaneously — which neither `Either` nor a tuple
-cleanly expresses.
+`These` comes from the Haskell library of the same name, representing inclusive-OR: a value carrying
+a first value, a second value, or both simultaneously.
 
 ### Elm
 
-Elm deserves particular credit for two things. First, it took the `Maybe` and `Result` types from
-Haskell and gave them an API that felt natural to people without a Haskell background — friendly,
-named, and consistent.
+Elm demonstrated that `Maybe` and `Result` types can be presented with approachable, consistent
+naming without algebraic terminology.
 
-Second, Elm is where `RemoteData` as a named pattern originated, in a package by Kris Jenkins. The
-insight — that a data fetch has exactly four states, that those states are mutually exclusive, and
-that encoding them as a union type eliminates a whole class of bugs — predates this library by
-several years. The name, the four variants, and the motivation in the guide are all drawn from that
-original work.
+Elm is also where the `RemoteData` pattern originated, in a package by Kris Jenkins. The four-state
+model—that a data fetch has four mutually exclusive states—eliminates inconsistent loading/error
+flags.
 
 ### Rust
 
-Rust brought `Option<T>` and `Result<T, E>` into the standard library of a mainstream systems
-language and proved that these types work outside academia. Seeing them become idiomatic in a
-performance-critical, widely-used language validated the premise that explicit absence and explicit
-failure are practical, not academic.
+Rust established `Option<T>` and `Result<T, E>` in a mainstream standard library, proving that
+explicit absence and typed failure are practical in performance-critical production systems.
 
 ### fp-ts
 
-The most direct TypeScript ancestor is fp-ts by Giulio Canti — a comprehensive, rigorous encoding of
-functional programming in TypeScript that covered every major typeclass, used `pipe` as its
-composition primitive, and followed the data-last convention throughout. fp-ts is no longer under
-active feature development — its author joined the [Effect](https://effect.website/) organisation,
-and Effect-TS is positioned as the successor to fp-ts; that's now where new development in this
-space happens.
-
-This library borrows several things from fp-ts directly: the `pipe` and `flow` functions, the
-data-last convention, and the pattern of defining each type as a TypeScript type alias alongside a
-namespace of functions with the same name.
+The direct TypeScript predecessor is fp-ts by Giulio Canti, which established the `pipe` composition
+model, data-last currying, and co-located type/namespace pairings in TypeScript.
 
 ### Optics
 
@@ -142,11 +125,9 @@ This consistency matters at runtime too: `Maybe.map` and `Result.map` and `Remot
 for `.value` to find the success payload. Sharing the field name is what makes this uniform without
 code duplication.
 
-`These` is the deliberate exception. Its two payloads — `TheseFirst`, `TheseSecond`, and `TheseBoth`
-— use `first` and `second` as field names rather than `value` and `error`. `These<A, B>` makes no
-claim about which side is "good" and which is "bad": it is a symmetric inclusive-OR, not a biased
-success/failure container. Importing the `value`/`error` convention would give it a directionality
-it doesn't have.
+`These` is the deliberate exception. Its variants (`TheseFirst`, `TheseSecond`, `TheseBoth`) use
+`first` and `second` as field names. `These<A, B>` models a symmetric inclusive-OR across two
+arbitrary types without assuming success or failure semantics.
 
 ### The namespace pattern
 
@@ -201,7 +182,7 @@ that accepts the data. This is what makes `pipe` and `flow` compose cleanly:
 pipe(
   Maybe.make.some(5),
   Maybe.map((n) => n * 2), // map(n => n * 2) is already a function Maybe<number> → Maybe<number>
-  Maybe.getOrElse(0),
+  Maybe.getOrElse(() => 0),
 );
 ```
 
@@ -211,7 +192,7 @@ Without data-last, each `pipe` step would need to be wrapped in an arrow functio
 pipe(
   Maybe.make.some(5),
   (opt) => Maybe.map(opt, (n) => n * 2), // awkward — two arguments, data first
-  (opt) => Maybe.getOrElse(opt, 0),
+  (opt) => Maybe.getOrElse(opt, () => 0),
 );
 ```
 
@@ -247,10 +228,9 @@ can call `errors[0]` or `errors.join(", ")` without defensive checks.
 
 ### Typeclass names
 
-The library contains implementations of what Haskell calls `Functor` (`map`), `Monad` (`chain`), and
-`Applicative` (`ap`). These names don't appear in the API — the operations use names that describe
-what they do rather than the algebraic structure they belong to. The reasoning behind this is in
-[Why this exists](/motivation).
+The library implements standard functional structures (such as `Functor`, `Monad`, and
+`Applicative`) using descriptive operation names (`map`, `chain`, `ap`) rather than algebraic
+taxonomies. See [Why this exists](/appendix/motivation) for details.
 
 ### A typeclass system
 

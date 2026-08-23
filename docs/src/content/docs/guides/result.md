@@ -20,7 +20,7 @@ representing a typed error.
 
 ```mermaid
 flowchart TD
-    Raw[Raw Operation] --> Choice{Did it succeed?}
+    Input([Raw Operation]) --> Choice{Did it succeed?}
     Choice -->|Yes| Ok[Ok A]
     Choice -->|No| Err[Err E]
 
@@ -313,8 +313,8 @@ Result.transposeMaybe(Result.make.err("DB error"));         // Some(Err("DB erro
 ## Interoperability with Validation
 
 While `Result` is designed for fail-fast error propagation, `Validation` accumulates all errors
-across independent fields. You can convert between the two representations seamlessly using
-`Result.from.Validation` and `Result.to.Validation`:
+across independent fields. Convert between the two representations using `Result.from.Validation`
+and `Result.to.Validation`:
 
 ```ts
 import { Validation } from "@nlozgachev/pipelined/core";

@@ -3,30 +3,12 @@ title: Brand — Distinguishing Values
 description: Use compile-time phantom tags to distinguish between primitive values that share the same underlying type, preventing semantic bugs at zero runtime cost.
 ---
 
-TypeScript’s type system is built on **structural typing**. If two types have the same shape, they
-are treated as compatible and fully interchangeable.
+TypeScript uses structural typing: any `string` is compatible with every other `string`. This allows
+semantic bugs—such as passing an `OrderId` into a function expecting a `UserId`—to compile without
+warnings.
 
-Usually, this structural compatibility is a major strength — it allows us to compose objects and
-interfaces with minimal ceremony. However, when working with primitive values like identifiers,
-measurement units, or validated strings, structural typing can work against us.
-
-In standard TypeScript, every `string` is structurally compatible with every other `string`.
-Consider this everyday scenario:
-
-```ts
-function getUser(id: string): User { ... }
-function getProduct(id: string): Product { ... }
-
-const customerId = "cust_99";
-getUser(customerId); // Compiles with zero errors
-```
-
-The compiler sees a `string`, receives a `string`, and remains silent. Yet, passing a customer
-identifier to a function expecting a user identifier is a clear semantic bug. The type system has
-failed to capture our design intent because `string` is too permissive.
-
-`Brand<K, T>` solves this. It adds a compile-time **phantom tag** `K` to a primitive type `T`. It
-allows us to overlay a nominal (named) type system on top of TypeScript’s structural one:
+`Brand<K, T>` attaches a compile-time phantom tag `K` to an underlying type `T`, enforcing nominal
+type safety at zero runtime cost:
 
 ```ts
 import { Brand } from "@nlozgachev/pipelined/types";

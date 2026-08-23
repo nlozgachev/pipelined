@@ -3,19 +3,13 @@ title: Optional — Nullable Paths
 description: Focus on a property or index that may be absent to read, set, and modify nested nullable paths safely.
 ---
 
-Reading deep nested structures that might be missing is a problem standard TypeScript solves
-elegantly. The optional chaining operator (`?.`) allows us to navigate through potentially absent
-objects without throwing runtime errors.
+While optional chaining (`?.`) allows safe reads through nullable object hierarchies, JavaScript has
+no syntax for immutable updates along nullable paths. Updating nested optional properties immutably
+requires multi-layer conditional checks and object spreads.
 
-However, a significant gap appears when we need to update these structures. While optional chaining
-allows safe reads, there is no corresponding operator for writes. There is no `?.=` operator in
-JavaScript. When we want to update a value at the end of a nullable path, we are forced to write
-verbose, conditional branching code filled with intermediate checks and nested object spreads.
-
-`Optional` closes this gap. It represents a two-way path through a structure where elements along
-the way may or may not exist. Reads through an optional return a `Maybe` context, while writes and
-modifications automatically apply if the path is complete, and act as a safe, silent no-op if any
-part of the path is missing.
+`Optional<S, A>` models a bidirectional path to an optional property `A` inside `S`. Reads return
+`Maybe<A>`, while writes and modifications apply immutably if the target exists, acting as a no-op
+if any segment is missing.
 
 ## The problem with updating optional paths
 

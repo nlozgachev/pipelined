@@ -3,20 +3,12 @@ title: Duration — Type-Safe Time
 description: A branded, compile-time type-safe representation of time quantities to prevent unit-mismatch bugs.
 ---
 
-Time is one of the most common dimensions modeled in software systems. We constantly configure
-request timeouts, token expirations, cache lifetimes, and execution delays.
+Modeling time quantities as raw `number` primitives introduces silent unit-mismatch bugs (such as
+passing seconds to a function expecting milliseconds). Because both values are typed as `number`,
+TypeScript cannot catch the error at compile time.
 
-In standard JavaScript and TypeScript, time is almost universally modeled as a raw `number`
-representing milliseconds. However, a generic `number` carries no explicit unit information at the
-type level. It is incredibly easy to pass a value in seconds to an API that expects milliseconds,
-causing timers to fire a thousand times too fast, or connecting clients to time out instantly.
-
-Because both values are structurally just `number`, TypeScript cannot flag these unit-mismatch
-errors. The error only surfaces at runtime — often under specific, intermittent network conditions.
-
-`Duration` solves this problem by wrapping time quantities in a compile-time type brand. This makes
-the intended unit explicit, provides safe mathematical conversions, and prevents raw, un-branded
-numbers from being passed to time-sensitive operations.
+`Duration` provides a branded, unit-safe representation of time with explicit constructors
+(`Duration.seconds`, `Duration.millis`) and conversion helpers.
 
 ## The problem with primitive numbers for time
 

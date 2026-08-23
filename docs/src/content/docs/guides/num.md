@@ -37,9 +37,9 @@ function parseSliderValue(rawInput: string | undefined): number {
 }
 ```
 
-This code works, but it entangles parsing, validation, clamping, and fallback logic within a single
-imperative block. If we want to map this over an array of inputs, we must write a wrapping helper
-function or embed inline ternary checks.
+This function combines parsing, validation, clamping, and fallback logic within a single imperative
+block. If we want to map this over an array of inputs, we must write a wrapping helper function or
+embed inline ternary checks.
 
 Additionally, standard JavaScript arithmetic contains structural pitfalls: dividing by zero does not
 fail at the type level or throw an exception — it returns `Infinity`, which silently propagates
@@ -47,18 +47,8 @@ through our application, causing unpredictable mathematical errors downstream.
 
 ## The shift to declarative arithmetic
 
-`Num` treats mathematical operations and conversions as pure, composable steps. It introduces safety
-at the type level: operations that can fail (such as parsing an invalid string or dividing by zero)
-return a `Maybe` context, forcing us to handle the failure path explicitly.
-
-```mermaid
-flowchart TD
-    A["Raw Input ('42')"] --> B["Num.parse"]
-    B --> C["Some(42)"]
-    C --> D["Num.clamp(0, 100)"]
-    D --> E["Some(42)"]
-    B -- "Invalid input" --> F["None"]
-```
+The `Num` module provides curried arithmetic, parsing, clamping, and bounds-checking utilities
+designed for pipelines.
 
 ## Safe numeric parsing
 
@@ -146,7 +136,7 @@ Num.is.positive(5);    // true
 Num.is.negative(-5);   // true
 ```
 
-These predicates compose seamlessly with array helpers like `Arr.filter`:
+These predicates compose directly with array helpers like `Arr.filter`:
 
 ```ts
 pipe(

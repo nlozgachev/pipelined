@@ -1,4 +1,5 @@
 ---
+import { Card, CardGrid } from "@astrojs/starlight/components";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -24,47 +25,38 @@ const typesExports = getBarrelExports("../src/Types/index.ts");
 
 const entryPoints = [
 	{
-		path: "@nlozgachev/pipelined/core",
-		scope: "Error handling, optionality, async execution, event streams, state, and optics",
+		title: "/core",
+		description: "Sum types for error handling, optional values, async execution, event streams, state, and optics.",
 		exports: coreExports,
 	},
 	{
-		path: "@nlozgachev/pipelined/data",
-		scope: "Utility functions for data structures, collections, and primitives",
+		title: "/data",
+		description: "Pure curried utilities for arrays, records, dictionaries, strings, numbers, and JSON.",
 		exports: dataExports,
 	},
 	{
-		path: "@nlozgachev/pipelined/composition",
-		scope: "Function composition combinators, pipeline flow, and execution control",
+		title: "/composition",
+		description: "Pipeline runners, flow composition, and execution control combinators.",
 		exports: compositionExports,
 	},
 	{
-		path: "@nlozgachev/pipelined/types",
-		scope: "Branded types, policy definitions, and domain primitives",
+		title: "/types",
+		description: "Domain primitives, compile-time branded types, duration units, and retry policies.",
 		exports: typesExports,
 	},
 ];
 ---
 
-<table>
-	<thead>
-		<tr>
-			<th>Entry point</th>
-			<th>Primary Scope</th>
-			<th>Exports</th>
-		</tr>
-	</thead>
-	<tbody>
-		{entryPoints.map((entry) => (
-			<tr>
-				<td><code>{entry.path}</code></td>
-				<td>{entry.scope}</td>
-				<td>
-					{entry.exports.map((name, i) => (
-						<><code>{name}</code>{i < entry.exports.length - 1 ? ", " : ""}</>
-					))}
-				</td>
-			</tr>
-		))}
-	</tbody>
-</table>
+<CardGrid>
+	{entryPoints.map((entry) => (
+		<Card title={entry.title}>
+			<p>{entry.description}</p>
+			<p>
+				<strong>Exports:</strong>{" "}
+				{entry.exports.map((name, i) => (
+					<><code>{name}</code>{i < entry.exports.length - 1 ? " " : ""}</>
+				))}
+			</p>
+		</Card>
+	))}
+</CardGrid>

@@ -12,21 +12,18 @@ Opinionated functional abstractions for TypeScript.
 npm add @nlozgachev/pipelined
 ```
 
-## Possibly maybe
+## Overview
 
-In mainstream TypeScript, code is often burdened by implicit control flow: unchecked exceptions,
-manual null propagation, unhandled asynchronous failures, UI state race conditions, and deeply
-nested spread operators. `pipelined` turns these complex runtime states into transparent, composable
-data structures.
+Standard TypeScript applications frequently deal with unchecked runtime exceptions, manual null
+propagation, unhandled async rejections, race conditions, and verbose nested spread operators.
 
-By representing optionality as `Maybe`, failures as `Result`, multi-field errors as `Validation`,
-lazy asynchronous workflows as `Task.Result`, request concurrency as `Op`, and event pipelines as
-`Stream`, the library disentangles business logic from control mechanics.
+`pipelined` provides discriminated unions and pure combinators to model these conditions explicitly:
+`Maybe` for absence, `Result` for typed failures, `Validation` for multi-error accumulation,
+`Task.Result` for lazy infallible async, `Op` for declarative request concurrency, and `Stream` for
+typed event sequences.
 
-To support these patterns without introducing bloat, the library is designed to be lightweight,
-zero-dependency, and fully tree-shakeable. The core module (`/core`) is under 16 KB gzipped, and the
-entire toolkit is under 25 KB gzipped, making it equally suitable for client and server
-environments.
+The library has zero external dependencies, <16 KB core gzipped (<25 KB total), and compiles to dual
+ESM and CommonJS distributions.
 
 ## Documentation
 

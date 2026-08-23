@@ -1,33 +1,19 @@
 ---
 title: Task — Lazy Asynchronous Work
-description: Model asynchronous operations as lazy, infallible blueprints that only execute when explicitly called.
+description: Model asynchronous operations as lazy, infallible functions that execute only when called.
 ---
 
 import { Aside } from '@astrojs/starlight/components'
 
-In modern JavaScript, asynchronous operations are modeled using `Promise` objects. Promises are highly convenient runtime constructs, but they have two specific design characteristics that make them challenging to compose cleanly:
+JavaScript `Promise` instances execute eagerly upon creation and can reject with untyped values (`unknown`). This makes it difficult to compose async workflows before execution or track errors in type signatures.
 
-1.  **Promises are eager**: The moment a Promise is created, the underlying work starts executing.
-2.  **Promises are fallible**: A Promise can reject, throwing an untyped exception that bypasses the static type system.
-
-Because a Promise is eager, you cannot build a pipeline of asynchronous transformations and pass it around as a pure, inactive description before any work actually begins. By the time you have the Promise in hand, the network request is already in flight.
-
-```ts
-// Eager execution: the timer starts immediately
-const delayPromise = new Promise<void>((resolve) => setTimeout(resolve, 5000));
-```
-
-Because Promises can reject, failure leaks out as an untyped runtime exception. This forces you to write defensive `try/catch` blocks at call sites, and makes it impossible to tell from a function's type signature whether it can fail.
-
-`Task<A>` solves both problems. A `Task` is simply a zero-argument function that returns a `Deferred<A>`:
+`Task<A>` is a zero-argument function returning an infallible `Deferred<A>`:
 
 ```ts
 type Task<A> = () => Deferred<A>;
 ```
 
-`Deferred<A>` is a minimal, infallible asynchronous value. It supports `await` but has no `.catch()` or `.finally()` methods. At the type level, a `Deferred` value is guaranteed never to reject.
-
-By wrapping our async work in a function, we make it **lazy** — nothing runs until you explicitly invoke the Task. And by treating the core `Task` as infallible, we force all possible failures into the data channel: `Task.Result<E, A>` is a `Task` yielding a `Result<E, A>`, making failures impossible to overlook.
+Because `Task` is a function, execution is deferred until invoked. Because `Deferred<A>` is typed to never reject, failures are tracked explicitly in return types via `Task.Result<E, A>`.
 
 ```ts
 import { Task } from "@nlozgachev/pipelined/core";
@@ -35,14 +21,14 @@ import { pipe } from "@nlozgachev/pipelined/composition";
 
 const getTimestamp = Task.resolve(Date.now()); // Task<number>
 
-// 1. Describe the pipeline — nothing executes
+// 1. Compose the pipeline — nothing executes yet
 const formattedTime = pipe(
   getTimestamp,
   Task.map((ts) => new Date(ts).toISOString()),
 ); // Task<string>
 
-// 2. Explicitly execute the pipeline at the edge of your app
-const timeString = await formattedTime(); // The work starts here
+// 2. Explicitly execute by invoking the function
+const timeString = await formattedTime();
 ```
 
 ---

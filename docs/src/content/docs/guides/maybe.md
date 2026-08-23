@@ -3,59 +3,33 @@ title: Maybe — Modeling Absence
 description: Treat the absence of a value as first-class data rather than a control flow problem.
 ---
 
-In modern software development, we spend a massive amount of time dealing with things that are not
-there. We query a database for a record that might have been deleted; we look up a key in a
-configuration file that might be missing; we search a list for an item that is not present.
+When retrieving values from maps, database queries, or optional properties, standard TypeScript
+represents absence with `T | null` or `T | undefined`.
 
-In traditional TypeScript, we typically represent this nothingness with `null` or `undefined`. On
-the surface, this approach seems simple. But as systems grow, we find that it introduces a subtle,
-persistent friction: it intertwines the logic of *what* we want to do with a value and the defensive
-checking of *whether* that value even exists.
+While familiar, handling nullable values across multi-step transformations requires repetitive `if`
+checks or optional chaining that breaks linear pipeline composition.
 
 ## The problem with null
 
-Consider a simple, everyday snippet of TypeScript:
-
-```ts
-const user = getUser(id);
-const name = user ? user.name : "Unknown";
-```
-
-On the surface, this is familiar and easy to write. But notice the implicit coupling. The caller of
-`getUser` cannot simply ask for the user's name; they must first stop, pivot their attention, and
-inspect the pointer. If they forget, strict mode might warn them, but the responsibility of the
-check still lives in the runtime flow of their code.
-
-When we have a pipeline of operations — say, taking a configuration setting, parsing it into a
-number, and then checking if it is within a valid range — this defensive checking must be repeated
-at every step. The happy path of our logic and the recovery path of handling absence are twisted
-together. They are complected.
-
 ```ts
 const rawValue = config.get("timeout");
-let timeout = 1000; // default
+let timeout = 1000;
 
 if (rawValue !== undefined && rawValue !== null) {
   const parsed = parseInt(rawValue, 10);
-  if (!isNaN(parsed)) {
-    if (parsed > 0) {
-      timeout = parsed;
-    }
+  if (!isNaN(parsed) && parsed > 0) {
+    timeout = parsed;
   }
 }
 ```
 
-This code is hard to read not because the math is complicated, but because the business logic
-(parsing and bounds validation) is constantly interrupted by guards against nothingness.
+In standard TypeScript, each transformation step requires guarding against missing intermediate
+values.
 
-## The Maybe approach
+## The Maybe Approach
 
-What if we could separate these concerns? What if absence was not a missing pointer or a blank
-space, but a first-class value in its own right? A value that carries its own rules for
-transformation.
-
-This is the purpose of `Maybe`. It is a data structure that represents a choice: either we have
-something (`Some`), or we have nothing (`None`).
+`Maybe<A>` represents optionality as a discriminated union: `Some<A>` (value present) or `None`
+(empty).
 
 ```mermaid
 flowchart TD
@@ -485,5 +459,5 @@ const failed = Maybe.struct({
   into a dense array in a single point-free step.
 - **Explicit public module contracts**: In shared domain services and library interfaces, returning
   `null` or `undefined` permits callers to inadvertently ignore missing values until a runtime error
-  triggers downstream. Returning `Maybe<A>` elevates absence into an explicit type guarantee,
-  ensuring callers handle both presence and absence at compile time.
+  triggers downstream. Returning `Maybe<A>` makes absence an explicit type guarantee, ensuring
+  callers handle both presence and absence at compile time.

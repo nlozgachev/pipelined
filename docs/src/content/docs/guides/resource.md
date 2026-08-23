@@ -3,14 +3,13 @@ title: Resource — Safe Lifecycle Management
 description: Guarantee that database connections, file handles, and locks are always safely closed and cleaned up, even when runtime errors occur.
 ---
 
-A very common sequence in software development is the acquire-use-release lifecycle. You open a
-database connection, run a series of queries, and close the connection. Or you open a file handle,
-read its contents, and close the handle when done.
+Managing resources like database connections, file handles, or mutex locks requires guaranteeing
+that cleanup logic runs even if operations throw runtime errors. When coordinating multiple
+resources, nested `try/finally` blocks quickly accumulate boilerplate.
 
-This sequence is simple, until an error occurs. If a query throws a runtime exception, the close
-instruction is skipped, causing a connection leak that will eventually crash the server.
-
-To fix this, we typically introduce defensive blocks:
+`Resource<E, A>` encapsulates the acquire-use-release lifecycle (the bracket pattern) into a
+composable data structure, guaranteeing that release functions execute whenever an acquired resource
+leaves scope.
 
 ```ts
 const connection = await openConnection();
