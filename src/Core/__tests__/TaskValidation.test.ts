@@ -543,3 +543,51 @@ test("Task.Validation.memoize executes task only once across multiple calls", as
 	expect(r2).toStrictEqual(Validation.make.passed(99));
 	expect(calls).toBe(1);
 });
+
+// --- to namespace ---
+
+test("Task.Validation.to.Result converts Passed to Ok and Failed to Err", async () => {
+	const combine = (errs: readonly string[]) => errs.join(", ");
+	const passedRes = await Task.Validation.to.Result(combine)(Task.Validation.passed(42))();
+	const failedRes = await Task.Validation.to.Result(combine)(Task.Validation.make.failedAll(["err1", "err2"]))();
+
+	expect(passedRes).toStrictEqual({ kind: "Ok", value: 42 });
+	expect(failedRes).toStrictEqual({ kind: "Err", error: "err1, err2" });
+});
+
+test("Task.Validation.to.Maybe converts Passed to Some and Failed to None", async () => {
+	const passedRes = await Task.Validation.to.Maybe(Task.Validation.passed(42))();
+	const failedRes = await Task.Validation.to.Maybe(Task.Validation.failed("err"))();
+
+	expect(passedRes).toStrictEqual({ kind: "Some", value: 42 });
+	expect(failedRes).toStrictEqual({ kind: "None" });
+});
+
+// --- recoverUnless ---
+
+test("Task.Validation.recoverUnless recovers from Failed when not blocked", async () => {
+	const task = pipe(
+		Task.Validation.failed<string, number>("transient"),
+		Task.Validation.recoverUnless((errs) => errs.includes("fatal"), () => Task.Validation.passed(99)),
+	);
+	const res = await task();
+	expect(res).toStrictEqual(Validation.make.passed(99));
+});
+
+test("Task.Validation.recoverUnless preserves Failed when blocked", async () => {
+	const task = pipe(
+		Task.Validation.failed<string, number>("fatal"),
+		Task.Validation.recoverUnless((errs) => errs.includes("fatal"), () => Task.Validation.passed(99)),
+	);
+	const res = await task();
+	expect(res).toStrictEqual(Validation.make.failed("fatal"));
+});
+
+test("Task.Validation.recoverUnless preserves Passed when called on a Passed task", async () => {
+	const task = pipe(
+		Task.Validation.passed<string, number>(42),
+		Task.Validation.recoverUnless((errs) => errs.includes("fatal"), () => Task.Validation.passed(99)),
+	);
+	const res = await task();
+	expect(res).toStrictEqual(Validation.make.passed(42));
+});

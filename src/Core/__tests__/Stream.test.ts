@@ -251,6 +251,40 @@ test("Stream.listen relaxed sequence resets to index 0 when out-of-order event i
 	expect(firedCount).toBe(0);
 });
 
+test("Stream.listen optional skips optional events in sequence when next event matches", () => {
+	const s = Stream.make<TestSchema>();
+	let fired = 0;
+
+	// B is optional in sequence A -> B -> C
+	Stream.listen(s, ["A", "B", "C"], { ordered: true, optional: ["B"] }).tap(() => {
+		fired++;
+	});
+
+	// Emit A -> C directly (skipping optional B)
+	Stream.emit(s, { kind: "A", value: { value: 1 } });
+	Stream.emit(s, { kind: "C", value: { flag: true } });
+
+	expect(fired).toBe(1);
+});
+
+test("Stream.listen relaxed sequence resets to index 1 when out-of-order event matches eventList[0]", () => {
+	const s = Stream.make<TestSchema>();
+	let firedCount = 0;
+
+	Stream.listen(s, ["A", "B", "C"], { ordered: true, strict: false }).tap(() => {
+		firedCount++;
+	});
+
+	// A -> B -> A -> B -> C
+	Stream.emit(s, { kind: "A", value: { value: 1 } });
+	Stream.emit(s, { kind: "B", value: { text: "1" } });
+	Stream.emit(s, { kind: "A", value: { value: 2 } });
+	Stream.emit(s, { kind: "B", value: { text: "2" } });
+	Stream.emit(s, { kind: "C", value: { flag: true } });
+
+	expect(firedCount).toBe(1);
+});
+
 test("Stream.listen once automatically unsubscribes after first match", () => {
 	const s = Stream.make<TestSchema>();
 	let fireCount = 0;

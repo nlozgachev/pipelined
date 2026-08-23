@@ -9,6 +9,8 @@ import {
 	Validation as CoreValidation,
 } from "#core";
 import { isNonEmptyArr, type NonEmptyArr, type Thenable } from "#internal";
+import type { TaskMaybe } from "./TaskMaybe.ts";
+import type { TaskResult } from "./TaskResult.ts";
 
 /**
  * A Task that resolves to a Validation — combining async operations with
@@ -133,6 +135,34 @@ export namespace TaskValidation {
 			CoreTask.resolve(CoreValidation.from.Result(result));
 	}
 
+	// --- to ---
+	export namespace to {
+		/**
+		 * Converts a `Task.Validation` to a `Task.Result`, combining accumulated errors using `combineErrors`.
+		 * `Passed(a)` becomes `Ok(a)`; `Failed(errors)` becomes `Err(combineErrors(errors))`.
+		 *
+		 * @example
+		 * ```ts
+		 * Task.Validation.to.Result((errors) => errors.join(", "))(validationTask);
+		 * ```
+		 */
+		export const Result =
+			<E1, E2, A>(combineErrors: (errors: NonEmptyArr<E1>) => E2) => (data: TaskValidation<E1, A>): TaskResult<E2, A> =>
+				CoreTask.map(CoreValidation.to.Result<E1, E2, A>(combineErrors))(data);
+
+		/**
+		 * Converts a `Task.Validation` to a `Task.Maybe`.
+		 * `Passed(a)` becomes `Some(a)`; `Failed(errors)` becomes `None` (errors are discarded).
+		 *
+		 * @example
+		 * ```ts
+		 * Task.Validation.to.Maybe(validationTask);
+		 * ```
+		 */
+		export const Maybe = <E, A>(data: TaskValidation<E, A>): TaskMaybe<A> =>
+			CoreTask.map(CoreValidation.to.Maybe<E, A>)(data);
+	}
+
 	/**
 	 * Creates a Task.Validation from a Promise-returning function.
 	 * Catches any errors and transforms them using the onError function.
@@ -239,6 +269,32 @@ export namespace TaskValidation {
 		<A>(data: TaskValidation<E, A>): TaskValidation<E, A | B> =>
 			CoreTask.chain((validation: Validation<E, A>) =>
 				CoreValidation.is.passed(validation)
+					? CoreTask.resolve(validation as Validation<E, A | B>)
+					: fallback(validation.errors)
+			)(data);
+
+	/**
+	 * Recovers from a Failed state unless the predicate `isBlocked` returns true for the accumulated errors.
+	 * The fallback receives the accumulated errors and can produce a different success type, widening the result to `Task.Validation<E, A | B>`.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   validationTask,
+	 *   Task.Validation.recoverUnless(
+	 *     (errors) => errors.includes("fatal"),
+	 *     (errors) => Task.Validation.passed("fallback")
+	 *   )
+	 * );
+	 * ```
+	 */
+	export const recoverUnless =
+		<E, B>(isBlocked: (errors: NonEmptyArr<E>) => boolean, fallback: (errors: NonEmptyArr<E>) => TaskValidation<E, B>) =>
+		<A>(data: TaskValidation<E, A>): TaskValidation<E, A | B> =>
+			CoreTask.chain((validation: Validation<E, A>) =>
+				CoreValidation.is.passed(validation)
+					? CoreTask.resolve(validation as Validation<E, A | B>)
+					: isBlocked(validation.errors)
 					? CoreTask.resolve(validation as Validation<E, A | B>)
 					: fallback(validation.errors)
 			)(data);

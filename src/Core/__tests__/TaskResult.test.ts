@@ -892,3 +892,51 @@ test("Task.Result.tryCatch lifts async operations into Task.Result", async () =>
 	expectTypeOf(res).toMatchTypeOf<Result<TestErr, TestVal>>();
 	expect(res).toStrictEqual(Result.make.ok({ id: 100 }));
 });
+
+// --- recoverUnless ---
+
+test("Task.Result.recoverUnless recovers from Err when not blocked", async () => {
+	const task = pipe(
+		Task.Result.err<string, number>("transient"),
+		Task.Result.recoverUnless((e) => e === "fatal", () => Task.Result.ok(99)),
+	);
+	const res = await task();
+	expect(res).toStrictEqual(Result.make.ok(99));
+});
+
+test("Task.Result.recoverUnless preserves Err when blocked", async () => {
+	const task = pipe(
+		Task.Result.err<string, number>("fatal"),
+		Task.Result.recoverUnless((e) => e === "fatal", () => Task.Result.ok(99)),
+	);
+	const res = await task();
+	expect(res).toStrictEqual(Result.make.err("fatal"));
+});
+
+test("Task.Result.retry returns early when signal is already aborted before backoff wait", async () => {
+	const controller = new AbortController();
+	controller.abort();
+	const policy = RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(100) });
+
+	const task: Task.Result<string, number> = Task.Result.err("err");
+	const res = await pipe(task, Task.Result.retry(policy))(controller.signal);
+	expect(res).toStrictEqual(Result.make.err("err"));
+});
+
+test("Task.Result.retry returns early when signal aborts during backoff wait delay", async () => {
+	const controller = new AbortController();
+	const policy = RetryPolicy.constant({ attempts: 5, delay: Duration.milliseconds(200) });
+
+	let attempts = 0;
+	const task: Task.Result<string, number> = (signal) => {
+		attempts++;
+		if (attempts === 1) {
+			setTimeout(() => controller.abort(), 50);
+		}
+		return Task.Result.err<string, number>("err")(signal);
+	};
+
+	const res = await pipe(task, Task.Result.retry(policy))(controller.signal);
+	expect(res).toStrictEqual(Result.make.err("err"));
+	expect(attempts).toBeLessThanOrEqual(2);
+});

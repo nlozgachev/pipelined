@@ -184,6 +184,30 @@ export namespace TaskResult {
 			)(data);
 
 	/**
+	 * Recovers from an error unless the predicate `isBlocked` returns true for that error.
+	 * The fallback can produce a different success type, widening the result to `Task.Result<E, A | B>`.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   fetchTask,
+	 *   Task.Result.recoverUnless(
+	 *     (e) => e === "fatal",
+	 *     () => Task.Result.ok("fallback")
+	 *   )
+	 * );
+	 * ```
+	 */
+	export const recoverUnless =
+		<E, B>(isBlocked: (e: E) => boolean, fallback: (e: E) => TaskResult<E, B>) =>
+		<A>(data: TaskResult<E, A>): TaskResult<E, A | B> =>
+			CoreTask.chain((result: Result<E, A>) =>
+				CoreResult.is.err(result) && !isBlocked(result.error)
+					? fallback(result.error)
+					: CoreTask.resolve(result as Result<E, A | B>)
+			)(data);
+
+	/**
 	 * Returns the success value or a default value if the Task.Result is an error.
 	 * The default can be a different type, widening the result to `Task<A | B>`.
 	 */
