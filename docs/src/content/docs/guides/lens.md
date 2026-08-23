@@ -11,7 +11,7 @@ In standard JavaScript, we are faced with a frustrating choice: mutate the data 
 and risk unpredictable side effects, or write verbose, fragile chains of nested object spreads to
 perform an immutable update.
 
-`Lens` offers a elegant alternative by treating the path to a nested field as a first-class,
+`Lens` offers an elegant alternative by treating the path to a nested field as a first-class,
 reusable value. A lens acts as a telescope focused on a specific part of a larger structure,
 allowing us to read, overwrite, or modify that part immutably without manually traversing the
 nesting every time.
