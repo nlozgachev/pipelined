@@ -54,6 +54,7 @@ We lift asynchronous values into a `Task` context depending on whether they are 
 ```ts
 // Resolving immediately
 const constantTask = Task.resolve(42); // Task<number>
+```
 
 Because standard Promises in JavaScript are fallible by definition, `Task.tryCatch` is the canonical intake for operations that may reject or throw an exception, trapping errors with a fallback handler to ensure the returned `Task<A>` is infallible and never throws:
 
@@ -306,9 +307,9 @@ If an attempt succeeds (`Ok`), execution completes immediately without further r
 
 ## Lazy Task Memoization: Task.memoize
 
-Because `Task` and `Task.Result` are lazy thunks, calling a task multiple times will re-trigger the underlying async computation every time.
+Because `Task` blueprints are lazy thunks, calling a task multiple times will re-trigger the underlying async computation every time.
 
-`Task.memoize` (and `Task.Result.memoize`) creates a memoized task that executes the operation at most once on the first call and caches the resolved result for all subsequent calls:
+`Task.memoize` (as well as `Task.Result.memoize`, `Task.Maybe.memoize`, and `Task.Validation.memoize`) creates a memoized task that executes the operation at most once on the first call and caches the resolved result for all subsequent calls:
 
 ```ts
 const fetchToken = Task.memoize(
@@ -356,7 +357,7 @@ import { Task } from "@nlozgachev/pipelined/core";
 const checkUsernameUnique = (username: string): Task.Validation<string, string> =>
   Task.Validation.tryCatch(
     (signal) => db.users.isUnique(username, signal),
-    (error) => `Username check failed: ${error}`,
+    { onError: (error) => `Username check failed: ${error}` },
   );
 ```
 

@@ -349,4 +349,15 @@ export namespace TaskValidation {
 					return isNonEmptyArr(errors) ? CoreValidation.make.failedAll(errors) : CoreValidation.make.passed(record);
 				});
 			})());
+
+	/**
+	 * Creates a memoized version of a Task.Validation. The task is executed at most once on first call,
+	 * and its resolved Validation is cached for all subsequent calls.
+	 *
+	 * @example
+	 * ```ts
+	 * const validate = Task.Validation.memoize(validateFormTask);
+	 * ```
+	 */
+	export const memoize = <E, A>(task: TaskValidation<E, A>): TaskValidation<E, A> => CoreTask.memoize(task);
 }

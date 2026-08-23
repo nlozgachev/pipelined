@@ -417,3 +417,19 @@ test("Task.Maybe.make creates some and none tasks", async () => {
 	await expect(someTask()).resolves.toStrictEqual(Maybe.make.some(42));
 	await expect(noneTask()).resolves.toStrictEqual(Maybe.make.none());
 });
+
+test("Task.Maybe.memoize executes task only once across multiple calls", async () => {
+	let calls = 0;
+	const task = Task.Maybe.tryCatch(() => {
+		calls++;
+		return Promise.resolve(99);
+	});
+	const memoized = Task.Maybe.memoize(task);
+
+	const r1 = await memoized();
+	const r2 = await memoized();
+
+	expect(r1).toStrictEqual(Maybe.make.some(99));
+	expect(r2).toStrictEqual(Maybe.make.some(99));
+	expect(calls).toBe(1);
+});
