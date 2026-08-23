@@ -370,7 +370,7 @@ test("compact - empty input returns empty output", () => {
 	expect(result).toStrictEqual({});
 });
 
-test("mapKeys and compact safely handle __proto__ keys without prototype pollution", () => {
+test("Rec methods safely handle __proto__ keys without prototype pollution", () => {
 	const input = JSON.parse('{"__proto__": {"polluted": true}}');
 	const mapped = pipe(input, Rec.mapKeys((k) => k));
 	expect(Object.keys(mapped)).toStrictEqual(["__proto__"]);
@@ -386,6 +386,39 @@ test("mapKeys and compact safely handle __proto__ keys without prototype polluti
 	const compacted = Rec.compact(compactInput);
 	expect(Object.keys(compacted)).toStrictEqual(["__proto__"]);
 	expect((compacted as any).polluted).toBeUndefined();
+
+	const filtered = pipe(input, Rec.filter(() => true));
+	expect(Object.keys(filtered)).toStrictEqual(["__proto__"]);
+
+	const filterWithKeyed = pipe(input, Rec.filterWithKey(() => true));
+	expect(Object.keys(filterWithKeyed)).toStrictEqual(["__proto__"]);
+
+	const filterMapped = pipe(compactInput, Rec.filterMap((m) => m));
+	expect(Object.keys(filterMapped)).toStrictEqual(["__proto__"]);
+
+	const grouped = Rec.groupBy(() => "__proto__")(["item1"]);
+	expect(Object.keys(grouped)).toStrictEqual(["__proto__"]);
+
+	const protoObj: Record<string, number> = {};
+	Object.defineProperty(protoObj, "__proto__", { value: 42, enumerable: true, configurable: true, writable: true });
+	const picked = Rec.pick("__proto__")(protoObj);
+	expect(Object.keys(picked)).toStrictEqual(["__proto__"]);
+
+	const omitted = Rec.omit("otherKey")(protoObj);
+	expect(Object.keys(omitted)).toStrictEqual(["__proto__"]);
+
+	const traversedMaybe = pipe(compactInput, Rec.traverse.Maybe((m) => m));
+	expect(traversedMaybe.kind).toBe("Some");
+
+	const resultInput: Record<string, any> = {};
+	Object.defineProperty(resultInput, "__proto__", {
+		value: { kind: "Ok", value: 1 },
+		enumerable: true,
+		configurable: true,
+		writable: true,
+	});
+	const traversedResult = pipe(resultInput, Rec.traverse.Result((r) => r));
+	expect(traversedResult.kind).toBe("Ok");
 });
 
 // --- mergeWith ---

@@ -204,6 +204,10 @@ test("str.parse.float returns None for empty string", () => {
 	expect(Str.parse.float("")).toStrictEqual(Maybe.make.none());
 });
 
+test("str.parse.float returns None for empty string", () => {
+	expect(Str.parse.float("")).toStrictEqual(Maybe.make.none());
+});
+
 // ---------------------------------------------------------------------------
 // replace
 // ---------------------------------------------------------------------------
