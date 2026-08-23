@@ -1,5 +1,6 @@
 import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import { Maybe } from "../../Core/Maybe.ts";
 import { Uniq } from "../Uniq.ts";
 
 // ---------------------------------------------------------------------------
@@ -420,4 +421,18 @@ test("Uniq.NonEmpty.map - maps items and preserves NonEmpty type", () => {
 test("Uniq.NonEmpty pipe composition", () => {
 	const result = pipe(Uniq.NonEmpty.singleton(5), Uniq.NonEmpty.map((n) => n * 2), Uniq.NonEmpty.to.Array);
 	expect(result).toStrictEqual([10]);
+});
+
+test("Uniq.toggle toggles item inclusion", () => {
+	const set1 = Uniq.from.Array([1, 2]);
+	const set2 = pipe(set1, Uniq.toggle(2));
+	expect(set2.has(2)).toBe(false);
+	const set3 = pipe(set2, Uniq.toggle(2));
+	expect(set3.has(2)).toBe(true);
+});
+
+test("Uniq.filterMap filters and maps elements", () => {
+	const set = Uniq.from.Array([1, 2, 3, 4]);
+	const res = pipe(set, Uniq.filterMap((n) => (n % 2 === 0 ? Maybe.make.some(n * 10) : Maybe.make.none())));
+	expect(res).toStrictEqual(Uniq.from.Array([20, 40]));
 });

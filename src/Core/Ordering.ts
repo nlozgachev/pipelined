@@ -16,7 +16,11 @@
  */
 export type Ordering<A> = (a: A, b: A) => number;
 
-export namespace Ordering {
+const stringOrd: Ordering<string> = (a, b) => (a < b ? -1 : (a > b ? 1 : 0));
+const numberOrd: Ordering<number> = (a, b) => a - b;
+const dateOrd: Ordering<Date> = (a, b) => a.getTime() - b.getTime();
+
+export const Ordering = {
 	/**
 	 * Alphabetical ordering for strings.
 	 *
@@ -25,7 +29,7 @@ export namespace Ordering {
 	 * Ordering.string("apple", "banana"); // negative
 	 * ```
 	 */
-	export const string: Ordering<string> = (a, b) => (a < b ? -1 : (a > b ? 1 : 0));
+	string: stringOrd,
 
 	/**
 	 * Numeric ordering. Equivalent to `(a, b) => a - b`.
@@ -35,7 +39,7 @@ export namespace Ordering {
 	 * pipe([3, 1, 2], Arr.sortWith(Ordering.number)); // [1, 2, 3]
 	 * ```
 	 */
-	export const number: Ordering<number> = (a, b) => a - b;
+	number: numberOrd,
 
 	/**
 	 * Ordering for `Date` values by numeric time value.
@@ -45,7 +49,7 @@ export namespace Ordering {
 	 * pipe(dates, Arr.sortWith(Ordering.date)); // earliest first
 	 * ```
 	 */
-	export const date: Ordering<Date> = (a, b) => a.getTime() - b.getTime();
+	date: dateOrd,
 
 	/**
 	 * Flips the direction of an ordering.
@@ -55,7 +59,7 @@ export namespace Ordering {
 	 * pipe([3, 1, 2], Arr.sortWith(Ordering.reverse(Ordering.number))); // [3, 2, 1]
 	 * ```
 	 */
-	export const reverse = <A>(ord: Ordering<A>): Ordering<A> => (a, b) => ord(b, a);
+	reverse: <A>(ord: Ordering<A>): Ordering<A> => (a, b) => ord(b, a),
 
 	/**
 	 * Chains two orderings: the second is used only when the first returns `0`.
@@ -66,10 +70,10 @@ export namespace Ordering {
 	 * const byDeptThenSalary = pipe(byDept, Ordering.thenBy(bySalary));
 	 * ```
 	 */
-	export const thenBy = <A>(ord2: Ordering<A>) => (ord1: Ordering<A>): Ordering<A> => (a, b) => {
+	thenBy: <A>(ord2: Ordering<A>) => (ord1: Ordering<A>): Ordering<A> => (a, b) => {
 		const r = ord1(a, b);
 		return r !== 0 ? r : ord2(a, b);
-	};
+	},
 
 	/**
 	 * Adapts an ordering for type `A` into an ordering for type `B` by extracting a field.
@@ -82,7 +86,7 @@ export namespace Ordering {
 	 * pipe(products, Arr.sortWith(byPrice));
 	 * ```
 	 */
-	export const by = <A, B>(f: (b: B) => A) => (ord: Ordering<A>): Ordering<B> => (a, b) => ord(f(a), f(b));
+	by: <A, B>(f: (b: B) => A) => (ord: Ordering<A>): Ordering<B> => (a, b) => ord(f(a), f(b)),
 
 	/**
 	 * Combines a list of orderings into a single composite comparator.
@@ -95,7 +99,7 @@ export namespace Ordering {
 	 * const sortUsers = Ordering.byFields([byName, byAge]);
 	 * ```
 	 */
-	export const byFields = <A>(orderings: ReadonlyArray<Ordering<A>>): Ordering<A> => (a, b) => {
+	byFields: <A>(orderings: ReadonlyArray<Ordering<A>>): Ordering<A> => (a, b) => {
 		for (let i = 0; i < orderings.length; i++) {
 			const res = orderings[i](a, b);
 			if (res !== 0) {
@@ -103,7 +107,7 @@ export namespace Ordering {
 			}
 		}
 		return 0;
-	};
+	},
 
 	/**
 	 * Derives a lexicographical tuple ordering from positional `Ordering` comparators.
@@ -114,15 +118,14 @@ export namespace Ordering {
 	 * pairOrd(["a", 1], ["a", 2]); // negative
 	 * ```
 	 */
-	export const tuple =
-		<T extends readonly unknown[]>(...orderings: { [K in keyof T]: Ordering<T[K]>; }): Ordering<T> => (a, b) => {
-			const len = Math.min(a.length, b.length);
-			for (let i = 0; i < len; i++) {
-				const res = orderings[i](a[i], b[i]);
-				if (res !== 0) {
-					return res;
-				}
+	tuple: <T extends readonly unknown[]>(...orderings: { [K in keyof T]: Ordering<T[K]>; }): Ordering<T> => (a, b) => {
+		const len = Math.min(a.length, b.length);
+		for (let i = 0; i < len; i++) {
+			const res = orderings[i](a[i], b[i]);
+			if (res !== 0) {
+				return res;
 			}
-			return a.length - b.length;
-		};
-}
+		}
+		return a.length - b.length;
+	},
+};

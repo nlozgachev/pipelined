@@ -56,9 +56,9 @@ export const memoize = <A, B>(f: (a: A) => B, options?: {
 		cache.set(key, result);
 
 		if (maxSize !== undefined && cache.size > maxSize) {
-			const firstKey = cache.keys().next().value;
-			if (firstKey !== undefined) {
-				cache.delete(firstKey);
+			for (const k of cache.keys()) {
+				cache.delete(k);
+				break;
 			}
 		}
 

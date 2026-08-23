@@ -23,9 +23,14 @@ declare const _deferred: unique symbol;
  */
 export type Deferred<A> = { readonly [_deferred]: A; readonly then: (onfulfilled: (value: A) => unknown) => void; };
 
-export namespace Deferred {
+const fromPromise = <A>(p: Thenable<A>): Deferred<A> =>
+	({ then: ((f) => p.then(f)) as Deferred<A>["then"] }) as Deferred<A>;
+
+const toPromise = <A>(d: Deferred<A>): globalThis.Promise<A> => new globalThis.Promise<A>((resolve) => d.then(resolve));
+
+export const Deferred = {
 	// --- from ---
-	export namespace from {
+	from: {
 		/**
 		 * Wraps a `Promise` or `Deferred` into a `Deferred`, structurally excluding rejection handlers,
 		 * `.catch()`, `.finally()`, and chainable `.then()`.
@@ -40,13 +45,11 @@ export namespace Deferred {
 		 * const value = await d; // "hello"
 		 * ```
 		 */
-		export const Promise = <A>(p: Thenable<A>): Deferred<A> =>
-			// eslint-disable-next-line unicorn/no-thenable -- Deferred is intentionally thenable; it is the mechanism that makes Task awaitable
-			({ then: ((f) => p.then(f)) as Deferred<A>["then"] }) as Deferred<A>;
-	}
+		Promise: fromPromise,
+	},
 
 	// --- to ---
-	export namespace to {
+	to: {
 		/**
 		 * Converts a `Deferred` back into a `Promise`.
 		 *
@@ -56,9 +59,8 @@ export namespace Deferred {
 		 * // p is Promise<42>
 		 * ```
 		 */
-		export const Promise = <A>(d: Deferred<A>): globalThis.Promise<A> =>
-			new globalThis.Promise<A>((resolve) => d.then(resolve));
-	}
+		Promise: toPromise,
+	},
 
 	/**
 	 * Combines an array or tuple of `Deferred` values into a single `Deferred` of a tuple.
@@ -69,12 +71,12 @@ export namespace Deferred {
 	 * const [a, b] = await Deferred.all([d1, d2]);
 	 * ```
 	 */
-	export const all = <T extends readonly Deferred<unknown>[]>(
+	all: <T extends readonly Deferred<unknown>[]>(
 		deferreds: T,
 	): Deferred<{ [K in keyof T]: T[K] extends Deferred<infer A> ? A : never; }> =>
-		from.Promise(globalThis.Promise.all(deferreds.map((d) => to.Promise(d)))) as Deferred<
+		fromPromise(globalThis.Promise.all(deferreds.map((d) => toPromise(d)))) as Deferred<
 			{ [K in keyof T]: T[K] extends Deferred<infer A> ? A : never; }
-		>;
+		>,
 
 	/**
 	 * Races multiple `Deferred` values and resolves with the first one to settle.
@@ -84,6 +86,6 @@ export namespace Deferred {
 	 * const winner = await Deferred.race([d1, d2]);
 	 * ```
 	 */
-	export const race = <A>(deferreds: ReadonlyArray<Deferred<A>>): Deferred<A> =>
-		from.Promise(globalThis.Promise.race(deferreds.map((d) => to.Promise(d))));
-}
+	race: <A>(deferreds: ReadonlyArray<Deferred<A>>): Deferred<A> =>
+		fromPromise(globalThis.Promise.race(deferreds.map((d) => toPromise(d)))),
+};

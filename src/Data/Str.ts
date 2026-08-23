@@ -1,27 +1,24 @@
+// =============================================================================
+// Imports
+// =============================================================================
 import { Maybe, Result } from "#core";
-import { type NonEmpty } from "#internal";
+import { type NonEmpty as InternalNonEmpty } from "#internal";
 import type { Brand } from "#types";
 
+// =============================================================================
+// Types
+// =============================================================================
 /**
  * A branded type representing a string with at least one character.
  */
-export type NonEmptyString = Brand<NonEmpty<"Str">, string>;
+export type NonEmptyString = Brand<InternalNonEmpty<"Str">, string>;
 
-/**
- * String utilities. All transformation functions are data-last and curried so they
- * compose naturally with `pipe`. Safe parsers return `Maybe` instead of `NaN`.
- *
- * @example
- * ```ts
- * import { Str } from "@nlozgachev/pipelined/data";
- * import { pipe } from "@nlozgachev/pipelined/composition";
- *
- * pipe("  Hello, World!  ", Str.trim, Str.toLowerCase); // "hello, world!"
- * ```
- */
-namespace StrNonEmpty {
+// =============================================================================
+// Private Helpers & NonEmpty Constructors
+// =============================================================================
+const StrNonEmptyConst = {
 	// --- from ---
-	export namespace from {
+	from: {
 		/**
 		 * Returns Some containing NonEmptyString if the string is not empty, None otherwise.
 		 *
@@ -31,18 +28,20 @@ namespace StrNonEmpty {
 		 * Str.NonEmpty.from.String("");      // None
 		 * ```
 		 */
-		export const String = (s: string): Maybe<NonEmptyString> =>
-			s.length > 0 ? Maybe.make.some(s as NonEmptyString) : Maybe.make.none();
-	}
-}
+		String: (
+			s: string,
+		): Maybe<NonEmptyString> => (s.length > 0 ? Maybe.make.some(s as NonEmptyString) : Maybe.make.none()),
+	},
+};
 
-export namespace Str {
-	/**
-	 * A branded type representing a string with at least one character.
-	 */
-	export type NonEmpty = NonEmptyString;
+const isEmpty = (s: string): boolean => s.length === 0;
+const isNonEmpty = (s: string): s is NonEmptyString => s.length > 0;
 
-	export namespace is {
+// =============================================================================
+// Public Export
+// =============================================================================
+export const Str = {
+	is: {
 		/**
 		 * Returns `true` when the string is empty.
 		 *
@@ -52,13 +51,13 @@ export namespace Str {
 		 * pipe("hi", Str.is.empty); // false
 		 * ```
 		 */
-		export const empty = (s: string): boolean => s.length === 0;
+		empty: isEmpty,
 
 		/**
 		 * Type guard to check if a string is non-empty.
 		 */
-		export const nonEmpty = (s: string): s is NonEmpty => s.length > 0;
-	}
+		nonEmpty: isNonEmpty,
+	},
 
 	/**
 	 * Splits a string by a separator. Data-last: use in `pipe`.
@@ -68,7 +67,7 @@ export namespace Str {
 	 * pipe("a,b,c", Str.split(",")); // ["a", "b", "c"]
 	 * ```
 	 */
-	export const split = (separator: string | RegExp) => (s: string): readonly string[] => s.split(separator);
+	split: (separator: string | RegExp) => (s: string): readonly string[] => s.split(separator),
 
 	/**
 	 * Removes leading and trailing whitespace from a string.
@@ -78,7 +77,7 @@ export namespace Str {
 	 * pipe("  hello  ", Str.trim); // "hello"
 	 * ```
 	 */
-	export const trim = (s: string): string => s.trim();
+	trim: (s: string): string => s.trim(),
 
 	/**
 	 * Returns `true` when the string contains the given substring.
@@ -89,7 +88,7 @@ export namespace Str {
 	 * pipe("hello world", Str.includes("xyz"));   // false
 	 * ```
 	 */
-	export const includes = (substring: string) => (s: string): boolean => s.includes(substring);
+	includes: (substring: string) => (s: string): boolean => s.includes(substring),
 
 	/**
 	 * Replaces the first occurrence of a pattern in a string. Data-last: use in `pipe`.
@@ -100,8 +99,7 @@ export namespace Str {
 	 * pipe("Hello World", Str.replace(/world/i, "Earth")); // "Hello Earth"
 	 * ```
 	 */
-	export const replace = (pattern: string | RegExp, replacement: string) => (s: string): string =>
-		s.replace(pattern, replacement);
+	replace: (pattern: string | RegExp, replacement: string) => (s: string): string => s.replace(pattern, replacement),
 
 	/**
 	 * Replaces all occurrences of a pattern in a string. Data-last: use in `pipe`.
@@ -112,8 +110,8 @@ export namespace Str {
 	 * pipe("aAbBaA", Str.replaceAll(/a/gi, "x")); // "xxBBxx"
 	 * ```
 	 */
-	export const replaceAll = (pattern: string | RegExp, replacement: string) => (s: string): string =>
-		s.replaceAll(pattern, replacement);
+	replaceAll: (pattern: string | RegExp, replacement: string) => (s: string): string =>
+		s.replaceAll(pattern, replacement),
 
 	/**
 	 * Returns `true` when the string starts with the given prefix.
@@ -124,7 +122,7 @@ export namespace Str {
 	 * pipe("hello world", Str.startsWith("world")); // false
 	 * ```
 	 */
-	export const startsWith = (prefix: string) => (s: string): boolean => s.startsWith(prefix);
+	startsWith: (prefix: string) => (s: string): boolean => s.startsWith(prefix),
 
 	/**
 	 * Returns `true` when the string ends with the given suffix.
@@ -135,7 +133,7 @@ export namespace Str {
 	 * pipe("hello world", Str.endsWith("hello")); // false
 	 * ```
 	 */
-	export const endsWith = (suffix: string) => (s: string): boolean => s.endsWith(suffix);
+	endsWith: (suffix: string) => (s: string): boolean => s.endsWith(suffix),
 
 	/**
 	 * Converts a string to uppercase.
@@ -145,7 +143,7 @@ export namespace Str {
 	 * pipe("hello", Str.toUpperCase); // "HELLO"
 	 * ```
 	 */
-	export const toUpperCase = (s: string): string => s.toUpperCase();
+	toUpperCase: (s: string): string => s.toUpperCase(),
 
 	/**
 	 * Converts a string to lowercase.
@@ -155,7 +153,7 @@ export namespace Str {
 	 * pipe("HELLO", Str.toLowerCase); // "hello"
 	 * ```
 	 */
-	export const toLowerCase = (s: string): string => s.toLowerCase();
+	toLowerCase: (s: string): string => s.toLowerCase(),
 
 	/**
 	 * Converts the first character of a string to uppercase.
@@ -165,7 +163,7 @@ export namespace Str {
 	 * pipe("hello", Str.capitalize); // "Hello"
 	 * ```
 	 */
-	export const capitalize = (s: string): string => s.length === 0 ? "" : s.charAt(0).toUpperCase() + s.slice(1);
+	capitalize: (s: string): string => s.length === 0 ? "" : s.charAt(0).toUpperCase() + s.slice(1),
 
 	/**
 	 * Splits a string into lines, normalising `\r\n` and `\r` line endings.
@@ -176,7 +174,7 @@ export namespace Str {
 	 * Str.lines("a\r\nb");         // ["a", "b"]
 	 * ```
 	 */
-	export const lines = (s: string): readonly string[] => s.split(/\r?\n|\r/);
+	lines: (s: string): readonly string[] => s.split(/\r?\n|\r/),
 
 	/**
 	 * Splits a string into words on any whitespace boundary, filtering out empty strings.
@@ -186,7 +184,7 @@ export namespace Str {
 	 * Str.words("  hello   world  "); // ["hello", "world"]
 	 * ```
 	 */
-	export const words = (s: string): readonly string[] => s.trim().split(/\s+/).filter(Boolean);
+	words: (s: string): readonly string[] => s.trim().split(/\s+/).filter(Boolean),
 
 	/**
 	 * Returns `true` when the string is empty or contains only whitespace.
@@ -197,7 +195,7 @@ export namespace Str {
 	 * pipe("hi", Str.isBlank);  // false
 	 * ```
 	 */
-	export const isBlank = (s: string): boolean => s.trim().length === 0;
+	isBlank: (s: string): boolean => s.trim().length === 0,
 
 	/**
 	 * Returns the length of the string.
@@ -208,7 +206,7 @@ export namespace Str {
 	 * pipe("", Str.length);      // 0
 	 * ```
 	 */
-	export const length = (s: string): number => s.length;
+	length: (s: string): number => s.length,
 
 	/**
 	 * Extracts a substring between two indices. Data-last: use in `pipe`.
@@ -219,7 +217,7 @@ export namespace Str {
 	 * pipe("hello", Str.slice(2));    // "llo"
 	 * ```
 	 */
-	export const slice = (start: number, end?: number) => (s: string): string => s.slice(start, end);
+	slice: (start: number, end?: number) => (s: string): string => s.slice(start, end),
 
 	/**
 	 * Pads the start of a string to a specified length. Data-last: use in `pipe`.
@@ -230,8 +228,7 @@ export namespace Str {
 	 * pipe("hi", Str.padStart(5));     // "   hi"
 	 * ```
 	 */
-	export const padStart = (maxLength: number, fillString?: string) => (s: string): string =>
-		s.padStart(maxLength, fillString);
+	padStart: (maxLength: number, fillString?: string) => (s: string): string => s.padStart(maxLength, fillString),
 
 	/**
 	 * Pads the end of a string to a specified length. Data-last: use in `pipe`.
@@ -242,13 +239,12 @@ export namespace Str {
 	 * pipe("hi", Str.padEnd(5));       // "hi   "
 	 * ```
 	 */
-	export const padEnd = (maxLength: number, fillString?: string) => (s: string): string =>
-		s.padEnd(maxLength, fillString);
+	padEnd: (maxLength: number, fillString?: string) => (s: string): string => s.padEnd(maxLength, fillString),
 
 	/**
 	 * Safe number parsers that return `Maybe` instead of `NaN`.
 	 */
-	export const parse = {
+	parse: {
 		/**
 		 * Parses a string as an integer (base 10). Returns `None` if the result is `NaN`.
 		 *
@@ -280,7 +276,7 @@ export namespace Str {
 			const n = Number.parseFloat(s);
 			return Number.isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 		},
-	};
+	},
 
 	/**
 	 * Safely parses a JSON string, returning a `Result<SyntaxError, unknown>`.
@@ -291,13 +287,13 @@ export namespace Str {
 	 * Str.parseJson('invalid');  // Err(SyntaxError)
 	 * ```
 	 */
-	export const parseJson = (s: string): Result<SyntaxError, unknown> => {
+	parseJson: (s: string): Result<SyntaxError, unknown> => {
 		try {
 			return Result.make.ok(JSON.parse(s));
 		} catch (error) {
 			return Result.make.err(error as SyntaxError);
 		}
-	};
+	},
 
 	/**
 	 * Converts the first character of a string to lower case.
@@ -308,7 +304,7 @@ export namespace Str {
 	 * Str.uncapitalize("");      // ""
 	 * ```
 	 */
-	export const uncapitalize = (s: string): string => s.length === 0 ? "" : s.charAt(0).toLowerCase() + s.slice(1);
+	uncapitalize: (s: string): string => s.length === 0 ? "" : s.charAt(0).toLowerCase() + s.slice(1),
 
 	/**
 	 * Truncates a string to a maximum length, appending an optional suffix (default `"..."`).
@@ -321,7 +317,7 @@ export namespace Str {
 	 * pipe("Hello, world!", Str.truncate({ length: 8, suffix: "…" })); // "Hello, w…"
 	 * ```
 	 */
-	export const truncate = (options: { length: number; suffix?: string; }) => (s: string): string => {
+	truncate: (options: { length: number; suffix?: string; }) => (s: string): string => {
 		const { length: targetLength, suffix = "..." } = options;
 		if (s.length <= targetLength) {
 			return s;
@@ -330,7 +326,14 @@ export namespace Str {
 			return suffix.slice(0, targetLength);
 		}
 		return s.slice(0, targetLength - suffix.length) + suffix;
-	};
+	},
 
-	export const NonEmpty = StrNonEmpty;
+	NonEmpty: StrNonEmptyConst,
+};
+
+export namespace Str {
+	/**
+	 * A branded type representing a string with at least one character.
+	 */
+	export type NonEmpty = NonEmptyString;
 }

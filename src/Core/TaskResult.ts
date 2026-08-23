@@ -26,8 +26,22 @@ import { type TaskMaybe } from "./TaskMaybe.ts";
  */
 export type TaskResult<E, A> = Task<Result<E, A>>;
 
-export namespace TaskResult {
-	export namespace make {
+const makeOk = <E = never, A = unknown>(value: A): TaskResult<E, A> => CoreTask.resolve(CoreResult.make.ok(value));
+const makeErr = <E, A = never>(error: E): TaskResult<E, A> => CoreTask.resolve(CoreResult.make.err(error));
+
+const mapTaskResult = <E, A, B>(f: (a: A) => B) => (data: TaskResult<E, A>): TaskResult<E, B> =>
+	CoreTask.map(CoreResult.map<E, A, B>(f))(data);
+
+const chainTaskResult =
+	<E2, A, B>(f: (a: A) => TaskResult<E2, B>) => <E1 = never>(data: TaskResult<E1, A>): TaskResult<E1 | E2, B> =>
+		CoreTask.chain((result: Result<E1, A>) =>
+			CoreResult.is.ok(result)
+				? f(result.value)
+				: CoreTask.resolve(CoreResult.make.err(result.error) as Result<E1 | E2, B>)
+		)(data);
+
+export const TaskResult = {
+	make: {
 		/**
 		 * Wraps a value in a successful Task.Result.
 		 *
@@ -37,7 +51,7 @@ export namespace TaskResult {
 		 * const res = await task(); // Ok(42)
 		 * ```
 		 */
-		export const ok = <E = never, A = unknown>(value: A): TaskResult<E, A> => CoreTask.resolve(CoreResult.make.ok(value));
+		ok: makeOk,
 
 		/**
 		 * Creates a failed Task.Result with the given error.
@@ -48,14 +62,14 @@ export namespace TaskResult {
 		 * const res = await task(); // Err("failed")
 		 * ```
 		 */
-		export const err = <E, A = never>(error: E): TaskResult<E, A> => CoreTask.resolve(CoreResult.make.err(error));
-	}
+		err: makeErr,
+	},
 
-	export const { ok } = make;
-	export const { err } = make;
+	ok: makeOk,
+	err: makeErr,
 
 	// --- from ---
-	export namespace from {
+	from: {
 		/**
 		 * Creates a Task.Result from a nullable value.
 		 * Returns Ok if the value is not null or undefined, err from onNull otherwise.
@@ -66,8 +80,8 @@ export namespace TaskResult {
 		 * Task.Result.from.nullable(() => "missing")(null); // resolves to Err("missing")
 		 * ```
 		 */
-		export const nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskResult<E, A> =>
-			CoreTask.resolve(value === null || value === undefined ? CoreResult.make.err(onNull()) : CoreResult.make.ok(value));
+		nullable: <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskResult<E, A> =>
+			CoreTask.resolve(value === null || value === undefined ? CoreResult.make.err(onNull()) : CoreResult.make.ok(value)),
 
 		/**
 		 * Creates a Task.Result from a Maybe.
@@ -79,8 +93,8 @@ export namespace TaskResult {
 		 * Task.Result.from.Maybe(() => "empty")(Maybe.make.none());   // resolves to Err("empty")
 		 * ```
 		 */
-		export const Maybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): TaskResult<E, A> =>
-			CoreTask.resolve(CoreMaybe.is.none(maybe) ? CoreResult.make.err(onNone()) : CoreResult.make.ok(maybe.value));
+		Maybe: <E>(onNone: () => E) => <A>(maybe: Maybe<A>): TaskResult<E, A> =>
+			CoreTask.resolve(CoreMaybe.is.none(maybe) ? CoreResult.make.err(onNone()) : CoreResult.make.ok(maybe.value)),
 
 		/**
 		 * Lifts a Result into a Task.Result.
@@ -90,19 +104,11 @@ export namespace TaskResult {
 		 * Task.Result.from.Result(Result.make.ok(42)); // resolves to Ok(42)
 		 * ```
 		 */
-		/**
-		 * Lifts a Result into a Task.Result.
-		 *
-		 * @example
-		 * ```ts
-		 * Task.Result.from.Result(Result.make.ok(42)); // resolves to Ok(42)
-		 * ```
-		 */
-		export const Result = <E, A>(result: Result<E, A>): TaskResult<E, A> => CoreTask.resolve(result);
-	}
+		Result: <E, A>(result: Result<E, A>): TaskResult<E, A> => CoreTask.resolve(result),
+	},
 
 	// --- to ---
-	export namespace to {
+	to: {
 		/**
 		 * Converts a Task.Result to a Task.Maybe, dropping the error value on Err.
 		 *
@@ -112,8 +118,8 @@ export namespace TaskResult {
 		 * const taskMaybe = pipe(taskResult, Task.Result.to.Maybe);
 		 * ```
 		 */
-		export const Maybe = <E, A>(data: TaskResult<E, A>): TaskMaybe<A> => CoreTask.map(CoreResult.to.Maybe)(data);
-	}
+		Maybe: <E, A>(data: TaskResult<E, A>): TaskMaybe<A> => CoreTask.map(CoreResult.to.Maybe)(data),
+	},
 
 	/**
 	 * Creates a Task.Result from a Promise-returning thunk that may throw or reject.
@@ -128,60 +134,53 @@ export namespace TaskResult {
 	 * );
 	 * ```
 	 */
-	export const tryCatch =
+	tryCatch:
 		<E, A>(f: (signal?: AbortSignal) => Thenable<A>, options: { onError: (error: unknown) => E; }): TaskResult<E, A> =>
 		(signal) =>
 			Deferred.from.Promise(
+				// oxlint-disable-next-line require-await
 				globalThis.Promise.resolve().then(async () => f(signal)).then(CoreResult.make.ok).catch((error) =>
 					CoreResult.make.err(options.onError(error))
 				),
-			);
+			),
 
 	/**
 	 * Transforms the success value inside a Task.Result.
 	 */
-	export const map = <E, A, B>(f: (a: A) => B) => (data: TaskResult<E, A>): TaskResult<E, B> =>
-		CoreTask.map(CoreResult.map<E, A, B>(f))(data);
+	map: mapTaskResult,
 
 	/**
 	 * Transforms the error value inside a Task.Result.
 	 */
-	export const mapError = <E, F, A>(f: (e: E) => F) => (data: TaskResult<E, A>): TaskResult<F, A> =>
-		CoreTask.map(CoreResult.mapError<E, F, A>(f))(data);
+	mapError: <E, F, A>(f: (e: E) => F) => (data: TaskResult<E, A>): TaskResult<F, A> =>
+		CoreTask.map(CoreResult.mapError<E, F, A>(f))(data),
 
 	/**
 	 * Chains Task.Result computations. If the first succeeds, passes the value to f.
 	 * If the first fails, propagates the error.
 	 */
-	export const chain =
-		<E2, A, B>(f: (a: A) => TaskResult<E2, B>) => <E1 = never>(data: TaskResult<E1, A>): TaskResult<E1 | E2, B> =>
-			CoreTask.chain((result: Result<E1, A>) =>
-				CoreResult.is.ok(result)
-					? f(result.value)
-					: CoreTask.resolve(CoreResult.make.err(result.error) as Result<E1 | E2, B>)
-			)(data);
+	chain: chainTaskResult,
 
 	/**
 	 * Extracts the value from a Task.Result by providing handlers for both cases.
 	 */
-	export const fold = <E, A, B>(onErr: (e: E) => B, onOk: (a: A) => B) => (data: TaskResult<E, A>): Task<B> =>
-		CoreTask.map(CoreResult.fold(onErr, onOk))(data);
+	fold: <E, A, B>(onErr: (e: E) => B, onOk: (a: A) => B) => (data: TaskResult<E, A>): Task<B> =>
+		CoreTask.map(CoreResult.fold(onErr, onOk))(data),
 
 	/**
 	 * Pattern matches on a Task.Result, returning a Task of the result.
 	 */
-	export const match = <E, A, B>(cases: { err: (e: E) => B; ok: (a: A) => B; }) => (data: TaskResult<E, A>): Task<B> =>
-		CoreTask.map(CoreResult.match<E, A, B>(cases))(data);
+	match: <E, A, B>(cases: { err: (e: E) => B; ok: (a: A) => B; }) => (data: TaskResult<E, A>): Task<B> =>
+		CoreTask.map(CoreResult.match<E, A, B>(cases))(data),
 
 	/**
 	 * Recovers from an error by providing a fallback Task.Result.
 	 * The fallback can produce a different success type, widening the result to `Task.Result<E, A | B>`.
 	 */
-	export const recover =
-		<E, B>(fallback: (e: E) => TaskResult<E, B>) => <A>(data: TaskResult<E, A>): TaskResult<E, A | B> =>
-			CoreTask.chain((result: Result<E, A>) =>
-				CoreResult.is.err(result) ? fallback(result.error) : CoreTask.resolve(result as Result<E, A | B>)
-			)(data);
+	recover: <E, B>(fallback: (e: E) => TaskResult<E, B>) => <A>(data: TaskResult<E, A>): TaskResult<E, A | B> =>
+		CoreTask.chain((result: Result<E, A>) =>
+			CoreResult.is.err(result) ? fallback(result.error) : CoreTask.resolve(result as Result<E, A | B>)
+		)(data),
 
 	/**
 	 * Recovers from an error unless the predicate `isBlocked` returns true for that error.
@@ -198,28 +197,28 @@ export namespace TaskResult {
 	 * );
 	 * ```
 	 */
-	export const recoverUnless =
+	recoverUnless:
 		<E, B>(isBlocked: (e: E) => boolean, fallback: (e: E) => TaskResult<E, B>) =>
 		<A>(data: TaskResult<E, A>): TaskResult<E, A | B> =>
 			CoreTask.chain((result: Result<E, A>) =>
 				CoreResult.is.err(result) && !isBlocked(result.error)
 					? fallback(result.error)
 					: CoreTask.resolve(result as Result<E, A | B>)
-			)(data);
+			)(data),
 
 	/**
 	 * Returns the success value or a default value if the Task.Result is an error.
 	 * The default can be a different type, widening the result to `Task<A | B>`.
 	 */
-	export const getOrElse = <B>(defaultValue: () => B) => <E, A>(data: TaskResult<E, A>): Task<A | B> =>
-		CoreTask.map(CoreResult.getOrElse<B>(defaultValue))(data);
+	getOrElse: <B>(defaultValue: () => B) => <E, A>(data: TaskResult<E, A>): Task<A | B> =>
+		CoreTask.map(CoreResult.getOrElse<B>(defaultValue))(data),
 
 	/**
 	 * Executes a side effect on the success value without changing the Task.Result.
 	 * Useful for logging or debugging.
 	 */
-	export const tap = <E, A>(f: (a: A) => void) => (data: TaskResult<E, A>): TaskResult<E, A> =>
-		CoreTask.map(CoreResult.tap<E, A>(f))(data);
+	tap: <E, A>(f: (a: A) => void) => (data: TaskResult<E, A>): TaskResult<E, A> =>
+		CoreTask.map(CoreResult.tap<E, A>(f))(data),
 
 	/**
 	 * Executes a side effect on the error value without changing the Task.Result.
@@ -234,20 +233,19 @@ export namespace TaskResult {
 	 * )
 	 * ```
 	 */
-	export const tapError = <E, A>(f: (e: E) => void) => (data: TaskResult<E, A>): TaskResult<E, A> =>
-		CoreTask.map(CoreResult.tapError<E, A>(f))(data);
+	tapError: <E, A>(f: (e: E) => void) => (data: TaskResult<E, A>): TaskResult<E, A> =>
+		CoreTask.map(CoreResult.tapError<E, A>(f))(data),
 
 	/**
 	 * Applies a function wrapped in a Task.Result to a value wrapped in a Task.Result.
 	 * Both Tasks run in parallel.
 	 */
-	export const ap =
-		<E, A>(arg: TaskResult<E, A>) => <B>(data: TaskResult<E, (a: A) => B>): TaskResult<E, B> => (signal) =>
-			Deferred.from.Promise(
-				Promise.all([Deferred.to.Promise(data(signal)), Deferred.to.Promise(arg(signal))]).then(([of_, oa]) =>
-					CoreResult.ap(oa)(of_)
-				),
-			);
+	ap: <E, A>(arg: TaskResult<E, A>) => <B>(data: TaskResult<E, (a: A) => B>): TaskResult<E, B> => (signal) =>
+		Deferred.from.Promise(
+			Promise.all([Deferred.to.Promise(data(signal)), Deferred.to.Promise(arg(signal))]).then(([of_, oa]) =>
+				CoreResult.ap(oa)(of_)
+			),
+		),
 
 	/**
 	 * Executes a `Task.Result` with an optional signal, returning `Promise<Result<E, A>>`.
@@ -264,7 +262,7 @@ export namespace TaskResult {
 	 * if (Result.is.ok(result)) render(result.value);
 	 * ```
 	 */
-	export const run = (signal?: AbortSignal) => <E, A>(task: TaskResult<E, A>): Deferred<Result<E, A>> => task(signal);
+	run: (signal?: AbortSignal) => <E, A>(task: TaskResult<E, A>): Deferred<Result<E, A>> => task(signal),
 
 	/**
 	 * Converts a Task.Result value into an object containing a single property.
@@ -275,8 +273,8 @@ export namespace TaskResult {
 	 * pipe(Task.Result.ok(42), Task.Result.bindTo("value")); // Task.Result({ value: 42 })
 	 * ```
 	 */
-	export const bindTo = <K extends string>(key: K) => <E, A>(data: TaskResult<E, A>): TaskResult<E, { [P in K]: A; }> =>
-		map<E, A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data);
+	bindTo: <K extends string>(key: K) => <E, A>(data: TaskResult<E, A>): TaskResult<E, { [P in K]: A; }> =>
+		mapTaskResult<E, A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data),
 
 	/**
 	 * Evaluates a new Task.Result using the current accumulator and attaches the output to a new key.
@@ -289,12 +287,12 @@ export namespace TaskResult {
 	 * ); // Task.Result({ a: 1, b: 2 })
 	 * ```
 	 */
-	export const bind =
+	bind:
 		<K extends string, E, A, B>(key: K, f: (a: A) => TaskResult<E, B>) =>
 		(data: TaskResult<E, A>): TaskResult<E, A & { [P in K]: B; }> =>
-			chain<E, A, A & { [P in K]: B; }>((a) =>
-				map<E, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
-			)(data);
+			chainTaskResult<E, A, A & { [P in K]: B; }>((a) =>
+				mapTaskResult<E, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
+			)(data),
 
 	/**
 	 * Combines a record of Task.Results into a single Task.Result of a record.
@@ -309,7 +307,7 @@ export namespace TaskResult {
 	 * }); // Task.Result({ name: "Alice", age: 30 })
 	 * ```
 	 */
-	export const struct =
+	struct:
 		<E, R extends Record<string, any>>(fields: { [K in keyof R]: TaskResult<E, R[K]>; }): TaskResult<E, R> => (signal) =>
 			Deferred.from.Promise((() => {
 				const keys = Object.keys(fields);
@@ -325,7 +323,7 @@ export namespace TaskResult {
 					}
 					return CoreResult.make.ok(record);
 				});
-			})());
+			})()),
 
 	/**
 	 * Retries a fallible Task.Result according to a RetryPolicy.
@@ -338,13 +336,13 @@ export namespace TaskResult {
 	 * const retryableFetch = pipe(fetchData, Task.Result.retry(policy));
 	 * ```
 	 */
-	export const retry = (policy: RetryPolicy) => <E, A>(task: TaskResult<E, A>): TaskResult<E, A> => (signal) =>
+	retry: (policy: RetryPolicy) => <E, A>(task: TaskResult<E, A>): TaskResult<E, A> => (signal) =>
 		Deferred.from.Promise((() => {
 			const { attempts } = policy;
 
 			const wait = (duration: Duration): Promise<void> =>
 				new Promise((res) => {
-					// eslint-disable-next-line prefer-const
+					// oxlint-disable-next-line prefer-const
 					let timerId: ReturnType<typeof setTimeout> | undefined;
 					const onAbort = () => {
 						clearTimeout(timerId);
@@ -370,7 +368,7 @@ export namespace TaskResult {
 				});
 
 			return executeAttempt(1);
-		})());
+		})()),
 
 	/**
 	 * Creates a memoized version of a Task.Result. The task is executed at most once on first call,
@@ -381,7 +379,7 @@ export namespace TaskResult {
 	 * const loadConfig = Task.Result.memoize(fetchConfigTask);
 	 * ```
 	 */
-	export const memoize = <E, A>(task: TaskResult<E, A>): TaskResult<E, A> => CoreTask.memoize(task);
+	memoize: <E, A>(task: TaskResult<E, A>): TaskResult<E, A> => CoreTask.memoize(task),
 
 	/**
 	 * Times out a fallible task, resolving to `Err(onTimeout())` if the duration elapses
@@ -395,14 +393,14 @@ export namespace TaskResult {
 	 * );
 	 * ```
 	 */
-	export const timeout =
+	timeout:
 		<E2>(options: { duration: Duration; onTimeout: () => E2; }) =>
 		<E1 = never, A = unknown>(task: TaskResult<E1, A>): TaskResult<E1 | E2, A> =>
 		(signal) =>
 			Deferred.from.Promise(
 				new Promise<Result<E1 | E2, A>>((resolve) => {
 					const ms = Duration.to.milliseconds(options.duration);
-					// eslint-disable-next-line prefer-const
+					// oxlint-disable-next-line prefer-const
 					let timerId: ReturnType<typeof setTimeout> | undefined;
 					const onAbort = () => {
 						clearTimeout(timerId);
@@ -426,7 +424,7 @@ export namespace TaskResult {
 						resolve(res);
 					});
 				}),
-			);
+			),
 
 	/**
 	 * Runs a list of fallible tasks in parallel and collects all outcomes (`Ok` and `Err`)
@@ -438,7 +436,6 @@ export namespace TaskResult {
 	 * // [Ok(val1), Err(err2), Ok(val3)]
 	 * ```
 	 */
-	export const allSettled =
-		<E, A>(tasks: ReadonlyArray<TaskResult<E, A>>): CoreTask<ReadonlyArray<Result<E, A>>> => (signal) =>
-			Deferred.from.Promise(Promise.all(tasks.map((task) => Deferred.to.Promise(task(signal)))));
-}
+	allSettled: <E, A>(tasks: ReadonlyArray<TaskResult<E, A>>): CoreTask<ReadonlyArray<Result<E, A>>> => (signal) =>
+		Deferred.from.Promise(Promise.all(tasks.map((task) => Deferred.to.Promise(task(signal))))),
+};

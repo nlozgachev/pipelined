@@ -28,9 +28,22 @@ import type { Lens } from "./Lens.ts";
  */
 export type Logged<L, A> = WithValue<A> & WithLog<L>;
 
-export namespace Logged {
+const makeValue = <W, A>(val: A): Logged<W, A> => ({ value: val, log: [] });
+const makeEntry = <W>(logEntry: W): Logged<W, undefined> => ({ value: undefined, log: [logEntry] });
+
+const mapLogged = <W, A, B>(f: (a: A) => B) => (data: Logged<W, A>): Logged<W, B> => ({
+	value: f(data.value),
+	log: data.log,
+});
+
+const chainLogged = <W, A, B>(f: (a: A) => Logged<W, B>) => (data: Logged<W, A>): Logged<W, B> => {
+	const next = f(data.value);
+	return { value: next.value, log: [...data.log, ...next.log] };
+};
+
+export const Logged = {
 	// --- from ---
-	export namespace from {
+	from: {
 		/**
 		 * Wraps a pure value into a `Logged` with an empty log.
 		 *
@@ -39,7 +52,7 @@ export namespace Logged {
 		 * Logged.from.value<string, number>(42); // { value: 42, log: [] }
 		 * ```
 		 */
-		export const value = <W, A>(val: A): Logged<W, A> => ({ value: val, log: [] });
+		value: makeValue,
 
 		/**
 		 * Creates a `Logged` that records a single log entry and produces no
@@ -50,8 +63,8 @@ export namespace Logged {
 		 * Logged.from.entry("operation completed"); // { value: undefined, log: ["operation completed"] }
 		 * ```
 		 */
-		export const entry = <W>(logEntry: W): Logged<W, undefined> => ({ value: undefined, log: [logEntry] });
-	}
+		entry: makeEntry,
+	},
 
 	/**
 	 * Transforms the value inside a `Logged` without affecting the log.
@@ -64,10 +77,7 @@ export namespace Logged {
 	 * ); // { value: 10, log: [] }
 	 * ```
 	 */
-	export const map = <W, A, B>(f: (a: A) => B) => (data: Logged<W, A>): Logged<W, B> => ({
-		value: f(data.value),
-		log: data.log,
-	});
+	map: mapLogged,
 
 	/**
 	 * Sequences two `Logged` computations, concatenating their logs.
@@ -87,10 +97,7 @@ export namespace Logged {
 	 * Logged.run(result); // [20, ["step", "done"]]
 	 * ```
 	 */
-	export const chain = <W, A, B>(f: (a: A) => Logged<W, B>) => (data: Logged<W, A>): Logged<W, B> => {
-		const next = f(data.value);
-		return { value: next.value, log: [...data.log, ...next.log] };
-	};
+	chain: chainLogged,
 
 	/**
 	 * Applies a function wrapped in a `Logged` to a value wrapped in a `Logged`,
@@ -108,10 +115,10 @@ export namespace Logged {
 	 * Logged.run(result); // [10, ["fn-loaded", "arg-loaded"]]
 	 * ```
 	 */
-	export const ap = <W, A>(arg: Logged<W, A>) => <B>(data: Logged<W, (a: A) => B>): Logged<W, B> => ({
+	ap: <W, A>(arg: Logged<W, A>) => <B>(data: Logged<W, (a: A) => B>): Logged<W, B> => ({
 		value: data.value(arg.value),
 		log: [...data.log, ...arg.log],
-	});
+	}),
 
 	/**
 	 * Runs a side effect on the value without changing the `Logged`.
@@ -125,10 +132,10 @@ export namespace Logged {
 	 * );
 	 * ```
 	 */
-	export const tap = <W, A>(f: (a: A) => void) => (data: Logged<W, A>): Logged<W, A> => {
+	tap: <W, A>(f: (a: A) => void) => (data: Logged<W, A>): Logged<W, A> => {
 		f(data.value);
 		return data;
-	};
+	},
 
 	/**
 	 * Extracts the value and log as a `readonly [A, ReadonlyArray<W>]` tuple.
@@ -145,7 +152,7 @@ export namespace Logged {
 	 * // value = 2, log = ["incremented"]
 	 * ```
 	 */
-	export const run = <W, A>(data: Logged<W, A>): readonly [A, ReadonlyArray<W>] => [data.value, data.log];
+	run: <W, A>(data: Logged<W, A>): readonly [A, ReadonlyArray<W>] => [data.value, data.log],
 
 	/**
 	 * Lifts a Logged value into an accumulator object.
@@ -155,8 +162,8 @@ export namespace Logged {
 	 * pipe(Logged.from.value<string, number>(42), Logged.bindTo("value")); // Logged({ value: 42 })
 	 * ```
 	 */
-	export const bindTo = <K extends string>(key: K) => <W, A>(data: Logged<W, A>): Logged<W, { [P in K]: A; }> =>
-		map<W, A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data);
+	bindTo: <K extends string>(key: K) => <W, A>(data: Logged<W, A>): Logged<W, { [P in K]: A; }> =>
+		mapLogged<W, A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data),
 
 	/**
 	 * Evaluates a new Logged using the current accumulator and attaches the output to a new key.
@@ -169,12 +176,12 @@ export namespace Logged {
 	 * ); // Logged({ value: { a: 1, b: 2 } })
 	 * ```
 	 */
-	export const bind =
+	bind:
 		<K extends string, W, A, B>(key: K, f: (a: A) => Logged<W, B>) =>
 		(data: Logged<W, A>): Logged<W, A & { [P in K]: B; }> =>
-			chain<W, A, A & { [P in K]: B; }>((a) =>
-				map<W, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
-			)(data);
+			chainLogged<W, A, A & { [P in K]: B; }>((a) =>
+				mapLogged<W, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
+			)(data),
 
 	/**
 	 * Focuses a Logged computation's value transformation using a Lens.
@@ -186,8 +193,8 @@ export namespace Logged {
 	 * pipe(logged, Logged.focus(nameLens)(s => s.toUpperCase()));
 	 * ```
 	 */
-	export const focus = <S, A>(lens: Lens<S, A>) => <W>(f: (a: A) => A) => (data: Logged<W, S>): Logged<W, S> => ({
+	focus: <S, A>(lens: Lens<S, A>) => <W>(f: (a: A) => A) => (data: Logged<W, S>): Logged<W, S> => ({
 		value: lens.set(f(lens.get(data.value)))(data.value),
 		log: data.log,
-	});
-}
+	}),
+};

@@ -86,7 +86,6 @@ test("Rec.values — agrees with native", () => {
 
 test("Rec.pick — result only contains picked keys", () => {
 	fc.assert(fc.property(dict, fc.array(fc.string({ minLength: 1 }), { minLength: 1, maxLength: 3 }), (obj, ks) => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const result = (Rec.pick as (...keys: string[]) => (data: Record<string, number>) => Record<string, number>)(...ks)(
 			obj,
 		);
@@ -96,7 +95,6 @@ test("Rec.pick — result only contains picked keys", () => {
 
 test("Rec.omit — result does not contain omitted keys", () => {
 	fc.assert(fc.property(dict, fc.array(fc.string({ minLength: 1 }), { minLength: 1, maxLength: 3 }), (obj, ks) => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const result = (Rec.omit as (...keys: string[]) => (data: Record<string, number>) => Record<string, number>)(...ks)(
 			obj,
 		);

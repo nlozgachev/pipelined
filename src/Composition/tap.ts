@@ -1,7 +1,13 @@
+// =============================================================================
+// Imports
+// =============================================================================
 import type { Thenable } from "#internal";
 import { inspect as nodeInspect } from "node:util";
 import { Duration } from "../Types/Duration";
 
+// =============================================================================
+// Public Export & Implementations
+// =============================================================================
 /**
  * Executes a side effect function and returns the original value unchanged.
  * Useful for logging, debugging, or other side effects within a pipeline.
@@ -37,6 +43,165 @@ export function tap<A>(f: (a: A) => void) {
 		return a;
 	};
 }
+
+/**
+ * Logs the piped value to the console or a custom logger, returning the value unchanged.
+ *
+ * @example
+ * ```ts
+ * pipe(
+ *   42,
+ *   tap.log(), // logs: 42
+ *   tap.log({ label: "Count" }) // logs: [Count]: 42
+ * );
+ * ```
+ */
+const log = <A>(options?: tap.LogOptions<A>) => (a: A): A => {
+	const logger = options?.logger ?? console.log;
+	const formatter = options?.formatter ?? ((val: A) => {
+		try {
+			return typeof val === "object" && val !== null ? JSON.stringify(val) : String(val);
+		} catch {
+			return String(val);
+		}
+	});
+	const formatted = formatter(a);
+	if (options?.label !== undefined) {
+		logger(`[${options.label}]: ${formatted}`);
+	} else {
+		logger(formatted);
+	}
+	return a;
+};
+
+/**
+ * Performs a deep structured inspect formatting on the piped value, returning it unchanged.
+ * In Node.js environments, this utilizes Node's `node:util` `inspect` utility.
+ *
+ * @example
+ * ```ts
+ * pipe(
+ *   { user: { name: "Alice", details: { age: 30 } } },
+ *   tap.inspect({ label: "User Object", depth: 2 })
+ * );
+ * ```
+ */
+const inspect = <A>(options?: tap.InspectOptions) => (a: A): A => {
+	const label = options?.label;
+	const depth = options?.depth ?? null;
+	const colors = options?.colors ?? true;
+
+	let formatted: string;
+	if (typeof nodeInspect === "function") {
+		formatted = nodeInspect(a, { depth, colors });
+	} else {
+		try {
+			formatted = JSON.stringify(a, null, 2);
+		} catch {
+			formatted = String(a);
+		}
+	}
+
+	if (label !== undefined) {
+		console.log(`[${label}]: ${formatted}`);
+	} else {
+		console.log(formatted);
+	}
+	return a;
+};
+
+/**
+ * Triggers a fire-and-forget asynchronous side effect in the background,
+ * returning the piped value immediately and synchronously.
+ * Any errors thrown by the async function are caught and forwarded to `onError`.
+ *
+ * @example
+ * ```ts
+ * const user = { id: 1 };
+ * const saveToDatabase = async (u: typeof user) => {};
+ * const logError = (err: unknown) => console.error(err);
+ *
+ * pipe(
+ *   user,
+ *   tap.async(async (u) => {
+ *     await saveToDatabase(u);
+ *   }, { onError: (err) => logError(err) })
+ * );
+ * ```
+ */
+const async = <A>(fn: (a: A) => Thenable<unknown>, options?: tap.AsyncOptions) => (a: A): A => {
+	const onError = options?.onError ?? console.error;
+	Promise.resolve(fn(a)).catch((err) => {
+		onError(err);
+	});
+	return a;
+};
+
+/**
+ * Runs a function and measures its execution duration, returning the value unchanged.
+ * Supports both synchronous and asynchronous functions. If the timed function returns
+ * a Promise, duration measurement resolves asynchronously upon resolution/rejection.
+ *
+ * @example
+ * ```ts
+ * const data = [1, 2, 3];
+ * const processData = (d: typeof data) => d.map(n => n * 2);
+ * const fetchData = async (d: typeof data) => d.length;
+ * const metrics = { histogram: (name: string, ms: number) => {} };
+ *
+ * // Time a synchronous computation
+ * pipe(
+ *   data,
+ *   tap.time(processData, { label: "sync-process" })
+ * );
+ *
+ * // Time an asynchronous fetch with custom metrics callback
+ * pipe(
+ *   data,
+ *   tap.time(fetchData, {
+ *     onFinish: (dur) => metrics.histogram("api.time", Duration.to.milliseconds(dur))
+ *   })
+ * );
+ * ```
+ */
+const time = <A>(fn: (a: A) => unknown, config: tap.TimeConfig) => (a: A): A => {
+	const start = performance.now();
+	const triggerFinish = (duration: Duration) => {
+		if (config.label !== undefined) {
+			console.log(`[${config.label}]: ${Duration.to.milliseconds(duration)}ms`);
+		} else {
+			config.onFinish(duration);
+		}
+	};
+
+	try {
+		const res = fn(a);
+		if (
+			res !== null && (typeof res === "object" || typeof res === "function") && typeof (res as any).then === "function"
+		) {
+			(res as any).then(() => {
+				const duration = Duration.milliseconds(performance.now() - start);
+				triggerFinish(duration);
+			}, () => {
+				const duration = Duration.milliseconds(performance.now() - start);
+				triggerFinish(duration);
+			});
+		} else {
+			const duration = Duration.milliseconds(performance.now() - start);
+			triggerFinish(duration);
+		}
+	} catch (err) {
+		const duration = Duration.milliseconds(performance.now() - start);
+		triggerFinish(duration);
+		throw err;
+	}
+	return a;
+};
+
+tap.log = log;
+tap.inspect = inspect;
+tap.async = async;
+tap.time = time;
 
 export namespace tap {
 	/**
@@ -96,159 +261,5 @@ export namespace tap {
 	export type TimeConfig = { label: string; onFinish?: never; } | {
 		onFinish: (duration: Duration) => void;
 		label?: never;
-	};
-
-	/**
-	 * Logs the piped value to the console or a custom logger, returning the value unchanged.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   42,
-	 *   tap.log(), // logs: 42
-	 *   tap.log({ label: "Count" }) // logs: [Count]: 42
-	 * );
-	 * ```
-	 */
-	export const log = <A>(options?: LogOptions<A>) => (a: A): A => {
-		const logger = options?.logger ?? console.log;
-		const formatter = options?.formatter ?? ((val: A) => {
-			try {
-				return typeof val === "object" && val !== null ? JSON.stringify(val) : String(val);
-			} catch {
-				return String(val);
-			}
-		});
-		const formatted = formatter(a);
-		if (options?.label !== undefined) {
-			logger(`[${options.label}]: ${formatted}`);
-		} else {
-			logger(formatted);
-		}
-		return a;
-	};
-
-	/**
-	 * Performs a deep structured inspect formatting on the piped value, returning it unchanged.
-	 * In Node.js environments, this utilizes Node's `node:util` `inspect` utility.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   { user: { name: "Alice", details: { age: 30 } } },
-	 *   tap.inspect({ label: "User Object", depth: 2 })
-	 * );
-	 * ```
-	 */
-	export const inspect = <A>(options?: InspectOptions) => (a: A): A => {
-		const label = options?.label;
-		const depth = options?.depth ?? null;
-		const colors = options?.colors ?? true;
-
-		let formatted: string;
-		if (typeof nodeInspect === "function") {
-			formatted = nodeInspect(a, { depth, colors });
-		} else {
-			try {
-				formatted = JSON.stringify(a, null, 2);
-			} catch {
-				formatted = String(a);
-			}
-		}
-
-		if (label !== undefined) {
-			console.log(`[${label}]: ${formatted}`);
-		} else {
-			console.log(formatted);
-		}
-		return a;
-	};
-
-	/**
-	 * Triggers a fire-and-forget asynchronous side effect in the background,
-	 * returning the piped value immediately and synchronously.
-	 * Any errors thrown by the async function are caught and forwarded to `onError`.
-	 *
-	 * @example
-	 * ```ts
-	 * const user = { id: 1 };
-	 * const saveToDatabase = async (u: typeof user) => {};
-	 * const logError = (err: unknown) => console.error(err);
-	 *
-	 * pipe(
-	 *   user,
-	 *   tap.async(async (u) => {
-	 *     await saveToDatabase(u);
-	 *   }, { onError: (err) => logError(err) })
-	 * );
-	 * ```
-	 */
-	export const async = <A>(fn: (a: A) => Thenable<unknown>, options?: AsyncOptions) => (a: A): A => {
-		const onError = options?.onError ?? console.error;
-		Promise.resolve(fn(a)).catch((err) => {
-			onError(err);
-		});
-		return a;
-	};
-
-	/**
-	 * Runs a function and measures its execution duration, returning the value unchanged.
-	 * Supports both synchronous and asynchronous functions. If the timed function returns
-	 * a Promise, duration measurement resolves asynchronously upon resolution/rejection.
-	 *
-	 * @example
-	 * ```ts
-	 * const data = [1, 2, 3];
-	 * const processData = (d: typeof data) => d.map(n => n * 2);
-	 * const fetchData = async (d: typeof data) => d.length;
-	 * const metrics = { histogram: (name: string, ms: number) => {} };
-	 *
-	 * // Time a synchronous computation
-	 * pipe(
-	 *   data,
-	 *   tap.time(processData, { label: "sync-process" })
-	 * );
-	 *
-	 * // Time an asynchronous fetch with custom metrics callback
-	 * pipe(
-	 *   data,
-	 *   tap.time(fetchData, {
-	 *     onFinish: (dur) => metrics.histogram("api.time", Duration.to.milliseconds(dur))
-	 *   })
-	 * );
-	 * ```
-	 */
-	export const time = <A>(fn: (a: A) => unknown, config: TimeConfig) => (a: A): A => {
-		const start = performance.now();
-		const triggerFinish = (duration: Duration) => {
-			if (config.label !== undefined) {
-				console.log(`[${config.label}]: ${Duration.to.milliseconds(duration)}ms`);
-			} else {
-				config.onFinish(duration);
-			}
-		};
-
-		try {
-			const res = fn(a);
-			if (
-				res !== null && (typeof res === "object" || typeof res === "function") && typeof (res as any).then === "function"
-			) {
-				(res as any).then(() => {
-					const duration = Duration.milliseconds(performance.now() - start);
-					triggerFinish(duration);
-				}, () => {
-					const duration = Duration.milliseconds(performance.now() - start);
-					triggerFinish(duration);
-				});
-			} else {
-				const duration = Duration.milliseconds(performance.now() - start);
-				triggerFinish(duration);
-			}
-		} catch (err) {
-			const duration = Duration.milliseconds(performance.now() - start);
-			triggerFinish(duration);
-			throw err;
-		}
-		return a;
 	};
 }

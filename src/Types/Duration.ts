@@ -1,4 +1,3 @@
-/* eslint-disable no-shadow */
 import { Brand } from "#types";
 
 /**
@@ -16,9 +15,9 @@ import { Brand } from "#types";
  */
 export type Duration = Brand<"Duration", number>;
 
-export namespace Duration {
-	const wrap = Brand.wrap<"Duration", number>();
+const wrap = Brand.wrap<"Duration", number>();
 
+export const Duration = {
 	/**
 	 * Creates a Duration from milliseconds.
 	 *
@@ -27,7 +26,7 @@ export namespace Duration {
 	 * Duration.milliseconds(500); // 500ms Duration
 	 * ```
 	 */
-	export const milliseconds = (ms: number): Duration => wrap(ms);
+	milliseconds: (ms: number): Duration => wrap(ms),
 
 	/**
 	 * Creates a Duration from seconds.
@@ -37,7 +36,7 @@ export namespace Duration {
 	 * Duration.seconds(2); // 2000ms Duration
 	 * ```
 	 */
-	export const seconds = (s: number): Duration => wrap(s * 1000);
+	seconds: (s: number): Duration => wrap(s * 1000),
 
 	/**
 	 * Creates a Duration from minutes.
@@ -47,7 +46,7 @@ export namespace Duration {
 	 * Duration.minutes(5); // 300000ms Duration
 	 * ```
 	 */
-	export const minutes = (m: number): Duration => wrap(m * 60 * 1000);
+	minutes: (m: number): Duration => wrap(m * 60 * 1000),
 
 	/**
 	 * Creates a Duration from hours.
@@ -57,7 +56,7 @@ export namespace Duration {
 	 * Duration.hours(1); // 3600000ms Duration
 	 * ```
 	 */
-	export const hours = (h: number): Duration => wrap(h * 60 * 60 * 1000);
+	hours: (h: number): Duration => wrap(h * 60 * 60 * 1000),
 
 	/**
 	 * Creates a Duration from days.
@@ -67,10 +66,10 @@ export namespace Duration {
 	 * Duration.days(1); // 86400000ms Duration
 	 * ```
 	 */
-	export const days = (d: number): Duration => wrap(d * 24 * 60 * 60 * 1000);
+	days: (d: number): Duration => wrap(d * 24 * 60 * 60 * 1000),
 
 	// --- to ---
-	export namespace to {
+	to: {
 		/**
 		 * Converts a Duration back to raw milliseconds.
 		 *
@@ -79,7 +78,7 @@ export namespace Duration {
 		 * Duration.to.milliseconds(Duration.seconds(2)); // 2000
 		 * ```
 		 */
-		export const milliseconds = (d: Duration): number => Brand.unwrap(d);
+		milliseconds: (d: Duration): number => Brand.unwrap(d),
 
 		/**
 		 * Converts a Duration to seconds.
@@ -89,7 +88,7 @@ export namespace Duration {
 		 * Duration.to.seconds(Duration.milliseconds(2500)); // 2.5
 		 * ```
 		 */
-		export const seconds = (d: Duration): number => Brand.unwrap(d) / 1000;
+		seconds: (d: Duration): number => Brand.unwrap(d) / 1000,
 
 		/**
 		 * Converts a Duration to minutes.
@@ -99,7 +98,7 @@ export namespace Duration {
 		 * Duration.to.minutes(Duration.seconds(120)); // 2
 		 * ```
 		 */
-		export const minutes = (d: Duration): number => Brand.unwrap(d) / (60 * 1000);
+		minutes: (d: Duration): number => Brand.unwrap(d) / (60 * 1000),
 
 		/**
 		 * Converts a Duration to hours.
@@ -109,7 +108,7 @@ export namespace Duration {
 		 * Duration.to.hours(Duration.minutes(90)); // 1.5
 		 * ```
 		 */
-		export const hours = (d: Duration): number => Brand.unwrap(d) / (60 * 60 * 1000);
+		hours: (d: Duration): number => Brand.unwrap(d) / (60 * 60 * 1000),
 
 		/**
 		 * Converts a Duration to days.
@@ -119,8 +118,8 @@ export namespace Duration {
 		 * Duration.to.days(Duration.hours(36)); // 1.5
 		 * ```
 		 */
-		export const days = (d: Duration): number => Brand.unwrap(d) / (24 * 60 * 60 * 1000);
-	}
+		days: (d: Duration): number => Brand.unwrap(d) / (24 * 60 * 60 * 1000),
+	},
 
 	/**
 	 * Adds two Durations together.
@@ -130,7 +129,7 @@ export namespace Duration {
 	 * pipe(Duration.seconds(1), Duration.add(Duration.milliseconds(500))); // 1500ms
 	 * ```
 	 */
-	export const add = (other: Duration) => (self: Duration): Duration => wrap(Brand.unwrap(self) + Brand.unwrap(other));
+	add: (other: Duration) => (self: Duration): Duration => wrap(Brand.unwrap(self) + Brand.unwrap(other)),
 
 	/**
 	 * Subtracts the other Duration from this one.
@@ -140,6 +139,5 @@ export namespace Duration {
 	 * pipe(Duration.seconds(1), Duration.subtract(Duration.milliseconds(500))); // 500ms
 	 * ```
 	 */
-	export const subtract = (other: Duration) => (self: Duration): Duration =>
-		wrap(Brand.unwrap(self) - Brand.unwrap(other));
-}
+	subtract: (other: Duration) => (self: Duration): Duration => wrap(Brand.unwrap(self) - Brand.unwrap(other)),
+};

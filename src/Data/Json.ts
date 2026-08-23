@@ -21,7 +21,7 @@ const isTypeError = (err: unknown): err is TypeError =>
  * ); // Ok("Alice")
  * ```
  */
-export namespace Json {
+export const Json = {
 	/**
 	 * Safely parses a JSON string into `unknown`.
 	 * Converts thrown exceptions into a `Result<SyntaxError, unknown>`.
@@ -32,10 +32,10 @@ export namespace Json {
 	 * Json.parse('{invalid}'); // Err(SyntaxError)
 	 * ```
 	 */
-	export const parse = (text: string): Result<SyntaxError, unknown> =>
+	parse: (text: string): Result<SyntaxError, unknown> =>
 		Result.tryCatch(() => JSON.parse(text), {
 			onError: (err) => (isSyntaxError(err) ? err : new SyntaxError(String(err))),
-		});
+		}),
 
 	/**
 	 * Safely stringifies a value into a JSON string.
@@ -46,12 +46,12 @@ export namespace Json {
 	 * Json.stringify({ a: 1 }); // Ok('{"a":1}')
 	 * ```
 	 */
-	export const stringify = (
+	stringify: (
 		value: unknown,
 		replacer?: (this: any, key: string, value: any) => any,
 		space?: string | number,
 	): Result<TypeError, string> =>
 		Result.tryCatch(() => JSON.stringify(value, replacer, space), {
 			onError: (err) => (isTypeError(err) ? err : new TypeError(String(err))),
-		});
-}
+		}),
+};

@@ -84,17 +84,16 @@
 		"lint": "oxlint src/",
 		"format": "dprint fmt && dprint fmt --config dprint.md.json \"docs/**/*.md\" \"docs/**/*.mdx\" \"README.md\"",
 		"format:check": "dprint check && dprint check --config dprint.md.json \"docs/**/*.md\" \"docs/**/*.mdx\" \"README.md\"",
-		"release:patch": "bumpp --patch -c -t -p",
-		"release:minor": "bumpp --minor -c -t -p",
 		"docs:dev": "pnpm --filter pipelined-docs dev",
 		"docs:build": "pnpm --filter pipelined-docs build"
 	},
 	"devDependencies": {
+		"@size-limit/esbuild": "13.0.3",
 		"@size-limit/file": "13.0.3",
 		"@types/node": "26.2.0",
 		"@vitest/coverage-v8": "4.1.10",
-		"bumpp": "12.2.0",
 		"dprint": "0.55.2",
+		"esbuild": "0.28.2",
 		"fast-check": "4.9.0",
 		"oxlint": "1.78.0",
 		"size-limit": "13.0.3",
@@ -104,28 +103,40 @@
 	},
 	"size-limit": [
 		{
+			"name": "Index (Monolithic import *)",
+			"import": "*",
 			"path": "dist/index.mjs",
-			"limit": "25 KB",
-			"gzip": true
+			"limit": "18 KB",
+			"gzip": true,
+			"ignore": ["util", "node:util"]
 		},
 		{
+			"name": "Core (import * as Core)",
+			"import": "*",
 			"path": "dist/core.mjs",
-			"limit": "16 KB",
+			"limit": "11 KB",
 			"gzip": true
 		},
 		{
-			"path": "dist/composition.mjs",
-			"limit": "3 KB",
-			"gzip": true
-		},
-		{
+			"name": "Data (import * as Data)",
+			"import": "*",
 			"path": "dist/data.mjs",
-			"limit": "10 KB",
+			"limit": "7 KB",
 			"gzip": true
 		},
 		{
+			"name": "Composition (import * as Composition)",
+			"import": "*",
+			"path": "dist/composition.mjs",
+			"limit": "2 KB",
+			"gzip": true,
+			"ignore": ["util", "node:util"]
+		},
+		{
+			"name": "Types (import * as Types)",
+			"import": "*",
 			"path": "dist/types.mjs",
-			"limit": "700 B",
+			"limit": "400 B",
 			"gzip": true
 		}
 	],

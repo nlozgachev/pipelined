@@ -30,9 +30,19 @@ import { Deferred, Result, type Task, Task as CoreTask } from "#core";
  */
 export type Resource<E, A> = { readonly acquire: Task.Result<E, A>; readonly release: (a: A) => Task<void>; };
 
-export namespace Resource {
+const makeHandlers = <E, A>(acquire: Task.Result<E, A>, release: (a: A) => Task<void>): Resource<E, A> => ({
+	acquire,
+	release,
+});
+
+const makeTask = <E, A>(acquire: Task<A>, release: (a: A) => Task<void>): Resource<E, A> => ({
+	acquire: CoreTask.map((a: A): Result<E, A> => Result.make.ok(a))(acquire),
+	release,
+});
+
+export const Resource = {
 	// --- from ---
-	export namespace from {
+	from: {
 		/**
 		 * Creates a Resource from an acquire operation that may fail and a release function.
 		 *
@@ -44,10 +54,7 @@ export namespace Resource {
 		 * );
 		 * ```
 		 */
-		export const handlers = <E, A>(acquire: Task.Result<E, A>, release: (a: A) => Task<void>): Resource<E, A> => ({
-			acquire,
-			release,
-		});
+		handlers: makeHandlers,
 
 		/**
 		 * Creates a Resource from an acquire operation that cannot fail.
@@ -62,11 +69,8 @@ export namespace Resource {
 		 * );
 		 * ```
 		 */
-		export const Task = <E, A>(acquire: Task<A>, release: (a: A) => Task<void>): Resource<E, A> => ({
-			acquire: CoreTask.map((a: A): Result<E, A> => Result.make.ok(a))(acquire),
-			release,
-		});
-	}
+		Task: makeTask,
+	},
 
 	/**
 	 * Acquires the resource, runs `f` with it, then releases it.
@@ -83,20 +87,19 @@ export namespace Resource {
 	 * // conn is closed whether the query succeeds or fails
 	 * ```
 	 */
-	export const use =
-		<E, A, B>(f: (a: A) => Task.Result<E, B>) => (resource: Resource<E, A>): Task.Result<E, B> => (signal) =>
-			Deferred.from.Promise(
-				Deferred.to.Promise(resource.acquire(signal)).then(async (acquired) => {
-					if (Result.is.err(acquired)) { return acquired as Result<E, B>; }
-					const a = acquired.value;
-					try {
-						const usageResult = await Deferred.to.Promise(f(a)(signal));
-						return usageResult;
-					} finally {
-						await Deferred.to.Promise(resource.release(a)(signal));
-					}
-				}),
-			);
+	use: <E, A, B>(f: (a: A) => Task.Result<E, B>) => (resource: Resource<E, A>): Task.Result<E, B> => (signal) =>
+		Deferred.from.Promise(
+			Deferred.to.Promise(resource.acquire(signal)).then(async (acquired) => {
+				if (Result.is.err(acquired)) { return acquired as Result<E, B>; }
+				const a = acquired.value;
+				try {
+					const usageResult = await Deferred.to.Promise(f(a)(signal));
+					return usageResult;
+				} finally {
+					await Deferred.to.Promise(resource.release(a)(signal));
+				}
+			}),
+		),
 
 	/**
 	 * Acquires two resources in sequence and presents them as a tuple.
@@ -115,10 +118,7 @@ export namespace Resource {
 	 * )();
 	 * ```
 	 */
-	export const combine = <E, A, B>(
-		resourceA: Resource<E, A>,
-		resourceB: Resource<E, B>,
-	): Resource<E, readonly [A, B]> => ({
+	combine: <E, A, B>(resourceA: Resource<E, A>, resourceB: Resource<E, B>): Resource<E, readonly [A, B]> => ({
 		acquire: (signal) =>
 			Deferred.from.Promise(
 				Deferred.to.Promise(resourceA.acquire(signal)).then(async (acquiredA) => {
@@ -140,5 +140,5 @@ export namespace Resource {
 			Deferred.from.Promise(
 				Deferred.to.Promise(resourceB.release(b)(signal)).then(() => Deferred.to.Promise(resourceA.release(a)(signal))),
 			),
-	});
-}
+	}),
+};

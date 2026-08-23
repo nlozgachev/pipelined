@@ -13,7 +13,7 @@ import { Duration } from "./Duration.ts";
  */
 export type RetryPolicy = { readonly attempts: number; readonly getDelay: (attempt: number) => Duration; };
 
-export namespace RetryPolicy {
+export const RetryPolicy = {
 	/**
 	 * Creates a RetryPolicy with a constant delay between retry attempts.
 	 *
@@ -25,10 +25,10 @@ export namespace RetryPolicy {
 	 * });
 	 * ```
 	 */
-	export const constant = (options: { attempts: number; delay: Duration; }): RetryPolicy => ({
+	constant: (options: { attempts: number; delay: Duration; }): RetryPolicy => ({
 		attempts: Math.max(1, options.attempts),
 		getDelay: () => options.delay,
-	});
+	}),
 
 	/**
 	 * Creates a RetryPolicy with exponential backoff delays between attempts.
@@ -45,9 +45,7 @@ export namespace RetryPolicy {
 	 * });
 	 * ```
 	 */
-	export const exponential = (
-		options: { attempts: number; initial: Duration; factor?: number; jitter?: boolean; },
-	): RetryPolicy => {
+	exponential: (options: { attempts: number; initial: Duration; factor?: number; jitter?: boolean; }): RetryPolicy => {
 		const attempts = Math.max(1, options.attempts);
 		const initialMs = Duration.to.milliseconds(options.initial);
 		const factor = options.factor ?? 2;
@@ -61,5 +59,5 @@ export namespace RetryPolicy {
 				return Duration.milliseconds(finalMs);
 			},
 		};
-	};
-}
+	},
+};

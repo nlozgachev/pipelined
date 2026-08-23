@@ -1,6 +1,12 @@
+// =============================================================================
+// Imports
+// =============================================================================
 import { type Maybe, Maybe as CoreMaybe, type Result, Result as CoreResult } from "#core";
 import { isNonEmptyArr, type NonEmptyArr, type WithErrors, type WithKind, type WithValue } from "#internal";
 
+// =============================================================================
+// Types
+// =============================================================================
 /**
  * Validation represents a value that is either passed with a success value,
  * or failed with accumulated errors.
@@ -31,8 +37,37 @@ export type Validation<E, A> = Passed<A> | Failed<E>;
 export type Passed<A> = WithKind<"Passed"> & WithValue<A>;
 export type Failed<E> = WithKind<"Failed"> & WithErrors<E>;
 
-export namespace Validation {
-	export namespace make {
+// =============================================================================
+// Private Helpers & Variant Constructors
+// =============================================================================
+const makePassed = <E, A>(value: A): Validation<E, A> => ({ kind: "Passed", value });
+const makeFailed = <E>(error: E): Failed<E> => ({ kind: "Failed", errors: [error] });
+const makeFailedAll = <E>(errors: NonEmptyArr<E>): Failed<E> => ({ kind: "Failed", errors });
+
+const isPassed = <E, A>(data: Validation<E, A>): data is Passed<A> => data.kind === "Passed";
+const isFailed = <E, A>(data: Validation<E, A>): data is Failed<E> => data.kind === "Failed";
+
+// =============================================================================
+// Combinators
+// =============================================================================
+function toResult<E1, E2, A>(
+	combineErrors: (errors: NonEmptyArr<E1>) => E2,
+): (val: Validation<E1, A>) => CoreResult<E2, A>;
+function toResult<E, A>(data: Validation<E, A>): CoreResult<NonEmptyArr<E>, A>;
+function toResult<E1, E2, A>(arg: ((errors: NonEmptyArr<E1>) => E2) | Validation<E1, A>): any {
+	if (typeof arg === "function") {
+		const combine = arg;
+		return (val: Validation<E1, A>): CoreResult<E2, A> =>
+			isPassed(val) ? CoreResult.make.ok(val.value) : CoreResult.make.err(combine(val.errors));
+	}
+	return isPassed(arg) ? CoreResult.make.ok(arg.value) : CoreResult.make.err(arg.errors);
+}
+
+// =============================================================================
+// Public Export
+// =============================================================================
+export const Validation = {
+	make: {
 		/**
 		 * Wraps a value in a passed Validation.
 		 *
@@ -41,7 +76,7 @@ export namespace Validation {
 		 * Validation.make.passed(42); // Passed(42)
 		 * ```
 		 */
-		export const passed = <E, A>(value: A): Validation<E, A> => ({ kind: "Passed", value });
+		passed: makePassed,
 
 		/**
 		 * Creates a failed Validation from a single error.
@@ -51,7 +86,7 @@ export namespace Validation {
 		 * Validation.make.failed("Invalid input");
 		 * ```
 		 */
-		export const failed = <E>(error: E): Failed<E> => ({ kind: "Failed", errors: [error] });
+		failed: makeFailed,
 
 		/**
 		 * Creates a failed Validation from multiple errors.
@@ -61,10 +96,10 @@ export namespace Validation {
 		 * Validation.make.failedAll(["Invalid input"]);
 		 * ```
 		 */
-		export const failedAll = <E>(errors: NonEmptyArr<E>): Failed<E> => ({ kind: "Failed", errors });
-	}
+		failedAll: makeFailedAll,
+	},
 
-	export namespace is {
+	is: {
 		/**
 		 * Type guard that checks if a Validation is passed.
 		 *
@@ -76,7 +111,7 @@ export namespace Validation {
 		 * }
 		 * ```
 		 */
-		export const passed = <E, A>(data: Validation<E, A>): data is Passed<A> => data.kind === "Passed";
+		passed: isPassed,
 
 		/**
 		 * Type guard that checks if a Validation is failed.
@@ -89,8 +124,8 @@ export namespace Validation {
 		 * }
 		 * ```
 		 */
-		export const failed = <E, A>(data: Validation<E, A>): data is Failed<E> => data.kind === "Failed";
-	}
+		failed: isFailed,
+	},
 
 	/**
 	 * Creates a Validation from a synchronous thunk that may throw.
@@ -104,16 +139,16 @@ export namespace Validation {
 	 * );
 	 * ```
 	 */
-	export const tryCatch = <E, A>(f: () => A, options: { onError: (e: unknown) => E; }): Validation<E, A> => {
+	tryCatch: <E, A>(f: () => A, options: { onError: (e: unknown) => E; }): Validation<E, A> => {
 		try {
-			return make.passed(f());
+			return makePassed(f());
 		} catch (error) {
-			return make.failed(options.onError(error));
+			return makeFailed(options.onError(error));
 		}
-	};
+	},
 
 	// --- from ---
-	export namespace from {
+	from: {
 		/**
 		 * Creates a Validation from a predicate applied to a value.
 		 * Returns Passed if the predicate passes, Failed from `onFalse` otherwise.
@@ -129,8 +164,8 @@ export namespace Validation {
 		 * validateName("");      // Failed(["Name is required"])
 		 * ```
 		 */
-		export const Predicate = <E, A>(pred: (a: A) => boolean, onFalse: (a: A) => E) => (a: A): Validation<E, A> =>
-			pred(a) ? make.passed(a) : make.failed(onFalse(a));
+		Predicate: <E, A>(pred: (a: A) => boolean, onFalse: (a: A) => E) => (a: A): Validation<E, A> =>
+			pred(a) ? makePassed(a) : makeFailed(onFalse(a)),
 
 		/**
 		 * Creates a Validation from a nullable value.
@@ -143,8 +178,8 @@ export namespace Validation {
 		 * pipe(42, Validation.from.nullable(() => "is null"));   // Passed(42)
 		 * ```
 		 */
-		export const nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): Validation<E, A> =>
-			value === null || value === undefined ? make.failed(onNull()) : make.passed(value);
+		nullable: <E>(onNull: () => E) => <A>(value: A | null | undefined): Validation<E, A> =>
+			value === null || value === undefined ? makeFailed(onNull()) : makePassed(value),
 
 		/**
 		 * Creates a Validation from a Maybe.
@@ -157,8 +192,8 @@ export namespace Validation {
 		 * pipe(Maybe.make.some(42), Validation.from.Maybe(() => "is none")); // Passed(42)
 		 * ```
 		 */
-		export const Maybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): Validation<E, A> =>
-			CoreMaybe.is.none(maybe) ? make.failed(onNone()) : make.passed(maybe.value);
+		Maybe: <E>(onNone: () => E) => <A>(maybe: Maybe<A>): Validation<E, A> =>
+			CoreMaybe.is.none(maybe) ? makeFailed(onNone()) : makePassed(maybe.value),
 
 		/**
 		 * Converts a `Result` to a `Validation`. `Ok` becomes `Passed`; `Err(e)` becomes `Failed([e])`.
@@ -172,9 +207,9 @@ export namespace Validation {
 		 * Validation.from.Result(Result.make.err("bad"));   // Failed(["bad"])
 		 * ```
 		 */
-		export const Result = <E, A>(data: Result<E, A>): Validation<E, A> =>
-			data.kind === "Ok" ? make.passed(data.value) : make.failed(data.error);
-	}
+		Result: <E, A>(data: Result<E, A>): Validation<E, A> =>
+			data.kind === "Ok" ? makePassed(data.value) : makeFailed(data.error),
+	},
 
 	/**
 	 * Transforms the success value inside a Validation.
@@ -185,8 +220,8 @@ export namespace Validation {
 	 * pipe(Validation.make.failed("oops"), Validation.map(n => n * 2)); // Failed(["oops"])
 	 * ```
 	 */
-	export const map = <A, B>(f: (a: A) => B) => <E>(data: Validation<E, A>): Validation<E, B> =>
-		is.passed(data) ? make.passed(f(data.value)) : data;
+	map: <A, B>(f: (a: A) => B) => <E>(data: Validation<E, A>): Validation<E, B> =>
+		isPassed(data) ? makePassed(f(data.value)) : data,
 
 	/**
 	 * Transforms the error list inside a Validation.
@@ -196,8 +231,8 @@ export namespace Validation {
 	 * pipe(Validation.make.failed("oops"), Validation.mapError(e => e.toUpperCase())); // Failed(["OOPS"])
 	 * ```
 	 */
-	export const mapError = <E, F, A>(f: (e: E) => F) => (data: Validation<E, A>): Validation<F, A> =>
-		is.failed(data) ? make.failedAll(data.errors.map(f) as unknown as NonEmptyArr<F>) : data;
+	mapError: <E, F, A>(f: (e: E) => F) => (data: Validation<E, A>): Validation<F, A> =>
+		isFailed(data) ? makeFailedAll(data.errors.map(f) as unknown as NonEmptyArr<F>) : data,
 
 	/**
 	 * Applies a function wrapped in a Validation to a value wrapped in a Validation.
@@ -219,14 +254,12 @@ export namespace Validation {
 	 * ); // Failed(["bad a", "bad b"])
 	 * ```
 	 */
-	export const ap = <E, A>(arg: Validation<E, A>) => <B>(data: Validation<E, (a: A) => B>): Validation<E, B> => {
-		if (is.passed(data)) {
-			return is.passed(arg) ? make.passed(data.value(arg.value)) : make.failedAll(arg.errors);
+	ap: <E, A>(arg: Validation<E, A>) => <B>(data: Validation<E, (a: A) => B>): Validation<E, B> => {
+		if (isPassed(data)) {
+			return isPassed(arg) ? makePassed(data.value(arg.value)) : makeFailedAll(arg.errors);
 		}
-		return is.passed(arg)
-			? make.failedAll(data.errors)
-			: make.failedAll([...data.errors, ...arg.errors] as NonEmptyArr<E>);
-	};
+		return isPassed(arg) ? makeFailedAll(data.errors) : makeFailedAll([...data.errors, ...arg.errors] as NonEmptyArr<E>);
+	},
 
 	/**
 	 * Applies a function wrapped in a Validation to a value wrapped in a Validation,
@@ -239,19 +272,17 @@ export namespace Validation {
 	 * pipe(fnVal, Validation.apCustom(concat)(argVal));
 	 * ```
 	 */
-	export const apCustom =
+	apCustom:
 		<E1, E2, E3>(concat: (e1: NonEmptyArr<E1>, e2: NonEmptyArr<E2>) => NonEmptyArr<E3>) =>
 		<A>(arg: Validation<E2, A>) =>
 		<B>(data: Validation<E1, (a: A) => B>): Validation<E3, B> => {
-			if (is.passed(data)) {
-				return is.passed(arg)
-					? make.passed(data.value(arg.value))
-					: make.failedAll(arg.errors as unknown as NonEmptyArr<E3>);
+			if (isPassed(data)) {
+				return isPassed(arg) ? makePassed(data.value(arg.value)) : makeFailedAll(arg.errors as unknown as NonEmptyArr<E3>);
 			}
-			return is.passed(arg)
-				? make.failedAll(data.errors as unknown as NonEmptyArr<E3>)
-				: make.failedAll(concat(data.errors, arg.errors));
-		};
+			return isPassed(arg)
+				? makeFailedAll(data.errors as unknown as NonEmptyArr<E3>)
+				: makeFailedAll(concat(data.errors, arg.errors));
+		},
 
 	/**
 	 * Extracts the value from a Validation by providing handlers for both cases.
@@ -267,9 +298,8 @@ export namespace Validation {
 	 * );
 	 * ```
 	 */
-	export const fold =
-		<E, A, B>(onFailed: (errors: NonEmptyArr<E>) => B, onPassed: (a: A) => B) => (data: Validation<E, A>): B =>
-			is.passed(data) ? onPassed(data.value) : onFailed(data.errors);
+	fold: <E, A, B>(onFailed: (errors: NonEmptyArr<E>) => B, onPassed: (a: A) => B) => (data: Validation<E, A>): B =>
+		isPassed(data) ? onPassed(data.value) : onFailed(data.errors),
 
 	/**
 	 * Pattern matches on a Validation, returning the result of the matching case.
@@ -285,9 +315,9 @@ export namespace Validation {
 	 * );
 	 * ```
 	 */
-	export const match =
+	match:
 		<E, A, B>(cases: { passed: (a: A) => B; failed: (errors: NonEmptyArr<E>) => B; }) => (data: Validation<E, A>): B =>
-			is.passed(data) ? cases.passed(data.value) : cases.failed(data.errors);
+			isPassed(data) ? cases.passed(data.value) : cases.failed(data.errors),
 
 	/**
 	 * Returns the success value or a default value if the Validation is failed.
@@ -300,8 +330,8 @@ export namespace Validation {
 	 * pipe(Validation.make.failed("oops"), Validation.getOrElse(() => null)); // null — typed as number | null
 	 * ```
 	 */
-	export const getOrElse = <B>(defaultValue: () => B) => <E, A>(data: Validation<E, A>): A | B =>
-		is.passed(data) ? data.value : defaultValue();
+	getOrElse: <B>(defaultValue: () => B) => <E, A>(data: Validation<E, A>): A | B =>
+		isPassed(data) ? data.value : defaultValue(),
 
 	/**
 	 * Executes a side effect on the success value without changing the Validation.
@@ -315,10 +345,10 @@ export namespace Validation {
 	 * );
 	 * ```
 	 */
-	export const tap = <E, A>(f: (a: A) => void) => (data: Validation<E, A>): Validation<E, A> => {
-		if (is.passed(data)) { f(data.value); }
+	tap: <E, A>(f: (a: A) => void) => (data: Validation<E, A>): Validation<E, A> => {
+		if (isPassed(data)) { f(data.value); }
 		return data;
-	};
+	},
 
 	/**
 	 * Executes a side effect on the accumulated errors without changing the Validation.
@@ -333,19 +363,19 @@ export namespace Validation {
 	 * );
 	 * ```
 	 */
-	export const tapError = <E, A>(f: (errors: NonEmptyArr<E>) => void) => (data: Validation<E, A>): Validation<E, A> => {
-		if (is.failed(data)) { f(data.errors); }
+	tapError: <E, A>(f: (errors: NonEmptyArr<E>) => void) => (data: Validation<E, A>): Validation<E, A> => {
+		if (isFailed(data)) { f(data.errors); }
 		return data;
-	};
+	},
 
 	/**
 	 * Recovers from a Failed state by providing a fallback Validation.
 	 * The fallback receives the accumulated error list so callers can inspect which errors occurred.
 	 * The fallback can produce a different success type, widening the result to `Validation<E, A | B>`.
 	 */
-	export const recover =
+	recover:
 		<E, B>(fallback: (errors: NonEmptyArr<E>) => Validation<E, B>) => <A>(data: Validation<E, A>): Validation<E, A | B> =>
-			is.passed(data) ? data : fallback(data.errors);
+			isPassed(data) ? data : fallback(data.errors),
 
 	/**
 	 * Recovers from a Failed state unless `isBlocked` returns true for any of the accumulated errors.
@@ -359,13 +389,13 @@ export namespace Validation {
 	 * ); // Passed(0)
 	 * ```
 	 */
-	export const recoverUnless =
+	recoverUnless:
 		<E, B>(isBlocked: (e: E) => boolean, fallback: () => Validation<E, B>) =>
 		<A>(data: Validation<E, A>): Validation<E, A | B> =>
-			is.failed(data) && !data.errors.some(isBlocked) ? fallback() : data;
+			isFailed(data) && !data.errors.some(isBlocked) ? fallback() : data,
 
 	// --- to ---
-	export namespace to {
+	to: {
 		/**
 		 * Converts a Validation to a Result.
 		 * Passed becomes Ok.
@@ -379,18 +409,7 @@ export namespace Validation {
 		 * pipe(Validation.make.failed("oops"), Validation.to.Result(errors => errors.join(", "))); // Err("oops")
 		 * ```
 		 */
-		export function Result<E1, E2, A>(
-			combineErrors: (errors: NonEmptyArr<E1>) => E2,
-		): (val: Validation<E1, A>) => CoreResult<E2, A>;
-		export function Result<E, A>(data: Validation<E, A>): CoreResult<NonEmptyArr<E>, A>;
-		export function Result<E1, E2, A>(arg: ((errors: NonEmptyArr<E1>) => E2) | Validation<E1, A>): any {
-			if (typeof arg === "function") {
-				const combine = arg;
-				return (val: Validation<E1, A>): CoreResult<E2, A> =>
-					is.passed(val) ? CoreResult.make.ok(val.value) : CoreResult.make.err(combine(val.errors));
-			}
-			return is.passed(arg) ? CoreResult.make.ok(arg.value) : CoreResult.make.err(arg.errors);
-		}
+		Result: toResult,
 
 		/**
 		 * Converts a Validation to a Maybe. `Passed` becomes `Some`; `Failed` becomes `None`
@@ -402,9 +421,9 @@ export namespace Validation {
 		 * Validation.to.Maybe(Validation.make.failed("bad"));  // None
 		 * ```
 		 */
-		export const Maybe = <E, A>(data: Validation<E, A>): Maybe<A> =>
-			is.passed(data) ? CoreMaybe.make.some(data.value) : CoreMaybe.make.none();
-	}
+		Maybe: <E, A>(data: Validation<E, A>): Maybe<A> =>
+			isPassed(data) ? CoreMaybe.make.some(data.value) : CoreMaybe.make.none(),
+	},
 
 	/**
 	 * Combines two independent Validation instances into a tuple.
@@ -424,17 +443,14 @@ export namespace Validation {
 	 * ); // Failed(["Name required", "Age must be >= 0"])
 	 * ```
 	 */
-	export const product = <E, A, B>(
-		first: Validation<E, A>,
-		second: Validation<E, B>,
-	): Validation<E, readonly [A, B]> => {
-		if (is.passed(first)) {
-			return is.passed(second) ? make.passed([first.value, second.value]) : make.failedAll(second.errors);
+	product: <E, A, B>(first: Validation<E, A>, second: Validation<E, B>): Validation<E, readonly [A, B]> => {
+		if (isPassed(first)) {
+			return isPassed(second) ? makePassed([first.value, second.value]) : makeFailedAll(second.errors);
 		}
-		return is.passed(second)
-			? make.failedAll(first.errors)
-			: make.failedAll([...first.errors, ...second.errors] as NonEmptyArr<E>);
-	};
+		return isPassed(second)
+			? makeFailedAll(first.errors)
+			: makeFailedAll([...first.errors, ...second.errors] as NonEmptyArr<E>);
+	},
 
 	/**
 	 * Combines a non-empty list of Validation instances, accumulating all errors.
@@ -451,15 +467,15 @@ export namespace Validation {
 	 * // Passed([name, email, age]) or Failed([...all errors])
 	 * ```
 	 */
-	export const productAll = <E, A>(data: NonEmptyArr<Validation<E, A>>): Validation<E, readonly A[]> => {
+	productAll: <E, A>(data: NonEmptyArr<Validation<E, A>>): Validation<E, readonly A[]> => {
 		const values: A[] = [];
 		const errors: E[] = [];
 		for (const v of data) {
-			if (is.passed(v)) { values.push(v.value); }
+			if (isPassed(v)) { values.push(v.value); }
 			else { errors.push(...v.errors); }
 		}
-		return isNonEmptyArr(errors) ? make.failedAll(errors) : make.passed(values);
-	};
+		return isNonEmptyArr(errors) ? makeFailedAll(errors) : makePassed(values);
+	},
 
 	/**
 	 * Combines a record of Validations into a single Validation of a record.
@@ -478,21 +494,19 @@ export namespace Validation {
 	 * }); // Failed(["Name required", "Age must be >= 0"])
 	 * ```
 	 */
-	export const struct = <E, R extends Record<string, any>>(
-		fields: { [K in keyof R]: Validation<E, R[K]>; },
-	): Validation<E, R> => {
+	struct: <E, R extends Record<string, any>>(fields: { [K in keyof R]: Validation<E, R[K]>; }): Validation<E, R> => {
 		const record = {} as R;
 		const errors: E[] = [];
 		for (const key in fields) {
 			if (Object.hasOwn(fields, key)) {
 				const val = fields[key];
-				if (is.passed(val)) {
+				if (isPassed(val)) {
 					record[key] = val.value;
 				} else {
 					errors.push(...val.errors);
 				}
 			}
 		}
-		return isNonEmptyArr(errors) ? make.failedAll(errors) : make.passed(record);
-	};
-}
+		return isNonEmptyArr(errors) ? makeFailedAll(errors) : makePassed(record);
+	},
+};

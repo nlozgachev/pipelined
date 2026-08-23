@@ -28,7 +28,9 @@ import { Refinement } from "#core";
  */
 export type Predicate<A> = (a: A) => boolean;
 
-export namespace Predicate {
+const fromRefinement = <A, B extends A>(r: Refinement<A, B>): Predicate<A> => r;
+
+export const Predicate = {
 	/**
 	 * Negates a predicate: the result passes exactly when the original fails.
 	 *
@@ -41,7 +43,7 @@ export namespace Predicate {
 	 * isNotBlank("   ");    // false
 	 * ```
 	 */
-	export const not = <A>(p: Predicate<A>): Predicate<A> => (a) => !p(a);
+	not: <A>(p: Predicate<A>): Predicate<A> => (a) => !p(a),
 
 	/**
 	 * Combines two predicates with logical AND: passes only when both hold.
@@ -60,7 +62,7 @@ export namespace Predicate {
 	 * isPositiveEven(-2);  // false — even but not positive
 	 * ```
 	 */
-	export const and = <A>(second: Predicate<A>) => (first: Predicate<A>): Predicate<A> => (a) => first(a) && second(a);
+	and: <A>(second: Predicate<A>) => (first: Predicate<A>): Predicate<A> => (a) => first(a) && second(a),
 
 	/**
 	 * Combines two predicates with logical OR: passes when either holds.
@@ -79,7 +81,7 @@ export namespace Predicate {
 	 * getsDiscount(30);  // false
 	 * ```
 	 */
-	export const or = <A>(second: Predicate<A>) => (first: Predicate<A>): Predicate<A> => (a) => first(a) || second(a);
+	or: <A>(second: Predicate<A>) => (first: Predicate<A>): Predicate<A> => (a) => first(a) || second(a),
 
 	/**
 	 * Adapts a `Predicate<A>` to work on a different input type `B` by applying `f`
@@ -103,7 +105,7 @@ export namespace Predicate {
 	 * isAdultUser({ name: "Bob",   age: 15 });  // false
 	 * ```
 	 */
-	export const using = <A, B>(f: (b: B) => A) => (p: Predicate<A>): Predicate<B> => (b) => p(f(b));
+	using: <A, B>(f: (b: B) => A) => (p: Predicate<A>): Predicate<B> => (b) => p(f(b)),
 
 	/**
 	 * Combines an array of predicates with AND: passes only when every predicate holds.
@@ -123,7 +125,7 @@ export namespace Predicate {
 	 * Predicate.all([])("anything");   // true
 	 * ```
 	 */
-	export const all = <A>(predicates: ReadonlyArray<Predicate<A>>): Predicate<A> => (a) => predicates.every((p) => p(a));
+	all: <A>(predicates: ReadonlyArray<Predicate<A>>): Predicate<A> => (a) => predicates.every((p) => p(a)),
 
 	/**
 	 * Combines an array of predicates with OR: passes when at least one holds.
@@ -142,10 +144,10 @@ export namespace Predicate {
 	 * Predicate.any([])("anything");                 // false
 	 * ```
 	 */
-	export const any = <A>(predicates: ReadonlyArray<Predicate<A>>): Predicate<A> => (a) => predicates.some((p) => p(a));
+	any: <A>(predicates: ReadonlyArray<Predicate<A>>): Predicate<A> => (a) => predicates.some((p) => p(a)),
 
 	// --- from ---
-	export namespace from {
+	from: {
 		/**
 		 * Converts a `Refinement<A, B>` into a `Predicate<A>`, discarding the compile-time
 		 * narrowing. Use this when you want to combine a type guard with plain predicates
@@ -168,8 +170,8 @@ export namespace Predicate {
 		 * isShortString(42);              // false
 		 * ```
 		 */
-		export const Refinement = <A, B extends A>(r: Refinement<A, B>): Predicate<A> => r;
-	}
+		Refinement: fromRefinement,
+	},
 
 	/**
 	 * Performs declarative conditional branching over `[predicate, handler]` pairs,
@@ -187,14 +189,13 @@ export namespace Predicate {
 	 * classifyNumber(-5); // "negative"
 	 * ```
 	 */
-	export const match =
-		<A, B>(branches: ReadonlyArray<readonly [Predicate<A>, (a: A) => B]>, fallback: (a: A) => B) => (a: A): B => {
-			for (let i = 0; i < branches.length; i++) {
-				const [p, h] = branches[i];
-				if (p(a)) {
-					return h(a);
-				}
+	match: <A, B>(branches: ReadonlyArray<readonly [Predicate<A>, (a: A) => B]>, fallback: (a: A) => B) => (a: A): B => {
+		for (let i = 0; i < branches.length; i++) {
+			const [p, h] = branches[i];
+			if (p(a)) {
+				return h(a);
 			}
-			return fallback(a);
-		};
-}
+		}
+		return fallback(a);
+	},
+};

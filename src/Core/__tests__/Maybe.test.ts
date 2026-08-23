@@ -319,6 +319,11 @@ test("Maybe.filter on None returns the same None reference", () => {
 // recover
 // ---------------------------------------------------------------------------
 
+test("Maybe.bindTo returns None when given None", () => {
+	const result = pipe(Maybe.make.none(), Maybe.bindTo("key"));
+	expect(result).toStrictEqual(Maybe.make.none());
+});
+
 test("maybe.recover returns original Some without calling fallback", () => {
 	let called = false;
 	const result = pipe(

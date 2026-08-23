@@ -22,9 +22,12 @@
  */
 export type Pair<A, B> = readonly [A, B];
 
-export namespace Pair {
+const makePair = <A, B>(first: A, second: B): Pair<A, B> => [first, second];
+const makeArray = <A, B>(arr: readonly [A, B]): Pair<A, B> => arr;
+
+export const Pair = {
 	// --- from ---
-	export namespace from {
+	from: {
 		/**
 		 * Creates a Pair from two values.
 		 *
@@ -33,7 +36,7 @@ export namespace Pair {
 		 * Pair.from.pair("Paris", 2_161_000); // ["Paris", 2161000]
 		 * ```
 		 */
-		export const pair = <A, B>(first: A, second: B): Pair<A, B> => [first, second];
+		pair: makePair,
 
 		/**
 		 * Creates a Pair from a two-element array.
@@ -43,8 +46,8 @@ export namespace Pair {
 		 * Pair.from.array(["Paris", 2_161_000] as const); // ["Paris", 2161000]
 		 * ```
 		 */
-		export const array = <A, B>(arr: readonly [A, B]): Pair<A, B> => arr;
-	}
+		array: makeArray,
+	},
 
 	/**
 	 * Returns the first value from the pair.
@@ -54,7 +57,7 @@ export namespace Pair {
 	 * Pair.first(Pair.from.pair("Paris", 2_161_000)); // "Paris"
 	 * ```
 	 */
-	export const first = <A, B>(p: Pair<A, B>): A => p[0];
+	first: <A, B>(p: Pair<A, B>): A => p[0],
 
 	/**
 	 * Returns the second value from the pair.
@@ -64,7 +67,7 @@ export namespace Pair {
 	 * Pair.second(Pair.from.pair("Paris", 2_161_000)); // 2161000
 	 * ```
 	 */
-	export const second = <A, B>(p: Pair<A, B>): B => p[1];
+	second: <A, B>(p: Pair<A, B>): B => p[1],
 
 	/**
 	 * Transforms the first value, leaving the second unchanged.
@@ -74,7 +77,7 @@ export namespace Pair {
 	 * pipe(Pair.from.pair("alice", 42), Pair.mapFirst((s) => s.toUpperCase())); // ["ALICE", 42]
 	 * ```
 	 */
-	export const mapFirst = <A, C>(f: (a: A) => C) => <B>(p: Pair<A, B>): Pair<C, B> => [f(p[0]), p[1]];
+	mapFirst: <A, C>(f: (a: A) => C) => <B>(p: Pair<A, B>): Pair<C, B> => [f(p[0]), p[1]],
 
 	/**
 	 * Transforms the second value, leaving the first unchanged.
@@ -84,7 +87,7 @@ export namespace Pair {
 	 * pipe(Pair.from.pair("alice", 42), Pair.mapSecond((n) => n * 2)); // ["alice", 84]
 	 * ```
 	 */
-	export const mapSecond = <B, D>(f: (b: B) => D) => <A>(p: Pair<A, B>): Pair<A, D> => [p[0], f(p[1])];
+	mapSecond: <B, D>(f: (b: B) => D) => <A>(p: Pair<A, B>): Pair<A, D> => [p[0], f(p[1])],
 
 	/**
 	 * Transforms both values independently in a single step.
@@ -100,11 +103,11 @@ export namespace Pair {
 	 * ); // ["ALICE", 84]
 	 * ```
 	 */
-	export const mapBoth =
+	mapBoth:
 		<A, C, B, D>(onFirst: (a: A) => C, onSecond: (b: B) => D) => (p: Pair<A, B>): Pair<C, D> => [
 			onFirst(p[0]),
 			onSecond(p[1]),
-		];
+		],
 
 	/**
 	 * Applies a binary function to both values, collapsing the pair into a single value.
@@ -116,7 +119,7 @@ export namespace Pair {
 	 * // "Alice: 100"
 	 * ```
 	 */
-	export const fold = <A, B, C>(f: (a: A, b: B) => C) => (p: Pair<A, B>): C => f(p[0], p[1]);
+	fold: <A, B, C>(f: (a: A, b: B) => C) => (p: Pair<A, B>): C => f(p[0], p[1]),
 
 	/**
 	 * Swaps the two values: `[A, B]` becomes `[B, A]`.
@@ -126,10 +129,10 @@ export namespace Pair {
 	 * Pair.swap(Pair.from.pair("key", 1)); // [1, "key"]
 	 * ```
 	 */
-	export const swap = <A, B>(p: Pair<A, B>): Pair<B, A> => [p[1], p[0]];
+	swap: <A, B>(p: Pair<A, B>): Pair<B, A> => [p[1], p[0]],
 
 	// --- to ---
-	export namespace to {
+	to: {
 		/**
 		 * Converts the pair to a heterogeneous readonly array `readonly (A | B)[]`.
 		 *
@@ -138,8 +141,8 @@ export namespace Pair {
 		 * Pair.to.Array(Pair.from.pair("hello", 42)); // ["hello", 42]
 		 * ```
 		 */
-		export const Array = <A, B>(p: Pair<A, B>): readonly (A | B)[] => [...p];
-	}
+		Array: <A, B>(p: Pair<A, B>): readonly (A | B)[] => [...p],
+	},
 
 	/**
 	 * Runs a side effect with both values without changing the pair.
@@ -154,8 +157,8 @@ export namespace Pair {
 	 * ); // logs "Paris: 2161000", returns ["Paris", 2.161]
 	 * ```
 	 */
-	export const tap = <A, B>(f: (a: A, b: B) => void) => (p: Pair<A, B>): Pair<A, B> => {
+	tap: <A, B>(f: (a: A, b: B) => void) => (p: Pair<A, B>): Pair<A, B> => {
 		f(p[0], p[1]);
 		return p;
-	};
-}
+	},
+};

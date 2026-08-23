@@ -23,9 +23,17 @@ type OptionalKeys<T> = { [K in keyof T]-?: undefined extends T[K] ? K : never; }
  */
 export type Optional<S, A> = { readonly get: (s: S) => Maybe<A>; readonly set: (a: A) => (s: S) => S; };
 
-export namespace Optional {
+const makeAccessors = <S, A>(get: (s: S) => Maybe<A>, set: (a: A) => (s: S) => S): Optional<S, A> => ({ get, set });
+
+const makeProperty = <S>() => <K extends OptionalKeys<S>>(key: K): Optional<S, NonNullable<S[K]>> =>
+	makeAccessors((s) => {
+		const val = s[key];
+		return val !== null && val !== undefined ? Maybe.make.some(val as NonNullable<S[K]>) : Maybe.make.none();
+	}, (a) => (s) => ({ ...s, [key]: a } as S));
+
+export const Optional = {
 	// --- from ---
-	export namespace from {
+	from: {
 		/**
 		 * Constructs an Optional from a getter (returning Maybe<A>) and a setter.
 		 *
@@ -37,10 +45,7 @@ export namespace Optional {
 		 * );
 		 * ```
 		 */
-		export const accessors = <S, A>(get: (s: S) => Maybe<A>, set: (a: A) => (s: S) => S): Optional<S, A> => ({
-			get,
-			set,
-		});
+		accessors: makeAccessors,
 
 		/**
 		 * Creates an Optional that focuses on an optional property of an object.
@@ -53,12 +58,8 @@ export namespace Optional {
 		 * const bioOpt = Optional.from.property<Profile>()("bio");
 		 * ```
 		 */
-		export const property = <S>() => <K extends OptionalKeys<S>>(key: K): Optional<S, NonNullable<S[K]>> =>
-			accessors((s) => {
-				const val = s[key];
-				return val !== null && val !== undefined ? Maybe.make.some(val as NonNullable<S[K]>) : Maybe.make.none();
-			}, (a) => (s) => ({ ...s, [key]: a } as S));
-	}
+		property: makeProperty,
+	},
 
 	/**
 	 * Creates an Optional that focuses on an element at a given index in an array.
@@ -72,13 +73,13 @@ export namespace Optional {
 	 * pipe([], Optional.get(firstItem));         // None
 	 * ```
 	 */
-	export const index = <A>(i: number): Optional<A[], A> =>
-		from.accessors((arr) => i >= 0 && i < arr.length ? Maybe.make.some(arr[i]) : Maybe.make.none(), (a) => (arr) => {
+	index: <A>(i: number): Optional<A[], A> =>
+		makeAccessors((arr) => i >= 0 && i < arr.length ? Maybe.make.some(arr[i]) : Maybe.make.none(), (a) => (arr) => {
 			if (i < 0 || i >= arr.length) { return arr; }
 			const copy = [...arr];
 			copy[i] = a;
 			return copy;
-		});
+		}),
 
 	/**
 	 * Reads the focused value from a structure, returning Maybe<A>.
@@ -88,7 +89,7 @@ export namespace Optional {
 	 * pipe(profile, Optional.get(bioOpt)); // Some("...") or None
 	 * ```
 	 */
-	export const get = <S, A>(opt: Optional<S, A>) => (s: S): Maybe<A> => opt.get(s);
+	get: <S, A>(opt: Optional<S, A>) => (s: S): Maybe<A> => opt.get(s),
 
 	/**
 	 * Replaces the focused value within a structure.
@@ -99,7 +100,7 @@ export namespace Optional {
 	 * pipe(profile, Optional.set(bioOpt)("hello"));
 	 * ```
 	 */
-	export const set = <S, A>(opt: Optional<S, A>) => (a: A) => (s: S): S => opt.set(a)(s);
+	set: <S, A>(opt: Optional<S, A>) => (a: A) => (s: S): S => opt.set(a)(s),
 
 	/**
 	 * Applies a function to the focused value if it is present; returns the
@@ -110,10 +111,10 @@ export namespace Optional {
 	 * pipe(profile, Optional.modify(bioOpt)(s => s.toUpperCase()));
 	 * ```
 	 */
-	export const modify = <S, A>(opt: Optional<S, A>) => (f: (a: A) => A) => (s: S): S => {
+	modify: <S, A>(opt: Optional<S, A>) => (f: (a: A) => A) => (s: S): S => {
 		const val = opt.get(s);
 		return val.kind === "None" ? s : opt.set(f(val.value))(s);
-	};
+	},
 
 	/**
 	 * Returns the focused value or a default when the focus is absent.
@@ -123,10 +124,10 @@ export namespace Optional {
 	 * pipe(profile, Optional.getOrElse(bioOpt)(() => "no bio"));
 	 * ```
 	 */
-	export const getOrElse = <S, A>(opt: Optional<S, A>) => (defaultValue: () => A) => (s: S): A => {
+	getOrElse: <S, A>(opt: Optional<S, A>) => (defaultValue: () => A) => (s: S): A => {
 		const val = opt.get(s);
 		return val.kind === "Some" ? val.value : defaultValue();
-	};
+	},
 
 	/**
 	 * Extracts a value from an Optional focus using handlers for the present
@@ -137,10 +138,10 @@ export namespace Optional {
 	 * pipe(profile, Optional.fold(bioOpt)(() => "no bio", (bio) => bio.toUpperCase()));
 	 * ```
 	 */
-	export const fold = <S, A>(opt: Optional<S, A>) => <B>(onNone: () => B, onSome: (a: A) => B) => (s: S): B => {
+	fold: <S, A>(opt: Optional<S, A>) => <B>(onNone: () => B, onSome: (a: A) => B) => (s: S): B => {
 		const val = opt.get(s);
 		return val.kind === "Some" ? onSome(val.value) : onNone();
-	};
+	},
 
 	/**
 	 * Pattern matches on an Optional focus using a named-case object.
@@ -153,10 +154,10 @@ export namespace Optional {
 	 * );
 	 * ```
 	 */
-	export const match = <S, A>(opt: Optional<S, A>) => <B>(cases: { none: () => B; some: (a: A) => B; }) => (s: S): B => {
+	match: <S, A>(opt: Optional<S, A>) => <B>(cases: { none: () => B; some: (a: A) => B; }) => (s: S): B => {
 		const val = opt.get(s);
 		return val.kind === "Some" ? cases.some(val.value) : cases.none();
-	};
+	},
 
 	/**
 	 * Composes two Optionals: focuses through the outer, then through the inner.
@@ -170,14 +171,14 @@ export namespace Optional {
 	 * );
 	 * ```
 	 */
-	export const andThen = <A, B>(inner: Optional<A, B>) => <S>(outer: Optional<S, A>): Optional<S, B> =>
-		from.accessors((s) => {
+	andThen: <A, B>(inner: Optional<A, B>) => <S>(outer: Optional<S, A>): Optional<S, B> =>
+		makeAccessors((s) => {
 			const mid = outer.get(s);
 			return mid.kind === "None" ? Maybe.make.none() : inner.get(mid.value);
 		}, (b) => (s) => {
 			const mid = outer.get(s);
 			return mid.kind === "None" ? s : outer.set(inner.set(b)(mid.value))(s);
-		});
+		}),
 
 	/**
 	 * Composes an Optional with a Lens, producing an Optional.
@@ -191,12 +192,12 @@ export namespace Optional {
 	 * );
 	 * ```
 	 */
-	export const andThenLens = <A, B>(inner: Lens<A, B>) => <S>(outer: Optional<S, A>): Optional<S, B> =>
-		from.accessors((s) => {
+	andThenLens: <A, B>(inner: Lens<A, B>) => <S>(outer: Optional<S, A>): Optional<S, B> =>
+		makeAccessors((s) => {
 			const mid = outer.get(s);
 			return mid.kind === "None" ? Maybe.make.none() : Maybe.make.some(inner.get(mid.value));
 		}, (b) => (s) => {
 			const mid = outer.get(s);
 			return mid.kind === "None" ? s : outer.set(inner.set(b)(mid.value))(s);
-		});
-}
+		}),
+};

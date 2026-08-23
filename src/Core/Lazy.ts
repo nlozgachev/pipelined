@@ -15,7 +15,21 @@
  */
 export type Lazy<A> = { readonly get: () => A; };
 
-export namespace Lazy {
+const fromFn = <A>(f: () => A): Lazy<A> => {
+	let done = false;
+	let cache: A;
+	return {
+		get: () => {
+			if (!done) {
+				cache = f();
+				done = true;
+			}
+			return cache;
+		},
+	};
+};
+
+export const Lazy = {
 	/**
 	 * Wraps a thunk in a `Lazy`. The thunk runs exactly once, on first `evaluate`.
 	 *
@@ -24,19 +38,7 @@ export namespace Lazy {
 	 * const expensive = Lazy.from(() => computeExpensiveValue(input));
 	 * ```
 	 */
-	export const from = <A>(f: () => A): Lazy<A> => {
-		let done = false;
-		let cache: A;
-		return {
-			get: () => {
-				if (!done) {
-					cache = f();
-					done = true;
-				}
-				return cache;
-			},
-		};
-	};
+	from: fromFn,
 
 	/**
 	 * Forces evaluation and returns the cached result. Safe to call multiple times.
@@ -46,7 +48,7 @@ export namespace Lazy {
 	 * const value = Lazy.evaluate(Lazy.from(() => 42)); // 42
 	 * ```
 	 */
-	export const evaluate = <A>(lazy: Lazy<A>): A => lazy.get();
+	evaluate: <A>(lazy: Lazy<A>): A => lazy.get(),
 
 	/**
 	 * Transforms the result of a `Lazy` without triggering evaluation.
@@ -56,7 +58,7 @@ export namespace Lazy {
 	 * pipe(Lazy.from(() => loadConfig()), Lazy.map(cfg => cfg.port));
 	 * ```
 	 */
-	export const map = <A, B>(f: (a: A) => B) => (lazy: Lazy<A>): Lazy<B> => Lazy.from(() => f(lazy.get()));
+	map: <A, B>(f: (a: A) => B) => (lazy: Lazy<A>): Lazy<B> => fromFn(() => f(lazy.get())),
 
 	/**
 	 * Chains a `Lazy`-returning transformation without triggering evaluation.
@@ -69,7 +71,7 @@ export namespace Lazy {
 	 * );
 	 * ```
 	 */
-	export const chain = <A, B>(f: (a: A) => Lazy<B>) => (lazy: Lazy<A>): Lazy<B> => Lazy.from(() => f(lazy.get()).get());
+	chain: <A, B>(f: (a: A) => Lazy<B>) => (lazy: Lazy<A>): Lazy<B> => fromFn(() => f(lazy.get()).get()),
 
 	/**
 	 * Runs a side effect on the value without changing it. Fires once, on first `evaluate`.
@@ -79,10 +81,10 @@ export namespace Lazy {
 	 * pipe(Lazy.from(() => compute()), Lazy.tap(v => console.log("computed:", v)));
 	 * ```
 	 */
-	export const tap = <A>(f: (a: A) => void) => (lazy: Lazy<A>): Lazy<A> =>
-		Lazy.from(() => {
+	tap: <A>(f: (a: A) => void) => (lazy: Lazy<A>): Lazy<A> =>
+		fromFn(() => {
 			const v = lazy.get();
 			f(v);
 			return v;
-		});
-}
+		}),
+};

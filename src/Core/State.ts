@@ -26,7 +26,17 @@ import type { Lens } from "./Lens.ts";
  */
 export type State<S, A> = (s: S) => readonly [A, S];
 
-export namespace State {
+const mapState = <S, A, B>(f: (a: A) => B) => (st: State<S, A>): State<S, B> => (s) => {
+	const [a, s1] = st(s);
+	return [f(a), s1];
+};
+
+const chainState = <S, A, B>(f: (a: A) => State<S, B>) => (st: State<S, A>): State<S, B> => (s) => {
+	const [a, s1] = st(s);
+	return f(a)(s1);
+};
+
+export const State = {
 	/**
 	 * Lifts a pure value into a State computation. The state passes through unchanged.
 	 *
@@ -35,7 +45,7 @@ export namespace State {
 	 * State.run(10)(State.resolve(42)); // [42, 10] — value 42, state unchanged
 	 * ```
 	 */
-	export const resolve = <S, A>(value: A): State<S, A> => (s) => [value, s];
+	resolve: <S, A>(value: A): State<S, A> => (s) => [value, s],
 
 	/**
 	 * Produces the current state as the value, without modifying it.
@@ -46,7 +56,7 @@ export namespace State {
 	 * State.run(["a", "b"])(readStack); // [["a", "b"], ["a", "b"]]
 	 * ```
 	 */
-	export const get = <S>(): State<S, S> => (s) => [s, s];
+	get: <S>(): State<S, S> => (s) => [s, s],
 
 	/**
 	 * Reads a projection of the state without modifying it.
@@ -59,7 +69,7 @@ export namespace State {
 	 * State.run({ count: 5, label: "x" })(readCount); // [5, { count: 5, label: "x" }]
 	 * ```
 	 */
-	export const gets = <S, A>(f: (s: S) => A): State<S, A> => (s) => [f(s), s];
+	gets: <S, A>(f: (s: S) => A): State<S, A> => (s) => [f(s), s],
 
 	/**
 	 * Replaces the current state with a new value. Produces no meaningful value.
@@ -70,7 +80,7 @@ export namespace State {
 	 * State.run(99)(reset); // [undefined, 0]
 	 * ```
 	 */
-	export const put = <S>(newState: S): State<S, undefined> => (_s) => [undefined, newState];
+	put: <S>(newState: S): State<S, undefined> => (_s) => [undefined, newState],
 
 	/**
 	 * Applies a function to the current state to produce the next state.
@@ -84,7 +94,7 @@ export namespace State {
 	 * State.run(["a"])(push("b")); // [undefined, ["a", "b"]]
 	 * ```
 	 */
-	export const modify = <S>(f: (s: S) => S): State<S, undefined> => (s) => [undefined, f(s)];
+	modify: <S>(f: (s: S) => S): State<S, undefined> => (s) => [undefined, f(s)],
 
 	/**
 	 * Transforms the value produced by a State computation.
@@ -100,10 +110,7 @@ export namespace State {
 	 * State.run(["a", "b", "c"])(readLength); // [3, ["a", "b", "c"]]
 	 * ```
 	 */
-	export const map = <S, A, B>(f: (a: A) => B) => (st: State<S, A>): State<S, B> => (s) => {
-		const [a, s1] = st(s);
-		return [f(a), s1];
-	};
+	map: mapState,
 
 	/**
 	 * Sequences two State computations. The state output of the first is passed
@@ -125,10 +132,7 @@ export namespace State {
 	 * State.evaluate([])(program); // ["a", "b"]
 	 * ```
 	 */
-	export const chain = <S, A, B>(f: (a: A) => State<S, B>) => (st: State<S, A>): State<S, B> => (s) => {
-		const [a, s1] = st(s);
-		return f(a)(s1);
-	};
+	chain: chainState,
 
 	/**
 	 * Applies a function wrapped in a State to a value wrapped in a State.
@@ -147,11 +151,11 @@ export namespace State {
 	 * State.evaluate(3)(program); // 6 + 3 = 9
 	 * ```
 	 */
-	export const ap = <S, A>(arg: State<S, A>) => <B>(fn: State<S, (a: A) => B>): State<S, B> => (s) => {
+	ap: <S, A>(arg: State<S, A>) => <B>(fn: State<S, (a: A) => B>): State<S, B> => (s) => {
 		const [f, s1] = fn(s);
 		const [a, s2] = arg(s1);
 		return [f(a), s2];
-	};
+	},
 
 	/**
 	 * Runs a side effect on the produced value without changing the State computation.
@@ -165,11 +169,11 @@ export namespace State {
 	 * );
 	 * ```
 	 */
-	export const tap = <S, A>(f: (a: A) => void) => (st: State<S, A>): State<S, A> => (s) => {
+	tap: <S, A>(f: (a: A) => void) => (st: State<S, A>): State<S, A> => (s) => {
 		const [a, s1] = st(s);
 		f(a);
 		return [a, s1];
-	};
+	},
 
 	/**
 	 * Runs a State computation with an initial state, returning both the
@@ -187,7 +191,7 @@ export namespace State {
 	 * State.run(0)(program); // [1, 1]
 	 * ```
 	 */
-	export const run = <S>(initialState: S) => <A>(st: State<S, A>): readonly [A, S] => st(initialState);
+	run: <S>(initialState: S) => <A>(st: State<S, A>): readonly [A, S] => st(initialState),
 
 	/**
 	 * Runs a State computation with an initial state, returning only the
@@ -201,7 +205,7 @@ export namespace State {
 	 * )); // ["x"]
 	 * ```
 	 */
-	export const evaluate = <S>(initialState: S) => <A>(st: State<S, A>): A => st(initialState)[0];
+	evaluate: <S>(initialState: S) => <A>(st: State<S, A>): A => st(initialState)[0],
 
 	/**
 	 * Runs a State computation with an initial state, returning only the
@@ -215,7 +219,7 @@ export namespace State {
 	 * )); // 20
 	 * ```
 	 */
-	export const execute = <S>(initialState: S) => <A>(st: State<S, A>): S => st(initialState)[1];
+	execute: <S>(initialState: S) => <A>(st: State<S, A>): S => st(initialState)[1],
 
 	/**
 	 * Lifts a State value into an accumulator object.
@@ -225,8 +229,8 @@ export namespace State {
 	 * pipe(State.resolve(42), State.bindTo("value")); // State({ value: 42 })
 	 * ```
 	 */
-	export const bindTo = <K extends string>(key: K) => <S, A>(data: State<S, A>): State<S, { [P in K]: A; }> =>
-		map<S, A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data);
+	bindTo: <K extends string>(key: K) => <S, A>(data: State<S, A>): State<S, { [P in K]: A; }> =>
+		mapState<S, A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data),
 
 	/**
 	 * Evaluates a new State using the current accumulator and attaches the output to a new key.
@@ -239,12 +243,12 @@ export namespace State {
 	 * ); // State({ a: 1, b: 2 })
 	 * ```
 	 */
-	export const bind =
+	bind:
 		<K extends string, S, A, B>(key: K, f: (a: A) => State<S, B>) =>
 		(data: State<S, A>): State<S, A & { [P in K]: B; }> =>
-			chain<S, A, A & { [P in K]: B; }>((a) =>
-				map<S, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
-			)(data);
+			chainState<S, A, A & { [P in K]: B; }>((a) =>
+				mapState<S, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
+			)(data),
 
 	/**
 	 * Focuses a State computation on a sub-state using a Lens.
@@ -257,9 +261,9 @@ export namespace State {
 	 * const focusedProgram = pipe(increment, State.focus(countLens));
 	 * ```
 	 */
-	export const focus = <S, A>(lens: Lens<S, A>) => <B>(stateOp: State<A, B>): State<S, B> => (s: S) => {
+	focus: <S, A>(lens: Lens<S, A>) => <B>(stateOp: State<A, B>): State<S, B> => (s: S) => {
 		const subState = lens.get(s);
 		const [b, newSubState] = stateOp(subState);
 		return [b, lens.set(newSubState)(s)];
-	};
-}
+	},
+};

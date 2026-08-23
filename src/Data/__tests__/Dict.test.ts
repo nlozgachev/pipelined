@@ -429,7 +429,7 @@ test("Dict.to.Record converts to plain object", () => {
 });
 
 test("Dict.to.Record returns empty object for empty map", () => {
-	expect(Dict.to.Record(Dict.empty())).toStrictEqual({});
+	expect(Dict.to.Record(Dict.empty<string, unknown>())).toStrictEqual({});
 });
 
 // ---------------------------------------------------------------------------
@@ -538,4 +538,13 @@ test("Dict.NonEmpty pipe composition", () => {
 	const result = pipe(Dict.NonEmpty.singleton("a", 5), Dict.NonEmpty.map((n) => n * 2), Dict.NonEmpty.keys);
 	expect(result).toStrictEqual(["a"]);
 	expectTypeOf(result).toEqualTypeOf<readonly [string, ...string[]]>();
+});
+
+test("Dict.from.Array and Dict.from.nullable", () => {
+	const m = Dict.from.Array([["a", 1], ["b", 2]]);
+	expect(m.get("a")).toBe(1);
+
+	expect(Dict.from.nullable(m)).toStrictEqual(Maybe.make.some(m));
+	expect(Dict.from.nullable(null)).toStrictEqual(Maybe.make.none());
+	expect(Dict.from.nullable(undefined)).toStrictEqual(Maybe.make.none());
 });

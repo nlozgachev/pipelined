@@ -1,23 +1,24 @@
+// =============================================================================
+// Imports
+// =============================================================================
 import { Maybe } from "#core";
 
-/**
- * Number utilities for common operations. All transformation functions are data-last
- * and curried so they compose naturally with `pipe` and `Arr.map`.
- *
- * @example
- * ```ts
- * import { Num } from "@nlozgachev/pipelined/data";
- * import { pipe } from "@nlozgachev/pipelined/composition";
- *
- * pipe(
- *   Num.range(1, 6),
- *   Arr.map(Num.multiply(2)),
- *   Arr.filter(Num.between(4, 8))
- * ); // [4, 6, 8]
- * ```
- */
-export namespace Num {
-	export namespace is {
+// =============================================================================
+// Private Helpers
+// =============================================================================
+const sumFn = (ns: readonly number[]): number => {
+	let result = 0;
+	for (let i = 0; i < ns.length; i++) {
+		result += ns[i];
+	}
+	return result;
+};
+
+// =============================================================================
+// Public Export
+// =============================================================================
+export const Num = {
+	is: {
 		/**
 		 * Returns `true` when the number is equal to zero.
 		 *
@@ -27,7 +28,7 @@ export namespace Num {
 		 * Num.is.zero(5); // false
 		 * ```
 		 */
-		export const zero = (n: number): boolean => n === 0;
+		zero: (n: number): boolean => n === 0,
 
 		/**
 		 * Returns `true` when the number is a whole integer.
@@ -38,7 +39,7 @@ export namespace Num {
 		 * Num.is.integer(3.14); // false
 		 * ```
 		 */
-		export const integer = (n: number): boolean => Number.isInteger(n);
+		integer: (n: number): boolean => Number.isInteger(n),
 
 		/**
 		 * Returns `true` when the number is a finite float (fractional number).
@@ -49,7 +50,7 @@ export namespace Num {
 		 * Num.is.float(5);    // false
 		 * ```
 		 */
-		export const float = (n: number): boolean => Number.isFinite(n) && !Number.isInteger(n);
+		float: (n: number): boolean => Number.isFinite(n) && !Number.isInteger(n),
 
 		/**
 		 * Returns `true` when the number is finite (not `Infinity`, `-Infinity`, or `NaN`).
@@ -60,7 +61,7 @@ export namespace Num {
 		 * Num.is.finite(Infinity); // false
 		 * ```
 		 */
-		export const finite = (n: number): boolean => Number.isFinite(n);
+		finite: (n: number): boolean => Number.isFinite(n),
 
 		/**
 		 * Returns `true` when the value is `NaN`.
@@ -71,7 +72,7 @@ export namespace Num {
 		 * Num.is.nan(42);  // false
 		 * ```
 		 */
-		export const nan = (n: number): boolean => Number.isNaN(n);
+		nan: (n: number): boolean => Number.isNaN(n),
 
 		/**
 		 * Returns `true` when the number is an even integer.
@@ -83,7 +84,7 @@ export namespace Num {
 		 * Num.is.even(2.5); // false
 		 * ```
 		 */
-		export const even = (n: number): boolean => Number.isInteger(n) && n % 2 === 0;
+		even: (n: number): boolean => Number.isInteger(n) && n % 2 === 0,
 
 		/**
 		 * Returns `true` when the number is an odd integer.
@@ -95,7 +96,7 @@ export namespace Num {
 		 * Num.is.odd(2.5); // false
 		 * ```
 		 */
-		export const odd = (n: number): boolean => Number.isInteger(n) && n % 2 !== 0;
+		odd: (n: number): boolean => Number.isInteger(n) && n % 2 !== 0,
 
 		/**
 		 * Returns `true` when the number is strictly greater than zero.
@@ -107,7 +108,7 @@ export namespace Num {
 		 * Num.is.positive(-5); // false
 		 * ```
 		 */
-		export const positive = (n: number): boolean => n > 0;
+		positive: (n: number): boolean => n > 0,
 
 		/**
 		 * Returns `true` when the number is strictly less than zero.
@@ -119,8 +120,8 @@ export namespace Num {
 		 * Num.is.negative(5);  // false
 		 * ```
 		 */
-		export const negative = (n: number): boolean => n < 0;
-	}
+		negative: (n: number): boolean => n < 0,
+	},
 
 	/**
 	 * Generates an array of numbers from `from` to `to` (both inclusive),
@@ -137,7 +138,7 @@ export namespace Num {
 	 * Num.range(3, 3);       // [3]
 	 * ```
 	 */
-	export const range = (from: number, to: number, step = 1): readonly number[] => {
+	range: (from: number, to: number, step = 1): readonly number[] => {
 		if (step <= 0 || from > to) { return []; }
 		const count = Math.floor((to - from) / step) + 1;
 		const result = new Array<number>(count);
@@ -145,7 +146,7 @@ export namespace Num {
 			result[i] = from + i * step;
 		}
 		return result;
-	};
+	},
 
 	/**
 	 * Clamps a number between `min` and `max` (both inclusive).
@@ -157,7 +158,7 @@ export namespace Num {
 	 * pipe(42, Num.clamp(0, 100));  // 42
 	 * ```
 	 */
-	export const clamp = (min: number, max: number) => (n: number): number => Math.min(Math.max(n, min), max);
+	clamp: (min: number, max: number) => (n: number): number => Math.min(Math.max(n, min), max),
 
 	/**
 	 * Returns `true` when the number is between `min` and `max` (both inclusive).
@@ -169,7 +170,7 @@ export namespace Num {
 	 * pipe(10, Num.between(1, 10)); // true
 	 * ```
 	 */
-	export const between = (min: number, max: number) => (n: number): boolean => n >= min && n <= max;
+	between: (min: number, max: number) => (n: number): boolean => n >= min && n <= max,
 
 	/**
 	 * Returns `true` when the number is in the range `[start, end)` (inclusive of `start`, exclusive of `end`).
@@ -181,7 +182,7 @@ export namespace Num {
 	 * pipe(10, Num.inRange(1, 10)); // false
 	 * ```
 	 */
-	export const inRange = (start: number, end: number) => (n: number): boolean => n >= start && n < end;
+	inRange: (start: number, end: number) => (n: number): boolean => n >= start && n < end,
 
 	/**
 	 * Parses a string as a number. Returns `None` when the result is `NaN`.
@@ -194,11 +195,11 @@ export namespace Num {
 	 * Num.parse("");     // None
 	 * ```
 	 */
-	export const parse = (s: string): Maybe<number> => {
+	parse: (s: string): Maybe<number> => {
 		if (s.trim() === "") { return Maybe.make.none(); }
 		const n = Number(s);
 		return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
-	};
+	},
 
 	/**
 	 * Adds `b` to a number. Data-last: use in `pipe` or `Arr.map`.
@@ -209,7 +210,7 @@ export namespace Num {
 	 * pipe([1, 2, 3], Arr.map(Num.add(10))); // [11, 12, 13]
 	 * ```
 	 */
-	export const add = (b: number) => (a: number): number => a + b;
+	add: (b: number) => (a: number): number => a + b,
 
 	/**
 	 * Subtracts `b` from a number. Data-last: `subtract(b)(a)` = `a - b`.
@@ -220,7 +221,7 @@ export namespace Num {
 	 * pipe([5, 10, 15], Arr.map(Num.subtract(2))); // [3, 8, 13]
 	 * ```
 	 */
-	export const subtract = (b: number) => (a: number): number => a - b;
+	subtract: (b: number) => (a: number): number => a - b,
 
 	/**
 	 * Multiplies a number by `b`. Data-last: use in `pipe` or `Arr.map`.
@@ -231,7 +232,7 @@ export namespace Num {
 	 * pipe([1, 2, 3], Arr.map(Num.multiply(100))); // [100, 200, 300]
 	 * ```
 	 */
-	export const multiply = (b: number) => (a: number): number => a * b;
+	multiply: (b: number) => (a: number): number => a * b,
 
 	/**
 	 * Divides a number by `b`. Returns `None` when `b` is zero. Data-last: `divide(b)(a)` = `a / b`.
@@ -243,8 +244,7 @@ export namespace Num {
 	 * pipe([10, 20, 30], Arr.filterMap(Num.divide(10))); // [1, 2, 3]
 	 * ```
 	 */
-	export const divide = (b: number) => (a: number): Maybe<number> =>
-		b === 0 ? Maybe.make.none() : Maybe.make.some(a / b);
+	divide: (b: number) => (a: number): Maybe<number> => b === 0 ? Maybe.make.none() : Maybe.make.some(a / b),
 
 	/**
 	 * Returns the absolute value of a number.
@@ -255,7 +255,7 @@ export namespace Num {
 	 * pipe(5, Num.abs);  // 5
 	 * ```
 	 */
-	export const abs = (n: number): number => Math.abs(n);
+	abs: (n: number): number => Math.abs(n),
 
 	/**
 	 * Negates a number (arithmetic negation).
@@ -266,7 +266,7 @@ export namespace Num {
 	 * pipe(-5, Num.negate); // 5
 	 * ```
 	 */
-	export const negate = (n: number): number => -n;
+	negate: (n: number): number => -n,
 
 	/**
 	 * Rounds a number to the nearest integer.
@@ -277,7 +277,7 @@ export namespace Num {
 	 * pipe(3.4, Num.round); // 3
 	 * ```
 	 */
-	export const round = (n: number): number => Math.round(n);
+	round: (n: number): number => Math.round(n),
 
 	/**
 	 * Rounds a number down to the nearest integer.
@@ -288,7 +288,7 @@ export namespace Num {
 	 * pipe(-3.2, Num.floor); // -4
 	 * ```
 	 */
-	export const floor = (n: number): number => Math.floor(n);
+	floor: (n: number): number => Math.floor(n),
 
 	/**
 	 * Rounds a number up to the nearest integer.
@@ -299,7 +299,7 @@ export namespace Num {
 	 * pipe(-3.9, Num.ceil); // -3
 	 * ```
 	 */
-	export const ceil = (n: number): number => Math.ceil(n);
+	ceil: (n: number): number => Math.ceil(n),
 
 	/**
 	 * Returns the remainder of dividing a number by `divisor`. Returns `None` when `divisor` is zero.
@@ -312,8 +312,8 @@ export namespace Num {
 	 * pipe([10, 11, 12], Arr.filterMap(Num.remainder(3))); // [1, 2, 0]
 	 * ```
 	 */
-	export const remainder = (divisor: number) => (n: number): Maybe<number> =>
-		divisor === 0 ? Maybe.make.none() : Maybe.make.some(n % divisor);
+	remainder: (divisor: number) => (n: number): Maybe<number> =>
+		divisor === 0 ? Maybe.make.none() : Maybe.make.some(n % divisor),
 
 	/**
 	 * Computes the sum of a list of numbers. Returns `0` if the list is empty.
@@ -324,11 +324,7 @@ export namespace Num {
 	 * Num.sum([]);        // 0
 	 * ```
 	 */
-	export const sum = (ns: readonly number[]): number => {
-		let result = 0;
-		for (let i = 0; i < ns.length; i++) { result += ns[i]; }
-		return result;
-	};
+	sum: sumFn,
 
 	/**
 	 * Computes the mean of a list of numbers. Returns `None` if the list is empty.
@@ -339,8 +335,8 @@ export namespace Num {
 	 * Num.mean([]);        // None
 	 * ```
 	 */
-	export const mean = (ns: readonly number[]): Maybe<number> =>
-		ns.length === 0 ? Maybe.make.none() : Maybe.make.some(sum(ns) / ns.length);
+	mean: (ns: readonly number[]): Maybe<number> =>
+		ns.length === 0 ? Maybe.make.none() : Maybe.make.some(sumFn(ns) / ns.length),
 
 	/**
 	 * Computes the minimum of a list of numbers. Returns `None` if the list is empty.
@@ -351,14 +347,14 @@ export namespace Num {
 	 * Num.min([]);        // None
 	 * ```
 	 */
-	export const min = (ns: readonly number[]): Maybe<number> => {
+	min: (ns: readonly number[]): Maybe<number> => {
 		if (ns.length === 0) { return Maybe.make.none(); }
 		let [result] = ns;
 		for (let i = 1; i < ns.length; i++) {
 			if (ns[i] < result) { result = ns[i]; }
 		}
 		return Maybe.make.some(result);
-	};
+	},
 
 	/**
 	 * Computes the maximum of a list of numbers. Returns `None` if the list is empty.
@@ -369,14 +365,14 @@ export namespace Num {
 	 * Num.max([]);        // None
 	 * ```
 	 */
-	export const max = (ns: readonly number[]): Maybe<number> => {
+	max: (ns: readonly number[]): Maybe<number> => {
 		if (ns.length === 0) { return Maybe.make.none(); }
 		let [result] = ns;
 		for (let i = 1; i < ns.length; i++) {
 			if (ns[i] > result) { result = ns[i]; }
 		}
 		return Maybe.make.some(result);
-	};
+	},
 
 	/**
 	 * Formats a number using `Intl.NumberFormat`. Returns `None` when `n` is `NaN` or non-finite.
@@ -389,7 +385,6 @@ export namespace Num {
 	 * pipe(NaN, formatCurrency);    // None
 	 * ```
 	 */
-	export const format =
-		(options?: Intl.NumberFormatOptions, locales?: string | string[]) => (n: number): Maybe<string> =>
-			!Number.isFinite(n) ? Maybe.make.none() : Maybe.make.some(new Intl.NumberFormat(locales, options).format(n));
-}
+	format: (options?: Intl.NumberFormatOptions, locales?: string | string[]) => (n: number): Maybe<string> =>
+		!Number.isFinite(n) ? Maybe.make.none() : Maybe.make.some(new Intl.NumberFormat(locales, options).format(n)),
+};

@@ -24,9 +24,11 @@ import { Maybe as CoreMaybe, Result as CoreResult } from "#core";
  */
 export type Refinement<A, B extends A> = (a: A) => a is B;
 
-export namespace Refinement {
+const fromPredicate = <A, B extends A>(f: (a: A) => boolean): Refinement<A, B> => f as Refinement<A, B>;
+
+export const Refinement = {
 	// --- from ---
-	export namespace from {
+	from: {
 		/**
 		 * Creates a `Refinement<A, B>` from a plain boolean predicate.
 		 *
@@ -43,8 +45,8 @@ export namespace Refinement {
 		 *   Refinement.from.predicate(n => n > 0);
 		 * ```
 		 */
-		export const predicate = <A, B extends A>(f: (a: A) => boolean): Refinement<A, B> => f as Refinement<A, B>;
-	}
+		predicate: fromPredicate,
+	},
 
 	/**
 	 * Chains two refinements: if `ab` narrows `A` to `B` and `bc` narrows `B` to `C`,
@@ -68,9 +70,9 @@ export namespace Refinement {
 	 * );
 	 * ```
 	 */
-	export const compose =
+	compose:
 		<A, B extends A, C extends B>(bc: Refinement<B, C>) => (ab: Refinement<A, B>): Refinement<A, C> => (a): a is C =>
-			ab(a) && bc(a);
+			ab(a) && bc(a),
 
 	/**
 	 * Intersects two refinements: the result narrows `A` to `B & C`, passing only
@@ -89,10 +91,10 @@ export namespace Refinement {
 	 * isNonEmptyString("");    // false
 	 * ```
 	 */
-	export const and =
+	and:
 		<A, C extends A>(second: Refinement<A, C>) =>
 		<B extends A>(first: Refinement<A, B>): Refinement<A, B & C> =>
-		(a): a is B & C => first(a) && second(a);
+		(a): a is B & C => first(a) && second(a),
 
 	/**
 	 * Unions two refinements: the result narrows `A` to `B | C`, passing when either
@@ -111,13 +113,13 @@ export namespace Refinement {
 	 * isStringOrNumber(true); // false
 	 * ```
 	 */
-	export const or =
+	or:
 		<A, C extends A>(second: Refinement<A, C>) =>
 		<B extends A>(first: Refinement<A, B>): Refinement<A, B | C> =>
-		(a): a is B | C => first(a) || second(a);
+		(a): a is B | C => first(a) || second(a),
 
 	// --- to ---
-	export namespace to {
+	to: {
 		/**
 		 * Converts a `Refinement<A, B>` into a function `(a: A) => Maybe<B>`.
 		 *
@@ -134,8 +136,8 @@ export namespace Refinement {
 		 * pipe(42, Refinement.to.Maybe(isPositive)); // Some(42)
 		 * ```
 		 */
-		export const Maybe = <A, B extends A>(r: Refinement<A, B>) => (a: A): CoreMaybe<B> =>
-			r(a) ? CoreMaybe.make.some(a) : CoreMaybe.make.none();
+		Maybe: <A, B extends A>(r: Refinement<A, B>) => (a: A): CoreMaybe<B> =>
+			r(a) ? CoreMaybe.make.some(a) : CoreMaybe.make.none(),
 
 		/**
 		 * Converts a `Refinement<A, B>` into a function `(a: A) => Result<E, B>`.
@@ -153,7 +155,7 @@ export namespace Refinement {
 		 * pipe("hi", Refinement.to.Result(isNonEmpty, () => "must not be empty")); // Ok("hi")
 		 * ```
 		 */
-		export const Result = <A, B extends A, E>(r: Refinement<A, B>, onFail: (a: A) => E) => (a: A): CoreResult<E, B> =>
-			r(a) ? CoreResult.make.ok(a) : CoreResult.make.err(onFail(a));
-	}
-}
+		Result: <A, B extends A, E>(r: Refinement<A, B>, onFail: (a: A) => E) => (a: A): CoreResult<E, B> =>
+			r(a) ? CoreResult.make.ok(a) : CoreResult.make.err(onFail(a)),
+	},
+};

@@ -1,6 +1,12 @@
+// =============================================================================
+// Imports
+// =============================================================================
 import { type Maybe, Maybe as CoreMaybe, type Validation, Validation as CoreValidation } from "#core";
 import type { NonEmptyArr, WithError, WithKind, WithValue } from "#internal";
 
+// =============================================================================
+// Types
+// =============================================================================
 /**
  * Result represents a value that can be one of two types: a success (Ok) or a failure (Err).
  * Use Result when an operation can fail with a meaningful error value.
@@ -22,8 +28,20 @@ export type Result<E, A> = Ok<A> | Err<E>;
 export type Ok<A> = WithKind<"Ok"> & WithValue<A>;
 export type Err<E> = WithKind<"Err"> & WithError<E>;
 
-export namespace Result {
-	export namespace make {
+// =============================================================================
+// Private Helpers & Variant Constructors
+// =============================================================================
+const makeOk = <A>(value: A): Ok<A> => ({ kind: "Ok", value });
+const makeErr = <E>(e: E): Err<E> => ({ kind: "Err", error: e });
+
+const isOk = <E, A>(data: Result<E, A>): data is Ok<A> => data.kind === "Ok";
+const isErr = <E, A>(data: Result<E, A>): data is Err<E> => data.kind === "Err";
+
+// =============================================================================
+// Public Export
+// =============================================================================
+export const Result = {
+	make: {
 		/**
 		 * Creates a successful Result with the given value.
 		 *
@@ -32,7 +50,7 @@ export namespace Result {
 		 * Result.make.ok(42); // Ok(42)
 		 * ```
 		 */
-		export const ok = <A>(value: A): Ok<A> => ({ kind: "Ok", value });
+		ok: makeOk,
 
 		/**
 		 * Creates a failed Result with the given error.
@@ -42,10 +60,10 @@ export namespace Result {
 		 * Result.make.err("Error message"); // Err("Error message")
 		 * ```
 		 */
-		export const err = <E>(e: E): Err<E> => ({ kind: "Err", error: e });
-	}
+		err: makeErr,
+	},
 
-	export namespace is {
+	is: {
 		/**
 		 * Type guard that checks if a Result is Ok.
 		 *
@@ -57,7 +75,7 @@ export namespace Result {
 		 * }
 		 * ```
 		 */
-		export const ok = <E, A>(data: Result<E, A>): data is Ok<A> => data.kind === "Ok";
+		ok: isOk,
 
 		/**
 		 * Type guard that checks if a Result is Err.
@@ -70,13 +88,9 @@ export namespace Result {
 		 * }
 		 * ```
 		 */
-		export const err = <E, A>(data: Result<E, A>): data is Err<E> => data.kind === "Err";
-	}
+		err: isErr,
+	},
 
-	/**
-	 * Creates a Result from a function that may throw.
-	 * Catches any errors and transforms them using the onError function.
-	 *
 	/**
 	 * Creates a Result from a synchronous thunk that may throw.
 	 * Catches any errors and transforms them using the `onError` function.
@@ -89,13 +103,13 @@ export namespace Result {
 	 * );
 	 * ```
 	 */
-	export const tryCatch = <E, A>(f: () => A, options: { onError: (e: unknown) => E; }): Result<E, A> => {
+	tryCatch: <E, A>(f: () => A, options: { onError: (e: unknown) => E; }): Result<E, A> => {
 		try {
-			return make.ok(f());
+			return makeOk(f());
 		} catch (error) {
-			return make.err(options.onError(error));
+			return makeErr(options.onError(error));
 		}
-	};
+	},
 
 	/**
 	 * Transforms the success value inside a Result.
@@ -106,8 +120,7 @@ export namespace Result {
 	 * pipe(Result.make.err("error"), Result.map(n => n * 2)); // Err("error")
 	 * ```
 	 */
-	export const map = <E, A, B>(f: (a: A) => B) => (data: Result<E, A>): Result<E, B> =>
-		is.ok(data) ? make.ok(f(data.value)) : data;
+	map: <E, A, B>(f: (a: A) => B) => (data: Result<E, A>): Result<E, B> => isOk(data) ? makeOk(f(data.value)) : data,
 
 	/**
 	 * Transforms the error value inside a Result.
@@ -117,8 +130,8 @@ export namespace Result {
 	 * pipe(Result.make.err("oops"), Result.mapError(e => e.toUpperCase())); // Err("OOPS")
 	 * ```
 	 */
-	export const mapError = <E, F, A>(f: (e: E) => F) => (data: Result<E, A>): Result<F, A> =>
-		is.err(data) ? make.err(f(data.error)) : data;
+	mapError: <E, F, A>(f: (e: E) => F) => (data: Result<E, A>): Result<F, A> =>
+		isErr(data) ? makeErr(f(data.error)) : data,
 
 	/**
 	 * Chains Result computations. If the first is Ok, passes the value to f.
@@ -133,8 +146,8 @@ export namespace Result {
 	 * pipe(Result.make.ok(-1), Result.chain(validatePositive)); // Err("Must be positive")
 	 * ```
 	 */
-	export const chain = <E2, A, B>(f: (a: A) => Result<E2, B>) => <E1 = never>(data: Result<E1, A>): Result<E1 | E2, B> =>
-		is.ok(data) ? f(data.value) : data;
+	chain: <E2, A, B>(f: (a: A) => Result<E2, B>) => <E1 = never>(data: Result<E1, A>): Result<E1 | E2, B> =>
+		isOk(data) ? f(data.value) : data,
 
 	/**
 	 * Extracts the value from a Result by providing handlers for both cases.
@@ -150,8 +163,8 @@ export namespace Result {
 	 * ); // "Value: 5"
 	 * ```
 	 */
-	export const fold = <E, A, B>(onErr: (e: E) => B, onOk: (a: A) => B) => (data: Result<E, A>): B =>
-		is.ok(data) ? onOk(data.value) : onErr((data as Err<E>).error);
+	fold: <E, A, B>(onErr: (e: E) => B, onOk: (a: A) => B) => (data: Result<E, A>): B =>
+		isOk(data) ? onOk(data.value) : onErr((data as Err<E>).error),
 
 	/**
 	 * Pattern matches on a Result, returning the result of the matching case.
@@ -167,8 +180,8 @@ export namespace Result {
 	 * );
 	 * ```
 	 */
-	export const match = <E, A, B>(cases: { ok: (a: A) => B; err: (e: E) => B; }) => (data: Result<E, A>): B =>
-		is.ok(data) ? cases.ok(data.value) : cases.err((data as Err<E>).error);
+	match: <E, A, B>(cases: { ok: (a: A) => B; err: (e: E) => B; }) => (data: Result<E, A>): B =>
+		isOk(data) ? cases.ok(data.value) : cases.err((data as Err<E>).error),
 
 	/**
 	 * Returns the success value or a default value if the Result is an error.
@@ -182,8 +195,7 @@ export namespace Result {
 	 * pipe(Result.make.err("error"), Result.getOrElse(() => null)); // null — typed as number | null
 	 * ```
 	 */
-	export const getOrElse = <B>(defaultValue: () => B) => <E, A>(data: Result<E, A>): A | B =>
-		is.ok(data) ? data.value : defaultValue();
+	getOrElse: <B>(defaultValue: () => B) => <E, A>(data: Result<E, A>): A | B => isOk(data) ? data.value : defaultValue(),
 
 	/**
 	 * Executes a side effect on the success value without changing the Result.
@@ -198,10 +210,10 @@ export namespace Result {
 	 * );
 	 * ```
 	 */
-	export const tap = <E, A>(f: (a: A) => void) => (data: Result<E, A>): Result<E, A> => {
-		if (is.ok(data)) { f(data.value); }
+	tap: <E, A>(f: (a: A) => void) => (data: Result<E, A>): Result<E, A> => {
+		if (isOk(data)) { f(data.value); }
 		return data;
-	};
+	},
 
 	/**
 	 * Executes a side effect on the error value without changing the Result.
@@ -216,13 +228,13 @@ export namespace Result {
 	 * )
 	 * ```
 	 */
-	export const tapError = <E, A>(f: (e: E) => void) => (data: Result<E, A>): Result<E, A> => {
-		if (is.err(data)) { f(data.error); }
+	tapError: <E, A>(f: (e: E) => void) => (data: Result<E, A>): Result<E, A> => {
+		if (isErr(data)) { f(data.error); }
 		return data;
-	};
+	},
 
 	// --- from ---
-	export namespace from {
+	from: {
 		/**
 		 * Creates a Result from a predicate applied to a value.
 		 * Returns Ok if the predicate passes, Err from onFalse otherwise.
@@ -234,8 +246,8 @@ export namespace Result {
 		 * pipe("", Result.from.Predicate(s => s.length > 0, () => "empty string")); // Err("empty string")
 		 * ```
 		 */
-		export const Predicate = <E, A>(pred: (a: A) => boolean, onFalse: (a: A) => E) => (a: A): Result<E, A> =>
-			pred(a) ? make.ok(a) : make.err(onFalse(a));
+		Predicate: <E, A>(pred: (a: A) => boolean, onFalse: (a: A) => E) => (a: A): Result<E, A> =>
+			pred(a) ? makeOk(a) : makeErr(onFalse(a)),
 
 		/**
 		 * Creates a Result from a nullable value.
@@ -247,8 +259,8 @@ export namespace Result {
 		 * pipe(42, Result.from.nullable(() => "is null"));   // Ok(42)
 		 * ```
 		 */
-		export const nullable = <E>(onNull: () => E) => <A>(value: A | null | undefined): Result<E, A> =>
-			value === null || value === undefined ? make.err(onNull()) : make.ok(value);
+		nullable: <E>(onNull: () => E) => <A>(value: A | null | undefined): Result<E, A> =>
+			value === null || value === undefined ? makeErr(onNull()) : makeOk(value),
 
 		/**
 		 * Creates a Result from a Maybe.
@@ -260,8 +272,8 @@ export namespace Result {
 		 * pipe(Maybe.make.some(42), Result.from.Maybe(() => "is none")); // Ok(42)
 		 * ```
 		 */
-		export const Maybe = <E>(onNone: () => E) => <A>(maybe: Maybe<A>): Result<E, A> =>
-			CoreMaybe.is.none(maybe) ? make.err(onNone()) : make.ok(maybe.value);
+		Maybe: <E>(onNone: () => E) => <A>(maybe: Maybe<A>): Result<E, A> =>
+			CoreMaybe.is.none(maybe) ? makeErr(onNone()) : makeOk(maybe.value),
 
 		/**
 		 * Converts a `Validation` to a `Result`, combining accumulated errors using `combineErrors`.
@@ -272,17 +284,16 @@ export namespace Result {
 		 * Result.from.Validation((errors) => errors.join(", "))(Validation.make.failed("error1")); // Err("error1")
 		 * ```
 		 */
-		export const Validation =
-			<E1, E2, A>(combineErrors: (errors: NonEmptyArr<E1>) => E2) => (val: Validation<E1, A>): Result<E2, A> =>
-				CoreValidation.is.passed(val) ? make.ok(val.value) : make.err(combineErrors(val.errors));
-	}
+		Validation: <E1, E2, A>(combineErrors: (errors: NonEmptyArr<E1>) => E2) => (val: Validation<E1, A>): Result<E2, A> =>
+			CoreValidation.is.passed(val) ? makeOk(val.value) : makeErr(combineErrors(val.errors)),
+	},
 
 	/**
 	 * Recovers from an error by providing a fallback Result.
 	 * The fallback can produce a different success type, widening the result to `Result<E, A | B>`.
 	 */
-	export const recover = <E, B>(fallback: (e: E) => Result<E, B>) => <A>(data: Result<E, A>): Result<E, A | B> =>
-		is.ok(data) ? data : fallback((data as Err<E>).error);
+	recover: <E, B>(fallback: (e: E) => Result<E, B>) => <A>(data: Result<E, A>): Result<E, A | B> =>
+		isOk(data) ? data : fallback((data as Err<E>).error),
 
 	/**
 	 * Recovers from an error unless the predicate `isBlocked` returns true for that error.
@@ -296,12 +307,12 @@ export namespace Result {
 	 * ); // Ok(0)
 	 * ```
 	 */
-	export const recoverUnless =
+	recoverUnless:
 		<E, B>(isBlocked: (e: E) => boolean, fallback: () => Result<E, B>) => <A>(data: Result<E, A>): Result<E, A | B> =>
-			is.err(data) && !isBlocked(data.error) ? fallback() : data;
+			isErr(data) && !isBlocked(data.error) ? fallback() : data,
 
 	// --- to ---
-	export namespace to {
+	to: {
 		/**
 		 * Converts a Result to a Maybe.
 		 * Ok becomes Some, Err becomes None (the error is discarded).
@@ -312,8 +323,7 @@ export namespace Result {
 		 * Result.to.Maybe(Result.make.err("oops")); // None
 		 * ```
 		 */
-		export const Maybe = <E, A>(data: Result<E, A>): Maybe<A> =>
-			is.ok(data) ? CoreMaybe.make.some(data.value) : CoreMaybe.make.none();
+		Maybe: <E, A>(data: Result<E, A>): Maybe<A> => isOk(data) ? CoreMaybe.make.some(data.value) : CoreMaybe.make.none(),
 		/**
 		 * Converts a `Result` to a `Validation`. `Ok(a)` becomes `Passed(a)`; `Err(e)` becomes `Failed([e])`.
 		 *
@@ -323,8 +333,8 @@ export namespace Result {
 		 * Result.to.Validation(Result.make.err("bad")); // Failed(["bad"])
 		 * ```
 		 */
-		export const Validation = <E, A>(data: Result<E, A>): Validation<E, A> => CoreValidation.from.Result(data);
-	}
+		Validation: <E, A>(data: Result<E, A>): Validation<E, A> => CoreValidation.from.Result(data),
+	},
 
 	/**
 	 * Swaps the outer `Result` and inner `Maybe` context.
@@ -337,10 +347,10 @@ export namespace Result {
 	 * Result.transposeMaybe(Result.make.err("error"));           // Some(Err("error"))
 	 * ```
 	 */
-	export const transposeMaybe = <E, A>(data: Result<E, Maybe<A>>): Maybe<Result<E, A>> =>
-		is.err(data)
+	transposeMaybe: <E, A>(data: Result<E, Maybe<A>>): Maybe<Result<E, A>> =>
+		isErr(data)
 			? CoreMaybe.make.some(data)
-			: (CoreMaybe.is.some(data.value) ? CoreMaybe.make.some(make.ok(data.value.value)) : CoreMaybe.make.none());
+			: (CoreMaybe.is.some(data.value) ? CoreMaybe.make.some(makeOk(data.value.value)) : CoreMaybe.make.none()),
 
 	/**
 	 * Applies a function wrapped in a Result to a value wrapped in a Result.
@@ -355,8 +365,8 @@ export namespace Result {
 	 * ); // Ok(8)
 	 * ```
 	 */
-	export const ap = <E, A>(arg: Result<E, A>) => <B>(data: Result<E, (a: A) => B>): Result<E, B> =>
-		is.ok(data) && is.ok(arg) ? make.ok(data.value(arg.value)) : (is.err(data) ? data : (arg as Err<E>));
+	ap: <E, A>(arg: Result<E, A>) => <B>(data: Result<E, (a: A) => B>): Result<E, B> =>
+		isOk(data) && isOk(arg) ? makeOk(data.value(arg.value)) : (isErr(data) ? data : (arg as Err<E>)),
 
 	/**
 	 * Converts a Result value into an object containing a single property.
@@ -367,8 +377,8 @@ export namespace Result {
 	 * pipe(Result.make.ok(42), Result.bindTo("value")); // Ok({ value: 42 })
 	 * ```
 	 */
-	export const bindTo = <K extends string>(key: K) => <E, A>(data: Result<E, A>): Result<E, { [P in K]: A; }> =>
-		map<E, A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data);
+	bindTo: <K extends string>(key: K) => <E, A>(data: Result<E, A>): Result<E, { [P in K]: A; }> =>
+		isOk(data) ? makeOk({ [key]: data.value } as { [P in K]: A; }) : data,
 
 	/**
 	 * Evaluates a new Result using the current accumulator and attaches the output to a new key.
@@ -381,12 +391,13 @@ export namespace Result {
 	 * ); // Ok({ a: 1, b: 2 })
 	 * ```
 	 */
-	export const bind =
+	bind:
 		<K extends string, E, A, B>(key: K, f: (a: A) => Result<E, B>) =>
-		(data: Result<E, A>): Result<E, A & { [P in K]: B; }> =>
-			chain<E, A, A & { [P in K]: B; }>((a) =>
-				map<E, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
-			)(data);
+		(data: Result<E, A>): Result<E, A & { [P in K]: B; }> => {
+			if (!isOk(data)) { return data; }
+			const res = f(data.value);
+			return isOk(res) ? makeOk({ ...(data.value as any), [key]: res.value } as A & { [P in K]: B; }) : res;
+		},
 
 	/**
 	 * Combines a record of Results into a single Result of a record.
@@ -400,21 +411,19 @@ export namespace Result {
 	 * }); // Ok({ name: "Alice", age: 30 })
 	 * ```
 	 */
-	export const struct = <E, R extends Record<string, any>>(
-		fields: { [K in keyof R]: Result<E, R[K]>; },
-	): Result<E, R> => {
+	struct: <E, R extends Record<string, any>>(fields: { [K in keyof R]: Result<E, R[K]>; }): Result<E, R> => {
 		const result = {} as R;
 		for (const key in fields) {
 			if (Object.hasOwn(fields, key)) {
 				const res = fields[key];
-				if (is.err(res)) {
+				if (isErr(res)) {
 					return res;
 				}
 				result[key] = res.value;
 			}
 		}
-		return make.ok(result);
-	};
+		return makeOk(result);
+	},
 
 	/**
 	 * Narrows an `Ok` value with a predicate, converting to `Err(onFail(a))` if the predicate returns false.
@@ -427,10 +436,10 @@ export namespace Result {
 	 * ); // Err("Age 15 is below 18")
 	 * ```
 	 */
-	export const ensure =
+	ensure:
 		<A, E2>(predicate: (a: A) => boolean, onFail: (a: A) => E2) =>
 		<E1 = never>(data: Result<E1, A>): Result<E1 | E2, A> =>
-			is.err(data) ? data : (predicate(data.value) ? data : make.err(onFail(data.value)));
+			isErr(data) ? data : (predicate(data.value) ? data : makeErr(onFail(data.value))),
 
 	/**
 	 * Transforms both branches of a Result simultaneously.
@@ -447,6 +456,6 @@ export namespace Result {
 	 * ); // Ok(10)
 	 * ```
 	 */
-	export const bimap = <E1, E2, A, B>(onErr: (e: E1) => E2, onOk: (a: A) => B) => (data: Result<E1, A>): Result<E2, B> =>
-		is.ok(data) ? make.ok(onOk(data.value)) : make.err(onErr(data.error));
-}
+	bimap: <E1, E2, A, B>(onErr: (e: E1) => E2, onOk: (a: A) => B) => (data: Result<E1, A>): Result<E2, B> =>
+		isOk(data) ? makeOk(onOk(data.value)) : makeErr(onErr(data.error)),
+};

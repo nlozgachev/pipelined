@@ -13,7 +13,12 @@
  */
 export type Equality<A> = (a: A, b: A) => boolean;
 
-export namespace Equality {
+const stringEq: Equality<string> = (a, b) => a === b;
+const numberEq: Equality<number> = (a, b) => a === b;
+const booleanEq: Equality<boolean> = (a, b) => a === b;
+const dateEq: Equality<Date> = (a, b) => a.getTime() === b.getTime();
+
+export const Equality = {
 	/**
 	 * Equality for strings. Case-sensitive.
 	 *
@@ -23,7 +28,7 @@ export namespace Equality {
 	 * Equality.string("hello", "Hello"); // false
 	 * ```
 	 */
-	export const string: Equality<string> = (a, b) => a === b;
+	string: stringEq,
 
 	/**
 	 * Equality for numbers. Uses strict equality.
@@ -33,7 +38,7 @@ export namespace Equality {
 	 * Equality.number(42, 42); // true
 	 * ```
 	 */
-	export const number: Equality<number> = (a, b) => a === b;
+	number: numberEq,
 
 	/**
 	 * Equality for booleans.
@@ -43,7 +48,7 @@ export namespace Equality {
 	 * Equality.boolean(true, true); // true
 	 * ```
 	 */
-	export const boolean: Equality<boolean> = (a, b) => a === b;
+	boolean: booleanEq,
 
 	/**
 	 * Equality for `Date` values. Compares by numeric time value.
@@ -53,7 +58,7 @@ export namespace Equality {
 	 * Equality.date(new Date("2024-01-01"), new Date("2024-01-01")); // true
 	 * ```
 	 */
-	export const date: Equality<Date> = (a, b) => a.getTime() === b.getTime();
+	date: dateEq,
 
 	/**
 	 * Lifts an element equality into an array equality. Two arrays are equal if they have the
@@ -64,8 +69,8 @@ export namespace Equality {
 	 * Equality.array(Equality.number)([1, 2, 3], [1, 2, 3]); // true
 	 * ```
 	 */
-	export const array = <A>(eq: Equality<A>): Equality<readonly A[]> => (a, b) =>
-		a.length === b.length && a.every((x, i) => eq(x, b[i]));
+	array: <A>(eq: Equality<A>): Equality<readonly A[]> => (a, b) =>
+		a.length === b.length && a.every((x, i) => eq(x, b[i])),
 
 	/**
 	 * Adapts an equality for type `A` into an equality for type `B` by extracting a field.
@@ -78,7 +83,7 @@ export namespace Equality {
 	 * byId({ id: "p1", price: 9 }, { id: "p1", price: 12 }); // true
 	 * ```
 	 */
-	export const by = <A, B>(f: (b: B) => A) => (eq: Equality<A>): Equality<B> => (a, b) => eq(f(a), f(b));
+	by: <A, B>(f: (b: B) => A) => (eq: Equality<A>): Equality<B> => (a, b) => eq(f(a), f(b)),
 
 	/**
 	 * Combines two equalities with logical AND. Both must pass for two values to be considered equal.
@@ -90,7 +95,7 @@ export namespace Equality {
 	 * exact(userA, userB); // true only if name AND role match
 	 * ```
 	 */
-	export const and = <A>(eq2: Equality<A>) => (eq1: Equality<A>): Equality<A> => (a, b) => eq1(a, b) && eq2(a, b);
+	and: <A>(eq2: Equality<A>) => (eq1: Equality<A>): Equality<A> => (a, b) => eq1(a, b) && eq2(a, b),
 
 	/**
 	 * Derives deep equality for a record from field-level `Equality` checkers.
@@ -103,17 +108,16 @@ export namespace Equality {
 	 * });
 	 * ```
 	 */
-	export const struct =
-		<R extends Record<string, unknown>>(fields: { [K in keyof R]: Equality<R[K]>; }): Equality<R> => (a, b) => {
-			for (const key in fields) {
-				if (Object.hasOwn(fields, key)) {
-					if (!fields[key](a[key], b[key])) {
-						return false;
-					}
+	struct: <R extends Record<string, unknown>>(fields: { [K in keyof R]: Equality<R[K]>; }): Equality<R> => (a, b) => {
+		for (const key in fields) {
+			if (Object.hasOwn(fields, key)) {
+				if (!fields[key](a[key], b[key])) {
+					return false;
 				}
 			}
-			return true;
-		};
+		}
+		return true;
+	},
 
 	/**
 	 * Derives element-wise equality for a tuple from positional `Equality` checkers.
@@ -124,16 +128,15 @@ export namespace Equality {
 	 * pairEq(["a", 1], ["a", 1]); // true
 	 * ```
 	 */
-	export const tuple =
-		<T extends readonly unknown[]>(...equalities: { [K in keyof T]: Equality<T[K]>; }): Equality<T> => (a, b) => {
-			if (a.length !== b.length) {
+	tuple: <T extends readonly unknown[]>(...equalities: { [K in keyof T]: Equality<T[K]>; }): Equality<T> => (a, b) => {
+		if (a.length !== b.length) {
+			return false;
+		}
+		for (let i = 0; i < equalities.length; i++) {
+			if (!equalities[i](a[i], b[i])) {
 				return false;
 			}
-			for (let i = 0; i < equalities.length; i++) {
-				if (!equalities[i](a[i], b[i])) {
-					return false;
-				}
-			}
-			return true;
-		};
-}
+		}
+		return true;
+	},
+};

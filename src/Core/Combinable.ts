@@ -13,7 +13,13 @@ import { Maybe } from "#core";
  */
 export type Combinable<A> = { readonly empty: A; readonly combine: (b: A) => (a: A) => A; };
 
-export namespace Combinable {
+const stringCombinable: Combinable<string> = { empty: "", combine: (b) => (a) => a + b };
+const sumCombinable: Combinable<number> = { empty: 0, combine: (b) => (a) => a + b };
+const productCombinable: Combinable<number> = { empty: 1, combine: (b) => (a) => a * b };
+const allCombinable: Combinable<boolean> = { empty: true, combine: (b) => (a) => a && b };
+const anyCombinable: Combinable<boolean> = { empty: false, combine: (b) => (a) => a || b };
+
+export const Combinable = {
 	/**
 	 * Combines strings by concatenation. Empty string is the neutral element.
 	 *
@@ -22,7 +28,7 @@ export namespace Combinable {
 	 * pipe(["a", "b", "c"], Combinable.fold(Combinable.string)); // "abc"
 	 * ```
 	 */
-	export const string: Combinable<string> = { empty: "", combine: (b) => (a) => a + b };
+	string: stringCombinable,
 
 	/**
 	 * Combines numbers by addition. `0` is the neutral element.
@@ -32,7 +38,7 @@ export namespace Combinable {
 	 * pipe([1, 2, 3], Combinable.fold(Combinable.sum)); // 6
 	 * ```
 	 */
-	export const sum: Combinable<number> = { empty: 0, combine: (b) => (a) => a + b };
+	sum: sumCombinable,
 
 	/**
 	 * Combines numbers by multiplication. `1` is the neutral element.
@@ -42,7 +48,7 @@ export namespace Combinable {
 	 * pipe([2, 3, 4], Combinable.fold(Combinable.product)); // 24
 	 * ```
 	 */
-	export const product: Combinable<number> = { empty: 1, combine: (b) => (a) => a * b };
+	product: productCombinable,
 
 	/**
 	 * Combines booleans with logical AND. `true` is the neutral element.
@@ -52,7 +58,7 @@ export namespace Combinable {
 	 * pipe([true, true, false], Combinable.fold(Combinable.all)); // false
 	 * ```
 	 */
-	export const all: Combinable<boolean> = { empty: true, combine: (b) => (a) => a && b };
+	all: allCombinable,
 
 	/**
 	 * Combines booleans with logical OR. `false` is the neutral element.
@@ -62,7 +68,7 @@ export namespace Combinable {
 	 * pipe([false, false, true], Combinable.fold(Combinable.any)); // true
 	 * ```
 	 */
-	export const any: Combinable<boolean> = { empty: false, combine: (b) => (a) => a || b };
+	any: anyCombinable,
 
 	/**
 	 * Combines arrays by concatenation. Empty array is the neutral element.
@@ -72,7 +78,7 @@ export namespace Combinable {
 	 * pipe([[1, 2], [3], [4, 5]], Combinable.fold(Combinable.array<number>())); // [1, 2, 3, 4, 5]
 	 * ```
 	 */
-	export const array = <A>(): Combinable<readonly A[]> => ({ empty: [], combine: (b) => (a) => [...a, ...b] });
+	array: <A>(): Combinable<readonly A[]> => ({ empty: [], combine: (b) => (a) => [...a, ...b] }),
 
 	/**
 	 * Lifts a `Combinable<A>` to `Combinable<Maybe<A>>`. `None` is the neutral element —
@@ -86,11 +92,11 @@ export namespace Combinable {
 	 * c.combine(Maybe.make.none())(Maybe.make.some(5));  // Some(5)
 	 * ```
 	 */
-	export const maybe = <A>(inner: Combinable<A>): Combinable<Maybe<A>> => ({
+	maybe: <A>(inner: Combinable<A>): Combinable<Maybe<A>> => ({
 		empty: Maybe.make.none(),
 		combine: (b) => (a): Maybe<A> =>
 			Maybe.is.none(a) ? b : (Maybe.is.none(b) ? a : Maybe.make.some(inner.combine(b.value)(a.value))),
-	});
+	}),
 
 	/**
 	 * Folds an array into a single value using the `Combinable`'s `empty` as the starting point.
@@ -101,8 +107,7 @@ export namespace Combinable {
 	 * pipe([], Combinable.fold(Combinable.sum));               // 0
 	 * ```
 	 */
-	export const fold = <A>(c: Combinable<A>) => (data: readonly A[]): A =>
-		data.reduce((acc, x) => c.combine(x)(acc), c.empty);
+	fold: <A>(c: Combinable<A>) => (data: readonly A[]): A => data.reduce((acc, x) => c.combine(x)(acc), c.empty),
 
 	/**
 	 * Derives a `Combinable` for a record of fields from field-level `Combinable` instances.
@@ -115,9 +120,7 @@ export namespace Combinable {
 	 * });
 	 * ```
 	 */
-	export const struct = <R extends Record<string, unknown>>(
-		fields: { [K in keyof R]: Combinable<R[K]>; },
-	): Combinable<R> => {
+	struct: <R extends Record<string, unknown>>(fields: { [K in keyof R]: Combinable<R[K]>; }): Combinable<R> => {
 		const empty = {} as R;
 		for (const key in fields) {
 			if (Object.hasOwn(fields, key)) {
@@ -136,5 +139,5 @@ export namespace Combinable {
 				return result;
 			},
 		};
-	};
-}
+	},
+};

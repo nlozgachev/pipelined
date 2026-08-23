@@ -1627,21 +1627,18 @@ test("Op.interpret concurrent subscribe after run started fires immediately with
 
 test("Op.interpret debounced without ms or leading uses ms=0 and leading=false defaults", async () => {
 	// Exercises options.ms ?? 0 and options.leading ?? false in the interpret switch
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const manager = Op.interpret(delayedOp(), { strategy: "debounced" } as any);
 	await expect(manager.run(42)).resolves.toStrictEqual({ kind: "OpOk", value: 42 });
 });
 
 test("Op.interpret throttled without ms or trailing uses ms=0 and trailing=false defaults", async () => {
 	// Exercises options.ms ?? 0 and options.trailing ?? false in the interpret switch
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const manager = Op.interpret(delayedOp(), { strategy: "throttled" } as any);
 	await expect(manager.run(42)).resolves.toStrictEqual({ kind: "OpOk", value: 42 });
 });
 
 test("Op.interpret concurrent without n or overflow uses n=1 and overflow=drop defaults", async () => {
 	// Exercises options.n ?? 1 and options.overflow ?? "drop" in the interpret switch
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const manager = Op.interpret(delayedOp(20), { strategy: "concurrent" } as any);
 	const p1 = manager.run(1); // fills the single slot (n=1 default)
 	const p2 = manager.run(2); // dropped — overflow=drop default
@@ -1651,7 +1648,6 @@ test("Op.interpret concurrent without n or overflow uses n=1 and overflow=drop d
 
 test("Op.interpret keyed without key or perKey uses identity key and exclusive defaults", async () => {
 	// Exercises options.key ?? identity and options.perKey ?? "exclusive" in the interpret switch
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const manager = Op.interpret(delayedOp(20), { strategy: "keyed" } as any);
 	const p1 = manager.run(1);
 	const p2 = manager.run(1); // identity key → same key → exclusive drops

@@ -25,7 +25,12 @@
  */
 export type Reader<R, A> = (env: R) => A;
 
-export namespace Reader {
+const mapReader = <R, A, B>(f: (a: A) => B) => (data: Reader<R, A>): Reader<R, B> => (env) => f(data(env));
+
+const chainReader = <R, A, B>(f: (a: A) => Reader<R, B>) => (data: Reader<R, A>): Reader<R, B> => (env) =>
+	f(data(env))(env);
+
+export const Reader = {
 	/**
 	 * Lifts a pure value into a Reader. The environment is ignored.
 	 *
@@ -35,7 +40,7 @@ export namespace Reader {
 	 * always42(anyConfig); // 42
 	 * ```
 	 */
-	export const resolve = <R, A>(value: A): Reader<R, A> => (_env) => value;
+	resolve: <R, A>(value: A): Reader<R, A> => (_env) => value,
 
 	/**
 	 * Returns the full environment as the result.
@@ -49,7 +54,7 @@ export namespace Reader {
 	 * )(appConfig); // "https://api.example.com"
 	 * ```
 	 */
-	export const ask = <R>(): Reader<R, R> => (env) => env;
+	ask: <R>(): Reader<R, R> => (env) => env,
 
 	/**
 	 * Projects a value from the environment using a selector function.
@@ -61,7 +66,7 @@ export namespace Reader {
 	 * getBaseUrl(appConfig); // "https://api.example.com"
 	 * ```
 	 */
-	export const asks = <R, A>(f: (env: R) => A): Reader<R, A> => (env) => f(env);
+	asks: <R, A>(f: (env: R) => A): Reader<R, A> => (env) => f(env),
 
 	/**
 	 * Transforms the value produced by a Reader.
@@ -74,7 +79,7 @@ export namespace Reader {
 	 * )(appConfig); // "HTTPS://API.EXAMPLE.COM"
 	 * ```
 	 */
-	export const map = <R, A, B>(f: (a: A) => B) => (data: Reader<R, A>): Reader<R, B> => (env) => f(data(env));
+	map: mapReader,
 
 	/**
 	 * Sequences two Readers. Both see the same environment.
@@ -94,8 +99,7 @@ export namespace Reader {
 	 * )(appConfig); // "https://api.example.com/items?key=secret"
 	 * ```
 	 */
-	export const chain = <R, A, B>(f: (a: A) => Reader<R, B>) => (data: Reader<R, A>): Reader<R, B> => (env) =>
-		f(data(env))(env);
+	chain: chainReader,
 
 	/**
 	 * Applies a function wrapped in a Reader to a value wrapped in a Reader.
@@ -111,8 +115,7 @@ export namespace Reader {
 	 * )(appConfig);
 	 * ```
 	 */
-	export const ap = <R, A>(arg: Reader<R, A>) => <B>(data: Reader<R, (a: A) => B>): Reader<R, B> => (env) =>
-		data(env)(arg(env));
+	ap: <R, A>(arg: Reader<R, A>) => <B>(data: Reader<R, (a: A) => B>): Reader<R, B> => (env) => data(env)(arg(env)),
 
 	/**
 	 * Executes a side effect on the produced value without changing the Reader.
@@ -127,11 +130,11 @@ export namespace Reader {
 	 * )(appConfig);
 	 * ```
 	 */
-	export const tap = <R, A>(f: (a: A) => void) => (data: Reader<R, A>): Reader<R, A> => (env) => {
+	tap: <R, A>(f: (a: A) => void) => (data: Reader<R, A>): Reader<R, A> => (env) => {
 		const a = data(env);
 		f(a);
 		return a;
-	};
+	},
 
 	/**
 	 * Adapts a Reader to work with a different (typically wider) environment
@@ -152,7 +155,7 @@ export namespace Reader {
 	 * buildUrlFromApp(appEnv); // works with the full AppEnv
 	 * ```
 	 */
-	export const local = <R2, R>(f: (env: R2) => R) => <A>(data: Reader<R, A>): Reader<R2, A> => (env) => data(f(env));
+	local: <R2, R>(f: (env: R2) => R) => <A>(data: Reader<R, A>): Reader<R2, A> => (env) => data(f(env)),
 
 	/**
 	 * Runs a Reader by supplying the environment. Use this at the edge of your
@@ -166,7 +169,7 @@ export namespace Reader {
 	 * ); // "https://api.example.com/users?key=secret"
 	 * ```
 	 */
-	export const run = <R>(env: R) => <A>(data: Reader<R, A>): A => data(env);
+	run: <R>(env: R) => <A>(data: Reader<R, A>): A => data(env),
 
 	/**
 	 * Lifts a Reader value into an accumulator object.
@@ -176,8 +179,8 @@ export namespace Reader {
 	 * pipe(Reader.resolve(42), Reader.bindTo("value")); // Reader({ value: 42 })
 	 * ```
 	 */
-	export const bindTo = <K extends string>(key: K) => <R, A>(data: Reader<R, A>): Reader<R, { [P in K]: A; }> =>
-		map<R, A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data);
+	bindTo: <K extends string>(key: K) => <R, A>(data: Reader<R, A>): Reader<R, { [P in K]: A; }> =>
+		mapReader<R, A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data),
 
 	/**
 	 * Evaluates a new Reader using the current accumulator and attaches the output to a new key.
@@ -190,10 +193,10 @@ export namespace Reader {
 	 * ); // Reader({ a: 1, b: 2 })
 	 * ```
 	 */
-	export const bind =
+	bind:
 		<K extends string, R, A, B>(key: K, f: (a: A) => Reader<R, B>) =>
 		(data: Reader<R, A>): Reader<R, A & { [P in K]: B; }> =>
-			chain<R, A, A & { [P in K]: B; }>((a) =>
-				map<R, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
-			)(data);
-}
+			chainReader<R, A, A & { [P in K]: B; }>((a) =>
+				mapReader<R, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
+			)(data),
+};

@@ -69,7 +69,7 @@ test("Task.Validation.tryCatch returns Invalid when Promise rejects", async () =
 test("Task.Validation.tryCatch catches async throws", async () => {
 	await expect(
 		Task.Validation.tryCatch(
-			// eslint-disable-next-line require-await
+			// oxlint-disable-next-line require-await
 			async () => {
 				throw new Error("bang");
 			},

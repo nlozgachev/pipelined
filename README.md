@@ -22,7 +22,7 @@ propagation, unhandled async rejections, race conditions, and verbose nested spr
 `Task.Result` for lazy infallible async, `Op` for declarative request concurrency, and `Stream` for
 typed event sequences.
 
-The library has zero external dependencies, <16 KB core gzipped (<25 KB total), and compiles to dual
+The library has zero external dependencies, <11 KB core gzipped (<17 KB total), and compiles to dual
 ESM and CommonJS distributions.
 
 ## Documentation
@@ -550,13 +550,13 @@ if (Result.is.ok(email)) {
 `pipelined` is structured into 4 isolated, tree-shakeable entry points:
 
 - **`@nlozgachev/pipelined/core`**: Core context containers, async runtimes, optics, and logic
-  abstractions (<16 KB gzipped).
+  abstractions (<11 KB gzipped).
 - **`@nlozgachev/pipelined/data`**: Curried, data-last utilities for collections, numbers, strings,
-  and JSON (<10 KB gzipped).
+  and JSON (<7 KB gzipped).
 - **`@nlozgachev/pipelined/composition`**: Pure higher-order function combinators (`pipe`, `flow`,
   `compose`, `curry`, `uncurry`, `converge`, `juxt`, `memoize`, `tap`, `on`, `not`, `flip`, `fn`)
-  (<3 KB gzipped).
-- **`@nlozgachev/pipelined/types`**: Type-level utilities (`Brand`, `Duration`, `RetryPolicy`) (<700
+  (<2 KB gzipped).
+- **`@nlozgachev/pipelined/types`**: Type-level utilities (`Brand`, `Duration`, `RetryPolicy`) (<400
   B gzipped).
 
 Every utility in the library is benchmarked against its native equivalent. While currying introduces

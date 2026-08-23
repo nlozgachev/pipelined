@@ -17,7 +17,18 @@ import { type Thenable } from "#internal";
  */
 export type TaskMaybe<A> = Task<Maybe<A>>;
 
-export namespace TaskMaybe {
+const makeSome = <A>(value: A): TaskMaybe<A> => CoreTask.resolve(CoreMaybe.make.some(value));
+const makeNone = <A = never>(): TaskMaybe<A> => CoreTask.resolve(CoreMaybe.make.none());
+
+const mapTaskMaybe = <A, B>(f: (a: A) => B) => (data: TaskMaybe<A>): TaskMaybe<B> =>
+	CoreTask.map(CoreMaybe.map(f))(data);
+
+const chainTaskMaybe = <A, B>(f: (a: A) => TaskMaybe<B>) => (data: TaskMaybe<A>): TaskMaybe<B> =>
+	CoreTask.chain((option: Maybe<A>) =>
+		CoreMaybe.is.some(option) ? f(option.value) : CoreTask.resolve(CoreMaybe.make.none())
+	)(data);
+
+export const TaskMaybe = {
 	/**
 	 * Wraps a value in a Some inside a Task.
 	 *
@@ -27,7 +38,7 @@ export namespace TaskMaybe {
 	 * const res = await task(); // Some(42)
 	 * ```
 	 */
-	export namespace make {
+	make: {
 		/**
 		 * Creates a Task.Maybe that resolves to Some(value).
 		 *
@@ -37,7 +48,7 @@ export namespace TaskMaybe {
 		 * const res = await task(); // Some(42)
 		 * ```
 		 */
-		export const some = <A>(value: A): TaskMaybe<A> => CoreTask.resolve(CoreMaybe.make.some(value));
+		some: makeSome,
 
 		/**
 		 * Creates a Task.Maybe that resolves to None.
@@ -48,14 +59,14 @@ export namespace TaskMaybe {
 		 * const res = await task(); // None
 		 * ```
 		 */
-		export const none = <A = never>(): TaskMaybe<A> => CoreTask.resolve(CoreMaybe.make.none());
-	}
+		none: makeNone,
+	},
 
-	export const { some } = make;
-	export const { none } = make;
+	some: makeSome,
+	none: makeNone,
 
 	// --- from ---
-	export namespace from {
+	from: {
 		/**
 		 * Lifts a Maybe into a Task.Maybe.
 		 *
@@ -64,7 +75,7 @@ export namespace TaskMaybe {
 		 * Task.Maybe.from.Maybe(Maybe.make.some(42));
 		 * ```
 		 */
-		export const Maybe = <A>(option: Maybe<A>): TaskMaybe<A> => CoreTask.resolve(option);
+		Maybe: <A>(option: Maybe<A>): TaskMaybe<A> => CoreTask.resolve(option),
 
 		/**
 		 * Creates a Task.Maybe from a nullable value.
@@ -76,8 +87,7 @@ export namespace TaskMaybe {
 		 * Task.Maybe.from.nullable(null); // resolves to None
 		 * ```
 		 */
-		export const nullable = <A>(value: A | null | undefined): TaskMaybe<A> =>
-			CoreTask.resolve(CoreMaybe.from.nullable(value));
+		nullable: <A>(value: A | null | undefined): TaskMaybe<A> => CoreTask.resolve(CoreMaybe.from.nullable(value)),
 
 		/**
 		 * Creates a Task.Maybe from a Result.
@@ -89,7 +99,7 @@ export namespace TaskMaybe {
 		 * Task.Maybe.from.Result(Result.make.err("e")); // resolves to None
 		 * ```
 		 */
-		export const Result = <E, A>(result: Result<E, A>): TaskMaybe<A> => CoreTask.resolve(CoreResult.to.Maybe(result));
+		Result: <E, A>(result: Result<E, A>): TaskMaybe<A> => CoreTask.resolve(CoreResult.to.Maybe(result)),
 
 		/**
 		 * Lifts a Task into a Task.Maybe by wrapping its result in Some.
@@ -99,8 +109,8 @@ export namespace TaskMaybe {
 		 * Task.Maybe.from.Task(Task.resolve(42)); // resolves to Some(42)
 		 * ```
 		 */
-		export const Task = <A>(task: Task<A>): TaskMaybe<A> => CoreTask.map(CoreMaybe.make.some)(task);
-	}
+		Task: <A>(task: Task<A>): TaskMaybe<A> => CoreTask.map(CoreMaybe.make.some)(task),
+	},
 
 	/**
 	 * Creates a Task.Maybe from a Promise-returning function.
@@ -114,14 +124,13 @@ export namespace TaskMaybe {
 	 * );
 	 * ```
 	 */
-	export const tryCatch = <A>(f: (signal?: AbortSignal) => Thenable<A>): TaskMaybe<A> => (signal) =>
-		Deferred.from.Promise(Promise.resolve(f(signal)).then(CoreMaybe.make.some).catch(() => CoreMaybe.make.none()));
+	tryCatch: <A>(f: (signal?: AbortSignal) => Thenable<A>): TaskMaybe<A> => (signal) =>
+		Deferred.from.Promise(Promise.resolve(f(signal)).then(CoreMaybe.make.some).catch(() => CoreMaybe.make.none())),
 
 	/**
 	 * Transforms the value inside a Task.Maybe.
 	 */
-	export const map = <A, B>(f: (a: A) => B) => (data: TaskMaybe<A>): TaskMaybe<B> =>
-		CoreTask.map(CoreMaybe.map(f))(data);
+	map: mapTaskMaybe,
 
 	/**
 	 * Chains Task.Maybe computations. If the first resolves to Some, passes the
@@ -135,27 +144,24 @@ export namespace TaskMaybe {
 	 * )();
 	 * ```
 	 */
-	export const chain = <A, B>(f: (a: A) => TaskMaybe<B>) => (data: TaskMaybe<A>): TaskMaybe<B> =>
-		CoreTask.chain((option: Maybe<A>) =>
-			CoreMaybe.is.some(option) ? f(option.value) : CoreTask.resolve(CoreMaybe.make.none())
-		)(data);
+	chain: chainTaskMaybe,
 
 	/**
 	 * Applies a function wrapped in a Task.Maybe to a value wrapped in a Task.Maybe.
 	 * Both Tasks run in parallel.
 	 */
-	export const ap = <A>(arg: TaskMaybe<A>) => <B>(data: TaskMaybe<(a: A) => B>): TaskMaybe<B> => (signal) =>
+	ap: <A>(arg: TaskMaybe<A>) => <B>(data: TaskMaybe<(a: A) => B>): TaskMaybe<B> => (signal) =>
 		Deferred.from.Promise(
 			Promise.all([Deferred.to.Promise(data(signal)), Deferred.to.Promise(arg(signal))]).then(([of_, oa]) =>
 				CoreMaybe.ap(oa)(of_)
 			),
-		);
+		),
 
 	/**
 	 * Extracts a value from a Task.Maybe by providing handlers for both cases.
 	 */
-	export const fold = <A, B>(onNone: () => B, onSome: (a: A) => B) => (data: TaskMaybe<A>): Task<B> =>
-		CoreTask.map(CoreMaybe.fold(onNone, onSome))(data);
+	fold: <A, B>(onNone: () => B, onSome: (a: A) => B) => (data: TaskMaybe<A>): Task<B> =>
+		CoreTask.map(CoreMaybe.fold(onNone, onSome))(data),
 
 	/**
 	 * Pattern matches on a Task.Maybe, returning a Task of the result.
@@ -171,31 +177,30 @@ export namespace TaskMaybe {
 	 * )();
 	 * ```
 	 */
-	export const match = <A, B>(cases: { none: () => B; some: (a: A) => B; }) => (data: TaskMaybe<A>): Task<B> =>
-		CoreTask.map(CoreMaybe.match(cases))(data);
+	match: <A, B>(cases: { none: () => B; some: (a: A) => B; }) => (data: TaskMaybe<A>): Task<B> =>
+		CoreTask.map(CoreMaybe.match(cases))(data),
 
 	/**
 	 * Returns the value or a default if the Task.Maybe resolves to None.
 	 * The default can be a different type, widening the result to `Task<A | B>`.
 	 */
-	export const getOrElse = <B>(defaultValue: () => B) => <A>(data: TaskMaybe<A>): Task<A | B> =>
-		CoreTask.map(CoreMaybe.getOrElse<B>(defaultValue))(data);
+	getOrElse: <B>(defaultValue: () => B) => <A>(data: TaskMaybe<A>): Task<A | B> =>
+		CoreTask.map(CoreMaybe.getOrElse<B>(defaultValue))(data),
 
 	/**
 	 * Executes a side effect on the value without changing the Task.Maybe.
 	 * Useful for logging or debugging.
 	 */
-	export const tap = <A>(f: (a: A) => void) => (data: TaskMaybe<A>): TaskMaybe<A> =>
-		CoreTask.map(CoreMaybe.tap(f))(data);
+	tap: <A>(f: (a: A) => void) => (data: TaskMaybe<A>): TaskMaybe<A> => CoreTask.map(CoreMaybe.tap(f))(data),
 
 	/**
 	 * Filters the value inside a Task.Maybe. Returns None if the predicate fails.
 	 */
-	export const filter = <A>(predicate: (a: A) => boolean) => (data: TaskMaybe<A>): TaskMaybe<A> =>
-		CoreTask.map(CoreMaybe.filter(predicate))(data);
+	filter: <A>(predicate: (a: A) => boolean) => (data: TaskMaybe<A>): TaskMaybe<A> =>
+		CoreTask.map(CoreMaybe.filter(predicate))(data),
 
 	// --- to ---
-	export namespace to {
+	to: {
 		/**
 		 * Converts a Task.Maybe to a Task.Result, using onNone to produce the error value.
 		 *
@@ -207,9 +212,9 @@ export namespace TaskMaybe {
 		 * );
 		 * ```
 		 */
-		export const Result = <E>(onNone: () => E) => <A>(data: TaskMaybe<A>): Task.Result<E, A> =>
-			CoreTask.map(CoreMaybe.to.Result(onNone))(data);
-	}
+		Result: <E>(onNone: () => E) => <A>(data: TaskMaybe<A>): Task.Result<E, A> =>
+			CoreTask.map(CoreMaybe.to.Result(onNone))(data),
+	},
 
 	/**
 	 * Lifts a Task.Maybe value into an accumulator object.
@@ -219,8 +224,8 @@ export namespace TaskMaybe {
 	 * pipe(Task.Maybe.some(42), Task.Maybe.bindTo("value")); // Task.Maybe({ value: 42 })
 	 * ```
 	 */
-	export const bindTo = <K extends string>(key: K) => <A>(data: TaskMaybe<A>): TaskMaybe<{ [P in K]: A; }> =>
-		map<A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data);
+	bindTo: <K extends string>(key: K) => <A>(data: TaskMaybe<A>): TaskMaybe<{ [P in K]: A; }> =>
+		mapTaskMaybe<A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data),
 
 	/**
 	 * Evaluates a new Task.Maybe using the current accumulator and attaches the output to a new key.
@@ -233,12 +238,12 @@ export namespace TaskMaybe {
 	 * ); // Task.Maybe({ a: 1, b: 2 })
 	 * ```
 	 */
-	export const bind =
+	bind:
 		<K extends string, A, B>(key: K, f: (a: A) => TaskMaybe<B>) =>
 		(data: TaskMaybe<A>): TaskMaybe<A & { [P in K]: B; }> =>
-			chain<A, A & { [P in K]: B; }>((a) =>
-				map<B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
-			)(data);
+			chainTaskMaybe<A, A & { [P in K]: B; }>((a) =>
+				mapTaskMaybe<B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
+			)(data),
 
 	/**
 	 * Recovers from a None state by providing a fallback Task.Maybe.
@@ -251,10 +256,10 @@ export namespace TaskMaybe {
 	 * ); // Task.Maybe(42)
 	 * ```
 	 */
-	export const recover = <B>(fallback: () => TaskMaybe<B>) => <A>(data: TaskMaybe<A>): TaskMaybe<A | B> =>
+	recover: <B>(fallback: () => TaskMaybe<B>) => <A>(data: TaskMaybe<A>): TaskMaybe<A | B> =>
 		CoreTask.chain<Maybe<A>, Maybe<A | B>>((maybe) => (CoreMaybe.is.none(maybe) ? fallback() : CoreTask.resolve(maybe)))(
 			data,
-		);
+		),
 
 	/**
 	 * Combines a record of Task.Maybes into a single Task.Maybe of a record.
@@ -268,23 +273,22 @@ export namespace TaskMaybe {
 	 * }); // Task.Maybe({ name: "Alice", age: 30 })
 	 * ```
 	 */
-	export const struct =
-		<R extends Record<string, any>>(fields: { [K in keyof R]: TaskMaybe<R[K]>; }): TaskMaybe<R> => (signal) =>
-			Deferred.from.Promise((() => {
-				const keys = Object.keys(fields);
-				const promises = keys.map((key) => Deferred.to.Promise(fields[key](signal)));
-				return Promise.all(promises).then((results) => {
-					const record = {} as R;
-					for (let i = 0; i < keys.length; i++) {
-						const res = results[i] as Maybe<any>;
-						if (CoreMaybe.is.none(res)) {
-							return res;
-						}
-						record[keys[i] as keyof R] = res.value;
+	struct: <R extends Record<string, any>>(fields: { [K in keyof R]: TaskMaybe<R[K]>; }): TaskMaybe<R> => (signal) =>
+		Deferred.from.Promise((() => {
+			const keys = Object.keys(fields);
+			const promises = keys.map((key) => Deferred.to.Promise(fields[key](signal)));
+			return Promise.all(promises).then((results) => {
+				const record = {} as R;
+				for (let i = 0; i < keys.length; i++) {
+					const res = results[i] as Maybe<any>;
+					if (CoreMaybe.is.none(res)) {
+						return res;
 					}
-					return CoreMaybe.make.some(record);
-				});
-			})());
+					record[keys[i] as keyof R] = res.value;
+				}
+				return CoreMaybe.make.some(record);
+			});
+		})()),
 
 	/**
 	 * Creates a memoized version of a Task.Maybe. The task is executed at most once on first call,
@@ -295,5 +299,5 @@ export namespace TaskMaybe {
 	 * const loadUser = Task.Maybe.memoize(fetchUserMaybeTask);
 	 * ```
 	 */
-	export const memoize = <A>(task: TaskMaybe<A>): TaskMaybe<A> => CoreTask.memoize(task);
-}
+	memoize: <A>(task: TaskMaybe<A>): TaskMaybe<A> => CoreTask.memoize(task),
+};

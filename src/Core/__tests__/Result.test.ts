@@ -353,6 +353,11 @@ test("Result.ap returns first Err when both are Err", () => {
 	expect(result).toStrictEqual({ kind: "Err", error: "fn error" });
 });
 
+test("Result.bindTo returns Err when given Err", () => {
+	const result = pipe(Result.make.err("err"), Result.bindTo("key"));
+	expect(result).toStrictEqual(Result.make.err("err"));
+});
+
 // ---------------------------------------------------------------------------
 // toMaybe
 // ---------------------------------------------------------------------------

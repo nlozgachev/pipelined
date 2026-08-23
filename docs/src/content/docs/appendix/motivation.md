@@ -128,7 +128,7 @@ Choosing a tool requires balancing safety against operational complexity:
 
 ### Pipelined
 
-- **Pros**: Lightweight (<16 KB core), zero dependencies, tree-shakeable, plain discriminated
+- **Pros**: Lightweight (<11 KB core), zero dependencies, tree-shakeable, plain discriminated
   unions, and works with standard Node and browser runtimes.
 - **Cons**: Curried pipelines introduce closure allocations; requires wrapping and unwrapping data
   containers at system boundaries.

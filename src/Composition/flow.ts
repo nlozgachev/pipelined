@@ -358,7 +358,6 @@ function async<A, B, C, D, E, F, G, H, I, J, K>(
 	ij: (i: I) => Awaitable<J>,
 	jk: (j: J) => Awaitable<K>,
 ): (a: Awaitable<A>) => Promise<K>;
-/* eslint-disable no-await-in-loop */
 function async(...fns: ReadonlyArray<(x: unknown) => Awaitable<unknown>>): (a: unknown) => Promise<unknown> {
 	return async (a: unknown) => {
 		let result = await a;

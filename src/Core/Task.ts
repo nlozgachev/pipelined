@@ -1,3 +1,6 @@
+// =============================================================================
+// Imports
+// =============================================================================
 import { Deferred, Result as CoreResult } from "#core";
 import type { Thenable } from "#internal";
 import { Duration } from "#types";
@@ -5,6 +8,9 @@ import { TaskMaybe } from "./TaskMaybe.ts";
 import { TaskResult } from "./TaskResult.ts";
 import { TaskValidation } from "./TaskValidation.ts";
 
+// =============================================================================
+// Types
+// =============================================================================
 /**
  * A lazy async computation that always resolves.
  *
@@ -49,6 +55,10 @@ import { TaskValidation } from "./TaskValidation.ts";
  */
 export type Task<A> = (signal?: AbortSignal) => Deferred<A>;
 
+// =============================================================================
+// Public Export
+// =============================================================================
+
 // Internal helper — not exported. Runs a Task and converts the result to a Promise
 // so that combinators can use Promise chaining (.then, Promise.all, Promise.race, etc.)
 // internally without leaking that primitive through the public API.
@@ -58,7 +68,10 @@ const fromPromise = <A>(f: (signal?: AbortSignal) => Thenable<A>): Task<A> => (s
 
 const getMs = (duration: Duration): number => Duration.to.milliseconds(duration);
 
-export namespace Task {
+const resolveTask = <A>(value: A): Task<A> => () => Deferred.from.Promise(globalThis.Promise.resolve(value));
+const syncTask = <A>(f: () => A): Task<A> => () => Deferred.from.Promise(globalThis.Promise.resolve(f()));
+
+export const Task = {
 	/**
 	 * Creates a Task that immediately resolves to the given value.
 	 *
@@ -68,10 +81,10 @@ export namespace Task {
 	 * const value = await task(); // 42
 	 * ```
 	 */
-	export const resolve = <A>(value: A): Task<A> => () => Deferred.from.Promise(globalThis.Promise.resolve(value));
+	resolve: resolveTask,
 
 	// --- from ---
-	export namespace from {
+	from: {
 		/**
 		 * Creates a Task from a lazy synchronous thunk.
 		 * Unlike `Task.resolve(f())`, `from.sync` does not evaluate `f` until the Task is called.
@@ -82,8 +95,8 @@ export namespace Task {
 		 * const ts = await t(); // called here, every time
 		 * ```
 		 */
-		export const sync = <A>(f: () => A): Task<A> => () => Deferred.from.Promise(globalThis.Promise.resolve(f()));
-	}
+		sync: syncTask,
+	},
 
 	/**
 	 * Wraps a Promise-returning thunk that may throw or reject,
@@ -97,11 +110,11 @@ export namespace Task {
 	 * );
 	 * ```
 	 */
-	export const tryCatch = <A>(
+	tryCatch: <A>(
 		f: (signal?: AbortSignal) => globalThis.Promise<A>,
 		options: { onError: (error: unknown) => A; },
 	): Task<A> =>
-		fromPromise((signal) => globalThis.Promise.resolve().then(() => f(signal)).catch((err) => options.onError(err)));
+		fromPromise((signal) => globalThis.Promise.resolve().then(() => f(signal)).catch((err) => options.onError(err))),
 
 	/**
 	 * Transforms the value inside a Task.
@@ -114,8 +127,7 @@ export namespace Task {
 	 * )(); // Deferred<10>
 	 * ```
 	 */
-	export const map = <A, B>(f: (a: A) => B) => (data: Task<A>): Task<B> =>
-		fromPromise((signal) => toPromise(data, signal).then(f));
+	map: <A, B>(f: (a: A) => B) => (data: Task<A>): Task<B> => fromPromise((signal) => toPromise(data, signal).then(f)),
 
 	/**
 	 * Chains Task computations. Passes the resolved value of the first Task to f.
@@ -132,8 +144,8 @@ export namespace Task {
 	 * )(); // Deferred<Preferences>
 	 * ```
 	 */
-	export const chain = <A, B>(f: (a: A) => Task<B>) => (data: Task<A>): Task<B> =>
-		fromPromise((signal) => toPromise(data, signal).then((a) => toPromise(f(a), signal)));
+	chain: <A, B>(f: (a: A) => Task<B>) => (data: Task<A>): Task<B> =>
+		fromPromise((signal) => toPromise(data, signal).then((a) => toPromise(f(a), signal))),
 
 	/**
 	 * Applies a function wrapped in a Task to a value wrapped in a Task.
@@ -149,8 +161,8 @@ export namespace Task {
 	 * )(); // Deferred<8>
 	 * ```
 	 */
-	export const ap = <A>(arg: Task<A>) => <B>(data: Task<(a: A) => B>): Task<B> =>
-		fromPromise((signal) => Promise.all([toPromise(data, signal), toPromise(arg, signal)]).then(([f, a]) => f(a)));
+	ap: <A>(arg: Task<A>) => <B>(data: Task<(a: A) => B>): Task<B> =>
+		fromPromise((signal) => Promise.all([toPromise(data, signal), toPromise(arg, signal)]).then(([f, a]) => f(a))),
 
 	/**
 	 * Executes a side effect on the value without changing the Task.
@@ -165,13 +177,13 @@ export namespace Task {
 	 * );
 	 * ```
 	 */
-	export const tap = <A>(f: (a: A) => void) => (data: Task<A>): Task<A> =>
+	tap: <A>(f: (a: A) => void) => (data: Task<A>): Task<A> =>
 		fromPromise((signal) =>
 			toPromise(data, signal).then((a) => {
 				f(a);
 				return a;
 			})
-		);
+		),
 
 	/**
 	 * Runs multiple Tasks in parallel and collects their results.
@@ -182,14 +194,14 @@ export namespace Task {
 	 * // Deferred<[Config, string, Theme]>
 	 * ```
 	 */
-	export const all = <T extends readonly Task<unknown>[]>(
+	all: <T extends readonly Task<unknown>[]>(
 		tasks: T,
 	): Task<{ [K in keyof T]: T[K] extends Task<infer A> ? A : never; }> =>
 		fromPromise((signal) =>
 			Promise.all(tasks.map((t) => toPromise(t, signal))) as Promise<
 				{ [K in keyof T]: T[K] extends Task<infer A> ? A : never; }
 			>
-		);
+		),
 
 	/**
 	 * Delays the execution of a Task by the specified duration.
@@ -203,10 +215,10 @@ export namespace Task {
 	 * )(); // Resolves after 1 second
 	 * ```
 	 */
-	export const delay = (duration: Duration) => <A>(data: Task<A>): Task<A> =>
+	delay: (duration: Duration) => <A>(data: Task<A>): Task<A> =>
 		fromPromise((signal) =>
 			new Promise<A>((res) => {
-				// eslint-disable-next-line prefer-const
+				// oxlint-disable-next-line prefer-const
 				let timerId: ReturnType<typeof setTimeout> | undefined;
 				const onAbort = () => {
 					clearTimeout(timerId);
@@ -225,7 +237,7 @@ export namespace Task {
 					res(toPromise(data, signal));
 				}, getMs(duration));
 			})
-		);
+		),
 
 	/**
 	 * Runs a Task a fixed number of times sequentially, collecting all results into an array.
@@ -239,14 +251,14 @@ export namespace Task {
 	 * )(); // Task<Reading[]> — 5 readings, one per second
 	 * ```
 	 */
-	export const repeat = (options: { times: number; delay?: Duration; }) => <A>(task: Task<A>): Task<readonly A[]> =>
+	repeat: (options: { times: number; delay?: Duration; }) => <A>(task: Task<A>): Task<readonly A[]> =>
 		fromPromise((signal) => {
 			const { times, delay: delayDuration } = options;
 			if (times <= 0) { return Promise.resolve([]); }
 			const results: A[] = [];
 			const wait = (): Promise<void> =>
 				new Promise((r) => {
-					// eslint-disable-next-line prefer-const
+					// oxlint-disable-next-line prefer-const
 					let timerId: ReturnType<typeof setTimeout> | undefined;
 					const onAbort = () => {
 						clearTimeout(timerId);
@@ -271,7 +283,7 @@ export namespace Task {
 				});
 			};
 			return run(times);
-		});
+		}),
 
 	/**
 	 * Runs a Task repeatedly until the result satisfies a predicate, returning that result.
@@ -287,13 +299,13 @@ export namespace Task {
 	 * )(); // polls every 500ms until status is "ready"
 	 * ```
 	 */
-	export const repeatUntil =
+	repeatUntil:
 		<A>(options: { when: (a: A) => boolean; delay?: Duration; maxAttempts?: number; }) => (task: Task<A>): Task<A> =>
 			fromPromise((signal) => {
 				const { when: predicate, delay: delayDuration, maxAttempts } = options;
 				const wait = (): Promise<void> =>
 					new Promise((r) => {
-						// eslint-disable-next-line prefer-const
+						// oxlint-disable-next-line prefer-const
 						let timerId: ReturnType<typeof setTimeout> | undefined;
 						const onAbort = () => {
 							clearTimeout(timerId);
@@ -319,7 +331,7 @@ export namespace Task {
 					});
 				};
 				return run(1);
-			});
+			}),
 
 	/**
 	 * Resolves with the value of the first Task to complete. All Tasks start
@@ -334,7 +346,7 @@ export namespace Task {
 	 * await Task.race([fast, slow])(); // "fast"
 	 * ```
 	 */
-	export const race = <A>(tasks: ReadonlyArray<Task<A>>): Task<A> => {
+	race: <A>(tasks: ReadonlyArray<Task<A>>): Task<A> => {
 		if (tasks.length === 0) {
 			return () => Deferred.from.Promise(new Promise(() => {}));
 		}
@@ -364,7 +376,7 @@ export namespace Task {
 			});
 			return Promise.race(promises);
 		});
-	};
+	},
 
 	/**
 	 * Runs an array of Tasks concurrently and collects their results in an array.
@@ -376,8 +388,8 @@ export namespace Task {
 	 * // Deferred<[Config, string, Theme]>
 	 * ```
 	 */
-	export const sequence = <A>(tasks: ReadonlyArray<Task<A>>): Task<ReadonlyArray<A>> =>
-		fromPromise((signal) => Promise.all(tasks.map((t) => toPromise(t, signal))));
+	sequence: <A>(tasks: ReadonlyArray<Task<A>>): Task<ReadonlyArray<A>> =>
+		fromPromise((signal) => Promise.all(tasks.map((t) => toPromise(t, signal)))),
 
 	/**
 	 * Runs an array of Tasks one at a time in order, collecting all results.
@@ -392,18 +404,17 @@ export namespace Task {
 	 * // log = [1, 2, 3] — tasks ran in order
 	 * ```
 	 */
-	export const sequential = <A>(tasks: ReadonlyArray<Task<A>>): Task<ReadonlyArray<A>> =>
+	sequential: <A>(tasks: ReadonlyArray<Task<A>>): Task<ReadonlyArray<A>> =>
 		fromPromise(async (signal) => {
 			const results: A[] = [];
 			for (const task of tasks) {
 				if (signal?.aborted) {
 					break;
 				}
-				// eslint-disable-next-line no-await-in-loop
 				results.push(await toPromise(task, signal));
 			}
 			return results;
-		});
+		}),
 
 	/**
 	 * Converts a `Task<A>` into a `Task<Result<E, A>>`, resolving to `Err` if the
@@ -420,47 +431,46 @@ export namespace Task {
 	 * );
 	 * ```
 	 */
-	export const timeout =
-		<E>(options: { duration: Duration; onTimeout: () => E; }) => <A>(task: Task<A>): Task<CoreResult<E, A>> =>
-			fromPromise((outerSignal) => {
-				const { duration, onTimeout } = options;
-				const controller = new AbortController();
-				let timerId: ReturnType<typeof setTimeout> | undefined;
+	timeout: <E>(options: { duration: Duration; onTimeout: () => E; }) => <A>(task: Task<A>): Task<CoreResult<E, A>> =>
+		fromPromise((outerSignal) => {
+			const { duration, onTimeout } = options;
+			const controller = new AbortController();
+			let timerId: ReturnType<typeof setTimeout> | undefined;
 
-				let cleanUp = () => {};
+			let cleanUp = () => {};
 
-				const onOuterAbort = () => {
-					cleanUp();
+			const onOuterAbort = () => {
+				cleanUp();
+				controller.abort();
+			};
+
+			cleanUp = () => {
+				clearTimeout(timerId);
+				outerSignal?.removeEventListener("abort", onOuterAbort);
+			};
+
+			if (outerSignal) {
+				if (outerSignal.aborted) {
 					controller.abort();
-				};
-
-				cleanUp = () => {
-					clearTimeout(timerId);
-					outerSignal?.removeEventListener("abort", onOuterAbort);
-				};
-
-				if (outerSignal) {
-					if (outerSignal.aborted) {
-						controller.abort();
-					} else {
-						outerSignal.addEventListener("abort", onOuterAbort, { once: true });
-					}
+				} else {
+					outerSignal.addEventListener("abort", onOuterAbort, { once: true });
 				}
+			}
 
-				return Promise.race([
-					toPromise(task, controller.signal).then((a): CoreResult<E, A> => {
+			return Promise.race([
+				toPromise(task, controller.signal).then((a): CoreResult<E, A> => {
+					cleanUp();
+					return CoreResult.make.ok(a);
+				}),
+				new Promise<CoreResult<E, A>>((res) => {
+					timerId = setTimeout(() => {
+						controller.abort();
 						cleanUp();
-						return CoreResult.make.ok(a);
-					}),
-					new Promise<CoreResult<E, A>>((res) => {
-						timerId = setTimeout(() => {
-							controller.abort();
-							cleanUp();
-							res(CoreResult.make.err(onTimeout()));
-						}, getMs(duration));
-					}),
-				]);
-			});
+						res(CoreResult.make.err(onTimeout()));
+					}, getMs(duration));
+				}),
+			]);
+		}),
 
 	/**
 	 * Creates a Task paired with an `abort` handle. Calling `abort()` cancels the
@@ -483,7 +493,7 @@ export namespace Task {
 	 * await poll();
 	 * ```
 	 */
-	export const abortable = <A>(factory: (signal: AbortSignal) => Thenable<A>): { task: Task<A>; abort: () => void; } => {
+	abortable: <A>(factory: (signal: AbortSignal) => Thenable<A>): { task: Task<A>; abort: () => void; } => {
 		let currentController: AbortController | null = null;
 
 		const abort = () => currentController?.abort();
@@ -506,7 +516,7 @@ export namespace Task {
 		};
 
 		return { task, abort };
-	};
+	},
 
 	/**
 	 * Executes a task with an optional signal. Use as a terminal step in a `pipe` chain.
@@ -520,7 +530,7 @@ export namespace Task {
 	 * );
 	 * ```
 	 */
-	export const run = (signal?: AbortSignal) => <A>(task: Task<A>): Deferred<A> => task(signal);
+	run: (signal?: AbortSignal) => <A>(task: Task<A>): Deferred<A> => task(signal),
 
 	/**
 	 * Converts a Task value into an object containing a single property.
@@ -531,8 +541,8 @@ export namespace Task {
 	 * pipe(Task.resolve(42), Task.bindTo("value")); // Task({ value: 42 })
 	 * ```
 	 */
-	export const bindTo = <K extends string>(key: K) => <A>(data: Task<A>): Task<{ [P in K]: A; }> =>
-		map<A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data);
+	bindTo: <K extends string>(key: K) => <A>(data: Task<A>): Task<{ [P in K]: A; }> =>
+		fromPromise((signal) => toPromise(data, signal).then((a) => ({ [key]: a } as { [P in K]: A; }))),
 
 	/**
 	 * Evaluates a new Task using the current accumulator and attaches the output to a new key.
@@ -545,11 +555,12 @@ export namespace Task {
 	 * ); // Task({ a: 1, b: 2 })
 	 * ```
 	 */
-	export const bind =
-		<K extends string, A, B>(key: K, f: (a: A) => Task<B>) => (data: Task<A>): Task<A & { [P in K]: B; }> =>
-			chain<A, A & { [P in K]: B; }>((a) =>
-				map<B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
-			)(data);
+	bind: <K extends string, A, B>(key: K, f: (a: A) => Task<B>) => (data: Task<A>): Task<A & { [P in K]: B; }> =>
+		fromPromise((signal) =>
+			toPromise(data, signal).then((a) =>
+				toPromise(f(a), signal).then((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))
+			)
+		),
 
 	/**
 	 * Creates a memoized version of a Task. The task is executed at most once on first call,
@@ -562,7 +573,7 @@ export namespace Task {
 	 * const token2 = await loadToken(); // returns cached token immediately
 	 * ```
 	 */
-	export const memoize = <A>(task: Task<A>): Task<A> => {
+	memoize: <A>(task: Task<A>): Task<A> => {
 		let cached: Deferred<A> | null = null;
 		return (signal?: AbortSignal) => {
 			if (cached === null) {
@@ -570,7 +581,7 @@ export namespace Task {
 			}
 			return cached;
 		};
-	};
+	},
 
 	/**
 	 * Monitors progress of a Task by calling `onProgress(0)` before execution and `onProgress(1)` upon completion.
@@ -583,19 +594,16 @@ export namespace Task {
 	 * );
 	 * ```
 	 */
-	export const withProgress =
-		<A>(onProgress: (ratio: number) => void) => (task: Task<A>): Task<A> => (signal?: AbortSignal) => {
-			onProgress(0);
-			const d = task(signal);
-			return Deferred.from.Promise(
-				Deferred.to.Promise(d).then((res) => {
-					onProgress(1);
-					return res;
-				}),
-			);
-		};
-
-	export type LabeledTask<L extends string, A> = Task<A> & { readonly label: L; };
+	withProgress: <A>(onProgress: (ratio: number) => void) => (task: Task<A>): Task<A> => (signal?: AbortSignal) => {
+		onProgress(0);
+		const d = task(signal);
+		return Deferred.from.Promise(
+			Deferred.to.Promise(d).then((res) => {
+				onProgress(1);
+				return res;
+			}),
+		);
+	},
 
 	/**
 	 * Attaches a read-only `.label` property to a Task, preserving the literal string generic type for IDE tooltips.
@@ -606,18 +614,20 @@ export namespace Task {
 	 * console.log(labeledTask.label); // "readUser"
 	 * ```
 	 */
-	export const withLabel = <L extends string>(label: L) => <A>(task: Task<A>): LabeledTask<L, A> => {
-		const fn = ((signal?: AbortSignal) => task(signal)) as LabeledTask<L, A>;
+	withLabel: <L extends string>(label: L) => <A>(task: Task<A>): Task.LabeledTask<L, A> => {
+		const fn = ((signal?: AbortSignal) => task(signal)) as Task.LabeledTask<L, A>;
 		Object.defineProperty(fn, "label", { value: label, writable: false, enumerable: true, configurable: true });
 		return fn;
-	};
+	},
 
+	Maybe: TaskMaybe,
+	Result: TaskResult,
+	Validation: TaskValidation,
+};
+
+export namespace Task {
+	export type LabeledTask<L extends string, A> = Task<A> & { readonly label: L; };
 	export type Maybe<A> = TaskMaybe<A>;
-	export const Maybe = TaskMaybe;
-
 	export type Result<E, A> = TaskResult<E, A>;
-	export const Result = TaskResult;
-
 	export type Validation<E, A> = TaskValidation<E, A>;
-	export const Validation = TaskValidation;
 }

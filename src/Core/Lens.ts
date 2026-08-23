@@ -23,9 +23,13 @@ import type { Optional } from "#core";
  */
 export type Lens<S, A> = { readonly get: (s: S) => A; readonly set: (a: A) => (s: S) => S; };
 
-export namespace Lens {
+const makeAccessors = <S, A>(get: (s: S) => A, set: (a: A) => (s: S) => S): Lens<S, A> => ({ get, set });
+const makeProperty = <S>() => <K extends keyof S>(key: K): Lens<S, S[K]> =>
+	makeAccessors((s) => s[key], (a) => (s) => ({ ...s, [key]: a } as S));
+
+export const Lens = {
 	// --- from ---
-	export namespace from {
+	from: {
 		/**
 		 * Constructs a Lens from a getter and a setter.
 		 *
@@ -37,7 +41,7 @@ export namespace Lens {
 		 * );
 		 * ```
 		 */
-		export const accessors = <S, A>(get: (s: S) => A, set: (a: A) => (s: S) => S): Lens<S, A> => ({ get, set });
+		accessors: makeAccessors,
 
 		/**
 		 * Creates a Lens that focuses on a property of an object.
@@ -48,9 +52,8 @@ export namespace Lens {
 		 * const nameLens = Lens.from.property<User>()("name");
 		 * ```
 		 */
-		export const property = <S>() => <K extends keyof S>(key: K): Lens<S, S[K]> =>
-			accessors((s) => s[key], (a) => (s) => ({ ...s, [key]: a } as S));
-	}
+		property: makeProperty,
+	},
 
 	/**
 	 * Reads the focused value from a structure.
@@ -60,7 +63,7 @@ export namespace Lens {
 	 * pipe(user, Lens.get(nameLens)); // "Alice"
 	 * ```
 	 */
-	export const get = <S, A>(lens: Lens<S, A>) => (s: S): A => lens.get(s);
+	get: <S, A>(lens: Lens<S, A>) => (s: S): A => lens.get(s),
 
 	/**
 	 * Replaces the focused value within a structure, returning a new structure.
@@ -70,7 +73,7 @@ export namespace Lens {
 	 * pipe(user, Lens.set(nameLens)("Bob")); // new User with name "Bob"
 	 * ```
 	 */
-	export const set = <S, A>(lens: Lens<S, A>) => (a: A) => (s: S): S => lens.set(a)(s);
+	set: <S, A>(lens: Lens<S, A>) => (a: A) => (s: S): S => lens.set(a)(s),
 
 	/**
 	 * Applies a function to the focused value, returning a new structure.
@@ -80,7 +83,7 @@ export namespace Lens {
 	 * pipe(user, Lens.modify(nameLens)(n => n.toUpperCase())); // "ALICE"
 	 * ```
 	 */
-	export const modify = <S, A>(lens: Lens<S, A>) => (f: (a: A) => A) => (s: S): S => lens.set(f(lens.get(s)))(s);
+	modify: <S, A>(lens: Lens<S, A>) => (f: (a: A) => A) => (s: S): S => lens.set(f(lens.get(s)))(s),
 
 	/**
 	 * Composes two Lenses: focuses through the outer, then through the inner.
@@ -94,8 +97,8 @@ export namespace Lens {
 	 * );
 	 * ```
 	 */
-	export const andThen = <A, B>(inner: Lens<A, B>) => <S>(outer: Lens<S, A>): Lens<S, B> =>
-		from.accessors((s) => inner.get(outer.get(s)), (b) => (s) => outer.set(inner.set(b)(outer.get(s)))(s));
+	andThen: <A, B>(inner: Lens<A, B>) => <S>(outer: Lens<S, A>): Lens<S, B> =>
+		makeAccessors((s) => inner.get(outer.get(s)), (b) => (s) => outer.set(inner.set(b)(outer.get(s)))(s)),
 
 	/**
 	 * Composes a Lens with an Optional, producing an Optional.
@@ -109,10 +112,10 @@ export namespace Lens {
 	 * );
 	 * ```
 	 */
-	export const andThenOptional = <A, B>(inner: Optional<A, B>) => <S>(outer: Lens<S, A>): Optional<S, B> => ({
+	andThenOptional: <A, B>(inner: Optional<A, B>) => <S>(outer: Lens<S, A>): Optional<S, B> => ({
 		get: (s) => inner.get(outer.get(s)),
 		set: (b) => (s) => outer.set(inner.set(b)(outer.get(s)))(s),
-	});
+	}),
 
 	/**
 	 * Converts a Lens to an Optional. Every Lens is a valid Optional
@@ -127,8 +130,8 @@ export namespace Lens {
 	 * );
 	 * ```
 	 */
-	export const toOptional = <S, A>(lens: Lens<S, A>): Optional<S, A> => ({
+	toOptional: <S, A>(lens: Lens<S, A>): Optional<S, A> => ({
 		get: (s) => ({ kind: "Some", value: lens.get(s) }),
 		set: lens.set,
-	});
-}
+	}),
+};

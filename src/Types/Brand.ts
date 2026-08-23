@@ -1,3 +1,6 @@
+// =============================================================================
+// Types
+// =============================================================================
 declare const _brand: unique symbol;
 
 /**
@@ -21,7 +24,10 @@ declare const _brand: unique symbol;
  */
 export type Brand<K extends string, T> = T & { readonly [_brand]: K; };
 
-export namespace Brand {
+// =============================================================================
+// Public Export
+// =============================================================================
+export const Brand = {
 	/**
 	 * Returns a constructor that wraps a value of type T in brand K.
 	 * The resulting function performs an unchecked cast — only use when the raw
@@ -35,7 +41,7 @@ export namespace Brand {
 	 * const n: PositiveNumber = toPositiveNumber(42);
 	 * ```
 	 */
-	export const wrap = <K extends string, T>() => (value: T): Brand<K, T> => value as Brand<K, T>;
+	wrap: <K extends string, T>() => (value: T): Brand<K, T> => value as Brand<K, T>,
 
 	/**
 	 * Strips the brand and returns the underlying value.
@@ -49,5 +55,5 @@ export namespace Brand {
 	 * const raw: string = Brand.unwrap(userId); // "user-123"
 	 * ```
 	 */
-	export const unwrap = <K extends string, T>(branded: Brand<K, T>): T => branded as T;
-}
+	unwrap: <K extends string, T>(branded: Brand<K, T>): T => branded as T,
+};

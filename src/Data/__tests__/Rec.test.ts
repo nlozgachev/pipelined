@@ -669,3 +669,9 @@ test("Rec.NonEmpty pipe composition", () => {
 	expect(result).toStrictEqual(["a"]);
 	expectTypeOf(result).toEqualTypeOf<readonly ["a", ..."a"[]]>();
 });
+
+test("Rec.to.Dict converts record to ReadonlyMap", () => {
+	const map = Rec.to.Dict({ a: 1, b: 2 });
+	expect(map.get("a")).toBe(1);
+	expect(map.get("b")).toBe(2);
+});

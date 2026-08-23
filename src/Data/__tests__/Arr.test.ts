@@ -1295,3 +1295,15 @@ test("Arr.unfold generates array from seed until None", () => {
 	const res = Arr.unfold(1, (n) => (n > 3 ? Maybe.make.none() : Maybe.make.some([n, n + 1])));
 	expect(res).toStrictEqual([1, 2, 3]);
 });
+
+test("Arr.from.Array - converts non-empty and empty arrays to Maybe", () => {
+	expect(Arr.from.Array([1, 2])).toStrictEqual(Maybe.make.some([1, 2]));
+	expect(Arr.from.Array([])).toStrictEqual(Maybe.make.none());
+});
+
+test("Arr.is.empty and Arr.is.nonEmpty", () => {
+	expect(Arr.is.empty([])).toBe(true);
+	expect(Arr.is.empty([1])).toBe(false);
+	expect(Arr.is.nonEmpty([1])).toBe(true);
+	expect(Arr.is.nonEmpty([])).toBe(false);
+});
