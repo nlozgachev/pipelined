@@ -555,12 +555,12 @@ if (Result.is.ok(email)) {
 - **`@nlozgachev/pipelined/core`**: Core context containers, async runtimes, optics, and logic
   abstractions (<16 KB gzipped).
 - **`@nlozgachev/pipelined/data`**: Curried, data-last utilities for collections, numbers, strings,
-  and JSON (<13 KB gzipped).
+  and JSON (<10 KB gzipped).
 - **`@nlozgachev/pipelined/composition`**: Pure higher-order function combinators (`pipe`, `flow`,
   `compose`, `curry`, `uncurry`, `converge`, `juxt`, `memoize`, `tap`, `on`, `not`, `flip`, `fn`)
-  (<4 KB gzipped).
-- **`@nlozgachev/pipelined/types`**: Type-level utilities (`Brand`, `Duration`, `RetryPolicy`) (<2
-  KB gzipped).
+  (<3 KB gzipped).
+- **`@nlozgachev/pipelined/types`**: Type-level utilities (`Brand`, `Duration`, `RetryPolicy`) (<700
+  B gzipped).
 
 Every utility in the library is benchmarked against its native equivalent. While currying introduces
 a small function call overhead for composability, the library uses custom algorithms for

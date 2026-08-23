@@ -1,6 +1,6 @@
 {
 	"name": "@nlozgachev/pipelined",
-	"version": "0.58.0",
+	"version": "0.59.0",
 	"description": "Opinionated functional abstractions for TypeScript",
 	"license": "BSD-3-Clause",
 	"homepage": "https://pipelined.lozgachev.dev",
@@ -33,24 +33,44 @@
 	},
 	"exports": {
 		"./composition": {
-			"types": "./dist/composition.d.ts",
-			"import": "./dist/composition.mjs",
-			"require": "./dist/composition.cjs"
+			"import": {
+				"types": "./dist/composition.d.ts",
+				"default": "./dist/composition.mjs"
+			},
+			"require": {
+				"types": "./dist/composition.d.cts",
+				"default": "./dist/composition.cjs"
+			}
 		},
 		"./core": {
-			"types": "./dist/core.d.ts",
-			"import": "./dist/core.mjs",
-			"require": "./dist/core.cjs"
+			"import": {
+				"types": "./dist/core.d.ts",
+				"default": "./dist/core.mjs"
+			},
+			"require": {
+				"types": "./dist/core.d.cts",
+				"default": "./dist/core.cjs"
+			}
 		},
 		"./data": {
-			"types": "./dist/data.d.ts",
-			"import": "./dist/data.mjs",
-			"require": "./dist/data.cjs"
+			"import": {
+				"types": "./dist/data.d.ts",
+				"default": "./dist/data.mjs"
+			},
+			"require": {
+				"types": "./dist/data.d.cts",
+				"default": "./dist/data.cjs"
+			}
 		},
 		"./types": {
-			"types": "./dist/types.d.ts",
-			"import": "./dist/types.mjs",
-			"require": "./dist/types.cjs"
+			"import": {
+				"types": "./dist/types.d.ts",
+				"default": "./dist/types.mjs"
+			},
+			"require": {
+				"types": "./dist/types.d.cts",
+				"default": "./dist/types.cjs"
+			}
 		}
 	},
 	"scripts": {
@@ -84,28 +104,28 @@
 	},
 	"size-limit": [
 		{
-			"path": "dist/index.js",
+			"path": "dist/index.mjs",
 			"limit": "25 KB",
 			"gzip": true
 		},
 		{
-			"path": "dist/core.js",
+			"path": "dist/core.mjs",
 			"limit": "16 KB",
 			"gzip": true
 		},
 		{
-			"path": "dist/composition.js",
-			"limit": "4 KB",
+			"path": "dist/composition.mjs",
+			"limit": "3 KB",
 			"gzip": true
 		},
 		{
-			"path": "dist/data.js",
-			"limit": "13 KB",
+			"path": "dist/data.mjs",
+			"limit": "10 KB",
 			"gzip": true
 		},
 		{
-			"path": "dist/types.js",
-			"limit": "2 KB",
+			"path": "dist/types.mjs",
+			"limit": "700 B",
 			"gzip": true
 		}
 	],
