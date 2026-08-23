@@ -665,7 +665,7 @@ export namespace Arr {
 	export const sortBy = <A>(compare: (a: A, b: A) => number) => (data: readonly A[]): readonly A[] => {
 		const arr = data as A[];
 		if (typeof arr.toSorted === "function") { return arr.toSorted(compare); }
-		return [...data].toSorted(compare);
+		return [...data].sort(compare);
 	};
 
 	/**

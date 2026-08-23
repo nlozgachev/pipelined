@@ -1,0 +1,70 @@
+---
+import fs from "node:fs";
+import path from "node:path";
+
+function getBarrelExports(relPath: string): string[] {
+	try {
+		const fullPath = path.resolve(process.cwd(), relPath);
+		const content = fs.readFileSync(fullPath, "utf-8");
+		const matches = content.matchAll(/export\s+\*\s+from\s+["']\.\/([^"']+)["']/g);
+		const names: string[] = [];
+		for (const match of matches) {
+			names.push(match[1]);
+		}
+		return names.sort();
+	} catch {
+		return [];
+	}
+}
+
+const coreExports = getBarrelExports("../src/Core/index.ts");
+const dataExports = getBarrelExports("../src/Data/index.ts");
+const compositionExports = getBarrelExports("../src/Composition/index.ts");
+const typesExports = getBarrelExports("../src/Types/index.ts");
+
+const entryPoints = [
+	{
+		path: "@nlozgachev/pipelined/core",
+		scope: "Error handling, optionality, async execution, event streams, state, and optics",
+		exports: coreExports,
+	},
+	{
+		path: "@nlozgachev/pipelined/data",
+		scope: "Utility functions for data structures, collections, and primitives",
+		exports: dataExports,
+	},
+	{
+		path: "@nlozgachev/pipelined/composition",
+		scope: "Function composition combinators, pipeline flow, and execution control",
+		exports: compositionExports,
+	},
+	{
+		path: "@nlozgachev/pipelined/types",
+		scope: "Branded types, policy definitions, and domain primitives",
+		exports: typesExports,
+	},
+];
+---
+
+<table>
+	<thead>
+		<tr>
+			<th>Entry point</th>
+			<th>Primary Scope</th>
+			<th>Exports</th>
+		</tr>
+	</thead>
+	<tbody>
+		{entryPoints.map((entry) => (
+			<tr>
+				<td><code>{entry.path}</code></td>
+				<td>{entry.scope}</td>
+				<td>
+					{entry.exports.map((name, i) => (
+						<><code>{name}</code>{i < entry.exports.length - 1 ? ", " : ""}</>
+					))}
+				</td>
+			</tr>
+		))}
+	</tbody>
+</table>
