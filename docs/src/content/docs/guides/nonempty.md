@@ -108,7 +108,7 @@ if (Str.is.nonEmpty(nameInput)) {
 ### Safe Conversions (Maybe)
 
 To safely convert potentially empty collections or strings into optional values, use the
-namespace-specific `from*` helpers. They return `Some` if the collection/string contains
+module-specific `from*` helpers. They return `Some` if the collection/string contains
 elements/characters, and `None` if it is empty:
 
 ```ts
@@ -125,7 +125,7 @@ const maybeStr = Str.NonEmpty.from.String("hello"); // Some(Str.NonEmpty)
 
 ## Modifying Non-Empty Arrays
 
-Adding elements to standard arrays naturally guarantees a non-empty result. The namespace helpers
+Adding elements to standard arrays naturally guarantees a non-empty result. The module helpers
 `Arr.prepend` and `Arr.append` accept standard, potentially empty arrays and return a guaranteed
 `Arr.NonEmpty`:
 
@@ -146,7 +146,7 @@ Standard library mapping functions operating on standard collections (such as `A
 non-empty.
 
 To transform the elements of a non-empty collection while preserving its non-empty type guarantee,
-always use the dedicated mapping helpers under the `NonEmpty` namespace of the module (e.g.,
+always use the dedicated mapping helpers under the `NonEmpty` drawer of the module (e.g.,
 `Arr.NonEmpty.map`, `Rec.NonEmpty.map`):
 
 ```ts

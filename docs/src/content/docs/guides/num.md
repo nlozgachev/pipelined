@@ -121,7 +121,7 @@ const isWithinHalfOpenRange = pipe(5, Num.inRange(1, 10)); // true
 
 ## Numeric predicates (`Num.is`)
 
-The `Num.is` sub-namespace provides boolean predicates for inspecting number characteristics within
+The `Num.is` drawer provides boolean predicates for inspecting number characteristics within
 pipelines:
 
 ```ts

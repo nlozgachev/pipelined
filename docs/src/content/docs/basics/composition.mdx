@@ -76,9 +76,9 @@ Dividing the pipeline into cohesive sub-pipelines provides cleaner type boundari
 
 ---
 
-## pipe namespace extensions
+## pipe extensions
 
-Piping raw values through standard functions works well for clean, linear logic. However, real-world applications frequently require optional branches, safe error handling, object reshaping, or asynchronous steps. Rather than forcing you to write noisy inline arrow functions, the `pipe` namespace provides several specialized extensions.
+Piping raw values through standard functions works well for clean, linear logic. However, real-world applications frequently require optional branches, safe error handling, object reshaping, or asynchronous steps. Rather than forcing you to write noisy inline arrow functions, the `pipe` combinator provides several specialized extension helpers.
 
 ### Conditional steps
 
@@ -183,9 +183,9 @@ const userConfig = await pipe.async(
 
 ---
 
-## flow namespace extensions
+## flow extensions
 
-Symmetrically to `pipe`, the `flow` namespace provides extensions that compile these branching, catching, and asynchronous behaviors into reusable, deferred functions.
+Symmetrically to `pipe`, the `flow` combinator provides extension helpers that compile these branching, catching, and asynchronous behaviors into reusable, deferred functions.
 
 ### Conditional composition
 
@@ -346,7 +346,7 @@ const result = pipe(
 
 ### Diagnostic taps
 
-For debugging, performance auditing, and background tasks, the `tap` namespace provides several specialized, configuration-based side-effect helpers.
+For debugging, performance auditing, and background tasks, `tap` provides several specialized, configuration-based side-effect helpers.
 
 #### Printing values with tap.log
 

@@ -168,8 +168,8 @@ Rec.size({ a: 1, b: 2 }); // 2
 
 When a record contains values that wrap effectful computations, you may want to aggregate those
 individual effects into a single container holding the mapped record. `Rec.traverse` and
-`Rec.sequence` provide namespaces for traversing and sequencing records, short-circuiting on the
-first failure.
+`Rec.sequence` provide drawers for traversing and sequencing records, short-circuiting on the first
+failure.
 
 `Rec.traverse.Maybe` maps a `Maybe`-returning function over the values of a record. If every value
 produces a `Some`, it returns `Some` of the updated record. If any value maps to `None`, the entire

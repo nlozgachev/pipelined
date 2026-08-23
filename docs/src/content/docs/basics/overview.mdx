@@ -197,9 +197,9 @@ Every data container in `pipelined` shares a consistent, predictable set of comb
 | **`tap`** | Intercepts the success value for side effects without modifying the data. | `Task.Result.tap((u) => log(u.id))` |
 | **`recover`** | Catches a failure variant and substitutes a fallback container. | `Result.recover((err) => Result.make.ok(cached))` |
 
-### Standardized Drawer Namespaces
+### Standardized Drawers
 
-To keep root module namespaces clean and focused on pipeline combinators, instantiation, conversions, and type guards are organized into four standard drawers across every module:
+To keep root module objects clean and focused on pipeline combinators, instantiation, conversions, and type guards are organized into four standard drawers across every module:
 
 | Drawer | Purpose | Examples |
 | :--- | :--- | :--- |

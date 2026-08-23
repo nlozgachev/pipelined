@@ -279,7 +279,7 @@ const extended: Arr.NonEmpty<number> = pipe(list, Arr.concat([4, 5]));
 ### Specialized Non-Empty Operations: Arr.NonEmpty
 
 For operations that have structurally distinct signatures or return shapes when applied to non-empty
-arrays, you can use the nested `Arr.NonEmpty` namespace.
+arrays, you can use the nested `Arr.NonEmpty` module.
 
 - **`head` / `last`**: Because a non-empty array is guaranteed to contain elements, these helpers
   return the value directly instead of wrapping it in a `Maybe`.

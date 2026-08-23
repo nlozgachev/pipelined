@@ -6,14 +6,6 @@ import starlightThemeNova from "starlight-theme-nova";
 import starlightTypeDoc, { typeDocSidebarGroup } from "starlight-typedoc";
 
 export default defineConfig({
-	redirects: {
-		"/api/data/namespaces/arr/functions": "/api/data/namespaces/arr/functions/chunksof",
-		"/api/data/namespaces/rec/functions": "/api/data/namespaces/rec/functions/compact",
-		"/api/data/namespaces/uniq/functions": "/api/data/namespaces/uniq/functions/difference",
-		"/api/data/namespaces/dict/functions": "/api/data/namespaces/dict/functions/compact",
-		"/api/data/namespaces/num/functions": "/api/data/namespaces/num/functions/add",
-		"/api/data/namespaces/str/functions": "/api/data/namespaces/str/functions/endswith",
-	},
 	integrations: [
 		mermaid({
 			theme: "base",

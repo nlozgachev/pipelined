@@ -36,7 +36,7 @@ explicit absence and typed failure are practical in performance-critical product
 ### fp-ts
 
 The direct TypeScript predecessor is fp-ts by Giulio Canti, which established the `pipe` composition
-model, data-last currying, and co-located type/namespace pairings in TypeScript.
+model, data-last currying, and co-located type/value module pairings in TypeScript.
 
 ### Optics
 
@@ -98,7 +98,8 @@ complete operational transparency. Because the structures are plain, transparent
 inspected easily with standard tools like `console.log`, serialized cleanly with `JSON.stringify`,
 and pattern-matched without any custom class instantiation machinery. Finally, it eliminates
 prototype chain complexity. Since there is nothing to inherit, override, or accidentally mutate,
-operations remain isolated in separate namespaces rather than coupled to the objects themselves.
+operations remain isolated in separate module objects rather than coupled to the data instances
+themselves.
 
 The alternative — class-based encoding — would use `instanceof` for dispatch and method definitions
 for operations. This has appeal, but it couples operations to types (adding a method means touching
@@ -129,20 +130,22 @@ code duplication.
 `first` and `second` as field names. `These<A, B>` models a symmetric inclusive-OR across two
 arbitrary types without assuming success or failure semantics.
 
-### The namespace pattern
+### The type and static object pattern
 
-Each type is defined as a pair: a TypeScript type alias and a namespace with the same name:
+Each module is defined as a co-located pair sharing the same name: a TypeScript type alias and a
+static `const` object literal:
 
 ```ts
 export type Maybe<A> = Some<A> | None;
 
-export namespace Maybe {
-  export namespace make {
-    export const some = <A>(value: A): Some<A> => ({ kind: "Some", value });
-  }
-  export const map  = <A, B>(f: (a: A) => B) => (data: Maybe<A>): Maybe<B> => ...
-  export const fold = ...
-}
+export const Maybe = {
+  make: {
+    some: <A>(value: A): Some<A> => ({ kind: "Some", value }),
+    none: <A = never>(): None => ({ kind: "None" }),
+  },
+  map: <A, B>(f: (a: A) => B) => (data: Maybe<A>): Maybe<B> => ...,
+  fold: ...,
+};
 ```
 
 A single import gives you both:
@@ -153,14 +156,11 @@ import { Maybe } from "@nlozgachev/pipelined/core";
 const x: Maybe<number> = Maybe.make.some(42); // type and constructor from the same import
 ```
 
-The namespace acts like a module — a flat collection of named functions. There's no class, no
-prototype, no `this`. The functions are just functions; they happen to share a namespace prefix that
-signals they operate on the same type.
-
-This pattern also means the operations are tree-shakeable. If your bundler can tell that
-`Maybe.filter` is never called, it can exclude it from the bundle. Method-on-class approaches don't
-give bundlers the same opportunity because the method is attached to the prototype at definition
-time.
+The object literal acts like a module — a flat collection of pure, data-last functions. There is no
+class, no prototype, and no `this`. Using static object literals instead of TypeScript runtime
+namespaces avoids IIFE closure generation (`(function(Maybe) { ... })(Maybe || (Maybe = {}))`),
+enabling intra-subpath tree-shaking in modern bundlers. If your application only imports
+`Maybe.map`, unused combinators from other modules are excluded from your production bundle.
 
 ### Data-last convention
 
