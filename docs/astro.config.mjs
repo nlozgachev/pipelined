@@ -41,61 +41,71 @@ export default defineConfig({
 					sidebar: { label: "API Reference", collapsed: true },
 				}),
 			],
-			sidebar: [{
-				label: "The basics",
-				collapsed: false,
-				items: [{ slug: "basics/installation" }, { slug: "basics/pipelines" }, { slug: "basics/overview" }, {
-					slug: "basics/composition",
-				}],
-			}, {
-				label: "Errors & absence",
-				collapsed: false,
-				items: [{ slug: "guides/maybe" }, { slug: "guides/result" }, { slug: "guides/validation" }, {
-					slug: "guides/these",
-				}],
-			}, {
-				label: "Async",
-				collapsed: false,
-				items: [{ slug: "guides/task" }, { slug: "guides/deferred" }, { slug: "guides/op" }, { slug: "guides/stream" }, {
-					slug: "guides/remote-data",
-				}, { slug: "guides/resource" }],
-			}, {
-				label: "State & context",
-				collapsed: false,
-				items: [{ slug: "guides/reader" }, { slug: "guides/state" }, { slug: "guides/logged" }],
-			}, {
-				label: "Nested data",
-				collapsed: false,
-				items: [{ slug: "guides/lens" }, { slug: "guides/optional" }, { slug: "guides/tuple" }],
-			}, {
-				label: "Type safety",
-				collapsed: false,
-				items: [{ slug: "guides/brand" }, { slug: "guides/duration" }, { slug: "guides/nonempty" }, {
-					slug: "guides/refinement",
-				}, { slug: "guides/predicate" }],
-			}, {
-				label: "Comparing & combining",
-				collapsed: false,
-				items: [{ slug: "guides/equality" }, { slug: "guides/ordering" }, { slug: "guides/combinable" }, {
-					slug: "guides/lazy",
-				}],
-			}, {
-				label: "Collection utilities",
-				collapsed: false,
-				items: [
-					{ slug: "guides/arr" },
-					{ slug: "guides/str" },
-					{ slug: "guides/num" },
-					{ slug: "guides/bignum" },
-					{ slug: "guides/rec" },
-					{ slug: "guides/dict" },
-					{ slug: "guides/uniq" },
-					{ slug: "guides/json" },
-				],
-			}, {
-				label: "Appendix",
-				items: [{ slug: "appendix/motivation" }, { slug: "appendix/influences" }, { slug: "appendix/benchmarks" }],
-			}, typeDocSidebarGroup],
+			sidebar: [
+				{
+					label: "The basics",
+					collapsed: false,
+					items: [{ slug: "basics/installation" }, { slug: "basics/pipelines" }, { slug: "basics/overview" }, {
+						slug: "basics/composition",
+					}],
+				},
+				{
+					label: "Errors & absence",
+					collapsed: false,
+					items: [{ slug: "guides/maybe" }, { slug: "guides/result" }, { slug: "guides/validation" }],
+				},
+				{
+					label: "Data containers",
+					collapsed: false,
+					items: [{ slug: "guides/pair" }, { slug: "guides/these" }, { slug: "guides/remote-data" }],
+				},
+				{
+					label: "Async",
+					collapsed: false,
+					items: [{ slug: "guides/task" }, { slug: "guides/deferred" }, { slug: "guides/op" }, { slug: "guides/stream" }, {
+						slug: "guides/resource",
+					}],
+				},
+				{
+					label: "State & context",
+					collapsed: false,
+					items: [{ slug: "guides/reader" }, { slug: "guides/state" }, { slug: "guides/logged" }],
+				},
+				{ label: "Optics", collapsed: false, items: [{ slug: "guides/lens" }, { slug: "guides/optional" }] },
+				{
+					label: "Type safety",
+					collapsed: false,
+					items: [{ slug: "guides/brand" }, { slug: "guides/duration" }, { slug: "guides/nonempty" }, {
+						slug: "guides/refinement",
+					}, { slug: "guides/predicate" }],
+				},
+				{
+					label: "Comparing & combining",
+					collapsed: false,
+					items: [{ slug: "guides/equality" }, { slug: "guides/ordering" }, { slug: "guides/combinable" }, {
+						slug: "guides/lazy",
+					}],
+				},
+				{
+					label: "Collection utilities",
+					collapsed: false,
+					items: [
+						{ slug: "guides/arr" },
+						{ slug: "guides/str" },
+						{ slug: "guides/num" },
+						{ slug: "guides/bignum" },
+						{ slug: "guides/rec" },
+						{ slug: "guides/dict" },
+						{ slug: "guides/uniq" },
+						{ slug: "guides/json" },
+					],
+				},
+				{
+					label: "Appendix",
+					items: [{ slug: "appendix/motivation" }, { slug: "appendix/influences" }, { slug: "appendix/benchmarks" }],
+				},
+				typeDocSidebarGroup,
+			],
 		}),
 	],
 });
