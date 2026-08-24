@@ -112,9 +112,7 @@ namespace ArrTaskResult {
 	 * ```
 	 */
 	export const traverse =
-		<E, A, B>(f: (a: A) => CoreTask<CoreResult<E, B>>) =>
-		(data: readonly A[]): CoreTask<CoreResult<E, readonly B[]>> =>
-		() =>
+		<E, A, B>(f: (a: A) => CoreTask.Result<E, B>) => (data: readonly A[]): CoreTask.Result<E, readonly B[]> => () =>
 			Deferred.from.Promise((async () => {
 				const result: B[] = [];
 				for (const a of data) {
@@ -137,8 +135,8 @@ namespace ArrTaskResult {
 	 * )(); // Deferred<Ok([1, 2])>
 	 * ```
 	 */
-	export const sequence = <E, A>(data: readonly CoreTask<CoreResult<E, A>>[]): CoreTask<CoreResult<E, readonly A[]>> =>
-		traverse<E, CoreTask<CoreResult<E, A>>, A>((a) => a)(data);
+	export const sequence = <E, A>(data: readonly CoreTask.Result<E, A>[]): CoreTask.Result<E, readonly A[]> =>
+		traverse<E, CoreTask.Result<E, A>, A>((a) => a)(data);
 }
 
 namespace ArrTask {

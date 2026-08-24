@@ -39,7 +39,7 @@ const runAndCollect = <I, E, A, S extends Op.State<E, A>>(manager: Op.Manager<I,
 	return new Promise((resolve) => {
 		const unsub = manager.subscribe((s) => {
 			states.push(s);
-			if (Op.isOk(s) || Op.isErr(s) || Op.isNil(s)) {
+			if (Op.is.ok(s) || Op.is.err(s) || Op.is.nil(s)) {
 				unsub();
 				resolve(states);
 			}
@@ -65,7 +65,7 @@ test("op.create void: manager.run() accepts no arguments", async () => {
 	const manager = Op.interpret(op, { strategy: "once" });
 	// run() with no args must type-check and resolve Ok
 	const result = await manager.run();
-	expect(result).toStrictEqual(Op.ok(99));
+	expect(result).toStrictEqual(Op.make.ok(99));
 });
 
 // --- Op.lift ---
@@ -74,7 +74,7 @@ test("Op.lift creates a manager from a plain async function", async () => {
 	const op = Op.lift((n: number, _signal: AbortSignal) => Promise.resolve(n * 2));
 	const manager = Op.interpret(op, { strategy: "restartable" });
 	const outcome = await manager.run(5);
-	expect(Op.isOk(outcome)).toBe(true);
+	expect(Op.is.ok(outcome)).toBe(true);
 	expect((outcome as Op.Ok<number>).value).toBe(10);
 });
 
@@ -82,7 +82,7 @@ test("Op.lift captures rejection as Err with unknown error type", async () => {
 	const op = Op.lift((_: number, _signal: AbortSignal) => Promise.reject(new Error("boom")));
 	const manager = Op.interpret(op, { strategy: "restartable" });
 	const outcome = await manager.run(0);
-	expect(Op.isErr(outcome)).toBe(true);
+	expect(Op.is.err(outcome)).toBe(true);
 	expect((outcome as Op.Err<Error>).error.message).toBe("boom");
 });
 
@@ -99,70 +99,70 @@ test("Op.lift passes the signal to the async function", async () => {
 
 // --- Outcome constructors ---
 
-test("Op.ok creates an Ok outcome", () => {
-	expect(Op.ok(42)).toStrictEqual({ kind: "OpOk", value: 42 });
+test("Op.make.ok creates an Ok outcome", () => {
+	expect(Op.make.ok(42)).toStrictEqual({ kind: "OpOk", value: 42 });
 });
 
-test("Op.err creates an Err outcome", () => {
-	expect(Op.err("oops")).toStrictEqual({ kind: "OpErr", error: "oops" });
+test("Op.make.err creates an Err outcome", () => {
+	expect(Op.make.err("oops")).toStrictEqual({ kind: "OpErr", error: "oops" });
 });
 
-test("Op.nil creates a Nil outcome with the given reason", () => {
-	expect(Op.nil("aborted")).toStrictEqual({ kind: "OpNil", reason: "aborted" });
-	expect(Op.nil("dropped")).toStrictEqual({ kind: "OpNil", reason: "dropped" });
-	expect(Op.nil("replaced")).toStrictEqual({ kind: "OpNil", reason: "replaced" });
-	expect(Op.nil("evicted")).toStrictEqual({ kind: "OpNil", reason: "evicted" });
+test("Op.make.nil creates a Nil outcome with the given reason", () => {
+	expect(Op.make.nil("aborted")).toStrictEqual({ kind: "OpNil", reason: "aborted" });
+	expect(Op.make.nil("dropped")).toStrictEqual({ kind: "OpNil", reason: "dropped" });
+	expect(Op.make.nil("replaced")).toStrictEqual({ kind: "OpNil", reason: "replaced" });
+	expect(Op.make.nil("evicted")).toStrictEqual({ kind: "OpNil", reason: "evicted" });
 });
 
 // --- Type guards ---
 
-test("Op.isOk returns true only for Ok", () => {
-	const ok = Op.ok(1) as Op.Outcome<string, number>;
-	const e = Op.err("e") as Op.Outcome<string, number>;
-	const n = Op.nil("aborted") as Op.Outcome<string, number>;
-	expect(Op.isOk(ok)).toBe(true);
-	expect(Op.isOk(e)).toBe(false);
-	expect(Op.isOk(n)).toBe(false);
+test("Op.is.ok returns true only for Ok", () => {
+	const ok = Op.make.ok(1) as Op.Outcome<string, number>;
+	const e = Op.make.err("e") as Op.Outcome<string, number>;
+	const n = Op.make.nil("aborted") as Op.Outcome<string, number>;
+	expect(Op.is.ok(ok)).toBe(true);
+	expect(Op.is.ok(e)).toBe(false);
+	expect(Op.is.ok(n)).toBe(false);
 });
 
-test("Op.isErr returns true only for Err", () => {
-	const ok = Op.ok(1) as Op.Outcome<string, number>;
-	const e = Op.err("e") as Op.Outcome<string, number>;
-	const n = Op.nil("aborted") as Op.Outcome<string, number>;
-	expect(Op.isErr(e)).toBe(true);
-	expect(Op.isErr(ok)).toBe(false);
-	expect(Op.isErr(n)).toBe(false);
+test("Op.is.err returns true only for Err", () => {
+	const ok = Op.make.ok(1) as Op.Outcome<string, number>;
+	const e = Op.make.err("e") as Op.Outcome<string, number>;
+	const n = Op.make.nil("aborted") as Op.Outcome<string, number>;
+	expect(Op.is.err(e)).toBe(true);
+	expect(Op.is.err(ok)).toBe(false);
+	expect(Op.is.err(n)).toBe(false);
 });
 
-test("Op.isNil returns true only for Nil", () => {
-	const ok = Op.ok(1) as Op.Outcome<string, number>;
-	const e = Op.err("e") as Op.Outcome<string, number>;
-	const n = Op.nil("aborted") as Op.Outcome<string, number>;
-	expect(Op.isNil(n)).toBe(true);
-	expect(Op.isNil(ok)).toBe(false);
-	expect(Op.isNil(e)).toBe(false);
+test("Op.is.nil returns true only for Nil", () => {
+	const ok = Op.make.ok(1) as Op.Outcome<string, number>;
+	const e = Op.make.err("e") as Op.Outcome<string, number>;
+	const n = Op.make.nil("aborted") as Op.Outcome<string, number>;
+	expect(Op.is.nil(n)).toBe(true);
+	expect(Op.is.nil(ok)).toBe(false);
+	expect(Op.is.nil(e)).toBe(false);
 });
 
-test("Op.isIdle returns true only for Idle state", async () => {
+test("Op.is.idle returns true only for Idle state", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "restartable" });
-	expect(Op.isIdle(manager.state)).toBe(true);
+	expect(Op.is.idle(manager.state)).toBe(true);
 	const run = manager.run(1);
-	expect(Op.isIdle(manager.state)).toBe(false);
+	expect(Op.is.idle(manager.state)).toBe(false);
 	await run;
 });
 
-test("Op.isQueued returns true only for Queued state", async () => {
+test("Op.is.queued returns true only for Queued state", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "queue" });
 	manager.run(1);
 	manager.run(2);
-	expect(Op.isQueued(manager.state)).toBe(true);
-	expect(Op.isOk(manager.state)).toBe(false);
-	expect(Op.isIdle(manager.state)).toBe(false);
+	expect(Op.is.queued(manager.state)).toBe(true);
+	expect(Op.is.ok(manager.state)).toBe(false);
+	expect(Op.is.idle(manager.state)).toBe(false);
 	manager.abort();
 	await new Promise((r) => setTimeout(r, 50));
 });
 
-test("Op.isRetrying returns true only for Retrying state", async () => {
+test("Op.is.retrying returns true only for Retrying state", async () => {
 	let attempt = 0;
 	const op = Op.create((_signal) => (_: number) => {
 		attempt++;
@@ -175,7 +175,7 @@ test("Op.isRetrying returns true only for Retrying state", async () => {
 	});
 	let sawRetrying = false;
 	manager.subscribe((s) => {
-		if (Op.isRetrying(s)) { sawRetrying = true; }
+		if (Op.is.retrying(s)) { sawRetrying = true; }
 	});
 	await manager.run(1);
 	expect(sawRetrying).toBe(true);
@@ -186,97 +186,99 @@ test("Op.isRetrying returns true only for Retrying state", async () => {
 const matchCases = { ok: (v: number) => `ok:${v}`, err: (e: string) => `err:${e}`, nil: () => "nil" };
 
 test("Op.match handles Ok", () => {
-	expect(Op.match(matchCases)(Op.ok(5))).toBe("ok:5");
+	expect(Op.match(matchCases)(Op.make.ok(5))).toBe("ok:5");
 });
 
 test("Op.match handles Err", () => {
-	expect(Op.match(matchCases)(Op.err("boom"))).toBe("err:boom");
+	expect(Op.match(matchCases)(Op.make.err("boom"))).toBe("err:boom");
 });
 
 test("Op.match handles Nil", () => {
-	expect(Op.match(matchCases)(Op.nil("aborted"))).toBe("nil");
+	expect(Op.match(matchCases)(Op.make.nil("aborted"))).toBe("nil");
 });
 
 // --- fold ---
 
 test("Op.fold handles all three cases", () => {
 	const fold = Op.fold((e: string) => `err:${e}`, () => "nil", (v: number) => `ok:${v}`);
-	expect(fold(Op.ok(3))).toBe("ok:3");
-	expect(fold(Op.err("x"))).toBe("err:x");
-	expect(fold(Op.nil("aborted"))).toBe("nil");
+	expect(fold(Op.make.ok(3))).toBe("ok:3");
+	expect(fold(Op.make.err("x"))).toBe("err:x");
+	expect(fold(Op.make.nil("aborted"))).toBe("nil");
 });
 
 // --- getOrElse ---
 
 test("Op.getOrElse returns value for Ok", () => {
-	expect(Op.getOrElse(() => 0)(Op.ok(42))).toBe(42);
+	expect(Op.getOrElse(() => 0)(Op.make.ok(42))).toBe(42);
 });
 
 test("Op.getOrElse returns default for Err", () => {
-	expect(Op.getOrElse(() => 0)(Op.err("e") as Op.Outcome<string, number>)).toBe(0);
+	expect(Op.getOrElse(() => 0)(Op.make.err("e") as Op.Outcome<string, number>)).toBe(0);
 });
 
 test("Op.getOrElse returns default for Nil", () => {
-	expect(Op.getOrElse(() => 0)(Op.nil("aborted") as Op.Outcome<string, number>)).toBe(0);
+	expect(Op.getOrElse(() => 0)(Op.make.nil("aborted") as Op.Outcome<string, number>)).toBe(0);
 });
 
 // --- map ---
 
 test("Op.map transforms Ok value", () => {
-	expect(Op.map((n: number) => n * 2)(Op.ok(5))).toStrictEqual(Op.ok(10));
+	expect(Op.map((n: number) => n * 2)(Op.make.ok(5))).toStrictEqual(Op.make.ok(10));
 });
 
 test("Op.map passes Err through unchanged", () => {
-	const outcome = Op.err("e") as Op.Outcome<string, number>;
-	expect(Op.map((n: number) => n * 2)(outcome)).toStrictEqual(Op.err("e"));
+	const outcome = Op.make.err("e") as Op.Outcome<string, number>;
+	expect(Op.map((n: number) => n * 2)(outcome)).toStrictEqual(Op.make.err("e"));
 });
 
 test("Op.map passes Nil through — same reference", () => {
-	const outcome = Op.nil("aborted") as Op.Outcome<string, number>;
+	const outcome = Op.make.nil("aborted") as Op.Outcome<string, number>;
 	expect(Op.map((n: number) => n * 2)(outcome)).toBe(outcome);
 });
 
 // --- mapError ---
 
 test("Op.mapError transforms Err", () => {
-	const outcome = Op.err("oops") as Op.Outcome<string, number>;
-	expect(Op.mapError((e: string) => e.toUpperCase())(outcome)).toStrictEqual(Op.err("OOPS"));
+	const outcome = Op.make.err("oops") as Op.Outcome<string, number>;
+	expect(Op.mapError((e: string) => e.toUpperCase())(outcome)).toStrictEqual(Op.make.err("OOPS"));
 });
 
 test("Op.mapError passes Ok through unchanged", () => {
-	const outcome = Op.ok(1) as Op.Outcome<string, number>;
-	expect(Op.mapError((e: string) => e.toUpperCase())(outcome)).toStrictEqual(Op.ok(1));
+	const outcome = Op.make.ok(1) as Op.Outcome<string, number>;
+	expect(Op.mapError((e: string) => e.toUpperCase())(outcome)).toStrictEqual(Op.make.ok(1));
 });
 
 test("Op.mapError passes Nil through — same reference", () => {
-	const outcome = Op.nil("aborted") as Op.Outcome<string, number>;
+	const outcome = Op.make.nil("aborted") as Op.Outcome<string, number>;
 	expect(Op.mapError((e: string) => e.toUpperCase())(outcome)).toBe(outcome);
 });
 
 // --- chain ---
 
 test("Op.chain runs f on Ok and returns new Outcome", () => {
-	const outcome = Op.ok(5) as Op.Outcome<string, number>;
-	expect(Op.chain((n: number) => (n > 0 ? Op.ok(n * 2) : Op.err("negative")))(outcome)).toStrictEqual(Op.ok(10));
+	const outcome = Op.make.ok(5) as Op.Outcome<string, number>;
+	expect(Op.chain((n: number) => (n > 0 ? Op.make.ok(n * 2) : Op.make.err("negative")))(outcome)).toStrictEqual(
+		Op.make.ok(10),
+	);
 });
 
 test("Op.chain does not call f on Err", () => {
 	let called = false;
-	const outcome = Op.err("e") as Op.Outcome<string, number>;
+	const outcome = Op.make.err("e") as Op.Outcome<string, number>;
 	const result = Op.chain((n: number) => {
 		called = true;
-		return Op.ok(n);
+		return Op.make.ok(n);
 	})(outcome);
 	expect(called).toBe(false);
-	expect(result).toStrictEqual(Op.err("e"));
+	expect(result).toStrictEqual(Op.make.err("e"));
 });
 
 test("Op.chain does not call f on Nil — same reference", () => {
 	let called = false;
-	const outcome = Op.nil("aborted") as Op.Outcome<string, number>;
+	const outcome = Op.make.nil("aborted") as Op.Outcome<string, number>;
 	const result = Op.chain((n: number) => {
 		called = true;
-		return Op.ok(n);
+		return Op.make.ok(n);
 	})(outcome);
 	expect(called).toBe(false);
 	expect(result).toBe(outcome);
@@ -286,17 +288,17 @@ test("Op.chain does not call f on Nil — same reference", () => {
 
 test("Op.tap runs side effect on Ok and returns unchanged outcome", () => {
 	let seen: number | undefined;
-	const outcome = Op.ok(7) as Op.Outcome<string, number>;
+	const outcome = Op.make.ok(7) as Op.Outcome<string, number>;
 	const result = Op.tap((n: number) => {
 		seen = n;
 	})(outcome);
 	expect(seen).toBe(7);
-	expect(result).toStrictEqual(Op.ok(7));
+	expect(result).toStrictEqual(Op.make.ok(7));
 });
 
 test("Op.tap does not run on Err", () => {
 	let called = false;
-	const outcome = Op.err("e") as Op.Outcome<string, number>;
+	const outcome = Op.make.err("e") as Op.Outcome<string, number>;
 	Op.tap((_: number) => {
 		called = true;
 	})(outcome);
@@ -305,7 +307,7 @@ test("Op.tap does not run on Err", () => {
 
 test("Op.tap does not run on Nil", () => {
 	let called = false;
-	const outcome = Op.nil("aborted") as Op.Outcome<string, number>;
+	const outcome = Op.make.nil("aborted") as Op.Outcome<string, number>;
 	Op.tap((_: number) => {
 		called = true;
 	})(outcome);
@@ -315,27 +317,27 @@ test("Op.tap does not run on Nil", () => {
 // --- recover ---
 
 test("Op.recover provides fallback on Err", () => {
-	const outcome = Op.err("oops") as Op.Outcome<string, number>;
-	expect(Op.recover((e: string) => Op.ok(`recovered:${e}`))(outcome)).toStrictEqual(Op.ok("recovered:oops"));
+	const outcome = Op.make.err("oops") as Op.Outcome<string, number>;
+	expect(Op.recover((e: string) => Op.make.ok(`recovered:${e}`))(outcome)).toStrictEqual(Op.make.ok("recovered:oops"));
 });
 
 test("Op.recover does not call f on Ok", () => {
 	let called = false;
-	const outcome = Op.ok(5) as Op.Outcome<string, number>;
+	const outcome = Op.make.ok(5) as Op.Outcome<string, number>;
 	const result = Op.recover((_: string) => {
 		called = true;
-		return Op.ok(0);
+		return Op.make.ok(0);
 	})(outcome);
 	expect(called).toBe(false);
-	expect(result).toStrictEqual(Op.ok(5));
+	expect(result).toStrictEqual(Op.make.ok(5));
 });
 
 test("Op.recover does not call f on Nil — same reference", () => {
 	let called = false;
-	const outcome = Op.nil("aborted") as Op.Outcome<string, number>;
+	const outcome = Op.make.nil("aborted") as Op.Outcome<string, number>;
 	const result = Op.recover((_: string) => {
 		called = true;
-		return Op.ok(0);
+		return Op.make.ok(0);
 	})(outcome);
 	expect(called).toBe(false);
 	expect(result).toBe(outcome);
@@ -344,31 +346,31 @@ test("Op.recover does not call f on Nil — same reference", () => {
 // --- toResult ---
 
 test("op.toResult converts Ok to Result.make.ok", () => {
-	expect(Op.to.Result(() => "no-result")(Op.ok(1))).toStrictEqual(Result.make.ok(1));
+	expect(Op.to.Result(() => "no-result")(Op.make.ok(1))).toStrictEqual(Result.make.ok(1));
 });
 
 test("op.toResult converts Err to Result.make.err", () => {
-	const outcome = Op.err("boom") as Op.Outcome<string, number>;
+	const outcome = Op.make.err("boom") as Op.Outcome<string, number>;
 	expect(Op.to.Result(() => "no-result")(outcome)).toStrictEqual(Result.make.err("boom"));
 });
 
 test("Op.to.Result converts Nil via onNil", () => {
-	const outcome = Op.nil("aborted") as Op.Outcome<string, number>;
+	const outcome = Op.make.nil("aborted") as Op.Outcome<string, number>;
 	expect(Op.to.Result(() => "no-result")(outcome)).toStrictEqual(Result.make.err("no-result"));
 });
 
 // --- toMaybe ---
 
 test("Op.to.Maybe converts Ok to Some", () => {
-	expect(Op.to.Maybe(Op.ok(7))).toStrictEqual(Maybe.make.some(7));
+	expect(Op.to.Maybe(Op.make.ok(7))).toStrictEqual(Maybe.make.some(7));
 });
 
 test("Op.to.Maybe converts Err to None", () => {
-	expect(Op.to.Maybe(Op.err("e") as Op.Outcome<string, number>)).toStrictEqual(Maybe.make.none());
+	expect(Op.to.Maybe(Op.make.err("e") as Op.Outcome<string, number>)).toStrictEqual(Maybe.make.none());
 });
 
 test("Op.to.Maybe converts Nil to None", () => {
-	expect(Op.to.Maybe(Op.nil("aborted") as Op.Outcome<string, number>)).toStrictEqual(Maybe.make.none());
+	expect(Op.to.Maybe(Op.make.nil("aborted") as Op.Outcome<string, number>)).toStrictEqual(Maybe.make.none());
 });
 
 // --- Op.interpret — restartable ---
@@ -390,7 +392,7 @@ test("Op.interpret restartable new run cancels previous — only latest result a
 	const outcomes: Op.Outcome<string, number>[] = [];
 	const done = new Promise<void>((resolve) => {
 		manager.subscribe((s) => {
-			if (Op.isOk(s) || Op.isErr(s) || Op.isNil(s)) {
+			if (Op.is.ok(s) || Op.is.err(s) || Op.is.nil(s)) {
 				outcomes.push(s);
 				if (outcomes.length === 1) { resolve(); // wait for the second run to finish
 				 }
@@ -411,7 +413,7 @@ test("Op.interpret restartable abort emits Nil", async () => {
 	const done = new Promise<void>((resolve) => {
 		manager.subscribe((s) => {
 			states.push(s);
-			if (Op.isNil(s)) { resolve(); }
+			if (Op.is.nil(s)) { resolve(); }
 		});
 	});
 	manager.run(1);
@@ -540,7 +542,7 @@ test("Op.interpret exclusive drops second run while in-flight — no extra state
 	const done = new Promise<void>((resolve) => {
 		manager.subscribe((s) => {
 			states.push(s);
-			if (Op.isOk(s)) { resolve(); }
+			if (Op.is.ok(s)) { resolve(); }
 		});
 	});
 	manager.run(1); // starts
@@ -555,7 +557,7 @@ test("Op.interpret exclusive abort emits Nil", async () => {
 	const done = new Promise<void>((resolve) => {
 		manager.subscribe((s) => {
 			states.push(s);
-			if (Op.isNil(s)) { resolve(); }
+			if (Op.is.nil(s)) { resolve(); }
 		});
 	});
 	manager.run(1);
@@ -572,7 +574,7 @@ test("Op.interpret queue runs calls in submission order", async () => {
 	const done = new Promise<void>((resolve) => {
 		let okCount = 0;
 		manager.subscribe((s) => {
-			if (Op.isOk(s)) {
+			if (Op.is.ok(s)) {
 				results.push((s as Op.Ok<number>).value);
 				okCount++;
 				if (okCount === 3) { resolve(); }
@@ -593,7 +595,7 @@ test("Op.interpret queue emits Queued state for waiting call", async () => {
 		let okCount = 0;
 		manager.subscribe((s) => {
 			states.push(s);
-			if (Op.isOk(s)) {
+			if (Op.is.ok(s)) {
 				okCount++;
 				if (okCount === 2) { resolve(); }
 			}
@@ -615,7 +617,7 @@ test("Op.interpret queue abort drains queue — emits Nil", async () => {
 	const manager = Op.interpret(delayedOp(50), { strategy: "queue" });
 	const done = new Promise<void>((resolve) => {
 		manager.subscribe((s) => {
-			if (Op.isNil(s)) { resolve(); }
+			if (Op.is.nil(s)) { resolve(); }
 		});
 	});
 	manager.run(1);
@@ -636,7 +638,7 @@ test("Op.interpret buffered in-flight always completes before waiting slot runs"
 	const done = new Promise<void>((resolve) => {
 		let okCount = 0;
 		manager.subscribe((s) => {
-			if (Op.isOk(s)) {
+			if (Op.is.ok(s)) {
 				okValues.push((s as Op.Ok<number>).value);
 				okCount++;
 				if (okCount === 2) { resolve(); }
@@ -655,7 +657,7 @@ test("Op.interpret buffered newer call replaces waiting slot", async () => {
 	const done = new Promise<void>((resolve) => {
 		let okCount = 0;
 		manager.subscribe((s) => {
-			if (Op.isOk(s)) {
+			if (Op.is.ok(s)) {
 				okValues.push((s as Op.Ok<number>).value);
 				okCount++;
 				if (okCount === 2) { resolve(); }
@@ -673,7 +675,7 @@ test("Op.interpret buffered abort emits Nil", async () => {
 	const manager = Op.interpret(delayedOp(50), { strategy: "buffered" });
 	const done = new Promise<void>((resolve) => {
 		manager.subscribe((s) => {
-			if (Op.isNil(s)) { resolve(); }
+			if (Op.is.nil(s)) { resolve(); }
 		});
 	});
 	manager.run(1);
@@ -703,7 +705,7 @@ test("Op.interpret debounced resets timer on new call — only latest input runs
 	const done = new Promise<void>((resolve) => {
 		manager.subscribe((s) => {
 			states.push(s);
-			if (Op.isOk(s) || Op.isErr(s) || Op.isNil(s)) { resolve(); }
+			if (Op.is.ok(s) || Op.is.err(s) || Op.is.nil(s)) { resolve(); }
 		});
 	});
 	manager.run(1); // timer starts
@@ -752,7 +754,7 @@ test("Op.interpret once subsequent start() calls are ignored — only first runs
 	const done = new Promise<void>((resolve) => {
 		manager.subscribe((s) => {
 			states.push(s);
-			if (Op.isOk(s) || Op.isErr(s) || Op.isNil(s)) { resolve(); }
+			if (Op.is.ok(s) || Op.is.err(s) || Op.is.nil(s)) { resolve(); }
 		});
 	});
 	manager.run(1); // fires
@@ -1036,7 +1038,7 @@ test("Op.interpret throttled trailing fires trailing call after cooldown", async
 	const manager = Op.interpret(op, { strategy: "throttled", duration: Duration.milliseconds(20), trailing: true });
 	const done = new Promise<void>((resolve) => {
 		manager.subscribe((s) => {
-			if (Op.isOk(s) && s.value === 2) { resolve(); }
+			if (Op.is.ok(s) && s.value === 2) { resolve(); }
 		});
 	});
 	manager.run(1); // fires immediately (leading)
@@ -1853,7 +1855,7 @@ test("manager.poll runs immediately on first call", async () => {
 	// Wait for the immediate run to complete
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
-			if (Op.isOk(s)) {
+			if (Op.is.ok(s)) {
 				unsub();
 				resolve();
 			}
@@ -1867,7 +1869,7 @@ test("manager.poll stop handle cancels future runs", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "restartable" });
 	let runCount = 0;
 	manager.subscribe((s) => {
-		if (Op.isOk(s)) { runCount++; }
+		if (Op.is.ok(s)) { runCount++; }
 	});
 	const stop = manager.poll(1, { interval: Duration.milliseconds(50) });
 	// Wait for first run
@@ -1883,49 +1885,49 @@ test("manager.reset works for exclusive strategy", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "exclusive" });
 	await manager.run(1);
 	manager.reset();
-	expect(Op.isIdle(manager.state)).toBe(true);
+	expect(Op.is.idle(manager.state)).toBe(true);
 });
 
 test("manager.reset works for queue strategy", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "queue" });
 	await manager.run(1);
 	manager.reset();
-	expect(Op.isIdle(manager.state)).toBe(true);
+	expect(Op.is.idle(manager.state)).toBe(true);
 });
 
 test("manager.reset works for buffered strategy", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "buffered" });
 	await manager.run(1);
 	manager.reset();
-	expect(Op.isIdle(manager.state)).toBe(true);
+	expect(Op.is.idle(manager.state)).toBe(true);
 });
 
 test("manager.reset works for debounced strategy", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "debounced", duration: Duration.milliseconds(10) });
 	await manager.run(1);
 	manager.reset();
-	expect(Op.isIdle(manager.state)).toBe(true);
+	expect(Op.is.idle(manager.state)).toBe(true);
 });
 
 test("manager.reset works for throttled strategy", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "throttled", duration: Duration.milliseconds(10) });
 	await manager.run(1);
 	manager.reset();
-	expect(Op.isIdle(manager.state)).toBe(true);
+	expect(Op.is.idle(manager.state)).toBe(true);
 });
 
 test("manager.reset works for concurrent strategy", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "concurrent", n: 2 });
 	await manager.run(1);
 	manager.reset();
-	expect(Op.isIdle(manager.state)).toBe(true);
+	expect(Op.is.idle(manager.state)).toBe(true);
 });
 
 test("manager.reset works for once strategy", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "once" });
 	await manager.run(1);
 	manager.reset();
-	expect(Op.isIdle(manager.state)).toBe(true);
+	expect(Op.is.idle(manager.state)).toBe(true);
 });
 
 test("manager.poll works for exclusive strategy", async () => {
@@ -1933,14 +1935,14 @@ test("manager.poll works for exclusive strategy", async () => {
 	const stop = manager.poll(1, { interval: Duration.milliseconds(10_000) });
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
-			if (Op.isOk(s)) {
+			if (Op.is.ok(s)) {
 				unsub();
 				resolve();
 			}
 		});
 	});
 	stop();
-	expect(Op.isOk(manager.state)).toBe(true);
+	expect(Op.is.ok(manager.state)).toBe(true);
 });
 
 test("manager.poll works for once strategy", async () => {
@@ -1948,14 +1950,14 @@ test("manager.poll works for once strategy", async () => {
 	const stop = manager.poll(1, { interval: Duration.milliseconds(10_000) });
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
-			if (Op.isOk(s)) {
+			if (Op.is.ok(s)) {
 				unsub();
 				resolve();
 			}
 		});
 	});
 	stop();
-	expect(Op.isOk(manager.state)).toBe(true);
+	expect(Op.is.ok(manager.state)).toBe(true);
 });
 
 test("manager.poll works for queue strategy", async () => {
@@ -1963,14 +1965,14 @@ test("manager.poll works for queue strategy", async () => {
 	const stop = manager.poll(1, { interval: Duration.milliseconds(10_000) });
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
-			if (Op.isOk(s)) {
+			if (Op.is.ok(s)) {
 				unsub?.();
 				resolve();
 			}
 		});
 	});
 	stop();
-	expect(Op.isOk(manager.state)).toBe(true);
+	expect(Op.is.ok(manager.state)).toBe(true);
 });
 
 test("manager.poll works for buffered strategy", async () => {
@@ -1978,14 +1980,14 @@ test("manager.poll works for buffered strategy", async () => {
 	const stop = manager.poll(1, { interval: Duration.milliseconds(10_000) });
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
-			if (Op.isOk(s)) {
+			if (Op.is.ok(s)) {
 				unsub?.();
 				resolve();
 			}
 		});
 	});
 	stop();
-	expect(Op.isOk(manager.state)).toBe(true);
+	expect(Op.is.ok(manager.state)).toBe(true);
 });
 
 test("manager.poll works for debounced strategy", async () => {
@@ -1993,14 +1995,14 @@ test("manager.poll works for debounced strategy", async () => {
 	const stop = manager.poll(1, { interval: Duration.milliseconds(10_000) });
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
-			if (Op.isOk(s)) {
+			if (Op.is.ok(s)) {
 				unsub?.();
 				resolve();
 			}
 		});
 	});
 	stop();
-	expect(Op.isOk(manager.state)).toBe(true);
+	expect(Op.is.ok(manager.state)).toBe(true);
 });
 
 test("manager.poll works for concurrent strategy", async () => {
@@ -2008,14 +2010,14 @@ test("manager.poll works for concurrent strategy", async () => {
 	const stop = manager.poll(1, { interval: Duration.milliseconds(10_000) });
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
-			if (Op.isOk(s)) {
+			if (Op.is.ok(s)) {
 				unsub?.();
 				resolve();
 			}
 		});
 	});
 	stop();
-	expect(Op.isOk(manager.state)).toBe(true);
+	expect(Op.is.ok(manager.state)).toBe(true);
 });
 
 test("manager.poll works for throttled strategy", async () => {
@@ -2023,14 +2025,14 @@ test("manager.poll works for throttled strategy", async () => {
 	const stop = manager.poll(1, { interval: Duration.milliseconds(10_000) });
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
-			if (Op.isOk(s)) {
+			if (Op.is.ok(s)) {
 				unsub();
 				resolve();
 			}
 		});
 	});
 	stop();
-	expect(Op.isOk(manager.state)).toBe(true);
+	expect(Op.is.ok(manager.state)).toBe(true);
 });
 
 test("keyed manager.reset clears all per-key state", async () => {
@@ -2098,25 +2100,25 @@ test("duration support: debounced strategy with Duration", async () => {
 	});
 	const run = manager.run(42);
 	const outcome = await run;
-	expect(outcome).toStrictEqual(Op.ok(42));
+	expect(outcome).toStrictEqual(Op.make.ok(42));
 });
 
 test("duration support: throttled strategy with Duration", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "throttled", duration: Duration.milliseconds(10) });
 	const outcome = await manager.run(42);
-	expect(outcome).toStrictEqual(Op.ok(42));
+	expect(outcome).toStrictEqual(Op.make.ok(42));
 });
 
 test("duration support: exclusive strategy with Duration cooldown", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "exclusive", cooldown: Duration.milliseconds(10) });
 	const outcome = await manager.run(42);
-	expect(outcome).toStrictEqual(Op.ok(42));
+	expect(outcome).toStrictEqual(Op.make.ok(42));
 });
 
 test("duration support: restartable strategy with Duration minInterval", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "restartable", minInterval: Duration.milliseconds(10) });
 	const outcome = await manager.run(42);
-	expect(outcome).toStrictEqual(Op.ok(42));
+	expect(outcome).toStrictEqual(Op.make.ok(42));
 });
 
 test("duration support: retry policy with Duration backoff", async () => {
@@ -2131,7 +2133,7 @@ test("duration support: retry policy with Duration backoff", async () => {
 		retry: { attempts: 2, backoff: Duration.milliseconds(5) },
 	});
 	const outcome = await manager.run(1);
-	expect(outcome).toStrictEqual(Op.ok(42));
+	expect(outcome).toStrictEqual(Op.make.ok(42));
 });
 
 test("duration support: retry policy with Duration backoff function", async () => {
@@ -2146,7 +2148,7 @@ test("duration support: retry policy with Duration backoff function", async () =
 		retry: { attempts: 2, backoff: (n) => Duration.milliseconds(n * 2) },
 	});
 	const outcome = await manager.run(1);
-	expect(outcome).toStrictEqual(Op.ok(42));
+	expect(outcome).toStrictEqual(Op.make.ok(42));
 });
 
 test("duration support: timeout policy with Duration", async () => {
@@ -2159,7 +2161,7 @@ test("duration support: timeout policy with Duration", async () => {
 		timeout: { duration: Duration.milliseconds(5), onTimeout: () => "timeout" },
 	});
 	const outcome = await manager.run(1);
-	expect(outcome).toStrictEqual(Op.err("timeout"));
+	expect(outcome).toStrictEqual(Op.make.err("timeout"));
 });
 
 test("duration support: manager.poll with Duration interval", async () => {
@@ -2167,31 +2169,31 @@ test("duration support: manager.poll with Duration interval", async () => {
 	const stop = manager.poll(1, { interval: Duration.milliseconds(10_000) });
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
-			if (Op.isOk(s)) {
+			if (Op.is.ok(s)) {
 				unsub();
 				resolve();
 			}
 		});
 	});
 	stop();
-	expect(Op.isOk(manager.state)).toBe(true);
+	expect(Op.is.ok(manager.state)).toBe(true);
 });
 
 // --- pipe composition ---
 
 test("Op outcome composes in a pipe with map, chain, and recover", () => {
-	const outcome = Op.ok(5) as Op.Outcome<string, number>;
+	const outcome = Op.make.ok(5) as Op.Outcome<string, number>;
 	const result = pipe(
 		outcome,
 		Op.map((n) => n * 2),
-		Op.chain((n) => (n > 5 ? Op.ok(n + 1) : Op.err("too small"))),
-		Op.recover(() => Op.ok(0)),
+		Op.chain((n) => (n > 5 ? Op.make.ok(n + 1) : Op.make.err("too small"))),
+		Op.recover(() => Op.make.ok(0)),
 	);
-	expect(result).toStrictEqual(Op.ok(11));
+	expect(result).toStrictEqual(Op.make.ok(11));
 });
 
 test("Op outcome composes in a pipe with mapError and to.Result", () => {
-	const outcome = Op.err("fail") as Op.Outcome<string, number>;
+	const outcome = Op.make.err("fail") as Op.Outcome<string, number>;
 	const res = pipe(outcome, Op.mapError((e) => `error: ${e}`), Op.to.Result(() => "nil"));
 	expect(res).toStrictEqual(Result.make.err("error: fail"));
 });

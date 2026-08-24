@@ -52,10 +52,10 @@ import {
  *
  * const manager = Op.interpret(fetchUser, { strategy: "restartable" });
  * manager.subscribe(state => {
- *   if (Op.isPending(state)) showSpinner();
- *   if (Op.isOk(state))      render(state.value);
- *   if (Op.isErr(state))   showError(state.error);
- *   if (Op.isNil(state))     resetUI();
+ *   if (Op.is.pending(state)) showSpinner();
+ *   if (Op.is.ok(state))      render(state.value);
+ *   if (Op.is.err(state))     showError(state.error);
+ *   if (Op.is.nil(state))     resetUI();
  * });
  * manager.run(userId);
  * ```
@@ -228,7 +228,123 @@ function interpretFn<I, E, A>(
 }
 
 export const Op = {
-	nil: makeNil,
+	make: {
+		/**
+		 * Creates an Ok outcome with the given value.
+		 *
+		 * @example
+		 * ```ts
+		 * Op.make.ok(42); // { kind: "OpOk", value: 42 }
+		 * ```
+		 */
+		ok: makeOk,
+
+		/**
+		 * Creates an Err outcome with the given error.
+		 *
+		 * @example
+		 * ```ts
+		 * Op.make.err("Something went wrong"); // { kind: "OpErr", error: "Something went wrong" }
+		 * ```
+		 */
+		err: makeErr,
+
+		/**
+		 * Creates a Nil outcome with the given cancellation/drop reason.
+		 *
+		 * @example
+		 * ```ts
+		 * Op.make.nil("aborted"); // { kind: "OpNil", reason: "aborted" }
+		 * ```
+		 */
+		nil: makeNil,
+	},
+
+	is: {
+		/**
+		 * Type guard that checks if an Op state is Idle.
+		 *
+		 * @example
+		 * ```ts
+		 * if (Op.is.idle(manager.state)) {
+		 *   console.log("Ready to execute");
+		 * }
+		 * ```
+		 */
+		idle: isIdle,
+
+		/**
+		 * Type guard that checks if an Op state is Pending (actively executing).
+		 *
+		 * @example
+		 * ```ts
+		 * if (Op.is.pending(manager.state)) {
+		 *   showSpinner();
+		 * }
+		 * ```
+		 */
+		pending: isPending,
+
+		/**
+		 * Type guard that checks if an Op state is Queued (waiting in a concurrency queue).
+		 *
+		 * @example
+		 * ```ts
+		 * if (Op.is.queued(manager.state)) {
+		 *   console.log("Position in queue:", manager.state.position);
+		 * }
+		 * ```
+		 */
+		queued: isQueued,
+
+		/**
+		 * Type guard that checks if an Op state is Retrying after a failure.
+		 *
+		 * @example
+		 * ```ts
+		 * if (Op.is.retrying(manager.state)) {
+		 *   console.log("Retry attempt:", manager.state.attempt);
+		 * }
+		 * ```
+		 */
+		retrying: isRetrying,
+
+		/**
+		 * Type guard that checks if an Op state or outcome is Ok.
+		 *
+		 * @example
+		 * ```ts
+		 * if (Op.is.ok(outcome)) {
+		 *   render(outcome.value);
+		 * }
+		 * ```
+		 */
+		ok: isOk,
+
+		/**
+		 * Type guard that checks if an Op state or outcome is Err.
+		 *
+		 * @example
+		 * ```ts
+		 * if (Op.is.err(outcome)) {
+		 *   showError(outcome.error);
+		 * }
+		 * ```
+		 */
+		err: isErr,
+
+		/**
+		 * Type guard that checks if an Op state or outcome is Nil.
+		 *
+		 * @example
+		 * ```ts
+		 * if (Op.is.nil(outcome)) {
+		 *   console.log("Skipped due to:", outcome.reason);
+		 * }
+		 * ```
+		 */
+		nil: isNil,
+	},
 
 	create: <E, A, I = void>(
 		factory: (signal: AbortSignal) => (input: I) => Promise<A>,
@@ -244,17 +360,6 @@ export const Op = {
 
 	lift: <I, A>(f: (input: I, signal: AbortSignal) => Promise<A>): Op<I, unknown, A> =>
 		Op.create((signal) => (input: I) => f(input, signal), (e) => e),
-
-	ok: makeOk,
-	err: makeErr,
-
-	isIdle,
-	isPending,
-	isQueued,
-	isRetrying,
-	isOk,
-	isErr,
-	isNil,
 
 	match: <E, A, B>(cases: { ok: (a: A) => B; err: (e: E) => B; nil: () => B; }) => (outcome: Op.Outcome<E, A>): B => {
 		if (outcome.kind === "OpOk") { return cases.ok(outcome.value); }

@@ -422,7 +422,7 @@ If any individual field resolves to an `Err`, the entire struct short-circuits t
 const profileTask = Task.Result.struct({
   user: getUser(userId),
   permissions: getUserPermissions(userId),
-  status: Task.Result.ok("active"),
+  status: Task.Result.make.ok("active"),
 }); // Task.Result<string, { user: User; permissions: Permission[]; status: string }>
 ```
 

@@ -1,43 +1,20 @@
-import {
-	Deferred,
-	type Maybe,
-	Maybe as CoreMaybe,
-	type Result,
-	Result as CoreResult,
-	type Task,
-	Task as CoreTask,
-} from "#core";
 import type { Thenable } from "#internal";
 import { Duration, type RetryPolicy } from "#types";
-import { type TaskMaybe } from "./TaskMaybe.ts";
+import { Deferred } from "./Deferred.ts";
+import { type Maybe, Maybe as CoreMaybe } from "./Maybe.ts";
+import { type Result, Result as CoreResult } from "./Result.ts";
+import { Task } from "./Task.ts";
 
-/**
- * A Task that can fail with an error of type E or succeed with a value of type A.
- * Combines async operations with typed error handling.
- *
- * @example
- * ```ts
- * const fetchUser = (id: string): Task.Result<Error, User> =>
- *   Task.Result.tryCatch(
- *     (signal) => fetch(`/users/${id}`, { signal }).then(r => r.json()),
- *     { onError: (e) => new Error(`Failed to fetch user: ${e}`) }
- *   );
- * ```
- */
-export type TaskResult<E, A> = Task<Result<E, A>>;
+const makeOk = <E = never, A = unknown>(value: A): Task.Result<E, A> => Task.resolve(CoreResult.make.ok(value));
+const makeErr = <E, A = never>(error: E): Task.Result<E, A> => Task.resolve(CoreResult.make.err(error));
 
-const makeOk = <E = never, A = unknown>(value: A): TaskResult<E, A> => CoreTask.resolve(CoreResult.make.ok(value));
-const makeErr = <E, A = never>(error: E): TaskResult<E, A> => CoreTask.resolve(CoreResult.make.err(error));
-
-const mapTaskResult = <E, A, B>(f: (a: A) => B) => (data: TaskResult<E, A>): TaskResult<E, B> =>
-	CoreTask.map(CoreResult.map<E, A, B>(f))(data);
+const mapTaskResult = <E, A, B>(f: (a: A) => B) => (data: Task.Result<E, A>): Task.Result<E, B> =>
+	Task.map(CoreResult.map<E, A, B>(f))(data);
 
 const chainTaskResult =
-	<E2, A, B>(f: (a: A) => TaskResult<E2, B>) => <E1 = never>(data: TaskResult<E1, A>): TaskResult<E1 | E2, B> =>
-		CoreTask.chain((result: Result<E1, A>) =>
-			CoreResult.is.ok(result)
-				? f(result.value)
-				: CoreTask.resolve(CoreResult.make.err(result.error) as Result<E1 | E2, B>)
+	<E2, A, B>(f: (a: A) => Task.Result<E2, B>) => <E1 = never>(data: Task.Result<E1, A>): Task.Result<E1 | E2, B> =>
+		Task.chain((result: Result<E1, A>) =>
+			CoreResult.is.ok(result) ? f(result.value) : Task.resolve(CoreResult.make.err(result.error) as Result<E1 | E2, B>)
 		)(data);
 
 export const TaskResult = {
@@ -65,9 +42,6 @@ export const TaskResult = {
 		err: makeErr,
 	},
 
-	ok: makeOk,
-	err: makeErr,
-
 	// --- from ---
 	from: {
 		/**
@@ -80,8 +54,8 @@ export const TaskResult = {
 		 * Task.Result.from.nullable(() => "missing")(null); // resolves to Err("missing")
 		 * ```
 		 */
-		nullable: <E>(onNull: () => E) => <A>(value: A | null | undefined): TaskResult<E, A> =>
-			CoreTask.resolve(value === null || value === undefined ? CoreResult.make.err(onNull()) : CoreResult.make.ok(value)),
+		nullable: <E>(onNull: () => E) => <A>(value: A | null | undefined): Task.Result<E, A> =>
+			Task.resolve(value === null || value === undefined ? CoreResult.make.err(onNull()) : CoreResult.make.ok(value)),
 
 		/**
 		 * Creates a Task.Result from a Maybe.
@@ -93,8 +67,8 @@ export const TaskResult = {
 		 * Task.Result.from.Maybe(() => "empty")(Maybe.make.none());   // resolves to Err("empty")
 		 * ```
 		 */
-		Maybe: <E>(onNone: () => E) => <A>(maybe: Maybe<A>): TaskResult<E, A> =>
-			CoreTask.resolve(CoreMaybe.is.none(maybe) ? CoreResult.make.err(onNone()) : CoreResult.make.ok(maybe.value)),
+		Maybe: <E>(onNone: () => E) => <A>(maybe: Maybe<A>): Task.Result<E, A> =>
+			Task.resolve(CoreMaybe.is.none(maybe) ? CoreResult.make.err(onNone()) : CoreResult.make.ok(maybe.value)),
 
 		/**
 		 * Lifts a Result into a Task.Result.
@@ -104,7 +78,7 @@ export const TaskResult = {
 		 * Task.Result.from.Result(Result.make.ok(42)); // resolves to Ok(42)
 		 * ```
 		 */
-		Result: <E, A>(result: Result<E, A>): TaskResult<E, A> => CoreTask.resolve(result),
+		Result: <E, A>(result: Result<E, A>): Task.Result<E, A> => Task.resolve(result),
 	},
 
 	// --- to ---
@@ -114,11 +88,11 @@ export const TaskResult = {
 		 *
 		 * @example
 		 * ```ts
-		 * const taskResult = Task.Result.ok(42);
+		 * const taskResult = Task.Result.make.ok(42);
 		 * const taskMaybe = pipe(taskResult, Task.Result.to.Maybe);
 		 * ```
 		 */
-		Maybe: <E, A>(data: TaskResult<E, A>): TaskMaybe<A> => CoreTask.map(CoreResult.to.Maybe)(data),
+		Maybe: <E, A>(data: Task.Result<E, A>): Task.Maybe<A> => Task.map(CoreResult.to.Maybe)(data),
 	},
 
 	/**
@@ -135,7 +109,7 @@ export const TaskResult = {
 	 * ```
 	 */
 	tryCatch:
-		<E, A>(f: (signal?: AbortSignal) => Thenable<A>, options: { onError: (error: unknown) => E; }): TaskResult<E, A> =>
+		<E, A>(f: (signal?: AbortSignal) => Thenable<A>, options: { onError: (error: unknown) => E; }): Task.Result<E, A> =>
 		(signal) =>
 			Deferred.from.Promise(
 				// oxlint-disable-next-line require-await
@@ -152,8 +126,8 @@ export const TaskResult = {
 	/**
 	 * Transforms the error value inside a Task.Result.
 	 */
-	mapError: <E, F, A>(f: (e: E) => F) => (data: TaskResult<E, A>): TaskResult<F, A> =>
-		CoreTask.map(CoreResult.mapError<E, F, A>(f))(data),
+	mapError: <E, F, A>(f: (e: E) => F) => (data: Task.Result<E, A>): Task.Result<F, A> =>
+		Task.map(CoreResult.mapError<E, F, A>(f))(data),
 
 	/**
 	 * Chains Task.Result computations. If the first succeeds, passes the value to f.
@@ -164,22 +138,22 @@ export const TaskResult = {
 	/**
 	 * Extracts the value from a Task.Result by providing handlers for both cases.
 	 */
-	fold: <E, A, B>(onErr: (e: E) => B, onOk: (a: A) => B) => (data: TaskResult<E, A>): Task<B> =>
-		CoreTask.map(CoreResult.fold(onErr, onOk))(data),
+	fold: <E, A, B>(onErr: (e: E) => B, onOk: (a: A) => B) => (data: Task.Result<E, A>): Task<B> =>
+		Task.map(CoreResult.fold(onErr, onOk))(data),
 
 	/**
 	 * Pattern matches on a Task.Result, returning a Task of the result.
 	 */
-	match: <E, A, B>(cases: { err: (e: E) => B; ok: (a: A) => B; }) => (data: TaskResult<E, A>): Task<B> =>
-		CoreTask.map(CoreResult.match<E, A, B>(cases))(data),
+	match: <E, A, B>(cases: { err: (e: E) => B; ok: (a: A) => B; }) => (data: Task.Result<E, A>): Task<B> =>
+		Task.map(CoreResult.match<E, A, B>(cases))(data),
 
 	/**
 	 * Recovers from an error by providing a fallback Task.Result.
 	 * The fallback can produce a different success type, widening the result to `Task.Result<E, A | B>`.
 	 */
-	recover: <E, B>(fallback: (e: E) => TaskResult<E, B>) => <A>(data: TaskResult<E, A>): TaskResult<E, A | B> =>
-		CoreTask.chain((result: Result<E, A>) =>
-			CoreResult.is.err(result) ? fallback(result.error) : CoreTask.resolve(result as Result<E, A | B>)
+	recover: <E, B>(fallback: (e: E) => Task.Result<E, B>) => <A>(data: Task.Result<E, A>): Task.Result<E, A | B> =>
+		Task.chain((result: Result<E, A>) =>
+			CoreResult.is.err(result) ? fallback(result.error) : Task.resolve(result as Result<E, A | B>)
 		)(data),
 
 	/**
@@ -192,33 +166,33 @@ export const TaskResult = {
 	 *   fetchTask,
 	 *   Task.Result.recoverUnless(
 	 *     (e) => e === "fatal",
-	 *     () => Task.Result.ok("fallback")
+	 *     () => Task.Result.make.ok("fallback")
 	 *   )
 	 * );
 	 * ```
 	 */
 	recoverUnless:
-		<E, B>(isBlocked: (e: E) => boolean, fallback: (e: E) => TaskResult<E, B>) =>
-		<A>(data: TaskResult<E, A>): TaskResult<E, A | B> =>
-			CoreTask.chain((result: Result<E, A>) =>
+		<E, B>(isBlocked: (e: E) => boolean, fallback: (e: E) => Task.Result<E, B>) =>
+		<A>(data: Task.Result<E, A>): Task.Result<E, A | B> =>
+			Task.chain((result: Result<E, A>) =>
 				CoreResult.is.err(result) && !isBlocked(result.error)
 					? fallback(result.error)
-					: CoreTask.resolve(result as Result<E, A | B>)
+					: Task.resolve(result as Result<E, A | B>)
 			)(data),
 
 	/**
 	 * Returns the success value or a default value if the Task.Result is an error.
 	 * The default can be a different type, widening the result to `Task<A | B>`.
 	 */
-	getOrElse: <B>(defaultValue: () => B) => <E, A>(data: TaskResult<E, A>): Task<A | B> =>
-		CoreTask.map(CoreResult.getOrElse<B>(defaultValue))(data),
+	getOrElse: <B>(defaultValue: () => B) => <E, A>(data: Task.Result<E, A>): Task<A | B> =>
+		Task.map(CoreResult.getOrElse<B>(defaultValue))(data),
 
 	/**
 	 * Executes a side effect on the success value without changing the Task.Result.
 	 * Useful for logging or debugging.
 	 */
-	tap: <E, A>(f: (a: A) => void) => (data: TaskResult<E, A>): TaskResult<E, A> =>
-		CoreTask.map(CoreResult.tap<E, A>(f))(data),
+	tap: <E, A>(f: (a: A) => void) => (data: Task.Result<E, A>): Task.Result<E, A> =>
+		Task.map(CoreResult.tap<E, A>(f))(data),
 
 	/**
 	 * Executes a side effect on the error value without changing the Task.Result.
@@ -233,14 +207,14 @@ export const TaskResult = {
 	 * )
 	 * ```
 	 */
-	tapError: <E, A>(f: (e: E) => void) => (data: TaskResult<E, A>): TaskResult<E, A> =>
-		CoreTask.map(CoreResult.tapError<E, A>(f))(data),
+	tapError: <E, A>(f: (e: E) => void) => (data: Task.Result<E, A>): Task.Result<E, A> =>
+		Task.map(CoreResult.tapError<E, A>(f))(data),
 
 	/**
 	 * Applies a function wrapped in a Task.Result to a value wrapped in a Task.Result.
 	 * Both Tasks run in parallel.
 	 */
-	ap: <E, A>(arg: TaskResult<E, A>) => <B>(data: TaskResult<E, (a: A) => B>): TaskResult<E, B> => (signal) =>
+	ap: <E, A>(arg: Task.Result<E, A>) => <B>(data: Task.Result<E, (a: A) => B>): Task.Result<E, B> => (signal) =>
 		Deferred.from.Promise(
 			Promise.all([Deferred.to.Promise(data(signal)), Deferred.to.Promise(arg(signal))]).then(([of_, oa]) =>
 				CoreResult.ap(oa)(of_)
@@ -262,7 +236,7 @@ export const TaskResult = {
 	 * if (Result.is.ok(result)) render(result.value);
 	 * ```
 	 */
-	run: (signal?: AbortSignal) => <E, A>(task: TaskResult<E, A>): Deferred<Result<E, A>> => task(signal),
+	run: (signal?: AbortSignal) => <E, A>(task: Task.Result<E, A>): Deferred<Result<E, A>> => task(signal),
 
 	/**
 	 * Converts a Task.Result value into an object containing a single property.
@@ -270,10 +244,10 @@ export const TaskResult = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Task.Result.ok(42), Task.Result.bindTo("value")); // Task.Result({ value: 42 })
+	 * pipe(Task.Result.make.ok(42), Task.Result.bindTo("value")); // Task.Result({ value: 42 })
 	 * ```
 	 */
-	bindTo: <K extends string>(key: K) => <E, A>(data: TaskResult<E, A>): TaskResult<E, { [P in K]: A; }> =>
+	bindTo: <K extends string>(key: K) => <E, A>(data: Task.Result<E, A>): Task.Result<E, { [P in K]: A; }> =>
 		mapTaskResult<E, A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data),
 
 	/**
@@ -282,14 +256,14 @@ export const TaskResult = {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Task.Result.ok({ a: 1 }),
-	 *   Task.Result.bind("b", ({ a }) => Task.Result.ok(a + 1))
+	 *   Task.Result.make.ok({ a: 1 }),
+	 *   Task.Result.bind("b", ({ a }) => Task.Result.make.ok(a + 1))
 	 * ); // Task.Result({ a: 1, b: 2 })
 	 * ```
 	 */
 	bind:
-		<K extends string, E, A, B>(key: K, f: (a: A) => TaskResult<E, B>) =>
-		(data: TaskResult<E, A>): TaskResult<E, A & { [P in K]: B; }> =>
+		<K extends string, E, A, B>(key: K, f: (a: A) => Task.Result<E, B>) =>
+		(data: Task.Result<E, A>): Task.Result<E, A & { [P in K]: B; }> =>
 			chainTaskResult<E, A, A & { [P in K]: B; }>((a) =>
 				mapTaskResult<E, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
 			)(data),
@@ -302,13 +276,14 @@ export const TaskResult = {
 	 * @example
 	 * ```ts
 	 * Task.Result.struct({
-	 *   name: Task.Result.ok("Alice"),
-	 *   age: Task.Result.ok(30)
+	 *   name: Task.Result.make.ok("Alice"),
+	 *   age: Task.Result.make.ok(30)
 	 * }); // Task.Result({ name: "Alice", age: 30 })
 	 * ```
 	 */
 	struct:
-		<E, R extends Record<string, any>>(fields: { [K in keyof R]: TaskResult<E, R[K]>; }): TaskResult<E, R> => (signal) =>
+		<E, R extends Record<string, any>>(fields: { [K in keyof R]: Task.Result<E, R[K]>; }): Task.Result<E, R> =>
+		(signal) =>
 			Deferred.from.Promise((() => {
 				const keys = Object.keys(fields);
 				const promises = keys.map((key) => Deferred.to.Promise(fields[key](signal)));
@@ -336,7 +311,7 @@ export const TaskResult = {
 	 * const retryableFetch = pipe(fetchData, Task.Result.retry(policy));
 	 * ```
 	 */
-	retry: (policy: RetryPolicy) => <E, A>(task: TaskResult<E, A>): TaskResult<E, A> => (signal) =>
+	retry: (policy: RetryPolicy) => <E, A>(task: Task.Result<E, A>): Task.Result<E, A> => (signal) =>
 		Deferred.from.Promise((() => {
 			const { attempts } = policy;
 
@@ -379,7 +354,7 @@ export const TaskResult = {
 	 * const loadConfig = Task.Result.memoize(fetchConfigTask);
 	 * ```
 	 */
-	memoize: <E, A>(task: TaskResult<E, A>): TaskResult<E, A> => CoreTask.memoize(task),
+	memoize: <E, A>(task: Task.Result<E, A>): Task.Result<E, A> => Task.memoize(task),
 
 	/**
 	 * Times out a fallible task, resolving to `Err(onTimeout())` if the duration elapses
@@ -395,7 +370,7 @@ export const TaskResult = {
 	 */
 	timeout:
 		<E2>(options: { duration: Duration; onTimeout: () => E2; }) =>
-		<E1 = never, A = unknown>(task: TaskResult<E1, A>): TaskResult<E1 | E2, A> =>
+		<E1 = never, A = unknown>(task: Task.Result<E1, A>): Task.Result<E1 | E2, A> =>
 		(signal) =>
 			Deferred.from.Promise(
 				new Promise<Result<E1 | E2, A>>((resolve) => {
@@ -436,6 +411,6 @@ export const TaskResult = {
 	 * // [Ok(val1), Err(err2), Ok(val3)]
 	 * ```
 	 */
-	allSettled: <E, A>(tasks: ReadonlyArray<TaskResult<E, A>>): CoreTask<ReadonlyArray<Result<E, A>>> => (signal) =>
+	allSettled: <E, A>(tasks: ReadonlyArray<Task.Result<E, A>>): Task<ReadonlyArray<Result<E, A>>> => (signal) =>
 		Deferred.from.Promise(Promise.all(tasks.map((task) => Deferred.to.Promise(task(signal))))),
 };

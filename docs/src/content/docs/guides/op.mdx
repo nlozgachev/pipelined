@@ -97,9 +97,9 @@ const userManager = Op.interpret(fetchUserOp, { strategy: "exclusive" });
 
 // 3. Listen to transitions
 userManager.subscribe((state) => {
-  if (Op.isPending(state)) showSpinner();
-  if (Op.isOk(state))      renderProfile(state.value);
-  if (Op.isErr(state))     showError(state.error);
+  if (Op.is.pending(state)) showSpinner();
+  if (Op.is.ok(state))      renderProfile(state.value);
+  if (Op.is.err(state))     showError(state.error);
 });
 
 // 4. Trigger execution
@@ -128,9 +128,9 @@ You can unpack invocation outcomes using direct type guards:
 ```ts
 const outcome = await userManager.run("user_123");
 
-if (Op.isOk(outcome)) {
+if (Op.is.ok(outcome)) {
   console.log("Value:", outcome.value);
-} else if (Op.isErr(outcome)) {
+} else if (Op.is.err(outcome)) {
   console.error("Error:", outcome.error);
 } else {
   console.log("Operation skipped:", outcome.reason); // "aborted", "dropped", etc.
@@ -233,8 +233,8 @@ const userProfileManager = Op.interpret(fetchUserOp, {
 
 userProfileManager.subscribe((map) => {
   for (const [userId, state] of map) {
-    if (Op.isPending(state)) showRowSpinner(userId);
-    if (Op.isOk(state))      renderRow(userId, state.value);
+    if (Op.is.pending(state)) showRowSpinner(userId);
+    if (Op.is.ok(state))      renderRow(userId, state.value);
   }
 });
 
@@ -252,9 +252,9 @@ The manager returned by `Op.interpret` maintains the active state machine. You c
 const manager = Op.interpret(searchUsers, { strategy: "restartable" });
 
 manager.subscribe((state) => {
-  if (Op.isPending(state)) showSpinner();
-  if (Op.isOk(state))      renderList(state.value);
-  if (Op.isNil(state))     clearUI();
+  if (Op.is.pending(state)) showSpinner();
+  if (Op.is.ok(state))      renderList(state.value);
+  if (Op.is.nil(state))     clearUI();
 });
 ```
 
@@ -279,9 +279,9 @@ Every time you invoke `manager.run(input)`, it returns a `Deferred` value that r
 ```ts
 const outcome = await checkoutManager.run(cartData);
 
-if (Op.isOk(outcome)) {
+if (Op.is.ok(outcome)) {
   navigateTo("/receipt");
-} else if (Op.isErr(outcome)) {
+} else if (Op.is.err(outcome)) {
   renderAlert(outcome.error.message);
 }
 ```

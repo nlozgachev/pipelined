@@ -307,9 +307,9 @@ propagation, and timeout wiring are handled automatically. The outcome type is t
 ```ts
 const outcome = await fetchUser.run("42");
 
-if (Op.isOk(outcome)) {
+if (Op.is.ok(outcome)) {
   render(outcome.value); // User
-} else if (Op.isErr(outcome)) {
+} else if (Op.is.err(outcome)) {
   showError(outcome.error); // ApiError, not unknown
 }
 
@@ -343,10 +343,10 @@ const search = Op.interpret(searchOp, {
 });
 
 search.subscribe((state) => {
-  if (Op.isPending(state)) showSpinner();
-  if (Op.isRetrying(state)) showSpinner(`retrying… attempt ${state.attempt}`);
-  if (Op.isOk(state)) showResults(state.value);
-  if (Op.isErr(state)) showError(state.error);
+  if (Op.is.pending(state)) showSpinner();
+  if (Op.is.retrying(state)) showSpinner(`retrying… attempt ${state.attempt}`);
+  if (Op.is.ok(state)) showResults(state.value);
+  if (Op.is.err(state)) showError(state.error);
 });
 
 input.addEventListener("input", (e) => search.run(e.currentTarget.value));
@@ -368,9 +368,9 @@ const submit = Op.interpret(submitOp, {
 });
 
 submit.subscribe((state) => {
-  submitButton.disabled = Op.isPending(state);
-  if (Op.isOk(state)) showConfirmation(state.value);
-  if (Op.isErr(state)) showError(state.error);
+  submitButton.disabled = Op.is.pending(state);
+  if (Op.is.ok(state)) showConfirmation(state.value);
+  if (Op.is.err(state)) showError(state.error);
 });
 
 form.addEventListener("submit", (e) => {

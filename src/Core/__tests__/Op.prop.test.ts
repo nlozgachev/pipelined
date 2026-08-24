@@ -28,10 +28,10 @@ const signalNeverOp = Op.create((signal) => (_: number) =>
 		signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
 	}), () => "aborted");
 
-const arbOkOutcome = fc.integer().map((n) => Op.ok(n) as Op.Outcome<string, number>);
-const arbErrOutcome = fc.string().map((s) => Op.err(s) as Op.Outcome<string, number>);
+const arbOkOutcome = fc.integer().map((n) => Op.make.ok(n) as Op.Outcome<string, number>);
+const arbErrOutcome = fc.string().map((s) => Op.make.err(s) as Op.Outcome<string, number>);
 const arbNilOutcome = fc.constantFrom<Op.NilReason>("aborted", "dropped", "replaced", "evicted").map((r) =>
-	Op.nil(r) as Op.Outcome<string, number>
+	Op.make.nil(r) as Op.Outcome<string, number>
 );
 const arbOutcome = fc.oneof(arbOkOutcome, arbErrOutcome, arbNilOutcome);
 
@@ -58,21 +58,21 @@ test("Op.map — composition law", () => {
 
 test("Op.chain — short-circuits on Err and Nil", () => {
 	fc.assert(fc.property(fc.oneof(arbErrOutcome, arbNilOutcome), (o) => {
-		expect(Op.chain((_: number) => Op.ok(0))(o)).toBe(o);
+		expect(Op.chain((_: number) => Op.make.ok(0))(o)).toBe(o);
 	}));
 });
 
 test("Op.chain — associativity on Ok", () => {
 	fc.assert(fc.property(arbOkOutcome, fc.integer(), (o, threshold) => {
-		const f = (x: number): Op.Outcome<string, number> => x > 0 ? Op.ok(x * 2) : Op.err("non-positive");
-		const g = (x: number): Op.Outcome<string, number> => x > threshold ? Op.ok(x + 1) : Op.err("too small");
+		const f = (x: number): Op.Outcome<string, number> => x > 0 ? Op.make.ok(x * 2) : Op.make.err("non-positive");
+		const g = (x: number): Op.Outcome<string, number> => x > threshold ? Op.make.ok(x + 1) : Op.make.err("too small");
 		expect(Op.chain(f)(Op.chain(g)(o))).toStrictEqual(Op.chain((x: number) => Op.chain(f)(g(x)))(o));
 	}));
 });
 
 test("Op.recover — identity on Ok and Nil", () => {
 	fc.assert(fc.property(fc.oneof(arbOkOutcome, arbNilOutcome), (o) => {
-		expect(Op.recover((_: string) => Op.ok(0))(o)).toBe(o);
+		expect(Op.recover((_: string) => Op.make.ok(0))(o)).toBe(o);
 	}));
 });
 
@@ -151,8 +151,8 @@ test("Op.interpret exclusive — burst of N produces exactly 1 Ok and N-1 Droppe
 		const manager = Op.interpret(immediateOp, { strategy: "exclusive" });
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
 		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
-		expect(outcomes.filter(Op.isOk)).toHaveLength(1);
-		expect(outcomes.filter((o) => Op.isNil(o) && (o as Op.Nil).reason === "dropped")).toHaveLength(n - 1);
+		expect(outcomes.filter(Op.is.ok)).toHaveLength(1);
+		expect(outcomes.filter((o) => Op.is.nil(o) && (o as Op.Nil).reason === "dropped")).toHaveLength(n - 1);
 	}));
 });
 
@@ -165,8 +165,8 @@ test("Op.interpret restartable — burst of N produces exactly 1 Ok and N-1 Repl
 		const manager = Op.interpret(immediateOp, { strategy: "restartable" });
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
 		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
-		expect(outcomes.filter(Op.isOk)).toHaveLength(1);
-		expect(outcomes.filter((o) => Op.isNil(o) && (o as Op.Nil).reason === "replaced")).toHaveLength(n - 1);
+		expect(outcomes.filter(Op.is.ok)).toHaveLength(1);
+		expect(outcomes.filter((o) => Op.is.nil(o) && (o as Op.Nil).reason === "replaced")).toHaveLength(n - 1);
 	}));
 });
 
@@ -174,7 +174,7 @@ test("Op.interpret restartable — single run resolves to Ok", async () => {
 	await fc.assert(fc.asyncProperty(fc.integer(), async (n) => {
 		const manager = Op.interpret(immediateOp, { strategy: "restartable" });
 		const outcome = await manager.run(n);
-		expect(outcome).toStrictEqual(Op.ok(n));
+		expect(outcome).toStrictEqual(Op.make.ok(n));
 	}));
 });
 
@@ -184,7 +184,7 @@ test("Op.interpret restartable — abort() resolves all in-flight Deferreds as N
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
 		manager.abort();
 		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
-		expect(outcomes.every(Op.isNil)).toBe(true);
+		expect(outcomes.every(Op.is.nil)).toBe(true);
 	}));
 });
 
@@ -199,7 +199,7 @@ test("Op.interpret queue — all runs resolve to Ok when op always succeeds", as
 			string,
 			number
 		>[];
-		expect(outcomes.every(Op.isOk)).toBe(true);
+		expect(outcomes.every(Op.is.ok)).toBe(true);
 	}));
 });
 
@@ -221,7 +221,7 @@ test("Op.interpret queue — abort() resolves all Deferreds as AbortedNil", asyn
 		await Promise.resolve(); // let the first item start running
 		manager.abort();
 		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
-		expect(outcomes.every(Op.isNil)).toBe(true);
+		expect(outcomes.every(Op.is.nil)).toBe(true);
 		expect(outcomes.every((o) => (o as Op.Nil).reason === "aborted")).toBe(true);
 	}));
 });
@@ -236,7 +236,7 @@ test("Op.interpret once — first run produces Ok, subsequent burst runs produce
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
 		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
 		expect(outcomes[0]).toMatchObject({ kind: "OpOk", value: 0 });
-		expect(outcomes.slice(1).every((o) => Op.isNil(o) && (o as Op.Nil).reason === "dropped")).toBe(true);
+		expect(outcomes.slice(1).every((o) => Op.is.nil(o) && (o as Op.Nil).reason === "dropped")).toBe(true);
 	}));
 });
 
@@ -246,7 +246,7 @@ test("Op.interpret once — post-completion runs always produce DroppedNil", asy
 		await manager.run(0);
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i + 1));
 		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
-		expect(outcomes.every((o) => Op.isNil(o) && (o as Op.Nil).reason === "dropped")).toBe(true);
+		expect(outcomes.every((o) => Op.is.nil(o) && (o as Op.Nil).reason === "dropped")).toBe(true);
 	}));
 });
 
@@ -277,7 +277,7 @@ test("Op.interpret exclusive cooldown — synchronous burst after completion all
 		await manager.run(0); // completes; starts 200ms cooldown
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i + 1));
 		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
-		expect(outcomes.every((o) => Op.isNil(o) && (o as Op.Nil).reason === "dropped")).toBe(true);
+		expect(outcomes.every((o) => Op.is.nil(o) && (o as Op.Nil).reason === "dropped")).toBe(true);
 	}));
 });
 
@@ -291,8 +291,8 @@ test("Op.interpret restartable with minInterval: 0 — burst still produces 1 Ok
 		const manager = Op.interpret(immediateOp, { strategy: "restartable", minInterval: Duration.milliseconds(0) });
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
 		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
-		expect(outcomes.filter(Op.isOk)).toHaveLength(1);
-		expect(outcomes.filter((o) => Op.isNil(o) && (o as Op.Nil).reason === "replaced")).toHaveLength(n - 1);
+		expect(outcomes.filter(Op.is.ok)).toHaveLength(1);
+		expect(outcomes.filter((o) => Op.is.nil(o) && (o as Op.Nil).reason === "replaced")).toHaveLength(n - 1);
 	}));
 });
 
@@ -308,8 +308,8 @@ test("Op.interpret buffered size=k — burst of N > k+1 produces exactly k+1 Ok 
 				const manager = Op.interpret(immediateOp, { strategy: "buffered", size: k });
 				const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
 				const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
-				expect(outcomes.filter(Op.isOk)).toHaveLength(k + 1);
-				expect(outcomes.filter((o) => Op.isNil(o) && (o as Op.Nil).reason === "evicted")).toHaveLength(n - k - 1);
+				expect(outcomes.filter(Op.is.ok)).toHaveLength(k + 1);
+				expect(outcomes.filter((o) => Op.is.nil(o) && (o as Op.Nil).reason === "evicted")).toHaveLength(n - k - 1);
 			},
 		),
 	);
@@ -323,7 +323,7 @@ test("Op.interpret buffered size=k — burst of N <= k+1 all resolve to Ok", asy
 				const manager = Op.interpret(immediateOp, { strategy: "buffered", size: k });
 				const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
 				const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
-				expect(outcomes.every(Op.isOk)).toBe(true);
+				expect(outcomes.every(Op.is.ok)).toBe(true);
 			},
 		),
 	);
@@ -341,8 +341,8 @@ test("Op.interpret queue maxSize=m — burst of N > m+1 produces m+1 Ok and N-m-
 				const manager = Op.interpret(immediateOp, { strategy: "queue", maxSize: m });
 				const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
 				const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
-				expect(outcomes.filter(Op.isOk)).toHaveLength(m + 1);
-				expect(outcomes.filter((o) => Op.isNil(o) && (o as Op.Nil).reason === "dropped")).toHaveLength(n - m - 1);
+				expect(outcomes.filter(Op.is.ok)).toHaveLength(m + 1);
+				expect(outcomes.filter((o) => Op.is.nil(o) && (o as Op.Nil).reason === "dropped")).toHaveLength(n - m - 1);
 			},
 		),
 	);
@@ -360,8 +360,8 @@ test("Op.interpret queue overflow replace-last — burst of N > m+1 produces m+1
 				const manager = Op.interpret(immediateOp, { strategy: "queue", maxSize: m, overflow: "replace-last" });
 				const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
 				const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
-				expect(outcomes.filter(Op.isOk)).toHaveLength(m + 1);
-				expect(outcomes.filter((o) => Op.isNil(o) && (o as Op.Nil).reason === "evicted")).toHaveLength(n - m - 1);
+				expect(outcomes.filter(Op.is.ok)).toHaveLength(m + 1);
+				expect(outcomes.filter((o) => Op.is.nil(o) && (o as Op.Nil).reason === "evicted")).toHaveLength(n - m - 1);
 			},
 		),
 	);
@@ -382,7 +382,7 @@ test("Op.interpret queue concurrency=k — all N inputs resolve to Ok when op su
 					string,
 					number
 				>[];
-				expect(outcomes.every(Op.isOk)).toBe(true);
+				expect(outcomes.every(Op.is.ok)).toBe(true);
 			},
 		),
 	);
@@ -399,8 +399,8 @@ test("Op.interpret queue dedupe — N equal inputs produce 2 Ok and N-2 DroppedN
 		const manager = Op.interpret(immediateOp, { strategy: "queue", dedupe: (a, b) => a === b });
 		const deferreds = Array.from({ length: n }, () => manager.run(input));
 		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
-		expect(outcomes.filter(Op.isOk)).toHaveLength(2);
-		expect(outcomes.filter((o) => Op.isNil(o) && (o as Op.Nil).reason === "dropped")).toHaveLength(n - 2);
+		expect(outcomes.filter(Op.is.ok)).toHaveLength(2);
+		expect(outcomes.filter((o) => Op.is.nil(o) && (o as Op.Nil).reason === "dropped")).toHaveLength(n - 2);
 	}));
 });
 
@@ -416,7 +416,7 @@ test("Op.interpret debounced leading — single run resolves to Ok with the inpu
 			leading: true,
 		});
 		const result = await manager.run(n);
-		expect(result).toStrictEqual(Op.ok(n));
+		expect(result).toStrictEqual(Op.make.ok(n));
 	}));
 });
 
@@ -433,8 +433,8 @@ test("Op.interpret throttled trailing — burst of N >= 3 produces 2 Ok (leading
 		});
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i + 1));
 		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
-		expect(outcomes.filter(Op.isOk)).toHaveLength(2);
-		expect(outcomes.filter((o) => Op.isNil(o) && (o as Op.Nil).reason === "evicted")).toHaveLength(n - 2);
+		expect(outcomes.filter(Op.is.ok)).toHaveLength(2);
+		expect(outcomes.filter((o) => Op.is.nil(o) && (o as Op.Nil).reason === "evicted")).toHaveLength(n - 2);
 	}));
 });
 
@@ -453,6 +453,6 @@ test("Op.interpret debounced leading — burst of N produces Ok for first and la
 		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
 		expect(outcomes[0]).toMatchObject({ kind: "OpOk" }); // leading
 		expect(outcomes[n - 1]).toMatchObject({ kind: "OpOk" }); // trailing
-		expect(outcomes.slice(1, -1).every((o) => Op.isNil(o) && (o as Op.Nil).reason === "evicted")).toBe(true);
+		expect(outcomes.slice(1, -1).every((o) => Op.is.nil(o) && (o as Op.Nil).reason === "evicted")).toBe(true);
 	}));
 });

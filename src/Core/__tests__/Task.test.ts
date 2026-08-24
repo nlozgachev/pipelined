@@ -2,7 +2,10 @@ import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Duration } from "../../Types/Duration.ts";
 import { Deferred } from "../Deferred.ts";
+import { Maybe } from "../Maybe.ts";
+import { Result } from "../Result.ts";
 import { Task } from "../Task.ts";
+import { Validation } from "../Validation.ts";
 
 const fromPromise = <A>(f: (signal?: AbortSignal) => Promise<A>): Task<A> => (signal?: AbortSignal) =>
 	Deferred.from.Promise(f(signal));
@@ -953,4 +956,44 @@ test("Task.withLabel attaches read-only label property to task function", async 
 	expect(task.label).toBe("myCustomTask");
 	const res = await task();
 	expect(res).toBe(100);
+});
+
+// ---------------------------------------------------------------------------
+// Type-level tests: Task-family namespace types & structural equivalence
+// ---------------------------------------------------------------------------
+
+test("Task.Result is structurally equivalent to Task<Result<E, A>>", async () => {
+	expectTypeOf<Task.Result<string, number>>().toEqualTypeOf<Task<Result<string, number>>>();
+	expectTypeOf<Task<Result<string, number>>>().toEqualTypeOf<Task.Result<string, number>>();
+
+	const okTask = Task.Result.make.ok(42);
+	expectTypeOf(okTask).toEqualTypeOf<Task.Result<never, number>>();
+	expectTypeOf(okTask).toEqualTypeOf<Task<Result<never, number>>>();
+
+	const res = await okTask();
+	expect(res).toStrictEqual({ kind: "Ok", value: 42 });
+});
+
+test("Task.Maybe is structurally equivalent to Task<Maybe<A>>", async () => {
+	expectTypeOf<Task.Maybe<string>>().toEqualTypeOf<Task<Maybe<string>>>();
+	expectTypeOf<Task<Maybe<string>>>().toEqualTypeOf<Task.Maybe<string>>();
+
+	const someTask = Task.Maybe.make.some("hello");
+	expectTypeOf(someTask).toEqualTypeOf<Task.Maybe<string>>();
+	expectTypeOf(someTask).toEqualTypeOf<Task<Maybe<string>>>();
+
+	const res = await someTask();
+	expect(res).toStrictEqual({ kind: "Some", value: "hello" });
+});
+
+test("Task.Validation is structurally equivalent to Task<Validation<E, A>>", async () => {
+	expectTypeOf<Task.Validation<string, number>>().toEqualTypeOf<Task<Validation<string, number>>>();
+	expectTypeOf<Task<Validation<string, number>>>().toEqualTypeOf<Task.Validation<string, number>>();
+
+	const passedTask = Task.Validation.make.passed(true);
+	expectTypeOf(passedTask).toEqualTypeOf<Task.Validation<never, boolean>>();
+	expectTypeOf(passedTask).toEqualTypeOf<Task<Validation<never, boolean>>>();
+
+	const res = await passedTask();
+	expect(res).toStrictEqual({ kind: "Passed", value: true });
 });

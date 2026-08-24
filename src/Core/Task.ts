@@ -1,12 +1,15 @@
 // =============================================================================
 // Imports
 // =============================================================================
-import { Deferred, Result as CoreResult } from "#core";
 import type { Thenable } from "#internal";
 import { Duration } from "#types";
+import { Deferred } from "./Deferred.ts";
+import { Maybe as CoreMaybe } from "./Maybe.ts";
+import { Result as CoreResult } from "./Result.ts";
 import { TaskMaybe } from "./TaskMaybe.ts";
 import { TaskResult } from "./TaskResult.ts";
 import { TaskValidation } from "./TaskValidation.ts";
+import { Validation as CoreValidation } from "./Validation.ts";
 
 // =============================================================================
 // Types
@@ -625,9 +628,13 @@ export const Task = {
 	Validation: TaskValidation,
 };
 
+type _CoreMaybe<A> = CoreMaybe<A>;
+type _CoreResult<E, A> = CoreResult<E, A>;
+type _CoreValidation<E, A> = CoreValidation<E, A>;
+
 export namespace Task {
 	export type LabeledTask<L extends string, A> = Task<A> & { readonly label: L; };
-	export type Maybe<A> = TaskMaybe<A>;
-	export type Result<E, A> = TaskResult<E, A>;
-	export type Validation<E, A> = TaskValidation<E, A>;
+	export type Maybe<A> = Task<_CoreMaybe<A>>;
+	export type Result<E, A> = Task<_CoreResult<E, A>>;
+	export type Validation<E, A> = Task<_CoreValidation<E, A>>;
 }

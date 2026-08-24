@@ -436,6 +436,11 @@ test("Rec.mapEntries transforms key and value pairs simultaneously", () => {
 	expect(res).toStrictEqual({ A: 10, B: 20 });
 });
 
+test("Rec.mapEntries returns an empty record when input is empty", () => {
+	const res = pipe({} as Record<string, number>, Rec.mapEntries((k, v) => [k.toUpperCase(), v * 10]));
+	expect(res).toStrictEqual({});
+});
+
 test("Rec.updateIn immutably updates deep nested record paths", () => {
 	const data = { user: { profile: { age: 30 } } };
 	const res = pipe(data, Rec.updateIn(["user", "profile", "age"], (n: number) => n + 1));
