@@ -16,6 +16,65 @@ import { Maybe } from "#core";
  * ```
  */
 export const BigNum = {
+	is: {
+		/**
+		 * Returns `true` when the bigint is equal to zero (`0n`).
+		 *
+		 * @example
+		 * ```ts
+		 * BigNum.is.zero(0n); // true
+		 * BigNum.is.zero(5n); // false
+		 * ```
+		 */
+		zero: (b: bigint): boolean => b === 0n,
+
+		/**
+		 * Returns `true` when the bigint is an even integer.
+		 *
+		 * @example
+		 * ```ts
+		 * BigNum.is.even(4n); // true
+		 * BigNum.is.even(3n); // false
+		 * ```
+		 */
+		even: (b: bigint): boolean => b % 2n === 0n,
+
+		/**
+		 * Returns `true` when the bigint is an odd integer.
+		 *
+		 * @example
+		 * ```ts
+		 * BigNum.is.odd(3n); // true
+		 * BigNum.is.odd(4n); // false
+		 * ```
+		 */
+		odd: (b: bigint): boolean => b % 2n !== 0n,
+
+		/**
+		 * Returns `true` when the bigint is strictly greater than zero (`0n`).
+		 *
+		 * @example
+		 * ```ts
+		 * BigNum.is.positive(5n);  // true
+		 * BigNum.is.positive(0n);  // false
+		 * BigNum.is.positive(-5n); // false
+		 * ```
+		 */
+		positive: (b: bigint): boolean => b > 0n,
+
+		/**
+		 * Returns `true` when the bigint is strictly less than zero (`0n`).
+		 *
+		 * @example
+		 * ```ts
+		 * BigNum.is.negative(-5n); // true
+		 * BigNum.is.negative(0n);  // false
+		 * BigNum.is.negative(5n);  // false
+		 * ```
+		 */
+		negative: (b: bigint): boolean => b < 0n,
+	},
+
 	// --- from ---
 	from: {
 		/**

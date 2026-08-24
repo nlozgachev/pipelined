@@ -2,6 +2,36 @@ import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { BigNum } from "../BigNum.ts";
 
+// --- is ---
+
+test("BigNum.is.zero returns true only for 0n", () => {
+	expect(BigNum.is.zero(0n)).toBe(true);
+	expect(BigNum.is.zero(1n)).toBe(false);
+	expect(BigNum.is.zero(-1n)).toBe(false);
+});
+
+test("BigNum.is.even and BigNum.is.odd check parity", () => {
+	expect(BigNum.is.even(4n)).toBe(true);
+	expect(BigNum.is.even(3n)).toBe(false);
+	expect(BigNum.is.even(0n)).toBe(true);
+	expect(BigNum.is.even(-2n)).toBe(true);
+
+	expect(BigNum.is.odd(3n)).toBe(true);
+	expect(BigNum.is.odd(4n)).toBe(false);
+	expect(BigNum.is.odd(0n)).toBe(false);
+	expect(BigNum.is.odd(-3n)).toBe(true);
+});
+
+test("BigNum.is.positive and BigNum.is.negative check sign", () => {
+	expect(BigNum.is.positive(5n)).toBe(true);
+	expect(BigNum.is.positive(0n)).toBe(false);
+	expect(BigNum.is.positive(-5n)).toBe(false);
+
+	expect(BigNum.is.negative(-5n)).toBe(true);
+	expect(BigNum.is.negative(0n)).toBe(false);
+	expect(BigNum.is.negative(5n)).toBe(false);
+});
+
 // --- from.string ---
 
 test("BigNum.from.string parses valid string into bigint", () => {
