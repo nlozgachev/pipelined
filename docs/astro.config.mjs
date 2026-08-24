@@ -108,6 +108,7 @@ export default defineConfig({
 						{ slug: "guides/str" },
 						{ slug: "guides/num" },
 						{ slug: "guides/bignum" },
+						{ slug: "guides/bool" },
 						{ slug: "guides/rec" },
 						{ slug: "guides/dict" },
 						{ slug: "guides/uniq" },

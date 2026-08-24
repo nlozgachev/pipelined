@@ -1,5 +1,6 @@
 export * from "./Arr";
 export * from "./BigNum";
+export * from "./Bool";
 export * from "./Dict";
 export * from "./Json";
 export * from "./Num";
