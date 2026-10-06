@@ -88,18 +88,18 @@
 		"docs:build": "pnpm --filter pipelined-docs build"
 	},
 	"devDependencies": {
-		"@size-limit/esbuild": "13.0.3",
-		"@size-limit/file": "13.0.3",
-		"@types/node": "26.2.0",
-		"@vitest/coverage-v8": "4.1.10",
-		"dprint": "0.55.2",
+		"@size-limit/esbuild": "14.1.0",
+		"@size-limit/file": "14.1.0",
+		"@types/node": "26.6.4",
+		"@vitest/coverage-v8": "5.0.3",
+		"dprint": "0.60.1",
 		"esbuild": "0.28.2",
-		"fast-check": "4.9.0",
-		"oxlint": "1.78.0",
-		"size-limit": "13.0.3",
+		"fast-check": "4.10.2",
+		"oxlint": "1.87.0",
+		"size-limit": "14.1.0",
 		"tsup": "8.5.1",
 		"typescript": "6.0.3",
-		"vitest": "4.1.10"
+		"vitest": "5.0.3"
 	},
 	"size-limit": [
 		{
@@ -108,7 +108,10 @@
 			"path": "dist/index.mjs",
 			"limit": "18 KB",
 			"gzip": true,
-			"ignore": ["util", "node:util"]
+			"ignore": [
+				"util",
+				"node:util"
+			]
 		},
 		{
 			"name": "Core (import * as Core)",
@@ -130,7 +133,10 @@
 			"path": "dist/composition.mjs",
 			"limit": "2 KB",
 			"gzip": true,
-			"ignore": ["util", "node:util"]
+			"ignore": [
+				"util",
+				"node:util"
+			]
 		},
 		{
 			"name": "Types (import * as Types)",
