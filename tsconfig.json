@@ -10,5 +10,5 @@
 		"types": ["node"]
 	},
 	"include": ["src"],
-	"exclude": ["node_modules", "dist", "docs"]
+	"exclude": ["node_modules", "dist", "docs", "src/**/__bench__/**"]
 }

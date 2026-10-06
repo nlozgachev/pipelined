@@ -74,7 +74,7 @@
 		}
 	},
 	"scripts": {
-		"build": "tsup",
+		"build": "tsdown",
 		"test": "vitest run",
 		"test:coverage": "vitest run --coverage",
 		"bench": "vitest bench",
@@ -85,9 +85,11 @@
 		"format": "dprint fmt && dprint fmt --config dprint.md.json \"docs/**/*.md\" \"docs/**/*.mdx\" \"README.md\"",
 		"format:check": "dprint check && dprint check --config dprint.md.json \"docs/**/*.md\" \"docs/**/*.mdx\" \"README.md\"",
 		"docs:dev": "pnpm --filter pipelined-docs dev",
-		"docs:build": "pnpm --filter pipelined-docs build"
+		"docs:build": "pnpm --filter pipelined-docs build",
+		"check": "pnpm typecheck && pnpm lint && pnpm format:check"
 	},
 	"devDependencies": {
+		"@arethetypeswrong/core": "0.18.5",
 		"@size-limit/esbuild": "14.1.0",
 		"@size-limit/file": "14.1.0",
 		"@types/node": "26.6.4",
@@ -96,8 +98,9 @@
 		"esbuild": "0.28.2",
 		"fast-check": "4.10.2",
 		"oxlint": "1.87.0",
+		"publint": "0.3.24",
 		"size-limit": "14.1.0",
-		"tsup": "8.5.1",
+		"tsdown": "0.23.0",
 		"typescript": "6.0.3",
 		"vitest": "5.0.3"
 	},
