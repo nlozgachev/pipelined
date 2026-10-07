@@ -1,14 +1,14 @@
 import { WithKind, WithValue } from "../internal/InternalTypes.ts";
 
 // ---------------------------------------------------------------------------
-// Stream<S>
+// EventBus<S>
 // ---------------------------------------------------------------------------
 
 /**
- * An event stream pipeline for a typed message schema `S`.
+ * An event bus pipeline for a typed message schema `S`.
  *
- * `Stream` provides typed event emission, sequence matching, state reduction,
- * and structural stream forwarding.
+ * `EventBus` provides typed event emission, sequence matching, state reduction,
+ * and structural event bus forwarding.
  *
  * @example
  * ```ts
@@ -17,10 +17,10 @@ import { WithKind, WithValue } from "../internal/InternalTypes.ts";
  *   checkoutStarted: { amount: number };
  * };
  *
- * const appStream = Stream.make<AppMessages>();
+ * const appBus = EventBus.make<AppMessages>();
  *
- * const subscription = Stream.listen(
- *   appStream,
+ * const subscription = EventBus.listen(
+ *   appBus,
  *   ["userLoggedIn", "checkoutStarted"],
  *   { ordered: true }
  * ).reduce(
@@ -33,30 +33,30 @@ import { WithKind, WithValue } from "../internal/InternalTypes.ts";
  *   { count: 0 }
  * );
  *
- * Stream.emit(appStream, {
+ * EventBus.emit(appBus, {
  *   kind: "userLoggedIn",
  *   value: { userId: "user-1" },
  * });
  * ```
  */
-export type Stream<S extends Record<string, unknown>> = {
-	readonly options?: Stream.Options;
+export type EventBus<S extends Record<string, unknown>> = {
+	readonly options?: EventBus.Options;
 	/** @internal */
-	readonly _listeners: Set<(msg: Stream.Message<S>) => void>;
+	readonly _listeners: Set<(msg: EventBus.Message<S>) => void>;
 	/**
 	 * @internal
 	 * Lazy array snapshot of `_listeners`. Avoids allocating new array objects on every `emit` call
 	 * (2.98x emission speedup, 0 heap allocations). Rebuilt whenever `_listeners` is mutated,
 	 * guaranteeing reentrancy safety and preventing listeners subscribed mid-emission from executing early.
 	 */
-	_listenerArray: Array<(msg: Stream.Message<S>) => void> | null;
+	_listenerArray: Array<(msg: EventBus.Message<S>) => void> | null;
 	/** @internal */
-	readonly _queue: Array<Stream.Message<S>>;
+	readonly _queue: Array<EventBus.Message<S>>;
 	/** @internal */
 	_isEmitting: boolean;
 };
 
-const makeStream = <S extends Record<string, unknown>>(options?: Stream.Options): Stream<S> => ({
+const makeEventBus = <S extends Record<string, unknown>>(options?: EventBus.Options): EventBus<S> => ({
 	options,
 	_listeners: new Set(),
 	_listenerArray: null,
@@ -64,30 +64,30 @@ const makeStream = <S extends Record<string, unknown>>(options?: Stream.Options)
 	_isEmitting: false,
 });
 
-const emitStream = <S extends Record<string, unknown>, K extends keyof S & string>(
-	target: Stream<S> | ReadonlyArray<Stream<S>>,
+const emitEventBus = <S extends Record<string, unknown>, K extends keyof S & string>(
+	target: EventBus<S> | ReadonlyArray<EventBus<S>>,
 	message: WithKind<K> & WithValue<S[K]>,
 ): void => {
 	const targets = Array.isArray(target) ? target : [target];
-	const msg = message as Stream.Message<S>;
+	const msg = message as EventBus.Message<S>;
 
-	for (const stream of targets) {
-		stream._queue.push(msg);
-		if (!stream._isEmitting) {
-			stream._isEmitting = true;
+	for (const bus of targets) {
+		bus._queue.push(msg);
+		if (!bus._isEmitting) {
+			bus._isEmitting = true;
 			try {
-				while (stream._queue.length > 0) {
-					const nextMsg = stream._queue.shift()!;
-					if (stream._listenerArray === null) {
-						stream._listenerArray = Array.from(stream._listeners) as Array<(msg: Stream.Message<S>) => void>;
+				while (bus._queue.length > 0) {
+					const nextMsg = bus._queue.shift()!;
+					if (bus._listenerArray === null) {
+						bus._listenerArray = Array.from(bus._listeners) as Array<(msg: EventBus.Message<S>) => void>;
 					}
-					const listeners = stream._listenerArray;
+					const listeners = bus._listenerArray;
 					for (const listener of listeners) {
 						try {
 							listener(nextMsg);
 						} catch (err) {
-							if (stream.options?.onError) {
-								stream.options.onError(err);
+							if (bus.options?.onError) {
+								bus.options.onError(err);
 							} else {
 								throw err;
 							}
@@ -95,22 +95,22 @@ const emitStream = <S extends Record<string, unknown>, K extends keyof S & strin
 					}
 				}
 			} finally {
-				stream._isEmitting = false;
+				bus._isEmitting = false;
 			}
 		}
 	}
 };
 
-const forwardStream = <S extends Record<string, unknown>>(options: Stream.ForwardOptions<S>): () => void => {
+const forwardEventBus = <S extends Record<string, unknown>>(options: EventBus.ForwardOptions<S>): () => void => {
 	const targets = Array.isArray(options.to) ? options.to : [options.to];
 	const filterSet = options.only ? new Set<string>(options.only) : null;
 
-	const handler = (msg: Stream.Message<S>) => {
+	const handler = (msg: EventBus.Message<S>) => {
 		if (filterSet !== null && !filterSet.has(msg.kind)) {
 			return;
 		}
 		for (const target of targets) {
-			emitStream(target, msg);
+			emitEventBus(target, msg);
 		}
 	};
 
@@ -123,11 +123,11 @@ const forwardStream = <S extends Record<string, unknown>>(options: Stream.Forwar
 	};
 };
 
-const listenStream = <S extends Record<string, unknown>, K extends keyof S & string>(
-	stream: Stream<S>,
+const listenEventBus = <S extends Record<string, unknown>, K extends keyof S & string>(
+	bus: EventBus<S>,
 	events: K | ReadonlyArray<K>,
-	options?: Stream.SequenceOptions<S>,
-): Stream.ListenerBuilder<S> => {
+	options?: EventBus.SequenceOptions<S>,
+): EventBus.ListenerBuilder<S> => {
 	const eventList: ReadonlyArray<string> = Array.isArray(events) ? events : [events];
 	const isOrdered = options?.ordered ?? false;
 	const isStrict = options?.strict ?? false;
@@ -139,10 +139,10 @@ const listenStream = <S extends Record<string, unknown>, K extends keyof S & str
 		? new Set<string>(Array.isArray(options.optional) ? options.optional : [options.optional])
 		: null;
 
-	const createMatcher = (onMatch: (msg: Stream.Message<S>) => void) => {
+	const createMatcher = (onMatch: (msg: EventBus.Message<S>) => void) => {
 		let sequenceIndex = 0;
 
-		return (msg: Stream.Message<S>) => {
+		return (msg: EventBus.Message<S>) => {
 			if (resetKinds !== null && resetKinds.has(msg.kind)) {
 				sequenceIndex = 0;
 				return;
@@ -188,104 +188,104 @@ const listenStream = <S extends Record<string, unknown>, K extends keyof S & str
 
 	return {
 		reduce: <State>(
-			reducer: (msg: Stream.Message<S>, state: State) => State,
+			reducer: (msg: EventBus.Message<S>, state: State) => State,
 			initialState: State,
-		): Stream.Subscription<State> => {
+		): EventBus.Subscription<State> => {
 			let currentState = initialState;
 
 			const listenerFn = createMatcher((msg) => {
 				currentState = reducer(msg, currentState);
 				if (isOnce) {
-					stream._listeners.delete(listenerFn);
-					stream._listenerArray = null;
+					bus._listeners.delete(listenerFn);
+					bus._listenerArray = null;
 				}
 			});
 
 			const unsubscribe = () => {
-				stream._listeners.delete(listenerFn);
-				stream._listenerArray = null;
+				bus._listeners.delete(listenerFn);
+				bus._listenerArray = null;
 			};
 
-			stream._listeners.add(listenerFn);
-			stream._listenerArray = null;
+			bus._listeners.add(listenerFn);
+			bus._listenerArray = null;
 
 			return { unsubscribe, getState: () => currentState };
 		},
 
-		tap: (effect: (msg: Stream.Message<S>) => void): () => void => {
+		tap: (effect: (msg: EventBus.Message<S>) => void): () => void => {
 			const listenerFn = createMatcher((msg) => {
 				effect(msg);
 				if (isOnce) {
-					stream._listeners.delete(listenerFn);
-					stream._listenerArray = null;
+					bus._listeners.delete(listenerFn);
+					bus._listenerArray = null;
 				}
 			});
 
 			const unsubscribe = () => {
-				stream._listeners.delete(listenerFn);
-				stream._listenerArray = null;
+				bus._listeners.delete(listenerFn);
+				bus._listenerArray = null;
 			};
 
-			stream._listeners.add(listenerFn);
-			stream._listenerArray = null;
+			bus._listeners.add(listenerFn);
+			bus._listenerArray = null;
 
 			return unsubscribe;
 		},
 	};
 };
 
-export const Stream = {
+export const EventBus = {
 	/**
-	 * Constructs a new `Stream` instance.
+	 * Constructs a new `EventBus` instance.
 	 *
 	 * @example
 	 * ```ts
-	 * const stream = Stream.make<AppMessages>({ name: "app" });
+	 * const bus = EventBus.make<AppMessages>({ name: "app" });
 	 * ```
 	 */
-	make: makeStream,
+	make: makeEventBus,
 
 	/**
-	 * Emits a message payload to one or more target streams.
+	 * Emits a message payload to one or more target event buses.
 	 *
 	 * Uses a synchronous breadth-first trampoline queue to handle re-entrant emissions deterministically.
 	 *
 	 * @example
 	 * ```ts
-	 * Stream.emit(streamA, {
+	 * EventBus.emit(busA, {
 	 *   kind: "userLoggedIn",
 	 *   value: { userId: "user-1" },
 	 * });
 	 *
-	 * Stream.emit([streamA, streamB], {
+	 * EventBus.emit([busA, busB], {
 	 *   kind: "userLoggedIn",
 	 *   value: { userId: "user-1" },
 	 * });
 	 * ```
 	 */
-	emit: emitStream,
+	emit: emitEventBus,
 
 	/**
-	 * Forwards messages from one stream to another (or multiple).
+	 * Forwards messages from one event bus to another (or multiple).
 	 *
 	 * @example
 	 * ```ts
-	 * const stop = Stream.forward({
-	 *   from: authStream,
-	 *   to: analyticsStream,
+	 * const stop = EventBus.forward({
+	 *   from: authBus,
+	 *   to: analyticsBus,
 	 *   only: ["userLoggedIn"],
 	 * });
 	 * ```
 	 */
-	forward: forwardStream,
+	forward: forwardEventBus,
 
 	/**
-	 * Initiates listener registration on a stream for specific event kind(s) or sequence.
+	 * Initiates listener registration on an event bus for specific event kind(s) or sequence.
 	 *
 	 * @example
 	 * ```ts
-	 * const sub = Stream.listen(
-	 *   appStream,
+	 * const sub = EventBus.listen(
+	 *   appBus,
 	 *   ["userLoggedIn", "checkoutStarted"],
 	 *   { ordered: true }
 	 * ).reduce(
@@ -294,10 +294,10 @@ export const Stream = {
 	 * );
 	 * ```
 	 */
-	listen: listenStream,
+	listen: listenEventBus,
 };
 
-export namespace Stream {
+export namespace EventBus {
 	export type Message<S extends Record<string, unknown>> = {
 		[K in keyof S & string]: WithKind<K> & WithValue<S[K]>;
 	}[keyof S & string];
@@ -315,8 +315,8 @@ export namespace Stream {
 	export type Subscription<State> = { readonly unsubscribe: () => void; readonly getState: () => State; };
 
 	export type ForwardOptions<S extends Record<string, unknown>> = {
-		readonly from: Stream<S>;
-		readonly to: Stream<S> | ReadonlyArray<Stream<S>>;
+		readonly from: EventBus<S>;
+		readonly to: EventBus<S> | ReadonlyArray<EventBus<S>>;
 		readonly only?: ReadonlyArray<keyof S & string>;
 	};
 

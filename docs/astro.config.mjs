@@ -76,9 +76,13 @@ export default defineConfig({
 				{
 					label: "Async",
 					collapsed: false,
-					items: [{ slug: "guides/task" }, { slug: "guides/deferred" }, { slug: "guides/op" }, { slug: "guides/stream" }, {
-						slug: "guides/resource",
-					}],
+					items: [
+						{ slug: "guides/task" },
+						{ slug: "guides/deferred" },
+						{ slug: "guides/op" },
+						{ slug: "guides/event-bus" },
+						{ slug: "guides/resource" },
+					],
 				},
 				{
 					label: "State & context",

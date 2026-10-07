@@ -40,9 +40,12 @@ const malformed = Json.parse('{invalid}'); // Err(SyntaxError)
 const serialized = Json.stringify({ name: "Alice", active: true });
 // Ok('{"name":"Alice","active":true}')
 
-const circular: any = {};
-circular.self = circular;
-const failed = Json.stringify(circular); // Err(TypeError: Converting circular structure to JSON)
+const parent: { child?: unknown } = {};
+const child = { parent };
+parent.child = child;
+
+const failed = Json.stringify(parent);
+// Err(TypeError: Converting circular structure to JSON)
 ```
 
 ---

@@ -1,5 +1,5 @@
 ---
-title: Stream — Typed Event Sequences & State Reduction
+title: EventBus — Typed Event Sequences & State Reduction
 description: Decouple event emission from sequence matching, state reduction, and structural forwarding.
 ---
 
@@ -8,11 +8,11 @@ step transitions, authentication handshakes, and UI user action tracking. Standa
 leave message payloads untyped, while complex reactive stream libraries introduce heavy operator
 boilerplate for basic event sequence tracking.
 
-`Stream` provides a lightweight, type-safe event pipeline. It enables modules to publish typed
+`EventBus` provides a lightweight, type-safe event pipeline. It enables modules to publish typed
 messages, match specific event sequences, accumulate state over time, and forward events between
-streams without manual callback management.
+event buses without manual callback management.
 
-The design of `Stream` draws inspiration from key functional programming patterns:
+The design of `EventBus` draws inspiration from key functional programming patterns:
 
 - **Functional Reactive Programming (FRP)**: Incremental state reduction over a stream of discrete
   events (`scanl`).
@@ -25,11 +25,11 @@ The design of `Stream` draws inspiration from key functional programming pattern
 
 ## Type Structure
 
-A `Stream<S>` represents an active message pipeline constrained to a schema map `S`. Each schema map
-defines message kind string keys paired with payload types.
+An `EventBus<S>` represents an active message pipeline constrained to a schema map `S`. Each schema
+map defines message kind string keys paired with payload types.
 
 ```ts
-import { Stream } from "@nlozgachev/pipelined/core";
+import { EventBus } from "@nlozgachev/pipelined/core";
 
 type UserFlowMessages = {
   sessionStarted: { sessionId: string; timestamp: number };
@@ -38,31 +38,31 @@ type UserFlowMessages = {
   flowCompleted: { userId: string };
 };
 
-// Stream.Message<UserFlowMessages> is a discriminated union of all messages in UserFlowMessages:
+// EventBus.Message<UserFlowMessages> is a discriminated union of all messages in UserFlowMessages:
 // | { kind: "sessionStarted"; value: { sessionId: string; timestamp: number } }
 // | { kind: "emailEntered"; value: { email: string } }
 // | { kind: "otpVerified"; value: { code: string } }
 // | { kind: "flowCompleted"; value: { userId: string } }
 ```
 
-Every message emitted through a stream is structured as a plain discriminated union containing
+Every message emitted through an event bus is structured as a plain discriminated union containing
 `kind` (the message identifier) and `value` (the payload).
 
 ---
 
-## Creating Streams
+## Creating Event Buses
 
-Streams are constructed using `Stream.make`. An optional configuration object allows naming the
-stream for debugging or attaching an error boundary callback to isolate listener exceptions.
+Event buses are constructed using `EventBus.make`. An optional configuration object allows naming
+the bus for debugging or attaching an error boundary callback to isolate listener exceptions.
 
 ```ts
-import { Stream } from "@nlozgachev/pipelined/core";
+import { EventBus } from "@nlozgachev/pipelined/core";
 
-// Create an isolated stream with an error handler
-const authStream = Stream.make<UserFlowMessages>({
+// Create an isolated event bus with an error handler
+const authBus = EventBus.make<UserFlowMessages>({
   name: "auth-pipeline",
   onError: (error) => {
-    console.error("Stream listener exception:", error);
+    console.error("EventBus listener exception:", error);
   },
 });
 ```
@@ -71,20 +71,20 @@ const authStream = Stream.make<UserFlowMessages>({
 
 ## Emitting Messages
 
-Messages are published using `Stream.emit`, which accepts the target stream (or an array of streams
-for broadcasting) and the message payload object.
+Messages are published using `EventBus.emit`, which accepts the target event bus (or an array of
+buses for broadcasting) and the message payload object.
 
 ```ts
-import { Stream } from "@nlozgachev/pipelined/core";
+import { EventBus } from "@nlozgachev/pipelined/core";
 
-// Emit to a single stream
-Stream.emit(authStream, {
+// Emit to a single event bus
+EventBus.emit(authBus, {
   kind: "sessionStarted",
   value: { sessionId: "sess-9921", timestamp: Date.now() },
 });
 
-// Broadcast to multiple streams simultaneously
-Stream.emit([authStream, analyticsStream], {
+// Broadcast to multiple event buses simultaneously
+EventBus.emit([authBus, analyticsBus], {
   kind: "emailEntered",
   value: { email: "dev@example.com" },
 });
@@ -94,12 +94,13 @@ Stream.emit([authStream, analyticsStream], {
 
 ## Listening & Sequence Matching
 
-`Stream.listen` registers subscribers on a stream for a single message kind or a sequence of message
-kinds. Matching options control sequence ordering, strictness, and auto-resetting. Subscribing the
-exact same listener function reference multiple times is idempotent and automatically deduplicated.
+`EventBus.listen` registers subscribers on an event bus for a single message kind or a sequence of
+message kinds. Matching options control sequence ordering, strictness, and auto-resetting.
+Subscribing the exact same listener function reference multiple times is idempotent and
+automatically deduplicated.
 
 ```ts
-import { Stream } from "@nlozgachev/pipelined/core";
+import { EventBus } from "@nlozgachev/pipelined/core";
 
 // Single-word sequence options:
 // - ordered: matches events in exact array sequence order
@@ -108,8 +109,8 @@ import { Stream } from "@nlozgachev/pipelined/core";
 // - reset: event kind(s) that reset sequence tracking to index 0
 // - optional: event kind(s) in sequence that may be present or skipped
 
-const sequenceListener = Stream.listen(
-  authStream,
+const sequenceListener = EventBus.listen(
+  authBus,
   ["sessionStarted", "emailEntered", "otpVerified"],
   {
     ordered: true,
@@ -128,15 +129,15 @@ When an event or sequence of events matches, `.reduce(reducer, initialState)` ac
 time. It returns a `Subscription<State>` object with `.getState()` and `.unsubscribe()`.
 
 ```ts
-import { Stream } from "@nlozgachev/pipelined/core";
+import { EventBus } from "@nlozgachev/pipelined/core";
 
 type OnboardingState = {
   completedSteps: number;
   lastEmail: string;
 };
 
-const subscription = Stream.listen(
-  authStream,
+const subscription = EventBus.listen(
+  authBus,
   ["sessionStarted", "emailEntered", "otpVerified"],
   { ordered: true }
 ).reduce(
@@ -167,16 +168,16 @@ For scenarios where state accumulation is not required, `.tap(effect)` executes 
 callback when the matching event or sequence fires. It returns a cleanup function to unsubscribe.
 
 ```ts
-import { Stream } from "@nlozgachev/pipelined/core";
+import { EventBus } from "@nlozgachev/pipelined/core";
 
 type TelemetryMessages = {
   pageViewed: { path: string };
   buttonClicked: { buttonId: string };
 };
 
-const analyticsStream = Stream.make<TelemetryMessages>();
+const analyticsBus = EventBus.make<TelemetryMessages>();
 
-const unsubscribe = Stream.listen(analyticsStream, "buttonClicked").tap((msg) => {
+const unsubscribe = EventBus.listen(analyticsBus, "buttonClicked").tap((msg) => {
   if (msg.kind === "buttonClicked") {
     console.log("Telemetry event:", msg.value.buttonId);
   }
@@ -188,36 +189,36 @@ unsubscribe();
 
 ---
 
-## Structural Stream Forwarding
+## Structural Event Bus Forwarding
 
-`Stream.forward` connects streams together, piping messages from a source stream to target streams.
-An optional `only` filter restricts forwarding to specific message kinds.
+`EventBus.forward` connects buses together, piping messages from a source bus to target buses. An
+optional `only` filter restricts forwarding to specific message kinds.
 
 ```ts
-import { Stream } from "@nlozgachev/pipelined/core";
+import { EventBus } from "@nlozgachev/pipelined/core";
 
 type OrderMessages = {
   cartUpdated: { count: number };
   checkoutSubmitted: { total: number };
 };
 
-const UIStream = Stream.make<OrderMessages>();
-const AuditStream = Stream.make<OrderMessages>();
+const UIBus = EventBus.make<OrderMessages>();
+const AuditBus = EventBus.make<OrderMessages>();
 
-// Forward checkout events from UIStream to AuditStream
-const stopForwarding = Stream.forward({
-  from: UIStream,
-  to: AuditStream,
+// Forward checkout events from UIBus to AuditBus
+const stopForwarding = EventBus.forward({
+  from: UIBus,
+  to: AuditBus,
   only: ["checkoutSubmitted"],
 });
 
-// Emitting on UIStream automatically reaches AuditStream subscribers
-Stream.emit(UIStream, {
+// Emitting on UIBus automatically reaches AuditBus subscribers
+EventBus.emit(UIBus, {
   kind: "checkoutSubmitted",
   value: { total: 149.99 },
 });
 
-// Disconnect stream forwarding when feature unmounts
+// Disconnect event forwarding when feature unmounts
 stopForwarding();
 ```
 
@@ -225,12 +226,12 @@ stopForwarding();
 
 ## Synchronous Breadth-First Dispatch
 
-When a listener callback emits a new message during event handling (`Stream.emit` called within a
-subscriber), `Stream` dispatches messages using a synchronous breadth-first trampoline queue.
+When a listener callback emits a new message during event handling (`EventBus.emit` called within a
+subscriber), `EventBus` dispatches messages using a synchronous breadth-first trampoline queue.
 
 Rather than invoking re-entrant emissions recursively on the call stack, nested messages are
-appended to the stream's internal queue. The active dispatch loop delivers the current message to
-all registered listeners completely before processing subsequent messages in sequence.
+appended to the bus's internal queue. The active dispatch loop delivers the current message to all
+registered listeners completely before processing subsequent messages in sequence.
 
 This architecture guarantees two core runtime properties:
 
@@ -247,28 +248,28 @@ This architecture guarantees two core runtime properties:
 
 - **Decoupling event producers from subscribers**: In modular architectures, components (such as
   auth controllers, shopping carts, or WebSocket clients) need to broadcast lifecycle events without
-  hardcoded references to UI banners, logging sinks, or analytics trackers. `Stream` provides a
+  hardcoded references to UI banners, logging sinks, or analytics trackers. `EventBus` provides a
   typed, memory-safe event broker that completely decouples event sources from consumers.
-- **Pattern-matching multi-step event sequences (`Stream.listen`)**: Tracking complex multi-event
+- **Pattern-matching multi-step event sequences (`EventBus.listen`)**: Tracking complex multi-event
   flows (such as detecting a multi-step checkout sequence: `userRegistered` → `planSelected` →
   `paymentSubmitted`, or keyboard shortcut combos) normally requires ad-hoc boolean flags and
-  timeout handles. `Stream.listen` matches ordered or strict event sequences natively, with
+  timeout handles. `EventBus.listen` matches ordered or strict event sequences natively, with
   configurable reset events (`reset: "cartEmptied"`).
 - **Preventing re-entrant message reordering**: When an event listener reacts to an incoming event
   by immediately emitting a new event, standard event emitters execute listeners recursively. This
   can cause secondary events to finish before primary events, scrambling chronological order.
-  `Stream` uses causal queue dispatching to guarantee strict FIFO ordering across all subscribers.
+  `EventBus` uses causal queue dispatching to guarantee strict FIFO ordering across all subscribers.
 - **Eliminating stack overflow crashes during event cascades**: Cascading domain events (where event
   A triggers event B, which triggers event C) can easily exceed JavaScript's call stack limits in
-  recursive emitter implementations. `Stream` executes nested dispatches iteratively using an
+  recursive emitter implementations. `EventBus` executes nested dispatches iteratively using an
   internal queue with O(1) stack overhead.
 - **State reduction over matched event streams (`.reduce()`)**: In dashboard widgets and activity
   trackers, components need to compute live derived state (such as counting unread notifications or
   summing active cart totals) from a stream of discrete events. Calling `.reduce()` on a listener
   accumulates state over time synchronously without external mutable state stores.
-- **Structural stream forwarding and subsystem aggregation (`Stream.forward`)**: In modular
-  applications, child feature modules maintain local event streams. `Stream.forward` bridges and
-  forwards filtered or renamed events from isolated module streams into a central application event
+- **Structural event bus forwarding and subsystem aggregation (`EventBus.forward`)**: In modular
+  applications, child feature modules maintain local event buses. `EventBus.forward` bridges and
+  forwards filtered or renamed events from isolated module buses into a central application event
   bus without manual event plumbing.
 - **Memory leak prevention with explicit listener disposal**: Every subscription returns a clean
   disposal function that removes the listener instantly, preventing dangling references and memory

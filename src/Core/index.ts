@@ -1,6 +1,7 @@
 export * from "./Combinable";
 export * from "./Deferred";
 export * from "./Equality";
+export * from "./EventBus";
 export * from "./Lazy";
 export * from "./Lens";
 export * from "./Logged";
@@ -16,7 +17,6 @@ export * from "./RemoteData";
 export * from "./Resource";
 export * from "./Result";
 export * from "./State";
-export * from "./Stream";
 export * from "./Task";
 export * from "./These";
 export * from "./Validation";

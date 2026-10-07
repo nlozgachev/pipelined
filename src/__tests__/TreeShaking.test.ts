@@ -26,7 +26,7 @@ async function bundleCode(inputCode: string, minify = false): Promise<string> {
 	return result.outputFiles[0].text;
 }
 
-test("Tree-shaking: importing only Maybe from #core excludes Op, Stream, and Dict", async () => {
+test("Tree-shaking: importing only Maybe from #core excludes Op, EventBus, and Dict", async () => {
 	const code = `
 		import { Maybe } from "#core";
 		const val = Maybe.make.some(42);
@@ -34,19 +34,19 @@ test("Tree-shaking: importing only Maybe from #core excludes Op, Stream, and Dic
 	`;
 	const output = await bundleCode(code);
 	expect(output).not.toContain("OpErr");
-	expect(output).not.toContain("Stream");
+	expect(output).not.toContain("EventBus");
 	expect(output).not.toContain("Dict");
 	expect(output).not.toContain("TaskValidation");
 });
 
-test("Tree-shaking: importing only Result from #core excludes Op and Stream", async () => {
+test("Tree-shaking: importing only Result from #core excludes Op and EventBus", async () => {
 	const code = `
 		import { Result } from "#core";
 		const res = Result.make.ok("success");
 		console.log(res);
 	`;
 	const output = await bundleCode(code);
-	expect(output).not.toContain("Stream");
+	expect(output).not.toContain("EventBus");
 	expect(output).not.toContain("OpErr");
 	expect(output).not.toContain("TaskValidation");
 });
