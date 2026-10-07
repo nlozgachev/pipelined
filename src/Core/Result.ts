@@ -290,14 +290,14 @@ export const Result = {
 
 	/**
 	 * Recovers from an error by providing a fallback Result.
-	 * The fallback can produce a different success type, widening the result to `Result<E, A | B>`.
+	 * The fallback can produce a different success type or resolve with a different error type.
 	 */
-	recover: <E, B>(fallback: (e: E) => Result<E, B>) => <A>(data: Result<E, A>): Result<E, A | B> =>
-		isOk(data) ? data : fallback((data as Err<E>).error),
+	recover: <E1, E2, B>(fallback: (e: E1) => Result<E2, B>) => <A>(data: Result<E1, A>): Result<E2, A | B> =>
+		isOk(data) ? data : fallback((data as Err<E1>).error),
 
 	/**
 	 * Recovers from an error unless the predicate `isBlocked` returns true for that error.
-	 * The fallback can produce a different success type, widening the result to `Result<E, A | B>`.
+	 * The fallback can produce a different success type, widening the result to `Result<E1 | E2, A | B>`.
 	 *
 	 * @example
 	 * ```ts
@@ -308,8 +308,9 @@ export const Result = {
 	 * ```
 	 */
 	recoverUnless:
-		<E, B>(isBlocked: (e: E) => boolean, fallback: () => Result<E, B>) => <A>(data: Result<E, A>): Result<E, A | B> =>
-			isErr(data) && !isBlocked(data.error) ? fallback() : data,
+		<E1, E2, B>(isBlocked: (e: E1) => boolean, fallback: (e: E1) => Result<E2, B>) =>
+		<A>(data: Result<E1, A>): Result<E1 | E2, A | B> =>
+			isErr(data) && !isBlocked(data.error) ? fallback(data.error) : data,
 
 	// --- to ---
 	to: {
@@ -360,13 +361,13 @@ export const Result = {
 	 * const add = (a: number) => (b: number) => a + b;
 	 * pipe(
 	 *   Result.make.ok(add),
-	 *   Result.ap(Result.make.ok(5)),
-	 *   Result.ap(Result.make.ok(3))
+	 *   Result.apply(Result.make.ok(5)),
+	 *   Result.apply(Result.make.ok(3))
 	 * ); // Ok(8)
 	 * ```
 	 */
-	ap: <E, A>(arg: Result<E, A>) => <B>(data: Result<E, (a: A) => B>): Result<E, B> =>
-		isOk(data) && isOk(arg) ? makeOk(data.value(arg.value)) : (isErr(data) ? data : (arg as Err<E>)),
+	apply: <E2, A>(arg: Result<E2, A>) => <E1, B>(data: Result<E1, (a: A) => B>): Result<E1 | E2, B> =>
+		isOk(data) && isOk(arg) ? makeOk(data.value(arg.value)) : (isErr(data) ? data : (arg as Err<E2>)),
 
 	/**
 	 * Converts a Result value into an object containing a single property.
@@ -392,8 +393,8 @@ export const Result = {
 	 * ```
 	 */
 	bind:
-		<K extends string, E, A, B>(key: K, f: (a: A) => Result<E, B>) =>
-		(data: Result<E, A>): Result<E, A & { [P in K]: B; }> => {
+		<K extends string, E2, A, B>(key: K, f: (a: A) => Result<E2, B>) =>
+		<E1 = never>(data: Result<E1, A>): Result<E1 | E2, A & { [P in K]: B; }> => {
 			if (!isOk(data)) { return data; }
 			const res = f(data.value);
 			return isOk(res) ? makeOk({ ...(data.value as any), [key]: res.value } as A & { [P in K]: B; }) : res;

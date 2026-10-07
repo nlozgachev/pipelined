@@ -23,7 +23,10 @@ import {
 	makeQueue,
 	makeRestartable,
 	makeThrottled,
+	OP_FACTORY,
 } from "../internal/Op.util";
+
+declare const _opBrand: unique symbol;
 
 // ---------------------------------------------------------------------------
 // Op<I, E, A>
@@ -47,7 +50,7 @@ import {
  *       if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
  *       return r.json() as Promise<User>;
  *     }),
- *   (e) => new ApiError(e),
+ *   { onError: (e) => new ApiError(e) },
  * );
  *
  * const manager = Op.interpret(fetchUser, { strategy: "restartable" });
@@ -60,12 +63,8 @@ import {
  * manager.run(userId);
  * ```
  */
-export type Op<I, E, A> = {
-	/**
-	 * @internal — Used by `Op.interpret`. Do not call directly.
-	 * Returns `null` when the operation was aborted (signal fired before factory resolved).
-	 */
-	readonly _factory: (input: I, signal: AbortSignal) => Deferred<CoreResult<E, A> | null>;
+export type Op<Args extends readonly any[] = any[], E = unknown, A = unknown> = {
+	readonly [_opBrand]: { readonly _args: (...args: Args) => void; readonly _error: () => E; readonly _value: () => A; };
 };
 
 // ---------------------------------------------------------------------------
@@ -77,7 +76,7 @@ type MaybeRetry<E, O> = O extends { retry: InternalRetryOptions<E>; } ? Op.Retry
 
 // Union of all valid option shapes — exposed as a single type so the TS language service
 // can show all strategy literals in autocomplete (overload aggregation is unreliable).
-type AllInterpretOptions<I, E> =
+type AllInterpretOptions<Args extends readonly any[], E> =
 	| ({ strategy: "once"; retry?: InternalRetryOptions<E>; } & WithTimeout<E>)
 	| ({ strategy: "restartable"; retry?: InternalRetryOptions<E>; } & WithMinInterval & WithTimeout<E>)
 	| ({ strategy: "exclusive"; retry?: InternalRetryOptions<E>; } & WithCooldown & WithTimeout<E>)
@@ -87,7 +86,7 @@ type AllInterpretOptions<I, E> =
 			retry?: InternalRetryOptions<E>;
 			maxSize?: number;
 			overflow?: "drop" | "replace-last";
-			dedupe?: (a: I, b: I) => boolean;
+			dedupe?: (a: Args, b: Args) => boolean;
 		}
 		& WithConcurrency
 		& WithTimeout<E>
@@ -100,37 +99,37 @@ type AllInterpretOptions<I, E> =
 	)
 	| ({ strategy: "throttled"; retry?: InternalRetryOptions<E>; trailing?: true; } & WithDuration & WithTimeout<E>)
 	| ({ strategy: "concurrent"; retry?: InternalRetryOptions<E>; overflow?: "queue" | "drop"; } & WithN & WithTimeout<E>)
-	| ({ strategy: "keyed"; perKey?: "exclusive" | "restartable"; key: (input: I) => unknown; } & WithTimeout<E>);
+	| ({ strategy: "keyed"; perKey?: "exclusive" | "restartable"; key: (...args: Args) => unknown; } & WithTimeout<E>);
 
 // Extracts the key type from the `keyed` strategy's `key` function.
-type KeyType<I, O> = O extends { key: (input: I) => infer K; } ? K : unknown;
+type KeyType<Args extends readonly any[], O> = O extends { key: (...args: Args) => infer K; } ? K : unknown;
 
 // Conditional return type — dispatches on strategy (and variant flags) to preserve
 // precise state-union typing without needing per-strategy overloads.
 // Tuple form `[O] extends [...]` prevents distribution over unions.
-type InterpretResult<I, E, A, O> = [O] extends [{ strategy: "throttled"; trailing: true; }]
-	? Op.Manager<I, E, A, Op.ThrottledTrailingState<E, A> | MaybeRetry<E, O>>
-	: [O] extends [{ strategy: "throttled"; }] ? Op.Manager<I, E, A, Op.ThrottledState<E, A> | MaybeRetry<E, O>>
-	: [O] extends [{ strategy: "debounced"; }] ? Op.Manager<I, E, A, Op.DebouncedState<E, A> | MaybeRetry<E, O>>
+type InterpretResult<Args extends readonly any[], E, A, O> = [O] extends [{ strategy: "throttled"; trailing: true; }]
+	? Op.Manager<Args, E, A, Op.ThrottledTrailingState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "throttled"; }] ? Op.Manager<Args, E, A, Op.ThrottledState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "debounced"; }] ? Op.Manager<Args, E, A, Op.DebouncedState<E, A> | MaybeRetry<E, O>>
 	: [O] extends [{ strategy: "concurrent"; overflow: "queue"; }]
-		? Op.Manager<I, E, A, Op.ConcurrentQueueState<E, A> | MaybeRetry<E, O>>
-	: [O] extends [{ strategy: "concurrent"; }] ? Op.Manager<I, E, A, Op.ConcurrentDropState<E, A> | MaybeRetry<E, O>>
+		? Op.Manager<Args, E, A, Op.ConcurrentQueueState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "concurrent"; }] ? Op.Manager<Args, E, A, Op.ConcurrentDropState<E, A> | MaybeRetry<E, O>>
 	: [O] extends [{ strategy: "keyed"; perKey: "restartable"; }]
-		? Op.KeyedManager<I, KeyType<I, O>, E, Op.KeyedRestartablePerKey<E, A>>
-	: [O] extends [{ strategy: "keyed"; }] ? Op.KeyedManager<I, KeyType<I, O>, E, Op.KeyedExclusivePerKey<E, A>>
-	: [O] extends [{ strategy: "once"; }] ? Op.Manager<I, E, A, Op.OnceState<E, A> | MaybeRetry<E, O>>
-	: [O] extends [{ strategy: "restartable"; }] ? Op.Manager<I, E, A, Op.RestartableState<E, A> | MaybeRetry<E, O>>
-	: [O] extends [{ strategy: "exclusive"; }] ? Op.Manager<I, E, A, Op.ExclusiveState<E, A> | MaybeRetry<E, O>>
-	: [O] extends [{ strategy: "queue"; overflow: "replace-last"; dedupe: (a: I, b: I) => boolean; }]
-		? Op.Manager<I, E, A, Op.QueueDropAndReplaceState<E, A> | MaybeRetry<E, O>>
+		? Op.KeyedManager<Args, KeyType<Args, O>, E, Op.KeyedRestartablePerKey<E, A>>
+	: [O] extends [{ strategy: "keyed"; }] ? Op.KeyedManager<Args, KeyType<Args, O>, E, Op.KeyedExclusivePerKey<E, A>>
+	: [O] extends [{ strategy: "once"; }] ? Op.Manager<Args, E, A, Op.OnceState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "restartable"; }] ? Op.Manager<Args, E, A, Op.RestartableState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "exclusive"; }] ? Op.Manager<Args, E, A, Op.ExclusiveState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "queue"; overflow: "replace-last"; dedupe: (a: Args, b: Args) => boolean; }]
+		? Op.Manager<Args, E, A, Op.QueueDropAndReplaceState<E, A> | MaybeRetry<E, O>>
 	: [O] extends [{ strategy: "queue"; overflow: "replace-last"; }]
-		? Op.Manager<I, E, A, Op.QueueReplaceState<E, A> | MaybeRetry<E, O>>
+		? Op.Manager<Args, E, A, Op.QueueReplaceState<E, A> | MaybeRetry<E, O>>
 	: [O] extends [{ strategy: "queue"; maxSize: number; }]
-		? Op.Manager<I, E, A, Op.QueueDropState<E, A> | MaybeRetry<E, O>>
-	: [O] extends [{ strategy: "queue"; dedupe: (a: I, b: I) => boolean; }]
-		? Op.Manager<I, E, A, Op.QueueDropState<E, A> | MaybeRetry<E, O>>
-	: [O] extends [{ strategy: "queue"; }] ? Op.Manager<I, E, A, Op.QueueState<E, A> | MaybeRetry<E, O>>
-	: [O] extends [{ strategy: "buffered"; }] ? Op.Manager<I, E, A, Op.BufferedState<E, A> | MaybeRetry<E, O>>
+		? Op.Manager<Args, E, A, Op.QueueDropState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "queue"; dedupe: (a: Args, b: Args) => boolean; }]
+		? Op.Manager<Args, E, A, Op.QueueDropState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "queue"; }] ? Op.Manager<Args, E, A, Op.QueueState<E, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "buffered"; }] ? Op.Manager<Args, E, A, Op.BufferedState<E, A> | MaybeRetry<E, O>>
 	: never;
 
 // Helpers for implementation
@@ -146,12 +145,12 @@ const isOk = <E, A>(state: Op.State<E, A>): state is Op.Ok<A> => state.kind === 
 const isErr = <E, A>(state: Op.State<E, A>): state is Op.Err<E> => state.kind === "OpErr";
 const isNil = <E, A>(state: Op.State<E, A>): state is Op.Nil => state.kind === "OpNil";
 
-function interpretFn<I, E, A, O extends AllInterpretOptions<I, E>>(
-	op: Op<I, E, A>,
+function interpretFn<Args extends readonly any[], E, A, O extends AllInterpretOptions<Args, E>>(
+	op: Op<Args, E, A>,
 	options: O,
-): InterpretResult<I, E, A, O>;
-function interpretFn<I, E, A>(
-	op: Op<I, E, A>,
+): InterpretResult<Args, E, A, O>;
+function interpretFn<Args extends readonly any[], E, A>(
+	op: Op<Args, E, A>,
 	options: {
 		strategy:
 			| "once"
@@ -169,11 +168,11 @@ function interpretFn<I, E, A>(
 		maxWait?: Duration;
 		n?: number;
 		overflow?: "queue" | "drop" | "replace-last";
-		key?: (input: I) => unknown;
+		key?: (...args: Args) => unknown;
 		perKey?: "exclusive" | "restartable";
 		maxSize?: number;
 		concurrency?: number;
-		dedupe?: (a: I, b: I) => boolean;
+		dedupe?: (a: Args, b: Args) => boolean;
 		size?: number;
 		cooldown?: Duration;
 		minInterval?: Duration;
@@ -222,7 +221,12 @@ function interpretFn<I, E, A>(
 			);
 		}
 		case "keyed": {
-			return makeKeyed(op, options.key ?? ((i: I) => i), options.perKey ?? "exclusive", timeoutOptions);
+			return makeKeyed(
+				op,
+				(options.key ?? ((...args: Args) => args[0])) as (...args: Args) => unknown,
+				options.perKey ?? "exclusive",
+				timeoutOptions,
+			);
 		}
 	}
 }
@@ -346,20 +350,41 @@ export const Op = {
 		nil: isNil,
 	},
 
-	create: <E, A, I = void>(
-		factory: (signal: AbortSignal) => (input: I) => Promise<A>,
-		onError: (e: unknown) => E,
-	): Op<I, E, A> => ({
-		_factory: (input, signal) =>
-			Deferred.from.Promise(
-				factory(signal)(input).then((value): CoreResult<E, A> => CoreResult.make.ok(value)).catch((
-					error,
-				): CoreResult<E, A> | null => signal.aborted ? null : CoreResult.make.err(onError(error))),
-			),
-	}),
+	/**
+	 * Creates an Op from a signal-accepting factory function that returns the async action,
+	 * along with an error mapping handler.
+	 *
+	 * Arguments to the returned function are automatically inferred as tuple parameters via `Parameters<Fn>`.
+	 *
+	 * @example
+	 * ```ts
+	 * const fetchUser = Op.create(
+	 *   (signal) => (id: string) => fetch(`/users/${id}`, { signal }).then(r => r.json() as Promise<User>),
+	 *   { onError: (e) => new ApiError(e) },
+	 * );
+	 * ```
+	 */
+	create: <Fn extends (...args: any[]) => Promise<any>, E = unknown>(
+		factory: (signal: AbortSignal) => Fn,
+		options: { onError: (error: unknown) => E; },
+	): Op<Parameters<Fn>, E, Awaited<ReturnType<Fn>>> =>
+		({
+			[OP_FACTORY]: (args: Parameters<Fn>, signal: AbortSignal) =>
+				Deferred.from.Promise(
+					(async () => {
+						const fn = factory(signal);
+						return await fn(...args);
+					})().then((value): CoreResult<E, Awaited<ReturnType<Fn>>> => CoreResult.make.ok(value)).catch((
+						error,
+					): CoreResult<E, Awaited<ReturnType<Fn>>> | null =>
+						signal.aborted ? null : CoreResult.make.err(options.onError(error))
+					),
+				),
+		}) as unknown as Op<Parameters<Fn>, E, Awaited<ReturnType<Fn>>>,
 
-	lift: <I, A>(f: (input: I, signal: AbortSignal) => Promise<A>): Op<I, unknown, A> =>
-		Op.create((signal) => (input: I) => f(input, signal), (e) => e),
+	lift: <Fn extends (...args: any[]) => Promise<any>>(
+		f: (signal: AbortSignal) => Fn,
+	): Op<Parameters<Fn>, unknown, Awaited<ReturnType<Fn>>> => Op.create(f, { onError: (e) => e }),
 
 	match: <E, A, B>(cases: { ok: (a: A) => B; err: (e: E) => B; nil: () => B; }) => (outcome: Op.Outcome<E, A>): B => {
 		if (outcome.kind === "OpOk") { return cases.ok(outcome.value); }
@@ -410,7 +435,10 @@ export const Op = {
 	race: <E, A>(invocations: ReadonlyArray<Deferred<Op.Outcome<E, A>>>): Deferred<Op.Outcome<E, A>> =>
 		Deferred.from.Promise(Promise.race(invocations.map(Deferred.to.Promise))),
 
-	wire: <I, E, A, S extends Op.State<E, A>>(source: Op.Manager<I, E, A, S>, f: (a: A) => void): () => void =>
+	wire: <Args extends readonly any[], E, A, S extends Op.State<E, A>>(
+		source: Op.Manager<Args, E, A, S>,
+		f: (a: A) => void,
+	): () => void =>
 		source.subscribe((state) => {
 			if (isOk(state)) { f(state.value); }
 		}),
@@ -437,21 +465,21 @@ export namespace Op {
 		readonly lastError: E;
 		readonly nextRetryIn?: number;
 	};
-	export type Manager<I, E, A, S extends State<E, A>> = {
+	export type Manager<Args extends readonly any[], E, A, S extends State<E, A>> = {
 		readonly state: S;
-		run: (input: I) => Deferred<Exclude<S, Idle | Pending | Queued | Retrying<E>>>;
+		run: (...args: Args) => Deferred<Exclude<S, Idle | Pending | Queued | Retrying<E>>>;
 		abort: () => void;
 		subscribe: (cb: (state: S) => void) => () => void;
 		reset: () => void;
-		poll: (input: I, options: { interval: Duration; }) => () => void;
+		poll: (options: { interval: Duration; }) => (...args: Args) => () => void;
 	};
-	export type KeyedManager<I, K, E, PerKeyS> = {
+	export type KeyedManager<Args extends readonly any[], K, E, PerKeyS> = {
 		readonly state: ReadonlyMap<K, PerKeyS>;
-		run: (input: I) => Deferred<Exclude<PerKeyS, Pending | Retrying<E>>>;
+		run: (...args: Args) => Deferred<Exclude<PerKeyS, Pending | Retrying<E>>>;
 		abort: (key?: K) => void;
 		subscribe: (cb: (state: ReadonlyMap<K, PerKeyS>) => void) => () => void;
 		reset: () => void;
-		poll: (input: I, options: { interval: Duration; }) => () => void;
+		poll: (options: { interval: Duration; }) => (...args: Args) => () => void;
 	};
 	export type OnceState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | DroppedNil;
 	export type RetryableOnceState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Err<E> | AbortedNil | DroppedNil;

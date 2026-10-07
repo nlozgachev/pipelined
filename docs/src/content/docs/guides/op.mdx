@@ -16,7 +16,7 @@ Rapid asynchronous operations—such as search autocomplete—can result in out-
 
 ## Creating an Op
 
-`Op.create` defines an operation by accepting an asynchronous factory function and an error mapper:
+`Op.create` defines an operation by accepting an asynchronous runner function and an error options object:
 
 ```ts
 import { Op } from "@nlozgachev/pipelined/core";
@@ -30,24 +30,21 @@ const fetchUser = Op.create(
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json() as Promise<User>;
     }),
-  (error) => new ApiError(error),
+  { onError: (error) => new ApiError(error) },
 );
 ```
 
-The factory function receives an `AbortSignal` and returns a function waiting for input. Pass this signal to cancellable operations (such as `fetch`).
+The outer factory receives an `AbortSignal`. The inner returned function defines the actual action and its arguments. Pass the signal to cancellable operations (such as `fetch`). TypeScript automatically infers the parameters of the inner function, guaranteeing that `manager.run(...args)` is fully typed without repeating type annotations.
 
-If the async function is defined elsewhere, pass the signal as an argument:
+If the async function is defined elsewhere with signal curried first, you can pass its reference directly:
 
 ```ts
-async function getUserData(id: string, signal: AbortSignal): Promise<User> {
-  const response = await fetch(`/users/${id}`, { signal });
-  return response.json();
-}
+const getUserData = (signal: AbortSignal) => (id: string): Promise<User> =>
+  fetch(`/users/${id}`, { signal }).then((r) => r.json());
 
-const fetchUserOp = Op.create(
-  (signal) => (id: string) => getUserData(id, signal),
-  (error) => new ApiError(error),
-);
+const fetchUserOp = Op.create(getUserData, {
+  onError: (error) => new ApiError(error),
+});
 ```
 
 <Aside type="caution">
@@ -62,7 +59,7 @@ If you are writing a quick utility or do not require a typed error channel, you 
 
 ```ts
 const quickSearch = Op.interpret(
-  Op.lift((query: string, signal) =>
+  Op.lift((signal) => (query: string) =>
     fetch(`/search?q=${query}`, { signal }).then((r) => r.json()),
   ),
   { strategy: "restartable" },
@@ -268,7 +265,7 @@ const state = useSyncExternalStore(
 );
 ```
 
-To return a manager to `Idle` without cancelling active in-flight requests, use `manager.reset()`. To trigger repeated executions on a timed loop, use `manager.poll(input, { interval })`.
+To return a manager to `Idle` without cancelling active in-flight requests, use `manager.reset()`. To trigger repeated executions on a timed loop, use `manager.poll({ interval })(...args)` (returning a cancellation handle).
 
 ---
 

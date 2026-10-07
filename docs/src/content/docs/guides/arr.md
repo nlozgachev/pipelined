@@ -338,6 +338,19 @@ pipe(
 )();
 ```
 
+### Accumulating validation traversal with `Arr.traverse.Validation`
+
+Unlike `Arr.traverse.Result` which short-circuits on the first error, `Arr.traverse.Validation`
+evaluates all elements and accumulates every error into a `Failed` non-empty array:
+
+```ts
+const validatePositive = (n: number) =>
+  n > 0 ? Validation.make.passed(n) : Validation.make.failed(`Non-positive: ${n}`);
+
+pipe([1, 2, 3], Arr.traverse.Validation(validatePositive)); // Passed([1, 2, 3])
+pipe([1, -2, -3], Arr.traverse.Validation(validatePositive)); // Failed(["Non-positive: -2", "Non-positive: -3"])
+```
+
 ### Flipping existing structures: `sequence`
 
 If you *already* have an array of containers, you can flip them using `sequence` directly under the
@@ -347,6 +360,10 @@ new layout:
 // Array<Maybe<number>> → Maybe<Array<number>>
 Arr.sequence.Maybe([Maybe.make.some(1), Maybe.make.some(2)]); // Some([1, 2])
 Arr.sequence.Maybe([Maybe.make.some(1), Maybe.make.none()]);   // None
+
+// Array<Validation<string, number>> → Validation<string, Array<number>>
+Arr.sequence.Validation([Validation.make.passed(1), Validation.make.passed(2)]); // Passed([1, 2])
+Arr.sequence.Validation([Validation.make.failed("err1"), Validation.make.failed("err2")]); // Failed(["err1", "err2"])
 ```
 
 ---

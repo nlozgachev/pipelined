@@ -205,6 +205,19 @@ if (Validation.is.failed(outcome)) {
   console.log(outcome.errors);
   // ["Username must be at least 3 characters", "Email must contain an @ symbol"]
 }
+
+// Or keep errors partitioned per field for UI forms:
+const validateForm = Validation.keyed.make({
+  username: validateUsername,
+  email: validateEmail,
+});
+
+const formState = validateForm({ username: "a", email: "invalid" });
+
+if (Validation.keyed.is.failed(formState)) {
+  const errors = Validation.keyed.getErrors(formState);
+  // Some({ username: ["Username must be at least 3 characters"], email: ["Email must contain an @ symbol"] })
+}
 ```
 
 ### Eliminating impossible UI states
@@ -287,7 +300,7 @@ const fetchUser = Op.interpret(
   Op.create(
     (signal) => (id: string) =>
       fetch(`/users/${id}`, { signal }).then((r) => r.json() as Promise<User>),
-    (e) => new ApiError(e),
+    { onError: (e) => new ApiError(e) },
   ),
   {
     strategy: "restartable",
@@ -334,7 +347,7 @@ const searchOp = Op.create(
     fetch(`/search?q=${query}`, { signal }).then((r) =>
       r.json() as Promise<SearchResult[]>
     ),
-  (e) => new SearchError(e),
+  { onError: (e) => new SearchError(e) },
 );
 
 const search = Op.interpret(searchOp, {
@@ -360,7 +373,7 @@ const submitOp = Op.create(
     fetch("/orders", { method: "POST", body: data, signal }).then((r) =>
       r.json()
     ),
-  (e) => new ApiError(e),
+  { onError: (e) => new ApiError(e) },
 );
 
 const submit = Op.interpret(submitOp, {
@@ -552,11 +565,11 @@ if (Result.is.ok(email)) {
 - **`@nlozgachev/pipelined/core`**: Core context containers, async runtimes, optics, and logic
   abstractions (<11 KB gzipped).
 - **`@nlozgachev/pipelined/data`**: Curried, data-last utilities for collections, numbers, strings,
-  and JSON (<7 KB gzipped).
+  and JSON (<10 KB gzipped).
 - **`@nlozgachev/pipelined/composition`**: Pure higher-order function combinators (`pipe`, `flow`,
   `compose`, `curry`, `uncurry`, `converge`, `juxt`, `memoize`, `tap`, `on`, `not`, `flip`, `fn`)
   (<2 KB gzipped).
-- **`@nlozgachev/pipelined/types`**: Type-level utilities (`Brand`, `Duration`, `RetryPolicy`) (<400
+- **`@nlozgachev/pipelined/types`**: Type-level utilities (`Brand`, `Duration`, `RetryPolicy`) (<450
   B gzipped).
 
 Every utility in the library is benchmarked against its native equivalent. While currying introduces

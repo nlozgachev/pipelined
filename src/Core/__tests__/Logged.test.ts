@@ -7,6 +7,18 @@ import { Logged } from "../Logged.ts";
 // make
 // ---------------------------------------------------------------------------
 
+test("Logged.make creates a Logged with default empty log", () => {
+	const result = Logged.make(42);
+	expect(result.value).toBe(42);
+	expect(result.log).toStrictEqual([]);
+});
+
+test("Logged.make creates a Logged with explicit log", () => {
+	const result = Logged.make(42, ["init"]);
+	expect(result.value).toBe(42);
+	expect(result.log).toStrictEqual(["init"]);
+});
+
 test("Logged.from.value creates a Logged with an empty log", () => {
 	const result = Logged.from.value<string, number>(42);
 	expect(result.value).toBe(42);
@@ -93,20 +105,20 @@ test("Logged.chain with empty logs stays empty", () => {
 });
 
 // ---------------------------------------------------------------------------
-// ap
+// apply
 // ---------------------------------------------------------------------------
 
-test("Logged.ap applies a wrapped function to a wrapped value", () => {
+test("Logged.apply applies a wrapped function to a wrapped value", () => {
 	const fn: Logged<string, (n: number) => number> = { value: (n) => n * 3, log: [] };
 	const arg: Logged<string, number> = { value: 7, log: [] };
-	const result = pipe(fn, Logged.ap(arg));
+	const result = pipe(fn, Logged.apply(arg));
 	expect(result.value).toBe(21);
 });
 
-test("Logged.ap concatenates logs from function and argument", () => {
+test("Logged.apply concatenates logs from function and argument", () => {
 	const fn: Logged<string, (n: number) => number> = { value: (n) => n * 2, log: ["fn"] };
 	const arg: Logged<string, number> = { value: 5, log: ["arg"] };
-	const result = pipe(fn, Logged.ap(arg));
+	const result = pipe(fn, Logged.apply(arg));
 	expect(result.value).toBe(10);
 	expect(result.log).toStrictEqual(["fn", "arg"]);
 });

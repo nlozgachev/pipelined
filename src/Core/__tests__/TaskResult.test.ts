@@ -405,42 +405,50 @@ test("Task.Result.fold receives the transformed error from a prior mapError", as
 });
 
 // ---------------------------------------------------------------------------
-// ap
+// apply
 // ---------------------------------------------------------------------------
 
-test("Task.Result.ap applies Ok function to Ok value", async () => {
+test("Task.Result.apply applies Ok function to Ok value", async () => {
 	const result = await pipe(
 		Task.Result.make.ok<string, (n: number) => number>((n) => n * 3),
-		Task.Result.ap(Task.Result.make.ok<string, number>(4)),
+		Task.Result.apply(Task.Result.make.ok<string, number>(4)),
 	)();
 	expect(result).toStrictEqual({ kind: "Ok", value: 12 });
 });
 
-test("Task.Result.ap propagates the error if function is Error", async () => {
+test("Task.Result.apply propagates the error if function is Error", async () => {
 	const result = await pipe(
 		Task.Result.make.err<string, (n: number) => number>("error fn"),
-		Task.Result.ap(Task.Result.make.ok<string, number>(4)),
+		Task.Result.apply(Task.Result.make.ok<string, number>(4)),
 	)();
 	expect(result).toStrictEqual({ kind: "Err", error: "error fn" });
 });
 
-test("Task.Result.ap propagates the error if value is Error", async () => {
+test("Task.Result.apply propagates the error if value is Error", async () => {
 	const result = await pipe(
 		Task.Result.make.ok<string, (n: number) => number>((n) => n * 3),
-		Task.Result.ap(Task.Result.make.err<string, number>("error val")),
+		Task.Result.apply(Task.Result.make.err<string, number>("error val")),
 	)();
 	expect(result).toStrictEqual({ kind: "Err", error: "error val" });
 });
 
-test("Task.Result.ap propagates the first error if both are Error", async () => {
+test("Task.Result.apply propagates the first error if both are Error", async () => {
 	const result = await pipe(
 		Task.Result.make.err<string, (n: number) => number>("error fn"),
-		Task.Result.ap(Task.Result.make.err<string, number>("error val")),
+		Task.Result.apply(Task.Result.make.err<string, number>("error val")),
 	)();
 	expect(result).toStrictEqual({ kind: "Err", error: "error fn" });
 });
 
-test("Task.Result.ap propagates the AbortSignal down to both sides in parallel", async () => {
+test("Task.Result.apply widens error types from function and argument", async () => {
+	const fnTask: Task.Result<"ERR_FN", (n: number) => string> = Task.Result.make.ok((n: number) => String(n));
+	const argTask: Task.Result<"ERR_ARG", number> = Task.Result.make.err("ERR_ARG");
+	const result = await pipe(fnTask, Task.Result.apply(argTask))();
+	expectTypeOf(result).toEqualTypeOf<Result<"ERR_FN" | "ERR_ARG", string>>();
+	expect(result).toStrictEqual({ kind: "Err", error: "ERR_ARG" });
+});
+
+test("Task.Result.apply propagates the AbortSignal down to both sides in parallel", async () => {
 	let signalLeft: AbortSignal | undefined;
 	let signalRight: AbortSignal | undefined;
 
@@ -454,7 +462,7 @@ test("Task.Result.ap propagates the AbortSignal down to both sides in parallel",
 	};
 
 	const controller = new AbortController();
-	const result = await pipe(left, Task.Result.ap(right))(controller.signal);
+	const result = await pipe(left, Task.Result.apply(right))(controller.signal);
 
 	expect(result).toStrictEqual({ kind: "Ok", value: 12 });
 	expect(signalLeft).toBe(controller.signal);

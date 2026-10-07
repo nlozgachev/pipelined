@@ -39,7 +39,7 @@ We lift asynchronous values into a `Task` context depending on whether they are 
 
 ```ts
 // Resolving immediately
-const constantTask = Task.resolve(42); // Task<number>
+const constantTask = Task.make(42); // Task<number>
 ```
 
 Because standard Promises in JavaScript are fallible by definition, `Task.tryCatch` is the canonical intake for operations that may reject or throw an exception, trapping errors with a fallback handler to ensure the returned `Task<A>` is infallible and never throws:
@@ -66,7 +66,7 @@ We can transform and chain our asynchronous blueprints while they are still in t
 const double = (n: number) => n * 2;
 
 const doubledTask = pipe(
-  Task.resolve(5),
+  Task.make(5),
   Task.map(double),
 ); // Task<number>
 
@@ -78,7 +78,7 @@ const result = await doubledTask(); // 10
 When a transformation itself returns another `Task`, we use `chain` to execute them sequentially and flatten the resulting context:
 
 ```ts
-const getSessionUserId = (): Task<string> => Task.resolve("user_abc");
+const getSessionUserId = (): Task<string> => Task.make("user_abc");
 
 const fetchUserPreferences = (userId: string): Task<Preferences> =>
   Task.tryCatch(
@@ -159,7 +159,7 @@ const results = await Task.sequential([
 import { Duration } from "@nlozgachev/pipelined/types";
 
 const delayedGreeting = pipe(
-  Task.resolve("Hello"),
+  Task.make("Hello"),
   Task.delay(Duration.seconds(1)),
 );
 ```
@@ -471,7 +471,7 @@ To solve this, you can use `bindTo` and `bind` to cleanly accumulate asynchronou
 
 ```ts
 pipe(
-  Task.resolve(42),
+  Task.make(42),
   Task.bindTo("value")
 ); // Task({ value: 42 })
 ```

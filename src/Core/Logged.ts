@@ -42,6 +42,17 @@ const chainLogged = <W, A, B>(f: (a: A) => Logged<W, B>) => (data: Logged<W, A>)
 };
 
 export const Logged = {
+	/**
+	 * Creates a `Logged` with a value and an optional initial log array.
+	 *
+	 * @example
+	 * ```ts
+	 * Logged.make(42);                  // { value: 42, log: [] }
+	 * Logged.make(42, ["initialized"]); // { value: 42, log: ["initialized"] }
+	 * ```
+	 */
+	make: <W = never, A = unknown>(value: A, log: readonly W[] = []): Logged<W, A> => ({ value, log: [...log] }),
+
 	// --- from ---
 	from: {
 		/**
@@ -111,11 +122,11 @@ export const Logged = {
 	 * };
 	 * const arg: Logged<string, number> = { value: 5, log: ["arg-loaded"] };
 	 *
-	 * const result = pipe(fn, Logged.ap(arg));
+	 * const result = pipe(fn, Logged.apply(arg));
 	 * Logged.run(result); // [10, ["fn-loaded", "arg-loaded"]]
 	 * ```
 	 */
-	ap: <W, A>(arg: Logged<W, A>) => <B>(data: Logged<W, (a: A) => B>): Logged<W, B> => ({
+	apply: <W, A>(arg: Logged<W, A>) => <B>(data: Logged<W, (a: A) => B>): Logged<W, B> => ({
 		value: data.value(arg.value),
 		log: [...data.log, ...arg.log],
 	}),

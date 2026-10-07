@@ -22,6 +22,19 @@ const err = <E>(error: E): Op.Err<E> => ({ kind: "OpErr", error });
 const getMs = (duration: Duration): number => Duration.to.milliseconds(duration);
 
 // ---------------------------------------------------------------------------
+// OP_FACTORY private symbol & internal type
+// ---------------------------------------------------------------------------
+
+export const OP_FACTORY: unique symbol = Symbol.for("@nlozgachev/pipelined/Op.factory") as any;
+
+export type InternalOp<Args extends readonly any[] = any[], E = unknown, A = unknown> = Op<Args, E, A> & {
+	readonly [OP_FACTORY]: (args: Args, signal: AbortSignal) => Deferred<Result<E, A> | null>;
+};
+
+export const toInternalOp = <Args extends readonly any[], E, A>(op: Op<Args, E, A>): InternalOp<Args, E, A> =>
+	op as unknown as InternalOp<Args, E, A>;
+
+// ---------------------------------------------------------------------------
 // cancellableWait
 // ---------------------------------------------------------------------------
 
@@ -46,9 +59,9 @@ export const cancellableWait = (duration: Duration, signal: AbortSignal): Promis
  * Runs the factory with retry logic. Calls `onRetrying` before each retry delay.
  * Stops on Ok, Nil (null), abort, or exhausted attempts.
  */
-export const runWithRetry = <I, E, A>(
-	op: Op<I, E, A>,
-	input: I,
+export const runWithRetry = <Args extends readonly any[], E, A>(
+	op: Op<Args, E, A>,
+	args: Args,
 	signal: AbortSignal,
 	options: Op.RetryOptions<E>,
 	onRetrying: (state: Op.Retrying<E>) => void,
@@ -60,7 +73,7 @@ export const runWithRetry = <I, E, A>(
 	};
 
 	const attempt = async (left: number): Promise<Result<E, A> | null> => {
-		const result = await Deferred.to.Promise(op._factory(input, signal));
+		const result = await Deferred.to.Promise(toInternalOp(op)[OP_FACTORY](args, signal));
 		if (result === null || signal.aborted) { return null; }
 		if (result.kind === "Ok") { return result; }
 		if (left <= 1) { return result; }
@@ -94,9 +107,9 @@ export const runWithRetry = <I, E, A>(
  * If the deadline fires, it aborts the `controller` and returns `Err(onTimeout())`.
  * A null result from the factory (signal aborted) becomes `_abortedNil`.
  */
-export const execute = <I, E, A>(
-	op: Op<I, E, A>,
-	input: I,
+export const execute = <Args extends readonly any[], E, A>(
+	op: Op<Args, E, A>,
+	args: Args,
 	controller: AbortController,
 	retryOptions?: Op.RetryOptions<E>,
 	timeoutOptions?: Op.TimeoutOptions<E>,
@@ -108,8 +121,8 @@ export const execute = <I, E, A>(
 		r === null ? _abortedNil : (r.kind === "Ok" ? ok(r.value) : err(r.error));
 
 	const runPromise: Promise<Op.Outcome<E, A>> = retryOptions !== undefined && onRetrying !== undefined
-		? runWithRetry(op, input, signal, retryOptions, onRetrying).then(toOutcome)
-		: Deferred.to.Promise(op._factory(input, signal)).then(toOutcome);
+		? runWithRetry(op, args, signal, retryOptions, onRetrying).then(toOutcome)
+		: Deferred.to.Promise(toInternalOp(op)[OP_FACTORY](args, signal)).then(toOutcome);
 
 	if (timeoutOptions === undefined) { return Deferred.from.Promise(runPromise); }
 
@@ -132,12 +145,12 @@ export const execute = <I, E, A>(
 // Strategy factories
 // ---------------------------------------------------------------------------
 
-export const makeRestartable = <I, E, A>(
-	op: Op<I, E, A>,
+export const makeRestartable = <Args extends readonly any[], E, A>(
+	op: Op<Args, E, A>,
 	minInterval?: Duration,
 	retryOptions?: Op.RetryOptions<E>,
 	timeoutOptions?: Op.TimeoutOptions<E>,
-): Op.Manager<I, E, A, Op.State<E, A>> => {
+): Op.Manager<Args, E, A, Op.State<E, A>> => {
 	let currentState: Op.State<E, A> = _idle;
 	let currentController: AbortController | undefined;
 	let currentResolve: ((o: Op.Outcome<E, A>) => void) | undefined;
@@ -150,7 +163,7 @@ export const makeRestartable = <I, E, A>(
 		subscribers.forEach((cb) => cb(state));
 	};
 
-	const run = (input: I): Deferred<Op.Outcome<E, A>> =>
+	const run = (...args: Args): Deferred<Op.Outcome<E, A>> =>
 		Deferred.from.Promise(
 			new Promise<Op.Outcome<E, A>>((resolve) => {
 				// Cancel any in-progress wait and the previous invocation.
@@ -175,7 +188,7 @@ export const makeRestartable = <I, E, A>(
 						}
 						: undefined;
 
-					execute(op, input, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
+					execute(op, args, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
 						if (currentController !== controller) { return; // superseded — already resolved by next run()
 						 }
 						const r = currentResolve;
@@ -224,20 +237,20 @@ export const makeRestartable = <I, E, A>(
 			return () => subscribers.delete(cb);
 		},
 		reset: () => emit(_idle),
-		poll: (input: I, { interval }: { interval: Duration; }) => {
-			void run(input);
-			const id = setInterval(() => void run(input), getMs(interval));
+		poll: ({ interval }: { interval: Duration; }) => (...args: Args) => {
+			void run(...args);
+			const id = setInterval(() => void run(...args), getMs(interval));
 			return () => clearInterval(id);
 		},
 	};
 };
 
-export const makeExclusive = <I, E, A>(
-	op: Op<I, E, A>,
+export const makeExclusive = <Args extends readonly any[], E, A>(
+	op: Op<Args, E, A>,
 	cooldown?: Duration,
 	retryOptions?: Op.RetryOptions<E>,
 	timeoutOptions?: Op.TimeoutOptions<E>,
-): Op.Manager<I, E, A, Op.State<E, A>> => {
+): Op.Manager<Args, E, A, Op.State<E, A>> => {
 	let currentState: Op.State<E, A> = _idle;
 	let currentController: AbortController | undefined;
 	let currentResolve: ((o: Op.Outcome<E, A>) => void) | undefined;
@@ -249,7 +262,7 @@ export const makeExclusive = <I, E, A>(
 		subscribers.forEach((cb) => cb(state));
 	};
 
-	const run = (input: I): Deferred<Op.Outcome<E, A>> => {
+	const run = (...args: Args): Deferred<Op.Outcome<E, A>> => {
 		if (currentController !== undefined || cooldownTimer !== undefined) {
 			// In-flight or in cooldown — drop this call immediately.
 			return Deferred.from.Promise(Promise.resolve(_droppedNil));
@@ -267,7 +280,7 @@ export const makeExclusive = <I, E, A>(
 					}
 					: undefined;
 
-				execute(op, input, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
+				execute(op, args, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
 					if (currentController !== controller) { return; }
 					const r = currentResolve;
 					currentResolve = undefined;
@@ -312,28 +325,28 @@ export const makeExclusive = <I, E, A>(
 			return () => subscribers.delete(cb);
 		},
 		reset: () => emit(_idle),
-		poll: (input: I, { interval }: { interval: Duration; }) => {
-			void run(input);
-			const id = setInterval(() => void run(input), getMs(interval));
+		poll: ({ interval }: { interval: Duration; }) => (...args: Args) => {
+			void run(...args);
+			const id = setInterval(() => void run(...args), getMs(interval));
 			return () => clearInterval(id);
 		},
 	};
 };
 
-export const makeQueue = <I, E, A>(
-	op: Op<I, E, A>,
+export const makeQueue = <Args extends readonly any[], E, A>(
+	op: Op<Args, E, A>,
 	maxSize?: number,
 	overflow?: "drop" | "replace-last",
 	concurrency?: number,
-	dedupe?: (a: I, b: I) => boolean,
+	dedupe?: (a: Args, b: Args) => boolean,
 	retryOptions?: Op.RetryOptions<E>,
 	timeoutOptions?: Op.TimeoutOptions<E>,
-): Op.Manager<I, E, A, Op.State<E, A>> => {
+): Op.Manager<Args, E, A, Op.State<E, A>> => {
 	const maxConcurrency = concurrency ?? 1;
 	let currentState: Op.State<E, A> = _idle;
 	let generation = 0;
 	let inFlight = 0;
-	const queue: Array<{ input: I; resolve: (o: Op.Outcome<E, A>) => void; }> = [];
+	const queue: Array<{ input: Args; resolve: (o: Op.Outcome<E, A>) => void; }> = [];
 	const inflightControllers = new Set<AbortController>();
 	const inflightResolvers: Array<(o: Op.Outcome<E, A>) => void> = [];
 	const subscribers = new Set<(state: Op.State<E, A>) => void>();
@@ -343,7 +356,7 @@ export const makeQueue = <I, E, A>(
 		subscribers.forEach((cb) => cb(state));
 	};
 
-	const startOne = (input: I, resolve: (o: Op.Outcome<E, A>) => void, myGeneration: number): void => {
+	const startOne = (args: Args, resolve: (o: Op.Outcome<E, A>) => void, myGeneration: number): void => {
 		inFlight++;
 		const controller = new AbortController();
 		inflightControllers.add(controller);
@@ -356,7 +369,7 @@ export const makeQueue = <I, E, A>(
 			}
 			: undefined;
 
-		execute(op, input, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
+		execute(op, args, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
 			inflightControllers.delete(controller);
 			const idx = inflightResolvers.indexOf(resolve);
 			if (idx !== -1) { inflightResolvers.splice(idx, 1); }
@@ -377,12 +390,12 @@ export const makeQueue = <I, E, A>(
 		});
 	};
 
-	const run = (input: I): Deferred<Op.Outcome<E, A>> => {
+	const run = (...args: Args): Deferred<Op.Outcome<E, A>> => {
 		const myGeneration = generation;
 
 		// Dedupe: scan queue for a matching item — drop the duplicate, new item takes its place.
 		if (dedupe !== undefined) {
-			const idx = queue.findIndex((item) => dedupe(input, item.input));
+			const idx = queue.findIndex((item) => dedupe(args, item.input));
 			if (idx !== -1) {
 				// oxlint-disable-next-line prefer-destructuring
 				const dup = queue.splice(idx, 1)[0];
@@ -394,7 +407,7 @@ export const makeQueue = <I, E, A>(
 		if (inFlight < maxConcurrency) {
 			return Deferred.from.Promise(
 				new Promise<Op.Outcome<E, A>>((resolve) => {
-					startOne(input, resolve, myGeneration);
+					startOne(args, resolve, myGeneration);
 				}),
 			);
 		}
@@ -403,7 +416,7 @@ export const makeQueue = <I, E, A>(
 		if (maxSize === undefined || queue.length < maxSize) {
 			return Deferred.from.Promise(
 				new Promise<Op.Outcome<E, A>>((resolve) => {
-					queue.push({ input, resolve });
+					queue.push({ input: args, resolve });
 					emit({ kind: "Queued", position: queue.length - 1 });
 				}),
 			);
@@ -415,7 +428,7 @@ export const makeQueue = <I, E, A>(
 				new Promise<Op.Outcome<E, A>>((resolve) => {
 					const tail = queue.pop()!;
 					tail.resolve(_evictedNil);
-					queue.push({ input, resolve });
+					queue.push({ input: args, resolve });
 					emit({ kind: "Queued", position: queue.length - 1 });
 				}),
 			);
@@ -449,25 +462,25 @@ export const makeQueue = <I, E, A>(
 			return () => subscribers.delete(cb);
 		},
 		reset: () => emit(_idle),
-		poll: (input: I, { interval }: { interval: Duration; }) => {
-			void run(input);
-			const id = setInterval(() => void run(input), getMs(interval));
+		poll: ({ interval }: { interval: Duration; }) => (...args: Args) => {
+			void run(...args);
+			const id = setInterval(() => void run(...args), getMs(interval));
 			return () => clearInterval(id);
 		},
 	};
 };
 
-export const makeBuffered = <I, E, A>(
-	op: Op<I, E, A>,
+export const makeBuffered = <Args extends readonly any[], E, A>(
+	op: Op<Args, E, A>,
 	size?: number,
 	retryOptions?: Op.RetryOptions<E>,
 	timeoutOptions?: Op.TimeoutOptions<E>,
-): Op.Manager<I, E, A, Op.State<E, A>> => {
+): Op.Manager<Args, E, A, Op.State<E, A>> => {
 	const bufferSize = size ?? 1;
 	let currentState: Op.State<E, A> = _idle;
 	let currentController: AbortController | undefined;
 	let currentResolve: ((o: Op.Outcome<E, A>) => void) | undefined;
-	const buffer: Array<{ input: I; resolve: (o: Op.Outcome<E, A>) => void; }> = [];
+	const buffer: Array<{ input: Args; resolve: (o: Op.Outcome<E, A>) => void; }> = [];
 	const subscribers = new Set<(state: Op.State<E, A>) => void>();
 
 	const emit = (state: Op.State<E, A>): void => {
@@ -475,7 +488,7 @@ export const makeBuffered = <I, E, A>(
 		subscribers.forEach((cb) => cb(state));
 	};
 
-	const startRun = (input: I, resolve: (o: Op.Outcome<E, A>) => void): void => {
+	const startRun = (args: Args, resolve: (o: Op.Outcome<E, A>) => void): void => {
 		currentResolve = resolve;
 		currentController = new AbortController();
 		const controller = currentController;
@@ -487,7 +500,7 @@ export const makeBuffered = <I, E, A>(
 			}
 			: undefined;
 
-		execute(op, input, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
+		execute(op, args, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
 			if (currentController !== controller) { return; }
 			const r = currentResolve;
 			currentResolve = undefined;
@@ -501,20 +514,20 @@ export const makeBuffered = <I, E, A>(
 		});
 	};
 
-	const run = (input: I): Deferred<Op.Outcome<E, A>> =>
+	const run = (...args: Args): Deferred<Op.Outcome<E, A>> =>
 		Deferred.from.Promise(
 			new Promise<Op.Outcome<E, A>>((resolve) => {
 				if (currentController === undefined) {
-					startRun(input, resolve);
+					startRun(args, resolve);
 				} else if (buffer.length < bufferSize) {
 					// Buffer has capacity — enqueue.
-					buffer.push({ input, resolve });
+					buffer.push({ input: args, resolve });
 					emit({ kind: "Queued", position: buffer.length - 1 });
 				} else {
 					// Buffer full — evict oldest (head) and enqueue new item.
 					const evicted = buffer.shift()!;
 					evicted.resolve(_evictedNil);
-					buffer.push({ input, resolve });
+					buffer.push({ input: args, resolve });
 					emit({ kind: "Queued", position: buffer.length - 1 });
 				}
 			}),
@@ -543,22 +556,22 @@ export const makeBuffered = <I, E, A>(
 			return () => subscribers.delete(cb);
 		},
 		reset: () => emit(_idle),
-		poll: (input: I, { interval }: { interval: Duration; }) => {
-			void run(input);
-			const id = setInterval(() => void run(input), getMs(interval));
+		poll: ({ interval }: { interval: Duration; }) => (...args: Args) => {
+			void run(...args);
+			const id = setInterval(() => void run(...args), getMs(interval));
 			return () => clearInterval(id);
 		},
 	};
 };
 
-export const makeDebounced = <I, E, A>(
-	op: Op<I, E, A>,
+export const makeDebounced = <Args extends readonly any[], E, A>(
+	op: Op<Args, E, A>,
 	duration: Duration,
 	leading: boolean,
 	maxWait?: Duration,
 	retryOptions?: Op.RetryOptions<E>,
 	timeoutOptions?: Op.TimeoutOptions<E>,
-): Op.Manager<I, E, A, Op.State<E, A>> => {
+): Op.Manager<Args, E, A, Op.State<E, A>> => {
 	let currentState: Op.State<E, A> = _idle;
 	// Trailing execution state
 	let currentController: AbortController | undefined;
@@ -569,7 +582,7 @@ export const makeDebounced = <I, E, A>(
 	// Pending (waiting for timer) state
 	let pendingResolve: ((o: Op.Outcome<E, A>) => void) | undefined;
 	let timerId: ReturnType<typeof setTimeout> | undefined;
-	let pendingInput: I | undefined;
+	let pendingInput: Args | undefined;
 	let firstCallAt = 0; // timestamp of first call in current burst; 0 = no burst
 	const subscribers = new Set<(state: Op.State<E, A>) => void>();
 
@@ -578,7 +591,7 @@ export const makeDebounced = <I, E, A>(
 		subscribers.forEach((cb) => cb(state));
 	};
 
-	const fireLeading = (input: I, resolve: (o: Op.Outcome<E, A>) => void): void => {
+	const fireLeading = (args: Args, resolve: (o: Op.Outcome<E, A>) => void): void => {
 		leadingController = new AbortController();
 		const controller = leadingController;
 		leadingResolve = resolve;
@@ -590,7 +603,7 @@ export const makeDebounced = <I, E, A>(
 			}
 			: undefined;
 
-		execute(op, input, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
+		execute(op, args, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
 			if (leadingController !== controller) { return; }
 			const r = leadingResolve;
 			leadingResolve = undefined;
@@ -608,7 +621,7 @@ export const makeDebounced = <I, E, A>(
 		if (capturedResolve === undefined) { return; // leading-only burst — no trailing call pending
 		 }
 		currentResolve = capturedResolve;
-		const toRun = pendingInput as I;
+		const toRun = pendingInput as Args;
 		pendingInput = undefined;
 		currentController = new AbortController();
 		const controller = currentController;
@@ -643,24 +656,24 @@ export const makeDebounced = <I, E, A>(
 	const inDebounceWindow = (): boolean =>
 		timerId !== undefined || leadingController !== undefined || currentController !== undefined;
 
-	const run = (input: I): Deferred<Op.Outcome<E, A>> =>
+	const run = (...args: Args): Deferred<Op.Outcome<E, A>> =>
 		Deferred.from.Promise(
 			new Promise<Op.Outcome<E, A>>((resolve) => {
 				if (!inDebounceWindow()) {
 					// Fresh start.
 					firstCallAt = Date.now();
 					if (leading) {
-						fireLeading(input, resolve);
+						fireLeading(args, resolve);
 						scheduleTrailing(); // start timer to track debounce window
 					} else {
-						pendingInput = input;
+						pendingInput = args;
 						pendingResolve = resolve;
 						scheduleTrailing();
 					}
 				} else {
 					// In debounce window — replace pending trailing call.
 					const prev = pendingResolve;
-					pendingInput = input;
+					pendingInput = args;
 					pendingResolve = resolve;
 					prev?.(_evictedNil);
 					scheduleTrailing();
@@ -703,26 +716,26 @@ export const makeDebounced = <I, E, A>(
 			return () => subscribers.delete(cb);
 		},
 		reset: () => emit(_idle),
-		poll: (input: I, { interval }: { interval: Duration; }) => {
-			void run(input);
-			const id = setInterval(() => void run(input), getMs(interval));
+		poll: ({ interval }: { interval: Duration; }) => (...args: Args) => {
+			void run(...args);
+			const id = setInterval(() => void run(...args), getMs(interval));
 			return () => clearInterval(id);
 		},
 	};
 };
 
-export const makeThrottled = <I, E, A>(
-	op: Op<I, E, A>,
+export const makeThrottled = <Args extends readonly any[], E, A>(
+	op: Op<Args, E, A>,
 	duration: Duration,
 	trailing: boolean,
 	retryOptions?: Op.RetryOptions<E>,
 	timeoutOptions?: Op.TimeoutOptions<E>,
-): Op.Manager<I, E, A, Op.State<E, A>> => {
+): Op.Manager<Args, E, A, Op.State<E, A>> => {
 	let currentState: Op.State<E, A> = _idle;
 	let currentController: AbortController | undefined;
 	let currentResolve: ((o: Op.Outcome<E, A>) => void) | undefined;
 	let cooldownTimer: ReturnType<typeof setTimeout> | undefined;
-	let pendingInput: I | undefined;
+	let pendingInput: Args | undefined;
 	let pendingResolve: ((o: Op.Outcome<E, A>) => void) | undefined;
 	const subscribers = new Set<(state: Op.State<E, A>) => void>();
 
@@ -731,7 +744,7 @@ export const makeThrottled = <I, E, A>(
 		subscribers.forEach((cb) => cb(state));
 	};
 
-	const fireOp = (input: I, resolve: (o: Op.Outcome<E, A>) => void): void => {
+	const fireOp = (args: Args, resolve: (o: Op.Outcome<E, A>) => void): void => {
 		currentResolve = resolve;
 		currentController = new AbortController();
 		const controller = currentController;
@@ -743,7 +756,7 @@ export const makeThrottled = <I, E, A>(
 			}
 			: undefined;
 
-		execute(op, input, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
+		execute(op, args, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
 			if (currentController !== controller) { return; }
 			const r = currentResolve;
 			currentResolve = undefined;
@@ -757,17 +770,17 @@ export const makeThrottled = <I, E, A>(
 		cooldownTimer = setTimeout(() => {
 			cooldownTimer = undefined;
 			if (trailing && pendingInput !== undefined) {
-				const input = pendingInput as I;
+				const toRun = pendingInput as Args;
 				const resolve = pendingResolve!;
 				pendingInput = undefined;
 				pendingResolve = undefined;
-				fireOp(input, resolve);
+				fireOp(toRun, resolve);
 				startCooldown(); // trailing fire holds its own cooldown window
 			}
 		}, getMs(duration));
 	};
 
-	const run = (input: I): Deferred<Op.Outcome<E, A>> => {
+	const run = (...args: Args): Deferred<Op.Outcome<E, A>> => {
 		if (cooldownTimer !== undefined) {
 			if (!trailing) {
 				return Deferred.from.Promise(Promise.resolve(_droppedNil));
@@ -775,7 +788,7 @@ export const makeThrottled = <I, E, A>(
 			return Deferred.from.Promise(
 				new Promise<Op.Outcome<E, A>>((resolve) => {
 					const prev = pendingResolve;
-					pendingInput = input;
+					pendingInput = args;
 					pendingResolve = resolve;
 					prev?.(_evictedNil);
 				}),
@@ -783,7 +796,7 @@ export const makeThrottled = <I, E, A>(
 		}
 		return Deferred.from.Promise(
 			new Promise<Op.Outcome<E, A>>((resolve) => {
-				fireOp(input, resolve);
+				fireOp(args, resolve);
 				startCooldown();
 			}),
 		);
@@ -818,27 +831,27 @@ export const makeThrottled = <I, E, A>(
 			return () => subscribers.delete(cb);
 		},
 		reset: () => emit(_idle),
-		poll: (input: I, { interval }: { interval: Duration; }) => {
-			void run(input);
-			const id = setInterval(() => void run(input), getMs(interval));
+		poll: ({ interval }: { interval: Duration; }) => (...args: Args) => {
+			void run(...args);
+			const id = setInterval(() => void run(...args), getMs(interval));
 			return () => clearInterval(id);
 		},
 	};
 };
 
-export const makeConcurrent = <I, E, A>(
-	op: Op<I, E, A>,
+export const makeConcurrent = <Args extends readonly any[], E, A>(
+	op: Op<Args, E, A>,
 	n: number,
 	overflow: "queue" | "drop",
 	retryOptions?: Op.RetryOptions<E>,
 	timeoutOptions?: Op.TimeoutOptions<E>,
-): Op.Manager<I, E, A, Op.State<E, A>> => {
+): Op.Manager<Args, E, A, Op.State<E, A>> => {
 	let currentState: Op.State<E, A> = _idle;
 	let inflight = 0;
 	let generation = 0;
 	const controllers = new Set<AbortController>();
 	const inflightResolvers: Array<(o: Op.Outcome<E, A>) => void> = [];
-	const overflowQueue: Array<{ input: I; resolve: (o: Op.Outcome<E, A>) => void; }> = [];
+	const overflowQueue: Array<{ input: Args; resolve: (o: Op.Outcome<E, A>) => void; }> = [];
 	const subscribers = new Set<(state: Op.State<E, A>) => void>();
 
 	const emit = (state: Op.State<E, A>): void => {
@@ -846,7 +859,7 @@ export const makeConcurrent = <I, E, A>(
 		subscribers.forEach((cb) => cb(state));
 	};
 
-	const startOne = (input: I, resolve: (o: Op.Outcome<E, A>) => void, myGeneration: number): void => {
+	const startOne = (args: Args, resolve: (o: Op.Outcome<E, A>) => void, myGeneration: number): void => {
 		inflight++;
 		const controller = new AbortController();
 		controllers.add(controller);
@@ -859,7 +872,7 @@ export const makeConcurrent = <I, E, A>(
 			}
 			: undefined;
 
-		execute(op, input, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
+		execute(op, args, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
 			controllers.delete(controller);
 			const idx = inflightResolvers.indexOf(resolve);
 			if (idx !== -1) { inflightResolvers.splice(idx, 1); }
@@ -880,13 +893,13 @@ export const makeConcurrent = <I, E, A>(
 		});
 	};
 
-	const run = (input: I): Deferred<Op.Outcome<E, A>> => {
+	const run = (...args: Args): Deferred<Op.Outcome<E, A>> => {
 		const myGeneration = generation;
 
 		if (inflight < n) {
 			return Deferred.from.Promise(
 				new Promise<Op.Outcome<E, A>>((resolve) => {
-					startOne(input, resolve, myGeneration);
+					startOne(args, resolve, myGeneration);
 				}),
 			);
 		}
@@ -897,7 +910,7 @@ export const makeConcurrent = <I, E, A>(
 
 		return Deferred.from.Promise(
 			new Promise<Op.Outcome<E, A>>((resolve) => {
-				overflowQueue.push({ input, resolve });
+				overflowQueue.push({ input: args, resolve });
 				emit({ kind: "Queued", position: overflowQueue.length - 1 });
 			}),
 		);
@@ -927,20 +940,20 @@ export const makeConcurrent = <I, E, A>(
 			return () => subscribers.delete(cb);
 		},
 		reset: () => emit(_idle),
-		poll: (input: I, { interval }: { interval: Duration; }) => {
-			void run(input);
-			const id = setInterval(() => void run(input), getMs(interval));
+		poll: ({ interval }: { interval: Duration; }) => (...args: Args) => {
+			void run(...args);
+			const id = setInterval(() => void run(...args), getMs(interval));
 			return () => clearInterval(id);
 		},
 	};
 };
 
-export const makeKeyed = <I, K, E, A>(
-	op: Op<I, E, A>,
-	keyFn: (input: I) => K,
+export const makeKeyed = <Args extends readonly any[], K, E, A>(
+	op: Op<Args, E, A>,
+	keyFn: (...args: Args) => K,
 	perKey: "exclusive" | "restartable",
 	timeoutOptions?: Op.TimeoutOptions<E>,
-): Op.KeyedManager<I, K, E, Op.KeyedExclusivePerKey<E, A> | Op.KeyedRestartablePerKey<E, A>> => {
+): Op.KeyedManager<Args, K, E, Op.KeyedExclusivePerKey<E, A> | Op.KeyedRestartablePerKey<E, A>> => {
 	type PerKeyS = Op.KeyedExclusivePerKey<E, A> | Op.KeyedRestartablePerKey<E, A>;
 	const stateMap = new Map<K, PerKeyS>();
 	const slots = new Map<K, { controller: AbortController; resolve: (o: Op.Outcome<E, A>) => void; }>();
@@ -951,8 +964,8 @@ export const makeKeyed = <I, K, E, A>(
 		subscribers.forEach((cb) => cb(snapshot));
 	};
 
-	const run = (input: I): Deferred<Op.Outcome<E, A>> => {
-		const k = keyFn(input);
+	const run = (...args: Args): Deferred<Op.Outcome<E, A>> => {
+		const k = keyFn(...args);
 
 		if (slots.has(k)) {
 			if (perKey === "exclusive") {
@@ -973,7 +986,7 @@ export const makeKeyed = <I, K, E, A>(
 				stateMap.set(k, _pending as PerKeyS);
 				emitSnapshot();
 
-				execute(op, input, controller, undefined, timeoutOptions).then((outcome) => {
+				execute(op, args, controller, undefined, timeoutOptions).then((outcome) => {
 					const slot = slots.get(k);
 					if (!slot || slot.controller !== controller) {
 						resolve(_abortedNil);
@@ -1016,7 +1029,7 @@ export const makeKeyed = <I, K, E, A>(
 		get state() {
 			return new Map(stateMap) as ReadonlyMap<K, PerKeyS>;
 		},
-		run: run as (input: I) => Deferred<Exclude<PerKeyS, Op.Pending | Op.Retrying<E>>>,
+		run: run as (...args: Args) => Deferred<Exclude<PerKeyS, Op.Pending | Op.Retrying<E>>>,
 		abort,
 		subscribe: (cb) => {
 			subscribers.add(cb);
@@ -1027,19 +1040,19 @@ export const makeKeyed = <I, K, E, A>(
 			stateMap.clear();
 			emitSnapshot();
 		},
-		poll: (input: I, { interval }: { interval: Duration; }) => {
-			void run(input);
-			const id = setInterval(() => void run(input), getMs(interval));
+		poll: ({ interval }: { interval: Duration; }) => (...args: Args) => {
+			void run(...args);
+			const id = setInterval(() => void run(...args), getMs(interval));
 			return () => clearInterval(id);
 		},
 	};
 };
 
-export const makeOnce = <I, E, A>(
-	op: Op<I, E, A>,
+export const makeOnce = <Args extends readonly any[], E, A>(
+	op: Op<Args, E, A>,
 	retryOptions?: Op.RetryOptions<E>,
 	timeoutOptions?: Op.TimeoutOptions<E>,
-): Op.Manager<I, E, A, Op.State<E, A>> => {
+): Op.Manager<Args, E, A, Op.State<E, A>> => {
 	let currentState: Op.State<E, A> = _idle;
 	let currentController: AbortController | undefined;
 	let currentResolve: ((o: Op.Outcome<E, A>) => void) | undefined;
@@ -1050,7 +1063,7 @@ export const makeOnce = <I, E, A>(
 		subscribers.forEach((cb) => cb(state));
 	};
 
-	const run = (input: I): Deferred<Op.Outcome<E, A>> => {
+	const run = (...args: Args): Deferred<Op.Outcome<E, A>> => {
 		// Terminal: once the manager leaves Idle, all subsequent calls are dropped.
 		if (currentState.kind !== "Idle") {
 			return Deferred.from.Promise(Promise.resolve(_droppedNil));
@@ -1068,7 +1081,7 @@ export const makeOnce = <I, E, A>(
 					}
 					: undefined;
 
-				execute(op, input, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
+				execute(op, args, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
 					if (currentController !== controller) { return; }
 					const r = currentResolve;
 					currentResolve = undefined;
@@ -1101,9 +1114,9 @@ export const makeOnce = <I, E, A>(
 			return () => subscribers.delete(cb);
 		},
 		reset: () => emit(_idle),
-		poll: (input: I, { interval }: { interval: Duration; }) => {
-			void run(input);
-			const id = setInterval(() => void run(input), getMs(interval));
+		poll: ({ interval }: { interval: Duration; }) => (...args: Args) => {
+			void run(...args);
+			const id = setInterval(() => void run(...args), getMs(interval));
 			return () => clearInterval(id);
 		},
 	};

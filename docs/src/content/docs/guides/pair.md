@@ -24,7 +24,7 @@ independently without breaking your pipeline flow.
 import { Pair } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
 
-const entry = Pair.from.pair("alice", 980);
+const entry = Pair.make("alice", 980);
 
 const updatedEntry = pipe(
   entry,
@@ -51,12 +51,12 @@ destructure or manage array indices manually.
 
 ## Creating Pairs
 
-To lift two distinct values into a typed pair, we use `Pair.from.pair`:
+To lift two distinct values into a typed pair, we use `Pair.make`:
 
 ```ts
 import { Pair } from "@nlozgachev/pipelined/core";
 
-const entry = Pair.from.pair("timeout_seconds", 30); // Pair<string, number>
+const entry = Pair.make("timeout_seconds", 30); // Pair<string, number>
 ```
 
 Any existing function that returns a two-element tuple (such as array utilities like `Arr.splitAt`)
@@ -70,7 +70,7 @@ We can extract elements from a pair using `Pair.first` and `Pair.second`, or rev
 using `Pair.swap`:
 
 ```ts
-const pair = Pair.from.pair("port", 8080);
+const pair = Pair.make("port", 8080);
 
 Pair.first(pair);  // "port"
 Pair.second(pair); // 8080
@@ -88,7 +88,7 @@ other, or transform both values simultaneously.
 ### Transforming the first element with `mapFirst`
 
 ```ts
-const userScore = Pair.from.pair("alice", 980);
+const userScore = Pair.make("alice", 980);
 
 const formattedUser = pipe(
   userScore,
@@ -126,7 +126,7 @@ we use `Pair.fold`. It applies a binary function that merges the two elements:
 
 ```ts
 const formatted = pipe(
-  Pair.from.pair("fr-FR", 1299),
+  Pair.make("fr-FR", 1299),
   Pair.mapSecond((cents) => cents / 100), // convert to Euros
   Pair.fold((locale, euros) => `${locale}: €${euros.toFixed(2)}`),
 ); // "fr-FR: €12.99"
@@ -138,7 +138,7 @@ plain array using `Pair.to.Array`:
 
 ```ts
 const arr = pipe(
-  Pair.from.pair("debug_flag", true),
+  Pair.make("debug_flag", true),
   Pair.tap((key, val) => console.log(`Config: ${key} is ${val}`)),
   Pair.to.Array,
 ); // ["debug_flag", true]

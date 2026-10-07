@@ -110,12 +110,12 @@ export const Reader = {
 	 * const add = (a: number) => (b: number) => a + b;
 	 * pipe(
 	 *   Reader.resolve<Config, typeof add>(add),
-	 *   Reader.ap(Reader.asks(c => c.timeout)),
-	 *   Reader.ap(Reader.resolve(5))
+	 *   Reader.apply(Reader.asks(c => c.timeout)),
+	 *   Reader.apply(Reader.resolve(5))
 	 * )(appConfig);
 	 * ```
 	 */
-	ap: <R, A>(arg: Reader<R, A>) => <B>(data: Reader<R, (a: A) => B>): Reader<R, B> => (env) => data(env)(arg(env)),
+	apply: <R, A>(arg: Reader<R, A>) => <B>(data: Reader<R, (a: A) => B>): Reader<R, B> => (env) => data(env)(arg(env)),
 
 	/**
 	 * Executes a side effect on the produced value without changing the Reader.

@@ -124,7 +124,7 @@ import { Task } from "@nlozgachev/pipelined/core";
 
 // 1. Delaying execution
 const delayedTask = pipe(
-  Task.resolve("data"),
+  Task.make("data"),
   Task.delay(Duration.seconds(2))
 );
 

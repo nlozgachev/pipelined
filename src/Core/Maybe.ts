@@ -1,7 +1,7 @@
 // =============================================================================
 // Imports
 // =============================================================================
-import { type Result, Result as CoreResult } from "#core";
+import { type Result, Result as CoreResult, type Validation, Validation as CoreValidation } from "#core";
 import { WithKind, WithValue } from "#internal";
 
 // =============================================================================
@@ -135,6 +135,19 @@ export const Maybe = {
 		 */
 		Result: <E>(onNone: () => E) => <A>(data: Maybe<A>): Result<E, A> =>
 			isSome(data) ? CoreResult.make.ok(data.value) : CoreResult.make.err(onNone()),
+
+		/**
+		 * Converts a Maybe to a Validation.
+		 * Some becomes Passed, None becomes Failed with error produced by `onNone`.
+		 *
+		 * @example
+		 * ```ts
+		 * pipe(Maybe.make.some(42), Maybe.to.Validation(() => "missing")); // Passed(42)
+		 * pipe(Maybe.make.none(), Maybe.to.Validation(() => "missing"));   // Failed(["missing"])
+		 * ```
+		 */
+		Validation: <E>(onNone: () => E) => <A>(data: Maybe<A>): Validation<E, A> =>
+			isSome(data) ? CoreValidation.make.passed(data.value) : CoreValidation.make.failed(onNone()),
 	},
 
 	// --- from ---
@@ -353,12 +366,12 @@ export const Maybe = {
 	 * const add = (a: number) => (b: number) => a + b;
 	 * pipe(
 	 *   Maybe.make.some(add),
-	 *   Maybe.ap(Maybe.make.some(5)),
-	 *   Maybe.ap(Maybe.make.some(3))
+	 *   Maybe.apply(Maybe.make.some(5)),
+	 *   Maybe.apply(Maybe.make.some(3))
 	 * ); // Some(8)
 	 * ```
 	 */
-	ap: <A>(arg: Maybe<A>) => <B>(data: Maybe<(a: A) => B>): Maybe<B> =>
+	apply: <A>(arg: Maybe<A>) => <B>(data: Maybe<(a: A) => B>): Maybe<B> =>
 		isSome(data) && isSome(arg) ? makeSome(data.value(arg.value)) : makeNone(),
 
 	/**

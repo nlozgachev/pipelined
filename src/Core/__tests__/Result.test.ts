@@ -329,28 +329,43 @@ test("result.recoverUnless uses predicate — works with object errors", () => {
 });
 
 // ---------------------------------------------------------------------------
-// ap
+// apply
 // ---------------------------------------------------------------------------
 
-test("Result.ap applies Ok function to Ok value", () => {
+test("Result.apply applies Ok function to Ok value", () => {
 	const add = (a: number) => (b: number) => a + b;
-	const result = pipe(Result.make.ok(add), Result.ap(Result.make.ok(5)), Result.ap(Result.make.ok(3)));
+	const result = pipe(Result.make.ok(add), Result.apply(Result.make.ok(5)), Result.apply(Result.make.ok(3)));
 	expect(result).toStrictEqual({ kind: "Ok", value: 8 });
 });
 
-test("Result.ap returns Err when function is Err", () => {
-	const result = pipe(Result.make.err("fn error"), Result.ap(Result.make.ok(5)));
+test("Result.apply returns Err when function is Err", () => {
+	const result = pipe(Result.make.err("fn error"), Result.apply(Result.make.ok(5)));
 	expect(result).toStrictEqual({ kind: "Err", error: "fn error" });
 });
 
-test("Result.ap returns Err when value is Err", () => {
-	const result = pipe(Result.make.ok<(n: number) => number>((n) => n * 2), Result.ap(Result.make.err("val error")));
+test("Result.apply returns Err when value is Err", () => {
+	const result = pipe(Result.make.ok<(n: number) => number>((n) => n * 2), Result.apply(Result.make.err("val error")));
 	expect(result).toStrictEqual({ kind: "Err", error: "val error" });
 });
 
-test("Result.ap returns first Err when both are Err", () => {
-	const result = pipe(Result.make.err("fn error"), Result.ap(Result.make.err("val error")));
+test("Result.apply returns first Err when both are Err", () => {
+	const result = pipe(Result.make.err("fn error"), Result.apply(Result.make.err("val error")));
 	expect(result).toStrictEqual({ kind: "Err", error: "fn error" });
+});
+
+test("Result.apply widens error types from function and argument", () => {
+	const fnResult = Result.make.ok((n: number) => String(n)) as Result<"ERR_FN", (n: number) => string>;
+	const argResult = Result.make.err("ERR_ARG") as Result<"ERR_ARG", number>;
+	const result = pipe(fnResult, Result.apply(argResult));
+	expectTypeOf(result).toEqualTypeOf<Result<"ERR_FN" | "ERR_ARG", string>>();
+	expect(result).toStrictEqual({ kind: "Err", error: "ERR_ARG" });
+});
+
+test("Result.recover widens error types when fallback can fail with different error", () => {
+	const initial = Result.make.err("INIT_ERR") as Result<"INIT_ERR", number>;
+	const result = pipe(initial, Result.recover((_e): Result<"FALLBACK_ERR", number> => Result.make.err("FALLBACK_ERR")));
+	expectTypeOf(result).toEqualTypeOf<Result<"FALLBACK_ERR", number>>();
+	expect(result).toStrictEqual({ kind: "Err", error: "FALLBACK_ERR" });
 });
 
 test("Result.bindTo returns Err when given Err", () => {

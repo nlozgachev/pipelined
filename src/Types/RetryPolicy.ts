@@ -34,6 +34,7 @@ export const RetryPolicy = {
 	 * Creates a RetryPolicy with exponential backoff delays between attempts.
 	 * An optional `factor` (default 2) controls the growth rate.
 	 * An optional `jitter` (default false) adds randomized variance to prevent thundering herd problems.
+	 * An optional `maxDelay` caps the maximum duration between retry attempts.
 	 *
 	 * @example
 	 * ```ts
@@ -42,20 +43,25 @@ export const RetryPolicy = {
 	 *   initial: Duration.milliseconds(100),
 	 *   factor: 2,
 	 *   jitter: true,
+	 *   maxDelay: Duration.seconds(5),
 	 * });
 	 * ```
 	 */
-	exponential: (options: { attempts: number; initial: Duration; factor?: number; jitter?: boolean; }): RetryPolicy => {
+	exponential: (
+		options: { attempts: number; initial: Duration; factor?: number; jitter?: boolean; maxDelay?: Duration; },
+	): RetryPolicy => {
 		const attempts = Math.max(1, options.attempts);
 		const initialMs = Duration.to.milliseconds(options.initial);
 		const factor = options.factor ?? 2;
 		const jitter = options.jitter ?? false;
+		const maxMs = options.maxDelay ? Duration.to.milliseconds(options.maxDelay) : undefined;
 
 		return {
 			attempts,
 			getDelay: (attempt: number) => {
 				const rawMs = initialMs * (factor ** Math.max(0, attempt - 1));
-				const finalMs = jitter ? Math.random() * rawMs : rawMs;
+				const cappedMs = maxMs !== undefined ? Math.min(rawMs, maxMs) : rawMs;
+				const finalMs = jitter ? Math.random() * cappedMs : cappedMs;
 				return Duration.milliseconds(finalMs);
 			},
 		};

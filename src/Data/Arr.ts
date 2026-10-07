@@ -6,6 +6,7 @@ import { isNonEmptyArr, type NonEmptyArr } from "#internal";
 import { Maybe as CoreMaybe } from "../Core/Maybe.ts";
 import { Result as CoreResult } from "../Core/Result.ts";
 import { Task as CoreTask } from "../Core/Task.ts";
+import { Validation as CoreValidation } from "../Core/Validation.ts";
 
 // =============================================================================
 // Private Helpers & Traverse/Sequence Implementations
@@ -88,6 +89,50 @@ namespace ArrResult {
 	 */
 	export const sequence = <E, A>(data: readonly CoreResult<E, A>[]): CoreResult<E, readonly A[]> =>
 		traverse<E, CoreResult<E, A>, A>((a) => a)(data);
+}
+
+namespace ArrValidation {
+	/**
+	 * Maps each element to a Validation and collects the results into Passed of array,
+	 * or accumulates all errors from all Failed items into Failed.
+	 *
+	 * @example
+	 * ```ts
+	 * const checkPositive = (n: number) =>
+	 *   n > 0 ? Validation.make.passed(n) : Validation.make.failed(`Non-positive: ${n}`);
+	 *
+	 * pipe([1, 2, 3], Arr.traverse.Validation(checkPositive)); // Passed([1, 2, 3])
+	 * pipe([1, -2, -3], Arr.traverse.Validation(checkPositive)); // Failed(["Non-positive: -2", "Non-positive: -3"])
+	 * ```
+	 */
+	export const traverse =
+		<E, A, B>(f: (a: A) => CoreValidation<E, B>) => (data: readonly A[]): CoreValidation<E, readonly B[]> => {
+			const n = data.length;
+			const result = new Array<B>(n);
+			const errors: E[] = [];
+			for (let i = 0; i < n; i++) {
+				const mapped = f(data[i]);
+				if (CoreValidation.is.failed(mapped)) {
+					errors.push(...mapped.errors);
+				} else if (errors.length === 0) {
+					result[i] = mapped.value;
+				}
+			}
+			return isNonEmptyArr(errors) ? CoreValidation.make.failedAll(errors) : CoreValidation.make.passed(result);
+		};
+
+	/**
+	 * Collects an array of Validation instances into a Validation of array.
+	 * Accumulates all errors from all Failed items into Failed.
+	 *
+	 * @example
+	 * ```ts
+	 * Arr.sequence.Validation([Validation.make.passed(1), Validation.make.passed(2)]); // Passed([1, 2])
+	 * Arr.sequence.Validation([Validation.make.failed("err1"), Validation.make.failed("err2")]); // Failed(["err1", "err2"])
+	 * ```
+	 */
+	export const sequence = <E, A>(data: readonly CoreValidation<E, A>[]): CoreValidation<E, readonly A[]> =>
+		traverse<E, CoreValidation<E, A>, A>((a) => a)(data);
 }
 
 namespace ArrTaskResult {
@@ -186,7 +231,7 @@ namespace ArrTask {
 	 * ```ts
 	 * pipe(
 	 *   [1, 2, 3],
-	 *   Arr.traverse.Task((n: number) => Task.resolve(n * 2))
+	 *   Arr.traverse.Task((n: number) => Task.make(n * 2))
 	 * )(); // Promise<[2, 4, 6]>
 	 * ```
 	 */
@@ -200,7 +245,7 @@ namespace ArrTask {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   [Task.resolve(1), Task.resolve(2)],
+	 *   [Task.make(1), Task.make(2)],
 	 *   Arr.sequence.Task
 	 * )(); // Deferred<[1, 2]>
 	 * ```
@@ -1253,8 +1298,18 @@ export const Arr = {
 	unfold,
 	from: ArrFrom,
 	is: ArrIs,
-	traverse: { Maybe: ArrMaybe.traverse, Result: ArrResult.traverse, Task: _traverseTask },
-	sequence: { Maybe: ArrMaybe.sequence, Result: ArrResult.sequence, Task: _sequenceTask },
+	traverse: {
+		Maybe: ArrMaybe.traverse,
+		Result: ArrResult.traverse,
+		Task: _traverseTask,
+		Validation: ArrValidation.traverse,
+	},
+	sequence: {
+		Maybe: ArrMaybe.sequence,
+		Result: ArrResult.sequence,
+		Task: _sequenceTask,
+		Validation: ArrValidation.sequence,
+	},
 	NonEmpty: ArrNonEmpty,
 };
 

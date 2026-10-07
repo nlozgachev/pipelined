@@ -130,9 +130,9 @@ import { Op } from "@nlozgachev/pipelined/core";
 
 // 1. Define the task once
 const searchApi = Op.create(
-  (signal) => (query: string) =>
+  (query: string, signal: AbortSignal) =>
     fetch(`/api/search?q=${query}`, { signal }).then((r) => r.json()),
-  (err) => `Search failed: ${err}`,
+  { onError: (err) => `Search failed: ${err}` },
 );
 
 // 2. Configure execution strategy (cancels previous request on new input)
@@ -228,13 +228,13 @@ const validateSignup = (name: string, email: string) =>
 // 2. Define an async submission operation with cancellation (Op)
 const submitUserOp = Op.interpret(
   Op.create(
-    (signal) => (payload: { name: string; email: string }) =>
+    (payload: { name: string; email: string }, signal: AbortSignal) =>
       fetch("/api/register", {
         method: "POST",
         body: JSON.stringify(payload),
         signal,
       }).then((r) => r.json()),
-    (err) => `Registration error: ${err}`,
+    { onError: (err) => `Registration error: ${err}` },
   ),
   { strategy: "exclusive" }, // Prevents double-clicks while in flight
 );

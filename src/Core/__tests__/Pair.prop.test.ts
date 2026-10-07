@@ -7,15 +7,15 @@ const arbPair = fc.tuple(fc.string(), fc.integer());
 
 // --- Pair property tests ---
 
-test("Pair.from.pair → Pair.first — round-trip", () => {
+test("Pair.make → Pair.first — round-trip", () => {
 	fc.assert(fc.property(fc.string(), fc.integer(), (a, b) => {
-		expect(Pair.first(Pair.from.pair(a, b))).toBe(a);
+		expect(Pair.first(Pair.make(a, b))).toBe(a);
 	}));
 });
 
-test("Pair.from.pair → Pair.second — round-trip", () => {
+test("Pair.make → Pair.second — round-trip", () => {
 	fc.assert(fc.property(fc.string(), fc.integer(), (a, b) => {
-		expect(Pair.second(Pair.from.pair(a, b))).toBe(b);
+		expect(Pair.second(Pair.make(a, b))).toBe(b);
 	}));
 });
 
@@ -29,7 +29,7 @@ test("Pair.swap — involution (swap twice is identity)", () => {
 
 test("Pair.swap — exchanges first and second", () => {
 	fc.assert(fc.property(fc.string(), fc.integer(), (a, b) => {
-		const swapped = Pair.swap(Pair.from.pair(a, b));
+		const swapped = Pair.swap(Pair.make(a, b));
 		expect(Pair.first(swapped)).toBe(b);
 		expect(Pair.second(swapped)).toBe(a);
 	}));
@@ -75,7 +75,7 @@ test("Pair.tap — always returns the identical reference", () => {
 
 test("Pair.fold — combines both elements", () => {
 	fc.assert(fc.property(fc.string(), fc.integer(), (a, b) => {
-		const result = Pair.fold((s: string, n: number) => `${s}:${n}`)(Pair.from.pair(a, b));
+		const result = Pair.fold((s: string, n: number) => `${s}:${n}`)(Pair.make(a, b));
 		expect(result).toBe(`${a}:${b}`);
 	}));
 });

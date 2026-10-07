@@ -5,8 +5,8 @@ import { type Maybe, Maybe as CoreMaybe } from "./Maybe.ts";
 import { type Result, Result as CoreResult } from "./Result.ts";
 import { Task } from "./Task.ts";
 
-const makeOk = <E = never, A = unknown>(value: A): Task.Result<E, A> => Task.resolve(CoreResult.make.ok(value));
-const makeErr = <E, A = never>(error: E): Task.Result<E, A> => Task.resolve(CoreResult.make.err(error));
+const makeOk = <E = never, A = unknown>(value: A): Task.Result<E, A> => Task.make(CoreResult.make.ok(value));
+const makeErr = <E, A = never>(error: E): Task.Result<E, A> => Task.make(CoreResult.make.err(error));
 
 const mapTaskResult = <E, A, B>(f: (a: A) => B) => (data: Task.Result<E, A>): Task.Result<E, B> =>
 	Task.map(CoreResult.map<E, A, B>(f))(data);
@@ -14,7 +14,7 @@ const mapTaskResult = <E, A, B>(f: (a: A) => B) => (data: Task.Result<E, A>): Ta
 const chainTaskResult =
 	<E2, A, B>(f: (a: A) => Task.Result<E2, B>) => <E1 = never>(data: Task.Result<E1, A>): Task.Result<E1 | E2, B> =>
 		Task.chain((result: Result<E1, A>) =>
-			CoreResult.is.ok(result) ? f(result.value) : Task.resolve(CoreResult.make.err(result.error) as Result<E1 | E2, B>)
+			CoreResult.is.ok(result) ? f(result.value) : Task.make(CoreResult.make.err(result.error) as Result<E1 | E2, B>)
 		)(data);
 
 export const TaskResult = {
@@ -55,7 +55,7 @@ export const TaskResult = {
 		 * ```
 		 */
 		nullable: <E>(onNull: () => E) => <A>(value: A | null | undefined): Task.Result<E, A> =>
-			Task.resolve(value === null || value === undefined ? CoreResult.make.err(onNull()) : CoreResult.make.ok(value)),
+			Task.make(value === null || value === undefined ? CoreResult.make.err(onNull()) : CoreResult.make.ok(value)),
 
 		/**
 		 * Creates a Task.Result from a Maybe.
@@ -68,7 +68,7 @@ export const TaskResult = {
 		 * ```
 		 */
 		Maybe: <E>(onNone: () => E) => <A>(maybe: Maybe<A>): Task.Result<E, A> =>
-			Task.resolve(CoreMaybe.is.none(maybe) ? CoreResult.make.err(onNone()) : CoreResult.make.ok(maybe.value)),
+			Task.make(CoreMaybe.is.none(maybe) ? CoreResult.make.err(onNone()) : CoreResult.make.ok(maybe.value)),
 
 		/**
 		 * Lifts a Result into a Task.Result.
@@ -78,7 +78,7 @@ export const TaskResult = {
 		 * Task.Result.from.Result(Result.make.ok(42)); // resolves to Ok(42)
 		 * ```
 		 */
-		Result: <E, A>(result: Result<E, A>): Task.Result<E, A> => Task.resolve(result),
+		Result: <E, A>(result: Result<E, A>): Task.Result<E, A> => Task.make(result),
 	},
 
 	// --- to ---
@@ -149,16 +149,17 @@ export const TaskResult = {
 
 	/**
 	 * Recovers from an error by providing a fallback Task.Result.
-	 * The fallback can produce a different success type, widening the result to `Task.Result<E, A | B>`.
+	 * The fallback can produce a different success type or resolve with a different error type.
 	 */
-	recover: <E, B>(fallback: (e: E) => Task.Result<E, B>) => <A>(data: Task.Result<E, A>): Task.Result<E, A | B> =>
-		Task.chain((result: Result<E, A>) =>
-			CoreResult.is.err(result) ? fallback(result.error) : Task.resolve(result as Result<E, A | B>)
-		)(data),
+	recover:
+		<E1, E2, B>(fallback: (e: E1) => Task.Result<E2, B>) => <A>(data: Task.Result<E1, A>): Task.Result<E2, A | B> =>
+			Task.chain((result: Result<E1, A>) =>
+				CoreResult.is.err(result) ? fallback(result.error) : Task.make(result as Result<E2, A | B>)
+			)(data as Task<Result<E1, A>>),
 
 	/**
 	 * Recovers from an error unless the predicate `isBlocked` returns true for that error.
-	 * The fallback can produce a different success type, widening the result to `Task.Result<E, A | B>`.
+	 * The fallback can produce a different success type, widening the result to `Task.Result<E1 | E2, A | B>`.
 	 *
 	 * @example
 	 * ```ts
@@ -172,13 +173,13 @@ export const TaskResult = {
 	 * ```
 	 */
 	recoverUnless:
-		<E, B>(isBlocked: (e: E) => boolean, fallback: (e: E) => Task.Result<E, B>) =>
-		<A>(data: Task.Result<E, A>): Task.Result<E, A | B> =>
-			Task.chain((result: Result<E, A>) =>
+		<E1, E2, B>(isBlocked: (e: E1) => boolean, fallback: (e: E1) => Task.Result<E2, B>) =>
+		<A>(data: Task.Result<E1, A>): Task.Result<E1 | E2, A | B> =>
+			Task.chain((result: Result<E1, A>) =>
 				CoreResult.is.err(result) && !isBlocked(result.error)
 					? fallback(result.error)
-					: Task.resolve(result as Result<E, A | B>)
-			)(data),
+					: Task.make(result as Result<E1 | E2, A | B>)
+			)(data as Task<Result<E1, A>>),
 
 	/**
 	 * Returns the success value or a default value if the Task.Result is an error.
@@ -214,12 +215,15 @@ export const TaskResult = {
 	 * Applies a function wrapped in a Task.Result to a value wrapped in a Task.Result.
 	 * Both Tasks run in parallel.
 	 */
-	ap: <E, A>(arg: Task.Result<E, A>) => <B>(data: Task.Result<E, (a: A) => B>): Task.Result<E, B> => (signal) =>
-		Deferred.from.Promise(
-			Promise.all([Deferred.to.Promise(data(signal)), Deferred.to.Promise(arg(signal))]).then(([of_, oa]) =>
-				CoreResult.ap(oa)(of_)
+	apply:
+		<E2, A>(arg: Task.Result<E2, A>) =>
+		<B, E1 = never>(data: Task.Result<E1, (a: A) => B>): Task.Result<E1 | E2, B> =>
+		(signal) =>
+			Deferred.from.Promise(
+				Promise.all([Deferred.to.Promise(data(signal)), Deferred.to.Promise(arg(signal))]).then(([of_, oa]) =>
+					CoreResult.apply(oa)(of_)
+				),
 			),
-		),
 
 	/**
 	 * Executes a `Task.Result` with an optional signal, returning `Promise<Result<E, A>>`.
@@ -262,10 +266,10 @@ export const TaskResult = {
 	 * ```
 	 */
 	bind:
-		<K extends string, E, A, B>(key: K, f: (a: A) => Task.Result<E, B>) =>
-		(data: Task.Result<E, A>): Task.Result<E, A & { [P in K]: B; }> =>
-			chainTaskResult<E, A, A & { [P in K]: B; }>((a) =>
-				mapTaskResult<E, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
+		<K extends string, E2, A, B>(key: K, f: (a: A) => Task.Result<E2, B>) =>
+		<E1 = never>(data: Task.Result<E1, A>): Task.Result<E1 | E2, A & { [P in K]: B; }> =>
+			chainTaskResult<E2, A, A & { [P in K]: B; }>((a) =>
+				mapTaskResult<E2, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
 			)(data),
 
 	/**

@@ -144,14 +144,14 @@ export const State = {
 	 * const addCounted = (n: number) => (m: number) => n + m;
 	 * const program = pipe(
 	 *   State.resolve<number, typeof addCounted>(addCounted),
-	 *   State.ap(State.gets((s: number) => s * 2)),
-	 *   State.ap(State.gets((s: number) => s)),
+	 *   State.apply(State.gets((s: number) => s * 2)),
+	 *   State.apply(State.gets((s: number) => s)),
 	 * );
 	 *
 	 * State.evaluate(3)(program); // 6 + 3 = 9
 	 * ```
 	 */
-	ap: <S, A>(arg: State<S, A>) => <B>(fn: State<S, (a: A) => B>): State<S, B> => (s) => {
+	apply: <S, A>(arg: State<S, A>) => <B>(fn: State<S, (a: A) => B>): State<S, B> => (s) => {
 		const [f, s1] = fn(s);
 		const [a, s2] = arg(s1);
 		return [f(a), s2];

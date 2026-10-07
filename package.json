@@ -2,28 +2,25 @@
 	"name": "@nlozgachev/pipelined",
 	"version": "0.66.0",
 	"description": "Opinionated functional abstractions for TypeScript",
-	"license": "BSD-3-Clause",
+	"keywords": [
+		"composition",
+		"fp",
+		"functional",
+		"pipe",
+		"typescript"
+	],
 	"homepage": "https://pipelined.lozgachev.dev",
+	"license": "BSD-3-Clause",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/nlozgachev/pipelined.git"
 	},
-	"keywords": [
-		"functional",
-		"fp",
-		"typescript",
-		"composition",
-		"pipe"
-	],
-	"types": "./dist/index.d.ts",
-	"type": "module",
-	"sideEffects": false,
-	"engines": {
-		"node": ">=18.0.0"
-	},
 	"files": [
 		"dist"
 	],
+	"type": "module",
+	"sideEffects": false,
+	"types": "./dist/index.d.ts",
 	"imports": {
 		"#core": "./src/Core/index.ts",
 		"#data": "./src/Data/index.ts",
@@ -80,6 +77,7 @@
 		"bench": "vitest bench",
 		"size": "size-limit",
 		"typecheck": "tsc --noEmit",
+		"typecheck:dev": "tsc --noEmit --watch",
 		"publish:npm": "pnpm build && npm publish --access public",
 		"lint": "oxlint src/",
 		"format": "dprint fmt && dprint fmt --config dprint.md.json \"docs/**/*.md\" \"docs/**/*.mdx\" \"README.md\"",
@@ -98,7 +96,7 @@
 		"esbuild": "0.28.2",
 		"fast-check": "4.10.2",
 		"oxlint": "1.87.0",
-		"publint": "0.3.24",
+		"publint": "0.3.25",
 		"size-limit": "14.1.0",
 		"tsdown": "0.23.0",
 		"typescript": "6.0.3",
@@ -127,7 +125,7 @@
 			"name": "Data (import * as Data)",
 			"import": "*",
 			"path": "dist/data.mjs",
-			"limit": "7 KB",
+			"limit": "10 KB",
 			"gzip": true
 		},
 		{
@@ -145,9 +143,11 @@
 			"name": "Types (import * as Types)",
 			"import": "*",
 			"path": "dist/types.mjs",
-			"limit": "400 B",
+			"limit": "450 B",
 			"gzip": true
 		}
 	],
-	"packageManager": "pnpm@11.22.0+sha512.1ff870c4c6133dfd88fb2afc46dd13d47f09c9794b438c6fdb47ca98caf3bc16381ee0be93a091b8e3824cf01f889f46d7d9e20910fb0be1ab0fb5baa80dd621"
+	"engines": {
+		"node": ">=18.0.0"
+	}
 }

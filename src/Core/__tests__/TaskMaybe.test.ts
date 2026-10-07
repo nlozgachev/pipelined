@@ -41,7 +41,7 @@ test("Task.Maybe.fromMaybe lifts None into a Task", async () => {
 // ---------------------------------------------------------------------------
 
 test("Task.Maybe.fromTask wraps a Task result in Some", async () => {
-	const task = Task.resolve(5);
+	const task = Task.make(5);
 	await expect(Task.Maybe.from.Task(task)()).resolves.toStrictEqual({ kind: "Some", value: 5 });
 });
 
@@ -128,25 +128,25 @@ test("Task.Maybe.chain composes multiple async steps", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// ap
+// apply
 // ---------------------------------------------------------------------------
 
-test("Task.Maybe.ap applies Some function to Some value", async () => {
-	const result = await pipe(Task.Maybe.make.some((n: number) => n * 3), Task.Maybe.ap(Task.Maybe.make.some(4)))();
+test("Task.Maybe.apply applies Some function to Some value", async () => {
+	const result = await pipe(Task.Maybe.make.some((n: number) => n * 3), Task.Maybe.apply(Task.Maybe.make.some(4)))();
 	expect(result).toStrictEqual({ kind: "Some", value: 12 });
 });
 
-test("Task.Maybe.ap returns None when function is None", async () => {
-	await expect(pipe(Task.Maybe.make.none<(n: number) => number>(), Task.Maybe.ap(Task.Maybe.make.some(4)))()).resolves
+test("Task.Maybe.apply returns None when function is None", async () => {
+	await expect(pipe(Task.Maybe.make.none<(n: number) => number>(), Task.Maybe.apply(Task.Maybe.make.some(4)))()).resolves
 		.toStrictEqual({ kind: "None" });
 });
 
-test("Task.Maybe.ap returns None when argument is None", async () => {
-	await expect(pipe(Task.Maybe.make.some((n: number) => n * 3), Task.Maybe.ap(Task.Maybe.make.none<number>()))())
+test("Task.Maybe.apply returns None when argument is None", async () => {
+	await expect(pipe(Task.Maybe.make.some((n: number) => n * 3), Task.Maybe.apply(Task.Maybe.make.none<number>()))())
 		.resolves.toStrictEqual({ kind: "None" });
 });
 
-test("Task.Maybe.ap propagates the AbortSignal to both sides", async () => {
+test("Task.Maybe.apply propagates the AbortSignal to both sides", async () => {
 	const controller = new AbortController();
 	let signal1: AbortSignal | undefined;
 	let signal2: AbortSignal | undefined;
@@ -167,7 +167,7 @@ test("Task.Maybe.ap propagates the AbortSignal to both sides", async () => {
 			}),
 		);
 
-	await pipe(fnTask, Task.Maybe.ap(argTask))(controller.signal);
+	await pipe(fnTask, Task.Maybe.apply(argTask))(controller.signal);
 
 	expect(signal1).toBe(controller.signal);
 	expect(signal2).toBe(controller.signal);

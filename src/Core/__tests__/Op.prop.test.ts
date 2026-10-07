@@ -9,13 +9,13 @@ import { Op } from "../Op.ts";
 // ---------------------------------------------------------------------------
 
 /** Resolves immediately with the input value. */
-const immediateOp = Op.create((_signal) => (n: number) => Promise.resolve(n), String);
+const immediateOp = Op.create((_signal: AbortSignal) => (n: number) => Promise.resolve(n), { onError: String });
 
 /** Resolves after one microtask tick — genuinely async without a real timer. */
-const tickOp = Op.create((_signal) => (n: number) => Promise.resolve().then(() => n), String);
+const tickOp = Op.create((_signal: AbortSignal) => (n: number) => Promise.resolve().then(() => n), { onError: String });
 
 /** Promise that never settles — useful for abort() tests on restartable. */
-const neverOp = Op.create((_signal) => (_: number) => new Promise<number>(() => {}), String);
+const neverOp = Op.create((_signal: AbortSignal) => (_: number) => new Promise<number>(() => {}), { onError: String });
 
 /**
  * Like neverOp but rejects when the AbortSignal fires.
@@ -23,10 +23,10 @@ const neverOp = Op.create((_signal) => (_: number) => new Promise<number>(() => 
  * in-flight item's Deferred after execute() settles, so the factory must
  * respect the signal to avoid hanging forever.
  */
-const signalNeverOp = Op.create((signal) => (_: number) =>
+const signalNeverOp = Op.create((signal: AbortSignal) => (_: number) =>
 	new Promise<number>((res, reject) => {
 		signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
-	}), () => "aborted");
+	}), { onError: () => "aborted" });
 
 const arbOkOutcome = fc.integer().map((n) => Op.make.ok(n) as Op.Outcome<string, number>);
 const arbErrOutcome = fc.string().map((s) => Op.make.err(s) as Op.Outcome<string, number>);
@@ -257,10 +257,10 @@ test("Op.interpret once — post-completion runs always produce DroppedNil", asy
 test("Op.interpret retry — factory is called exactly attempts times when always failing", async () => {
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 1, max: 5 }), async (attempts) => {
 		let calls = 0;
-		const countingOp = Op.create((_signal) => (_: number) => {
+		const countingOp = Op.create((_signal: AbortSignal) => (_: number) => {
 			calls++;
 			return Promise.reject(new Error("fail"));
-		}, (e) => (e as Error).message);
+		}, { onError: (e) => (e as Error).message });
 		const manager = Op.interpret(countingOp, { strategy: "exclusive", retry: { attempts } });
 		await manager.run(0);
 		expect(calls).toBe(attempts);
@@ -396,7 +396,7 @@ test("Op.interpret queue dedupe — N equal inputs produce 2 Ok and N-2 DroppedN
 	// In-flight item is never deduped (dedupe only scans the queue).
 	// Each new call drops the previous queued duplicate, so only the last queued item runs.
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 2, max: 8 }), fc.integer(), async (n, input) => {
-		const manager = Op.interpret(immediateOp, { strategy: "queue", dedupe: (a, b) => a === b });
+		const manager = Op.interpret(immediateOp, { strategy: "queue", dedupe: (a, b) => a[0] === b[0] });
 		const deferreds = Array.from({ length: n }, () => manager.run(input));
 		const outcomes = (await Promise.all(deferreds.map(Deferred.to.Promise))) as Op.Outcome<string, number>[];
 		expect(outcomes.filter(Op.is.ok)).toHaveLength(2);

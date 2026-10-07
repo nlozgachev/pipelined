@@ -30,7 +30,7 @@ describe("op-sync-transformations", () => {
 // =============================================================================
 
 describe("op-interpret-execution", () => {
-	const op = Op.create(() => (n: number) => Promise.resolve(n * 2), (e) => String(e));
+	const op = Op.create((_signal: AbortSignal) => (n: number) => Promise.resolve(n * 2), { onError: String });
 	const manager = Op.interpret(op, { strategy: "once" });
 
 	bench("1. Op.interpret execution", async () => {

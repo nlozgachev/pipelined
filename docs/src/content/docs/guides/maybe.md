@@ -346,6 +346,18 @@ const signup = (rawEmail: string) =>
   ); // Result<string, string>
 ```
 
+We can also convert a `Maybe` directly to a `Validation` using `to.Validation`, providing an error
+generator for `None`:
+
+```ts
+import { Validation } from "@nlozgachev/pipelined/core";
+
+const validatedEmail = pipe(
+  parseEmail("invalid"),
+  Maybe.to.Validation(() => "Invalid email"),
+); // Failed(["Invalid email"])
+```
+
 Conversely, if we have a `Result` and want to discard the error context, we can downgrade it to a
 `Maybe` using `from.Result`:
 

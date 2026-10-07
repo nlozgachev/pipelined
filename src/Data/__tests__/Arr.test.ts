@@ -568,15 +568,69 @@ test("sequenceResult - empty array results in Ok of empty array", () => {
 	expect(result).toStrictEqual(Result.make.ok([]));
 });
 
+// --- Traverse / Sequence (Validation) ---
+
+test("traverseValidation - all Passed results in Passed of array", () => {
+	const validate = (n: number): Validation<string, number> =>
+		n > 0 ? Validation.make.passed(n) : Validation.make.failed("not positive");
+	const result = pipe([1, 2, 3], Arr.traverse.Validation(validate));
+	expect(result).toStrictEqual(Validation.make.passed([1, 2, 3]));
+});
+
+test("traverseValidation - accumulates all errors from Failed elements", () => {
+	const validate = (n: number): Validation<string, number> =>
+		n > 0 ? Validation.make.passed(n) : Validation.make.failed(`${n} is not positive`);
+	const result = pipe([1, -2, -3], Arr.traverse.Validation(validate));
+	expect(result).toStrictEqual(Validation.make.failedAll(["-2 is not positive", "-3 is not positive"]));
+});
+
+test("traverseValidation - empty array results in Passed of empty array", () => {
+	const result = pipe([] as number[], Arr.traverse.Validation((n) => Validation.make.passed(n)));
+	expect(result).toStrictEqual(Validation.make.passed([]));
+});
+
+test("traverseValidation - does not short-circuit, evaluates all elements", () => {
+	let callCount = 0;
+	const f = (n: number): Validation<string, number> => {
+		callCount++;
+		return n > 0 ? Validation.make.passed(n) : Validation.make.failed("bad");
+	};
+	pipe([1, 0, 2, 3], Arr.traverse.Validation(f));
+	expect(callCount).toBe(4);
+});
+
+test("sequenceValidation - all Passed results in Passed of array", () => {
+	const result = Arr.sequence.Validation([
+		Validation.make.passed(1),
+		Validation.make.passed(2),
+		Validation.make.passed(3),
+	]);
+	expect(result).toStrictEqual(Validation.make.passed([1, 2, 3]));
+});
+
+test("sequenceValidation - accumulates errors from all Failed validations", () => {
+	const result = Arr.sequence.Validation([
+		Validation.make.passed(1),
+		Validation.make.failed("err1"),
+		Validation.make.failedAll(["err2", "err3"]),
+	]);
+	expect(result).toStrictEqual(Validation.make.failedAll(["err1", "err2", "err3"]));
+});
+
+test("sequenceValidation - empty array results in Passed of empty array", () => {
+	const result = Arr.sequence.Validation([] as Validation<string, number>[]);
+	expect(result).toStrictEqual(Validation.make.passed([]));
+});
+
 // --- Traverse / Sequence (Task - async) ---
 
 test("traverseTask - maps elements to tasks and runs in parallel", async () => {
-	const result = await pipe([1, 2, 3], Arr.traverse.Task((n) => Task.resolve(n * 10)))();
+	const result = await pipe([1, 2, 3], Arr.traverse.Task((n) => Task.make(n * 10)))();
 	expect(result).toStrictEqual([10, 20, 30]);
 });
 
 test("traverseTask - empty array resolves to empty array", async () => {
-	const result = await pipe([] as number[], Arr.traverse.Task((n) => Task.resolve(n)))();
+	const result = await pipe([] as number[], Arr.traverse.Task((n) => Task.make(n)))();
 	expect(result).toStrictEqual([]);
 });
 
@@ -589,7 +643,7 @@ test("traverseTask - handles async operations", async () => {
 });
 
 test("sequenceTask - runs all tasks in parallel and collects results", async () => {
-	const tasks: Task<number>[] = [Task.resolve(10), Task.resolve(20), Task.resolve(30)];
+	const tasks: Task<number>[] = [Task.make(10), Task.make(20), Task.make(30)];
 	const result = await Arr.sequence.Task(tasks)();
 	expect(result).toStrictEqual([10, 20, 30]);
 });
@@ -613,7 +667,7 @@ test("sequenceTask - preserves order despite different completion times", async 
 
 test("traverseTaskResult - all succeed returns Ok of results", async () => {
 	const validate = (n: number): Task<Result<string, number>> =>
-		n > 0 ? Task.resolve(Result.make.ok(n)) : Task.resolve(Result.make.err("non-positive"));
+		n > 0 ? Task.make(Result.make.ok(n)) : Task.make(Result.make.err("non-positive"));
 	const taskRes = pipe([1, 2, 3], Arr.traverse.Task.Result(validate));
 	expectTypeOf(taskRes).toEqualTypeOf<Task<Result<string, readonly number[]>>>();
 	const result = await taskRes();
@@ -633,12 +687,12 @@ test("traverseTaskResult - first error short-circuits", async () => {
 });
 
 test("traverseTaskResult - empty array returns Ok of empty array", async () => {
-	const result = await Arr.traverse.Task.Result((n: number) => Task.resolve(Result.make.ok(n)))([])();
+	const result = await Arr.traverse.Task.Result((n: number) => Task.make(Result.make.ok(n)))([])();
 	expect(result).toStrictEqual(Result.make.ok([]));
 });
 
 test("sequenceTaskResult - collects Ok results", async () => {
-	const tasks: Task<Result<string, number>>[] = [Task.resolve(Result.make.ok(10)), Task.resolve(Result.make.ok(20))];
+	const tasks: Task<Result<string, number>>[] = [Task.make(Result.make.ok(10)), Task.make(Result.make.ok(20))];
 	const result = await Arr.sequence.Task.Result(tasks)();
 	expect(result).toStrictEqual(Result.make.ok([10, 20]));
 });
@@ -713,9 +767,9 @@ test("traverseTaskResult - exits in-flight worker when another worker fails", as
 
 test("sequenceTaskResult - returns first Err", async () => {
 	const tasks: Task<Result<string, number>>[] = [
-		Task.resolve(Result.make.ok(10)),
-		Task.resolve(Result.make.err("oops")),
-		Task.resolve(Result.make.ok(30)),
+		Task.make(Result.make.ok(10)),
+		Task.make(Result.make.err("oops")),
+		Task.make(Result.make.ok(30)),
 	];
 	const result = await Arr.sequence.Task.Result(tasks)();
 	expect(result).toStrictEqual(Result.make.err("oops"));

@@ -6,12 +6,12 @@ import { Task } from "./Task.ts";
 import { type Validation, Validation as CoreValidation } from "./Validation.ts";
 
 const makePassed = <E = never, A = unknown>(value: A): Task.Validation<E, A> =>
-	Task.resolve(CoreValidation.make.passed(value));
+	Task.make(CoreValidation.make.passed(value));
 
-const makeFailed = <E, A = never>(error: E): Task.Validation<E, A> => Task.resolve(CoreValidation.make.failed(error));
+const makeFailed = <E, A = never>(error: E): Task.Validation<E, A> => Task.make(CoreValidation.make.failed(error));
 
 const makeFailedAll = <E, A = never>(errors: NonEmptyArr<E>): Task.Validation<E, A> =>
-	Task.resolve(CoreValidation.make.failedAll(errors));
+	Task.make(CoreValidation.make.failedAll(errors));
 
 export const TaskValidation = {
 	make: {
@@ -59,7 +59,7 @@ export const TaskValidation = {
 		 * Task.Validation.from.Validation(Validation.make.passed(42));
 		 * ```
 		 */
-		Validation: <E, A>(validation: Validation<E, A>): Task.Validation<E, A> => Task.resolve(validation),
+		Validation: <E, A>(validation: Validation<E, A>): Task.Validation<E, A> => Task.make(validation),
 
 		/**
 		 * Creates a Task.Validation from a nullable value.
@@ -73,7 +73,7 @@ export const TaskValidation = {
 		 * ```
 		 */
 		nullable: <E>(onNull: () => E) => <A>(value: A | null | undefined): Task.Validation<E, A> =>
-			Task.resolve(
+			Task.make(
 				value === null || value === undefined ? CoreValidation.make.failed(onNull()) : CoreValidation.make.passed(value),
 			),
 
@@ -88,9 +88,7 @@ export const TaskValidation = {
 		 * ```
 		 */
 		Maybe: <E>(onNone: () => E) => <A>(maybe: Maybe<A>): Task.Validation<E, A> =>
-			Task.resolve(
-				CoreMaybe.is.none(maybe) ? CoreValidation.make.failed(onNone()) : CoreValidation.make.passed(maybe.value),
-			),
+			Task.make(CoreMaybe.is.none(maybe) ? CoreValidation.make.failed(onNone()) : CoreValidation.make.passed(maybe.value)),
 
 		/**
 		 * Creates a Task.Validation from a Result.
@@ -102,7 +100,7 @@ export const TaskValidation = {
 		 * Task.Validation.from.Result(Result.make.err("bad")); // resolves to Failed(["bad"])
 		 * ```
 		 */
-		Result: <E, A>(result: Result<E, A>): Task.Validation<E, A> => Task.resolve(CoreValidation.from.Result(result)),
+		Result: <E, A>(result: Result<E, A>): Task.Validation<E, A> => Task.make(CoreValidation.from.Result(result)),
 	},
 
 	// --- to ---
@@ -173,16 +171,18 @@ export const TaskValidation = {
 	 * ```ts
 	 * pipe(
 	 *   Task.Validation.make.passed((name: string) => (age: number) => ({ name, age })),
-	 *   Task.Validation.ap(validateName(name)),
-	 *   Task.Validation.ap(validateAge(age))
+	 *   Task.Validation.apply(validateName(name)),
+	 *   Task.Validation.apply(validateAge(age))
 	 * )();
 	 * ```
 	 */
-	ap:
-		<E, A>(arg: Task.Validation<E, A>) => <B>(data: Task.Validation<E, (a: A) => B>): Task.Validation<E, B> => (signal) =>
+	apply:
+		<E2, A>(arg: Task.Validation<E2, A>) =>
+		<B, E1 = never>(data: Task.Validation<E1, (a: A) => B>): Task.Validation<E1 | E2, B> =>
+		(signal) =>
 			Deferred.from.Promise(
 				Promise.all([Deferred.to.Promise(data(signal)), Deferred.to.Promise(arg(signal))]).then(([vf, va]) =>
-					CoreValidation.ap(va)(vf)
+					CoreValidation.apply(va)(vf)
 				),
 			),
 
@@ -228,20 +228,18 @@ export const TaskValidation = {
 	/**
 	 * Recovers from a Failed state by providing a fallback Task.Validation.
 	 * The fallback receives the accumulated error list so callers can inspect which errors occurred.
-	 * The fallback can produce a different success type, widening the result to `Task.Validation<E, A | B>`.
+	 * The fallback can produce a different success type or resolve with a different error type.
 	 */
 	recover:
-		<E, B>(fallback: (errors: NonEmptyArr<E>) => Task.Validation<E, B>) =>
-		<A>(data: Task.Validation<E, A>): Task.Validation<E, A | B> =>
-			Task.chain((validation: Validation<E, A>) =>
-				CoreValidation.is.passed(validation)
-					? Task.resolve(validation as Validation<E, A | B>)
-					: fallback(validation.errors)
-			)(data),
+		<E1, E2, B>(fallback: (errors: NonEmptyArr<E1>) => Task.Validation<E2, B>) =>
+		<A>(data: Task.Validation<E1, A>): Task.Validation<E2, A | B> =>
+			Task.chain((validation: Validation<E1, A>) =>
+				CoreValidation.is.passed(validation) ? Task.make(validation as Validation<E2, A | B>) : fallback(validation.errors)
+			)(data as Task<Validation<E1, A>>),
 
 	/**
 	 * Recovers from a Failed state unless the predicate `isBlocked` returns true for the accumulated errors.
-	 * The fallback receives the accumulated errors and can produce a different success type, widening the result to `Task.Validation<E, A | B>`.
+	 * The fallback receives the accumulated errors and can produce a different success type, widening the result to `Task.Validation<E1 | E2, A | B>`.
 	 *
 	 * @example
 	 * ```ts
@@ -255,15 +253,18 @@ export const TaskValidation = {
 	 * ```
 	 */
 	recoverUnless:
-		<E, B>(isBlocked: (errors: NonEmptyArr<E>) => boolean, fallback: (errors: NonEmptyArr<E>) => Task.Validation<E, B>) =>
-		<A>(data: Task.Validation<E, A>): Task.Validation<E, A | B> =>
-			Task.chain((validation: Validation<E, A>) =>
+		<E1, E2, B>(
+			isBlocked: (errors: NonEmptyArr<E1>) => boolean,
+			fallback: (errors: NonEmptyArr<E1>) => Task.Validation<E2, B>,
+		) =>
+		<A>(data: Task.Validation<E1, A>): Task.Validation<E1 | E2, A | B> =>
+			Task.chain((validation: Validation<E1, A>) =>
 				CoreValidation.is.passed(validation)
-					? Task.resolve(validation as Validation<E, A | B>)
+					? Task.make(validation as Validation<E1 | E2, A | B>)
 					: isBlocked(validation.errors)
-					? Task.resolve(validation as Validation<E, A | B>)
+					? Task.make(validation as unknown as Validation<E1 | E2, A | B>)
 					: fallback(validation.errors)
-			)(data),
+			)(data as Task<Validation<E1, A>>),
 
 	/**
 	 * Runs two Task.Validations concurrently and combines their results into a tuple.

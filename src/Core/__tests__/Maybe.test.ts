@@ -138,6 +138,32 @@ test("maybe.toResult lazily evaluates the error callback only on None", () => {
 });
 
 // ---------------------------------------------------------------------------
+// toValidation
+// ---------------------------------------------------------------------------
+
+test("Maybe.to.Validation converts Some to Passed", () => {
+	const result = pipe(Maybe.make.some(42), Maybe.to.Validation(() => "missing"));
+	expect(result).toStrictEqual({ kind: "Passed", value: 42 });
+});
+
+test("Maybe.to.Validation converts None to Failed using onNone callback", () => {
+	const result = Maybe.to.Validation(() => "error")(Maybe.make.none());
+	expect(result).toStrictEqual({ kind: "Failed", errors: ["error"] });
+});
+
+test("Maybe.to.Validation lazily evaluates the error callback only on None", () => {
+	let called = false;
+	pipe(
+		Maybe.make.some(10),
+		Maybe.to.Validation(() => {
+			called = true;
+			return "error";
+		}),
+	);
+	expect(called).toBe(false);
+});
+
+// ---------------------------------------------------------------------------
 // fromResult
 // ---------------------------------------------------------------------------
 
@@ -409,27 +435,27 @@ test("Maybe.recover preserves Some typed as Maybe<A | B>", () => {
 });
 
 // ---------------------------------------------------------------------------
-// ap
+// apply
 // ---------------------------------------------------------------------------
 
-test("Maybe.ap applies Some function to Some value", () => {
+test("Maybe.apply applies Some function to Some value", () => {
 	const add = (a: number) => (b: number) => a + b;
-	const result = pipe(Maybe.make.some(add), Maybe.ap(Maybe.make.some(5)), Maybe.ap(Maybe.make.some(3)));
+	const result = pipe(Maybe.make.some(add), Maybe.apply(Maybe.make.some(5)), Maybe.apply(Maybe.make.some(3)));
 	expect(result).toStrictEqual({ kind: "Some", value: 8 });
 });
 
-test("Maybe.ap returns None when function is None", () => {
-	const result = pipe(Maybe.make.none(), Maybe.ap(Maybe.make.some(5)));
+test("Maybe.apply returns None when function is None", () => {
+	const result = pipe(Maybe.make.none(), Maybe.apply(Maybe.make.some(5)));
 	expect(result).toStrictEqual({ kind: "None" });
 });
 
-test("Maybe.ap returns None when value is None", () => {
-	const result = pipe(Maybe.make.some((n: number) => n * 2), Maybe.ap(Maybe.make.none()));
+test("Maybe.apply returns None when value is None", () => {
+	const result = pipe(Maybe.make.some((n: number) => n * 2), Maybe.apply(Maybe.make.none()));
 	expect(result).toStrictEqual({ kind: "None" });
 });
 
-test("Maybe.ap returns None when both are None", () => {
-	const result = pipe(Maybe.make.none(), Maybe.ap(Maybe.make.none()));
+test("Maybe.apply returns None when both are None", () => {
+	const result = pipe(Maybe.make.none(), Maybe.apply(Maybe.make.none()));
 	expect(result).toStrictEqual({ kind: "None" });
 });
 

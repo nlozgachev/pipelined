@@ -48,3 +48,18 @@ test("RetryPolicy.exponential with jitter produces delay within [0, base]", () =
 	expect(delay2).toBeGreaterThanOrEqual(0);
 	expect(delay2).toBeLessThanOrEqual(200);
 });
+
+test("RetryPolicy.exponential caps delay at maxDelay", () => {
+	const policy = RetryPolicy.exponential({
+		attempts: 5,
+		initial: Duration.milliseconds(100),
+		factor: 2,
+		maxDelay: Duration.milliseconds(300),
+		jitter: false,
+	});
+
+	expect(Duration.to.milliseconds(policy.getDelay(1))).toBe(100);
+	expect(Duration.to.milliseconds(policy.getDelay(2))).toBe(200);
+	expect(Duration.to.milliseconds(policy.getDelay(3))).toBe(300);
+	expect(Duration.to.milliseconds(policy.getDelay(4))).toBe(300);
+});

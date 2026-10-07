@@ -44,7 +44,7 @@ import { Validation as CoreValidation } from "./Validation.ts";
  *
  * @example
  * ```ts
- * const getTimestamp: Task<number> = Task.resolve(Date.now());
+ * const getTimestamp: Task<number> = Task.make(Date.now());
  *
  * // Nothing runs yet — getTimestamp is just a description
  * const formatted = pipe(
@@ -71,7 +71,7 @@ const fromPromise = <A>(f: (signal?: AbortSignal) => Thenable<A>): Task<A> => (s
 
 const getMs = (duration: Duration): number => Duration.to.milliseconds(duration);
 
-const resolveTask = <A>(value: A): Task<A> => () => Deferred.from.Promise(globalThis.Promise.resolve(value));
+const makeTask = <A>(value: A): Task<A> => () => Deferred.from.Promise(globalThis.Promise.resolve(value));
 const syncTask = <A>(f: () => A): Task<A> => () => Deferred.from.Promise(globalThis.Promise.resolve(f()));
 
 export const Task = {
@@ -80,17 +80,17 @@ export const Task = {
 	 *
 	 * @example
 	 * ```ts
-	 * const task = Task.resolve(42);
+	 * const task = Task.make(42);
 	 * const value = await task(); // 42
 	 * ```
 	 */
-	resolve: resolveTask,
+	make: makeTask,
 
 	// --- from ---
 	from: {
 		/**
 		 * Creates a Task from a lazy synchronous thunk.
-		 * Unlike `Task.resolve(f())`, `from.sync` does not evaluate `f` until the Task is called.
+		 * Unlike `Task.make(f())`, `from.sync` does not evaluate `f` until the Task is called.
 		 *
 		 * @example
 		 * ```ts
@@ -158,13 +158,13 @@ export const Task = {
 	 * ```ts
 	 * const add = (a: number) => (b: number) => a + b;
 	 * pipe(
-	 *   Task.resolve(add),
-	 *   Task.ap(Task.resolve(5)),
-	 *   Task.ap(Task.resolve(3))
+	 *   Task.make(add),
+	 *   Task.apply(Task.make(5)),
+	 *   Task.apply(Task.make(3))
 	 * )(); // Deferred<8>
 	 * ```
 	 */
-	ap: <A>(arg: Task<A>) => <B>(data: Task<(a: A) => B>): Task<B> =>
+	apply: <A>(arg: Task<A>) => <B>(data: Task<(a: A) => B>): Task<B> =>
 		fromPromise((signal) => Promise.all([toPromise(data, signal), toPromise(arg, signal)]).then(([f, a]) => f(a))),
 
 	/**
@@ -238,7 +238,7 @@ export const Task = {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Task.resolve(42),
+	 *   Task.make(42),
 	 *   Task.delay(Duration.seconds(1))
 	 * )(); // Resolves after 1 second
 	 * ```
@@ -367,8 +367,8 @@ export const Task = {
 	 *
 	 * @example
 	 * ```ts
-	 * const fast = Task.resolve("fast");
-	 * const slow = Task.delay(Duration.milliseconds(200))(Task.resolve("slow"));
+	 * const fast = Task.make("fast");
+	 * const slow = Task.delay(Duration.milliseconds(200))(Task.make("slow"));
 	 *
 	 * await Task.race([fast, slow])(); // "fast"
 	 * ```
@@ -425,7 +425,7 @@ export const Task = {
 	 * @example
 	 * ```ts
 	 * let log: number[] = [];
-	 * const makeTask = (n: number) => Task.resolve(n);
+	 * const makeTask = (n: number) => Task.make(n);
 	 *
 	 * await Task.sequential([makeTask(1), makeTask(2), makeTask(3)])();
 	 * // log = [1, 2, 3] — tasks ran in order
@@ -565,7 +565,7 @@ export const Task = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Task.resolve(42), Task.bindTo("value")); // Task({ value: 42 })
+	 * pipe(Task.make(42), Task.bindTo("value")); // Task({ value: 42 })
 	 * ```
 	 */
 	bindTo: <K extends string>(key: K) => <A>(data: Task<A>): Task<{ [P in K]: A; }> =>
@@ -577,8 +577,8 @@ export const Task = {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Task.resolve({ a: 1 }),
-	 *   Task.bind("b", ({ a }) => Task.resolve(a + 1))
+	 *   Task.make({ a: 1 }),
+	 *   Task.bind("b", ({ a }) => Task.make(a + 1))
 	 * ); // Task({ a: 1, b: 2 })
 	 * ```
 	 */

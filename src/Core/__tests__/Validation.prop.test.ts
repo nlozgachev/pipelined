@@ -35,22 +35,22 @@ test("Validation.map — identity on Invalid", () => {
 });
 
 // ---------------------------------------------------------------------------
-// ap — error accumulation
+// apply — error accumulation
 // ---------------------------------------------------------------------------
 
-test("Validation.ap — Valid(f) + Valid(a) = Valid(f(a))", () => {
+test("Validation.apply — Valid(f) + Valid(a) = Valid(f(a))", () => {
 	fc.assert(fc.property(fc.integer(), fc.integer(), (n, delta) => {
 		const vf = Validation.make.passed<string, (x: number) => number>((x: number) => x + delta);
 		const va = Validation.make.passed<string, number>(n);
-		expect(Validation.ap(va)(vf)).toStrictEqual(Validation.make.passed(n + delta));
+		expect(Validation.apply(va)(vf)).toStrictEqual(Validation.make.passed(n + delta));
 	}));
 });
 
-test("Validation.ap — Invalid(f) + Invalid(a) accumulates both error lists", () => {
+test("Validation.apply — Invalid(f) + Invalid(a) accumulates both error lists", () => {
 	fc.assert(fc.property(fc.string(), fc.string(), (e1, e2) => {
 		const vf: Validation<string, (x: number) => number> = Validation.make.failed(e1);
 		const va: Validation<string, number> = Validation.make.failed(e2);
-		const result = Validation.ap(va)(vf);
+		const result = Validation.apply(va)(vf);
 		expect(Validation.is.failed(result)).toBe(true);
 		const invalid = result as unknown as { errors: string[]; };
 		expect(invalid.errors).toContain(e1);

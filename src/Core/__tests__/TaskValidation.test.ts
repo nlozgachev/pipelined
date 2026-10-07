@@ -102,43 +102,43 @@ test("Task.Validation.map can change the value type", async () => {
 		.resolves.toStrictEqual({ kind: "Passed", value: "n:3" });
 });
 
-// --- ap (error accumulation) ---
+// --- apply (error accumulation) ---
 
-test("Task.Validation.ap applies Valid function to Valid value", async () => {
+test("Task.Validation.apply applies Valid function to Valid value", async () => {
 	const result = await pipe(
 		Task.Validation.make.passed<string, (n: number) => number>((n) => n * 3),
-		Task.Validation.ap(Task.Validation.make.passed<string, number>(4)),
+		Task.Validation.apply(Task.Validation.make.passed<string, number>(4)),
 	)();
 	expect(result).toStrictEqual({ kind: "Passed", value: 12 });
 });
 
-test("Task.Validation.ap accumulates errors from both Invalid sides", async () => {
+test("Task.Validation.apply accumulates errors from both Invalid sides", async () => {
 	const add = (a: number) => (b: number) => a + b;
 	const result = await pipe(
 		Task.Validation.make.passed<string, (a: number) => (b: number) => number>(add),
-		Task.Validation.ap(Task.Validation.make.failed<string, number>("bad a")),
-		Task.Validation.ap(Task.Validation.make.failed<string, number>("bad b")),
+		Task.Validation.apply(Task.Validation.make.failed<string, number>("bad a")),
+		Task.Validation.apply(Task.Validation.make.failed<string, number>("bad b")),
 	)();
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["bad a", "bad b"] });
 });
 
-test("Task.Validation.ap returns Invalid when function side is Invalid", async () => {
+test("Task.Validation.apply returns Invalid when function side is Invalid", async () => {
 	const result = await pipe(
 		Task.Validation.make.failed<string, (n: number) => number>("bad fn"),
-		Task.Validation.ap(Task.Validation.make.passed<string, number>(4)),
+		Task.Validation.apply(Task.Validation.make.passed<string, number>(4)),
 	)();
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["bad fn"] });
 });
 
-test("Task.Validation.ap collects errors from both sides simultaneously", async () => {
+test("Task.Validation.apply collects errors from both sides simultaneously", async () => {
 	const result = await pipe(
 		Task.Validation.make.failed<string, (n: number) => number>("bad fn"),
-		Task.Validation.ap(Task.Validation.make.failed<string, number>("bad arg")),
+		Task.Validation.apply(Task.Validation.make.failed<string, number>("bad arg")),
 	)();
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["bad fn", "bad arg"] });
 });
 
-test("Task.Validation.ap propagates the AbortSignal down to both sides", async () => {
+test("Task.Validation.apply propagates the AbortSignal down to both sides", async () => {
 	let signalLeft: AbortSignal | undefined;
 	let signalRight: AbortSignal | undefined;
 
@@ -152,7 +152,7 @@ test("Task.Validation.ap propagates the AbortSignal down to both sides", async (
 	};
 
 	const controller = new AbortController();
-	const result = await pipe(left, Task.Validation.ap(right))(controller.signal);
+	const result = await pipe(left, Task.Validation.apply(right))(controller.signal);
 
 	expect(result).toStrictEqual({ kind: "Passed", value: 12 });
 	expect(signalLeft).toBe(controller.signal);
@@ -308,20 +308,20 @@ test("taskValidation composes well in a pipe chain", async () => {
 	const build = (name: string) => (age: number) => ({ name, age });
 	const result = await pipe(
 		Task.Validation.make.passed<string, typeof build>(build),
-		Task.Validation.ap(validateName("Alice")),
-		Task.Validation.ap(validateAge(30)),
+		Task.Validation.apply(validateName("Alice")),
+		Task.Validation.apply(validateAge(30)),
 		Task.Validation.map((user) => user.name),
 		Task.Validation.getOrElse(() => "unknown"),
 	)();
 	expect(result).toBe("Alice");
 });
 
-test("taskValidation ap accumulates all errors across multiple validations", async () => {
+test("taskValidation apply accumulates all errors across multiple validations", async () => {
 	const validate = (name: string) => (age: number) => ({ name, age });
 	const result = await pipe(
 		Task.Validation.make.passed<string, typeof validate>(validate),
-		Task.Validation.ap(Task.Validation.make.failed<string, string>("Name required")),
-		Task.Validation.ap(Task.Validation.make.failed<string, number>("Age required")),
+		Task.Validation.apply(Task.Validation.make.failed<string, string>("Name required")),
+		Task.Validation.apply(Task.Validation.make.failed<string, number>("Age required")),
 	)();
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["Name required", "Age required"] });
 });

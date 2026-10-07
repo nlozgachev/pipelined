@@ -11,11 +11,11 @@ const fromPromise = <A>(f: (signal?: AbortSignal) => Promise<A>): Task<A> => (si
 	Deferred.from.Promise(f(signal));
 
 // ---------------------------------------------------------------------------
-// of
+// make
 // ---------------------------------------------------------------------------
 
-test("task.resolve creates a Task that resolves to the given value", async () => {
-	const result = await Task.resolve(42)();
+test("Task.make creates a Task that resolves to the given value", async () => {
+	const result = await Task.make(42)();
 	expect(result).toBe(42);
 });
 
@@ -50,17 +50,17 @@ test("Task.tryCatch traps async throws/rejections and resolves to fallback value
 // ---------------------------------------------------------------------------
 
 test("Task.map transforms the resolved value", async () => {
-	const result = await pipe(Task.resolve(5), Task.map((n: number) => n * 2))();
+	const result = await pipe(Task.make(5), Task.map((n: number) => n * 2))();
 	expect(result).toBe(10);
 });
 
 test("Task.map can change the type", async () => {
-	const result = await pipe(Task.resolve(42), Task.map((n: number) => `num: ${n}`))();
+	const result = await pipe(Task.make(42), Task.map((n: number) => `num: ${n}`))();
 	expect(result).toBe("num: 42");
 });
 
 test("Task.map chains multiple transformations", async () => {
-	const result = await pipe(Task.resolve(2), Task.map((n: number) => n + 3), Task.map((n: number) => n * 10))();
+	const result = await pipe(Task.make(2), Task.map((n: number) => n + 3), Task.map((n: number) => n * 10))();
 	expect(result).toBe(50);
 });
 
@@ -69,45 +69,45 @@ test("Task.map chains multiple transformations", async () => {
 // ---------------------------------------------------------------------------
 
 test("Task.chain sequences async computations", async () => {
-	const double = (n: number): Task<number> => Task.resolve(n * 2);
-	const result = await pipe(Task.resolve(5), Task.chain(double))();
+	const double = (n: number): Task<number> => Task.make(n * 2);
+	const result = await pipe(Task.make(5), Task.chain(double))();
 	expect(result).toBe(10);
 });
 
 test("task.chain can create new Tasks based on previous result", async () => {
-	const fetchById = (id: number): Task<string> => Task.resolve(`item-${id}`);
+	const fetchById = (id: number): Task<string> => Task.make(`item-${id}`);
 
-	const result = await pipe(Task.resolve(42), Task.chain(fetchById))();
+	const result = await pipe(Task.make(42), Task.chain(fetchById))();
 	expect(result).toBe("item-42");
 });
 
 test("Task.chain composes multiple async steps", async () => {
 	const result = await pipe(
-		Task.resolve(1),
-		Task.chain((n: number) => Task.resolve(n + 1)),
-		Task.chain((n: number) => Task.resolve(n * 10)),
+		Task.make(1),
+		Task.chain((n: number) => Task.make(n + 1)),
+		Task.chain((n: number) => Task.make(n * 10)),
 	)();
 	expect(result).toBe(20);
 });
 
 // ---------------------------------------------------------------------------
-// ap (value first, function second)
+// apply (value first, function second)
 // ---------------------------------------------------------------------------
 
-test("Task.ap applies a Task function to a Task value", async () => {
+test("Task.apply applies a Task function to a Task value", async () => {
 	const add = (a: number) => (b: number) => a + b;
-	const result = await pipe(Task.resolve(add), Task.ap(Task.resolve(5)), Task.ap(Task.resolve(3)))();
+	const result = await pipe(Task.make(add), Task.apply(Task.make(5)), Task.apply(Task.make(3)))();
 	expect(result).toBe(8);
 });
 
-test("Task.ap runs Tasks in parallel", async () => {
+test("Task.apply runs Tasks in parallel", async () => {
 	const start = Date.now();
 	const slowValue = fromPromise(() => new Promise<number>((resolve) => setTimeout(() => resolve(10), 50)));
 	const slowFn = fromPromise(() =>
 		new Promise<(n: number) => number>((resolve) => setTimeout(() => resolve((n: number) => n * 2), 50))
 	);
 
-	const result = await pipe(slowFn, Task.ap(slowValue))();
+	const result = await pipe(slowFn, Task.apply(slowValue))();
 	const elapsed = Date.now() - start;
 
 	expect(result).toBe(20);
@@ -116,9 +116,9 @@ test("Task.ap runs Tasks in parallel", async () => {
 	expect(elapsed).toBeLessThan(90);
 });
 
-test("Task.ap with single argument function", async () => {
+test("Task.apply with single argument function", async () => {
 	const double = (n: number) => n * 2;
-	const result = await pipe(Task.resolve(double), Task.ap(Task.resolve(7)))();
+	const result = await pipe(Task.make(double), Task.apply(Task.make(7)))();
 	expect(result).toBe(14);
 });
 
@@ -129,7 +129,7 @@ test("Task.ap with single argument function", async () => {
 test("task.tap executes side effect and returns original value", async () => {
 	let sideEffect = 0;
 	const result = await pipe(
-		Task.resolve(5),
+		Task.make(5),
 		Task.tap((n: number) => {
 			sideEffect = n;
 		}),
@@ -140,7 +140,7 @@ test("task.tap executes side effect and returns original value", async () => {
 
 test("Task.tap does not alter the resolved value", async () => {
 	const result = await pipe(
-		Task.resolve("hello"),
+		Task.make("hello"),
 		Task.tap(() => {
 			// side effect that doesn't affect the value
 		}),
@@ -154,7 +154,7 @@ test("Task.tap does not alter the resolved value", async () => {
 // ---------------------------------------------------------------------------
 
 test("task.all runs multiple Tasks in parallel and collects results", async () => {
-	const result = await Task.all([Task.resolve(1), Task.resolve("two"), Task.resolve(true)] as const)();
+	const result = await Task.all([Task.make(1), Task.make("two"), Task.make(true)] as const)();
 	expect(result).toStrictEqual([1, "two", true]);
 });
 
@@ -225,7 +225,7 @@ test("Task.all with concurrency preserves order even when later tasks resolve ea
 
 test("Task.delay delays the execution of a Task", async () => {
 	const start = Date.now();
-	const result = await pipe(Task.resolve(42), Task.delay(Duration.milliseconds(50)))();
+	const result = await pipe(Task.make(42), Task.delay(Duration.milliseconds(50)))();
 	const elapsed = Date.now() - start;
 
 	expect(result).toBe(42);
@@ -233,12 +233,12 @@ test("Task.delay delays the execution of a Task", async () => {
 });
 
 test("Task.delay with 0ms behaves like setTimeout(fn, 0)", async () => {
-	const result = await pipe(Task.resolve("instant"), Task.delay(Duration.milliseconds(0)))();
+	const result = await pipe(Task.make("instant"), Task.delay(Duration.milliseconds(0)))();
 	expect(result).toBe("instant");
 });
 
 test("Task.delay preserves the Task value after delay", async () => {
-	const result = await pipe(Task.resolve(5), Task.delay(Duration.milliseconds(30)), Task.map((n: number) => n * 2))();
+	const result = await pipe(Task.make(5), Task.delay(Duration.milliseconds(30)), Task.map((n: number) => n * 2))();
 	expect(result).toBe(10);
 });
 
@@ -248,9 +248,9 @@ test("Task.delay preserves the Task value after delay", async () => {
 
 test("task composes well in a pipe chain", async () => {
 	const result = await pipe(
-		Task.resolve(5),
+		Task.make(5),
 		Task.map((n: number) => n * 2),
-		Task.chain((n: number) => Task.resolve(n + 1)),
+		Task.chain((n: number) => Task.make(n + 1)),
 		Task.map((n: number) => `result: ${n}`),
 	)();
 	expect(result).toBe("result: 11");
@@ -259,7 +259,7 @@ test("task composes well in a pipe chain", async () => {
 test("task is lazy and only executes when invoked", () => {
 	let executed = false;
 	const _task = pipe(
-		Task.resolve(1),
+		Task.make(1),
 		Task.map((_n: number) => {
 			executed = true;
 			return _n;
@@ -282,14 +282,14 @@ test("Task.race resolves with the fastest Task", async () => {
 });
 
 test("Task.race resolves immediately when a resolved Task is included", async () => {
-	const immediate = Task.resolve("immediate");
+	const immediate = Task.make("immediate");
 	const slow = fromPromise<string>(() => new Promise((r) => setTimeout(() => r("slow"), 100)));
 	const result = await Task.race([slow, immediate])();
 	expect(result).toBe("immediate");
 });
 
 test("Task.race with a single Task resolves to its value", async () => {
-	const result = await Task.race([Task.resolve(42)])();
+	const result = await Task.race([Task.make(42)])();
 	expect(result).toBe(42);
 });
 
@@ -358,7 +358,7 @@ test("Task.race aborts remaining subtasks when the outer signal aborts mid-fligh
 // ---------------------------------------------------------------------------
 
 test("Task.sequential runs Tasks in order and collects results", async () => {
-	const result = await Task.sequential([Task.resolve(1), Task.resolve(2), Task.resolve(3)])();
+	const result = await Task.sequential([Task.make(1), Task.make(2), Task.make(3)])();
 	expect(result).toStrictEqual([1, 2, 3]);
 });
 
@@ -384,7 +384,7 @@ test("Task.sequential executes each Task only after the previous resolves", asyn
 });
 
 test("Task.sequential with a single Task returns single-element array", async () => {
-	const result = await Task.sequential([Task.resolve(99)])();
+	const result = await Task.sequential([Task.make(99)])();
 	expect(result).toStrictEqual([99]);
 });
 
@@ -413,7 +413,7 @@ test("Task.sequential short-circuits early when the signal is aborted", async ()
 
 test("task.timeout returns Ok when task resolves before timeout", async () => {
 	const result = await pipe(
-		Task.resolve(42),
+		Task.make(42),
 		Task.timeout({ duration: Duration.milliseconds(100), onTimeout: () => "timed out" }),
 	)();
 	expect(result).toStrictEqual({ kind: "Ok", value: 42 });
@@ -448,7 +448,7 @@ test("Task.repeat runs the task the given number of times", async () => {
 });
 
 test("task.repeat with times: 1 runs once and returns single-element array", async () => {
-	const result = await pipe(Task.resolve(42), Task.repeat({ times: 1 }))();
+	const result = await pipe(Task.make(42), Task.repeat({ times: 1 }))();
 	expect(result).toStrictEqual([42]);
 });
 
@@ -472,7 +472,7 @@ test("Task.repeat collects results in order", async () => {
 
 test("task.repeat inserts delay between runs but not after the last", async () => {
 	const start = Date.now();
-	await pipe(Task.resolve(1), Task.repeat({ times: 3, delay: Duration.milliseconds(30) }))();
+	await pipe(Task.make(1), Task.repeat({ times: 3, delay: Duration.milliseconds(30) }))();
 	const elapsed = Date.now() - start;
 	// 3 runs = 2 delays = ~60ms; allow generous bounds
 	expect(elapsed).toBeGreaterThanOrEqual(50);
@@ -808,7 +808,7 @@ test("Task.delay resolves early when the signal is aborted", async () => {
 	const start = Date.now();
 	const controller = new AbortController();
 
-	const task = pipe(Task.resolve(42), Task.delay(Duration.milliseconds(500)));
+	const task = pipe(Task.make(42), Task.delay(Duration.milliseconds(500)));
 
 	setTimeout(() => controller.abort(), 10);
 
@@ -855,7 +855,7 @@ test("Task.delay resolves immediately when the signal is already aborted", async
 	const controller = new AbortController();
 	controller.abort();
 	const start = Date.now();
-	const result = await pipe(Task.resolve(42), Task.delay(Duration.milliseconds(500)))(controller.signal);
+	const result = await pipe(Task.make(42), Task.delay(Duration.milliseconds(500)))(controller.signal);
 	expect(result).toBe(42);
 	expect(Date.now() - start).toBeLessThan(100);
 });
@@ -937,7 +937,7 @@ test("Task.sequence forwards the AbortSignal to all tasks", async () => {
 // --- bindTo ---
 
 test("Task.bindTo wraps a value in an accumulator object", async () => {
-	const result = await pipe(Task.resolve(2), Task.bindTo("a"))();
+	const result = await pipe(Task.make(2), Task.bindTo("a"))();
 	expect(result).toStrictEqual({ a: 2 });
 });
 
@@ -945,10 +945,10 @@ test("Task.bindTo wraps a value in an accumulator object", async () => {
 
 test("Task.bind accumulates values key-by-key in a pipeline", async () => {
 	const result = await pipe(
-		Task.resolve(2),
+		Task.make(2),
 		Task.bindTo("a"),
-		Task.bind("b", ({ a }) => Task.resolve(a * 3)),
-		Task.bind("c", ({ a, b }) => Task.resolve(a + b)),
+		Task.bind("b", ({ a }) => Task.make(a * 3)),
+		Task.bind("c", ({ a, b }) => Task.make(a + b)),
 	)();
 	expect(result).toStrictEqual({ a: 2, b: 6, c: 8 });
 });
@@ -975,7 +975,7 @@ test("Task.memoize executes task only once across multiple calls", async () => {
 
 test("Task.withProgress calls progress callback with 0 and 1", async () => {
 	const progress: number[] = [];
-	const task = pipe(Task.resolve(42), Task.withProgress((ratio) => progress.push(ratio)));
+	const task = pipe(Task.make(42), Task.withProgress((ratio) => progress.push(ratio)));
 
 	const res = await task();
 	expect(res).toBe(42);
@@ -985,7 +985,7 @@ test("Task.withProgress calls progress callback with 0 and 1", async () => {
 // --- withLabel ---
 
 test("Task.withLabel attaches read-only label property to task function", async () => {
-	const task = pipe(Task.resolve(100), Task.withLabel("myCustomTask"));
+	const task = pipe(Task.make(100), Task.withLabel("myCustomTask"));
 
 	expect(task.label).toBe("myCustomTask");
 	const res = await task();

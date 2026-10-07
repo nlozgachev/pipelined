@@ -99,25 +99,25 @@ test("Reader.chain threads the environment through multiple steps", () => {
 });
 
 // ---------------------------------------------------------------------------
-// ap
+// apply
 // ---------------------------------------------------------------------------
 
-test("Reader.ap applies a function reader to a value reader", () => {
+test("Reader.apply applies a function reader to a value reader", () => {
 	const add = (a: number) => (b: number) => a + b;
 	const reader = pipe(
 		Reader.resolve<Config, typeof add>(add),
-		Reader.ap(Reader.asks((c) => c.timeout)),
-		Reader.ap(Reader.resolve(500)),
+		Reader.apply(Reader.asks((c) => c.timeout)),
+		Reader.apply(Reader.resolve(500)),
 	);
 	expect(reader(testConfig)).toBe(5500);
 });
 
-test("Reader.ap both readers see the same environment", () => {
+test("Reader.apply both readers see the same environment", () => {
 	const combine = (a: string) => (b: string) => `${a}/${b}`;
 	const reader = pipe(
 		Reader.resolve<Config, typeof combine>(combine),
-		Reader.ap(Reader.asks((c) => c.baseUrl)),
-		Reader.ap(Reader.asks((c) => c.apiKey)),
+		Reader.apply(Reader.asks((c) => c.baseUrl)),
+		Reader.apply(Reader.asks((c) => c.apiKey)),
 	);
 	expect(reader(testConfig)).toBe("https://api.example.com/secret");
 });

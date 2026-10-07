@@ -56,13 +56,13 @@ for your users.
 
 ---
 
-## The Accumulation Pattern: ap
+## The Accumulation Pattern: apply
 
 What makes `Validation` structurally different from `Result` is how we combine multiple independent
 checks.
 
-The primary tool for this is `ap` (short for *apply*). The pattern begins by wrapping a curried
-constructor function in `passed`, and then applying each validated argument one-by-one:
+The primary tool for this is `apply`. The pattern begins by wrapping a curried constructor function
+in `passed`, and then applying each validated argument one-by-one:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -76,17 +76,18 @@ const createUser = (name: string) => (email: string) => (age: number) => ({
 
 const result = pipe(
   Validation.make.passed(createUser),
-  Validation.ap(validateName(form.name)),   // Applies name check
-  Validation.ap(validateEmail(form.email)), // Applies email check
-  Validation.ap(validateAge(form.age)),     // Applies age check
+  Validation.apply(validateName(form.name)),   // Applies name check
+  Validation.apply(validateEmail(form.email)), // Applies email check
+  Validation.apply(validateAge(form.age)),     // Applies age check
 );
 ```
 
-Let's dissect what happens when this pipeline executes. Each `ap` step inspects both sides:
+Let's dissect what happens when this pipeline executes. Each `apply` step inspects both sides:
 
 - If both the function and the argument have passed, the argument value is applied to the function.
 - If either the function or the argument has failed, the errors are gathered.
-- If *both* have failed, their respective error lists are merged.
+- If *both* have failed, their respective error lists are merged (or combined via an optional
+  `{ combineErrors }` option).
 
 Because each argument is validated independently before being combined, all validation checks are
 guaranteed to run, and every failure is gathered into a single consolidated `Failed` container.
@@ -95,7 +96,7 @@ guaranteed to run, and every failure is gathered into a single consolidated `Fai
 
 ## Alternative Combinators: product and productAll
 
-If the curried `ap` pattern feels unfamiliar or syntactically complex, `Validation` provides
+If the curried `apply` pattern feels unfamiliar or syntactically complex, `Validation` provides
 simpler, array-based alternatives.
 
 ### Combining two checks with `product`
@@ -342,6 +343,75 @@ const passedUser = Validation.struct({
   role: Validation.make.passed("admin"),
 });
 // Passed({ name: "Alice", age: 30, role: "admin" })
+```
+
+---
+
+## Field-level validation: Validation.keyed
+
+While `Validation.struct` is ideal for producing a single final outcome where all errors merge into
+one list, user interfaces often need errors tied directly to their corresponding input fields.
+Rendering a form requires knowing specifically whether `username` or `email` failed so an error
+message appears next to the exact input.
+
+`Validation.keyed` keeps individual validation results partitioned by key inside a plain JavaScript
+object:
+
+```ts
+const validateProfile = Validation.keyed.make({
+  username: Validation.from.Predicate((s: string) => s.length >= 3, () => "Too short"),
+  email: Validation.from.Predicate((s: string) => s.includes("@"), () => "Invalid email"),
+  age: Validation.from.Predicate((n: number) => n >= 18, () => "Must be 18+"),
+});
+
+const formState = validateProfile({
+  username: "al",
+  email: "invalid-email",
+  age: 25,
+});
+// {
+//   username: Failed(["Too short"]),
+//   email: Failed(["Invalid email"]),
+//   age: Passed(25),
+// }
+```
+
+Every property in `formState` is an independent `Validation` container, allowing UI components to
+inspect each field in isolation.
+
+### Inspecting field outcomes
+
+You can query the overall status of the keyed object using boolean guards:
+
+```ts
+if (Validation.keyed.is.failed(formState)) {
+  // At least one field contains errors
+}
+
+if (Validation.keyed.is.passed(formState)) {
+  // Every field passed — formState properties are narrowed to Passed<A>
+}
+```
+
+### Extracting values and errors with Maybe
+
+To extract the clean data or the field-level errors without manual property iteration,
+`Validation.keyed` provides `getPassed` and `getErrors`, both returning `Maybe`:
+
+```ts
+// Some({ username: "alice", email: "alice@example.com", age: 25 }) if all pass, otherwise None
+const cleanData = Validation.keyed.getPassed(formState);
+
+// Some({ username: ["Too short"], email: ["Invalid email"] }) if any fail, otherwise None
+const fieldErrors = Validation.keyed.getErrors(formState);
+```
+
+When you are ready to collapse the keyed object into a single consolidated `Validation<E, T>`, pass
+the object directly into `Validation.struct`:
+
+```ts
+const singleValidation = Validation.struct(formState);
+// Failed(["Too short", "Invalid email"])
 ```
 
 ---

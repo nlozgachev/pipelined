@@ -154,52 +154,60 @@ test("remoteData.chain infers exact error union without collapsing to unknown", 
 });
 
 // ---------------------------------------------------------------------------
-// ap
+// apply
 // ---------------------------------------------------------------------------
 
-test("remoteData.ap applies function to value when both Success", () => {
+test("remoteData.apply applies function to value when both Success", () => {
 	const add = (a: number) => (b: number) => a + b;
 	const fn: RemoteData<string, typeof add> = RemoteData.make.success(add);
-	const result = pipe(fn, RemoteData.ap(RemoteData.make.success(5)), RemoteData.ap(RemoteData.make.success(3)));
+	const result = pipe(fn, RemoteData.apply(RemoteData.make.success(5)), RemoteData.apply(RemoteData.make.success(3)));
 	expect(result).toStrictEqual({ kind: "Success", value: 8 });
 });
 
-test("remoteData.ap returns Failure when function is Failure", () => {
+test("remoteData.apply returns Failure when function is Failure", () => {
 	const fn: RemoteData<string, (n: number) => number> = RemoteData.make.failure("err");
-	const result = pipe(fn, RemoteData.ap(RemoteData.make.success(5)));
+	const result = pipe(fn, RemoteData.apply(RemoteData.make.success(5)));
 	expect(result).toStrictEqual({ kind: "Failure", error: "err" });
 });
 
-test("remoteData.ap returns Failure when value is Failure", () => {
+test("remoteData.apply returns Failure when value is Failure", () => {
 	const double = (n: number) => n * 2;
 	const fn: RemoteData<string, typeof double> = RemoteData.make.success(double);
-	const result = pipe(fn, RemoteData.ap(RemoteData.make.failure<string>("err")));
+	const result = pipe(fn, RemoteData.apply(RemoteData.make.failure<string>("err")));
 	expect(result).toStrictEqual({ kind: "Failure", error: "err" });
 });
 
-test("remoteData.ap returns Loading when either is Loading", () => {
+test("remoteData.apply returns Loading when either is Loading", () => {
 	const double = (n: number) => n * 2;
 	const fn: RemoteData<string, typeof double> = RemoteData.make.success(double);
-	const result = pipe(fn, RemoteData.ap(RemoteData.make.loading()));
+	const result = pipe(fn, RemoteData.apply(RemoteData.make.loading()));
 	expect(result).toStrictEqual({ kind: "Loading" });
 });
 
-test("remoteData.ap returns Failure of function when both are Failure", () => {
+test("remoteData.apply returns Failure of function when both are Failure", () => {
 	const fn: RemoteData<string, (n: number) => number> = RemoteData.make.failure("fn error");
-	const result = pipe(fn, RemoteData.ap(RemoteData.make.failure<string>("arg error")));
+	const result = pipe(fn, RemoteData.apply(RemoteData.make.failure<string>("arg error")));
 	expect(result).toStrictEqual({ kind: "Failure", error: "fn error" });
 });
 
-test("remoteData.ap returns NotAsked when function is NotAsked and arg is Success", () => {
+test("remoteData.apply returns NotAsked when function is NotAsked and arg is Success", () => {
 	const fn: RemoteData<string, (n: number) => number> = RemoteData.make.notAsked();
-	const result = pipe(fn, RemoteData.ap(RemoteData.make.success(5)));
+	const result = pipe(fn, RemoteData.apply(RemoteData.make.success(5)));
 	expect(result).toStrictEqual({ kind: "NotAsked" });
 });
 
-test("remoteData.ap returns Loading when function is Loading and arg is Success", () => {
+test("remoteData.apply returns Loading when function is Loading and arg is Success", () => {
 	const fn: RemoteData<string, (n: number) => number> = RemoteData.make.loading();
-	const result = pipe(fn, RemoteData.ap(RemoteData.make.success(5)));
+	const result = pipe(fn, RemoteData.apply(RemoteData.make.success(5)));
 	expect(result).toStrictEqual({ kind: "Loading" });
+});
+
+test("remoteData.apply widens error types from function and argument", () => {
+	const fn = RemoteData.make.success((n: number) => String(n)) as RemoteData<"ERR_FN", (n: number) => string>;
+	const arg = RemoteData.make.failure("ERR_ARG") as RemoteData<"ERR_ARG", number>;
+	const result = pipe(fn, RemoteData.apply(arg));
+	expectTypeOf(result).toEqualTypeOf<RemoteData<"ERR_FN" | "ERR_ARG", string>>();
+	expect(result).toStrictEqual({ kind: "Failure", error: "ERR_ARG" });
 });
 
 // ---------------------------------------------------------------------------

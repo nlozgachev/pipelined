@@ -10,7 +10,7 @@
  * import { Pair } from "@nlozgachev/pipelined/core";
  * import { pipe } from "@nlozgachev/pipelined/composition";
  *
- * const entry = Pair.from.pair("alice", 42);
+ * const entry = Pair.make("alice", 42);
  *
  * pipe(
  *   entry,
@@ -26,18 +26,18 @@ const makePair = <A, B>(first: A, second: B): Pair<A, B> => [first, second];
 const makeArray = <A, B>(arr: readonly [A, B]): Pair<A, B> => arr;
 
 export const Pair = {
+	/**
+	 * Creates a Pair from two values.
+	 *
+	 * @example
+	 * ```ts
+	 * Pair.make("Paris", 2_161_000); // ["Paris", 2161000]
+	 * ```
+	 */
+	make: makePair,
+
 	// --- from ---
 	from: {
-		/**
-		 * Creates a Pair from two values.
-		 *
-		 * @example
-		 * ```ts
-		 * Pair.from.pair("Paris", 2_161_000); // ["Paris", 2161000]
-		 * ```
-		 */
-		pair: makePair,
-
 		/**
 		 * Creates a Pair from a two-element array.
 		 *
@@ -54,7 +54,7 @@ export const Pair = {
 	 *
 	 * @example
 	 * ```ts
-	 * Pair.first(Pair.from.pair("Paris", 2_161_000)); // "Paris"
+	 * Pair.first(Pair.make("Paris", 2_161_000)); // "Paris"
 	 * ```
 	 */
 	first: <A, B>(p: Pair<A, B>): A => p[0],
@@ -64,7 +64,7 @@ export const Pair = {
 	 *
 	 * @example
 	 * ```ts
-	 * Pair.second(Pair.from.pair("Paris", 2_161_000)); // 2161000
+	 * Pair.second(Pair.make("Paris", 2_161_000)); // 2161000
 	 * ```
 	 */
 	second: <A, B>(p: Pair<A, B>): B => p[1],
@@ -74,7 +74,7 @@ export const Pair = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Pair.from.pair("alice", 42), Pair.mapFirst((s) => s.toUpperCase())); // ["ALICE", 42]
+	 * pipe(Pair.make("alice", 42), Pair.mapFirst((s) => s.toUpperCase())); // ["ALICE", 42]
 	 * ```
 	 */
 	mapFirst: <A, C>(f: (a: A) => C) => <B>(p: Pair<A, B>): Pair<C, B> => [f(p[0]), p[1]],
@@ -84,7 +84,7 @@ export const Pair = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Pair.from.pair("alice", 42), Pair.mapSecond((n) => n * 2)); // ["alice", 84]
+	 * pipe(Pair.make("alice", 42), Pair.mapSecond((n) => n * 2)); // ["alice", 84]
 	 * ```
 	 */
 	mapSecond: <B, D>(f: (b: B) => D) => <A>(p: Pair<A, B>): Pair<A, D> => [p[0], f(p[1])],
@@ -95,7 +95,7 @@ export const Pair = {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Pair.from.pair("alice", 42),
+	 *   Pair.make("alice", 42),
 	 *   Pair.mapBoth(
 	 *     (name) => name.toUpperCase(),
 	 *     (score) => score * 2,
@@ -115,7 +115,7 @@ export const Pair = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Pair.from.pair("Alice", 100), Pair.fold((name, score) => `${name}: ${score}`));
+	 * pipe(Pair.make("Alice", 100), Pair.fold((name, score) => `${name}: ${score}`));
 	 * // "Alice: 100"
 	 * ```
 	 */
@@ -126,7 +126,7 @@ export const Pair = {
 	 *
 	 * @example
 	 * ```ts
-	 * Pair.swap(Pair.from.pair("key", 1)); // [1, "key"]
+	 * Pair.swap(Pair.make("key", 1)); // [1, "key"]
 	 * ```
 	 */
 	swap: <A, B>(p: Pair<A, B>): Pair<B, A> => [p[1], p[0]],
@@ -138,7 +138,7 @@ export const Pair = {
 		 *
 		 * @example
 		 * ```ts
-		 * Pair.to.Array(Pair.from.pair("hello", 42)); // ["hello", 42]
+		 * Pair.to.Array(Pair.make("hello", 42)); // ["hello", 42]
 		 * ```
 		 */
 		Array: <A, B>(p: Pair<A, B>): readonly (A | B)[] => [...p],
@@ -151,7 +151,7 @@ export const Pair = {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Pair.from.pair("Paris", 2_161_000),
+	 *   Pair.make("Paris", 2_161_000),
 	 *   Pair.tap((city, pop) => console.log(`${city}: ${pop}`)),
 	 *   Pair.mapSecond((n) => n / 1_000_000),
 	 * ); // logs "Paris: 2161000", returns ["Paris", 2.161]

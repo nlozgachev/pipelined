@@ -196,12 +196,12 @@ export const RemoteData = {
 	 * const add = (a: number) => (b: number) => a + b;
 	 * pipe(
 	 *   RemoteData.make.success(add),
-	 *   RemoteData.ap(RemoteData.make.success(5)),
-	 *   RemoteData.ap(RemoteData.make.success(3))
+	 *   RemoteData.apply(RemoteData.make.success(5)),
+	 *   RemoteData.apply(RemoteData.make.success(3))
 	 * ); // Success(8)
 	 * ```
 	 */
-	ap: <E, A>(arg: RemoteData<E, A>) => <B>(data: RemoteData<E, (a: A) => B>): RemoteData<E, B> => {
+	apply: <E2, A>(arg: RemoteData<E2, A>) => <E1, B>(data: RemoteData<E1, (a: A) => B>): RemoteData<E1 | E2, B> => {
 		if (isSuccess(data) && isSuccess(arg)) {
 			return makeSuccess(data.value(arg.value));
 		}
@@ -332,10 +332,10 @@ export const RemoteData = {
 
 	/**
 	 * Recovers from a Failure state by providing a fallback RemoteData.
-	 * The fallback can produce a different success type, widening the result to `RemoteData<E, A | B>`.
+	 * The fallback can produce a different success type or resolve with a different error type.
 	 */
-	recover: <E, B>(fallback: (e: E) => RemoteData<E, B>) => <A>(data: RemoteData<E, A>): RemoteData<E, A | B> =>
-		isFailure(data) ? fallback(data.error) : data,
+	recover: <E1, E2, B>(fallback: (e: E1) => RemoteData<E2, B>) => <A>(data: RemoteData<E1, A>): RemoteData<E2, A | B> =>
+		isFailure(data) ? fallback(data.error) : (data as unknown as RemoteData<E2, A | B>),
 
 	// --- to ---
 	to: {

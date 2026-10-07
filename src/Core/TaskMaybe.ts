@@ -4,15 +4,13 @@ import { type Maybe, Maybe as CoreMaybe } from "./Maybe.ts";
 import { type Result, Result as CoreResult } from "./Result.ts";
 import { Task } from "./Task.ts";
 
-const makeSome = <A>(value: A): Task.Maybe<A> => Task.resolve(CoreMaybe.make.some(value));
-const makeNone = <A = never>(): Task.Maybe<A> => Task.resolve(CoreMaybe.make.none());
+const makeSome = <A>(value: A): Task.Maybe<A> => Task.make(CoreMaybe.make.some(value));
+const makeNone = <A = never>(): Task.Maybe<A> => Task.make(CoreMaybe.make.none());
 
 const mapTaskMaybe = <A, B>(f: (a: A) => B) => (data: Task.Maybe<A>): Task.Maybe<B> => Task.map(CoreMaybe.map(f))(data);
 
 const chainTaskMaybe = <A, B>(f: (a: A) => Task.Maybe<B>) => (data: Task.Maybe<A>): Task.Maybe<B> =>
-	Task.chain((option: Maybe<A>) => CoreMaybe.is.some(option) ? f(option.value) : Task.resolve(CoreMaybe.make.none()))(
-		data,
-	);
+	Task.chain((option: Maybe<A>) => CoreMaybe.is.some(option) ? f(option.value) : Task.make(CoreMaybe.make.none()))(data);
 
 export const TaskMaybe = {
 	/**
@@ -58,7 +56,7 @@ export const TaskMaybe = {
 		 * Task.Maybe.from.Maybe(Maybe.make.some(42));
 		 * ```
 		 */
-		Maybe: <A>(option: Maybe<A>): Task.Maybe<A> => Task.resolve(option),
+		Maybe: <A>(option: Maybe<A>): Task.Maybe<A> => Task.make(option),
 
 		/**
 		 * Creates a Task.Maybe from a nullable value.
@@ -70,7 +68,7 @@ export const TaskMaybe = {
 		 * Task.Maybe.from.nullable(null); // resolves to None
 		 * ```
 		 */
-		nullable: <A>(value: A | null | undefined): Task.Maybe<A> => Task.resolve(CoreMaybe.from.nullable(value)),
+		nullable: <A>(value: A | null | undefined): Task.Maybe<A> => Task.make(CoreMaybe.from.nullable(value)),
 
 		/**
 		 * Creates a Task.Maybe from a Result.
@@ -82,7 +80,7 @@ export const TaskMaybe = {
 		 * Task.Maybe.from.Result(Result.make.err("e")); // resolves to None
 		 * ```
 		 */
-		Result: <E, A>(result: Result<E, A>): Task.Maybe<A> => Task.resolve(CoreResult.to.Maybe(result)),
+		Result: <E, A>(result: Result<E, A>): Task.Maybe<A> => Task.make(CoreResult.to.Maybe(result)),
 
 		/**
 		 * Lifts a Task into a Task.Maybe by wrapping its result in Some.
@@ -133,10 +131,10 @@ export const TaskMaybe = {
 	 * Applies a function wrapped in a Task.Maybe to a value wrapped in a Task.Maybe.
 	 * Both Tasks run in parallel.
 	 */
-	ap: <A>(arg: Task.Maybe<A>) => <B>(data: Task.Maybe<(a: A) => B>): Task.Maybe<B> => (signal) =>
+	apply: <A>(arg: Task.Maybe<A>) => <B>(data: Task.Maybe<(a: A) => B>): Task.Maybe<B> => (signal) =>
 		Deferred.from.Promise(
 			Promise.all([Deferred.to.Promise(data(signal)), Deferred.to.Promise(arg(signal))]).then(([of_, oa]) =>
-				CoreMaybe.ap(oa)(of_)
+				CoreMaybe.apply(oa)(of_)
 			),
 		),
 
@@ -240,7 +238,7 @@ export const TaskMaybe = {
 	 * ```
 	 */
 	recover: <B>(fallback: () => Task.Maybe<B>) => <A>(data: Task.Maybe<A>): Task.Maybe<A | B> =>
-		Task.chain<Maybe<A>, Maybe<A | B>>((maybe) => (CoreMaybe.is.none(maybe) ? fallback() : Task.resolve(maybe)))(data),
+		Task.chain<Maybe<A>, Maybe<A | B>>((maybe) => (CoreMaybe.is.none(maybe) ? fallback() : Task.make(maybe)))(data),
 
 	/**
 	 * Combines a record of Task.Maybes into a single Task.Maybe of a record.

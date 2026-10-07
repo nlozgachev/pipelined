@@ -77,15 +77,15 @@ test("Validation.from.Predicate passes the value to onFalse", () => {
 	});
 });
 
-test("Validation.from.Predicate composes with ap for multi-field validation", () => {
+test("Validation.from.Predicate composes with apply for multi-field validation", () => {
 	const validateName = Validation.from.Predicate((s: string) => s.length > 0, () => "Name required");
 	const validateAge = Validation.from.Predicate((n: number) => n >= 0, () => "Age invalid");
 	const result = pipe(
 		Validation.make.passed<string, (name: string) => (age: number) => { name: string; age: number; }>(
 			(name: string) => (age: number) => ({ name, age })
 		),
-		Validation.ap(validateName("")),
-		Validation.ap(validateAge(-1)),
+		Validation.apply(validateName("")),
+		Validation.apply(validateAge(-1)),
 	);
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["Name required", "Age invalid"] });
 });
@@ -134,43 +134,43 @@ test("Validation.mapError can change error type", () => {
 });
 
 // ---------------------------------------------------------------------------
-// ap (error accumulation)
+// apply (error accumulation)
 // ---------------------------------------------------------------------------
 
-test("Validation.ap applies Valid function to Valid value", () => {
+test("Validation.apply applies Valid function to Valid value", () => {
 	const add = (a: number) => (b: number) => a + b;
 	const result = pipe(
 		Validation.make.passed<string, typeof add>(add),
-		Validation.ap(Validation.make.passed<string, number>(5)),
-		Validation.ap(Validation.make.passed<string, number>(3)),
+		Validation.apply(Validation.make.passed<string, number>(5)),
+		Validation.apply(Validation.make.passed<string, number>(3)),
 	);
 	expect(result).toStrictEqual({ kind: "Passed", value: 8 });
 });
 
-test("Validation.ap accumulates errors from both sides", () => {
+test("Validation.apply accumulates errors from both sides", () => {
 	const add = (a: number) => (b: number) => a + b;
 	const result = pipe(
 		Validation.make.passed<string, typeof add>(add),
-		Validation.ap(Validation.make.failed("bad a")),
-		Validation.ap(Validation.make.failed("bad b")),
+		Validation.apply(Validation.make.failed("bad a")),
+		Validation.apply(Validation.make.failed("bad b")),
 	);
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["bad a", "bad b"] });
 });
 
-test("Validation.ap returns errors from value when function is Valid", () => {
+test("Validation.apply returns errors from value when function is Valid", () => {
 	const result = pipe(
 		Validation.make.passed<string, (n: number) => number>((n) => n * 2),
-		Validation.ap(Validation.make.failed("bad value")),
+		Validation.apply(Validation.make.failed("bad value")),
 	);
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["bad value"] });
 });
 
-test("Validation.ap returns errors from function when value is Valid", () => {
-	const result = pipe(Validation.make.failed("bad fn"), Validation.ap(Validation.make.passed<string, number>(5)));
+test("Validation.apply returns errors from function when value is Valid", () => {
+	const result = pipe(Validation.make.failed("bad fn"), Validation.apply(Validation.make.passed<string, number>(5)));
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["bad fn"] });
 });
 
-test("Validation.ap accumulates all errors in a multi-field validation", () => {
+test("Validation.apply accumulates all errors in a multi-field validation", () => {
 	const createUser = (name: string) => (email: string) => (age: number) => ({ name, email, age });
 
 	const validateName = (name: string): Validation<string, string> =>
@@ -182,55 +182,59 @@ test("Validation.ap accumulates all errors in a multi-field validation", () => {
 
 	const result = pipe(
 		Validation.make.passed<string, typeof createUser>(createUser),
-		Validation.ap(validateName("")),
-		Validation.ap(validateEmail("bad")),
-		Validation.ap(validateAge(-5)),
+		Validation.apply(validateName("")),
+		Validation.apply(validateEmail("bad")),
+		Validation.apply(validateAge(-5)),
 	);
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["Name required", "Invalid email", "Age must be >= 0"] });
 });
 
-test("Validation.ap succeeds when all validations pass", () => {
+test("Validation.apply succeeds when all validations pass", () => {
 	const createUser = (name: string) => (email: string) => (age: number) => ({ name, email, age });
 
 	const result = pipe(
 		Validation.make.passed<string, typeof createUser>(createUser),
-		Validation.ap(Validation.make.passed<string, string>("Alice")),
-		Validation.ap(Validation.make.passed<string, string>("alice@example.com")),
-		Validation.ap(Validation.make.passed<string, number>(30)),
+		Validation.apply(Validation.make.passed<string, string>("Alice")),
+		Validation.apply(Validation.make.passed<string, string>("alice@example.com")),
+		Validation.apply(Validation.make.passed<string, number>(30)),
 	);
 	expect(result).toStrictEqual({ kind: "Passed", value: { name: "Alice", email: "alice@example.com", age: 30 } });
 });
 
-// --- apCustom ---
+// --- apply with combineErrors option ---
 
-test("Validation.apCustom uses custom error concatenator when accumulating errors", () => {
+test("Validation.apply uses combineErrors when accumulating errors", () => {
 	const fnVal = Validation.make.failed<string>("err1") as Validation<string, (n: number) => number>;
 	const argVal = Validation.make.failed<string>("err2") as Validation<string, number>;
 
 	const concat = (e1: readonly [string, ...string[]], e2: readonly [string, ...string[]]) =>
 		[...e1, ...e2].map((s) => s.toUpperCase()) as unknown as readonly [string, ...string[]];
 
-	const result = pipe(fnVal, Validation.apCustom(concat)(argVal));
+	const result = pipe(fnVal, Validation.apply(argVal, { combineErrors: concat }));
 	expect(result).toStrictEqual(Validation.make.failedAll(["ERR1", "ERR2"]));
 });
 
-test("Validation.apCustom handles Passed fnVal with Passed or Failed argVal", () => {
+test("Validation.apply with combineErrors handles Passed fnVal with Passed or Failed argVal", () => {
 	const fnVal = Validation.make.passed<string, (n: number) => number>((n) => n * 2);
 	const argPassed = Validation.make.passed<string, number>(5);
 	const argFailed = Validation.make.failed<string>("err1");
 
 	const concat = (e1: readonly [string, ...string[]], e2: readonly [string, ...string[]]) => [...e1, ...e2] as any;
 
-	expect(pipe(fnVal, Validation.apCustom(concat)(argPassed))).toStrictEqual(Validation.make.passed(10));
-	expect(pipe(fnVal, Validation.apCustom(concat)(argFailed))).toStrictEqual(Validation.make.failed("err1"));
+	expect(pipe(fnVal, Validation.apply(argPassed, { combineErrors: concat }))).toStrictEqual(Validation.make.passed(10));
+	expect(pipe(fnVal, Validation.apply(argFailed, { combineErrors: concat }))).toStrictEqual(
+		Validation.make.failed("err1"),
+	);
 });
 
-test("Validation.apCustom handles Failed fnVal with Passed argVal", () => {
+test("Validation.apply with combineErrors handles Failed fnVal with Passed argVal", () => {
 	const fnVal = Validation.make.failed<string>("err1") as Validation<string, (n: number) => number>;
 	const argPassed = Validation.make.passed<string, number>(5);
 	const concat = (e1: readonly [string, ...string[]], e2: readonly [string, ...string[]]) => [...e1, ...e2] as any;
 
-	expect(pipe(fnVal, Validation.apCustom(concat)(argPassed))).toStrictEqual(Validation.make.failed("err1"));
+	expect(pipe(fnVal, Validation.apply(argPassed, { combineErrors: concat }))).toStrictEqual(
+		Validation.make.failed("err1"),
+	);
 });
 
 // ---------------------------------------------------------------------------
@@ -614,8 +618,8 @@ test("validation composes well in a pipe chain", () => {
 	const build = (name: string) => (age: number) => ({ name, age });
 	const result = pipe(
 		Validation.make.passed<string, typeof build>(build),
-		Validation.ap(validateName("Alice")),
-		Validation.ap(validateAge(30)),
+		Validation.apply(validateName("Alice")),
+		Validation.apply(validateAge(30)),
 		Validation.map((user) => user.name),
 		Validation.getOrElse(() => "unknown"),
 	);
@@ -745,4 +749,107 @@ test("Validation.tryCatch returns Failed when thunk throws", () => {
 		throw new Error("BOOM");
 	}, { onError: (e) => (e as Error).message });
 	expect(res).toStrictEqual(Validation.make.failed("BOOM"));
+});
+
+// ---------------------------------------------------------------------------
+// Validation.keyed
+// ---------------------------------------------------------------------------
+
+test("Validation.keyed.make runs validators on object fields", () => {
+	const validateUser = Validation.keyed.make({
+		name: (s: string) => s.length > 0 ? Validation.make.passed(s) : Validation.make.failed("Name required"),
+		age: (n: number) => n >= 18 ? Validation.make.passed(n) : Validation.make.failed("Must be 18+"),
+	});
+
+	const success = validateUser({ name: "Alice", age: 30 });
+	expect(success.name).toStrictEqual(Validation.make.passed("Alice"));
+	expect(success.age).toStrictEqual(Validation.make.passed(30));
+
+	const failure = validateUser({ name: "", age: 16 });
+	expect(failure.name).toStrictEqual(Validation.make.failed("Name required"));
+	expect(failure.age).toStrictEqual(Validation.make.failed("Must be 18+"));
+});
+
+test("Validation.keyed.is.passed narrows and returns true when all fields passed", () => {
+	const validateUser = Validation.keyed.make({
+		name: (s: string) => s.length > 0 ? Validation.make.passed(s) : Validation.make.failed("Name required"),
+		age: (n: number) => n >= 18 ? Validation.make.passed(n) : Validation.make.failed("Must be 18+"),
+	});
+
+	const success = validateUser({ name: "Alice", age: 30 });
+	expect(Validation.keyed.is.passed(success)).toBe(true);
+
+	if (Validation.keyed.is.passed(success)) {
+		expectTypeOf(success.name).toEqualTypeOf<Validation.Passed<string>>();
+		expectTypeOf(success.age).toEqualTypeOf<Validation.Passed<number>>();
+	}
+
+	const failure = validateUser({ name: "Alice", age: 16 });
+	expect(Validation.keyed.is.passed(failure)).toBe(false);
+});
+
+test("Validation.keyed.is.failed returns true when at least one field failed", () => {
+	const validateUser = Validation.keyed.make({
+		name: (s: string) => s.length > 0 ? Validation.make.passed(s) : Validation.make.failed("Name required"),
+		age: (n: number) => n >= 18 ? Validation.make.passed(n) : Validation.make.failed("Must be 18+"),
+	});
+
+	const success = validateUser({ name: "Alice", age: 30 });
+	expect(Validation.keyed.is.failed(success)).toBe(false);
+
+	const failure = validateUser({ name: "", age: 30 });
+	expect(Validation.keyed.is.failed(failure)).toBe(true);
+});
+
+test("Validation.keyed.getPassed returns Some when all passed, None when any failed", () => {
+	const validateUser = Validation.keyed.make({
+		name: (s: string) => s.length > 0 ? Validation.make.passed(s) : Validation.make.failed("Name required"),
+		age: (n: number) => n >= 18 ? Validation.make.passed(n) : Validation.make.failed("Must be 18+"),
+	});
+
+	const success = validateUser({ name: "Alice", age: 30 });
+	expect(Validation.keyed.getPassed(success)).toStrictEqual(Maybe.make.some({ name: "Alice", age: 30 }));
+
+	const failure = validateUser({ name: "", age: 30 });
+	expect(Validation.keyed.getPassed(failure)).toStrictEqual(Maybe.make.none());
+});
+
+test("Validation.keyed.getErrors returns Some with field errors on failure, None on success", () => {
+	const validateUser = Validation.keyed.make({
+		name: (s: string) => s.length > 0 ? Validation.make.passed(s) : Validation.make.failed("Name required"),
+		age: (n: number) => n >= 18 ? Validation.make.passed(n) : Validation.make.failed("Must be 18+"),
+	});
+
+	const success = validateUser({ name: "Alice", age: 30 });
+	expect(Validation.keyed.getErrors(success)).toStrictEqual(Maybe.make.none());
+
+	const partialFailure = validateUser({ name: "", age: 30 });
+	expect(Validation.keyed.getErrors(partialFailure)).toStrictEqual(Maybe.make.some({ name: ["Name required"] }));
+
+	const fullFailure = validateUser({ name: "", age: 16 });
+	expect(Validation.keyed.getErrors(fullFailure)).toStrictEqual(
+		Maybe.make.some({ name: ["Name required"], age: ["Must be 18+"] }),
+	);
+});
+
+test("Validation.keyed integrates seamlessly with Validation.struct", () => {
+	const validateUser = Validation.keyed.make({
+		name: (s: string) => s.length > 0 ? Validation.make.passed(s) : Validation.make.failed("Name required"),
+		age: (n: number) => n >= 18 ? Validation.make.passed(n) : Validation.make.failed("Must be 18+"),
+	});
+
+	const success = pipe({ name: "Alice", age: 30 }, validateUser, Validation.struct);
+	expect(success).toStrictEqual(Validation.make.passed({ name: "Alice", age: 30 }));
+
+	const failure = pipe({ name: "", age: 16 }, validateUser, Validation.struct);
+	expect(failure).toStrictEqual(Validation.make.failedAll(["Name required", "Must be 18+"]));
+});
+
+test("Validation.keyed handles empty objects", () => {
+	const emptyValidator = Validation.keyed.make({});
+	const res = emptyValidator({});
+	expect(Validation.keyed.is.passed(res)).toBe(true);
+	expect(Validation.keyed.is.failed(res)).toBe(false);
+	expect(Validation.keyed.getPassed(res)).toStrictEqual(Maybe.make.some({}));
+	expect(Validation.keyed.getErrors(res)).toStrictEqual(Maybe.make.none());
 });

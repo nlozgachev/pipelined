@@ -139,20 +139,20 @@ test("State.chain builds a stack via modify and get", () => {
 });
 
 // ---------------------------------------------------------------------------
-// ap
+// apply
 // ---------------------------------------------------------------------------
 
-test("State.ap applies a wrapped function to a wrapped value", () => {
+test("State.apply applies a wrapped function to a wrapped value", () => {
 	const double = (n: number) => n * 2;
-	const program = pipe(State.resolve<number, (n: number) => number>(double), State.ap(State.resolve(7)));
+	const program = pipe(State.resolve<number, (n: number) => number>(double), State.apply(State.resolve(7)));
 	const [value] = State.run(0)(program);
 	expect(value).toBe(14);
 });
 
-test("State.ap threads state through function then argument", () => {
+test("State.apply threads state through function then argument", () => {
 	const program = pipe(
 		State.resolve<number, (n: number) => number>((n) => n + 1),
-		State.ap(State.gets((s: number) => s * 10)),
+		State.apply(State.gets((s: number) => s * 10)),
 	);
 	// state = 3 → gets reads 30, adds 1 → value = 31
 	const [value, state] = State.run(3)(program);

@@ -9,32 +9,35 @@ import { Result } from "../Result.ts";
 // --- Helpers ---
 
 /** Op that resolves with the input value after an optional delay. */
-const delayedOp = (delayMs = 0): Op<number, string, number> =>
-	Op.create((signal) => (input: number) =>
+const delayedOp = (delayMs = 0): Op<[input: number], string, number> =>
+	Op.create((signal: AbortSignal) => (input: number) =>
 		new Promise<number>((resolve, reject) => {
 			const id = setTimeout(() => resolve(input), delayMs);
 			signal.addEventListener("abort", () => {
 				clearTimeout(id);
 				reject(new Error("abort"));
 			}, { once: true });
-		}), (e) => String(e));
+		}), { onError: (e) => String(e) });
 
 /** Op that always rejects with `error` after an optional delay. */
-const failingOp = (error: string, delayMs = 0): Op<number, string, number> =>
-	Op.create((signal) => (_input: number) =>
+const failingOp = (error: string, delayMs = 0): Op<[input: number], string, number> =>
+	Op.create((signal: AbortSignal) => (_input: number) =>
 		new Promise<never>((_resolve, reject) => {
 			const id = setTimeout(() => reject(new Error(error)), delayMs);
 			signal.addEventListener("abort", () => {
 				clearTimeout(id);
 				reject(new Error("abort"));
 			}, { once: true });
-		}), (e) => (e as Error).message);
+		}), { onError: (e) => (e as Error).message });
 
 /**
  * Subscribes to a manager, calls run(input), and collects states until a terminal one arrives.
  * Subscribes before run() so the manager is Idle when subscribing (no immediate notification).
  */
-const runAndCollect = <I, E, A, S extends Op.State<E, A>>(manager: Op.Manager<I, E, A, S>, input: I): Promise<S[]> => {
+const runAndCollect = <Args extends readonly any[], E, A, S extends Op.State<E, A>>(
+	manager: Op.Manager<Args, E, A, S>,
+	...args: Args
+): Promise<S[]> => {
 	const states: S[] = [];
 	return new Promise((resolve) => {
 		const unsub = manager.subscribe((s) => {
@@ -44,34 +47,49 @@ const runAndCollect = <I, E, A, S extends Op.State<E, A>>(manager: Op.Manager<I,
 				resolve(states);
 			}
 		});
-		manager.run(input);
+		manager.run(...args);
 	});
 };
 
 // --- Op.create ---
 
-test("Op.create produces an Op with a _factory function", () => {
-	const op = Op.create((_signal) => () => Promise.resolve(1), String);
-	expectTypeOf(op._factory).toBeFunction();
+test("Op.create does not expose _factory as an enumerable or public property", () => {
+	const op = Op.create((_signal) => () => Promise.resolve(1), { onError: String });
+	// @ts-expect-error — _factory is an internal implementation detail and must not be accessible on Op
+	const hiddenFactory = op._factory;
+	expect(hiddenFactory).toBeUndefined();
+	expectTypeOf(op).toEqualTypeOf<Op<[], string, number>>();
+	expect("_factory" in op).toBe(false);
+	expect(Object.keys(op)).toHaveLength(0);
+	expect(Reflect.ownKeys(op).some((k) => typeof k === "symbol")).toBe(true);
 });
 
-test("Op.create infers Op<void> when factory takes no input", () => {
-	const op = Op.create((_signal) => () => Promise.resolve(42), String);
-	expectTypeOf(op).toEqualTypeOf<Op<void, string, number>>();
+test("Op.create infers Op<[]> when factory takes no input", () => {
+	const op = Op.create((_signal) => () => Promise.resolve(42), { onError: String });
+	expectTypeOf(op).toEqualTypeOf<Op<[], string, number>>();
 });
 
 test("op.create void: manager.run() accepts no arguments", async () => {
-	const op = Op.create((_signal) => () => Promise.resolve(99), String);
+	const op = Op.create((_signal) => () => Promise.resolve(99), { onError: String });
 	const manager = Op.interpret(op, { strategy: "once" });
 	// run() with no args must type-check and resolve Ok
 	const result = await manager.run();
 	expect(result).toStrictEqual(Op.make.ok(99));
 });
 
+test("Op.create infers multi-arg action parameters", async () => {
+	const op = Op.create((_signal) => (name: string, age: number) => Promise.resolve(`${name}:${age}`), {
+		onError: String,
+	});
+	const manager = Op.interpret(op, { strategy: "once" });
+	const result = await manager.run("Alice", 30);
+	expect(result).toStrictEqual(Op.make.ok("Alice:30"));
+});
+
 // --- Op.lift ---
 
 test("Op.lift creates a manager from a plain async function", async () => {
-	const op = Op.lift((n: number, _signal: AbortSignal) => Promise.resolve(n * 2));
+	const op = Op.lift((_signal) => (n: number) => Promise.resolve(n * 2));
 	const manager = Op.interpret(op, { strategy: "restartable" });
 	const outcome = await manager.run(5);
 	expect(Op.is.ok(outcome)).toBe(true);
@@ -79,7 +97,7 @@ test("Op.lift creates a manager from a plain async function", async () => {
 });
 
 test("Op.lift captures rejection as Err with unknown error type", async () => {
-	const op = Op.lift((_: number, _signal: AbortSignal) => Promise.reject(new Error("boom")));
+	const op = Op.lift((_signal) => (_: number) => Promise.reject(new Error("boom")));
 	const manager = Op.interpret(op, { strategy: "restartable" });
 	const outcome = await manager.run(0);
 	expect(Op.is.err(outcome)).toBe(true);
@@ -88,7 +106,7 @@ test("Op.lift captures rejection as Err with unknown error type", async () => {
 
 test("Op.lift passes the signal to the async function", async () => {
 	let capturedSignal: AbortSignal | undefined;
-	const op = Op.lift((_: number, signal: AbortSignal) => {
+	const op = Op.lift((signal: AbortSignal) => (_: number) => {
 		capturedSignal = signal;
 		return Promise.resolve(0);
 	});
@@ -164,11 +182,11 @@ test("Op.is.queued returns true only for Queued state", async () => {
 
 test("Op.is.retrying returns true only for Retrying state", async () => {
 	let attempt = 0;
-	const op = Op.create((_signal) => (_: number) => {
+	const op = Op.create((_signal: AbortSignal) => (_: number) => {
 		attempt++;
 		if (attempt < 2) { return Promise.reject(new Error("fail")); }
 		return Promise.resolve(42);
-	}, (e) => String(e));
+	}, { onError: (e) => String(e) });
 	const manager = Op.interpret(op, {
 		strategy: "restartable",
 		retry: { attempts: 2, backoff: () => Duration.milliseconds(0) },
@@ -443,10 +461,10 @@ test("Op.interpret restartable subscribe fires immediately with current non-Idle
 
 test("Op.interpret restartable with retry emits Retrying between attempts", async () => {
 	let calls = 0;
-	const op = Op.create((_signal) => (_: number) => {
+	const op = Op.create((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("fail"));
-	}, (e) => (e as Error).message);
+	}, { onError: (e) => (e as Error).message });
 	const manager = Op.interpret(op, { strategy: "restartable", retry: { attempts: 3 } });
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(3);
@@ -458,10 +476,10 @@ test("Op.interpret restartable with retry emits Retrying between attempts", asyn
 
 test("Op.interpret restartable with retry stops retrying on Ok", async () => {
 	let calls = 0;
-	const op = Op.create((_signal) => (_: number) => {
+	const op = Op.create((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return calls < 2 ? Promise.reject(new Error("not yet")) : Promise.resolve(99);
-	}, (e) => (e as Error).message);
+	}, { onError: (e) => (e as Error).message });
 	const manager = Op.interpret(op, { strategy: "restartable", retry: { attempts: 5 } });
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(2);
@@ -470,10 +488,10 @@ test("Op.interpret restartable with retry stops retrying on Ok", async () => {
 
 test("Op.interpret restartable with retry respects when guard", async () => {
 	let calls = 0;
-	const op = Op.create((_signal) => (_: number) => {
+	const op = Op.create((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("non-retryable"));
-	}, (e) => (e as Error).message);
+	}, { onError: (e) => (e as Error).message });
 	const manager = Op.interpret(op, {
 		strategy: "restartable",
 		retry: { attempts: 5, when: (e) => e !== "non-retryable" },
@@ -507,7 +525,7 @@ test("Op.interpret restartable with timeout resolves Ok when op finishes in time
 
 test("Op.interpret restartable retry + timeout — deadline wraps entire retry sequence", async () => {
 	let calls = 0;
-	const op = Op.create((signal) => (_: number) =>
+	const op = Op.create((signal: AbortSignal) => (_: number) =>
 		new Promise<never>((res, reject) => {
 			calls++;
 			const id = setTimeout(() => reject(new Error("fail")), 20);
@@ -515,7 +533,7 @@ test("Op.interpret restartable retry + timeout — deadline wraps entire retry s
 				clearTimeout(id);
 				reject(new Error("abort"));
 			}, { once: true });
-		}), (e) => (e as Error).message);
+		}), { onError: (e) => (e as Error).message });
 	const manager = Op.interpret(op, {
 		strategy: "restartable",
 		retry: { attempts: 10 },
@@ -696,10 +714,10 @@ test("Op.interpret debounced waits for idle period before running", async () => 
 
 test("Op.interpret debounced resets timer on new call — only latest input runs", async () => {
 	let calls = 0;
-	const op = Op.create((_signal) => (input: number) => {
+	const op = Op.create((_signal: AbortSignal) => (input: number) => {
 		calls++;
 		return Promise.resolve(input);
-	}, String);
+	}, { onError: String });
 	const manager = Op.interpret(op, { strategy: "debounced", duration: Duration.milliseconds(20) });
 	const states: Op.DebouncedState<string, number>[] = [];
 	const done = new Promise<void>((resolve) => {
@@ -740,7 +758,7 @@ test("Op.interpret once emits Pending then Err on failure", async () => {
 
 test("Op.interpret once subsequent start() calls are ignored — only first runs", async () => {
 	let calls = 0;
-	const op = Op.create((signal) => (input: number) =>
+	const op = Op.create((signal: AbortSignal) => (input: number) =>
 		new Promise<number>((resolve, reject) => {
 			calls++;
 			const id = setTimeout(() => resolve(input), 20);
@@ -748,7 +766,7 @@ test("Op.interpret once subsequent start() calls are ignored — only first runs
 				clearTimeout(id);
 				reject(new Error("abort"));
 			}, { once: true });
-		}), String);
+		}), { onError: String });
 	const manager = Op.interpret(op, { strategy: "once" });
 	const states: Op.State<string, number>[] = [];
 	const done = new Promise<void>((resolve) => {
@@ -787,10 +805,10 @@ test("Op.interpret once abort() emits Nil and further start() is no-op", () => {
 
 test("Op.interpret once with retry — retries on Err, then settles", async () => {
 	let calls = 0;
-	const op = Op.create((_signal) => (_: number) => {
+	const op = Op.create((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return calls < 3 ? Promise.reject(new Error("not yet")) : Promise.resolve(99);
-	}, (e) => (e as Error).message);
+	}, { onError: (e) => (e as Error).message });
 	const manager = Op.interpret(op, { strategy: "once", retry: { attempts: 5 } });
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(3);
@@ -1031,10 +1049,10 @@ test("Op.interpret throttled subscribe after run started fires immediately with 
 
 test("Op.interpret throttled trailing fires trailing call after cooldown", async () => {
 	let calls = 0;
-	const op = Op.create((_signal) => (input: number) => {
+	const op = Op.create((_signal: AbortSignal) => (input: number) => {
 		calls++;
 		return Promise.resolve(input);
-	}, String);
+	}, { onError: String });
 	const manager = Op.interpret(op, { strategy: "throttled", duration: Duration.milliseconds(20), trailing: true });
 	const done = new Promise<void>((resolve) => {
 		manager.subscribe((s) => {
@@ -1252,10 +1270,10 @@ test("Op.interpret debounced with leading: true fires immediately on first call"
 
 test("Op.interpret debounced with leading: true fires trailing call after quiet period", async () => {
 	let calls = 0;
-	const op = Op.create((_signal) => (input: number) => {
+	const op = Op.create((_signal: AbortSignal) => (input: number) => {
 		calls++;
 		return Promise.resolve(input);
-	}, String);
+	}, { onError: String });
 	const manager = Op.interpret(op, { strategy: "debounced", duration: Duration.milliseconds(30), leading: true });
 
 	const p1 = manager.run(1); // leading fires with input 1
@@ -1289,10 +1307,10 @@ test("Op.interpret debounced with leading: true intermediate calls get EvictedNi
 
 test("Op.interpret debounced with maxWait fires after maxWait even without quiet period", async () => {
 	let calls = 0;
-	const op = Op.create((_signal) => (input: number) => {
+	const op = Op.create((_signal: AbortSignal) => (input: number) => {
 		calls++;
 		return Promise.resolve(input);
-	}, String);
+	}, { onError: String });
 	const manager = Op.interpret(op, {
 		strategy: "debounced",
 		duration: Duration.milliseconds(500),
@@ -1382,10 +1400,10 @@ test("Op.interpret buffered with size: 2 holds two waiting calls", async () => {
 
 test("Op.interpret buffered with size: 2 processes buffer in FIFO order", async () => {
 	const order: number[] = [];
-	const op = Op.create((_signal) => (input: number) => {
+	const op = Op.create((_signal: AbortSignal) => (input: number) => {
 		order.push(input);
 		return Promise.resolve(input);
-	}, String);
+	}, { onError: String });
 	const manager = Op.interpret(op, { strategy: "buffered", size: 2 });
 
 	const p1 = manager.run(1); // starts immediately
@@ -1425,7 +1443,7 @@ test("Op.interpret queue with overflow: replace-last evicts queue tail on overfl
 // --- Op.interpret — queue dedupe ---
 
 test("Op.interpret queue with dedupe drops duplicate queued items", async () => {
-	const manager = Op.interpret(delayedOp(30), { strategy: "queue", dedupe: (a, b) => a === b });
+	const manager = Op.interpret(delayedOp(30), { strategy: "queue", dedupe: (a, b) => a[0] === b[0] });
 
 	const p1 = manager.run(1); // starts immediately (in-flight)
 	const p2 = manager.run(2); // queued
@@ -1440,7 +1458,7 @@ test("Op.interpret queue with dedupe drops duplicate queued items", async () => 
 
 test("Op.interpret queue with concurrency: 2 runs two items in-flight simultaneously", async () => {
 	const startTimes: number[] = [];
-	const op = Op.create((signal) => (input: number) =>
+	const op = Op.create((signal: AbortSignal) => (input: number) =>
 		new Promise<number>((resolve, reject) => {
 			startTimes.push(Date.now());
 			const id = setTimeout(() => resolve(input), 30);
@@ -1448,7 +1466,7 @@ test("Op.interpret queue with concurrency: 2 runs two items in-flight simultaneo
 				clearTimeout(id);
 				reject(new Error("abort"));
 			}, { once: true });
-		}), String);
+		}), { onError: String });
 	const manager = Op.interpret(op, { strategy: "queue", concurrency: 2 });
 
 	const [r1, r2, r3] = await Promise.all([manager.run(1), manager.run(2), manager.run(3)]);
@@ -1467,7 +1485,7 @@ test("Op.interpret queue with overflow: replace-last and dedupe produces Dropped
 		strategy: "queue",
 		maxSize: 2,
 		overflow: "replace-last",
-		dedupe: (a, b) => a === b,
+		dedupe: (a, b) => a[0] === b[0],
 	});
 
 	const p1 = manager.run(1); // in-flight
@@ -1487,10 +1505,10 @@ test("Op.interpret queue with overflow: replace-last and dedupe produces Dropped
 
 test("Op.interpret queue with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
-	const op = Op.create((_signal) => (_: number) => {
+	const op = Op.create((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("fail"));
-	}, (e) => (e as Error).message);
+	}, { onError: (e) => (e as Error).message });
 	const manager = Op.interpret(op, { strategy: "queue", retry: { attempts: 3 } });
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(3);
@@ -1502,10 +1520,10 @@ test("Op.interpret queue with retry emits Retrying states between attempts", asy
 
 test("Op.interpret buffered with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
-	const op = Op.create((_signal) => (_: number) => {
+	const op = Op.create((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("fail"));
-	}, (e) => (e as Error).message);
+	}, { onError: (e) => (e as Error).message });
 	const manager = Op.interpret(op, { strategy: "buffered", retry: { attempts: 3 } });
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(3);
@@ -1517,10 +1535,10 @@ test("Op.interpret buffered with retry emits Retrying states between attempts", 
 
 test("Op.interpret debounced leading with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
-	const op = Op.create((_signal) => (_: number) => {
+	const op = Op.create((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("fail"));
-	}, (e) => (e as Error).message);
+	}, { onError: (e) => (e as Error).message });
 	const manager = Op.interpret(op, {
 		strategy: "debounced",
 		duration: Duration.milliseconds(0),
@@ -1537,10 +1555,10 @@ test("Op.interpret debounced leading with retry emits Retrying states between at
 
 test("Op.interpret debounced trailing with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
-	const op = Op.create((_signal) => (_: number) => {
+	const op = Op.create((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("fail"));
-	}, (e) => (e as Error).message);
+	}, { onError: (e) => (e as Error).message });
 	const manager = Op.interpret(op, {
 		strategy: "debounced",
 		duration: Duration.milliseconds(10),
@@ -1556,10 +1574,10 @@ test("Op.interpret debounced trailing with retry emits Retrying states between a
 
 test("Op.interpret throttled with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
-	const op = Op.create((_signal) => (_: number) => {
+	const op = Op.create((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("fail"));
-	}, (e) => (e as Error).message);
+	}, { onError: (e) => (e as Error).message });
 	const manager = Op.interpret(op, {
 		strategy: "throttled",
 		duration: Duration.milliseconds(0),
@@ -1575,10 +1593,10 @@ test("Op.interpret throttled with retry emits Retrying states between attempts",
 
 test("Op.interpret concurrent with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
-	const op = Op.create((_signal) => (_: number) => {
+	const op = Op.create((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("fail"));
-	}, (e) => (e as Error).message);
+	}, { onError: (e) => (e as Error).message });
 	const manager = Op.interpret(op, { strategy: "concurrent", n: 1, overflow: "drop", retry: { attempts: 3 } });
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(3);
@@ -1662,10 +1680,10 @@ test("Op.interpret keyed without key or perKey uses identity key and exclusive d
 test("Op.interpret restartable with numeric backoff emits Retrying with nextRetryIn", async () => {
 	// Covers the `backoff` as a plain number branch (line 56) and the ms>0 nextRetryIn path (lines 70-73)
 	let calls = 0;
-	const op = Op.create((_signal) => (_: number) => {
+	const op = Op.create((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("fail"));
-	}, (e) => (e as Error).message);
+	}, { onError: (e) => (e as Error).message });
 	const manager = Op.interpret(op, {
 		strategy: "restartable",
 		retry: { attempts: 3, backoff: Duration.milliseconds(50) },
@@ -1679,10 +1697,10 @@ test("Op.interpret restartable with numeric backoff emits Retrying with nextRetr
 
 test("Op.interpret exclusive with numeric backoff emits Retrying with nextRetryIn", async () => {
 	let calls = 0;
-	const op = Op.create((_signal) => (_: number) => {
+	const op = Op.create((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("fail"));
-	}, (e) => (e as Error).message);
+	}, { onError: (e) => (e as Error).message });
 	const manager = Op.interpret(op, {
 		strategy: "exclusive",
 		retry: { attempts: 3, backoff: Duration.milliseconds(50) },
@@ -1851,7 +1869,7 @@ test("manager.reset does nothing when already Idle", () => {
 
 test("manager.poll runs immediately on first call", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "restartable" });
-	const stop = manager.poll(1, { interval: Duration.milliseconds(10_000) });
+	const stop = manager.poll({ interval: Duration.milliseconds(10_000) })(1);
 	// Wait for the immediate run to complete
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
@@ -1871,7 +1889,7 @@ test("manager.poll stop handle cancels future runs", async () => {
 	manager.subscribe((s) => {
 		if (Op.is.ok(s)) { runCount++; }
 	});
-	const stop = manager.poll(1, { interval: Duration.milliseconds(50) });
+	const stop = manager.poll({ interval: Duration.milliseconds(50) })(1);
 	// Wait for first run
 	await new Promise((r) => setTimeout(r, 20));
 	stop();
@@ -1879,6 +1897,23 @@ test("manager.poll stop handle cancels future runs", async () => {
 	// Wait long enough for what would have been 2+ more intervals
 	await new Promise((r) => setTimeout(r, 150));
 	expect(runCount).toBe(countAfterStop);
+});
+
+test("manager.poll supports reusable poller handle and zero-arg ops", async () => {
+	const zeroOp = Op.create((_signal: AbortSignal) => () => Promise.resolve(99), { onError: String });
+	const zeroManager = Op.interpret(zeroOp, { strategy: "once" });
+	const poller = zeroManager.poll({ interval: Duration.milliseconds(10_000) });
+	const stop = poller();
+	await new Promise<void>((resolve) => {
+		const unsub = zeroManager.subscribe((s) => {
+			if (Op.is.ok(s)) {
+				unsub();
+				resolve();
+			}
+		});
+	});
+	stop();
+	expect(zeroManager.state).toStrictEqual({ kind: "OpOk", value: 99 });
 });
 
 test("manager.reset works for exclusive strategy", async () => {
@@ -1932,7 +1967,7 @@ test("manager.reset works for once strategy", async () => {
 
 test("manager.poll works for exclusive strategy", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "exclusive" });
-	const stop = manager.poll(1, { interval: Duration.milliseconds(10_000) });
+	const stop = manager.poll({ interval: Duration.milliseconds(10_000) })(1);
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
 			if (Op.is.ok(s)) {
@@ -1947,7 +1982,7 @@ test("manager.poll works for exclusive strategy", async () => {
 
 test("manager.poll works for once strategy", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "once" });
-	const stop = manager.poll(1, { interval: Duration.milliseconds(10_000) });
+	const stop = manager.poll({ interval: Duration.milliseconds(10_000) })(1);
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
 			if (Op.is.ok(s)) {
@@ -1962,7 +1997,7 @@ test("manager.poll works for once strategy", async () => {
 
 test("manager.poll works for queue strategy", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "queue" });
-	const stop = manager.poll(1, { interval: Duration.milliseconds(10_000) });
+	const stop = manager.poll({ interval: Duration.milliseconds(10_000) })(1);
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
 			if (Op.is.ok(s)) {
@@ -1977,7 +2012,7 @@ test("manager.poll works for queue strategy", async () => {
 
 test("manager.poll works for buffered strategy", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "buffered" });
-	const stop = manager.poll(1, { interval: Duration.milliseconds(10_000) });
+	const stop = manager.poll({ interval: Duration.milliseconds(10_000) })(1);
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
 			if (Op.is.ok(s)) {
@@ -1992,7 +2027,7 @@ test("manager.poll works for buffered strategy", async () => {
 
 test("manager.poll works for debounced strategy", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "debounced", duration: Duration.milliseconds(0) });
-	const stop = manager.poll(1, { interval: Duration.milliseconds(10_000) });
+	const stop = manager.poll({ interval: Duration.milliseconds(10_000) })(1);
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
 			if (Op.is.ok(s)) {
@@ -2007,7 +2042,7 @@ test("manager.poll works for debounced strategy", async () => {
 
 test("manager.poll works for concurrent strategy", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "concurrent", n: 2 });
-	const stop = manager.poll(1, { interval: Duration.milliseconds(10_000) });
+	const stop = manager.poll({ interval: Duration.milliseconds(10_000) })(1);
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
 			if (Op.is.ok(s)) {
@@ -2022,7 +2057,7 @@ test("manager.poll works for concurrent strategy", async () => {
 
 test("manager.poll works for throttled strategy", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "throttled", duration: Duration.milliseconds(10_000) });
-	const stop = manager.poll(1, { interval: Duration.milliseconds(10_000) });
+	const stop = manager.poll({ interval: Duration.milliseconds(10_000) })(1);
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
 			if (Op.is.ok(s)) {
@@ -2046,7 +2081,7 @@ test("keyed manager.reset clears all per-key state", async () => {
 
 test("keyed manager.poll runs immediately and can be stopped", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "keyed", key: (n: number) => n });
-	const stop = manager.poll(1, { interval: Duration.milliseconds(10_000) });
+	const stop = manager.poll({ interval: Duration.milliseconds(10_000) })(1);
 	await new Promise<void>((resolve) => {
 		// oxlint-disable-next-line prefer-const -- TDZ: subscribe fires immediately, const would crash
 		let unsub: () => void;
@@ -2123,11 +2158,11 @@ test("duration support: restartable strategy with Duration minInterval", async (
 
 test("duration support: retry policy with Duration backoff", async () => {
 	let attempt = 0;
-	const op = Op.create((_signal) => (_: number) => {
+	const op = Op.create((_signal: AbortSignal) => (_: number) => {
 		attempt++;
 		if (attempt < 2) { return Promise.reject(new Error("fail")); }
 		return Promise.resolve(42);
-	}, (e) => String(e));
+	}, { onError: (e) => String(e) });
 	const manager = Op.interpret(op, {
 		strategy: "restartable",
 		retry: { attempts: 2, backoff: Duration.milliseconds(5) },
@@ -2138,11 +2173,11 @@ test("duration support: retry policy with Duration backoff", async () => {
 
 test("duration support: retry policy with Duration backoff function", async () => {
 	let attempt = 0;
-	const op = Op.create((_signal) => (_: number) => {
+	const op = Op.create((_signal: AbortSignal) => (_: number) => {
 		attempt++;
 		if (attempt < 2) { return Promise.reject(new Error("fail")); }
 		return Promise.resolve(42);
-	}, (e) => String(e));
+	}, { onError: (e) => String(e) });
 	const manager = Op.interpret(op, {
 		strategy: "restartable",
 		retry: { attempts: 2, backoff: (n) => Duration.milliseconds(n * 2) },
@@ -2152,10 +2187,10 @@ test("duration support: retry policy with Duration backoff function", async () =
 });
 
 test("duration support: timeout policy with Duration", async () => {
-	const op = Op.create((signal) => (_: number) =>
+	const op = Op.create((signal: AbortSignal) => (_: number) =>
 		new Promise<number>((_resolve, reject) => {
 			signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
-		}), (e) => String(e));
+		}), { onError: (e) => String(e) });
 	const manager = Op.interpret(op, {
 		strategy: "restartable",
 		timeout: { duration: Duration.milliseconds(5), onTimeout: () => "timeout" },
@@ -2166,7 +2201,7 @@ test("duration support: timeout policy with Duration", async () => {
 
 test("duration support: manager.poll with Duration interval", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "once" });
-	const stop = manager.poll(1, { interval: Duration.milliseconds(10_000) });
+	const stop = manager.poll({ interval: Duration.milliseconds(10_000) })(1);
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
 			if (Op.is.ok(s)) {

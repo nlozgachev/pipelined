@@ -170,10 +170,10 @@ the global environment into these modular slices.
 
 ---
 
-## Combining Computations: ap
+## Combining Computations: apply
 
-`ap` applies a function wrapped inside a Reader to a value wrapped inside a Reader. Both operations
-receive the same environment:
+`apply` applies a function wrapped inside a Reader to a value wrapped inside a Reader. Both
+operations receive the same environment:
 
 ```ts
 const calculateTotal = (tax: number) => (price: number) => price + tax;
@@ -183,8 +183,8 @@ const productTax: Reader<ApiConfig, number> = Reader.asks((c) => c.defaultTax);
 
 const total: Reader<ApiConfig, number> = pipe(
   Reader.resolve(calculateTotal),
-  Reader.ap(productTax),
-  Reader.ap(productPrice),
+  Reader.apply(productTax),
+  Reader.apply(productPrice),
 );
 ```
 
