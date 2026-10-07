@@ -81,6 +81,38 @@ original `Deferred`.
 
 ---
 
+## Coordinating Infallible Values: all and race
+
+When multiple asynchronous operations have already been initiated and yield `Deferred` handles, you
+can coordinate them directly without converting back to native promises:
+
+### Parallel collection with `Deferred.all`
+
+`Deferred.all` takes an array or tuple of `Deferred` handles and resolves to a tuple containing all
+results once every handle resolves:
+
+```ts
+import { Deferred } from "@nlozgachev/pipelined/core";
+
+const cacheLookup: Deferred<string> = loadCachedToken();
+const pingService: Deferred<number> = checkLatency();
+
+const [token, latency] = await Deferred.all([cacheLookup, pingService]);
+```
+
+### Racing with `Deferred.race`
+
+`Deferred.race` resolves with whichever `Deferred` completes first:
+
+```ts
+const primaryMirror: Deferred<Config> = fetchFromPrimary();
+const secondaryMirror: Deferred<Config> = fetchFromSecondary();
+
+const activeConfig = await Deferred.race([primaryMirror, secondaryMirror]);
+```
+
+---
+
 ## Problems it solves
 
 - **Infallible return container for `Task` and `Op.run()`**: When executing a lazy `Task<A>` or

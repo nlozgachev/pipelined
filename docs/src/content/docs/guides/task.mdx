@@ -344,6 +344,33 @@ const formatted = pipe(
 );
 ```
 
+### Non-short-circuiting batching with `allSettled`
+
+When evaluating multiple independent fallible requests in parallel, `Task.Result.struct` or `Arr.traverse.Task.Result` short-circuits on the first error encountered. If you need all tasks to run to completion regardless of individual failures (such as health check probes or bulk batch processing), use `Task.Result.allSettled`:
+
+```ts
+import { Result } from "@nlozgachev/pipelined/core";
+
+const healthChecks = [
+  checkDatabase,
+  checkRedis,
+  checkExternalGateway,
+];
+
+// Returns Task<readonly Result<CheckError, HealthStatus>[]>
+const outcomes = await Task.Result.allSettled(healthChecks)();
+
+for (const outcome of outcomes) {
+  if (Result.is.ok(outcome)) {
+    console.log("Service operational:", outcome.value);
+  } else {
+    console.error("Service degraded:", outcome.error);
+  }
+}
+```
+
+The resulting `Task` is guaranteed to resolve, returning an array where every item is individually wrapped in a `Result`.
+
 ---
 
 ## Lazy Task Memoization: Task.memoize
@@ -527,5 +554,5 @@ const profilePromise = Deferred.to.Promise(fetchProfile("123")()); // Promise<Re
 - **Composing lazy asynchronous workflows**: In background workers and server endpoints, asynchronous pipelines often involve multiple sequential steps (such as acquiring auth tokens, querying profile data, fetching permission lists, and writing audit records). Native promises execute eagerly upon creation. `Task` encapsulates asynchronous operations as lazy descriptions, enabling modular pipeline composition and transformation before initiating network or I/O work.
 - **Coordinated concurrency and fallback racing**: When aggregating data across distributed backends or caching layers, applications need fine-grained concurrency control. `Task` provides structured combinators like `Task.all` for parallel fan-out, `Task.race` for racing primary against fallback sources, and `Task.sequential` for queue execution, all while preserving functional purity.
 - **Compiler-enforced async error handling with `Task.Result`**: Network calls and disk I/O naturally produce domain failures. Standard `Promise.reject` discards TypeScript type information, allowing unhandled rejections to bubble up. `Task.Result` pairs lazy asynchronous execution with typed errors, ensuring the outer task always resolves safely while forcing callers to handle specific failure variants.
-- **Time-bound operations and scheduled polling (`Task.timeout`, `Task.delay`, `Task.repeat`)**: Wrapping external network calls with timeout boundaries typically involves race hackery with `setTimeout` and cleanup listeners. `Task.timeout` attaches strict duration limits returning typed `Result` errors on expiration, while `Task.delay` and `Task.repeat` configure scheduled interval polling cleanly.
+- **Time-bound operations and scheduled polling (`Task.timeout`, `Task.delay`, `Task.repeat`, `Task.poll`)**: Wrapping external network calls with timeout boundaries typically involves race hackery with `setTimeout` and cleanup listeners. `Task.timeout` attaches strict duration limits returning typed `Result` errors on expiration, while `Task.delay`, `Task.repeat`, and `Task.poll` configure scheduled interval polling cleanly.
 - **Asynchronous optionality with `Task.Maybe`**: When loading cached tokens or reading optional database settings asynchronously, missing entries are expected. `Task.Maybe` threads async execution and optional absence together, allowing callers to map, chain, and recover without nested promise-and-null checks.

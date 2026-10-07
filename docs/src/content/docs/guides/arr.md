@@ -64,6 +64,17 @@ pipe(numbers, Arr.findFirst((n) => n > 2)); // Some(3)
 pipe(numbers, Arr.findLast((n) => n > 2));  // Some(4)
 pipe(numbers, Arr.findIndex((n) => n > 2)); // Some(2)
 pipe(numbers, Arr.findFirst((n) => n > 10)); // None
+
+// Safe index lookup supporting negative offsets counting back from the end:
+pipe(numbers, Arr.at(1));  // Some(2)
+pipe(numbers, Arr.at(-1)); // Some(4)
+pipe(numbers, Arr.at(10)); // None
+
+// Find and transform in a single pass:
+pipe(
+  ["invalid", "42", "100"],
+  Arr.findMap((s) => isNaN(Number(s)) ? Maybe.make.none() : Maybe.make.some(Number(s))),
+); // Some(42)
 ```
 
 Standard transformation steps are curried and ready for pipe composition:
@@ -77,6 +88,8 @@ pipe([1, 2, 3], Arr.reverse);               // [3, 2, 1]
 ### Partitioning and grouping
 
 - `partition` divides a collection into two groups: those that pass a predicate and those that fail.
+- `partitionMaybe` maps with a `Maybe`-returning function, gathering `None` inputs into failures and
+  `Some` unpacked values into successes.
 - `groupBy` maps elements into a record of non-empty lists grouped by a key function:
 
 ```ts
@@ -85,6 +98,12 @@ const [evens, odds] = pipe(
   [1, 2, 3, 4, 5],
   Arr.partition((n) => n % 2 === 0),
 );
+
+// Partition raw inputs by parser success:
+const [rejectedStrings, validNumbers] = pipe(
+  ["1", "foo", "2", "bar"],
+  Arr.partitionMaybe((s) => isNaN(Number(s)) ? Maybe.make.none() : Maybe.make.some(Number(s))),
+); // rejectedStrings: ["foo", "bar"], validNumbers: [1, 2]
 
 // Grouping by starting letter:
 const grouped = pipe(
@@ -97,10 +116,14 @@ const grouped = pipe(
 
 - `uniq` filters duplicates using strict equality (`===`).
 - `uniqBy` filters duplicates by projecting a key.
+- `dedupeAdjacent` removes consecutive identical elements, with an optional custom `Equality<A>`.
 - `sortBy` sorts values immutably without mutating the source array:
 
 ```ts
 const unique = Arr.uniq([1, 2, 2, 3, 1]); // [1, 2, 3]
+
+// Drops only consecutive duplicate values:
+const deduplicated = Arr.dedupeAdjacent()([1, 1, 2, 2, 1, 3]); // [1, 2, 1, 3]
 
 const sorted = pipe(
   [3, 1, 4],
@@ -183,6 +206,71 @@ pipe([1, 2, 3], Arr.removeAt(1));     // [1, 3]
 pipe([1, 2], Arr.zip(["a", "b"]));          // [[1, "a"], [2, "b"]]
 pipe([1, 2, 3], Arr.intersperse(0));         // [1, 0, 2, 0, 3]
 pipe([1, 2, 3, 4, 5], Arr.chunksOf(2));     // [[1, 2], [3, 4], [5]]
+```
+
+---
+
+## Grouping, Windowing, and Occurrences
+
+### Consecutive grouping with `Arr.chunkBy`
+
+When you need to group adjacent elements that share a calculated key (such as identical status tags
+or timestamp intervals):
+
+```ts
+pipe(
+  [1, 1, 2, 3, 3, 1],
+  Arr.chunkBy((n) => n),
+); // [[1, 1], [2], [3, 3], [1]]
+```
+
+### Sliding windows with `Arr.windowed`
+
+`Arr.windowed` produces fixed-size overlapping slices across a collection, advancing by a specified
+`step` (defaulting to 1):
+
+```ts
+const metrics = [10, 15, 20, 25];
+
+// Overlapping pairs for trend calculation:
+pipe(metrics, Arr.windowed(2)); // [[10, 15], [15, 20], [20, 25]]
+
+// Stepping by 2:
+pipe(metrics, Arr.windowed(2, { step: 2 })); // [[10, 15], [20, 25]]
+```
+
+### Indexing and counting occurrences
+
+- `Arr.indexBy` maps an array into a `ReadonlyMap<K, A>` by a key extraction function.
+- `Arr.frequencies` counts element occurrences, returning a `ReadonlyMap<A, number>`:
+
+```ts
+interface Product { id: string; category: string }
+const catalog: Product[] = [
+  { id: "p1", category: "books" },
+  { id: "p2", category: "electronics" },
+];
+
+const catalogMap = pipe(catalog, Arr.indexBy((p) => p.id));
+// ReadonlyMap { "p1" => { id: "p1", ... }, "p2" => { id: "p2", ... } }
+
+const tagCounts = Arr.frequencies(["typescript", "rust", "typescript", "go"]);
+// ReadonlyMap { "typescript" => 2, "rust" => 1, "go" => 1 }
+```
+
+---
+
+## Sequence Generation: unfold
+
+When generating a sequence from an initial seed state until a termination condition is met (such as
+generating paginated page numbers or unfolding an arithmetic sequence), `Arr.unfold` executes while
+the step callback returns `Some`:
+
+```ts
+// Unfold countdown until 0:
+const countdown = Arr.unfold(5, (current) =>
+  current > 0 ? Maybe.make.some([current, current - 1]) : Maybe.make.none(),
+); // [5, 4, 3, 2, 1]
 ```
 
 ---
@@ -320,22 +408,27 @@ dedicated [NonEmpty Guide](../nonempty).
   transforming arrays with native methods often requires verbose arrow wrapper functions inside
   `pipe` chains. `Arr` provides data-last combinators (`Arr.map`, `Arr.filterMap`, `Arr.chunk`,
   `Arr.groupBy`) that compose cleanly into linear pipelines.
-- **Safe element extraction and out-of-bounds protection**: Native indexing (`arr[i]`) returns
-  `undefined` at runtime without requiring compile-time handling. `Arr.head`, `Arr.last`, and
-  `Arr.lookup` return `Maybe<A>`, ensuring out-of-bounds accesses are safely handled before
-  accessing properties.
-- **Batch chunking for rate-limited APIs (`Arr.chunk`)**: When submitting bulk inserts to a database
-  or making external API calls with payload size limits, large arrays must be partitioned into
-  smaller batches. `Arr.chunk` splits collections into fixed-size segments point-free.
-- **Categorization and dual-partitioning (`Arr.groupBy`, `Arr.partition`)**: In UI dashboards and
-  report generators, records often need to be split into active/inactive buckets (`Arr.partition`)
-  or organized by category keys (`Arr.groupBy`) for sectioned list rendering.
-- **Simultaneous mapping and filtering (`Arr.filterMap`, `Arr.compact`)**: Extracting valid data
-  from dirty datasets (such as parsing strings to numbers and discarding unparseable rows) typically
-  requires separate `.map()` and `.filter()` passes. `Arr.filterMap` executes transformation and
-  filtering in a single efficient pass.
-- **Traversing collections of fallible or asynchronous steps**: When running batch operations (such
-  as validating an array of input records or fetching details for a list of IDs), standard mapping
-  produces `Array<Task.Result<E, A>>`. `Arr.traverse.Task.Result` sequences or parallels the
-  collection into a single `Task.Result<E, A[]>`, handling failures and collection inversion
-  automatically.
+- **Safe element extraction and out-of-bounds protection (`Arr.head`, `Arr.last`, `Arr.at`)**:
+  Native indexing (`arr[i]`) returns `undefined` at runtime without static safety. `Arr.head`,
+  `Arr.last`, and `Arr.at` return `Maybe<A>`, supporting negative offsets and guaranteeing
+  out-of-bounds checks before accessing properties.
+- **Batch chunking and sliding windows (`Arr.chunksOf`, `Arr.chunkBy`, `Arr.windowed`)**: When
+  submitting bulk inserts to rate-limited APIs, grouping consecutive identical states, or computing
+  moving averages across time-series metrics, `Arr.chunksOf`, `Arr.chunkBy`, and `Arr.windowed`
+  partition collections point-free.
+- **Categorization and dual-partitioning (`Arr.groupBy`, `Arr.partition`, `Arr.partitionMaybe`,
+  `Arr.frequencies`)**: In UI dashboards and reporting tools, collections need to be split by
+  boolean criteria (`Arr.partition`), segregated by optional parsers (`Arr.partitionMaybe`),
+  organized into non-empty buckets (`Arr.groupBy`), or counted into frequency maps
+  (`Arr.frequencies`).
+- **Simultaneous mapping and filtering (`Arr.filterMap`, `Arr.findMap`, `Arr.compact`)**: Extracting
+  valid data from dirty datasets (such as parsing strings to numbers and discarding unparseable
+  rows) typically requires separate `.map()` and `.filter()` passes. `Arr.filterMap` and
+  `Arr.findMap` execute transformation and filtering in a single efficient pass.
+- **Sequence generation from seeds (`Arr.unfold`)**: Constructing lists from iterative algorithms or
+  paginated cursor workflows without imperative `while` loops or mutable array allocations.
+- **Traversing collections of fallible or asynchronous steps (`Arr.traverse`)**: When running batch
+  operations (such as validating an array of input records or fetching details for a list of IDs),
+  standard mapping produces `Array<Task.Result<E, A>>`. `Arr.traverse.Task.Result` sequences or
+  parallels the collection with optional bounded concurrency into a single `Task.Result<E, A[]>`,
+  handling failures and collection inversion automatically.

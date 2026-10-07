@@ -134,6 +134,54 @@ const apiError = pipe(
 This is especially valuable at the edge of your systems, allowing you to convert low-level database
 or network errors into clean, user-facing error objects.
 
+### Transforming both channels with `bimap`
+
+When an operation requires mapping both the success value and the error value in a single step,
+`bimap` accepts two callbacks: the first applies to `Err`, and the second applies to `Ok`:
+
+```ts
+type ApiPayload = { userId: string; email: string };
+type ApiResponse = { data?: { user: string }; error?: string };
+
+const formatResponse = (result: Result<string, ApiPayload>): ApiResponse =>
+  pipe(
+    result,
+    Result.bimap(
+      (err) => ({ error: `Request rejected: ${err}` }),
+      (user) => ({ data: { user: user.email.toLowerCase() } }),
+    ),
+    Result.fold(
+      (errPayload) => errPayload,
+      (okPayload) => okPayload,
+    ),
+  );
+```
+
+### Validating success values with `ensure`
+
+Sometimes a value is successfully parsed or retrieved, but fails a subsequent business rule.
+`Result.ensure` tests the `Ok` value against a predicate. If the predicate returns `false`, it
+converts the container to an `Err` using the provided error constructor:
+
+```ts
+interface CartItem {
+  id: string;
+  quantity: number;
+}
+
+const validateStock = (item: CartItem, availableStock: number): Result<string, CartItem> =>
+  pipe(
+    Result.make.ok(item),
+    Result.ensure(
+      (i) => i.quantity <= availableStock,
+      (i) => `Requested ${i.quantity} units of ${i.id}, but only ${availableStock} in stock`,
+    ),
+  );
+
+validateStock({ id: "item_9", quantity: 2 }, 5);  // Ok({ id: "item_9", quantity: 2 })
+validateStock({ id: "item_9", quantity: 10 }, 5); // Err("Requested 10 units of item_9, but only 5 in stock")
+```
+
 ### Nested pipelines with `chain`
 
 When a transformation step itself can fail and returns another `Result`, using `map` would result in

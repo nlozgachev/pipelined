@@ -117,6 +117,25 @@ pipe(
 ); // { a: 1, b: 99, c: 3 }
 ```
 
+### Resolving key collisions with `Rec.mergeWith`
+
+When two records contain overlapping keys and you need to combine their values rather than blindly
+overwriting the first with the second, use `Rec.mergeWith`. It accepts a custom combiner function:
+
+```ts
+const dailyViews = { home: 120, pricing: 45 };
+const weekendViews = { pricing: 30, docs: 80 };
+
+// Sum collision values together:
+const totalViews = pipe(
+  dailyViews,
+  Rec.mergeWith((a: number, b: number) => a + b)(weekendViews),
+); // { home: 120, pricing: 75, docs: 80 }
+```
+
+`Rec.mergeWith` also supports direct uncurried invocation:
+`Rec.mergeWith(combine)(recordA, recordB)`.
+
 ---
 
 ## Keys, Values, and Entries
@@ -137,18 +156,39 @@ Rec.entries(coordinates); // [["x", 10], ["y", 20]]
 Rec.from.entries([["a", 1], ["b", 2]]); // { a: 1, b: 2 }
 ```
 
-You can pair `entries` and `from.entries` to easily perform structural record mappings:
+### Transforming keys and values with `Rec.mapEntries`
+
+To transform both the keys and values of a record in a single pass without manually bouncing through
+arrays, `Rec.mapEntries` takes a mapping callback that yields new `[key, value]` tuples:
 
 ```ts
-// Upper-casing all keys in a record:
-const rawInput = { firstName: "Alice", lastName: "Smith" };
+const rawHeaders = { "content-type": "application/json", "x-request-id": "req-1" };
 
-const parsed = pipe(
-  rawInput,
-  Rec.entries,
-  (entries) => entries.map(([key, value]) => [key.toUpperCase(), value] as const),
-  Rec.from.entries,
-); // { FIRSTNAME: "Alice", LASTNAME: "Smith" }
+const normalizedHeaders = pipe(
+  rawHeaders,
+  Rec.mapEntries((key, value) => [key.toUpperCase(), value]),
+); // { "CONTENT-TYPE": "application/json", "X-REQUEST-ID": "req-1" }
+```
+
+---
+
+## Updating Nested Paths: updateIn
+
+When modifying deeply nested record structures without writing verbose spread operators,
+`Rec.updateIn` applies a transformation function at a specific path tuple:
+
+```ts
+const config = {
+  server: {
+    database: { pool: 5 },
+  },
+};
+
+const updatedConfig = pipe(
+  config,
+  Rec.updateIn(["server", "database", "pool"], (p: number) => p * 2),
+);
+// { server: { database: { pool: 10 } } }
 ```
 
 ---
@@ -279,5 +319,9 @@ For more details on operating with guaranteed non-empty data structures, see the
   attributes, or localized string tables, direct index access (`obj[key]`) returns `undefined`
   without static warnings. `Rec.get` returns a `Maybe<V>`, requiring explicit presence handling
   before operating on values.
-- **Merging multi-layer configuration records**: Combining default theme tokens with user style
-  overrides or merging localized message catalogs without mutating input objects.
+- **Merging multi-layer configuration records (`Rec.merge`, `Rec.mergeWith`)**: Combining default
+  theme tokens with user style overrides or accumulating metrics across datasets using custom
+  collision handlers.
+- **Deep immutable updates without spread nesting (`Rec.updateIn`)**: Updating nested properties in
+  deeply structured configuration objects without writing repetitive, error-prone object spread
+  boilerplate.

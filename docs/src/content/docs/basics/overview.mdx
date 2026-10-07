@@ -142,25 +142,25 @@ const searchRunner = Op.interpret(searchApi, {
 });
 ```
 
-### Typed Event Sequences: `Stream<S>`
+### Typed Event Sequences: `EventBus<S>`
 
 Standard event emitters leave message payloads untyped, while complex reactive stream frameworks introduce heavy operators for basic event coordination.
 
-`Stream<S>` provides a type-safe event pipeline for matching event sequences and accumulating state over time:
+`EventBus<S>` provides a type-safe event pipeline for matching event sequences and accumulating state over time:
 
 ```ts
-import { Stream } from "@nlozgachev/pipelined/core";
+import { EventBus } from "@nlozgachev/pipelined/core";
 
 type AppEvents = {
   login: { userId: string };
   logout: void;
 };
 
-const authStream = Stream.create<AppEvents>();
+const authBus = EventBus.make<AppEvents>();
 
 // Subscribe to typed events
-authStream.on("login", ({ userId }) => {
-  console.log(`User logged in: ${userId}`);
+EventBus.listen(authBus, "login").tap(({ value }) => {
+  console.log(`User logged in: ${value.userId}`);
 });
 ```
 
@@ -178,7 +178,7 @@ Use this matrix to pick the right data structure for your scenario:
 | Lazy async operation with typed error channel | **`Task.Result<E, A>`** | `Ok<A>` | `Err<E>` | Asynchronous, deferred |
 | UI data request lifecycle tracking | **`RemoteData<E, A>`** | `Success<A>` | `Failure<E>`, `Loading`, `NotAsked` | State union for UI render |
 | Async task needing cancellation, concurrency, or retries | **`Op<I, E, A>`** | `Ok<A>` | `Err<E>` | Interpreted execution engine |
-| Typed pub/sub event pipeline & state accumulation | **`Stream<S>`** | `Message<S>` | N/A | Reactive event bus |
+| Typed pub/sub event pipeline & state accumulation | **`EventBus<S>`** | `Message<S>` | N/A | Reactive event bus |
 
 ---
 

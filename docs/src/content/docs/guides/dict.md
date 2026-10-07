@@ -93,6 +93,34 @@ const labels = pipe(
 ); // Map { "usr_1" => "usr_1 (admin)", "usr_2" => "usr_2 (member)" }
 ```
 
+### Transforming keys with `Dict.mapKeys`
+
+When migrating key namespaces or prefixing identifiers, `Dict.mapKeys` applies a transformation
+strictly to dictionary keys:
+
+```ts
+const userRoles = Dict.from.Record({ 1: "admin", 2: "editor" });
+
+const prefixedRoles = pipe(
+  userRoles,
+  Dict.mapKeys((id) => `user_${id}`),
+); // Map { "user_1" => "admin", "user_2" => "editor" }
+```
+
+### Transforming entries with `Dict.mapEntries`
+
+To transform keys and values simultaneously in a single pass, `Dict.mapEntries` maps each
+`[key, value]` pair to a new tuple:
+
+```ts
+const rawConfig = Dict.from.Record({ port: "8080", host: "localhost" });
+
+const parsedConfig = pipe(
+  rawConfig,
+  Dict.mapEntries((key, value) => [key.toUpperCase(), value.trim()]),
+); // Map { "PORT" => "8080", "HOST" => "localhost" }
+```
+
 ---
 
 ## Filtering Values
@@ -182,6 +210,24 @@ const merged = pipe(defaults, Dict.union(overrides));
 // Map { "timeout" => 10000, "retries" => 3 }
 ```
 
+### Resolving key collisions with `Dict.mergeWith`
+
+When two dictionaries share keys and you need to combine collision values rather than discarding the
+left-hand value, use `Dict.mergeWith` with a custom combiner function:
+
+```ts
+const regionA = new Map([["latency", 45], ["connections", 100]]);
+const regionB = new Map([["latency", 55], ["connections", 150]]);
+
+// Combine by summing counts or averaging latencies:
+const aggregated = pipe(
+  regionA,
+  Dict.mergeWith((a: number, b: number) => a + b)(regionB),
+); // Map { "latency" => 100, "connections" => 250 }
+```
+
+`Dict.mergeWith` also supports direct uncurried execution: `Dict.mergeWith(combine)(mapA, mapB)`.
+
 ---
 
 ## Compacting and Folds
@@ -212,10 +258,10 @@ const totalScore = pipe(
 - **Insertion-ordered processing queues**: When maintaining a registry of background tasks or event
   handlers where execution order must strictly match insertion order, `Dict` guarantees
   deterministic iteration order.
-- **Point-free transformation of key-value stores**: Filtering expired cache entries, merging
-  configuration layers, or transforming map values in data pipelines normally requires converting to
-  arrays and back. `Dict` provides data-last combinators (`Dict.map`, `Dict.filter`, `Dict.reduce`)
-  that compose directly inside `pipe`.
+- **Point-free transformation of key-value stores (`Dict.map`, `Dict.mapKeys`, `Dict.mapEntries`,
+  `Dict.mergeWith`)**: Filtering expired cache entries, merging configuration layers with custom
+  collision resolvers, or transforming map keys/values in data pipelines without converting to
+  arrays and back.
 - **Dictionary set algebra (`Dict.union`, `Dict.intersection`, `Dict.difference`)**: Reconciling
   local offline entity stores with remote server state by finding updated, overlapping, or removed
   map entries purely.
