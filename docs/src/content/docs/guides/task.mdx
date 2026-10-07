@@ -19,7 +19,7 @@ Because `Task` is a function, execution is deferred until invoked. Because `Defe
 import { Task } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
 
-const getTimestamp = Task.resolve(Date.now()); // Task<number>
+const getTimestamp = Task.from.sync(() => Date.now()); // Task<number>
 
 // 1. Compose the pipeline — nothing executes yet
 const formattedTime = pipe(
@@ -113,6 +113,15 @@ const [config, user] = await Task.all([
 
 The return type is structurally matched to your input: passing `[Task<Config>, Task<User>]` yields a `Task<[Config, User]>` tuple.
 
+To prevent overwhelming sockets or triggering external rate limits, provide `{ concurrency }` to constrain how many tasks execute at any given moment:
+
+```ts
+const fetchTasks = userIds.map((id) => fetchUserTask(id));
+
+// Executes at most 3 tasks concurrently using an internal worker pool:
+const users = await Task.all(fetchTasks, { concurrency: 3 })();
+```
+
 ### Raced execution with `race`
 
 `Task.race` starts multiple Tasks simultaneously and resolves with the outcome of whichever Task completes first, abandoning the remaining in-flight tasks:
@@ -147,9 +156,11 @@ const results = await Task.sequential([
 `Task.delay` introduces a timed pause before the Task executes:
 
 ```ts
+import { Duration } from "@nlozgachev/pipelined/types";
+
 const delayedGreeting = pipe(
   Task.resolve("Hello"),
-  Task.delay(1000), // Delays for 1 second
+  Task.delay(Duration.seconds(1)),
 );
 ```
 
@@ -194,21 +205,23 @@ const configUrl = await pipe(
 `repeat` executes a Task a fixed number of times, collecting all outcomes:
 
 ```ts
+import { Duration } from "@nlozgachev/pipelined/types";
+
 const readings = await pipe(
   readSensorTask,
-  Task.repeat({ times: 5, delay: 1000 }), // Reads 5 times, waiting 1s between reads
+  Task.repeat({ times: 5, delay: Duration.seconds(1) }),
 )();
 ```
 
-`repeatUntil` polls a Task repeatedly on an interval until the returned value satisfies a predicate:
+`poll` re-runs a Task on an interval until the returned value satisfies a predicate, returning that final value:
 
 ```ts
 const readyState = await pipe(
   checkStatusTask,
-  Task.repeatUntil({
-    when: (status) => status === "COMPLETED",
-    delay: 2000,
-    maxAttempts: 10, // Avoid infinite loops
+  Task.poll({
+    until: (status) => status === "COMPLETED",
+    delay: Duration.seconds(2),
+    attempts: 10, // Cap attempts to avoid infinite loops
   }),
 )();
 ```
@@ -288,6 +301,48 @@ const resilientFetch = pipe(
 ```
 
 If an attempt succeeds (`Ok`), execution completes immediately without further retries. If an attempt fails (`Err`), the policy calculates the delay before executing the next attempt, respecting any `AbortSignal` passed from the call site.
+
+To fail fast on permanent client errors while retrying transient server errors, pass a `when` predicate:
+
+```ts
+type HttpError = { status: number; message: string };
+
+const isTransient = (err: unknown): boolean =>
+  typeof err === "object" && err !== null && "status" in err && (err as HttpError).status >= 500;
+
+const transientFetch = pipe(
+  fetchProfile("123"),
+  Task.Result.retry(exponentialPolicy, { when: isTransient }),
+);
+```
+
+### Validating task results with `ensure`
+
+`Task.Result.ensure` validates the `Ok` value with a predicate. If the check returns `false`, it converts the value to an `Err` using the provided error constructor:
+
+```ts
+const validatedProfile = pipe(
+  fetchProfile("123"),
+  Task.Result.ensure(
+    (user) => user.isActive,
+    (user) => `User ${user.id} is inactive`,
+  ),
+);
+```
+
+### Transforming both channels with `bimap`
+
+`Task.Result.bimap` transforms both the `Err` and `Ok` channels in a single operation:
+
+```ts
+const formatted = pipe(
+  fetchProfile("123"),
+  Task.Result.bimap(
+    (err) => new Error(`Fetch failed: ${err}`),
+    (user) => user.name.toUpperCase(),
+  ),
+);
+```
 
 ---
 

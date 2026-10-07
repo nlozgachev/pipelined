@@ -132,6 +132,48 @@ const tsFiles = pipe(
 ); // ["index.ts", "utils.ts"]
 ```
 
+## Pattern matching with Regular Expressions
+
+Native `RegExp` instances configured with global (`/g`) or sticky (`/y`) flags maintain mutable
+`lastIndex` pointers between calls. Running `.test()` or `.exec()` consecutively on the same RegExp
+instance alternates between matching and failing on the exact same string.
+
+`Str.match` and `Str.test` provide data-last regular expression operations that automatically reset
+`pattern.lastIndex = 0` before each evaluation, ensuring pure, idempotent results.
+
+### Extracting matches with `Str.match`
+
+`Str.match` returns `Some<RegExpMatchArray>` if the string matches the pattern, or `None` if it does
+not:
+
+```ts
+import { Maybe } from "@nlozgachev/pipelined/core";
+
+const versionMatch = pipe("release-v2.4.1", Str.match(/v(\d+)\.(\d+)\.(\d+)/));
+
+const majorVersion = pipe(
+  versionMatch,
+  Maybe.map((m) => m[1]),
+  Maybe.getOrElse(() => "0"),
+); // "2"
+```
+
+### Testing patterns with `Str.test`
+
+`Str.test` returns `true` if the string matches the regular expression, and `false` otherwise:
+
+```ts
+const isValidSlug = Str.test(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+
+isValidSlug("functional-typescript"); // true
+isValidSlug("Invalid Slug!"); // false
+
+const validTags = pipe(
+  ["valid-slug", "Bad Tag", "v1-ready"],
+  Arr.filter(Str.test(/^[a-z0-9-]+$/)),
+); // ["valid-slug", "v1-ready"]
+```
+
 ## Safe numeric parsing
 
 `Str.parse` provides two safe alternatives to standard number parsing. Both `Str.parse.int` and
@@ -142,13 +184,13 @@ boilerplate `isNaN` checks:
 import { Maybe } from "@nlozgachev/pipelined/core";
 
 // Safe integer parsing (truncates decimals like parseInt)
-Str.parse.int("42");  // Some(42)
+Str.parse.int("42"); // Some(42)
 Str.parse.int("3.7"); // Some(3)
 Str.parse.int("abc"); // None
 
 // Safe float parsing
 Str.parse.float("3.14"); // Some(3.14)
-Str.parse.float("abc");  // None
+Str.parse.float("abc"); // None
 ```
 
 These safe parsers compose cleanly to resolve safe fallback defaults:
@@ -159,7 +201,7 @@ const rawLimit = "invalid";
 const limit = pipe(
   rawLimit,
   Str.parse.int,
-  Maybe.getOrElse(() => 10) // default to 10 on parsing failure
+  Maybe.getOrElse(() => 10), // default to 10 on parsing failure
 ); // 10
 ```
 
@@ -176,8 +218,8 @@ const cleanedTags = pipe(
   Str.trim,
   Str.split(","),
   Arr.map(Str.trim),
-  Arr.filter(tag => tag.length > 0),
-  Arr.map(Str.toLowerCase)
+  Arr.filter((tag) => tag.length > 0),
+  Arr.map(Str.toLowerCase),
 );
 // ["typescript", "functional", "pipe"]
 ```
@@ -189,10 +231,14 @@ const cleanedTags = pipe(
   native string methods require writing manual arrow wrappers inside `pipe`. `Str` provides curried,
   data-last combinators (`Str.trim`, `Str.toLowerCase`, `Str.split`, `Str.replace`) that chain
   directly.
+- **Pure regular expression matching without stateful bugs**: Native `RegExp` flags (`/g`, `/y`)
+  maintain internal `lastIndex` pointer offsets that cause successive checks to fail intermittently.
+  `Str.match` and `Str.test` reset state to index zero on every execution, guaranteeing pure,
+  idempotent pattern matching.
 - **Safe numeric string conversion**: Parsing numbers from HTTP parameters or form text with
   `Number()` or `parseInt()` yields `NaN` on invalid input without static compiler warnings.
-  `Str.toNumber` and `Str.toInteger` return `Maybe<number>`, ensuring non-numeric inputs are handled
-  safely before doing math.
+  `Str.parse.int` and `Str.parse.float` return `Maybe<number>`, ensuring non-numeric inputs are
+  handled safely before doing math.
 - **URL slug generation and search normalisation**: Building SEO-friendly article slugs or
   normalising search queries by chaining case conversion, whitespace collapsing, and character
   replacement point-free.

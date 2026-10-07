@@ -23,7 +23,7 @@ import { Validation as CoreValidation } from "./Validation.ts";
  *   return type using `Task.Result<E, A>` instead.
  *
  * An optional `AbortSignal` can be passed at the call site. Combinators like
- * `retry`, `pollUntil`, and `timeout` thread it automatically to every inner
+ * `retry`, `poll`, and `timeout` thread it automatically to every inner
  * operation. Existing tasks that ignore the signal continue to work unchanged.
  *
  * Calling a Task returns a `Deferred<A>` — a one-shot async value that supports
@@ -190,21 +190,69 @@ export const Task = {
 
 	/**
 	 * Runs multiple Tasks in parallel and collects their results.
+	 * An optional `concurrency` option limits the number of tasks executing at any given time.
 	 *
 	 * @example
 	 * ```ts
 	 * Task.all([loadConfig, detectLocale, loadTheme])();
 	 * // Deferred<[Config, string, Theme]>
+	 *
+	 * Task.all([loadConfig, detectLocale, loadTheme], { concurrency: 2 })();
 	 * ```
 	 */
 	all: <T extends readonly Task<unknown>[]>(
 		tasks: T,
+		options?: { concurrency?: number; },
 	): Task<{ [K in keyof T]: T[K] extends Task<infer A> ? A : never; }> =>
-		fromPromise((signal) =>
-			Promise.all(tasks.map((t) => toPromise(t, signal))) as Promise<
-				{ [K in keyof T]: T[K] extends Task<infer A> ? A : never; }
-			>
-		),
+		fromPromise((signal) => {
+			type Results = { [K in keyof T]: T[K] extends Task<infer A> ? A : never; };
+			const concurrency = options?.concurrency;
+			if (concurrency === undefined || concurrency <= 0 || tasks.length <= concurrency) {
+				return Promise.all(tasks.map((t) => toPromise(t, signal))) as Promise<Results>;
+			}
+
+			return new Promise<Results>((resolve, reject) => {
+				const len = tasks.length;
+				if (len === 0) {
+					return resolve([] as unknown as Results);
+				}
+
+				const results = new Array(len);
+				let nextIndex = 0;
+				let settled = false;
+
+				const worker = async () => {
+					while (nextIndex < len && !settled) {
+						const currentIndex = nextIndex++;
+						try {
+							const res = await toPromise(tasks[currentIndex], signal);
+							if (settled) { return; }
+							results[currentIndex] = res;
+						} catch (err) {
+							settled = true;
+							reject(err);
+							return;
+						}
+					}
+				};
+
+				const workerCount = Math.min(concurrency, len);
+				const workers: Promise<void>[] = [];
+				for (let i = 0; i < workerCount; i++) {
+					workers.push(worker());
+				}
+
+				Promise.all(workers).then(() => {
+					if (!settled) {
+						resolve(results as unknown as Results);
+					}
+				}).catch((err) => {
+					if (!settled) {
+						reject(err);
+					}
+				});
+			});
+		}),
 
 	/**
 	 * Delays the execution of a Task by the specified duration.
@@ -289,52 +337,51 @@ export const Task = {
 		}),
 
 	/**
-	 * Runs a Task repeatedly until the result satisfies a predicate, returning that result.
-	 * An optional delay duration can be inserted between runs.
-	 * An optional `maxAttempts` cap stops the loop after N calls — the last value is returned
+	 * Polls a Task repeatedly until the result satisfies a predicate, returning that result.
+	 * An optional delay duration can be inserted between polling runs.
+	 * An optional `attempts` cap stops the loop after N calls — the last value is returned
 	 * regardless of whether the predicate was satisfied.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(
 	 *   checkStatus,
-	 *   Task.repeatUntil({ when: (s) => s === "ready", delay: Duration.milliseconds(500) })
+	 *   Task.poll({ until: (s) => s === "ready", delay: Duration.milliseconds(500) })
 	 * )(); // polls every 500ms until status is "ready"
 	 * ```
 	 */
-	repeatUntil:
-		<A>(options: { when: (a: A) => boolean; delay?: Duration; maxAttempts?: number; }) => (task: Task<A>): Task<A> =>
-			fromPromise((signal) => {
-				const { when: predicate, delay: delayDuration, maxAttempts } = options;
-				const wait = (): Promise<void> =>
-					new Promise((r) => {
-						// oxlint-disable-next-line prefer-const
-						let timerId: ReturnType<typeof setTimeout> | undefined;
-						const onAbort = () => {
-							clearTimeout(timerId);
-							r();
-						};
-						if (signal) {
-							signal.addEventListener("abort", onAbort, { once: true });
-						}
-						timerId = setTimeout(() => {
-							signal?.removeEventListener("abort", onAbort);
-							r();
-						}, delayDuration ? getMs(delayDuration) : 0);
-					});
-				const run = (attempt: number, lastValue?: A): Promise<A> => {
-					if (signal?.aborted && lastValue !== undefined) {
-						return Promise.resolve(lastValue);
+	poll: <A>(options: { until: (a: A) => boolean; delay?: Duration; attempts?: number; }) => (task: Task<A>): Task<A> =>
+		fromPromise((signal) => {
+			const { until: predicate, delay: delayDuration, attempts } = options;
+			const wait = (): Promise<void> =>
+				new Promise((r) => {
+					// oxlint-disable-next-line prefer-const
+					let timerId: ReturnType<typeof setTimeout> | undefined;
+					const onAbort = () => {
+						clearTimeout(timerId);
+						r();
+					};
+					if (signal) {
+						signal.addEventListener("abort", onAbort, { once: true });
 					}
-					return toPromise(task, signal).then((a) => {
-						if (predicate(a)) { return a; }
-						if (maxAttempts !== undefined && attempt >= maxAttempts) { return a; }
-						if (signal?.aborted) { return a; }
-						return wait().then(() => run(attempt + 1, a));
-					});
-				};
-				return run(1);
-			}),
+					timerId = setTimeout(() => {
+						signal?.removeEventListener("abort", onAbort);
+						r();
+					}, delayDuration ? getMs(delayDuration) : 0);
+				});
+			const run = (attempt: number, lastValue?: A): Promise<A> => {
+				if (signal?.aborted && lastValue !== undefined) {
+					return Promise.resolve(lastValue);
+				}
+				return toPromise(task, signal).then((a) => {
+					if (predicate(a)) { return a; }
+					if (attempts !== undefined && attempt >= attempts) { return a; }
+					if (signal?.aborted) { return a; }
+					return wait().then(() => run(attempt + 1, a));
+				});
+			};
+			return run(1);
+		}),
 
 	/**
 	 * Resolves with the value of the first Task to complete. All Tasks start

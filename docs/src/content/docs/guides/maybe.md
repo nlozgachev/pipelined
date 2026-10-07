@@ -84,6 +84,17 @@ const config: AppConfig = {};
 const theme = Maybe.from.nullable(config.theme); // None
 ```
 
+When invoking operations that throw exceptions where you only need to determine presence versus
+failure, use `Maybe.tryCatch`:
+
+```ts
+const parseConfigJson = (raw: string): Maybe<Record<string, unknown>> =>
+  Maybe.tryCatch(() => JSON.parse(raw));
+
+parseConfigJson('{"port": 8080}'); // Some({ port: 8080 })
+parseConfigJson("invalid json"); // None
+```
+
 ---
 
 ## Transforming values
@@ -165,6 +176,21 @@ const isEven = (n: number) => n % 2 === 0;
 
 pipe(Maybe.make.some(4), Maybe.filter(isEven)); // Some(4)
 pipe(Maybe.make.some(5), Maybe.filter(isEven)); // None
+```
+
+When given a custom TypeScript type guard (`(a: A) => a is B`), `filter` automatically refines the
+inner type:
+
+```ts
+type Admin = { role: "admin"; permissions: string[] };
+type User = { role: "member" } | Admin;
+
+const isAdmin = (u: User): u is Admin => u.role === "admin";
+
+const adminUser = pipe(
+  currentUser, // Maybe<User>
+  Maybe.filter(isAdmin), // Maybe<Admin>
+);
 ```
 
 If we are starting from a raw value rather than a `Maybe`, we can use `from.Predicate` to decide
@@ -259,6 +285,16 @@ pipe(
   Maybe.tap((msg) => console.log(msg)),
   Maybe.map((msg) => msg.toUpperCase()),
 ); // Logs message, then continues to produce Some("CONFIGURATION PARSED SUCCESSFULLY")
+```
+
+`tapNone` executes a side effect when the value is `None`, leaving the original `None` unchanged:
+
+```ts
+pipe(
+  findCachedSession(sessionId),
+  Maybe.tapNone(() => metrics.increment("cache.miss")),
+  Maybe.recover(() => fetchDatabaseSession(sessionId)),
+);
 ```
 
 ---

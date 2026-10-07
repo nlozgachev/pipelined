@@ -185,6 +185,40 @@ test("Task.all runs Tasks in parallel (not sequentially)", async () => {
 	expect(elapsed).toBeLessThan(100);
 });
 
+test("Task.all limits concurrent executions when concurrency option is provided", async () => {
+	let active = 0;
+	let maxActive = 0;
+
+	const makeTask = (value: number) =>
+		fromPromise(() =>
+			new Promise<number>((resolve) => {
+				active++;
+				if (active > maxActive) {
+					maxActive = active;
+				}
+				setTimeout(() => {
+					active--;
+					resolve(value);
+				}, 20);
+			})
+		);
+
+	const tasks = [makeTask(1), makeTask(2), makeTask(3), makeTask(4), makeTask(5)] as const;
+	const result = await Task.all(tasks, { concurrency: 2 })();
+
+	expect(result).toStrictEqual([1, 2, 3, 4, 5]);
+	expect(maxActive).toBe(2);
+});
+
+test("Task.all with concurrency preserves order even when later tasks resolve earlier", async () => {
+	const t1 = fromPromise(() => new Promise<string>((resolve) => setTimeout(() => resolve("slow"), 40)));
+	const t2 = fromPromise(() => new Promise<string>((resolve) => setTimeout(() => resolve("fast"), 10)));
+	const t3 = fromPromise(() => new Promise<string>((resolve) => setTimeout(() => resolve("medium"), 20)));
+
+	const result = await Task.all([t1, t2, t3] as const, { concurrency: 2 })();
+	expect(result).toStrictEqual(["slow", "fast", "medium"]);
+});
+
 // ---------------------------------------------------------------------------
 // delay
 // ---------------------------------------------------------------------------
@@ -446,62 +480,62 @@ test("task.repeat inserts delay between runs but not after the last", async () =
 });
 
 // ---------------------------------------------------------------------------
-// repeatUntil
+// poll
 // ---------------------------------------------------------------------------
 
-test("task.repeatUntil returns immediately when predicate holds on first run", async () => {
+test("Task.poll returns immediately when predicate holds on first run", async () => {
 	let calls = 0;
 	const task = fromPromise(() => {
 		calls++;
 		return Promise.resolve(42);
 	});
-	const result = await pipe(task, Task.repeatUntil({ when: (n) => n === 42 }))();
+	const result = await pipe(task, Task.poll({ until: (n) => n === 42 }))();
 	expect(result).toBe(42);
 	expect(calls).toBe(1);
 });
 
-test("Task.repeatUntil keeps running until predicate holds", async () => {
+test("Task.poll keeps running until predicate holds", async () => {
 	let calls = 0;
 	const task = fromPromise(() => {
 		calls++;
 		return Promise.resolve(calls);
 	});
-	const result = await pipe(task, Task.repeatUntil({ when: (n) => n === 3 }))();
+	const result = await pipe(task, Task.poll({ until: (n) => n === 3 }))();
 	expect(result).toBe(3);
 	expect(calls).toBe(3);
 });
 
-test("task.repeatUntil returns the value that satisfied the predicate", async () => {
+test("Task.poll returns the value that satisfied the predicate", async () => {
 	const values = ["a", "b", "stop", "c"];
 	let i = 0;
 	const task = fromPromise(() => Promise.resolve(values[i++]));
-	const result = await pipe(task, Task.repeatUntil({ when: (s) => s === "stop" }))();
+	const result = await pipe(task, Task.poll({ until: (s) => s === "stop" }))();
 	expect(result).toBe("stop");
 });
 
-test("Task.repeatUntil inserts delay between runs", async () => {
+test("Task.poll inserts delay between runs", async () => {
 	let calls = 0;
 	const task = fromPromise(() => {
 		calls++;
 		return Promise.resolve(calls);
 	});
 	const start = Date.now();
-	await pipe(task, Task.repeatUntil({ when: (n) => n === 3, delay: Duration.milliseconds(30) }))();
+	await pipe(task, Task.poll({ until: (n) => n === 3, delay: Duration.milliseconds(30) }))();
 	const elapsed = Date.now() - start;
 	// 3 runs = 2 delays = ~60ms
 	expect(elapsed).toBeGreaterThanOrEqual(50);
 	expect(elapsed).toBeLessThan(120);
 });
 
-test("Task.repeatUntil stops after maxAttempts even if predicate never holds", async () => {
+test("Task.poll stops after attempts even if predicate never holds", async () => {
 	let count = 0;
 	const task = Task.from.sync(() => ++count);
-	const result = await pipe(task, Task.repeatUntil({ when: (n) => n > 100, maxAttempts: 3 }))();
+	const result = await pipe(task, Task.poll({ until: (n) => n > 100, attempts: 3 }))();
 	expect(result).toBe(3);
 	expect(count).toBe(3);
 });
 
-test("Task.repeatUntil stops when the signal aborts during a run", async () => {
+test("Task.poll stops when the signal aborts during a run", async () => {
 	const controller = new AbortController();
 	let count = 0;
 	const task = fromPromise(() => {
@@ -509,7 +543,7 @@ test("Task.repeatUntil stops when the signal aborts during a run", async () => {
 		if (count === 2) { controller.abort(); }
 		return Promise.resolve(count);
 	});
-	const result = await pipe(task, Task.repeatUntil({ when: (n) => n > 100 }))(controller.signal);
+	const result = await pipe(task, Task.poll({ until: (n) => n > 100 }))(controller.signal);
 	expect(result).toBe(2);
 	expect(count).toBe(2);
 });
@@ -767,7 +801,7 @@ test("Task.run works without a signal", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// AbortSignal responsiveness for delay, repeat, repeatUntil
+// AbortSignal responsiveness for delay, repeat, poll
 // ---------------------------------------------------------------------------
 
 test("Task.delay resolves early when the signal is aborted", async () => {
@@ -801,7 +835,7 @@ test("Task.repeat resolves early with accumulated results if aborted", async () 
 	expect(result).toStrictEqual([1, 2]);
 });
 
-test("Task.repeatUntil resolves early with the last value if aborted", async () => {
+test("Task.poll resolves early with the last value if aborted", async () => {
 	const controller = new AbortController();
 	let count = 0;
 	const task = fromPromise(() => {
@@ -809,7 +843,7 @@ test("Task.repeatUntil resolves early with the last value if aborted", async () 
 		return Promise.resolve(count);
 	});
 
-	const repeated = pipe(task, Task.repeatUntil({ when: (n) => n === 5, delay: Duration.milliseconds(50) }));
+	const repeated = pipe(task, Task.poll({ until: (n) => n === 5, delay: Duration.milliseconds(50) }));
 
 	setTimeout(() => controller.abort(), 75);
 

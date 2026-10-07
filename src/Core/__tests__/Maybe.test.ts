@@ -152,6 +152,20 @@ test("Maybe.from.Result converts Err to None", () => {
 });
 
 // ---------------------------------------------------------------------------
+// tryCatch
+// ---------------------------------------------------------------------------
+
+test("Maybe.tryCatch returns Some when operation succeeds", () => {
+	const result = Maybe.tryCatch(() => JSON.parse('{"a":1}'));
+	expect(result).toStrictEqual({ kind: "Some", value: { a: 1 } });
+});
+
+test("Maybe.tryCatch returns None when operation throws", () => {
+	const result = Maybe.tryCatch(() => JSON.parse("invalid json"));
+	expect(result).toStrictEqual({ kind: "None" });
+});
+
+// ---------------------------------------------------------------------------
 // map
 // ---------------------------------------------------------------------------
 
@@ -291,6 +305,34 @@ test("Maybe.tap does not execute side effect on None", () => {
 });
 
 // ---------------------------------------------------------------------------
+// tapNone
+// ---------------------------------------------------------------------------
+
+test("Maybe.tapNone executes side effect on None and returns original", () => {
+	let called = false;
+	const result = pipe(
+		Maybe.make.none(),
+		Maybe.tapNone(() => {
+			called = true;
+		}),
+	);
+	expect(called).toBe(true);
+	expect(result).toStrictEqual({ kind: "None" });
+});
+
+test("Maybe.tapNone does not execute side effect on Some", () => {
+	let called = false;
+	const result = pipe(
+		Maybe.make.some(42),
+		Maybe.tapNone(() => {
+			called = true;
+		}),
+	);
+	expect(called).toBe(false);
+	expect(result).toStrictEqual({ kind: "Some", value: 42 });
+});
+
+// ---------------------------------------------------------------------------
 // filter
 // ---------------------------------------------------------------------------
 
@@ -302,6 +344,15 @@ test("Maybe.filter keeps Some when predicate is true", () => {
 test("Maybe.filter returns None when predicate is false", () => {
 	const result = pipe(Maybe.make.some(2), Maybe.filter((n: number) => n > 3));
 	expect(result).toStrictEqual({ kind: "None" });
+});
+
+test("Maybe.filter narrows type when passed a type guard refinement", () => {
+	const isString = (val: unknown): val is string => typeof val === "string";
+	const input: Maybe<unknown> = Maybe.make.some("hello");
+	const narrowed = pipe(input, Maybe.filter(isString));
+
+	expectTypeOf(narrowed).toEqualTypeOf<Maybe<string>>();
+	expect(narrowed).toStrictEqual(Maybe.make.some("hello"));
 });
 
 test("Maybe.filter returns None when input is None", () => {

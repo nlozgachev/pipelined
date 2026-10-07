@@ -112,15 +112,63 @@ namespace ArrTaskResult {
 	 * ```
 	 */
 	export const traverse =
-		<E, A, B>(f: (a: A) => CoreTask.Result<E, B>) => (data: readonly A[]): CoreTask.Result<E, readonly B[]> => () =>
+		<E, A, B>(f: (a: A) => CoreTask.Result<E, B>, options?: { concurrency?: number; }) =>
+		(data: readonly A[]): CoreTask.Result<E, readonly B[]> =>
+		(signal) =>
 			Deferred.from.Promise((async () => {
-				const result: B[] = [];
-				for (const a of data) {
-					const r = await Deferred.to.Promise(f(a)());
-					if (CoreResult.is.err(r)) { return r; }
-					result.push(r.value);
+				const concurrency = options?.concurrency;
+				const len = data.length;
+				if (concurrency === undefined || concurrency <= 1 || len <= 1) {
+					const result: B[] = [];
+					for (const a of data) {
+						const r = await Deferred.to.Promise(f(a)(signal));
+						if (CoreResult.is.err(r)) { return r; }
+						result.push(r.value);
+					}
+					return CoreResult.make.ok(result);
 				}
-				return CoreResult.make.ok(result);
+
+				return new Promise<CoreResult<E, readonly B[]>>((resolve, reject) => {
+					const results: B[] = new Array(len);
+					let nextIndex = 0;
+					let settled = false;
+
+					const worker = async () => {
+						while (nextIndex < len && !settled) {
+							const currentIndex = nextIndex++;
+							try {
+								const r = await Deferred.to.Promise(f(data[currentIndex])(signal));
+								if (settled) { return; }
+								if (CoreResult.is.err(r)) {
+									settled = true;
+									resolve(r);
+									return;
+								}
+								results[currentIndex] = r.value;
+							} catch (err) {
+								settled = true;
+								reject(err);
+								return;
+							}
+						}
+					};
+
+					const workerCount = Math.min(concurrency, len);
+					const workers: Promise<void>[] = [];
+					for (let i = 0; i < workerCount; i++) {
+						workers.push(worker());
+					}
+
+					Promise.all(workers).then(() => {
+						if (!settled) {
+							resolve(CoreResult.make.ok(results));
+						}
+					}).catch((err) => {
+						if (!settled) {
+							reject(err);
+						}
+					});
+				});
 			})());
 
 	/**
@@ -141,7 +189,8 @@ namespace ArrTaskResult {
 
 namespace ArrTask {
 	/**
-	 * Maps each element to a Task and runs all in parallel.
+	 * Maps each element to a Task and collects their results into an array.
+	 * An optional `concurrency` option limits how many Tasks run concurrently.
 	 *
 	 * @example
 	 * ```ts
@@ -151,8 +200,9 @@ namespace ArrTask {
 	 * )(); // Promise<[2, 4, 6]>
 	 * ```
 	 */
-	export const traverse = <A, B>(f: (a: A) => CoreTask<B>) => (data: readonly A[]): CoreTask<readonly B[]> => () =>
-		Deferred.from.Promise(Promise.all(data.map((a) => Deferred.to.Promise(f(a)()))));
+	export const traverse =
+		<A, B>(f: (a: A) => CoreTask<B>, options?: { concurrency?: number; }) =>
+		(data: readonly A[]): CoreTask<readonly B[]> => CoreTask.all(data.map(f), options);
 
 	/**
 	 * Collects an array of Tasks into a Task of array. Runs in parallel.
@@ -706,13 +756,14 @@ const reduce = <A, B>(initial: B, f: (acc: B, a: A) => B) => (data: readonly A[]
 // --- Traverse / Sequence ---
 
 interface TaskTraverse {
-	<A, B>(f: (a: A) => CoreTask<B>): (data: readonly A[]) => CoreTask<readonly B[]>;
+	<A, B>(f: (a: A) => CoreTask<B>, options?: { concurrency?: number; }): (data: readonly A[]) => CoreTask<readonly B[]>;
 	Result: typeof ArrTaskResult.traverse;
 }
 
-const _traverseTask: TaskTraverse = Object.assign(<A, B>(f: (a: A) => CoreTask<B>) => ArrTask.traverse(f), {
-	Result: ArrTaskResult.traverse,
-});
+const _traverseTask: TaskTraverse = Object.assign(
+	<A, B>(f: (a: A) => CoreTask<B>, options?: { concurrency?: number; }) => ArrTask.traverse(f, options),
+	{ Result: ArrTaskResult.traverse },
+);
 
 interface TaskSequence {
 	<A>(data: readonly CoreTask<A>[]): CoreTask<readonly A[]>;

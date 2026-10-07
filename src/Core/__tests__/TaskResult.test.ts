@@ -942,3 +942,89 @@ test("Task.Result.retry returns early when signal aborts during backoff wait del
 	expect(res).toStrictEqual(Result.make.err("err"));
 	expect(attempts).toBeLessThanOrEqual(2);
 });
+
+test("Task.Result.retry with when filter selectively retries only matching errors", async () => {
+	type HttpError = { status: number; };
+	const isHttpError = (err: unknown): err is HttpError => typeof err === "object" && err !== null && "status" in err;
+
+	let calls = 0;
+	const nonRetryableTask: Task.Result<HttpError, string> = () => {
+		calls++;
+		return Deferred.from.Promise(Promise.resolve(Result.make.err({ status: 400 })));
+	};
+
+	const policy = RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(1) });
+	const res = await pipe(
+		nonRetryableTask,
+		Task.Result.retry(policy, { when: (err) => isHttpError(err) && err.status >= 500 }),
+	)();
+
+	expect(res).toStrictEqual(Result.make.err({ status: 400 }));
+	expect(calls).toBe(1); // not retried because status is 400
+});
+
+// --- ensure ---
+
+test("Task.Result.ensure leaves Ok untouched when predicate passes", async () => {
+	let called = false;
+	const task = pipe(
+		Task.Result.make.ok(42),
+		Task.Result.ensure((n) => n > 10, () => {
+			called = true;
+			return "too small";
+		}),
+	);
+	const res = await task();
+	expect(res).toStrictEqual(Result.make.ok(42));
+	expect(called).toBe(false);
+});
+
+test("Task.Result.ensure converts Ok to Err when predicate fails", async () => {
+	const task = pipe(Task.Result.make.ok(5), Task.Result.ensure((n) => n > 10, (n) => `${n} is too small`));
+	const res = await task();
+	expect(res).toStrictEqual(Result.make.err("5 is too small"));
+});
+
+test("Task.Result.ensure propagates existing Err without invoking predicate", async () => {
+	let predicateCalled = false;
+	const task = pipe(
+		Task.Result.make.err<string, number>("original error"),
+		Task.Result.ensure((n) => {
+			predicateCalled = true;
+			return n > 10;
+		}, () => "should not be called"),
+	);
+	const res = await task();
+	expect(res).toStrictEqual(Result.make.err("original error"));
+	expect(predicateCalled).toBe(false);
+});
+
+// --- bimap ---
+
+test("Task.Result.bimap transforms Ok value and leaves Err branch untouched", async () => {
+	let errCalled = false;
+	const task = pipe(
+		Task.Result.make.ok(10),
+		Task.Result.bimap((err) => {
+			errCalled = true;
+			return `wrapped ${err}`;
+		}, (n) => n * 2),
+	);
+	const res = await task();
+	expect(res).toStrictEqual(Result.make.ok(20));
+	expect(errCalled).toBe(false);
+});
+
+test("Task.Result.bimap transforms Err value and leaves Ok branch untouched", async () => {
+	let okCalled = false;
+	const task = pipe(
+		Task.Result.make.err<string, number>("network failure"),
+		Task.Result.bimap((err) => new Error(err), (n) => {
+			okCalled = true;
+			return n * 2;
+		}),
+	);
+	const res = await task();
+	expect(res).toStrictEqual(Result.make.err(new Error("network failure")));
+	expect(okCalled).toBe(false);
+});

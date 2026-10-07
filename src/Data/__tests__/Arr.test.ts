@@ -643,6 +643,57 @@ test("sequenceTaskResult - collects Ok results", async () => {
 	expect(result).toStrictEqual(Result.make.ok([10, 20]));
 });
 
+test("traverseTask - supports concurrency limit option", async () => {
+	let active = 0;
+	let maxActive = 0;
+
+	const taskFn = (n: number): Task<number> =>
+		Task.tryCatch(() =>
+			new Promise<number>((resolve) => {
+				active++;
+				if (active > maxActive) {
+					maxActive = active;
+				}
+				setTimeout(() => {
+					active--;
+					resolve(n * 2);
+				}, 15);
+			}), { onError: () => 0 });
+
+	const result = await pipe([1, 2, 3, 4, 5], Arr.traverse.Task(taskFn, { concurrency: 2 }))();
+	expect(result).toStrictEqual([2, 4, 6, 8, 10]);
+	expect(maxActive).toBe(2);
+});
+
+test("traverseTaskResult - supports concurrency limit and short-circuits", async () => {
+	let active = 0;
+	let maxActive = 0;
+
+	const taskFn = (n: number): Task.Result<string, number> => (signal) =>
+		Task.Result.tryCatch(() =>
+			new Promise<number>((resolve, reject) => {
+				active++;
+				if (active > maxActive) {
+					maxActive = active;
+				}
+				setTimeout(() => {
+					active--;
+					if (n < 0) {
+						reject(new Error("negative"));
+					} else {
+						resolve(n * 2);
+					}
+				}, 15);
+			}), { onError: (err) => (err instanceof Error ? err.message : String(err)) })(signal);
+
+	const successResult = await pipe([1, 2, 3, 4], Arr.traverse.Task.Result(taskFn, { concurrency: 2 }))();
+	expect(successResult).toStrictEqual(Result.make.ok([2, 4, 6, 8]));
+	expect(maxActive).toBe(2);
+
+	const failResult = await pipe([1, -1, 3, 4], Arr.traverse.Task.Result(taskFn, { concurrency: 2 }))();
+	expect(failResult).toStrictEqual(Result.make.err("negative"));
+});
+
 test("sequenceTaskResult - returns first Err", async () => {
 	const tasks: Task<Result<string, number>>[] = [
 		Task.resolve(Result.make.ok(10)),

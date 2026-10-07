@@ -181,6 +181,25 @@ export const Maybe = {
 	},
 
 	/**
+	 * Wraps a synchronous operation that may throw, returning a `Maybe<A>`.
+	 * Returns `Some(value)` if successful, or `None` if an exception is thrown.
+	 *
+	 * @example
+	 * ```ts
+	 * const safeParse = (s: string) => Maybe.tryCatch(() => JSON.parse(s));
+	 * safeParse('{"a": 1}'); // Some({ a: 1 })
+	 * safeParse('invalid');   // None
+	 * ```
+	 */
+	tryCatch: <A>(f: () => A): Maybe<A> => {
+		try {
+			return makeSome(f());
+		} catch {
+			return makeNone();
+		}
+	},
+
+	/**
 	 * Transforms the value inside a Maybe if it exists.
 	 *
 	 * @example
@@ -277,17 +296,42 @@ export const Maybe = {
 	},
 
 	/**
-	 * Filters a Maybe based on a predicate.
+	 * Executes a side effect when the Maybe is None, without changing the Maybe.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Maybe.make.none(),
+	 *   Maybe.tapNone(() => console.log("Value missing")),
+	 * );
+	 * ```
+	 */
+	tapNone: (f: () => void) => <A>(data: Maybe<A>): Maybe<A> => {
+		if (isNone(data)) {
+			f();
+		}
+		return data;
+	},
+
+	/**
+	 * Filters a Maybe based on a predicate or type guard.
 	 * Returns None if the predicate returns false or if the Maybe is already None.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(Maybe.make.some(5), Maybe.filter(n => n > 3)); // Some(5)
 	 * pipe(Maybe.make.some(2), Maybe.filter(n => n > 3)); // None
+	 * pipe(Maybe.make.some("hi"), Maybe.filter((x): x is string => typeof x === "string")); // Some("hi")
 	 * ```
 	 */
-	filter: <A>(predicate: (a: A) => boolean) => (data: Maybe<A>): Maybe<A> =>
-		isSome(data) ? (predicate(data.value) ? data : makeNone()) : data,
+	filter:
+		(<A, B extends A>(predicate: (a: A) => boolean) => (data: Maybe<A>): Maybe<B> =>
+			isSome(data)
+				? (predicate(data.value) ? (data as unknown as Maybe<B>) : makeNone())
+				: (data as unknown as Maybe<B>)) as {
+				<A, B extends A>(refinement: (a: A) => a is B): (data: Maybe<A>) => Maybe<B>;
+				<A>(predicate: (a: A) => boolean): (data: Maybe<A>) => Maybe<A>;
+			},
 
 	/**
 	 * Recovers from a None by providing a fallback Maybe.

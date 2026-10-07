@@ -1,7 +1,7 @@
 // =============================================================================
 // Imports
 // =============================================================================
-import { Maybe, Result } from "#core";
+import { Maybe } from "#core";
 import { type NonEmpty as InternalNonEmpty } from "#internal";
 import type { Brand } from "#types";
 
@@ -279,20 +279,34 @@ export const Str = {
 	},
 
 	/**
-	 * Safely parses a JSON string, returning a `Result<SyntaxError, unknown>`.
+	 * Matches a string against a regular expression.
+	 * Pure and safe: resets `pattern.lastIndex = 0` to prevent bugs with stateful `/g` and `/y` regexes.
 	 *
 	 * @example
 	 * ```ts
-	 * Str.parseJson('{"a": 1}'); // Ok({ a: 1 })
-	 * Str.parseJson('invalid');  // Err(SyntaxError)
+	 * pipe("hello 42", Str.match(/\d+/)); // Some(["42"])
+	 * pipe("hello", Str.match(/\d+/));    // None
 	 * ```
 	 */
-	parseJson: (s: string): Result<SyntaxError, unknown> => {
-		try {
-			return Result.make.ok(JSON.parse(s));
-		} catch (error) {
-			return Result.make.err(error as SyntaxError);
-		}
+	match: (pattern: RegExp) => (s: string): Maybe<RegExpMatchArray> => {
+		pattern.lastIndex = 0;
+		const result = s.match(pattern);
+		return result !== null ? Maybe.make.some(result) : Maybe.make.none();
+	},
+
+	/**
+	 * Tests whether a string matches a regular expression.
+	 * Pure and safe: resets `pattern.lastIndex = 0` to prevent bugs with stateful `/g` and `/y` regexes.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe("user@example.com", Str.test(/^[^@]+@[^@]+$/)); // true
+	 * pipe("invalid-email", Str.test(/^[^@]+@[^@]+$/));    // false
+	 * ```
+	 */
+	test: (pattern: RegExp) => (s: string): boolean => {
+		pattern.lastIndex = 0;
+		return pattern.test(s);
 	},
 
 	/**

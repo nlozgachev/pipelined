@@ -230,17 +230,24 @@ pipe([20, 16, 30], Arr.traverse.Result(validateAge)); // Err("Age 16 is underage
 
 ### Asynchronous traversal with `Arr.traverse.Task` and `Arr.traverse.Task.Result`
 
-- `Arr.traverse.Task` runs all async tasks in **parallel**, resolving to a `Task<A[]>` once all
-  complete.
-- `Arr.traverse.Task.Result` runs tasks **sequentially**, short-circuiting on the first `Err`
-  encountered.
+- `Arr.traverse.Task` runs asynchronous tasks, resolving to a `Task<A[]>` once all complete. By
+  default, it executes all tasks in parallel. Pass `{ concurrency }` to limit concurrent execution.
+- `Arr.traverse.Task.Result` traverses fallible tasks, short-circuiting on the first `Err`
+  encountered. By default, it executes sequentially. Pass `{ concurrency }` to execute with a
+  bounded worker pool.
 
 ```ts
-// Parallel user profile fetch:
+// Parallel user profile fetch bounded to 3 in-flight requests:
 pipe(
   userIds,
-  Arr.traverse.Task((id) => fetchUserTask(id)),
-)(); // Promise<User[]> (all requests execute simultaneously)
+  Arr.traverse.Task((id) => fetchUserTask(id), { concurrency: 3 }),
+)();
+
+// Fallible batch processing bounded to 5 concurrent workers:
+pipe(
+  userIds,
+  Arr.traverse.Task.Result((id) => fetchUserTaskResult(id), { concurrency: 5 }),
+)();
 ```
 
 ### Flipping existing structures: `sequence`
@@ -329,6 +336,6 @@ dedicated [NonEmpty Guide](../nonempty).
   filtering in a single efficient pass.
 - **Traversing collections of fallible or asynchronous steps**: When running batch operations (such
   as validating an array of input records or fetching details for a list of IDs), standard mapping
-  produces `Array<Task.Result<E, A>>`. `Arr.traverseTaskResult` sequences or parallels the
+  produces `Array<Task.Result<E, A>>`. `Arr.traverse.Task.Result` sequences or parallels the
   collection into a single `Task.Result<E, A[]>`, handling failures and collection inversion
   automatically.

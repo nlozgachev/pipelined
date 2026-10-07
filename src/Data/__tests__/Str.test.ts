@@ -1,7 +1,6 @@
 import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Maybe } from "../../Core/Maybe.ts";
-import { Result } from "../../Core/Result.ts";
 import { Str } from "../Str.ts";
 
 // ---------------------------------------------------------------------------
@@ -354,33 +353,42 @@ test("str pipe composition - trim then split then toUpperCase each word", () => 
 });
 
 // ---------------------------------------------------------------------------
-// parseJson
+// match & test
 // ---------------------------------------------------------------------------
 
-test("Str.parseJson returns Ok for valid JSON object", () => {
-	const result = Str.parseJson('{"name":"Alice","age":30}');
-	expect(result).toStrictEqual(Result.make.ok({ name: "Alice", age: 30 }));
+test("Str.match returns Some with match array when regex matches", () => {
+	const result = pipe("hello 42 world", Str.match(/\d+/));
+	expect(pipe(result, Maybe.map((m) => m[0]))).toStrictEqual(Maybe.make.some("42"));
+	expect(pipe(result, Maybe.map((m) => m.index))).toStrictEqual(Maybe.make.some(6));
 });
 
-test("Str.parseJson returns Ok for valid JSON array", () => {
-	const result = Str.parseJson("[1,2,3]");
-	expect(result).toStrictEqual(Result.make.ok([1, 2, 3]));
+test("Str.match returns None when regex does not match", () => {
+	const result = pipe("hello world", Str.match(/\d+/));
+	expect(result).toStrictEqual(Maybe.make.none());
 });
 
-test("Str.parseJson returns Ok for valid JSON primitives", () => {
-	expect(Str.parseJson('"hello"')).toStrictEqual(Result.make.ok("hello"));
-	expect(Str.parseJson("42")).toStrictEqual(Result.make.ok(42));
+test("Str.match is pure and resilient against stateful /g flag", () => {
+	const regex = /abc/g;
+	const first = Str.match(regex)("abc");
+	const second = Str.match(regex)("abc");
+	expect(Maybe.is.some(first)).toBe(true);
+	expect(Maybe.is.some(second)).toBe(true);
 });
 
-test("Str.parseJson returns Error with SyntaxError for invalid JSON", () => {
-	const result = Str.parseJson("{not json}");
-	const error = Result.fold((e: unknown) => e, () => null)(result);
-	expect(error).toBeInstanceOf(SyntaxError);
+test("Str.test returns true for matching regex", () => {
+	const result = pipe("user@example.com", Str.test(/^[^@]+@[^@]+$/));
+	expect(result).toBe(true);
 });
 
-test("Str.parseJson returns Ok for empty object", () => {
-	const result = Str.parseJson("{}");
-	expect(result).toStrictEqual(Result.make.ok({}));
+test("Str.test returns false for non-matching regex", () => {
+	const result = pipe("invalid-email", Str.test(/^[^@]+@[^@]+$/));
+	expect(result).toBe(false);
+});
+
+test("Str.test is pure and resilient against stateful /g flag", () => {
+	const regex = /pattern/g;
+	expect(Str.test(regex)("pattern")).toBe(true);
+	expect(Str.test(regex)("pattern")).toBe(true);
 });
 
 // ---------------------------------------------------------------------------
