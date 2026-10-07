@@ -328,7 +328,6 @@ export const TaskResult = {
 							res();
 						};
 						if (signal) {
-							if (signal.aborted) { return res(); }
 							signal.addEventListener("abort", onAbort, { once: true });
 						}
 						timerId = setTimeout(() => {

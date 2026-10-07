@@ -128,7 +128,7 @@ namespace ArrTaskResult {
 					return CoreResult.make.ok(result);
 				}
 
-				return new Promise<CoreResult<E, readonly B[]>>((resolve, reject) => {
+				return new Promise<CoreResult<E, readonly B[]>>((resolve) => {
 					const results: B[] = new Array(len);
 					let nextIndex = 0;
 					let settled = false;
@@ -136,20 +136,14 @@ namespace ArrTaskResult {
 					const worker = async () => {
 						while (nextIndex < len && !settled) {
 							const currentIndex = nextIndex++;
-							try {
-								const r = await Deferred.to.Promise(f(data[currentIndex])(signal));
-								if (settled) { return; }
-								if (CoreResult.is.err(r)) {
-									settled = true;
-									resolve(r);
-									return;
-								}
-								results[currentIndex] = r.value;
-							} catch (err) {
+							const r = await Deferred.to.Promise(f(data[currentIndex])(signal));
+							if (settled) { return; }
+							if (CoreResult.is.err(r)) {
 								settled = true;
-								reject(err);
+								resolve(r);
 								return;
 							}
+							results[currentIndex] = r.value;
 						}
 					};
 
@@ -162,10 +156,6 @@ namespace ArrTaskResult {
 					Promise.all(workers).then(() => {
 						if (!settled) {
 							resolve(CoreResult.make.ok(results));
-						}
-					}).catch((err) => {
-						if (!settled) {
-							reject(err);
 						}
 					});
 				});

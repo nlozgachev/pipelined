@@ -287,6 +287,31 @@ test("EventBus.listen relaxed sequence resets to index 1 when out-of-order event
 	expect(firedCount).toBe(1);
 });
 
+test("EventBus.listen optional ignores lookahead if unexpected event does not match after optional items", () => {
+	const s = EventBus.make<TestSchema>();
+	let fired = 0;
+	EventBus.listen(s, ["A", "B", "C"], { ordered: true, optional: ["B"] }).tap(() => {
+		fired++;
+	});
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	EventBus.emit(s, { kind: "ResetEvent", value: { reason: "skip" } });
+	expect(fired).toBe(0);
+	EventBus.emit(s, { kind: "C", value: { flag: true } });
+	expect(fired).toBe(1);
+});
+
+test("EventBus.listen relaxed sequence ignores events not present in eventList", () => {
+	const s = EventBus.make<TestSchema>();
+	let fired = 0;
+	EventBus.listen(s, ["A", "B"], { ordered: true, strict: false }).tap(() => {
+		fired++;
+	});
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	EventBus.emit(s, { kind: "C", value: { flag: true } });
+	EventBus.emit(s, { kind: "B", value: { text: "after C" } });
+	expect(fired).toBe(1);
+});
+
 test("EventBus.listen once automatically unsubscribes after first match", () => {
 	const s = EventBus.make<TestSchema>();
 	let fireCount = 0;

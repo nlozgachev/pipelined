@@ -694,6 +694,23 @@ test("traverseTaskResult - supports concurrency limit and short-circuits", async
 	expect(failResult).toStrictEqual(Result.make.err("negative"));
 });
 
+test("traverseTaskResult - exits in-flight worker when another worker fails", async () => {
+	const taskFn = (n: number): Task.Result<string, number> =>
+		Task.Result.tryCatch(() =>
+			new Promise<number>((resolve, reject) => {
+				setTimeout(() => {
+					if (n === 2) {
+						reject(new Error("fail-fast"));
+					} else {
+						resolve(n);
+					}
+				}, n === 2 ? 10 : 40);
+			}), { onError: (err) => (err instanceof Error ? err.message : String(err)) });
+
+	const res = await pipe([1, 2], Arr.traverse.Task.Result(taskFn, { concurrency: 2 }))();
+	expect(res).toStrictEqual(Result.make.err("fail-fast"));
+});
+
 test("sequenceTaskResult - returns first Err", async () => {
 	const tasks: Task<Result<string, number>>[] = [
 		Task.resolve(Result.make.ok(10)),

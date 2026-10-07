@@ -211,47 +211,24 @@ export const Task = {
 				return Promise.all(tasks.map((t) => toPromise(t, signal))) as Promise<Results>;
 			}
 
-			return new Promise<Results>((resolve, reject) => {
-				const len = tasks.length;
-				if (len === 0) {
-					return resolve([] as unknown as Results);
+			const len = tasks.length;
+			const results = new Array(len);
+			let nextIndex = 0;
+
+			const worker = async () => {
+				while (nextIndex < len) {
+					const currentIndex = nextIndex++;
+					results[currentIndex] = await toPromise(tasks[currentIndex], signal);
 				}
+			};
 
-				const results = new Array(len);
-				let nextIndex = 0;
-				let settled = false;
+			const workerCount = Math.min(concurrency, len);
+			const workers: Promise<void>[] = [];
+			for (let i = 0; i < workerCount; i++) {
+				workers.push(worker());
+			}
 
-				const worker = async () => {
-					while (nextIndex < len && !settled) {
-						const currentIndex = nextIndex++;
-						try {
-							const res = await toPromise(tasks[currentIndex], signal);
-							if (settled) { return; }
-							results[currentIndex] = res;
-						} catch (err) {
-							settled = true;
-							reject(err);
-							return;
-						}
-					}
-				};
-
-				const workerCount = Math.min(concurrency, len);
-				const workers: Promise<void>[] = [];
-				for (let i = 0; i < workerCount; i++) {
-					workers.push(worker());
-				}
-
-				Promise.all(workers).then(() => {
-					if (!settled) {
-						resolve(results as unknown as Results);
-					}
-				}).catch((err) => {
-					if (!settled) {
-						reject(err);
-					}
-				});
-			});
+			return Promise.all(workers).then(() => results as unknown as Results);
 		}),
 
 	/**
