@@ -78,6 +78,7 @@
 		"size": "size-limit",
 		"typecheck": "tsc --noEmit",
 		"typecheck:dev": "tsc --noEmit --watch",
+		"typecheck:min": "pnpm dlx --package typescript@5.5 tsc --noEmit --skipLibCheck",
 		"publish:npm": "pnpm build && npm publish --access public",
 		"lint": "oxlint src/",
 		"format": "dprint fmt && dprint fmt --config dprint.md.json \"docs/**/*.md\" \"docs/**/*.mdx\" \"README.md\"",
