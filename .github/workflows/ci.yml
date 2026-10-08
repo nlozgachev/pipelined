@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-format:
+    name: Lint & Format Check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v5
+      - run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Format Check
+        run: pnpm format:check
+
+  typecheck:
+    name: Typecheck (TS latest & TS 5.5)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v5
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck default (TS 6.x)
+        run: pnpm typecheck
+      - name: Typecheck min (TS 5.5)
+        run: pnpm typecheck:min
+
+  test:
+    name: Tests (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        node-version: [18, 24]
+    env:
+      MISE_NODE_VERSION: ${{ matrix.node-version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v5
+        with:
+          cache_key_prefix: mise-v0-node-${{ matrix.node-version }}
+      - run: pnpm install --frozen-lockfile
+      - name: Run Tests & Check Coverage
+        run: pnpm test:coverage
