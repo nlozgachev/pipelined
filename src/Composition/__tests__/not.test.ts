@@ -3,7 +3,7 @@ import { not } from "../not.ts";
 
 // --- not ---
 
-test("not - negates a predicate function", () => {
+test("not: negates predicate function", () => {
 	const isEven = (n: number) => n % 2 === 0;
 	const isOdd = not(isEven);
 
@@ -22,7 +22,7 @@ test("not - negates a predicate function", () => {
 	expect(isOdd(4)).toBe(false);
 });
 
-test("not - works with Array.filter", () => {
+test("not: operates with Array.prototype.filter", () => {
 	const isEven = (n: number) => n % 2 === 0;
 	const numbers = [1, 2, 3, 4, 5, 6];
 
@@ -33,7 +33,7 @@ test("not - works with Array.filter", () => {
 	expect(evens).toStrictEqual([2, 4, 6]);
 });
 
-test("not - works with string predicates", () => {
+test("not: negates string predicates", () => {
 	const isEmpty = (s: string) => s.length === 0;
 	const isNonEmpty = not(isEmpty);
 
@@ -41,7 +41,7 @@ test("not - works with string predicates", () => {
 	expect(isNonEmpty("")).toBe(false);
 });
 
-test("not - multi-argument predicates", () => {
+test("not: negates multi-argument predicates", () => {
 	const isGreaterThan = (a: number, b: number) => a > b;
 	const isNotGreaterThan = not(isGreaterThan);
 
@@ -55,7 +55,7 @@ test("not - multi-argument predicates", () => {
 	expect(isNotGreaterThan(3, 3)).toBe(true);
 });
 
-test("not - double negation returns original result", () => {
+test("not: double negation is an involution", () => {
 	const isPositive = (n: number) => n > 0;
 	const doubleNegated = not(not(isPositive));
 
@@ -64,7 +64,7 @@ test("not - double negation returns original result", () => {
 	expect(doubleNegated(0)).toBe(false);
 });
 
-test("not - works with Array.filter and objects", () => {
+test("not: filters object collections by negated property", () => {
 	const users = [{ name: "Alice", admin: true }, { name: "Bob", admin: false }, { name: "Charlie", admin: true }, {
 		name: "Dave",
 		admin: false,

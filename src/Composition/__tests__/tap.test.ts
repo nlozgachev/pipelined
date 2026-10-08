@@ -3,7 +3,7 @@ import { Deferred } from "../../Core/Deferred.ts";
 import { pipe } from "../pipe.ts";
 import { tap } from "../tap.ts";
 
-test("tap - side effect executes", () => {
+test("tap: executes side effect", () => {
 	let sideEffect = 0;
 	const fn = tap((n: number) => {
 		sideEffect = n;
@@ -12,14 +12,14 @@ test("tap - side effect executes", () => {
 	expect(sideEffect).toBe(42);
 });
 
-test("tap - returns original value unchanged", () => {
+test("tap: returns original value unchanged", () => {
 	const fn = tap((_n: number) => {
 		// side effect
 	});
 	expect(fn(42)).toBe(42);
 });
 
-test("tap - returns the exact same reference for objects", () => {
+test("tap: preserves object reference equality", () => {
 	const obj = { name: "Alice" };
 	const fn = tap((_o: typeof obj) => {
 		// side effect
@@ -27,7 +27,7 @@ test("tap - returns the exact same reference for objects", () => {
 	expect(fn(obj)).toBe(obj);
 });
 
-test("tap - works with string values", () => {
+test("tap: works with string values", () => {
 	let captured = "";
 	const fn = tap((s: string) => {
 		captured = s;
@@ -36,7 +36,7 @@ test("tap - works with string values", () => {
 	expect(captured).toBe("hello");
 });
 
-test("tap - works in pipe", () => {
+test("pipe: integrates in pipeline", () => {
 	const log: number[] = [];
 
 	const result = pipe(
@@ -51,12 +51,12 @@ test("tap - works in pipe", () => {
 	expect(log).toStrictEqual([10, 11]);
 });
 
-test("tap - side effect does not influence the return value", () => {
+test("tap: ignores side-effect return value", () => {
 	const fn = tap((_n: number) => 999); // return value is ignored
 	expect(fn(42)).toBe(42);
 });
 
-test("tap - multiple taps in sequence", () => {
+test("tap: executes multiple steps in sequence", () => {
 	const effects: string[] = [];
 
 	const result = pipe(
@@ -72,7 +72,7 @@ test("tap - multiple taps in sequence", () => {
 	expect(effects).toStrictEqual(["first: hello", "second: HELLO", "third: HELLO!"]);
 });
 
-test("tap - works with arrays", () => {
+test("tap: handles array values", () => {
 	let length = 0;
 	const arr = [1, 2, 3];
 
@@ -89,7 +89,7 @@ test("tap - works with arrays", () => {
 
 // --- tap.log ---
 
-test("tap.log - logs formatted string to custom logger", () => {
+test("log: logs formatted string to custom logger", () => {
 	let logged = "";
 	const logger = (msg: string) => {
 		logged = msg;
@@ -101,7 +101,7 @@ test("tap.log - logs formatted string to custom logger", () => {
 	expect(logged).toBe("42");
 });
 
-test("tap.log - applies label prefix when provided", () => {
+test("log: applies label prefix when provided", () => {
 	let logged = "";
 	const logger = (msg: string) => {
 		logged = msg;
@@ -113,7 +113,7 @@ test("tap.log - applies label prefix when provided", () => {
 	expect(logged).toBe("[Greeting]: hello");
 });
 
-test("tap.log - uses custom formatter when provided", () => {
+test("log: uses custom formatter when provided", () => {
 	let logged = "";
 	const logger = (msg: string) => {
 		logged = msg;
@@ -127,7 +127,7 @@ test("tap.log - uses custom formatter when provided", () => {
 
 // --- tap.inspect ---
 
-test("tap.inspect - prints deep object structure using node inspect", () => {
+test("inspect: prints deep object structure using node inspect", () => {
 	const spy = vi.spyOn(console, "log").mockImplementation(() => {});
 	const obj = { nested: { deep: { value: 100 } } };
 
@@ -143,7 +143,7 @@ test("tap.inspect - prints deep object structure using node inspect", () => {
 	spy.mockRestore();
 });
 
-test("tap.inspect - prepends label prefix when provided", () => {
+test("inspect: prepends label prefix when provided", () => {
 	const spy = vi.spyOn(console, "log").mockImplementation(() => {});
 	const obj = { a: 1 };
 
@@ -157,7 +157,7 @@ test("tap.inspect - prepends label prefix when provided", () => {
 
 // --- tap.async ---
 
-test("tap.async - executes side effect asynchronously and returns value immediately", async () => {
+test("async: executes side effect asynchronously and returns value immediately", async () => {
 	let resolved = false;
 	const asyncSideEffect = async (_n: number) => {
 		await new Promise((resolve) => setTimeout(resolve, 10));
@@ -175,7 +175,7 @@ test("tap.async - executes side effect asynchronously and returns value immediat
 	expect(resolved).toBe(true);
 });
 
-test("tap.async - catches promise rejection and routes it to onError", async () => {
+test("async: catches promise rejection and routes to onError", async () => {
 	let caughtError: unknown = null;
 	const failingAsyncEffect = async () => {
 		await Promise.resolve();
@@ -202,7 +202,7 @@ test("tap.async - catches promise rejection and routes it to onError", async () 
 
 // --- tap.time ---
 
-test("tap.time - times synchronous function and triggers onFinish callback", () => {
+test("time: times synchronous execution and triggers onFinish callback", () => {
 	let finishedDuration: any = null;
 	const syncFn = (n: number) => n * 2;
 
@@ -219,7 +219,7 @@ test("tap.time - times synchronous function and triggers onFinish callback", () 
 	expect(finishedDuration).not.toBeNull();
 });
 
-test("tap.time - times asynchronous function resolving and triggers onFinish asynchronously", async () => {
+test("time: times asynchronous resolution and triggers onFinish callback", async () => {
 	let finishedDuration: any = null;
 	const asyncFn = async (_n: number) => {
 		await new Promise((resolve) => setTimeout(resolve, 10));
@@ -242,7 +242,7 @@ test("tap.time - times asynchronous function resolving and triggers onFinish asy
 	expect(finishedDuration).not.toBeNull();
 });
 
-test("tap.time - still triggers onFinish callback and propagates if function throws", () => {
+test("time: triggers onFinish callback when function throws", () => {
 	let finishedDuration: any = null;
 	const throwingFn = () => {
 		throw new Error("sync crash");
@@ -262,7 +262,7 @@ test("tap.time - still triggers onFinish callback and propagates if function thr
 	expect(finishedDuration).not.toBeNull();
 });
 
-test("tap.time - logs to console when label config is provided", () => {
+test("time: logs to console when label config is provided", () => {
 	const spy = vi.spyOn(console, "log").mockImplementation(() => {});
 	const syncFn = (n: number) => n * 2;
 
@@ -274,7 +274,7 @@ test("tap.time - logs to console when label config is provided", () => {
 	spy.mockRestore();
 });
 
-test("tap.log - handles circular objects gracefully", () => {
+test("log: handles circular objects gracefully", () => {
 	let logged = "";
 	const logger = (msg: string) => {
 		logged = msg;
@@ -288,7 +288,7 @@ test("tap.log - handles circular objects gracefully", () => {
 	expect(logged).toBe("[object Object]");
 });
 
-test("tap.inspect - fallback formatting handles circular objects gracefully", async () => {
+test("inspect: handles circular objects with fallback formatting", async () => {
 	vi.resetModules();
 	// oxlint-disable-next-line vitest/prefer-import-in-mock
 	vi.doMock("node:util", () => ({ inspect: undefined }));
@@ -311,7 +311,7 @@ test("tap.inspect - fallback formatting handles circular objects gracefully", as
 	vi.resetModules();
 });
 
-test("tap.time - times asynchronous function rejecting, triggers onFinish, and handles rejection", async () => {
+test("time: triggers onFinish callback when async function rejects", async () => {
 	let finishedDuration: any = null;
 	let capturedPromise: Promise<any> | null = null;
 	const asyncRejectFn = (_n: number) => {
@@ -338,7 +338,7 @@ test("tap.time - times asynchronous function rejecting, triggers onFinish, and h
 	expect(finishedDuration).not.toBeNull();
 });
 
-test("tap.async - works with Deferred", async () => {
+test("async: operates with Deferred tasks", async () => {
 	let resolved = false;
 	const deferredFn = (_n: number) => {
 		const p = new Promise<void>((resolve) => setTimeout(resolve, 10));
@@ -357,7 +357,7 @@ test("tap.async - works with Deferred", async () => {
 	expect(resolved).toBe(true);
 });
 
-test("tap.time - times Deferred function and triggers onFinish asynchronously", async () => {
+test("time: times Deferred function and triggers onFinish asynchronously", async () => {
 	let finishedDuration: any = null;
 	const deferredFn = (_n: number) => {
 		const p = new Promise<void>((resolve) => setTimeout(resolve, 10));
@@ -381,7 +381,7 @@ test("tap.time - times Deferred function and triggers onFinish asynchronously", 
 	expect(finishedDuration).not.toBeNull();
 });
 
-test("tap.log handles circular objects gracefully using fallback formatting", () => {
+test("log: handles circular objects using fallback formatting", () => {
 	const circular: any = { name: "test" };
 	circular.self = circular;
 
@@ -394,7 +394,7 @@ test("tap.log handles circular objects gracefully using fallback formatting", ()
 	expect(loggedMsg).toBe("[object Object]");
 });
 
-test("tap.time logs to console when label config is provided and function throws", () => {
+test("time: logs to console on throw when label config is provided", () => {
 	const spy = vi.spyOn(console, "log").mockImplementation(() => {});
 	const throwingFn = () => {
 		throw new Error("sync crash");
@@ -408,7 +408,7 @@ test("tap.time logs to console when label config is provided and function throws
 	spy.mockRestore();
 });
 
-test("tap.time logs to console when label config is provided and async function rejects", async () => {
+test("time: logs to console on async rejection when label config is provided", async () => {
 	const spy = vi.spyOn(console, "log").mockImplementation(() => {});
 	let capturedPromise: Promise<any> | null = null;
 	const asyncRejectFn = (_n: number) => {

@@ -7,13 +7,13 @@ const arbPair = fc.tuple(fc.string(), fc.integer());
 
 // --- Pair property tests ---
 
-test("Pair.make → Pair.first — round-trip", () => {
+test("first: extracts first element created by make", () => {
 	fc.assert(fc.property(fc.string(), fc.integer(), (a, b) => {
 		expect(Pair.first(Pair.make(a, b))).toBe(a);
 	}));
 });
 
-test("Pair.make → Pair.second — round-trip", () => {
+test("second: extracts second element created by make", () => {
 	fc.assert(fc.property(fc.string(), fc.integer(), (a, b) => {
 		expect(Pair.second(Pair.make(a, b))).toBe(b);
 	}));
@@ -21,13 +21,13 @@ test("Pair.make → Pair.second — round-trip", () => {
 
 // --- Swap ---
 
-test("Pair.swap — involution (swap twice is identity)", () => {
+test("swap: is an involution", () => {
 	fc.assert(fc.property(arbPair, (p) => {
 		expect(Pair.swap(Pair.swap(p))).toStrictEqual(p);
 	}));
 });
 
-test("Pair.swap — exchanges first and second", () => {
+test("swap: exchanges first and second elements", () => {
 	fc.assert(fc.property(fc.string(), fc.integer(), (a, b) => {
 		const swapped = Pair.swap(Pair.make(a, b));
 		expect(Pair.first(swapped)).toBe(b);
@@ -37,26 +37,26 @@ test("Pair.swap — exchanges first and second", () => {
 
 // --- Map property tests ---
 
-test("Pair.mapFirst — identity law", () => {
+test("mapFirst: satisfies identity law", () => {
 	fc.assert(fc.property(arbPair, (p) => {
 		expect(Pair.mapFirst((x: string) => x)(p)).toStrictEqual(p);
 	}));
 });
 
-test("Pair.mapFirst — does not affect second", () => {
+test("mapFirst: does not affect second element", () => {
 	fc.assert(fc.property(arbPair, fc.string(), (p, suffix) => {
 		const result = Pair.mapFirst((s: string) => s + suffix)(p);
 		expect(Pair.second(result)).toBe(Pair.second(p));
 	}));
 });
 
-test("Pair.mapSecond — identity law", () => {
+test("mapSecond: satisfies identity law", () => {
 	fc.assert(fc.property(arbPair, (p) => {
 		expect(Pair.mapSecond((x: number) => x)(p)).toStrictEqual(p);
 	}));
 });
 
-test("Pair.mapSecond — does not affect first", () => {
+test("mapSecond: does not affect first element", () => {
 	fc.assert(fc.property(arbPair, fc.integer(), (p, delta) => {
 		const result = Pair.mapSecond((n: number) => n + delta)(p);
 		expect(Pair.first(result)).toBe(Pair.first(p));
@@ -65,7 +65,7 @@ test("Pair.mapSecond — does not affect first", () => {
 
 // --- Tap property test ---
 
-test("Pair.tap — always returns the identical reference", () => {
+test("tap: returns identical reference", () => {
 	fc.assert(fc.property(arbPair, (p) => {
 		expect(Pair.tap(() => {})(p)).toBe(p);
 	}));
@@ -73,7 +73,7 @@ test("Pair.tap — always returns the identical reference", () => {
 
 // --- Fold property test ---
 
-test("Pair.fold — combines both elements", () => {
+test("fold: combines both elements", () => {
 	fc.assert(fc.property(fc.string(), fc.integer(), (a, b) => {
 		const result = Pair.fold((s: string, n: number) => `${s}:${n}`)(Pair.make(a, b));
 		expect(result).toBe(`${a}:${b}`);

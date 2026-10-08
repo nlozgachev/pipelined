@@ -134,13 +134,13 @@ const formatted = pipe(
 
 To run a side-effect (such as logging) in the middle of a pipeline without modifying the pair, use
 `Pair.tap`. When interfacing with APIs that do not support tuple types, we can convert the pair to a
-plain array using `Pair.to.Array`:
+plain array using `Pair.to.array`:
 
 ```ts
 const arr = pipe(
   Pair.make("debug_flag", true),
   Pair.tap((key, val) => console.log(`Config: ${key} is ${val}`)),
-  Pair.to.Array,
+  Pair.to.array,
 ); // ["debug_flag", true]
 ```
 

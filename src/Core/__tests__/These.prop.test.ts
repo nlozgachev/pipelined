@@ -15,13 +15,13 @@ const arbThese = fc.oneof(arbFirst, arbSecond, arbBoth);
 // mapFirst — functor laws
 // ---------------------------------------------------------------------------
 
-test("These.mapFirst — identity law", () => {
+test("mapFirst: satisfies identity law", () => {
 	fc.assert(fc.property(arbThese, (t) => {
 		expect(These.mapFirst((x: string) => x)(t)).toStrictEqual(t);
 	}));
 });
 
-test("These.mapFirst — composition law", () => {
+test("mapFirst: satisfies composition law", () => {
 	fc.assert(fc.property(arbThese, fc.integer(), fc.string(), (t, n, suffix) => {
 		const f = (s: string) => s + suffix;
 		const g = (s: string) => s.repeat(Math.max(0, n % 3));
@@ -33,13 +33,13 @@ test("These.mapFirst — composition law", () => {
 // mapSecond — functor laws
 // ---------------------------------------------------------------------------
 
-test("These.mapSecond — identity law", () => {
+test("mapSecond: satisfies identity law", () => {
 	fc.assert(fc.property(arbThese, (t) => {
 		expect(These.mapSecond((x: number) => x)(t)).toStrictEqual(t);
 	}));
 });
 
-test("These.mapSecond — composition law", () => {
+test("mapSecond: satisfies composition law", () => {
 	fc.assert(fc.property(arbThese, fc.integer(), fc.integer(), (t, a, b) => {
 		const f = (x: number) => x + a;
 		const g = (x: number) => x * b;
@@ -51,21 +51,21 @@ test("These.mapSecond — composition law", () => {
 // hasFirst / hasSecond — structural invariants
 // ---------------------------------------------------------------------------
 
-test("These.is.both implies hasFirst and hasSecond", () => {
+test("is.both: implies hasFirst and hasSecond", () => {
 	fc.assert(fc.property(arbBoth, (t) => {
 		expect(These.hasFirst(t)).toBe(true);
 		expect(These.hasSecond(t)).toBe(true);
 	}));
 });
 
-test("These.is.first implies hasFirst and not hasSecond", () => {
+test("is.first: implies hasFirst and not hasSecond", () => {
 	fc.assert(fc.property(arbFirst, (t) => {
 		expect(These.hasFirst(t)).toBe(true);
 		expect(These.hasSecond(t)).toBe(false);
 	}));
 });
 
-test("These.is.second implies hasSecond and not hasFirst", () => {
+test("is.second: implies hasSecond and not hasFirst", () => {
 	fc.assert(fc.property(arbSecond, (t) => {
 		expect(These.hasSecond(t)).toBe(true);
 		expect(These.hasFirst(t)).toBe(false);
@@ -76,7 +76,7 @@ test("These.is.second implies hasSecond and not hasFirst", () => {
 // fold
 // ---------------------------------------------------------------------------
 
-test("These.fold — handles all three variants without throwing", () => {
+test("fold: handles all three variants without throwing", () => {
 	fc.assert(fc.property(arbThese, (t) => {
 		const result = These.fold(
 			(a: string) => `first:${a}`,
@@ -91,13 +91,13 @@ test("These.fold — handles all three variants without throwing", () => {
 // getFirstOrElse / getSecondOrElse
 // ---------------------------------------------------------------------------
 
-test("These.getFirstOrElse — returns fallback on Second", () => {
+test("getFirstOrElse: returns fallback on Second", () => {
 	fc.assert(fc.property(arbSecond, fc.string(), (t, fallback) => {
 		expect(These.getFirstOrElse(() => fallback)(t)).toBe(fallback);
 	}));
 });
 
-test("These.getSecondOrElse — returns fallback on First", () => {
+test("getSecondOrElse: returns fallback on First", () => {
 	fc.assert(fc.property(arbFirst, fc.integer(), (t, fallback) => {
 		expect(These.getSecondOrElse(() => fallback)(t)).toBe(fallback);
 	}));

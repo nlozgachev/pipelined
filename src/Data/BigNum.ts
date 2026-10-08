@@ -26,10 +26,12 @@ export const BigNum = {
 		 * BigNum.is.zero(5n); // false
 		 * ```
 		 */
-		zero: (b: bigint): boolean => b === 0n,
+		zero: (value: bigint): boolean => value === 0n,
 
 		/**
 		 * Returns `true` when the bigint is an even integer.
+		 *
+		 * @see {@link BigNum.is.odd} to check if a bigint is odd.
 		 *
 		 * @example
 		 * ```ts
@@ -37,10 +39,12 @@ export const BigNum = {
 		 * BigNum.is.even(3n); // false
 		 * ```
 		 */
-		even: (b: bigint): boolean => b % 2n === 0n,
+		even: (value: bigint): boolean => value % 2n === 0n,
 
 		/**
 		 * Returns `true` when the bigint is an odd integer.
+		 *
+		 * @see {@link BigNum.is.even} to check if a bigint is even.
 		 *
 		 * @example
 		 * ```ts
@@ -48,10 +52,12 @@ export const BigNum = {
 		 * BigNum.is.odd(4n); // false
 		 * ```
 		 */
-		odd: (b: bigint): boolean => b % 2n !== 0n,
+		odd: (value: bigint): boolean => value % 2n !== 0n,
 
 		/**
 		 * Returns `true` when the bigint is strictly greater than zero (`0n`).
+		 *
+		 * @see {@link BigNum.is.negative} to check if a bigint is less than zero.
 		 *
 		 * @example
 		 * ```ts
@@ -60,10 +66,12 @@ export const BigNum = {
 		 * BigNum.is.positive(-5n); // false
 		 * ```
 		 */
-		positive: (b: bigint): boolean => b > 0n,
+		positive: (value: bigint): boolean => value > 0n,
 
 		/**
 		 * Returns `true` when the bigint is strictly less than zero (`0n`).
+		 *
+		 * @see {@link BigNum.is.positive} to check if a bigint is greater than zero.
 		 *
 		 * @example
 		 * ```ts
@@ -72,7 +80,7 @@ export const BigNum = {
 		 * BigNum.is.negative(5n);  // false
 		 * ```
 		 */
-		negative: (b: bigint): boolean => b < 0n,
+		negative: (value: bigint): boolean => value < 0n,
 	},
 
 	// --- from ---
@@ -86,10 +94,10 @@ export const BigNum = {
 		 * BigNum.from.string("abc"); // None
 		 * ```
 		 */
-		string: (s: string): Maybe<bigint> => {
+		string: (text: string): Maybe<bigint> => {
 			try {
-				if (s.trim() === "") { return Maybe.make.none(); }
-				return Maybe.make.some(BigInt(s));
+				if (text.trim() === "") { return Maybe.make.none(); }
+				return Maybe.make.some(BigInt(text));
 			} catch {
 				return Maybe.make.none();
 			}
@@ -104,11 +112,11 @@ export const BigNum = {
 		 * BigNum.from.number(3.14); // None
 		 * ```
 		 */
-		number: (n: number): Maybe<bigint> => {
-			if (!Number.isInteger(n) || n < Number.MIN_SAFE_INTEGER || n > Number.MAX_SAFE_INTEGER) {
+		number: (value: number): Maybe<bigint> => {
+			if (!Number.isInteger(value) || value < Number.MIN_SAFE_INTEGER || value > Number.MAX_SAFE_INTEGER) {
 				return Maybe.make.none();
 			}
-			return Maybe.make.some(BigInt(n));
+			return Maybe.make.some(BigInt(value));
 		},
 	},
 
@@ -123,85 +131,113 @@ export const BigNum = {
 		 * BigNum.to.number(9007199254740993n);      // None
 		 * ```
 		 */
-		number: (b: bigint): Maybe<number> => {
-			if (b < BigInt(Number.MIN_SAFE_INTEGER) || b > BigInt(Number.MAX_SAFE_INTEGER)) {
+		number: (value: bigint): Maybe<number> => {
+			if (value < BigInt(Number.MIN_SAFE_INTEGER) || value > BigInt(Number.MAX_SAFE_INTEGER)) {
 				return Maybe.make.none();
 			}
-			return Maybe.make.some(Number(b));
+			return Maybe.make.some(Number(value));
 		},
 	},
 
 	/**
-	 * Adds `b` to `a`. Data-last curried signature: `add(b)(a)` = `a + b`.
+	 * Adds `amount` to `value`. Data-last curried signature: `add(amount)(value)` = `value + amount`.
+	 *
+	 * @see {@link BigNum.subtract} to subtract an amount from a bigint.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(10n, BigNum.add(5n)); // 15n
 	 * ```
 	 */
-	add: (b: bigint) => (a: bigint): bigint => a + b,
+	add: (amount: bigint) => (value: bigint): bigint => value + amount,
 
 	/**
-	 * Subtracts `b` from `a`. Data-last curried signature: `sub(b)(a)` = `a - b`.
+	 * Subtracts `amount` from `from`. Data-last curried signature: `subtract(amount)(from)` = `from - amount`.
+	 *
+	 * @see {@link BigNum.add} to add an amount to a bigint.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(10n, BigNum.sub(3n)); // 7n
+	 * pipe(10n, BigNum.subtract(3n)); // 7n
 	 * ```
 	 */
-	sub: (b: bigint) => (a: bigint): bigint => a - b,
+	subtract: (amount: bigint) => (from: bigint): bigint => from - amount,
 
 	/**
-	 * Multiplies `a` by `b`. Data-last curried signature: `mul(b)(a)` = `a * b`.
+	 * Multiplies `value` by `factor`. Data-last curried signature: `multiply(factor)(value)` = `value * factor`.
+	 *
+	 * @see {@link BigNum.divide} to divide a bigint by a divisor.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(6n, BigNum.mul(7n)); // 42n
+	 * pipe(6n, BigNum.multiply(7n)); // 42n
 	 * ```
 	 */
-	mul: (b: bigint) => (a: bigint): bigint => a * b,
+	multiply: (factor: bigint) => (value: bigint): bigint => value * factor,
 
 	/**
-	 * Divides `a` by `b`. Returns `None` if `b` is `0n`.
+	 * Divides `dividend` by `divisor`. Returns `None` if `divisor` is `0n`.
+	 *
+	 * @see {@link BigNum.multiply} to multiply a bigint by a factor.
+	 * @see {@link BigNum.remainder} to compute the division remainder.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(20n, BigNum.div(4n)); // Some(5n)
-	 * pipe(5n, BigNum.div(0n));  // None
+	 * pipe(20n, BigNum.divide(4n)); // Some(5n)
+	 * pipe(5n, BigNum.divide(0n));  // None
 	 * ```
 	 */
-	div: (b: bigint) => (a: bigint): Maybe<bigint> => b === 0n ? Maybe.make.none() : Maybe.make.some(a / b),
+	divide: (divisor: bigint) => (dividend: bigint): Maybe<bigint> =>
+		divisor === 0n ? Maybe.make.none() : Maybe.make.some(dividend / divisor),
 
 	/**
-	 * Computes remainder of `a / b`. Returns `None` if `b` is `0n`.
+	 * Computes remainder of `dividend / divisor`. Returns `None` if `divisor` is `0n`.
+	 *
+	 * @see {@link BigNum.divide} for full division.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(10n, BigNum.mod(3n)); // Some(1n)
-	 * pipe(5n, BigNum.mod(0n));  // None
+	 * pipe(10n, BigNum.remainder(3n)); // Some(1n)
+	 * pipe(5n, BigNum.remainder(0n));  // None
 	 * ```
 	 */
-	mod: (b: bigint) => (a: bigint): Maybe<bigint> => b === 0n ? Maybe.make.none() : Maybe.make.some(a % b),
+	remainder: (divisor: bigint) => (dividend: bigint): Maybe<bigint> =>
+		divisor === 0n ? Maybe.make.none() : Maybe.make.some(dividend % divisor),
 
 	/**
-	 * Clamps `a` between `min` and `max` (inclusive).
+	 * Clamps `value` between `min` and `max` (inclusive).
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(150n, BigNum.clamp(0n, 100n)); // 100n
 	 * ```
 	 */
-	clamp: (min: bigint, max: bigint) => (a: bigint): bigint => a < min ? min : (a > max ? max : a),
+	clamp: (min: bigint, max: bigint) => (value: bigint): bigint => (value < min ? min : (value > max ? max : value)),
 
 	/**
-	 * Returns `true` if `a` is in the range `[start, end)` (inclusive start, exclusive end).
+	 * Returns `true` when the bigint is between `min` and `max` (both inclusive).
+	 *
+	 * @see {@link BigNum.inRange} for half-open range checking [start, end).
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(5n, BigNum.between(1n, 10n)); // true
+	 * pipe(0n, BigNum.between(1n, 10n)); // false
+	 * ```
+	 */
+	between: (min: bigint, max: bigint) => (value: bigint): boolean => value >= min && value <= max,
+
+	/**
+	 * Returns `true` if `value` is in the range `[start, end)` (inclusive start, exclusive end).
+	 *
+	 * @see {@link BigNum.between} for fully closed range checking [min, max].
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(5n, BigNum.inRange(1n, 10n)); // true
 	 * ```
 	 */
-	inRange: (start: bigint, end: bigint) => (a: bigint): boolean => a >= start && a < end,
+	inRange: (start: bigint, end: bigint) => (value: bigint): boolean => value >= start && value < end,
 
 	/**
 	 * Returns absolute value of a `bigint`.
@@ -211,25 +247,29 @@ export const BigNum = {
 	 * BigNum.abs(-42n); // 42n
 	 * ```
 	 */
-	abs: (a: bigint): bigint => (a < 0n ? -a : a),
+	abs: (value: bigint): bigint => (value < 0n ? -value : value),
 
 	/**
-	 * Returns the minimum of `a` and `b`.
+	 * Returns the minimum of `value` and `other`.
+	 *
+	 * @see {@link BigNum.max} to determine the maximum value.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(10n, BigNum.min(5n)); // 5n
 	 * ```
 	 */
-	min: (b: bigint) => (a: bigint): bigint => (a < b ? a : b),
+	min: (other: bigint) => (value: bigint): bigint => (value < other ? value : other),
 
 	/**
-	 * Returns the maximum of `a` and `b`.
+	 * Returns the maximum of `value` and `other`.
+	 *
+	 * @see {@link BigNum.min} to determine the minimum value.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(10n, BigNum.max(5n)); // 10n
 	 * ```
 	 */
-	max: (b: bigint) => (a: bigint): bigint => (a > b ? a : b),
+	max: (other: bigint) => (value: bigint): bigint => (value > other ? value : other),
 };

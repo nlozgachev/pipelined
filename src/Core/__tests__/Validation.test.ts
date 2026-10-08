@@ -8,7 +8,7 @@ import { Validation } from "../Validation.ts";
 // passed
 // ---------------------------------------------------------------------------
 
-test("Validation.make.passed wraps a value in Valid", () => {
+test("make.passed: wraps a value in Valid", () => {
 	const result = Validation.make.passed<string, number>(42);
 	expect(result).toStrictEqual({ kind: "Passed", value: 42 });
 });
@@ -17,11 +17,11 @@ test("Validation.make.passed wraps a value in Valid", () => {
 // isPassed
 // ---------------------------------------------------------------------------
 
-test("Validation.is.passed returns true for Valid", () => {
+test("is.passed: returns true for Valid", () => {
 	expect(Validation.is.passed(Validation.make.passed<string, number>(1))).toBe(true);
 });
 
-test("Validation.is.passed returns false for Invalid", () => {
+test("is.passed: returns false for Invalid", () => {
 	expect(Validation.is.passed(Validation.make.failed("err"))).toBe(false);
 });
 
@@ -29,18 +29,18 @@ test("Validation.is.passed returns false for Invalid", () => {
 // failedAll / isFailed
 // ---------------------------------------------------------------------------
 
-test("Validation.make.failedAll creates an Invalid with errors array", () => {
+test("make.failedAll: creates an Invalid with errors array", () => {
 	expect(Validation.make.failedAll(["error1", "error2"])).toStrictEqual({
 		kind: "Failed",
 		errors: ["error1", "error2"],
 	});
 });
 
-test("Validation.is.failed returns true for Invalid", () => {
+test("is.failed: returns true for Invalid", () => {
 	expect(Validation.is.failed(Validation.make.failed(["e"]))).toBe(true);
 });
 
-test("Validation.is.failed returns false for Valid", () => {
+test("is.failed: returns false for Valid", () => {
 	expect(Validation.is.failed(Validation.make.passed<string, number>(1))).toBe(false);
 });
 
@@ -48,7 +48,7 @@ test("Validation.is.failed returns false for Valid", () => {
 // failed
 // ---------------------------------------------------------------------------
 
-test("Validation.make.failed creates an Invalid from a single error", () => {
+test("make.failed: creates an Invalid from a single error", () => {
 	expect(Validation.make.failed("oops")).toStrictEqual({ kind: "Failed", errors: ["oops"] });
 });
 
@@ -56,28 +56,28 @@ test("Validation.make.failed creates an Invalid from a single error", () => {
 // from.Predicate
 // ---------------------------------------------------------------------------
 
-test("Validation.from.Predicate returns Valid when predicate passes", () => {
+test("from.Predicate: returns Valid when predicate passes", () => {
 	expect(pipe("Alice", Validation.from.Predicate((s) => s.length > 0, () => "required"))).toStrictEqual({
 		kind: "Passed",
 		value: "Alice",
 	});
 });
 
-test("Validation.from.Predicate returns Invalid when predicate fails", () => {
+test("from.Predicate: returns Invalid when predicate fails", () => {
 	expect(pipe("", Validation.from.Predicate((s) => s.length > 0, () => "required"))).toStrictEqual({
 		kind: "Failed",
 		errors: ["required"],
 	});
 });
 
-test("Validation.from.Predicate passes the value to onFalse", () => {
+test("from.Predicate: passes the value to onFalse", () => {
 	expect(pipe(-1, Validation.from.Predicate((n) => n >= 0, (n) => `${n} is negative`))).toStrictEqual({
 		kind: "Failed",
 		errors: ["-1 is negative"],
 	});
 });
 
-test("Validation.from.Predicate composes with apply for multi-field validation", () => {
+test("from.Predicate: composes with apply for multi-field validation", () => {
 	const validateName = Validation.from.Predicate((s: string) => s.length > 0, () => "Name required");
 	const validateAge = Validation.from.Predicate((n: number) => n >= 0, () => "Age invalid");
 	const result = pipe(
@@ -94,17 +94,17 @@ test("Validation.from.Predicate composes with apply for multi-field validation",
 // map
 // ---------------------------------------------------------------------------
 
-test("Validation.map transforms the passed value", () => {
+test("map: transforms the passed value", () => {
 	const result = pipe(Validation.make.passed<string, number>(5), Validation.map((n: number) => n * 2));
 	expect(result).toStrictEqual({ kind: "Passed", value: 10 });
 });
 
-test("Validation.map passes through Invalid unchanged", () => {
+test("map: passes through Invalid unchanged", () => {
 	const result = pipe(Validation.make.failed("error"), Validation.map((n: number) => n * 2));
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["error"] });
 });
 
-test("Validation.map can change the value type", () => {
+test("map: can change the value type", () => {
 	const result = pipe(Validation.make.passed<string, number>(42), Validation.map((n: number) => `val: ${n}`));
 	expect(result).toStrictEqual({ kind: "Passed", value: "val: 42" });
 });
@@ -113,22 +113,22 @@ test("Validation.map can change the value type", () => {
 // mapError
 // ---------------------------------------------------------------------------
 
-test("Validation.mapError transforms errors in Failed", () => {
+test("mapError: transforms errors in Failed", () => {
 	const result = pipe(Validation.make.failed("oops"), Validation.mapError((e) => e.toUpperCase()));
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["OOPS"] });
 });
 
-test("Validation.mapError transforms all errors in failedAll", () => {
+test("mapError: transforms all errors in failedAll", () => {
 	const result = pipe(Validation.make.failedAll(["a", "b"]), Validation.mapError((e) => e.toUpperCase()));
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["A", "B"] });
 });
 
-test("Validation.mapError passes Passed through unchanged", () => {
+test("mapError: passes Passed through unchanged", () => {
 	const result = pipe(Validation.make.passed<string, number>(42), Validation.mapError((e: string) => e.toUpperCase()));
 	expect(result).toStrictEqual({ kind: "Passed", value: 42 });
 });
 
-test("Validation.mapError can change error type", () => {
+test("mapError: can change error type", () => {
 	const result = pipe(Validation.make.failed("not found"), Validation.mapError((e) => ({ message: e })));
 	expect(result).toStrictEqual({ kind: "Failed", errors: [{ message: "not found" }] });
 });
@@ -137,7 +137,7 @@ test("Validation.mapError can change error type", () => {
 // apply (error accumulation)
 // ---------------------------------------------------------------------------
 
-test("Validation.apply applies Valid function to Valid value", () => {
+test("apply: applies Valid function to Valid value", () => {
 	const add = (a: number) => (b: number) => a + b;
 	const result = pipe(
 		Validation.make.passed<string, typeof add>(add),
@@ -147,7 +147,7 @@ test("Validation.apply applies Valid function to Valid value", () => {
 	expect(result).toStrictEqual({ kind: "Passed", value: 8 });
 });
 
-test("Validation.apply accumulates errors from both sides", () => {
+test("apply: accumulates errors from both sides", () => {
 	const add = (a: number) => (b: number) => a + b;
 	const result = pipe(
 		Validation.make.passed<string, typeof add>(add),
@@ -157,7 +157,7 @@ test("Validation.apply accumulates errors from both sides", () => {
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["bad a", "bad b"] });
 });
 
-test("Validation.apply returns errors from value when function is Valid", () => {
+test("apply: returns errors from value when function is Valid", () => {
 	const result = pipe(
 		Validation.make.passed<string, (n: number) => number>((n) => n * 2),
 		Validation.apply(Validation.make.failed("bad value")),
@@ -165,12 +165,12 @@ test("Validation.apply returns errors from value when function is Valid", () => 
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["bad value"] });
 });
 
-test("Validation.apply returns errors from function when value is Valid", () => {
+test("apply: returns errors from function when value is Valid", () => {
 	const result = pipe(Validation.make.failed("bad fn"), Validation.apply(Validation.make.passed<string, number>(5)));
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["bad fn"] });
 });
 
-test("Validation.apply accumulates all errors in a multi-field validation", () => {
+test("apply: accumulates all errors in a multi-field validation", () => {
 	const createUser = (name: string) => (email: string) => (age: number) => ({ name, email, age });
 
 	const validateName = (name: string): Validation<string, string> =>
@@ -189,7 +189,7 @@ test("Validation.apply accumulates all errors in a multi-field validation", () =
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["Name required", "Invalid email", "Age must be >= 0"] });
 });
 
-test("Validation.apply succeeds when all validations pass", () => {
+test("apply: succeeds when all validations pass", () => {
 	const createUser = (name: string) => (email: string) => (age: number) => ({ name, email, age });
 
 	const result = pipe(
@@ -203,7 +203,7 @@ test("Validation.apply succeeds when all validations pass", () => {
 
 // --- apply with combineErrors option ---
 
-test("Validation.apply uses combineErrors when accumulating errors", () => {
+test("apply: uses combineErrors when accumulating errors", () => {
 	const fnVal = Validation.make.failed<string>("err1") as Validation<string, (n: number) => number>;
 	const argVal = Validation.make.failed<string>("err2") as Validation<string, number>;
 
@@ -214,7 +214,7 @@ test("Validation.apply uses combineErrors when accumulating errors", () => {
 	expect(result).toStrictEqual(Validation.make.failedAll(["ERR1", "ERR2"]));
 });
 
-test("Validation.apply with combineErrors handles Passed fnVal with Passed or Failed argVal", () => {
+test("apply: handles Passed fnVal with Passed or Failed argVal", () => {
 	const fnVal = Validation.make.passed<string, (n: number) => number>((n) => n * 2);
 	const argPassed = Validation.make.passed<string, number>(5);
 	const argFailed = Validation.make.failed<string>("err1");
@@ -227,7 +227,7 @@ test("Validation.apply with combineErrors handles Passed fnVal with Passed or Fa
 	);
 });
 
-test("Validation.apply with combineErrors handles Failed fnVal with Passed argVal", () => {
+test("apply: handles Failed fnVal with Passed argVal", () => {
 	const fnVal = Validation.make.failed<string>("err1") as Validation<string, (n: number) => number>;
 	const argPassed = Validation.make.passed<string, number>(5);
 	const concat = (e1: readonly [string, ...string[]], e2: readonly [string, ...string[]]) => [...e1, ...e2] as any;
@@ -241,7 +241,7 @@ test("Validation.apply with combineErrors handles Failed fnVal with Passed argVa
 // fold
 // ---------------------------------------------------------------------------
 
-test("Validation.fold calls onValid for Valid", () => {
+test("fold: calls onValid for Valid", () => {
 	const result = pipe(
 		Validation.make.passed<string, number>(5),
 		Validation.fold((errors) => `Errors: ${errors.join(", ")}`, (n: number) => `Value: ${n}`),
@@ -249,7 +249,7 @@ test("Validation.fold calls onValid for Valid", () => {
 	expect(result).toBe("Value: 5");
 });
 
-test("Validation.fold calls onInvalid for Invalid", () => {
+test("fold: calls onInvalid for Invalid", () => {
 	const result = pipe(
 		Validation.make.failedAll(["a", "b"]),
 		Validation.fold((errors) => `Errors: ${errors.join(", ")}`, (n: number) => `Value: ${n}`),
@@ -261,7 +261,7 @@ test("Validation.fold calls onInvalid for Invalid", () => {
 // match (data-last)
 // ---------------------------------------------------------------------------
 
-test("Validation.match calls passed handler for Valid", () => {
+test("match: calls passed handler for Valid", () => {
 	const result = pipe(
 		Validation.make.passed<string, number>(5),
 		Validation.match({ passed: (n: number) => `got ${n}`, failed: (errors) => `failed: ${errors.join(", ")}` }),
@@ -269,7 +269,7 @@ test("Validation.match calls passed handler for Valid", () => {
 	expect(result).toBe("got 5");
 });
 
-test("Validation.match calls invalid handler for Invalid", () => {
+test("match: calls invalid handler for Invalid", () => {
 	const result = pipe(
 		Validation.make.failed("oops"),
 		Validation.match({ passed: (n: number) => `got ${n}`, failed: (errors) => `failed: ${errors.join(", ")}` }),
@@ -277,7 +277,7 @@ test("Validation.match calls invalid handler for Invalid", () => {
 	expect(result).toBe("failed: oops");
 });
 
-test("Validation.match is data-last (returns a function first)", () => {
+test("match: is data-last (returns a function first)", () => {
 	const handler = Validation.match<string, number, string>({
 		passed: (n) => `val: ${n}`,
 		failed: (errors) => `err: ${errors.join(";")}`,
@@ -290,22 +290,22 @@ test("Validation.match is data-last (returns a function first)", () => {
 // getOrElse
 // ---------------------------------------------------------------------------
 
-test("Validation.getOrElse returns value for Valid", () => {
+test("getOrElse: returns value for Valid", () => {
 	const result = pipe(Validation.make.passed<string, number>(5), Validation.getOrElse(() => 0));
 	expect(result).toBe(5);
 });
 
-test("Validation.getOrElse returns default for Invalid", () => {
+test("getOrElse: returns default for Invalid", () => {
 	const result = pipe(Validation.make.failed("error"), Validation.getOrElse(() => 0));
 	expect(result).toBe(0);
 });
 
-test("Validation.getOrElse widens return type to A | B when default is a different type", () => {
+test("getOrElse: widens return type to A | B when default is a different type", () => {
 	const result = pipe(Validation.make.failed("error"), Validation.getOrElse(() => null));
 	expect(result).toBeNull();
 });
 
-test("Validation.getOrElse returns Valid value typed as A | B when Valid", () => {
+test("getOrElse: returns Valid value typed as A | B when Valid", () => {
 	const result = pipe(Validation.make.passed(5), Validation.getOrElse(() => null));
 	expect(result).toBe(5);
 });
@@ -314,7 +314,7 @@ test("Validation.getOrElse returns Valid value typed as A | B when Valid", () =>
 // tap
 // ---------------------------------------------------------------------------
 
-test("Validation.tap executes side effect on Valid and returns original", () => {
+test("tap: executes side effect on Valid and returns original", () => {
 	let sideEffect = 0;
 	const result = pipe(
 		Validation.make.passed<string, number>(5),
@@ -326,7 +326,7 @@ test("Validation.tap executes side effect on Valid and returns original", () => 
 	expect(result).toStrictEqual({ kind: "Passed", value: 5 });
 });
 
-test("Validation.tap does not execute side effect on Invalid", () => {
+test("tap: does not execute side effect on Invalid", () => {
 	let called = false;
 	const result = pipe(
 		Validation.make.failed("error"),
@@ -342,7 +342,7 @@ test("Validation.tap does not execute side effect on Invalid", () => {
 // tapError
 // ---------------------------------------------------------------------------
 
-test("Validation.tapError calls f on Invalid", () => {
+test("tapError: calls f on Invalid", () => {
 	let called = false;
 	pipe(
 		Validation.make.failed("err"),
@@ -353,7 +353,7 @@ test("Validation.tapError calls f on Invalid", () => {
 	expect(called).toBe(true);
 });
 
-test("Validation.tapError does not call f on Valid", () => {
+test("tapError: does not call f on Valid", () => {
 	let called = false;
 	pipe(
 		Validation.make.passed(42),
@@ -364,13 +364,13 @@ test("Validation.tapError does not call f on Valid", () => {
 	expect(called).toBe(false);
 });
 
-test("Validation.tapError returns the Validation unchanged", () => {
+test("tapError: returns the Validation unchanged", () => {
 	const data = Validation.make.failed("err");
 	const result = pipe(data, Validation.tapError(() => {}));
 	expect(result).toStrictEqual(data);
 });
 
-test("Validation.tapError receives the full error list", () => {
+test("tapError: receives the full error list", () => {
 	let received: readonly string[] | undefined;
 	pipe(
 		Validation.make.failedAll(["a", "b"]),
@@ -385,7 +385,7 @@ test("Validation.tapError receives the full error list", () => {
 // recover
 // ---------------------------------------------------------------------------
 
-test("Validation.recover returns original Valid without calling fallback", () => {
+test("recover: returns original Valid without calling fallback", () => {
 	let called = false;
 	const result = pipe(
 		Validation.make.passed<string, number>(5),
@@ -398,7 +398,7 @@ test("Validation.recover returns original Valid without calling fallback", () =>
 	expect(result).toStrictEqual({ kind: "Passed", value: 5 });
 });
 
-test("Validation.recover provides fallback for Invalid", () => {
+test("recover: provides fallback for Invalid", () => {
 	const result = pipe(
 		Validation.make.failed("error"),
 		Validation.recover((_errors) => Validation.make.passed<string, number>(99)),
@@ -406,7 +406,7 @@ test("Validation.recover provides fallback for Invalid", () => {
 	expect(result).toStrictEqual({ kind: "Passed", value: 99 });
 });
 
-test("Validation.recover exposes the error list to the fallback", () => {
+test("recover: exposes the error list to the fallback", () => {
 	let received: string[] = [];
 	pipe(
 		Validation.make.failedAll(["first", "second"] as [string, ...string[]]),
@@ -418,7 +418,7 @@ test("Validation.recover exposes the error list to the fallback", () => {
 	expect(received).toStrictEqual(["first", "second"]);
 });
 
-test("Validation.recover can return Invalid as fallback", () => {
+test("recover: can return Invalid as fallback", () => {
 	const result = pipe(
 		Validation.make.failed("first"),
 		Validation.recover((_errors) => Validation.make.failed("second")),
@@ -426,7 +426,7 @@ test("Validation.recover can return Invalid as fallback", () => {
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["second"] });
 });
 
-test("Validation.recover widens to Validation<E, A | B> when fallback returns a different type", () => {
+test("recover: widens to Validation<E, A | B> when fallback returns a different type", () => {
 	const result = pipe(
 		Validation.make.failed("error"),
 		Validation.recover((_errors) => Validation.make.passed("recovered")),
@@ -434,7 +434,7 @@ test("Validation.recover widens to Validation<E, A | B> when fallback returns a 
 	expect(result).toStrictEqual({ kind: "Passed", value: "recovered" });
 });
 
-test("Validation.recover preserves Valid typed as Validation<E, A | B>", () => {
+test("recover: preserves Valid typed as Validation<E, A | B>", () => {
 	const result = pipe(Validation.make.passed(5), Validation.recover((_errors) => Validation.make.passed("recovered")));
 	expect(result).toStrictEqual({ kind: "Passed", value: 5 });
 });
@@ -443,7 +443,7 @@ test("Validation.recover preserves Valid typed as Validation<E, A | B>", () => {
 // recoverUnless
 // ---------------------------------------------------------------------------
 
-test("Validation.recoverUnless recovers when predicate returns false for all errors", () => {
+test("recoverUnless: recovers when predicate returns false for all errors", () => {
 	const result = pipe(
 		Validation.make.failed("recoverable"),
 		Validation.recoverUnless((e) => e === "fatal", () => Validation.make.passed<string, number>(42)),
@@ -451,7 +451,7 @@ test("Validation.recoverUnless recovers when predicate returns false for all err
 	expect(result).toStrictEqual({ kind: "Passed", value: 42 });
 });
 
-test("Validation.recoverUnless does NOT recover when predicate returns true for any error", () => {
+test("recoverUnless: does not recover when predicate returns true for any error", () => {
 	const result = pipe(
 		Validation.make.failed("fatal"),
 		Validation.recoverUnless((e) => e === "fatal", () => Validation.make.passed<string, number>(42)),
@@ -459,7 +459,7 @@ test("Validation.recoverUnless does NOT recover when predicate returns true for 
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["fatal"] });
 });
 
-test("Validation.recoverUnless passes through Valid unchanged", () => {
+test("recoverUnless: passes through Valid unchanged", () => {
 	const result = pipe(
 		Validation.make.passed<string, number>(10),
 		Validation.recoverUnless((e) => e === "fatal", () => Validation.make.passed<string, number>(42)),
@@ -467,7 +467,7 @@ test("Validation.recoverUnless passes through Valid unchanged", () => {
 	expect(result).toStrictEqual({ kind: "Passed", value: 10 });
 });
 
-test("Validation.recoverUnless does NOT recover when any error in accumulation matches", () => {
+test("recoverUnless: does not recover when any error in accumulation matches", () => {
 	const result = pipe(
 		Validation.make.failedAll(["minor", "fatal"]),
 		Validation.recoverUnless((e) => e === "fatal", () => Validation.make.passed<string, number>(42)),
@@ -475,7 +475,7 @@ test("Validation.recoverUnless does NOT recover when any error in accumulation m
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["minor", "fatal"] });
 });
 
-test("Validation.recoverUnless widens to Validation<E, A | B> when fallback returns a different type", () => {
+test("recoverUnless: widens to Validation<E, A | B> when fallback returns different type", () => {
 	const result = pipe(
 		Validation.make.failed("recoverable"),
 		Validation.recoverUnless((e) => e === "fatal", () => Validation.make.passed("recovered")),
@@ -487,7 +487,7 @@ test("Validation.recoverUnless widens to Validation<E, A | B> when fallback retu
 // product
 // ---------------------------------------------------------------------------
 
-test("Validation.product returns tuple when both are Valid", () => {
+test("product: returns tuple when both are Valid", () => {
 	const result = Validation.product(
 		Validation.make.passed<string, string>("alice"),
 		Validation.make.passed<string, number>(30),
@@ -495,27 +495,27 @@ test("Validation.product returns tuple when both are Valid", () => {
 	expect(result).toStrictEqual({ kind: "Passed", value: ["alice", 30] });
 });
 
-test("Validation.product returns Invalid when first is Invalid", () => {
+test("product: returns Invalid when first is Invalid", () => {
 	const result = Validation.product(Validation.make.failed("err1"), Validation.make.passed<string, number>(30));
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["err1"] });
 });
 
-test("Validation.product returns Invalid when second is Invalid", () => {
+test("product: returns Invalid when second is Invalid", () => {
 	const result = Validation.product(Validation.make.passed<string, string>("alice"), Validation.make.failed("err2"));
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["err2"] });
 });
 
-test("Validation.product accumulates errors when both are Invalid", () => {
+test("product: accumulates errors when both are Invalid", () => {
 	const result = Validation.product(Validation.make.failed("err1"), Validation.make.failed("err2"));
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["err1", "err2"] });
 });
 
-test("Validation.product accumulates multiple errors from both sides", () => {
+test("product: accumulates multiple errors from both sides", () => {
 	const result = Validation.product(Validation.make.failedAll(["a", "b"]), Validation.make.failedAll(["c"]));
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["a", "b", "c"] });
 });
 
-test("Validation.product can combine different value types", () => {
+test("product: can combine different value types", () => {
 	const result = Validation.product(
 		Validation.make.passed<string, string>("hello"),
 		Validation.make.passed<string, boolean>(true),
@@ -527,7 +527,7 @@ test("Validation.product can combine different value types", () => {
 // productAll
 // ---------------------------------------------------------------------------
 
-test("Validation.productAll returns all values when all are Valid", () => {
+test("productAll: returns all values when all are Valid", () => {
 	const result = Validation.productAll([
 		Validation.make.passed<string, number>(1),
 		Validation.make.passed<string, number>(2),
@@ -536,7 +536,7 @@ test("Validation.productAll returns all values when all are Valid", () => {
 	expect(result).toStrictEqual({ kind: "Passed", value: [1, 2, 3] });
 });
 
-test("Validation.productAll accumulates all errors", () => {
+test("productAll: accumulates all errors", () => {
 	const result = Validation.productAll([
 		Validation.make.failed("err1"),
 		Validation.make.passed<string, number>(2),
@@ -545,7 +545,7 @@ test("Validation.productAll accumulates all errors", () => {
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["err1", "err2"] });
 });
 
-test("Validation.productAll with all Invalid accumulates all errors", () => {
+test("productAll: accumulates all errors when all are Invalid", () => {
 	const result = Validation.productAll([
 		Validation.make.failed("a"),
 		Validation.make.failed("b"),
@@ -554,7 +554,7 @@ test("Validation.productAll with all Invalid accumulates all errors", () => {
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["a", "b", "c"] });
 });
 
-test("Validation.productAll with single element returns singleton array", () => {
+test("productAll: returns singleton array with single element", () => {
 	const result = Validation.productAll([Validation.make.passed<string, number>(42)]);
 	expect(result).toStrictEqual({ kind: "Passed", value: [42] });
 });
@@ -563,15 +563,15 @@ test("Validation.productAll with single element returns singleton array", () => 
 // toResult
 // ---------------------------------------------------------------------------
 
-test("Validation.toResult converts Valid to Ok", () => {
+test("to.Result: converts Valid to Ok", () => {
 	expect(Validation.to.Result(Validation.make.passed(42))).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
-test("Validation.toResult converts Invalid to Err with error list", () => {
+test("to.Result: converts Invalid to Err with error list", () => {
 	expect(Validation.to.Result(Validation.make.failed("oops"))).toStrictEqual({ kind: "Err", error: ["oops"] });
 });
 
-test("Validation.toResult preserves all accumulated errors in Err", () => {
+test("to.Result: preserves all accumulated errors in Err", () => {
 	expect(Validation.to.Result(Validation.make.failedAll(["a", "b", "c"]))).toStrictEqual({
 		kind: "Err",
 		error: ["a", "b", "c"],
@@ -582,15 +582,15 @@ test("Validation.toResult preserves all accumulated errors in Err", () => {
 // toMaybe
 // ---------------------------------------------------------------------------
 
-test("Validation.toMaybe converts Valid to Some", () => {
+test("to.Maybe: converts Valid to Some", () => {
 	expect(Validation.to.Maybe(Validation.make.passed(42))).toStrictEqual({ kind: "Some", value: 42 });
 });
 
-test("Validation.toMaybe converts Invalid to None", () => {
+test("to.Maybe: converts Invalid to None", () => {
 	expect(Validation.to.Maybe(Validation.make.failed("oops"))).toStrictEqual({ kind: "None" });
 });
 
-test("Validation.toMaybe discards all errors on Invalid", () => {
+test("to.Maybe: discards all errors on Invalid", () => {
 	expect(Validation.to.Maybe(Validation.make.failedAll(["a", "b"]))).toStrictEqual({ kind: "None" });
 });
 
@@ -598,11 +598,11 @@ test("Validation.toMaybe discards all errors on Invalid", () => {
 // fromResult
 // ---------------------------------------------------------------------------
 
-test("Validation.fromResult converts Ok to Valid", () => {
+test("from.Result: converts Ok to Valid", () => {
 	expect(Validation.from.Result(Result.make.ok(42))).toStrictEqual({ kind: "Passed", value: 42 });
 });
 
-test("Validation.fromResult converts Err to Invalid with single-element error list", () => {
+test("from.Result: converts Err to Invalid with single-element error list", () => {
 	expect(Validation.from.Result(Result.make.err("bad"))).toStrictEqual({ kind: "Failed", errors: ["bad"] });
 });
 
@@ -610,7 +610,7 @@ test("Validation.fromResult converts Err to Invalid with single-element error li
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("validation composes well in a pipe chain", () => {
+test("pipe: composes well in a pipeline", () => {
 	const validateName = (name: string): Validation<string, string> =>
 		name.length > 0 ? Validation.make.passed(name) : Validation.make.failed("Name required");
 	const validateAge = (age: number): Validation<string, number> =>
@@ -630,19 +630,19 @@ test("validation composes well in a pipe chain", () => {
 // Type inference
 // ---------------------------------------------------------------------------
 
-test("Validation.map — return type reflects mapped function output", () => {
+test("map: return type reflects mapped function output", () => {
 	const v: Validation<string, number> = Validation.make.passed(42);
 	const mapped = Validation.map((n: number) => String(n))(v);
 	expectTypeOf(mapped).toEqualTypeOf<Validation<string, string>>();
 });
 
-test("Validation.getOrElse — widens return type to A | B", () => {
+test("getOrElse: widens return type to union", () => {
 	const v = Validation.make.passed<string, string>("hello");
 	const val = pipe(v, Validation.getOrElse((): null => null));
 	expectTypeOf(val).toEqualTypeOf<string | null>();
 });
 
-test("Validation.fold — return type matches branch return types", () => {
+test("fold: return type matches branch return types", () => {
 	const v: Validation<string, number> = Validation.make.passed(1);
 	const folded = Validation.fold(
 		(errors: readonly string[]): string => errors.join(","),
@@ -653,41 +653,41 @@ test("Validation.fold — return type matches branch return types", () => {
 
 // --- from.nullable ---
 
-test("Validation.from.nullable returns Valid for non-null values", () => {
+test("from.nullable: returns Valid for non-null values", () => {
 	const result = Validation.from.nullable(() => "is null")(42);
 	expect(result).toStrictEqual(Validation.make.passed(42));
 });
 
-test("Validation.from.nullable returns Invalid for null", () => {
+test("from.nullable: returns Invalid for null", () => {
 	const result = Validation.from.nullable(() => "is null")(null);
 	expect(result).toStrictEqual(Validation.make.failed("is null"));
 });
 
-test("Validation.from.nullable returns Invalid for undefined", () => {
+test("from.nullable: returns Invalid for undefined", () => {
 	const result = Validation.from.nullable(() => "is null")(undefined);
 	expect(result).toStrictEqual(Validation.make.failed("is null"));
 });
 
 // --- fromMaybe ---
 
-test("Validation.fromMaybe returns Valid for Some", () => {
+test("from.Maybe: returns Valid for Some", () => {
 	const result = Validation.from.Maybe(() => "is none")(Maybe.make.some(42));
 	expect(result).toStrictEqual(Validation.make.passed(42));
 });
 
-test("Validation.fromMaybe returns Invalid for None", () => {
+test("from.Maybe: returns Invalid for None", () => {
 	const result = Validation.from.Maybe(() => "is none")(Maybe.make.none());
 	expect(result).toStrictEqual(Validation.make.failed("is none"));
 });
 
 // --- struct ---
 
-test("Validation.struct combines a record of Passed values into a single Passed record", () => {
+test("struct: combines a record of Passed values into a single Passed record", () => {
 	const res = Validation.struct({ a: Validation.make.passed(1), b: Validation.make.passed("hello") });
 	expect(res).toStrictEqual(Validation.make.passed({ a: 1, b: "hello" }));
 });
 
-test("Validation.struct accumulates errors from all Failed branches", () => {
+test("struct: accumulates errors from all Failed branches", () => {
 	const res = Validation.struct({
 		a: Validation.make.passed(1),
 		b: Validation.make.failed("first fail"),
@@ -696,7 +696,7 @@ test("Validation.struct accumulates errors from all Failed branches", () => {
 	expect(res).toStrictEqual(Validation.make.failedAll(["first fail", "second fail"]));
 });
 
-test("Validation.struct composes in a pipe pipeline", () => {
+test("struct: composes in a pipeline", () => {
 	const res = pipe(
 		Validation.make.passed<string, { name: string; }>({ name: "Alice" }),
 		Validation.map((u) => u.name),
@@ -712,7 +712,7 @@ test("Validation.struct composes in a pipe pipeline", () => {
 	expect(res).toStrictEqual(Validation.make.passed({ name: "Alice", valid: "Alice" }));
 });
 
-test("Validation.struct ignores inherited prototype properties", () => {
+test("struct: ignores inherited prototype properties", () => {
 	const proto = { b: Validation.make.passed(2) };
 	const fields = Object.create(proto);
 	fields.a = Validation.make.passed(1);
@@ -720,31 +720,31 @@ test("Validation.struct ignores inherited prototype properties", () => {
 	expect(res).toStrictEqual(Validation.make.passed({ a: 1 }));
 });
 
-test("Validation.struct returns passed({}) when given an empty object", () => {
+test("struct: returns passed({}) when given an empty object", () => {
 	const res = Validation.struct({});
 	expect(res).toStrictEqual(Validation.make.passed({}));
 });
 
 // --- to.Result with combineErrors ---
 
-test("Validation.to.Result(combineErrors) converts Passed to Ok", () => {
+test("to.Result: converts Passed to Ok with combineErrors", () => {
 	const res = Validation.to.Result((errs: readonly string[]) => errs.join(", "))(Validation.make.passed(42));
 	expect(res).toStrictEqual(Result.make.ok(42));
 });
 
-test("Validation.to.Result(combineErrors) converts Failed to Err with combined errors", () => {
+test("to.Result: converts Failed to Err with combined errors", () => {
 	const res = Validation.to.Result((errs: readonly string[]) => errs.join("; "))(
 		Validation.make.failedAll(["err1", "err2"]),
 	);
 	expect(res).toStrictEqual(Result.make.err("err1; err2"));
 });
 
-test("Validation.tryCatch returns Passed when thunk succeeds", () => {
+test("tryCatch: returns Passed when thunk succeeds", () => {
 	const res = Validation.tryCatch(() => 42, { onError: String });
 	expect(res).toStrictEqual(Validation.make.passed(42));
 });
 
-test("Validation.tryCatch returns Failed when thunk throws", () => {
+test("tryCatch: returns Failed when thunk throws", () => {
 	const res = Validation.tryCatch(() => {
 		throw new Error("BOOM");
 	}, { onError: (e) => (e as Error).message });
@@ -755,7 +755,7 @@ test("Validation.tryCatch returns Failed when thunk throws", () => {
 // Validation.keyed
 // ---------------------------------------------------------------------------
 
-test("Validation.keyed.make runs validators on object fields", () => {
+test("keyed.make: runs validators on object fields", () => {
 	const validateUser = Validation.keyed.make({
 		name: (s: string) => s.length > 0 ? Validation.make.passed(s) : Validation.make.failed("Name required"),
 		age: (n: number) => n >= 18 ? Validation.make.passed(n) : Validation.make.failed("Must be 18+"),
@@ -770,7 +770,7 @@ test("Validation.keyed.make runs validators on object fields", () => {
 	expect(failure.age).toStrictEqual(Validation.make.failed("Must be 18+"));
 });
 
-test("Validation.keyed.is.passed narrows and returns true when all fields passed", () => {
+test("keyed.is.passed: narrows and returns true when all fields passed", () => {
 	const validateUser = Validation.keyed.make({
 		name: (s: string) => s.length > 0 ? Validation.make.passed(s) : Validation.make.failed("Name required"),
 		age: (n: number) => n >= 18 ? Validation.make.passed(n) : Validation.make.failed("Must be 18+"),
@@ -788,7 +788,7 @@ test("Validation.keyed.is.passed narrows and returns true when all fields passed
 	expect(Validation.keyed.is.passed(failure)).toBe(false);
 });
 
-test("Validation.keyed.is.failed returns true when at least one field failed", () => {
+test("keyed.is.failed: returns true when at least one field failed", () => {
 	const validateUser = Validation.keyed.make({
 		name: (s: string) => s.length > 0 ? Validation.make.passed(s) : Validation.make.failed("Name required"),
 		age: (n: number) => n >= 18 ? Validation.make.passed(n) : Validation.make.failed("Must be 18+"),
@@ -801,7 +801,7 @@ test("Validation.keyed.is.failed returns true when at least one field failed", (
 	expect(Validation.keyed.is.failed(failure)).toBe(true);
 });
 
-test("Validation.keyed.getPassed returns Some when all passed, None when any failed", () => {
+test("keyed.getPassed: returns Some when all passed and None when any failed", () => {
 	const validateUser = Validation.keyed.make({
 		name: (s: string) => s.length > 0 ? Validation.make.passed(s) : Validation.make.failed("Name required"),
 		age: (n: number) => n >= 18 ? Validation.make.passed(n) : Validation.make.failed("Must be 18+"),
@@ -814,7 +814,7 @@ test("Validation.keyed.getPassed returns Some when all passed, None when any fai
 	expect(Validation.keyed.getPassed(failure)).toStrictEqual(Maybe.make.none());
 });
 
-test("Validation.keyed.getErrors returns Some with field errors on failure, None on success", () => {
+test("keyed.getErrors: returns Some with field errors on failure and None on success", () => {
 	const validateUser = Validation.keyed.make({
 		name: (s: string) => s.length > 0 ? Validation.make.passed(s) : Validation.make.failed("Name required"),
 		age: (n: number) => n >= 18 ? Validation.make.passed(n) : Validation.make.failed("Must be 18+"),
@@ -832,7 +832,7 @@ test("Validation.keyed.getErrors returns Some with field errors on failure, None
 	);
 });
 
-test("Validation.keyed integrates seamlessly with Validation.struct", () => {
+test("keyed: integrates seamlessly with struct", () => {
 	const validateUser = Validation.keyed.make({
 		name: (s: string) => s.length > 0 ? Validation.make.passed(s) : Validation.make.failed("Name required"),
 		age: (n: number) => n >= 18 ? Validation.make.passed(n) : Validation.make.failed("Must be 18+"),
@@ -845,7 +845,7 @@ test("Validation.keyed integrates seamlessly with Validation.struct", () => {
 	expect(failure).toStrictEqual(Validation.make.failedAll(["Name required", "Must be 18+"]));
 });
 
-test("Validation.keyed handles empty objects", () => {
+test("keyed: handles empty objects", () => {
 	const emptyValidator = Validation.keyed.make({});
 	const res = emptyValidator({});
 	expect(Validation.keyed.is.passed(res)).toBe(true);

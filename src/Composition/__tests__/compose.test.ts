@@ -3,12 +3,12 @@ import { Maybe } from "../../Core/Maybe.ts";
 import { Result } from "../../Core/Result.ts";
 import { compose } from "../compose.ts";
 
-test("compose - single function acts as wrapper", () => {
+test("compose: wraps single function", () => {
 	const double = compose((n: number) => n * 2);
 	expect(double(5)).toBe(10);
 });
 
-test("compose - two functions execute right-to-left", () => {
+test("compose: executes two functions right-to-left", () => {
 	const addOne = (n: number) => n + 1;
 	const double = (n: number) => n * 2;
 
@@ -17,7 +17,7 @@ test("compose - two functions execute right-to-left", () => {
 	expect(fn(5)).toBe(11); // 5 * 2 + 1 = 11
 });
 
-test("compose - three functions execute right-to-left", () => {
+test("compose: executes three functions right-to-left", () => {
 	const toString = (n: number) => `Value: ${n}`;
 	const addOne = (n: number) => n + 1;
 	const double = (n: number) => n * 2;
@@ -27,7 +27,7 @@ test("compose - three functions execute right-to-left", () => {
 	expect(fn(5)).toBe("Value: 11"); // 5 * 2 + 1 = 11 => "Value: 11"
 });
 
-test("compose - right-to-left order confirmed", () => {
+test("compose: executes right-to-left evaluation order", () => {
 	const log: string[] = [];
 	const a = (n: number) => {
 		log.push("a");
@@ -52,7 +52,7 @@ test("compose - right-to-left order confirmed", () => {
 	expect(log).toStrictEqual(["c", "b", "a"]);
 });
 
-test("compose - type transformation across functions", () => {
+test("compose: transforms types across steps", () => {
 	const length = (s: string) => s.length;
 	const toUpper = (s: string) => s.toUpperCase();
 
@@ -60,7 +60,7 @@ test("compose - type transformation across functions", () => {
 	expect(fn("hello")).toBe(5);
 });
 
-test("compose - integration with Maybe", () => {
+test("compose: integrates with Maybe", () => {
 	const getOrDefault = Maybe.getOrElse(() => "none");
 	const toUpper = Maybe.map((s: string) => s.toUpperCase());
 
@@ -70,7 +70,7 @@ test("compose - integration with Maybe", () => {
 	expect(fn(Maybe.make.none())).toBe("none");
 });
 
-test("compose - integration with Result", () => {
+test("compose: integrates with Result", () => {
 	const getOrDefault = Result.getOrElse(() => 0);
 	const doubleResult = Result.map((n: number) => n * 2);
 
@@ -86,35 +86,35 @@ test("compose - integration with Result", () => {
 
 const inc = (n: number) => n + 1;
 
-test("compose - 4 functions", () => {
+test("compose: supports 4 functions", () => {
 	expect(compose(inc, inc, inc, inc)(0)).toBe(4);
 });
 
-test("compose - 5 functions", () => {
+test("compose: supports 5 functions", () => {
 	expect(compose(inc, inc, inc, inc, inc)(0)).toBe(5);
 });
 
-test("compose - 6 functions", () => {
+test("compose: supports 6 functions", () => {
 	expect(compose(inc, inc, inc, inc, inc, inc)(0)).toBe(6);
 });
 
-test("compose - 7 functions", () => {
+test("compose: supports 7 functions", () => {
 	expect(compose(inc, inc, inc, inc, inc, inc, inc)(0)).toBe(7);
 });
 
-test("compose - 8 functions", () => {
+test("compose: supports 8 functions", () => {
 	expect(compose(inc, inc, inc, inc, inc, inc, inc, inc)(0)).toBe(8);
 });
 
-test("compose - 9 functions", () => {
+test("compose: supports 9 functions", () => {
 	expect(compose(inc, inc, inc, inc, inc, inc, inc, inc, inc)(0)).toBe(9);
 });
 
-test("compose - 10 functions", () => {
+test("compose: supports 10 functions", () => {
 	expect(compose(inc, inc, inc, inc, inc, inc, inc, inc, inc, inc)(0)).toBe(10);
 });
 
-test("compose - composed function is reusable", () => {
+test("compose: produces reusable composed function", () => {
 	const increment = (n: number) => n + 1;
 	const triple = (n: number) => n * 3;
 

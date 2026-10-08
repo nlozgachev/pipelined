@@ -8,13 +8,13 @@ const dict = fc.dictionary(fc.string({ minLength: 1 }), fc.integer()).map((o) =>
 // map
 // ---------------------------------------------------------------------------
 
-test("Rec.map — functor identity", () => {
+test("map: satisfies identity functor law", () => {
 	fc.assert(fc.property(dict, (obj) => {
 		expect(Rec.map((x) => x)(obj)).toStrictEqual(obj);
 	}));
 });
 
-test("Rec.map — functor composition", () => {
+test("map: satisfies composition functor law", () => {
 	fc.assert(fc.property(dict, fc.integer(), fc.integer(), (obj, a, b) => {
 		const f = (x: number) => x + a;
 		const g = (x: number) => x * b;
@@ -26,13 +26,13 @@ test("Rec.map — functor composition", () => {
 // filter
 // ---------------------------------------------------------------------------
 
-test("Rec.filter(always true) — identity", () => {
+test("filter: acts as identity when predicate always returns true", () => {
 	fc.assert(fc.property(dict, (obj) => {
 		expect(Rec.filter(() => true)(obj)).toStrictEqual(obj);
 	}));
 });
 
-test("Rec.filter(always false) — empty result", () => {
+test("filter: returns empty object when predicate always returns false", () => {
 	fc.assert(fc.property(dict, (obj) => {
 		expect(Rec.filter(() => false)(obj)).toStrictEqual(Object.create(Object.getPrototypeOf(obj)));
 	}));
@@ -42,7 +42,7 @@ test("Rec.filter(always false) — empty result", () => {
 // entries / fromEntries
 // ---------------------------------------------------------------------------
 
-test("Rec.from.entries(Rec.entries) — round-trip", () => {
+test("from.entries: round-trips with entries", () => {
 	fc.assert(fc.property(dict, (obj) => {
 		expect(Rec.from.entries(Rec.entries(obj) as readonly (readonly [string, number])[])).toStrictEqual(obj);
 	}));
@@ -52,13 +52,13 @@ test("Rec.from.entries(Rec.entries) — round-trip", () => {
 // size / isEmpty
 // ---------------------------------------------------------------------------
 
-test("Rec.size — agrees with native", () => {
+test("size: agrees with native Object.keys length", () => {
 	fc.assert(fc.property(dict, (obj) => {
 		expect(Rec.size(obj)).toBe(Object.keys(obj).length);
 	}));
 });
 
-test("Rec.is.empty — iff size is 0", () => {
+test("is.empty: returns true if and only if size is zero", () => {
 	fc.assert(fc.property(dict, (obj) => {
 		expect(Rec.is.empty(obj)).toBe(Rec.size(obj) === 0);
 	}));
@@ -68,13 +68,13 @@ test("Rec.is.empty — iff size is 0", () => {
 // keys / values
 // ---------------------------------------------------------------------------
 
-test("Rec.keys — agrees with native", () => {
+test("keys: agrees with native Object.keys", () => {
 	fc.assert(fc.property(dict, (obj) => {
 		expect([...Rec.keys(obj)].toSorted()).toStrictEqual(Object.keys(obj).toSorted());
 	}));
 });
 
-test("Rec.values — agrees with native", () => {
+test("values: agrees with native Object.values", () => {
 	fc.assert(fc.property(dict, (obj) => {
 		expect([...Rec.values(obj)].toSorted((a, b) => a - b)).toStrictEqual(Object.values(obj).toSorted((a, b) => a - b));
 	}));
@@ -84,7 +84,7 @@ test("Rec.values — agrees with native", () => {
 // pick / omit
 // ---------------------------------------------------------------------------
 
-test("Rec.pick — result only contains picked keys", () => {
+test("pick: retains only picked keys", () => {
 	fc.assert(fc.property(dict, fc.array(fc.string({ minLength: 1 }), { minLength: 1, maxLength: 3 }), (obj, ks) => {
 		const result = (Rec.pick as (...keys: string[]) => (data: Record<string, number>) => Record<string, number>)(...ks)(
 			obj,
@@ -93,7 +93,7 @@ test("Rec.pick — result only contains picked keys", () => {
 	}));
 });
 
-test("Rec.omit — result does not contain omitted keys", () => {
+test("omit: excludes omitted keys", () => {
 	fc.assert(fc.property(dict, fc.array(fc.string({ minLength: 1 }), { minLength: 1, maxLength: 3 }), (obj, ks) => {
 		const result = (Rec.omit as (...keys: string[]) => (data: Record<string, number>) => Record<string, number>)(...ks)(
 			obj,
@@ -106,7 +106,7 @@ test("Rec.omit — result does not contain omitted keys", () => {
 // merge
 // ---------------------------------------------------------------------------
 
-test("Rec.merge — result contains all keys from both objects", () => {
+test("merge: contains all keys from both records", () => {
 	fc.assert(fc.property(dict, dict, (obj, other) => {
 		const result = Rec.merge(other)(obj);
 		const allKeys = new Set([...Object.keys(obj), ...Object.keys(other)]);

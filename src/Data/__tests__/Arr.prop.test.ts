@@ -7,7 +7,7 @@ import { Arr } from "../Arr.ts";
 // reverse
 // ---------------------------------------------------------------------------
 
-test("Arr.reverse — involution", () => {
+test("reverse: involution", () => {
 	fc.assert(fc.property(fc.array(fc.integer()), (xs) => {
 		expect(Arr.reverse(Arr.reverse(xs))).toStrictEqual(xs);
 	}));
@@ -17,7 +17,7 @@ test("Arr.reverse — involution", () => {
 // take / drop
 // ---------------------------------------------------------------------------
 
-test("arr.take + Arr.drop — partition round-trip", () => {
+test("take: round-trips with drop", () => {
 	fc.assert(fc.property(fc.array(fc.integer()), fc.integer({ min: 0 }), (xs, n) => {
 		expect([...Arr.take(n)(xs), ...Arr.drop(n)(xs)]).toStrictEqual(xs);
 	}));
@@ -27,13 +27,13 @@ test("arr.take + Arr.drop — partition round-trip", () => {
 // uniq
 // ---------------------------------------------------------------------------
 
-test("Arr.uniq — idempotence", () => {
+test("uniq: is idempotent", () => {
 	fc.assert(fc.property(fc.array(fc.integer()), (xs) => {
 		expect(Arr.uniq(Arr.uniq(xs))).toStrictEqual(Arr.uniq(xs));
 	}));
 });
 
-test("Arr.uniq — no duplicates", () => {
+test("uniq: contains no duplicate elements", () => {
 	fc.assert(fc.property(fc.array(fc.integer()), (xs) => {
 		const result = Arr.uniq(xs);
 		expect(result).toHaveLength(new Set(result).size);
@@ -44,7 +44,7 @@ test("Arr.uniq — no duplicates", () => {
 // filter
 // ---------------------------------------------------------------------------
 
-test("Arr.filter — all results satisfy predicate", () => {
+test("filter: all results satisfy predicate", () => {
 	fc.assert(fc.property(fc.array(fc.integer()), fc.integer(), (xs, threshold) => {
 		const p = (x: number) => x > threshold;
 		expect(Arr.filter(p)(xs).every(p)).toBe(true);
@@ -55,13 +55,13 @@ test("Arr.filter — all results satisfy predicate", () => {
 // map
 // ---------------------------------------------------------------------------
 
-test("Arr.map — functor identity", () => {
+test("map: preserves identity", () => {
 	fc.assert(fc.property(fc.array(fc.integer()), (xs) => {
 		expect(Arr.map((x) => x)(xs)).toStrictEqual(xs);
 	}));
 });
 
-test("Arr.map — functor composition", () => {
+test("map: preserves composition", () => {
 	fc.assert(fc.property(fc.array(fc.integer()), fc.integer(), fc.integer(), (xs, a, b) => {
 		const f = (x: number) => x + a;
 		const g = (x: number) => x * b;
@@ -73,7 +73,7 @@ test("Arr.map — functor composition", () => {
 // chunksOf / flatten
 // ---------------------------------------------------------------------------
 
-test("arr.chunksOf + Arr.flatten — round-trip", () => {
+test("chunksOf: round-trips with flatten", () => {
 	fc.assert(fc.property(fc.array(fc.integer()), fc.integer({ min: 1 }), (xs, n) => {
 		expect(Arr.flatten(Arr.chunksOf(n)(xs))).toStrictEqual(xs);
 	}));
@@ -83,7 +83,7 @@ test("arr.chunksOf + Arr.flatten — round-trip", () => {
 // sortBy
 // ---------------------------------------------------------------------------
 
-test("Arr.sortBy — idempotence", () => {
+test("sortBy: is idempotent", () => {
 	fc.assert(fc.property(fc.array(fc.integer()), (xs) => {
 		const cmp = (a: number, b: number) => a - b;
 		expect(Arr.sortBy(cmp)(Arr.sortBy(cmp)(xs))).toStrictEqual(Arr.sortBy(cmp)(xs));
@@ -94,7 +94,7 @@ test("Arr.sortBy — idempotence", () => {
 // splitAt
 // ---------------------------------------------------------------------------
 
-test("Arr.splitAt — round-trip", () => {
+test("splitAt: round-trips to reconstruct array", () => {
 	fc.assert(fc.property(fc.array(fc.integer()), fc.integer(), (xs, n) => {
 		const [before, after] = Arr.splitAt(n)(xs);
 		expect([...before, ...after]).toStrictEqual(xs);
@@ -105,7 +105,7 @@ test("Arr.splitAt — round-trip", () => {
 // zip
 // ---------------------------------------------------------------------------
 
-test("Arr.zip — length is min of both arrays", () => {
+test("zip: length is min of both arrays", () => {
 	fc.assert(fc.property(fc.array(fc.integer()), fc.array(fc.integer()), (xs, ys) => {
 		expect(Arr.zip(ys)(xs)).toHaveLength(Math.min(xs.length, ys.length));
 	}));
@@ -115,7 +115,7 @@ test("Arr.zip — length is min of both arrays", () => {
 // size
 // ---------------------------------------------------------------------------
 
-test("Arr.size — matches native length", () => {
+test("size: matches native length", () => {
 	fc.assert(fc.property(fc.array(fc.integer()), (xs) => {
 		expect(Arr.size(xs)).toBe(xs.length);
 	}));
@@ -125,11 +125,11 @@ test("Arr.size — matches native length", () => {
 // head
 // ---------------------------------------------------------------------------
 
-test("Arr.head — empty array returns None", () => {
+test("head: returns None for empty array", () => {
 	expect(Arr.head([])).toStrictEqual(Maybe.make.none());
 });
 
-test("Arr.head — non-empty array returns Some(first element)", () => {
+test("head: returns Some of first element for non-empty array", () => {
 	fc.assert(fc.property(fc.array(fc.integer(), { minLength: 1 }), (xs) => {
 		expect(Arr.head(xs)).toStrictEqual(Maybe.make.some(xs[0]));
 	}));
@@ -139,7 +139,7 @@ test("Arr.head — non-empty array returns Some(first element)", () => {
 // every / some
 // ---------------------------------------------------------------------------
 
-test("arr.every implies Arr.some", () => {
+test("every: implies some for non-empty array", () => {
 	fc.assert(fc.property(fc.array(fc.integer(), { minLength: 1 }), fc.integer(), (xs, threshold) => {
 		const p = (x: number) => x > threshold;
 		expect(!Arr.every(p)(xs) || Arr.some(p)(xs)).toBe(true);
@@ -150,7 +150,7 @@ test("arr.every implies Arr.some", () => {
 // reduce
 // ---------------------------------------------------------------------------
 
-test("Arr.reduce — matches native reduce", () => {
+test("reduce: matches native reduce", () => {
 	fc.assert(fc.property(fc.array(fc.integer()), fc.integer(), (xs, init) => {
 		const f = (acc: number, a: number) => acc + a;
 		expect(Arr.reduce(init, f)(xs)).toBe(xs.reduce(f, init));
@@ -161,7 +161,7 @@ test("Arr.reduce — matches native reduce", () => {
 // intersperse
 // ---------------------------------------------------------------------------
 
-test("Arr.intersperse — length formula for arrays with 2+ elements", () => {
+test("intersperse: produces expected length for arrays with multiple elements", () => {
 	fc.assert(fc.property(fc.array(fc.integer(), { minLength: 2 }), fc.integer(), (xs, sep) => {
 		expect(Arr.intersperse(sep)(xs)).toHaveLength(xs.length * 2 - 1);
 	}));
@@ -171,7 +171,7 @@ test("Arr.intersperse — length formula for arrays with 2+ elements", () => {
 // partition
 // ---------------------------------------------------------------------------
 
-test("Arr.partition — completeness", () => {
+test("partition: preserves all elements across partitions", () => {
 	fc.assert(fc.property(fc.array(fc.integer()), fc.integer(), (xs, threshold) => {
 		const p = (x: number) => x > threshold;
 		const [pass, fail] = Arr.partition(p)(xs);

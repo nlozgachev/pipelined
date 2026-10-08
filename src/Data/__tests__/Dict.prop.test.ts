@@ -15,7 +15,7 @@ const arbDict = fc.array(fc.tuple(fc.string({ minLength: 1 }), fc.integer()), { 
 // fromEntries / entries — round-trip
 // ---------------------------------------------------------------------------
 
-test("dict.fromEntries → Dict.entries — every entry is found via lookup", () => {
+test("from.entries: ensures every entry is found via lookup", () => {
 	fc.assert(fc.property(fc.array(fc.tuple(fc.string({ minLength: 1 }), fc.integer()), { maxLength: 8 }), (pairs) => {
 		const m = Dict.from.entries(pairs);
 		const entries = Dict.entries(m);
@@ -29,13 +29,13 @@ test("dict.fromEntries → Dict.entries — every entry is found via lookup", ()
 // map — functor laws
 // ---------------------------------------------------------------------------
 
-test("Dict.map — identity law", () => {
+test("map: satisfies identity functor law", () => {
 	fc.assert(fc.property(arbDict, (m) => {
 		expect(Dict.map((x: number) => x)(m)).toStrictEqual(m);
 	}));
 });
 
-test("Dict.map — composition law", () => {
+test("map: satisfies composition functor law", () => {
 	fc.assert(fc.property(arbDict, fc.integer(), fc.integer(), (m, a, b) => {
 		const f = (x: number) => x + a;
 		const g = (x: number) => x * b;
@@ -47,13 +47,13 @@ test("Dict.map — composition law", () => {
 // filter
 // ---------------------------------------------------------------------------
 
-test("Dict.filter(always true) — identity", () => {
+test("filter: acts as identity when predicate always returns true", () => {
 	fc.assert(fc.property(arbDict, (m) => {
 		expect(Dict.filter(() => true)(m)).toStrictEqual(m);
 	}));
 });
 
-test("Dict.filter(always false) — empty result", () => {
+test("filter: returns empty dict when predicate always returns false", () => {
 	fc.assert(fc.property(arbDict, (m) => {
 		expect(Dict.filter(() => false)(m)).toStrictEqual(Dict.empty());
 	}));
@@ -63,13 +63,13 @@ test("Dict.filter(always false) — empty result", () => {
 // size / isEmpty
 // ---------------------------------------------------------------------------
 
-test("Dict.size — agrees with entries count", () => {
+test("size: agrees with entries count", () => {
 	fc.assert(fc.property(arbDict, (m) => {
 		expect(Dict.size(m)).toBe(Dict.entries(m).length);
 	}));
 });
 
-test("Dict.is.empty — iff size is 0", () => {
+test("is.empty: returns true if and only if size is zero", () => {
 	fc.assert(fc.property(arbDict, (m) => {
 		expect(Dict.is.empty(m)).toBe(Dict.size(m) === 0);
 	}));
@@ -79,7 +79,7 @@ test("Dict.is.empty — iff size is 0", () => {
 // insert / lookup
 // ---------------------------------------------------------------------------
 
-test("Dict.insert — inserted key is immediately found via lookup", () => {
+test("insert: ensures inserted key is found via lookup", () => {
 	fc.assert(fc.property(arbDict, fc.string({ minLength: 1 }), fc.integer(), (m, k, v) => {
 		expect(Dict.lookup(k)(Dict.insert(k, v)(m))).toStrictEqual(Maybe.make.some(v));
 	}));
@@ -89,7 +89,7 @@ test("Dict.insert — inserted key is immediately found via lookup", () => {
 // remove / lookup
 // ---------------------------------------------------------------------------
 
-test("Dict.remove — removed key is not found via lookup", () => {
+test("remove: ensures removed key is not found via lookup", () => {
 	fc.assert(fc.property(arbDict, fc.string({ minLength: 1 }), (m, k) => {
 		expect(Dict.lookup(k)(Dict.remove(k)(m))).toStrictEqual(Maybe.make.none());
 	}));
@@ -99,7 +99,7 @@ test("Dict.remove — removed key is not found via lookup", () => {
 // union
 // ---------------------------------------------------------------------------
 
-test("Dict.union — result contains all keys from both maps", () => {
+test("union: contains all keys from both dicts", () => {
 	fc.assert(fc.property(arbDict, arbDict, (m1, m2) => {
 		const result = Dict.union(m2)(m1);
 		Dict.keys(m1).forEach((k) => expect(Dict.has(k)(result)).toBe(true));
@@ -111,13 +111,13 @@ test("Dict.union — result contains all keys from both maps", () => {
 // keys / values
 // ---------------------------------------------------------------------------
 
-test("Dict.keys — length matches size", () => {
+test("keys: produces length matching size", () => {
 	fc.assert(fc.property(arbDict, (m) => {
 		expect(Dict.keys(m)).toHaveLength(Dict.size(m));
 	}));
 });
 
-test("Dict.values — length matches size", () => {
+test("values: produces length matching size", () => {
 	fc.assert(fc.property(arbDict, (m) => {
 		expect(Dict.values(m)).toHaveLength(Dict.size(m));
 	}));

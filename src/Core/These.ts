@@ -31,17 +31,17 @@ export type TheseBoth<First, Second> = WithKind<"Both"> & WithFirst<First> & Wit
 
 const makeFirst = <A>(value: A): TheseFirst<A> => ({ kind: "First", first: value });
 const makeSecond = <B>(value: B): TheseSecond<B> => ({ kind: "Second", second: value });
-const makeBoth = <A, B>(f: A, s: B): TheseBoth<A, B> => ({ kind: "Both", first: f, second: s });
+const makeBoth = <A, B>(first: A, second: B): TheseBoth<A, B> => ({ kind: "Both", first, second });
 
-const isFirst = <A, B>(data: These<A, B>): data is TheseFirst<A> => data.kind === "First";
-const isSecond = <A, B>(data: These<A, B>): data is TheseSecond<B> => data.kind === "Second";
-const isBoth = <A, B>(data: These<A, B>): data is TheseBoth<A, B> => data.kind === "Both";
+const isFirst = <A, B>(these: These<A, B>): these is TheseFirst<A> => these.kind === "First";
+const isSecond = <A, B>(these: These<A, B>): these is TheseSecond<B> => these.kind === "Second";
+const isBoth = <A, B>(these: These<A, B>): these is TheseBoth<A, B> => these.kind === "Both";
 
-const hasFirst = <A, B>(data: These<A, B>): data is TheseFirst<A> | TheseBoth<A, B> =>
-	data.kind === "First" || data.kind === "Both";
+const hasFirst = <A, B>(these: These<A, B>): these is TheseFirst<A> | TheseBoth<A, B> =>
+	these.kind === "First" || these.kind === "Both";
 
-const hasSecond = <A, B>(data: These<A, B>): data is TheseSecond<B> | TheseBoth<A, B> =>
-	data.kind === "Second" || data.kind === "Both";
+const hasSecond = <A, B>(these: These<A, B>): these is TheseSecond<B> | TheseBoth<A, B> =>
+	these.kind === "Second" || these.kind === "Both";
 
 export const These = {
 	make: {
@@ -120,6 +120,8 @@ export const These = {
 	/**
 	 * Returns true if the These contains a first value (First or Both).
 	 *
+	 * @see {@link These.hasSecond} to check if These contains a second value.
+	 *
 	 * @example
 	 * ```ts
 	 * These.hasFirst(These.make.first(42));       // true
@@ -131,6 +133,8 @@ export const These = {
 
 	/**
 	 * Returns true if the These contains a second value (Second or Both).
+	 *
+	 * @see {@link These.hasFirst} to check if These contains a first value.
 	 *
 	 * @example
 	 * ```ts
@@ -144,6 +148,9 @@ export const These = {
 	/**
 	 * Transforms the first value, leaving the second unchanged.
 	 *
+	 * @see {@link These.mapSecond} to transform the second element.
+	 * @see {@link These.mapBoth} to transform both elements.
+	 *
 	 * @example
 	 * ```ts
 	 * pipe(These.make.first(5), These.mapFirst(n => n * 2));           // First(10)
@@ -151,14 +158,17 @@ export const These = {
 	 * pipe(These.make.second("warn"), These.mapFirst(n => n * 2));     // Second("warn")
 	 * ```
 	 */
-	mapFirst: <A, C>(f: (a: A) => C) => <B>(data: These<A, B>): These<C, B> => {
-		if (isSecond(data)) { return data; }
-		if (isFirst(data)) { return makeFirst(f(data.first)); }
-		return makeBoth(f(data.first), data.second);
+	mapFirst: <A, C>(transform: (first: A) => C) => <B>(these: These<A, B>): These<C, B> => {
+		if (isSecond(these)) { return these; }
+		if (isFirst(these)) { return makeFirst(transform(these.first)); }
+		return makeBoth(transform(these.first), these.second);
 	},
 
 	/**
 	 * Transforms the second value, leaving the first unchanged.
+	 *
+	 * @see {@link These.mapFirst} to transform the first element.
+	 * @see {@link These.mapBoth} to transform both elements.
 	 *
 	 * @example
 	 * ```ts
@@ -166,14 +176,17 @@ export const These = {
 	 * pipe(These.make.both(5, "warn"), These.mapSecond(e => e.toUpperCase()));    // Both(5, "WARN")
 	 * ```
 	 */
-	mapSecond: <B, D>(f: (b: B) => D) => <A>(data: These<A, B>): These<A, D> => {
-		if (isFirst(data)) { return data; }
-		if (isSecond(data)) { return makeSecond(f(data.second)); }
-		return makeBoth(data.first, f(data.second));
+	mapSecond: <B, D>(transform: (second: B) => D) => <A>(these: These<A, B>): These<A, D> => {
+		if (isFirst(these)) { return these; }
+		if (isSecond(these)) { return makeSecond(transform(these.second)); }
+		return makeBoth(these.first, transform(these.second));
 	},
 
 	/**
 	 * Transforms both the first and second values independently.
+	 *
+	 * @see {@link These.mapFirst} to transform only the first element.
+	 * @see {@link These.mapSecond} to transform only the second element.
 	 *
 	 * @example
 	 * ```ts
@@ -183,15 +196,17 @@ export const These = {
 	 * ); // Both(10, "WARN")
 	 * ```
 	 */
-	mapBoth: <A, C, B, D>(onFirst: (a: A) => C, onSecond: (b: B) => D) => (data: These<A, B>): These<C, D> => {
-		if (isSecond(data)) { return makeSecond(onSecond(data.second)); }
-		if (isFirst(data)) { return makeFirst(onFirst(data.first)); }
-		return makeBoth(onFirst(data.first), onSecond(data.second));
+	mapBoth: <A, C, B, D>(onFirst: (first: A) => C, onSecond: (second: B) => D) => (these: These<A, B>): These<C, D> => {
+		if (isSecond(these)) { return makeSecond(onSecond(these.second)); }
+		if (isFirst(these)) { return makeFirst(onFirst(these.first)); }
+		return makeBoth(onFirst(these.first), onSecond(these.second));
 	},
 
 	/**
-	 * Chains These computations by passing the first value to f.
-	 * Second propagates unchanged; First and Both apply f to the first value.
+	 * Chains These computations by passing the first value to transform.
+	 * Second propagates unchanged; First and Both apply transform to the first value.
+	 *
+	 * @see {@link These.chainSecond} to chain based on the second value.
 	 *
 	 * @example
 	 * ```ts
@@ -202,14 +217,16 @@ export const These = {
 	 * pipe(These.make.second("warn"), These.chainFirst(double));      // Second("warn")
 	 * ```
 	 */
-	chainFirst: <A, B, C>(f: (a: A) => These<C, B>) => (data: These<A, B>): These<C, B> => {
-		if (isSecond(data)) { return data; }
-		return f(data.first);
+	chainFirst: <A, B, C>(transform: (first: A) => These<C, B>) => (these: These<A, B>): These<C, B> => {
+		if (isSecond(these)) { return these; }
+		return transform(these.first);
 	},
 
 	/**
-	 * Chains These computations by passing the second value to f.
-	 * First propagates unchanged; Second and Both apply f to the second value.
+	 * Chains These computations by passing the second value to transform.
+	 * First propagates unchanged; Second and Both apply transform to the second value.
+	 *
+	 * @see {@link These.chainFirst} to chain based on the first value.
 	 *
 	 * @example
 	 * ```ts
@@ -220,13 +237,15 @@ export const These = {
 	 * pipe(These.make.first(5), These.chainSecond(shout));            // First(5)
 	 * ```
 	 */
-	chainSecond: <A, B, D>(f: (b: B) => These<A, D>) => (data: These<A, B>): These<A, D> => {
-		if (isFirst(data)) { return data; }
-		return f(data.second);
+	chainSecond: <A, B, D>(transform: (second: B) => These<A, D>) => (these: These<A, B>): These<A, D> => {
+		if (isFirst(these)) { return these; }
+		return transform(these.second);
 	},
 
 	/**
 	 * Extracts a value from a These by providing handlers for all three cases.
+	 *
+	 * @see {@link These.match} for named-case pattern matching with an object literal.
 	 *
 	 * @example
 	 * ```ts
@@ -240,14 +259,18 @@ export const These = {
 	 * );
 	 * ```
 	 */
-	fold: <A, B, C>(onFirst: (a: A) => C, onSecond: (b: B) => C, onBoth: (a: A, b: B) => C) => (data: These<A, B>): C => {
-		if (isSecond(data)) { return onSecond(data.second); }
-		if (isFirst(data)) { return onFirst(data.first); }
-		return onBoth(data.first, data.second);
-	},
+	fold:
+		<A, B, C>(onFirst: (first: A) => C, onSecond: (second: B) => C, onBoth: (first: A, second: B) => C) =>
+		(these: These<A, B>): C => {
+			if (isSecond(these)) { return onSecond(these.second); }
+			if (isFirst(these)) { return onFirst(these.first); }
+			return onBoth(these.first, these.second);
+		},
 
 	/**
 	 * Pattern matches on a These, returning the result of the matching case.
+	 *
+	 * @see {@link These.fold} for positional argument pattern matching.
 	 *
 	 * @example
 	 * ```ts
@@ -262,15 +285,18 @@ export const These = {
 	 * ```
 	 */
 	match:
-		<A, B, C>(cases: { first: (a: A) => C; second: (b: B) => C; both: (a: A, b: B) => C; }) => (data: These<A, B>): C => {
-			if (isSecond(data)) { return cases.second(data.second); }
-			if (isFirst(data)) { return cases.first(data.first); }
-			return cases.both(data.first, data.second);
+		<A, B, C>(cases: { first: (first: A) => C; second: (second: B) => C; both: (first: A, second: B) => C; }) =>
+		(these: These<A, B>): C => {
+			if (isSecond(these)) { return cases.second(these.second); }
+			if (isFirst(these)) { return cases.first(these.first); }
+			return cases.both(these.first, these.second);
 		},
 
 	/**
 	 * Returns the first value, or a default if the These has no first value.
 	 * The default can be a different type, widening the result to `A | C`.
+	 *
+	 * @see {@link These.getSecondOrElse} to retrieve the second value with fallback.
 	 *
 	 * @example
 	 * ```ts
@@ -280,12 +306,14 @@ export const These = {
 	 * pipe(These.make.second("warn"), These.getFirstOrElse(() => null));   // null — typed as number | null
 	 * ```
 	 */
-	getFirstOrElse: <A, C>(defaultValue: () => C) => <B>(data: These<A, B>): A | C =>
-		hasFirst(data) ? data.first : defaultValue(),
+	getFirstOrElse: <A, C>(fallback: () => C) => <B>(these: These<A, B>): A | C =>
+		hasFirst(these) ? these.first : fallback(),
 
 	/**
 	 * Returns the second value, or a default if the These has no second value.
 	 * The default can be a different type, widening the result to `B | D`.
+	 *
+	 * @see {@link These.getFirstOrElse} to retrieve the first value with fallback.
 	 *
 	 * @example
 	 * ```ts
@@ -295,8 +323,8 @@ export const These = {
 	 * pipe(These.make.first(5), These.getSecondOrElse(() => null));         // null — typed as string | null
 	 * ```
 	 */
-	getSecondOrElse: <B, D>(defaultValue: () => D) => <A>(data: These<A, B>): B | D =>
-		hasSecond(data) ? data.second : defaultValue(),
+	getSecondOrElse: <B, D>(fallback: () => D) => <A>(these: These<A, B>): B | D =>
+		hasSecond(these) ? these.second : fallback(),
 
 	/**
 	 * Runs a side effect on the first value without changing the These.
@@ -307,9 +335,9 @@ export const These = {
 	 * pipe(These.make.first(5), These.tap(console.log)); // logs 5, returns First(5)
 	 * ```
 	 */
-	tap: <A>(f: (a: A) => void) => <B>(data: These<A, B>): These<A, B> => {
-		if (hasFirst(data)) { f(data.first); }
-		return data;
+	tap: <A>(sideEffect: (first: A) => void) => <B>(these: These<A, B>): These<A, B> => {
+		if (hasFirst(these)) { sideEffect(these.first); }
+		return these;
 	},
 
 	/**
@@ -325,9 +353,9 @@ export const These = {
 	 * These.swap(These.make.both(5, "warn"));     // Both("warn", 5)
 	 * ```
 	 */
-	swap: <A, B>(data: These<A, B>): These<B, A> => {
-		if (isSecond(data)) { return makeFirst(data.second); }
-		if (isFirst(data)) { return makeSecond(data.first); }
-		return makeBoth(data.second, data.first);
+	swap: <A, B>(these: These<A, B>): These<B, A> => {
+		if (isSecond(these)) { return makeFirst(these.second); }
+		if (isFirst(these)) { return makeSecond(these.first); }
+		return makeBoth(these.second, these.first);
 	},
 };

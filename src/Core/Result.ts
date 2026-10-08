@@ -32,10 +32,10 @@ export type Err<E> = WithKind<"Err"> & WithError<E>;
 // Private Helpers & Variant Constructors
 // =============================================================================
 const makeOk = <A>(value: A): Ok<A> => ({ kind: "Ok", value });
-const makeErr = <E>(e: E): Err<E> => ({ kind: "Err", error: e });
+const makeErr = <E>(error: E): Err<E> => ({ kind: "Err", error });
 
-const isOk = <E, A>(data: Result<E, A>): data is Ok<A> => data.kind === "Ok";
-const isErr = <E, A>(data: Result<E, A>): data is Err<E> => data.kind === "Err";
+const isOk = <E, A>(result: Result<E, A>): result is Ok<A> => result.kind === "Ok";
+const isErr = <E, A>(result: Result<E, A>): result is Err<E> => result.kind === "Err";
 
 // =============================================================================
 // Public Export
@@ -67,6 +67,8 @@ export const Result = {
 		/**
 		 * Type guard that checks if a Result is Ok.
 		 *
+		 * @see {@link Result.is.err} to check if a Result is an Err failure.
+		 *
 		 * @example
 		 * ```ts
 		 * const res = Result.make.ok(42);
@@ -79,6 +81,8 @@ export const Result = {
 
 		/**
 		 * Type guard that checks if a Result is Err.
+		 *
+		 * @see {@link Result.is.ok} to check if a Result is an Ok success.
 		 *
 		 * @example
 		 * ```ts
@@ -99,13 +103,13 @@ export const Result = {
 	 * ```ts
 	 * const result = Result.tryCatch(
 	 *   () => JSON.parse(rawString),
-	 *   { onError: (e) => `Parse error: ${e}` }
+	 *   { onError: (error) => `Parse error: ${error}` }
 	 * );
 	 * ```
 	 */
-	tryCatch: <E, A>(f: () => A, options: { onError: (e: unknown) => E; }): Result<E, A> => {
+	tryCatch: <E, A>(fn: () => A, options: { onError: (error: unknown) => E; }): Result<E, A> => {
 		try {
-			return makeOk(f());
+			return makeOk(fn());
 		} catch (error) {
 			return makeErr(options.onError(error));
 		}
@@ -114,28 +118,36 @@ export const Result = {
 	/**
 	 * Transforms the success value inside a Result.
 	 *
+	 * @see {@link Result.chain} to sequence operations that themselves return a Result.
+	 * @see {@link Result.mapError} to transform the error value instead of the success value.
+	 *
 	 * @example
 	 * ```ts
 	 * pipe(Result.make.ok(5), Result.map(n => n * 2)); // Ok(10)
 	 * pipe(Result.make.err("error"), Result.map(n => n * 2)); // Err("error")
 	 * ```
 	 */
-	map: <E, A, B>(f: (a: A) => B) => (data: Result<E, A>): Result<E, B> => isOk(data) ? makeOk(f(data.value)) : data,
+	map: <E, A, B>(transform: (value: A) => B) => (result: Result<E, A>): Result<E, B> =>
+		isOk(result) ? makeOk(transform(result.value)) : result,
 
 	/**
 	 * Transforms the error value inside a Result.
+	 *
+	 * @see {@link Result.map} to transform the success value instead of the error value.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(Result.make.err("oops"), Result.mapError(e => e.toUpperCase())); // Err("OOPS")
 	 * ```
 	 */
-	mapError: <E, F, A>(f: (e: E) => F) => (data: Result<E, A>): Result<F, A> =>
-		isErr(data) ? makeErr(f(data.error)) : data,
+	mapError: <E, F, A>(transform: (error: E) => F) => (result: Result<E, A>): Result<F, A> =>
+		isErr(result) ? makeErr(transform(result.error)) : result,
 
 	/**
-	 * Chains Result computations. If the first is Ok, passes the value to f.
+	 * Chains Result computations. If the first is Ok, passes the value to transform.
 	 * If the first is Err, propagates the error.
+	 *
+	 * @see {@link Result.map} to transform the inner value without returning a new Result.
 	 *
 	 * @example
 	 * ```ts
@@ -146,28 +158,32 @@ export const Result = {
 	 * pipe(Result.make.ok(-1), Result.chain(validatePositive)); // Err("Must be positive")
 	 * ```
 	 */
-	chain: <E2, A, B>(f: (a: A) => Result<E2, B>) => <E1 = never>(data: Result<E1, A>): Result<E1 | E2, B> =>
-		isOk(data) ? f(data.value) : data,
+	chain: <E2, A, B>(transform: (value: A) => Result<E2, B>) => <E1 = never>(result: Result<E1, A>): Result<E1 | E2, B> =>
+		isOk(result) ? transform(result.value) : result,
 
 	/**
 	 * Extracts the value from a Result by providing handlers for both cases.
+	 *
+	 * @see {@link Result.match} for named-case pattern matching with an object literal.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(
 	 *   Result.make.ok(5),
 	 *   Result.fold(
-	 *     e => `Error: ${e}`,
-	 *     n => `Value: ${n}`
+	 *     error => `Error: ${error}`,
+	 *     value => `Value: ${value}`
 	 *   )
 	 * ); // "Value: 5"
 	 * ```
 	 */
-	fold: <E, A, B>(onErr: (e: E) => B, onOk: (a: A) => B) => (data: Result<E, A>): B =>
-		isOk(data) ? onOk(data.value) : onErr((data as Err<E>).error),
+	fold: <E, A, B>(onErr: (error: E) => B, onOk: (value: A) => B) => (result: Result<E, A>): B =>
+		isOk(result) ? onOk(result.value) : onErr((result as Err<E>).error),
 
 	/**
 	 * Pattern matches on a Result, returning the result of the matching case.
+	 *
+	 * @see {@link Result.fold} for positional argument pattern matching.
 	 *
 	 * @example
 	 * ```ts
@@ -180,13 +196,15 @@ export const Result = {
 	 * );
 	 * ```
 	 */
-	match: <E, A, B>(cases: { ok: (a: A) => B; err: (e: E) => B; }) => (data: Result<E, A>): B =>
-		isOk(data) ? cases.ok(data.value) : cases.err((data as Err<E>).error),
+	match: <E, A, B>(cases: { ok: (value: A) => B; err: (error: E) => B; }) => (result: Result<E, A>): B =>
+		isOk(result) ? cases.ok(result.value) : cases.err((result as Err<E>).error),
 
 	/**
 	 * Returns the success value or a default value if the Result is an error.
 	 * The default is a thunk `() => B` — evaluated only when the Result is Err.
 	 * The default can be a different type, widening the result to `A | B`.
+	 *
+	 * @see {@link Result.fold} to handle both the Ok and Err cases.
 	 *
 	 * @example
 	 * ```ts
@@ -195,11 +213,13 @@ export const Result = {
 	 * pipe(Result.make.err("error"), Result.getOrElse(() => null)); // null — typed as number | null
 	 * ```
 	 */
-	getOrElse: <B>(defaultValue: () => B) => <E, A>(data: Result<E, A>): A | B => isOk(data) ? data.value : defaultValue(),
+	getOrElse: <B>(fallback: () => B) => <E, A>(result: Result<E, A>): A | B => isOk(result) ? result.value : fallback(),
 
 	/**
 	 * Executes a side effect on the success value without changing the Result.
 	 * Useful for logging or debugging.
+	 *
+	 * @see {@link Result.tapError} to perform a side effect on the error value.
 	 *
 	 * @example
 	 * ```ts
@@ -210,14 +230,16 @@ export const Result = {
 	 * );
 	 * ```
 	 */
-	tap: <E, A>(f: (a: A) => void) => (data: Result<E, A>): Result<E, A> => {
-		if (isOk(data)) { f(data.value); }
-		return data;
+	tap: <E, A>(sideEffect: (value: A) => void) => (result: Result<E, A>): Result<E, A> => {
+		if (isOk(result)) { sideEffect(result.value); }
+		return result;
 	},
 
 	/**
 	 * Executes a side effect on the error value without changing the Result.
 	 * Useful for logging or reporting errors.
+	 *
+	 * @see {@link Result.tap} to perform a side effect on the success value.
 	 *
 	 * @example
 	 * ```ts
@@ -228,9 +250,9 @@ export const Result = {
 	 * )
 	 * ```
 	 */
-	tapError: <E, A>(f: (e: E) => void) => (data: Result<E, A>): Result<E, A> => {
-		if (isErr(data)) { f(data.error); }
-		return data;
+	tapError: <E, A>(sideEffect: (error: E) => void) => (result: Result<E, A>): Result<E, A> => {
+		if (isErr(result)) { sideEffect(result.error); }
+		return result;
 	},
 
 	// --- from ---
@@ -246,8 +268,8 @@ export const Result = {
 		 * pipe("", Result.from.Predicate(s => s.length > 0, () => "empty string")); // Err("empty string")
 		 * ```
 		 */
-		Predicate: <E, A>(pred: (a: A) => boolean, onFalse: (a: A) => E) => (a: A): Result<E, A> =>
-			pred(a) ? makeOk(a) : makeErr(onFalse(a)),
+		Predicate: <E, A>(predicate: (value: A) => boolean, onFalse: (value: A) => E) => (value: A): Result<E, A> =>
+			predicate(value) ? makeOk(value) : makeErr(onFalse(value)),
 
 		/**
 		 * Creates a Result from a nullable value.
@@ -284,20 +306,25 @@ export const Result = {
 		 * Result.from.Validation((errors) => errors.join(", "))(Validation.make.failed("error1")); // Err("error1")
 		 * ```
 		 */
-		Validation: <E1, E2, A>(combineErrors: (errors: NonEmptyArr<E1>) => E2) => (val: Validation<E1, A>): Result<E2, A> =>
-			CoreValidation.is.passed(val) ? makeOk(val.value) : makeErr(combineErrors(val.errors)),
+		Validation:
+			<E1, E2, A>(combineErrors: (errors: NonEmptyArr<E1>) => E2) => (validation: Validation<E1, A>): Result<E2, A> =>
+				CoreValidation.is.passed(validation) ? makeOk(validation.value) : makeErr(combineErrors(validation.errors)),
 	},
 
 	/**
 	 * Recovers from an error by providing a fallback Result.
 	 * The fallback can produce a different success type or resolve with a different error type.
+	 *
+	 * @see {@link Result.recoverUnless} to conditionally recover based on the error value.
 	 */
-	recover: <E1, E2, B>(fallback: (e: E1) => Result<E2, B>) => <A>(data: Result<E1, A>): Result<E2, A | B> =>
-		isOk(data) ? data : fallback((data as Err<E1>).error),
+	recover: <E1, E2, B>(fallback: (error: E1) => Result<E2, B>) => <A>(result: Result<E1, A>): Result<E2, A | B> =>
+		isOk(result) ? result : fallback((result as Err<E1>).error),
 
 	/**
 	 * Recovers from an error unless the predicate `isBlocked` returns true for that error.
 	 * The fallback can produce a different success type, widening the result to `Result<E1 | E2, A | B>`.
+	 *
+	 * @see {@link Result.recover} for unconditional error recovery.
 	 *
 	 * @example
 	 * ```ts
@@ -308,9 +335,9 @@ export const Result = {
 	 * ```
 	 */
 	recoverUnless:
-		<E1, E2, B>(isBlocked: (e: E1) => boolean, fallback: (e: E1) => Result<E2, B>) =>
-		<A>(data: Result<E1, A>): Result<E1 | E2, A | B> =>
-			isErr(data) && !isBlocked(data.error) ? fallback(data.error) : data,
+		<E1, E2, B>(isBlocked: (error: E1) => boolean, fallback: (error: E1) => Result<E2, B>) =>
+		<A>(result: Result<E1, A>): Result<E1 | E2, A | B> =>
+			isErr(result) && !isBlocked(result.error) ? fallback(result.error) : result,
 
 	// --- to ---
 	to: {
@@ -324,7 +351,8 @@ export const Result = {
 		 * Result.to.Maybe(Result.make.err("oops")); // None
 		 * ```
 		 */
-		Maybe: <E, A>(data: Result<E, A>): Maybe<A> => isOk(data) ? CoreMaybe.make.some(data.value) : CoreMaybe.make.none(),
+		Maybe: <E, A>(result: Result<E, A>): Maybe<A> =>
+			isOk(result) ? CoreMaybe.make.some(result.value) : CoreMaybe.make.none(),
 		/**
 		 * Converts a `Result` to a `Validation`. `Ok(a)` becomes `Passed(a)`; `Err(e)` becomes `Failed([e])`.
 		 *
@@ -334,7 +362,7 @@ export const Result = {
 		 * Result.to.Validation(Result.make.err("bad")); // Failed(["bad"])
 		 * ```
 		 */
-		Validation: <E, A>(data: Result<E, A>): Validation<E, A> => CoreValidation.from.Result(data),
+		Validation: <E, A>(result: Result<E, A>): Validation<E, A> => CoreValidation.from.Result(result),
 	},
 
 	/**
@@ -348,10 +376,10 @@ export const Result = {
 	 * Result.transposeMaybe(Result.make.err("error"));           // Some(Err("error"))
 	 * ```
 	 */
-	transposeMaybe: <E, A>(data: Result<E, Maybe<A>>): Maybe<Result<E, A>> =>
-		isErr(data)
-			? CoreMaybe.make.some(data)
-			: (CoreMaybe.is.some(data.value) ? CoreMaybe.make.some(makeOk(data.value.value)) : CoreMaybe.make.none()),
+	transposeMaybe: <E, A>(result: Result<E, Maybe<A>>): Maybe<Result<E, A>> =>
+		isErr(result)
+			? CoreMaybe.make.some(result)
+			: (CoreMaybe.is.some(result.value) ? CoreMaybe.make.some(makeOk(result.value.value)) : CoreMaybe.make.none()),
 
 	/**
 	 * Applies a function wrapped in a Result to a value wrapped in a Result.
@@ -366,8 +394,8 @@ export const Result = {
 	 * ); // Ok(8)
 	 * ```
 	 */
-	apply: <E2, A>(arg: Result<E2, A>) => <E1, B>(data: Result<E1, (a: A) => B>): Result<E1 | E2, B> =>
-		isOk(data) && isOk(arg) ? makeOk(data.value(arg.value)) : (isErr(data) ? data : (arg as Err<E2>)),
+	apply: <E2, A>(arg: Result<E2, A>) => <E1, B>(result: Result<E1, (value: A) => B>): Result<E1 | E2, B> =>
+		isOk(result) && isOk(arg) ? makeOk(result.value(arg.value)) : (isErr(result) ? result : (arg as Err<E2>)),
 
 	/**
 	 * Converts a Result value into an object containing a single property.
@@ -378,8 +406,8 @@ export const Result = {
 	 * pipe(Result.make.ok(42), Result.bindTo("value")); // Ok({ value: 42 })
 	 * ```
 	 */
-	bindTo: <K extends string>(key: K) => <E, A>(data: Result<E, A>): Result<E, { [P in K]: A; }> =>
-		isOk(data) ? makeOk({ [key]: data.value } as { [P in K]: A; }) : data,
+	bindTo: <K extends string>(key: K) => <E, A>(result: Result<E, A>): Result<E, { [P in K]: A; }> =>
+		isOk(result) ? makeOk({ [key]: result.value } as { [P in K]: A; }) : result,
 
 	/**
 	 * Evaluates a new Result using the current accumulator and attaches the output to a new key.
@@ -393,11 +421,11 @@ export const Result = {
 	 * ```
 	 */
 	bind:
-		<K extends string, E2, A, B>(key: K, f: (a: A) => Result<E2, B>) =>
-		<E1 = never>(data: Result<E1, A>): Result<E1 | E2, A & { [P in K]: B; }> => {
-			if (!isOk(data)) { return data; }
-			const res = f(data.value);
-			return isOk(res) ? makeOk({ ...(data.value as any), [key]: res.value } as A & { [P in K]: B; }) : res;
+		<K extends string, E2, A, B>(key: K, transform: (value: A) => Result<E2, B>) =>
+		<E1 = never>(result: Result<E1, A>): Result<E1 | E2, A & { [P in K]: B; }> => {
+			if (!isOk(result)) { return result; }
+			const res = transform(result.value);
+			return isOk(res) ? makeOk({ ...(result.value as any), [key]: res.value } as A & { [P in K]: B; }) : res;
 		},
 
 	/**
@@ -427,7 +455,7 @@ export const Result = {
 	},
 
 	/**
-	 * Narrows an `Ok` value with a predicate, converting to `Err(onFail(a))` if the predicate returns false.
+	 * Narrows an `Ok` value with a predicate, converting to `Err(onFail(value))` if the predicate returns false.
 	 *
 	 * @example
 	 * ```ts
@@ -438,9 +466,9 @@ export const Result = {
 	 * ```
 	 */
 	ensure:
-		<A, E2>(predicate: (a: A) => boolean, onFail: (a: A) => E2) =>
-		<E1 = never>(data: Result<E1, A>): Result<E1 | E2, A> =>
-			isErr(data) ? data : (predicate(data.value) ? data : makeErr(onFail(data.value))),
+		<A, E2>(predicate: (value: A) => boolean, onFail: (value: A) => E2) =>
+		<E1 = never>(result: Result<E1, A>): Result<E1 | E2, A> =>
+			isErr(result) ? result : (predicate(result.value) ? result : makeErr(onFail(result.value))),
 
 	/**
 	 * Transforms both branches of a Result simultaneously.
@@ -457,6 +485,6 @@ export const Result = {
 	 * ); // Ok(10)
 	 * ```
 	 */
-	bimap: <E1, E2, A, B>(onErr: (e: E1) => E2, onOk: (a: A) => B) => (data: Result<E1, A>): Result<E2, B> =>
-		isOk(data) ? makeOk(onOk(data.value)) : makeErr(onErr(data.error)),
+	bimap: <E1, E2, A, B>(onErr: (error: E1) => E2, onOk: (value: A) => B) => (result: Result<E1, A>): Result<E2, B> =>
+		isOk(result) ? makeOk(onOk(result.value)) : makeErr(onErr(result.error)),
 };

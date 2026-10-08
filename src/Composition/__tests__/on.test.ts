@@ -4,13 +4,13 @@ import { pipe } from "../pipe.ts";
 
 // --- on ---
 
-test("on - projects both arguments before calling the binary function", () => {
+test("on: projects arguments prior to binary function invocation", () => {
 	const compareByLength = on((a: number, b: number) => a - b, (s: string) => s.length);
 
 	expect(compareByLength("hi", "hello")).toBe(-3);
 });
 
-test("on - sorts strings by length", () => {
+test("on: compares items by projected property", () => {
 	const byLength = on((a: number, b: number) => a - b, (s: string) => s.length);
 
 	const result = ["banana", "fig", "apple"].toSorted(byLength);
@@ -18,7 +18,7 @@ test("on - sorts strings by length", () => {
 	expect(result).toStrictEqual(["fig", "apple", "banana"]);
 });
 
-test("on - sorts objects by a numeric field", () => {
+test("on: sorts objects by numeric field projection", () => {
 	type Product = { name: string; price: number; };
 	const byPrice = on((a: number, b: number) => a - b, (p: Product) => p.price);
 
@@ -29,14 +29,14 @@ test("on - sorts objects by a numeric field", () => {
 	expect(result).toStrictEqual(["Lamp", "Chair", "Desk"]);
 });
 
-test("on - checks equality after projection", () => {
+test("on: checks equality after projection", () => {
 	const sameLength = on((a: number, b: number) => a === b, (s: string) => s.length);
 
 	expect(sameLength("cat", "dog")).toBe(true);
 	expect(sameLength("cat", "elephant")).toBe(false);
 });
 
-test("on - projection is applied to both arguments independently", () => {
+test("on: applies projection to arguments independently", () => {
 	const seen: string[] = [];
 	const track = on((a: number, b: number) => a - b, (s: string) => {
 		seen.push(s);
@@ -48,7 +48,7 @@ test("on - projection is applied to both arguments independently", () => {
 	expect(seen).toStrictEqual(["hi", "hello"]);
 });
 
-test("on - works in a pipe chain", () => {
+test("pipe: integrates in pipeline", () => {
 	const byLength = on((a: number, b: number) => a - b, (s: string) => s.length);
 
 	const result = pipe(["banana", "fig", "apple"], (arr) => [...arr].toSorted(byLength));

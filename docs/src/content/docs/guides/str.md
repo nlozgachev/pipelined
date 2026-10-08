@@ -244,7 +244,8 @@ const cleanedTags = pipe(
   replacement point-free.
 - **Named string predicates in array pipelines**: Filtering arrays of strings (such as finding lines
   starting with prefixes, non-empty tags, or matching extensions) with named predicates
-  (`Str.isNonEmpty`, `Str.startsWith`, `Str.contains`) without writing inline lambda wrappers.
+  (`Str.is.nonEmpty`, `Str.is.blank`, `Str.startsWith`, `Str.includes`) without writing inline
+  lambda wrappers.
 - **Cross-platform multi-line and token text parsing**: Splitting text into lines or words often
   breaks on mixed CRLF/LF line endings or multiple consecutive whitespace characters. `Str.lines`
   and `Str.words` handle cross-platform line breaks and variable spacing automatically.

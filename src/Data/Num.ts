@@ -6,10 +6,10 @@ import { Maybe } from "#core";
 // =============================================================================
 // Private Helpers
 // =============================================================================
-const sumFn = (ns: readonly number[]): number => {
+const sumFn = (numbers: readonly number[]): number => {
 	let result = 0;
-	for (let i = 0; i < ns.length; i++) {
-		result += ns[i];
+	for (let i = 0; i < numbers.length; i++) {
+		result += numbers[i];
 	}
 	return result;
 };
@@ -28,10 +28,12 @@ export const Num = {
 		 * Num.is.zero(5); // false
 		 * ```
 		 */
-		zero: (n: number): boolean => n === 0,
+		zero: (value: number): boolean => value === 0,
 
 		/**
 		 * Returns `true` when the number is a whole integer.
+		 *
+		 * @see {@link Num.is.float} to check for fractional numbers.
 		 *
 		 * @example
 		 * ```ts
@@ -39,10 +41,12 @@ export const Num = {
 		 * Num.is.integer(3.14); // false
 		 * ```
 		 */
-		integer: (n: number): boolean => Number.isInteger(n),
+		integer: (value: number): boolean => Number.isInteger(value),
 
 		/**
 		 * Returns `true` when the number is a finite float (fractional number).
+		 *
+		 * @see {@link Num.is.integer} to check for whole numbers.
 		 *
 		 * @example
 		 * ```ts
@@ -50,7 +54,7 @@ export const Num = {
 		 * Num.is.float(5);    // false
 		 * ```
 		 */
-		float: (n: number): boolean => Number.isFinite(n) && !Number.isInteger(n),
+		float: (value: number): boolean => Number.isFinite(value) && !Number.isInteger(value),
 
 		/**
 		 * Returns `true` when the number is finite (not `Infinity`, `-Infinity`, or `NaN`).
@@ -61,7 +65,7 @@ export const Num = {
 		 * Num.is.finite(Infinity); // false
 		 * ```
 		 */
-		finite: (n: number): boolean => Number.isFinite(n),
+		finite: (value: number): boolean => Number.isFinite(value),
 
 		/**
 		 * Returns `true` when the value is `NaN`.
@@ -72,10 +76,12 @@ export const Num = {
 		 * Num.is.nan(42);  // false
 		 * ```
 		 */
-		nan: (n: number): boolean => Number.isNaN(n),
+		nan: (value: number): boolean => Number.isNaN(value),
 
 		/**
 		 * Returns `true` when the number is an even integer.
+		 *
+		 * @see {@link Num.is.odd} to check if a number is odd.
 		 *
 		 * @example
 		 * ```ts
@@ -84,10 +90,12 @@ export const Num = {
 		 * Num.is.even(2.5); // false
 		 * ```
 		 */
-		even: (n: number): boolean => Number.isInteger(n) && n % 2 === 0,
+		even: (value: number): boolean => Number.isInteger(value) && value % 2 === 0,
 
 		/**
 		 * Returns `true` when the number is an odd integer.
+		 *
+		 * @see {@link Num.is.even} to check if a number is even.
 		 *
 		 * @example
 		 * ```ts
@@ -96,10 +104,12 @@ export const Num = {
 		 * Num.is.odd(2.5); // false
 		 * ```
 		 */
-		odd: (n: number): boolean => Number.isInteger(n) && n % 2 !== 0,
+		odd: (value: number): boolean => Number.isInteger(value) && value % 2 !== 0,
 
 		/**
 		 * Returns `true` when the number is strictly greater than zero.
+		 *
+		 * @see {@link Num.is.negative} to check if a number is less than zero.
 		 *
 		 * @example
 		 * ```ts
@@ -108,10 +118,12 @@ export const Num = {
 		 * Num.is.positive(-5); // false
 		 * ```
 		 */
-		positive: (n: number): boolean => n > 0,
+		positive: (value: number): boolean => value > 0,
 
 		/**
 		 * Returns `true` when the number is strictly less than zero.
+		 *
+		 * @see {@link Num.is.positive} to check if a number is greater than zero.
 		 *
 		 * @example
 		 * ```ts
@@ -120,7 +132,7 @@ export const Num = {
 		 * Num.is.negative(5);  // false
 		 * ```
 		 */
-		negative: (n: number): boolean => n < 0,
+		negative: (value: number): boolean => value < 0,
 	},
 
 	/**
@@ -158,10 +170,12 @@ export const Num = {
 	 * pipe(42, Num.clamp(0, 100));  // 42
 	 * ```
 	 */
-	clamp: (min: number, max: number) => (n: number): number => Math.min(Math.max(n, min), max),
+	clamp: (min: number, max: number) => (value: number): number => Math.min(Math.max(value, min), max),
 
 	/**
 	 * Returns `true` when the number is between `min` and `max` (both inclusive).
+	 *
+	 * @see {@link Num.inRange} for half-open range checking [start, end).
 	 *
 	 * @example
 	 * ```ts
@@ -170,10 +184,12 @@ export const Num = {
 	 * pipe(10, Num.between(1, 10)); // true
 	 * ```
 	 */
-	between: (min: number, max: number) => (n: number): boolean => n >= min && n <= max,
+	between: (min: number, max: number) => (value: number): boolean => value >= min && value <= max,
 
 	/**
 	 * Returns `true` when the number is in the range `[start, end)` (inclusive of `start`, exclusive of `end`).
+	 *
+	 * @see {@link Num.between} for fully closed range checking [min, max].
 	 *
 	 * @example
 	 * ```ts
@@ -182,7 +198,7 @@ export const Num = {
 	 * pipe(10, Num.inRange(1, 10)); // false
 	 * ```
 	 */
-	inRange: (start: number, end: number) => (n: number): boolean => n >= start && n < end,
+	inRange: (start: number, end: number) => (value: number): boolean => value >= start && value < end,
 
 	/**
 	 * Parses a string as a number. Returns `None` when the result is `NaN`.
@@ -195,14 +211,16 @@ export const Num = {
 	 * Num.parse("");     // None
 	 * ```
 	 */
-	parse: (s: string): Maybe<number> => {
-		if (s.trim() === "") { return Maybe.make.none(); }
-		const n = Number(s);
+	parse: (text: string): Maybe<number> => {
+		if (text.trim() === "") { return Maybe.make.none(); }
+		const n = Number(text);
 		return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 	},
 
 	/**
-	 * Adds `b` to a number. Data-last: use in `pipe` or `Arr.map`.
+	 * Adds `amount` to a number. Data-last: use in `pipe` or `Arr.map`.
+	 *
+	 * @see {@link Num.subtract} to subtract an amount from a number.
 	 *
 	 * @example
 	 * ```ts
@@ -210,10 +228,12 @@ export const Num = {
 	 * pipe([1, 2, 3], Arr.map(Num.add(10))); // [11, 12, 13]
 	 * ```
 	 */
-	add: (b: number) => (a: number): number => a + b,
+	add: (amount: number) => (value: number): number => value + amount,
 
 	/**
-	 * Subtracts `b` from a number. Data-last: `subtract(b)(a)` = `a - b`.
+	 * Subtracts `amount` from a number. Data-last: `subtract(amount)(from)` = `from - amount`.
+	 *
+	 * @see {@link Num.add} to add an amount to a number.
 	 *
 	 * @example
 	 * ```ts
@@ -221,10 +241,12 @@ export const Num = {
 	 * pipe([5, 10, 15], Arr.map(Num.subtract(2))); // [3, 8, 13]
 	 * ```
 	 */
-	subtract: (b: number) => (a: number): number => a - b,
+	subtract: (amount: number) => (from: number): number => from - amount,
 
 	/**
-	 * Multiplies a number by `b`. Data-last: use in `pipe` or `Arr.map`.
+	 * Multiplies a number by `factor`. Data-last: use in `pipe` or `Arr.map`.
+	 *
+	 * @see {@link Num.divide} to divide a number by a divisor.
 	 *
 	 * @example
 	 * ```ts
@@ -232,10 +254,13 @@ export const Num = {
 	 * pipe([1, 2, 3], Arr.map(Num.multiply(100))); // [100, 200, 300]
 	 * ```
 	 */
-	multiply: (b: number) => (a: number): number => a * b,
+	multiply: (factor: number) => (value: number): number => value * factor,
 
 	/**
-	 * Divides a number by `b`. Returns `None` when `b` is zero. Data-last: `divide(b)(a)` = `a / b`.
+	 * Divides a number by `divisor`. Returns `None` when `divisor` is zero. Data-last: `divide(divisor)(dividend)` = `dividend / divisor`.
+	 *
+	 * @see {@link Num.multiply} to multiply a number by a factor.
+	 * @see {@link Num.remainder} to compute the division remainder.
 	 *
 	 * @example
 	 * ```ts
@@ -244,7 +269,8 @@ export const Num = {
 	 * pipe([10, 20, 30], Arr.filterMap(Num.divide(10))); // [1, 2, 3]
 	 * ```
 	 */
-	divide: (b: number) => (a: number): Maybe<number> => b === 0 ? Maybe.make.none() : Maybe.make.some(a / b),
+	divide: (divisor: number) => (dividend: number): Maybe<number> =>
+		divisor === 0 ? Maybe.make.none() : Maybe.make.some(dividend / divisor),
 
 	/**
 	 * Returns the absolute value of a number.
@@ -255,7 +281,7 @@ export const Num = {
 	 * pipe(5, Num.abs);  // 5
 	 * ```
 	 */
-	abs: (n: number): number => Math.abs(n),
+	abs: (value: number): number => Math.abs(value),
 
 	/**
 	 * Negates a number (arithmetic negation).
@@ -266,10 +292,13 @@ export const Num = {
 	 * pipe(-5, Num.negate); // 5
 	 * ```
 	 */
-	negate: (n: number): number => -n,
+	negate: (value: number): number => -value,
 
 	/**
 	 * Rounds a number to the nearest integer.
+	 *
+	 * @see {@link Num.floor} to round down.
+	 * @see {@link Num.ceil} to round up.
 	 *
 	 * @example
 	 * ```ts
@@ -277,10 +306,13 @@ export const Num = {
 	 * pipe(3.4, Num.round); // 3
 	 * ```
 	 */
-	round: (n: number): number => Math.round(n),
+	round: (value: number): number => Math.round(value),
 
 	/**
 	 * Rounds a number down to the nearest integer.
+	 *
+	 * @see {@link Num.round} to round to nearest integer.
+	 * @see {@link Num.ceil} to round up.
 	 *
 	 * @example
 	 * ```ts
@@ -288,10 +320,13 @@ export const Num = {
 	 * pipe(-3.2, Num.floor); // -4
 	 * ```
 	 */
-	floor: (n: number): number => Math.floor(n),
+	floor: (value: number): number => Math.floor(value),
 
 	/**
 	 * Rounds a number up to the nearest integer.
+	 *
+	 * @see {@link Num.round} to round to nearest integer.
+	 * @see {@link Num.floor} to round down.
 	 *
 	 * @example
 	 * ```ts
@@ -299,11 +334,13 @@ export const Num = {
 	 * pipe(-3.9, Num.ceil); // -3
 	 * ```
 	 */
-	ceil: (n: number): number => Math.ceil(n),
+	ceil: (value: number): number => Math.ceil(value),
 
 	/**
 	 * Returns the remainder of dividing a number by `divisor`. Returns `None` when `divisor` is zero.
-	 * Data-last: `remainder(divisor)(a)` = `a % divisor`.
+	 * Data-last: `remainder(divisor)(dividend)` = `dividend % divisor`.
+	 *
+	 * @see {@link Num.divide} for full division.
 	 *
 	 * @example
 	 * ```ts
@@ -312,8 +349,8 @@ export const Num = {
 	 * pipe([10, 11, 12], Arr.filterMap(Num.remainder(3))); // [1, 2, 0]
 	 * ```
 	 */
-	remainder: (divisor: number) => (n: number): Maybe<number> =>
-		divisor === 0 ? Maybe.make.none() : Maybe.make.some(n % divisor),
+	remainder: (divisor: number) => (dividend: number): Maybe<number> =>
+		divisor === 0 ? Maybe.make.none() : Maybe.make.some(dividend % divisor),
 
 	/**
 	 * Computes the sum of a list of numbers. Returns `0` if the list is empty.
@@ -335,11 +372,13 @@ export const Num = {
 	 * Num.mean([]);        // None
 	 * ```
 	 */
-	mean: (ns: readonly number[]): Maybe<number> =>
-		ns.length === 0 ? Maybe.make.none() : Maybe.make.some(sumFn(ns) / ns.length),
+	mean: (numbers: readonly number[]): Maybe<number> =>
+		numbers.length === 0 ? Maybe.make.none() : Maybe.make.some(sumFn(numbers) / numbers.length),
 
 	/**
 	 * Computes the minimum of a list of numbers. Returns `None` if the list is empty.
+	 *
+	 * @see {@link Num.max} to compute the maximum value.
 	 *
 	 * @example
 	 * ```ts
@@ -347,11 +386,11 @@ export const Num = {
 	 * Num.min([]);        // None
 	 * ```
 	 */
-	min: (ns: readonly number[]): Maybe<number> => {
-		if (ns.length === 0) { return Maybe.make.none(); }
-		let [result] = ns;
-		for (let i = 1; i < ns.length; i++) {
-			if (ns[i] < result) { result = ns[i]; }
+	min: (numbers: readonly number[]): Maybe<number> => {
+		if (numbers.length === 0) { return Maybe.make.none(); }
+		let [result] = numbers;
+		for (let i = 1; i < numbers.length; i++) {
+			if (numbers[i] < result) { result = numbers[i]; }
 		}
 		return Maybe.make.some(result);
 	},
@@ -359,23 +398,25 @@ export const Num = {
 	/**
 	 * Computes the maximum of a list of numbers. Returns `None` if the list is empty.
 	 *
+	 * @see {@link Num.min} to compute the minimum value.
+	 *
 	 * @example
 	 * ```ts
 	 * Num.max([1, 5, 3]); // Some(5)
 	 * Num.max([]);        // None
 	 * ```
 	 */
-	max: (ns: readonly number[]): Maybe<number> => {
-		if (ns.length === 0) { return Maybe.make.none(); }
-		let [result] = ns;
-		for (let i = 1; i < ns.length; i++) {
-			if (ns[i] > result) { result = ns[i]; }
+	max: (numbers: readonly number[]): Maybe<number> => {
+		if (numbers.length === 0) { return Maybe.make.none(); }
+		let [result] = numbers;
+		for (let i = 1; i < numbers.length; i++) {
+			if (numbers[i] > result) { result = numbers[i]; }
 		}
 		return Maybe.make.some(result);
 	},
 
 	/**
-	 * Formats a number using `Intl.NumberFormat`. Returns `None` when `n` is `NaN` or non-finite.
+	 * Formats a number using `Intl.NumberFormat`. Returns `None` when `value` is `NaN` or non-finite.
 	 * Data-last curried signature.
 	 *
 	 * @example
@@ -385,6 +426,6 @@ export const Num = {
 	 * pipe(NaN, formatCurrency);    // None
 	 * ```
 	 */
-	format: (options?: Intl.NumberFormatOptions, locales?: string | string[]) => (n: number): Maybe<string> =>
-		!Number.isFinite(n) ? Maybe.make.none() : Maybe.make.some(new Intl.NumberFormat(locales, options).format(n)),
+	format: (options?: Intl.NumberFormatOptions, locales?: string | string[]) => (value: number): Maybe<string> =>
+		!Number.isFinite(value) ? Maybe.make.none() : Maybe.make.some(new Intl.NumberFormat(locales, options).format(value)),
 };

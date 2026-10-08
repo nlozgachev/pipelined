@@ -14,7 +14,7 @@ const fromPromise = <A>(f: (signal?: AbortSignal) => Promise<A>): Task<A> => (si
 // make
 // ---------------------------------------------------------------------------
 
-test("Task.make creates a Task that resolves to the given value", async () => {
+test("make: resolves to given value", async () => {
 	const result = await Task.make(42)();
 	expect(result).toBe(42);
 });
@@ -23,7 +23,7 @@ test("Task.make creates a Task that resolves to the given value", async () => {
 // from / tryCatch
 // ---------------------------------------------------------------------------
 
-test("Task.tryCatch is lazy - does not execute until called", async () => {
+test("tryCatch: does not execute until called", async () => {
 	let executed = false;
 	const task = Task.tryCatch(() => {
 		executed = true;
@@ -34,7 +34,7 @@ test("Task.tryCatch is lazy - does not execute until called", async () => {
 	expect(executed).toBe(true);
 });
 
-test("Task.tryCatch traps async throws/rejections and resolves to fallback value", async () => {
+test("tryCatch: traps rejections and resolves to fallback value", async () => {
 	const taskSuccess = Task.tryCatch(() => Promise.resolve(42), { onError: () => 0 });
 	const okVal = await taskSuccess();
 	expectTypeOf(okVal).toEqualTypeOf<number>();
@@ -49,17 +49,17 @@ test("Task.tryCatch traps async throws/rejections and resolves to fallback value
 // map
 // ---------------------------------------------------------------------------
 
-test("Task.map transforms the resolved value", async () => {
+test("map: transforms resolved value", async () => {
 	const result = await pipe(Task.make(5), Task.map((n: number) => n * 2))();
 	expect(result).toBe(10);
 });
 
-test("Task.map can change the type", async () => {
+test("map: can change type", async () => {
 	const result = await pipe(Task.make(42), Task.map((n: number) => `num: ${n}`))();
 	expect(result).toBe("num: 42");
 });
 
-test("Task.map chains multiple transformations", async () => {
+test("map: chains multiple transformations", async () => {
 	const result = await pipe(Task.make(2), Task.map((n: number) => n + 3), Task.map((n: number) => n * 10))();
 	expect(result).toBe(50);
 });
@@ -68,20 +68,20 @@ test("Task.map chains multiple transformations", async () => {
 // chain
 // ---------------------------------------------------------------------------
 
-test("Task.chain sequences async computations", async () => {
+test("chain: sequences async computations", async () => {
 	const double = (n: number): Task<number> => Task.make(n * 2);
 	const result = await pipe(Task.make(5), Task.chain(double))();
 	expect(result).toBe(10);
 });
 
-test("task.chain can create new Tasks based on previous result", async () => {
+test("chain: creates new Tasks based on previous result", async () => {
 	const fetchById = (id: number): Task<string> => Task.make(`item-${id}`);
 
 	const result = await pipe(Task.make(42), Task.chain(fetchById))();
 	expect(result).toBe("item-42");
 });
 
-test("Task.chain composes multiple async steps", async () => {
+test("chain: composes multiple async steps", async () => {
 	const result = await pipe(
 		Task.make(1),
 		Task.chain((n: number) => Task.make(n + 1)),
@@ -94,13 +94,13 @@ test("Task.chain composes multiple async steps", async () => {
 // apply (value first, function second)
 // ---------------------------------------------------------------------------
 
-test("Task.apply applies a Task function to a Task value", async () => {
+test("apply: applies function to value", async () => {
 	const add = (a: number) => (b: number) => a + b;
 	const result = await pipe(Task.make(add), Task.apply(Task.make(5)), Task.apply(Task.make(3)))();
 	expect(result).toBe(8);
 });
 
-test("Task.apply runs Tasks in parallel", async () => {
+test("apply: runs Tasks in parallel", async () => {
 	const start = Date.now();
 	const slowValue = fromPromise(() => new Promise<number>((resolve) => setTimeout(() => resolve(10), 50)));
 	const slowFn = fromPromise(() =>
@@ -116,7 +116,7 @@ test("Task.apply runs Tasks in parallel", async () => {
 	expect(elapsed).toBeLessThan(90);
 });
 
-test("Task.apply with single argument function", async () => {
+test("apply: works with single-argument function", async () => {
 	const double = (n: number) => n * 2;
 	const result = await pipe(Task.make(double), Task.apply(Task.make(7)))();
 	expect(result).toBe(14);
@@ -126,7 +126,7 @@ test("Task.apply with single argument function", async () => {
 // tap
 // ---------------------------------------------------------------------------
 
-test("task.tap executes side effect and returns original value", async () => {
+test("tap: executes side effect and returns original value", async () => {
 	let sideEffect = 0;
 	const result = await pipe(
 		Task.make(5),
@@ -138,7 +138,7 @@ test("task.tap executes side effect and returns original value", async () => {
 	expect(result).toBe(5);
 });
 
-test("Task.tap does not alter the resolved value", async () => {
+test("tap: does not alter resolved value", async () => {
 	const result = await pipe(
 		Task.make("hello"),
 		Task.tap(() => {
@@ -153,17 +153,17 @@ test("Task.tap does not alter the resolved value", async () => {
 // all
 // ---------------------------------------------------------------------------
 
-test("task.all runs multiple Tasks in parallel and collects results", async () => {
+test("all: runs multiple Tasks in parallel and collects results", async () => {
 	const result = await Task.all([Task.make(1), Task.make("two"), Task.make(true)] as const)();
 	expect(result).toStrictEqual([1, "two", true]);
 });
 
-test("Task.all with empty array returns empty array", async () => {
+test("all: returns empty array for empty input", async () => {
 	const result = await Task.all([] as const)();
 	expect(result).toStrictEqual([]);
 });
 
-test("task.all preserves order regardless of completion time", async () => {
+test("all: preserves order regardless of completion time", async () => {
 	const slow = fromPromise(() => new Promise<string>((resolve) => setTimeout(() => resolve("slow"), 50)));
 	const fast = fromPromise(() => new Promise<string>((resolve) => setTimeout(() => resolve("fast"), 10)));
 
@@ -171,7 +171,7 @@ test("task.all preserves order regardless of completion time", async () => {
 	expect(result).toStrictEqual(["slow", "fast"]);
 });
 
-test("Task.all runs Tasks in parallel (not sequentially)", async () => {
+test("all: runs Tasks in parallel not sequentially", async () => {
 	const start = Date.now();
 	const t1 = fromPromise(() => new Promise<number>((resolve) => setTimeout(() => resolve(1), 50)));
 	const t2 = fromPromise(() => new Promise<number>((resolve) => setTimeout(() => resolve(2), 50)));
@@ -185,7 +185,7 @@ test("Task.all runs Tasks in parallel (not sequentially)", async () => {
 	expect(elapsed).toBeLessThan(100);
 });
 
-test("Task.all limits concurrent executions when concurrency option is provided", async () => {
+test("all: limits concurrent executions when concurrency option is provided", async () => {
 	let active = 0;
 	let maxActive = 0;
 
@@ -210,7 +210,7 @@ test("Task.all limits concurrent executions when concurrency option is provided"
 	expect(maxActive).toBe(2);
 });
 
-test("Task.all with concurrency preserves order even when later tasks resolve earlier", async () => {
+test("all: preserves order when concurrency option is provided", async () => {
 	const t1 = fromPromise(() => new Promise<string>((resolve) => setTimeout(() => resolve("slow"), 40)));
 	const t2 = fromPromise(() => new Promise<string>((resolve) => setTimeout(() => resolve("fast"), 10)));
 	const t3 = fromPromise(() => new Promise<string>((resolve) => setTimeout(() => resolve("medium"), 20)));
@@ -223,7 +223,7 @@ test("Task.all with concurrency preserves order even when later tasks resolve ea
 // delay
 // ---------------------------------------------------------------------------
 
-test("Task.delay delays the execution of a Task", async () => {
+test("delay: delays execution of Task", async () => {
 	const start = Date.now();
 	const result = await pipe(Task.make(42), Task.delay(Duration.milliseconds(50)))();
 	const elapsed = Date.now() - start;
@@ -232,12 +232,12 @@ test("Task.delay delays the execution of a Task", async () => {
 	expect(elapsed).toBeGreaterThanOrEqual(40); // allow small timing variance
 });
 
-test("Task.delay with 0ms behaves like setTimeout(fn, 0)", async () => {
+test("delay: handles 0ms delay", async () => {
 	const result = await pipe(Task.make("instant"), Task.delay(Duration.milliseconds(0)))();
 	expect(result).toBe("instant");
 });
 
-test("Task.delay preserves the Task value after delay", async () => {
+test("delay: preserves value after delay", async () => {
 	const result = await pipe(Task.make(5), Task.delay(Duration.milliseconds(30)), Task.map((n: number) => n * 2))();
 	expect(result).toBe(10);
 });
@@ -246,7 +246,7 @@ test("Task.delay preserves the Task value after delay", async () => {
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("task composes well in a pipe chain", async () => {
+test("pipe: composes well in a pipeline", async () => {
 	const result = await pipe(
 		Task.make(5),
 		Task.map((n: number) => n * 2),
@@ -256,7 +256,7 @@ test("task composes well in a pipe chain", async () => {
 	expect(result).toBe("result: 11");
 });
 
-test("task is lazy and only executes when invoked", () => {
+test("lazy: only executes when invoked", () => {
 	let executed = false;
 	const _task = pipe(
 		Task.make(1),
@@ -274,26 +274,26 @@ test("task is lazy and only executes when invoked", () => {
 // race
 // ---------------------------------------------------------------------------
 
-test("Task.race resolves with the fastest Task", async () => {
+test("race: resolves with fastest Task", async () => {
 	const fast = fromPromise<string>(() => new Promise((r) => setTimeout(() => r("fast"), 10)));
 	const slow = fromPromise<string>(() => new Promise((r) => setTimeout(() => r("slow"), 100)));
 	const result = await Task.race([fast, slow])();
 	expect(result).toBe("fast");
 });
 
-test("Task.race resolves immediately when a resolved Task is included", async () => {
+test("race: resolves immediately when resolved Task is included", async () => {
 	const immediate = Task.make("immediate");
 	const slow = fromPromise<string>(() => new Promise((r) => setTimeout(() => r("slow"), 100)));
 	const result = await Task.race([slow, immediate])();
 	expect(result).toBe("immediate");
 });
 
-test("Task.race with a single Task resolves to its value", async () => {
+test("race: resolves to value with single Task", async () => {
 	const result = await Task.race([Task.make(42)])();
 	expect(result).toBe(42);
 });
 
-test("Task.race starts all Tasks immediately (parallel, not sequential)", async () => {
+test("race: starts all Tasks immediately in parallel", async () => {
 	const start = Date.now();
 	const t1 = fromPromise<number>(() => new Promise((r) => setTimeout(() => r(1), 50)));
 	const t2 = fromPromise<number>(() => new Promise((r) => setTimeout(() => r(2), 10)));
@@ -303,7 +303,7 @@ test("Task.race starts all Tasks immediately (parallel, not sequential)", async 
 	expect(elapsed).toBeLessThan(45); // would be ~50ms if sequential
 });
 
-test("Task.race with empty array returns a Task that never resolves", () => {
+test("race: returns Task that never resolves for empty array", () => {
 	const task = Task.race<number>([]);
 	expectTypeOf(task).toBeFunction();
 	// Invoke to cover the never-resolving branch; it is intentionally not awaited.
@@ -311,7 +311,7 @@ test("Task.race with empty array returns a Task that never resolves", () => {
 	expect(deferred).toBeDefined();
 });
 
-test("Task.race aborts all subtasks when an already-aborted outer signal is passed", async () => {
+test("race: aborts all subtasks when already-aborted outer signal is passed", async () => {
 	const controller = new AbortController();
 	controller.abort();
 	const seen: AbortSignal[] = [];
@@ -332,7 +332,7 @@ test("Task.race aborts all subtasks when an already-aborted outer signal is pass
 	expect(seen.every((s) => s.aborted)).toBe(true);
 });
 
-test("Task.race aborts remaining subtasks when the outer signal aborts mid-flight", async () => {
+test("race: aborts remaining subtasks when outer signal aborts mid-flight", async () => {
 	const controller = new AbortController();
 	const seen: AbortSignal[] = [];
 	const makeTask = (n: number) =>
@@ -357,17 +357,17 @@ test("Task.race aborts remaining subtasks when the outer signal aborts mid-fligh
 // sequential
 // ---------------------------------------------------------------------------
 
-test("Task.sequential runs Tasks in order and collects results", async () => {
+test("sequential: runs Tasks in order and collects results", async () => {
 	const result = await Task.sequential([Task.make(1), Task.make(2), Task.make(3)])();
 	expect(result).toStrictEqual([1, 2, 3]);
 });
 
-test("Task.sequential with empty array returns empty array", async () => {
+test("sequential: returns empty array for empty array", async () => {
 	const result = await Task.sequential([])();
 	expect(result).toStrictEqual([]);
 });
 
-test("Task.sequential executes each Task only after the previous resolves", async () => {
+test("sequential: executes each Task only after previous resolves", async () => {
 	const order: number[] = [];
 	const makeTask = (n: number, ms: number) =>
 		fromPromise<number>(() =>
@@ -383,12 +383,12 @@ test("Task.sequential executes each Task only after the previous resolves", asyn
 	expect(order).toStrictEqual([1, 2, 3]);
 });
 
-test("Task.sequential with a single Task returns single-element array", async () => {
+test("sequential: returns single-element array for single Task", async () => {
 	const result = await Task.sequential([Task.make(99)])();
 	expect(result).toStrictEqual([99]);
 });
 
-test("Task.sequential short-circuits early when the signal is aborted", async () => {
+test("sequential: short-circuits early when signal is aborted", async () => {
 	const order: number[] = [];
 	const controller = new AbortController();
 
@@ -411,7 +411,7 @@ test("Task.sequential short-circuits early when the signal is aborted", async ()
 // timeout
 // ---------------------------------------------------------------------------
 
-test("task.timeout returns Ok when task resolves before timeout", async () => {
+test("timeout: returns Ok when task resolves before timeout", async () => {
 	const result = await pipe(
 		Task.make(42),
 		Task.timeout({ duration: Duration.milliseconds(100), onTimeout: () => "timed out" }),
@@ -419,13 +419,13 @@ test("task.timeout returns Ok when task resolves before timeout", async () => {
 	expect(result).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
-test("Task.timeout returns Err when task exceeds timeout", async () => {
+test("timeout: returns Err when task exceeds timeout", async () => {
 	const slow = fromPromise<number>(() => new Promise((r) => setTimeout(() => r(42), 200)));
 	const result = await pipe(slow, Task.timeout({ duration: Duration.milliseconds(10), onTimeout: () => "timed out" }))();
 	expect(result).toStrictEqual({ kind: "Err", error: "timed out" });
 });
 
-test("Task.timeout uses the onTimeout return value as the error", async () => {
+test("timeout: uses onTimeout return value as error", async () => {
 	const slow = fromPromise<number>(() => new Promise((r) => setTimeout(() => r(42), 200)));
 	const error = new Error("request timed out");
 	const result = await pipe(slow, Task.timeout({ duration: Duration.milliseconds(10), onTimeout: () => error }))();
@@ -436,7 +436,7 @@ test("Task.timeout uses the onTimeout return value as the error", async () => {
 // repeat
 // ---------------------------------------------------------------------------
 
-test("Task.repeat runs the task the given number of times", async () => {
+test("repeat: runs task the given number of times", async () => {
 	let calls = 0;
 	const task = fromPromise(() => {
 		calls++;
@@ -447,12 +447,12 @@ test("Task.repeat runs the task the given number of times", async () => {
 	expect(calls).toBe(3);
 });
 
-test("task.repeat with times: 1 runs once and returns single-element array", async () => {
+test("repeat: runs once and returns single-element array when times is 1", async () => {
 	const result = await pipe(Task.make(42), Task.repeat({ times: 1 }))();
 	expect(result).toStrictEqual([42]);
 });
 
-test("task.repeat with times: 0 returns empty array without running", async () => {
+test("repeat: returns empty array without running when times is 0", async () => {
 	let calls = 0;
 	const task = fromPromise(() => {
 		calls++;
@@ -463,14 +463,14 @@ test("task.repeat with times: 0 returns empty array without running", async () =
 	expect(calls).toBe(0);
 });
 
-test("Task.repeat collects results in order", async () => {
+test("repeat: collects results in order", async () => {
 	let n = 0;
 	const task = fromPromise(() => Promise.resolve(n++));
 	const result = await pipe(task, Task.repeat({ times: 4 }))();
 	expect(result).toStrictEqual([0, 1, 2, 3]);
 });
 
-test("task.repeat inserts delay between runs but not after the last", async () => {
+test("repeat: inserts delay between runs but not after last", async () => {
 	const start = Date.now();
 	await pipe(Task.make(1), Task.repeat({ times: 3, delay: Duration.milliseconds(30) }))();
 	const elapsed = Date.now() - start;
@@ -483,7 +483,7 @@ test("task.repeat inserts delay between runs but not after the last", async () =
 // poll
 // ---------------------------------------------------------------------------
 
-test("Task.poll returns immediately when predicate holds on first run", async () => {
+test("poll: returns immediately when predicate holds on first run", async () => {
 	let calls = 0;
 	const task = fromPromise(() => {
 		calls++;
@@ -494,7 +494,7 @@ test("Task.poll returns immediately when predicate holds on first run", async ()
 	expect(calls).toBe(1);
 });
 
-test("Task.poll keeps running until predicate holds", async () => {
+test("poll: keeps running until predicate holds", async () => {
 	let calls = 0;
 	const task = fromPromise(() => {
 		calls++;
@@ -505,7 +505,7 @@ test("Task.poll keeps running until predicate holds", async () => {
 	expect(calls).toBe(3);
 });
 
-test("Task.poll returns the value that satisfied the predicate", async () => {
+test("poll: returns value that satisfied predicate", async () => {
 	const values = ["a", "b", "stop", "c"];
 	let i = 0;
 	const task = fromPromise(() => Promise.resolve(values[i++]));
@@ -513,7 +513,7 @@ test("Task.poll returns the value that satisfied the predicate", async () => {
 	expect(result).toBe("stop");
 });
 
-test("Task.poll inserts delay between runs", async () => {
+test("poll: inserts delay between runs", async () => {
 	let calls = 0;
 	const task = fromPromise(() => {
 		calls++;
@@ -527,7 +527,7 @@ test("Task.poll inserts delay between runs", async () => {
 	expect(elapsed).toBeLessThan(120);
 });
 
-test("Task.poll stops after attempts even if predicate never holds", async () => {
+test("poll: stops after attempts even if predicate never holds", async () => {
 	let count = 0;
 	const task = Task.from.sync(() => ++count);
 	const result = await pipe(task, Task.poll({ until: (n) => n > 100, attempts: 3 }))();
@@ -535,7 +535,7 @@ test("Task.poll stops after attempts even if predicate never holds", async () =>
 	expect(count).toBe(3);
 });
 
-test("Task.poll stops when the signal aborts during a run", async () => {
+test("poll: stops when signal aborts during a run", async () => {
 	const controller = new AbortController();
 	let count = 0;
 	const task = fromPromise(() => {
@@ -552,7 +552,7 @@ test("Task.poll stops when the signal aborts during a run", async () => {
 // AbortSignal threading
 // ---------------------------------------------------------------------------
 
-test("Task.from receives the AbortSignal from the call site", async () => {
+test("from: receives AbortSignal from call site", async () => {
 	const controller = new AbortController();
 	let receivedSignal: AbortSignal | undefined;
 	const task = fromPromise((signal) => {
@@ -563,7 +563,7 @@ test("Task.from receives the AbortSignal from the call site", async () => {
 	expect(receivedSignal).toBe(controller.signal);
 });
 
-test("Task.from called without signal receives undefined", async () => {
+test("from: receives undefined when called without signal", async () => {
 	let receivedSignal: AbortSignal | undefined;
 	const task = fromPromise((signal) => {
 		receivedSignal = signal;
@@ -573,7 +573,7 @@ test("Task.from called without signal receives undefined", async () => {
 	expect(receivedSignal).toBeUndefined();
 });
 
-test("Task.map threads signal to the inner task", async () => {
+test("map: threads signal to inner task", async () => {
 	const controller = new AbortController();
 	let receivedSignal: AbortSignal | undefined;
 	const base = fromPromise((signal) => {
@@ -584,7 +584,7 @@ test("Task.map threads signal to the inner task", async () => {
 	expect(receivedSignal).toBe(controller.signal);
 });
 
-test("Task.chain threads signal to both tasks", async () => {
+test("chain: threads signal to both tasks", async () => {
 	const controller = new AbortController();
 	const signals: Array<AbortSignal | undefined> = [];
 	const t1 = fromPromise((signal) => {
@@ -604,7 +604,7 @@ test("Task.chain threads signal to both tasks", async () => {
 // timeout — inner task receives AbortSignal
 // ---------------------------------------------------------------------------
 
-test("Task.timeout aborts the inner task when the deadline fires", async () => {
+test("timeout: aborts inner task when deadline fires", async () => {
 	let innerSignal: AbortSignal | undefined;
 	const slow = fromPromise((signal) => {
 		innerSignal = signal;
@@ -614,7 +614,7 @@ test("Task.timeout aborts the inner task when the deadline fires", async () => {
 	expect(innerSignal?.aborted).toBe(true);
 });
 
-test("Task.timeout wires the outer signal to the inner task", async () => {
+test("timeout: wires outer signal to inner task", async () => {
 	const outerController = new AbortController();
 	let innerSignal: AbortSignal | undefined;
 	const slow = fromPromise((signal) => {
@@ -633,19 +633,19 @@ test("Task.timeout wires the outer signal to the inner task", async () => {
 // abortable
 // ---------------------------------------------------------------------------
 
-test("Task.abortable returns a task and an abort function", () => {
+test("abortable: returns a task and an abort function", () => {
 	const { task, abort } = Task.abortable(() => Promise.resolve(42));
 	expectTypeOf(task).toBeFunction();
 	expectTypeOf(abort).toBeFunction();
 });
 
-test("Task.abortable task resolves normally when not aborted", async () => {
+test("abortable: resolves normally when not aborted", async () => {
 	const { task } = Task.abortable(() => Promise.resolve(42));
 	const result = await task();
 	expect(result).toBe(42);
 });
 
-test("Task.abortable passes the controller signal to the factory", async () => {
+test("abortable: passes controller signal to factory", async () => {
 	let receivedSignal: AbortSignal | undefined;
 	const { task } = Task.abortable((signal) => {
 		receivedSignal = signal;
@@ -656,7 +656,7 @@ test("Task.abortable passes the controller signal to the factory", async () => {
 });
 
 // oxlint-disable-next-line require-await
-test("Task.abortable abort() aborts the signal passed to the factory", async () => {
+test("abortable: abort cancels signal passed to factory", async () => {
 	let capturedSignal: AbortSignal | undefined;
 	const { task, abort } = Task.abortable((signal) => {
 		capturedSignal = signal;
@@ -668,7 +668,7 @@ test("Task.abortable abort() aborts the signal passed to the factory", async () 
 });
 
 // oxlint-disable-next-line require-await
-test("Task.abortable wires outer signal to the internal controller", async () => {
+test("abortable: wires outer signal to internal controller", async () => {
 	const outerController = new AbortController();
 	let capturedSignal: AbortSignal | undefined;
 	const { task } = Task.abortable((signal) => {
@@ -680,7 +680,7 @@ test("Task.abortable wires outer signal to the internal controller", async () =>
 	expect(capturedSignal?.aborted).toBe(true);
 });
 
-test("Task.abortable aborts the inner controller immediately when outer signal is already aborted", () => {
+test("abortable: aborts inner controller immediately when outer signal is already aborted", () => {
 	const outerController = new AbortController();
 	outerController.abort();
 	let capturedSignal: AbortSignal | undefined;
@@ -692,7 +692,7 @@ test("Task.abortable aborts the inner controller immediately when outer signal i
 	expect(capturedSignal?.aborted).toBe(true);
 });
 
-test("Task.abortable abort() cancels current call but next call starts fresh", async () => {
+test("abortable: abort cancels current call but next call starts fresh", async () => {
 	let callCount = 0;
 	const { task, abort } = Task.abortable((signal) => {
 		callCount++;
@@ -711,7 +711,7 @@ test("Task.abortable abort() cancels current call but next call starts fresh", a
 	expect(second).toBe(2);
 });
 
-test("Task.abortable second call cancels first in-flight call", async () => {
+test("abortable: second call cancels first in-flight call", async () => {
 	let firstSignalAborted = false;
 	const { task } = Task.abortable((signal) => {
 		signal.addEventListener("abort", () => {
@@ -726,7 +726,7 @@ test("Task.abortable second call cancels first in-flight call", async () => {
 	expect(firstSignalAborted).toBe(true);
 });
 
-test("Task.timeout removes the outer signal listener after normal completion", async () => {
+test("timeout: removes outer signal listener after normal completion", async () => {
 	const outerController = new AbortController();
 	let innerSignal: AbortSignal | undefined;
 	const fast = fromPromise((signal) => {
@@ -745,7 +745,7 @@ test("Task.timeout removes the outer signal listener after normal completion", a
 // fromSync
 // ---------------------------------------------------------------------------
 
-test("Task.from.sync does not call f until the task is called", async () => {
+test("from.sync: does not call f until task is called", async () => {
 	let called = false;
 	const t = Task.from.sync(() => {
 		called = true;
@@ -756,17 +756,17 @@ test("Task.from.sync does not call f until the task is called", async () => {
 	expect(called).toBe(true);
 });
 
-test("Task.from.sync resolves to the return value of f", async () => {
+test("from.sync: resolves to return value of f", async () => {
 	const t = Task.from.sync(() => "hello");
 	await expect(t()).resolves.toBe("hello");
 });
 
-test("task.fromSync composes with Task.map in pipe", async () => {
+test("from.sync: composes with map in pipeline", async () => {
 	const result = await pipe(Task.from.sync(() => 5), Task.map((n) => n * 2))();
 	expect(result).toBe(10);
 });
 
-test("Task.from.sync re-evaluates f on each call", async () => {
+test("from.sync: re-evaluates f on each call", async () => {
 	let count = 0;
 	const t = Task.from.sync(() => ++count);
 	await expect(t()).resolves.toBe(1);
@@ -777,13 +777,13 @@ test("Task.from.sync re-evaluates f on each call", async () => {
 // run
 // ---------------------------------------------------------------------------
 
-test("Task.run executes the task and resolves with the value", async () => {
+test("run: executes task and resolves with value", async () => {
 	const task: Task<number> = () => Deferred.from.Promise(Promise.resolve(42));
 	const result = await pipe(task, Task.run());
 	expect(result).toBe(42);
 });
 
-test("Task.run passes the signal to the task", async () => {
+test("run: passes signal to task", async () => {
 	const controller = new AbortController();
 	let receivedSignal: AbortSignal | undefined;
 	const task: Task<void> = (signal) => {
@@ -794,7 +794,7 @@ test("Task.run passes the signal to the task", async () => {
 	expect(receivedSignal).toBe(controller.signal);
 });
 
-test("Task.run works without a signal", async () => {
+test("run: works without signal", async () => {
 	const task: Task<string> = () => Deferred.from.Promise(Promise.resolve("ok"));
 	const result = await pipe(task, Task.run());
 	expect(result).toBe("ok");
@@ -804,7 +804,7 @@ test("Task.run works without a signal", async () => {
 // AbortSignal responsiveness for delay, repeat, poll
 // ---------------------------------------------------------------------------
 
-test("Task.delay resolves early when the signal is aborted", async () => {
+test("delay: resolves early when signal is aborted", async () => {
 	const start = Date.now();
 	const controller = new AbortController();
 
@@ -819,7 +819,7 @@ test("Task.delay resolves early when the signal is aborted", async () => {
 	expect(elapsed).toBeLessThan(100);
 });
 
-test("Task.repeat resolves early with accumulated results if aborted", async () => {
+test("repeat: resolves early with accumulated results if aborted", async () => {
 	const controller = new AbortController();
 	let count = 0;
 	const task = fromPromise(() => {
@@ -835,7 +835,7 @@ test("Task.repeat resolves early with accumulated results if aborted", async () 
 	expect(result).toStrictEqual([1, 2]);
 });
 
-test("Task.poll resolves early with the last value if aborted", async () => {
+test("poll: resolves early with last value if aborted", async () => {
 	const controller = new AbortController();
 	let count = 0;
 	const task = fromPromise(() => {
@@ -851,7 +851,7 @@ test("Task.poll resolves early with the last value if aborted", async () => {
 	expect(result).toBe(2);
 });
 
-test("Task.delay resolves immediately when the signal is already aborted", async () => {
+test("delay: resolves immediately when signal is already aborted", async () => {
 	const controller = new AbortController();
 	controller.abort();
 	const start = Date.now();
@@ -860,7 +860,7 @@ test("Task.delay resolves immediately when the signal is already aborted", async
 	expect(Date.now() - start).toBeLessThan(100);
 });
 
-test("Task.timeout aborts the inner task when the outer signal is already aborted", async () => {
+test("timeout: aborts inner task when outer signal is already aborted", async () => {
 	const controller = new AbortController();
 	controller.abort();
 	let innerSignal: AbortSignal | undefined;
@@ -879,7 +879,7 @@ test("Task.timeout aborts the inner task when the outer signal is already aborte
 // sequence
 // ---------------------------------------------------------------------------
 
-test("Task.sequence runs tasks concurrently and collects results", async () => {
+test("sequence: runs tasks concurrently and collects results", async () => {
 	const order: number[] = [];
 	const t1 = fromPromise<number>(() =>
 		new Promise((r) =>
@@ -914,12 +914,12 @@ test("Task.sequence runs tasks concurrently and collects results", async () => {
 	expect(order).toStrictEqual([2, 3, 1]);
 });
 
-test("Task.sequence returns empty array for empty input", async () => {
+test("sequence: returns empty array for empty input", async () => {
 	const result = await Task.sequence([])();
 	expect(result).toStrictEqual([]);
 });
 
-test("Task.sequence forwards the AbortSignal to all tasks", async () => {
+test("sequence: forwards AbortSignal to all tasks", async () => {
 	const controller = new AbortController();
 	const signals: Array<AbortSignal | undefined> = [];
 
@@ -936,14 +936,14 @@ test("Task.sequence forwards the AbortSignal to all tasks", async () => {
 
 // --- bindTo ---
 
-test("Task.bindTo wraps a value in an accumulator object", async () => {
+test("bindTo: wraps value in accumulator object", async () => {
 	const result = await pipe(Task.make(2), Task.bindTo("a"))();
 	expect(result).toStrictEqual({ a: 2 });
 });
 
 // --- bind ---
 
-test("Task.bind accumulates values key-by-key in a pipeline", async () => {
+test("bind: accumulates values key-by-key in pipeline", async () => {
 	const result = await pipe(
 		Task.make(2),
 		Task.bindTo("a"),
@@ -955,7 +955,7 @@ test("Task.bind accumulates values key-by-key in a pipeline", async () => {
 
 // --- memoize ---
 
-test("Task.memoize executes task only once across multiple calls", async () => {
+test("memoize: executes task only once across multiple calls", async () => {
 	let calls = 0;
 	const task: Task<number> = () => {
 		calls++;
@@ -973,7 +973,7 @@ test("Task.memoize executes task only once across multiple calls", async () => {
 
 // --- withProgress ---
 
-test("Task.withProgress calls progress callback with 0 and 1", async () => {
+test("withProgress: calls progress callback with 0 and 1", async () => {
 	const progress: number[] = [];
 	const task = pipe(Task.make(42), Task.withProgress((ratio) => progress.push(ratio)));
 
@@ -984,7 +984,7 @@ test("Task.withProgress calls progress callback with 0 and 1", async () => {
 
 // --- withLabel ---
 
-test("Task.withLabel attaches read-only label property to task function", async () => {
+test("withLabel: attaches read-only label property to task function", async () => {
 	const task = pipe(Task.make(100), Task.withLabel("myCustomTask"));
 
 	expect(task.label).toBe("myCustomTask");
@@ -996,7 +996,7 @@ test("Task.withLabel attaches read-only label property to task function", async 
 // Type-level tests: Task-family namespace types & structural equivalence
 // ---------------------------------------------------------------------------
 
-test("Task.Result is structurally equivalent to Task<Result<E, A>>", async () => {
+test("Result: is structurally equivalent to Task<Result<E, A>>", async () => {
 	expectTypeOf<Task.Result<string, number>>().toEqualTypeOf<Task<Result<string, number>>>();
 	expectTypeOf<Task<Result<string, number>>>().toEqualTypeOf<Task.Result<string, number>>();
 
@@ -1008,7 +1008,7 @@ test("Task.Result is structurally equivalent to Task<Result<E, A>>", async () =>
 	expect(res).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
-test("Task.Maybe is structurally equivalent to Task<Maybe<A>>", async () => {
+test("Maybe: is structurally equivalent to Task<Maybe<A>>", async () => {
 	expectTypeOf<Task.Maybe<string>>().toEqualTypeOf<Task<Maybe<string>>>();
 	expectTypeOf<Task<Maybe<string>>>().toEqualTypeOf<Task.Maybe<string>>();
 
@@ -1020,7 +1020,7 @@ test("Task.Maybe is structurally equivalent to Task<Maybe<A>>", async () => {
 	expect(res).toStrictEqual({ kind: "Some", value: "hello" });
 });
 
-test("Task.Validation is structurally equivalent to Task<Validation<E, A>>", async () => {
+test("Validation: is structurally equivalent to Task<Validation<E, A>>", async () => {
 	expectTypeOf<Task.Validation<string, number>>().toEqualTypeOf<Task<Validation<string, number>>>();
 	expectTypeOf<Task<Validation<string, number>>>().toEqualTypeOf<Task.Validation<string, number>>();
 

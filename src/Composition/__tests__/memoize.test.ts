@@ -3,7 +3,7 @@ import { memoize, memoizeWeak } from "../memoize.ts";
 
 // --- memoize ---
 
-test("memoize - cache hit: function not called again", () => {
+test("memoize: returns cached result without re-invoking function on cache hit", () => {
 	let callCount = 0;
 	const expensive = memoize((n: number) => {
 		callCount++;
@@ -17,7 +17,7 @@ test("memoize - cache hit: function not called again", () => {
 	expect(callCount).toBe(1); // not called again
 });
 
-test("memoize - different arguments compute separately", () => {
+test("memoize: computes distinct arguments independently", () => {
 	let callCount = 0;
 	const expensive = memoize((n: number) => {
 		callCount++;
@@ -35,7 +35,7 @@ test("memoize - different arguments compute separately", () => {
 	expect(callCount).toBe(3); // no additional calls
 });
 
-test("memoize - caches string arguments", () => {
+test("memoize: caches string argument results", () => {
 	let callCount = 0;
 	const toUpper = memoize((s: string) => {
 		callCount++;
@@ -50,7 +50,7 @@ test("memoize - caches string arguments", () => {
 	expect(callCount).toBe(2);
 });
 
-test("memoize - custom key function", () => {
+test("memoize: computes cache key using custom key function", () => {
 	let callCount = 0;
 	const getLabel = memoize((opts: { id: number; label: string; }) => {
 		callCount++;
@@ -70,7 +70,7 @@ test("memoize - custom key function", () => {
 	expect(callCount).toBe(2);
 });
 
-test("memoize - maxSize LRU eviction evicts oldest entry when max limit reached", () => {
+test("memoize: evicts oldest entry when reaching maxSize limit", () => {
 	let callCount = 0;
 	const cached = memoize((n: number) => {
 		callCount++;
@@ -98,7 +98,7 @@ test("memoize - maxSize LRU eviction evicts oldest entry when max limit reached"
 	expect(callCount).toBe(4);
 });
 
-test("memoize - default key uses argument directly", () => {
+test("memoize: defaults to using argument directly as cache key", () => {
 	let callCount = 0;
 	const fn = memoize((n: number) => {
 		callCount++;
@@ -113,7 +113,7 @@ test("memoize - default key uses argument directly", () => {
 	expect(callCount).toBe(2);
 });
 
-test("memoize - caches falsy results correctly", () => {
+test("memoize: preserves cached falsy results", () => {
 	let callCount = 0;
 	const fn = memoize((n: number) => {
 		callCount++;
@@ -128,7 +128,7 @@ test("memoize - caches falsy results correctly", () => {
 	expect(callCount).toBe(1);
 });
 
-test("memoize - caches undefined and null results", () => {
+test("memoize: caches undefined and null return values", () => {
 	let callCountA = 0;
 	const fnA = memoize((_n: number) => {
 		callCountA++;
@@ -151,7 +151,7 @@ test("memoize - caches undefined and null results", () => {
 
 // --- memoizeWeak ---
 
-test("memoizeWeak - caches by object reference", () => {
+test("memoizeWeak: caches results by object reference identity", () => {
 	let callCount = 0;
 	const process = memoizeWeak((obj: { value: number; }) => {
 		callCount++;
@@ -166,7 +166,7 @@ test("memoizeWeak - caches by object reference", () => {
 	expect(callCount).toBe(1); // cached
 });
 
-test("memoizeWeak - different objects compute separately", () => {
+test("memoizeWeak: evaluates distinct object instances separately", () => {
 	let callCount = 0;
 	const process = memoizeWeak((obj: { value: number; }) => {
 		callCount++;
@@ -181,7 +181,7 @@ test("memoizeWeak - different objects compute separately", () => {
 	expect(callCount).toBe(2); // computed for each reference
 });
 
-test("memoizeWeak - works with array keys", () => {
+test("memoizeWeak: caches results keyed by array reference", () => {
 	let callCount = 0;
 	const sumArray = memoizeWeak((arr: number[]) => {
 		callCount++;
@@ -194,7 +194,7 @@ test("memoizeWeak - works with array keys", () => {
 	expect(callCount).toBe(1);
 });
 
-test("memoizeWeak - works with function keys", () => {
+test("memoizeWeak: caches results keyed by function reference", () => {
 	let callCount = 0;
 	const describe = memoizeWeak((fn: () => void) => {
 		callCount++;

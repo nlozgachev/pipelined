@@ -11,12 +11,12 @@ import { Task } from "../Task.ts";
 // make
 // ---------------------------------------------------------------------------
 
-test("Task.Result.make.ok creates a Task that resolves to Ok", async () => {
+test("make.ok: creates a Task that resolves to Ok", async () => {
 	const result = await Task.Result.make.ok<string, number>(42)();
 	expect(result).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
-test("Task.Result.make.err creates a Task that resolves to Err", async () => {
+test("make.err: creates a Task that resolves to Err", async () => {
 	const result = await Task.Result.make.err<string, number>("error")();
 	expect(result).toStrictEqual({ kind: "Err", error: "error" });
 });
@@ -25,19 +25,19 @@ test("Task.Result.make.err creates a Task that resolves to Err", async () => {
 // tryCatch
 // ---------------------------------------------------------------------------
 
-test("Task.Result.tryCatch returns Ok when Promise resolves", async () => {
+test("tryCatch: returns Ok when Promise resolves", async () => {
 	const result = await Task.Result.tryCatch(() => Promise.resolve(42), { onError: (e) => `Error: ${e}` })();
 	expect(result).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
-test("Task.Result.tryCatch returns Err when Promise rejects", async () => {
+test("tryCatch: returns Err when Promise rejects", async () => {
 	const result = await Task.Result.tryCatch(() => Promise.reject(new Error("boom")), {
 		onError: (e: unknown) => (e as Error).message,
 	})();
 	expect(result).toStrictEqual({ kind: "Err", error: "boom" });
 });
 
-test("taskResult.tryCatch catches synchronous throws in async functions", async () => {
+test("tryCatch: catches synchronous throws in async functions", async () => {
 	const result = await Task.Result.tryCatch(
 		// oxlint-disable-next-line require-await
 		async () => {
@@ -52,17 +52,17 @@ test("taskResult.tryCatch catches synchronous throws in async functions", async 
 // map
 // ---------------------------------------------------------------------------
 
-test("Task.Result.map transforms Ok value", async () => {
+test("map: transforms Ok value", async () => {
 	const result = await pipe(Task.Result.make.ok<string, number>(5), Task.Result.map((n: number) => n * 2))();
 	expect(result).toStrictEqual({ kind: "Ok", value: 10 });
 });
 
-test("Task.Result.map passes through Err unchanged", async () => {
+test("map: passes through Err unchanged", async () => {
 	const result = await pipe(Task.Result.make.err<string, number>("error"), Task.Result.map((n: number) => n * 2))();
 	expect(result).toStrictEqual({ kind: "Err", error: "error" });
 });
 
-test("Task.Result.map can change the value type", async () => {
+test("map: can change value type", async () => {
 	const result = await pipe(Task.Result.make.ok<string, number>(42), Task.Result.map((n: number) => `num: ${n}`))();
 	expect(result).toStrictEqual({ kind: "Ok", value: "num: 42" });
 });
@@ -71,7 +71,7 @@ test("Task.Result.map can change the value type", async () => {
 // mapError
 // ---------------------------------------------------------------------------
 
-test("Task.Result.mapError transforms Err value", async () => {
+test("mapError: transforms Err value", async () => {
 	const result = await pipe(
 		Task.Result.make.err<string, number>("oops"),
 		Task.Result.mapError((e: string) => e.toUpperCase()),
@@ -79,7 +79,7 @@ test("Task.Result.mapError transforms Err value", async () => {
 	expect(result).toStrictEqual({ kind: "Err", error: "OOPS" });
 });
 
-test("Task.Result.mapError passes through Ok unchanged", async () => {
+test("mapError: passes through Ok unchanged", async () => {
 	const result = await pipe(
 		Task.Result.make.ok<string, number>(5),
 		Task.Result.mapError((e: string) => e.toUpperCase()),
@@ -91,7 +91,7 @@ test("Task.Result.mapError passes through Ok unchanged", async () => {
 // chain
 // ---------------------------------------------------------------------------
 
-test("Task.Result.chain applies function when Ok", async () => {
+test("chain: applies function when Ok", async () => {
 	const validatePositive = (n: number): Task.Result<string, number> =>
 		n > 0 ? Task.Result.make.ok(n) : Task.Result.make.err("Must be positive");
 
@@ -99,7 +99,7 @@ test("Task.Result.chain applies function when Ok", async () => {
 	expect(result).toStrictEqual({ kind: "Ok", value: 5 });
 });
 
-test("taskResult.chain returns Err when function returns Err", async () => {
+test("chain: returns Err when function returns Err", async () => {
 	const validatePositive = (n: number): Task.Result<string, number> =>
 		n > 0 ? Task.Result.make.ok(n) : Task.Result.make.err("Must be positive");
 
@@ -107,7 +107,7 @@ test("taskResult.chain returns Err when function returns Err", async () => {
 	expect(result).toStrictEqual({ kind: "Err", error: "Must be positive" });
 });
 
-test("taskResult.chain propagates Err without calling function", async () => {
+test("chain: propagates Err without calling function", async () => {
 	let called = false;
 	const result = await pipe(
 		Task.Result.make.err<string, number>("error"),
@@ -120,7 +120,7 @@ test("taskResult.chain propagates Err without calling function", async () => {
 	expect(result).toStrictEqual({ kind: "Err", error: "error" });
 });
 
-test("Task.Result.chain composes multiple async steps", async () => {
+test("chain: composes multiple async steps", async () => {
 	const result = await pipe(
 		Task.Result.make.ok<string, number>(1),
 		Task.Result.chain((n: number) => Task.Result.make.ok<string, number>(n + 1)),
@@ -133,7 +133,7 @@ test("Task.Result.chain composes multiple async steps", async () => {
 // fold
 // ---------------------------------------------------------------------------
 
-test("Task.Result.fold calls onOk for Ok", async () => {
+test("fold: calls onOk for Ok", async () => {
 	const result = await pipe(
 		Task.Result.make.ok<string, number>(5),
 		Task.Result.fold((e: string) => `Error: ${e}`, (n: number) => `Value: ${n}`),
@@ -141,7 +141,7 @@ test("Task.Result.fold calls onOk for Ok", async () => {
 	expect(result).toBe("Value: 5");
 });
 
-test("Task.Result.fold calls onErr for Err", async () => {
+test("fold: calls onErr for Err", async () => {
 	const result = await pipe(
 		Task.Result.make.err<string, number>("bad"),
 		Task.Result.fold((e: string) => `Error: ${e}`, (n: number) => `Value: ${n}`),
@@ -153,7 +153,7 @@ test("Task.Result.fold calls onErr for Err", async () => {
 // match (data-last)
 // ---------------------------------------------------------------------------
 
-test("Task.Result.match calls ok handler for Ok", async () => {
+test("match: calls ok handler for Ok", async () => {
 	const result = await pipe(
 		Task.Result.make.ok<string, number>(5),
 		Task.Result.match({ ok: (n: number) => `got ${n}`, err: (e: string) => `failed: ${e}` }),
@@ -161,7 +161,7 @@ test("Task.Result.match calls ok handler for Ok", async () => {
 	expect(result).toBe("got 5");
 });
 
-test("Task.Result.match calls err handler for Err", async () => {
+test("match: calls err handler for Err", async () => {
 	const result = await pipe(
 		Task.Result.make.err<string, number>("bad"),
 		Task.Result.match({ ok: (n: number) => `got ${n}`, err: (e: string) => `failed: ${e}` }),
@@ -169,7 +169,7 @@ test("Task.Result.match calls err handler for Err", async () => {
 	expect(result).toBe("failed: bad");
 });
 
-test("taskResult.match is data-last (returns a function first)", async () => {
+test("match: is data-last (returns a function first)", async () => {
 	const handler = Task.Result.match<string, number, string>({ ok: (n) => `val: ${n}`, err: (e) => `err: ${e}` });
 	const okResult = await handler(Task.Result.make.ok<string, number>(3))();
 	expect(okResult).toBe("val: 3");
@@ -181,7 +181,7 @@ test("taskResult.match is data-last (returns a function first)", async () => {
 // recover
 // ---------------------------------------------------------------------------
 
-test("taskResult.recover returns original Ok without calling fallback", async () => {
+test("recover: returns original Ok without calling fallback", async () => {
 	let called = false;
 	const result = await pipe(
 		Task.Result.make.ok<string, number>(5),
@@ -194,7 +194,7 @@ test("taskResult.recover returns original Ok without calling fallback", async ()
 	expect(result).toStrictEqual({ kind: "Ok", value: 5 });
 });
 
-test("Task.Result.recover provides fallback for Err", async () => {
+test("recover: provides fallback for Err", async () => {
 	const result = await pipe(
 		Task.Result.make.err<string, number>("error"),
 		Task.Result.recover((_e: string) => Task.Result.make.ok<string, number>(99)),
@@ -202,7 +202,7 @@ test("Task.Result.recover provides fallback for Err", async () => {
 	expect(result).toStrictEqual({ kind: "Ok", value: 99 });
 });
 
-test("taskResult.recover widens to Task.Result<E, A | B> when fallback returns a different type", async () => {
+test("recover: widens return type when fallback returns different type", async () => {
 	const result = await pipe(
 		Task.Result.make.err("error"),
 		Task.Result.recover((_e) => Task.Result.make.ok("recovered")),
@@ -210,12 +210,12 @@ test("taskResult.recover widens to Task.Result<E, A | B> when fallback returns a
 	expect(result).toStrictEqual({ kind: "Ok", value: "recovered" });
 });
 
-test("Task.Result.recover preserves Ok typed as Task.Result<E, A | B>", async () => {
+test("recover: preserves Ok typed as union", async () => {
 	const result = await pipe(Task.Result.make.ok(5), Task.Result.recover((_e) => Task.Result.make.ok("recovered")))();
 	expect(result).toStrictEqual({ kind: "Ok", value: 5 });
 });
 
-test("taskResult.recover passes the error to the fallback function", async () => {
+test("recover: passes error to fallback function", async () => {
 	let receivedError = "";
 	await pipe(
 		Task.Result.make.err<string, number>("original error"),
@@ -231,22 +231,22 @@ test("taskResult.recover passes the error to the fallback function", async () =>
 // getOrElse
 // ---------------------------------------------------------------------------
 
-test("Task.Result.getOrElse returns value for Ok", async () => {
+test("getOrElse: returns value for Ok", async () => {
 	const result = await pipe(Task.Result.make.ok<string, number>(5), Task.Result.getOrElse(() => 0))();
 	expect(result).toBe(5);
 });
 
-test("Task.Result.getOrElse returns default for Err", async () => {
+test("getOrElse: returns default for Err", async () => {
 	const result = await pipe(Task.Result.make.err<string, number>("error"), Task.Result.getOrElse(() => 0))();
 	expect(result).toBe(0);
 });
 
-test("Task.Result.getOrElse widens return type to A | B when default is a different type", async () => {
+test("getOrElse: widens return type to union when default is different type", async () => {
 	const result = await pipe(Task.Result.make.err("error"), Task.Result.getOrElse(() => null))();
 	expect(result).toBeNull();
 });
 
-test("Task.Result.getOrElse returns Ok value typed as A | B when Ok", async () => {
+test("getOrElse: returns Ok value typed as union when Ok", async () => {
 	const result = await pipe(Task.Result.make.ok(5), Task.Result.getOrElse(() => null))();
 	expect(result).toBe(5);
 });
@@ -255,7 +255,7 @@ test("Task.Result.getOrElse returns Ok value typed as A | B when Ok", async () =
 // tap
 // ---------------------------------------------------------------------------
 
-test("taskResult.tap executes side effect on Ok and returns original", async () => {
+test("tap: executes side effect on Ok and returns original", async () => {
 	let sideEffect = 0;
 	const result = await pipe(
 		Task.Result.make.ok<string, number>(5),
@@ -267,7 +267,7 @@ test("taskResult.tap executes side effect on Ok and returns original", async () 
 	expect(result).toStrictEqual({ kind: "Ok", value: 5 });
 });
 
-test("Task.Result.tap does not execute side effect on Err", async () => {
+test("tap: does not execute side effect on Err", async () => {
 	let called = false;
 	const result = await pipe(
 		Task.Result.make.err<string, number>("error"),
@@ -283,7 +283,7 @@ test("Task.Result.tap does not execute side effect on Err", async () => {
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("taskResult composes well in a pipe chain", async () => {
+test("pipe: composes well in a pipeline", async () => {
 	const result = await pipe(
 		Task.Result.make.ok<string, number>(5),
 		Task.Result.map((n: number) => n * 2),
@@ -295,7 +295,7 @@ test("taskResult composes well in a pipe chain", async () => {
 	expect(result).toBe(10);
 });
 
-test("taskResult pipe short-circuits on Err", async () => {
+test("pipe: short-circuits on Err", async () => {
 	const result = await pipe(
 		Task.Result.make.ok<string, number>(2),
 		Task.Result.map((n: number) => n * 2),
@@ -307,7 +307,7 @@ test("taskResult pipe short-circuits on Err", async () => {
 	expect(result).toBe(0);
 });
 
-test("taskResult tryCatch integrates with pipe chain", async () => {
+test("tryCatch: integrates with pipe chain", async () => {
 	const result = await pipe(
 		Task.Result.tryCatch(() => Promise.resolve(42), { onError: (e) => `Error: ${e}` }),
 		Task.Result.map((n: number) => n + 8),
@@ -320,7 +320,7 @@ test("taskResult tryCatch integrates with pipe chain", async () => {
 // tryCatch — signal threading
 // ---------------------------------------------------------------------------
 
-test("Task.Result.tryCatch receives the AbortSignal from the call site", async () => {
+test("tryCatch: receives AbortSignal from call site", async () => {
 	const controller = new AbortController();
 	let receivedSignal: AbortSignal | undefined;
 	const task = Task.Result.tryCatch((signal) => {
@@ -335,7 +335,7 @@ test("Task.Result.tryCatch receives the AbortSignal from the call site", async (
 // composition scenarios
 // ---------------------------------------------------------------------------
 
-test("Task.Result.recover value flows into subsequent map steps", async () => {
+test("recover: value flows into subsequent map steps", async () => {
 	const result = await pipe(
 		Task.Result.make.err<string, number>("not found"),
 		Task.Result.recover((_e: string) => Task.Result.make.ok<string, number>(0)),
@@ -344,7 +344,7 @@ test("Task.Result.recover value flows into subsequent map steps", async () => {
 	expect(result).toStrictEqual({ kind: "Ok", value: 1 });
 });
 
-test("Task.Result.mapError normalizes the error type before recover acts on it", async () => {
+test("mapError: normalizes error type before recover acts on it", async () => {
 	type ApiError = { code: number; msg: string; };
 	const result = await pipe(
 		Task.Result.tryCatch(() => Promise.reject(new Error("service unavailable")), {
@@ -359,7 +359,7 @@ test("Task.Result.mapError normalizes the error type before recover acts on it",
 	expect(result).toBe("cached");
 });
 
-test("Task.Result.tap runs its side effect at the correct point in the chain", async () => {
+test("tap: runs side effect at correct point in chain", async () => {
 	const log: number[] = [];
 	const result = await pipe(
 		Task.Result.make.ok<string, number>(5),
@@ -371,7 +371,7 @@ test("Task.Result.tap runs its side effect at the correct point in the chain", a
 	expect(log).toStrictEqual([5]); // tap sees the pre-chain value
 });
 
-test("Task.Result.match handles the ok path at the end of a composed chain", async () => {
+test("match: handles ok path at end of composed chain", async () => {
 	const result = await pipe(
 		Task.Result.tryCatch(() => Promise.resolve(10), { onError: String }),
 		Task.Result.map((n: number) => n * 2),
@@ -383,7 +383,7 @@ test("Task.Result.match handles the ok path at the end of a composed chain", asy
 	expect(result).toBe("val:20");
 });
 
-test("Task.Result.match handles the err path at the end of a composed chain", async () => {
+test("match: handles err path at end of composed chain", async () => {
 	const result = await pipe(
 		Task.Result.tryCatch(() => Promise.resolve(5), { onError: String }),
 		Task.Result.map((n: number) => n * 2),
@@ -395,7 +395,7 @@ test("Task.Result.match handles the err path at the end of a composed chain", as
 	expect(result).toBe("err:too small");
 });
 
-test("Task.Result.fold receives the transformed error from a prior mapError", async () => {
+test("fold: receives transformed error from prior mapError", async () => {
 	const result = await pipe(
 		Task.Result.tryCatch(() => Promise.reject(new Error("boom")), { onError: (e: unknown) => (e as Error).message }),
 		Task.Result.mapError((msg: string) => msg.toUpperCase()),
@@ -408,7 +408,7 @@ test("Task.Result.fold receives the transformed error from a prior mapError", as
 // apply
 // ---------------------------------------------------------------------------
 
-test("Task.Result.apply applies Ok function to Ok value", async () => {
+test("apply: applies Ok function to Ok value", async () => {
 	const result = await pipe(
 		Task.Result.make.ok<string, (n: number) => number>((n) => n * 3),
 		Task.Result.apply(Task.Result.make.ok<string, number>(4)),
@@ -416,7 +416,7 @@ test("Task.Result.apply applies Ok function to Ok value", async () => {
 	expect(result).toStrictEqual({ kind: "Ok", value: 12 });
 });
 
-test("Task.Result.apply propagates the error if function is Error", async () => {
+test("apply: propagates error if function is Error", async () => {
 	const result = await pipe(
 		Task.Result.make.err<string, (n: number) => number>("error fn"),
 		Task.Result.apply(Task.Result.make.ok<string, number>(4)),
@@ -424,7 +424,7 @@ test("Task.Result.apply propagates the error if function is Error", async () => 
 	expect(result).toStrictEqual({ kind: "Err", error: "error fn" });
 });
 
-test("Task.Result.apply propagates the error if value is Error", async () => {
+test("apply: propagates error if value is Error", async () => {
 	const result = await pipe(
 		Task.Result.make.ok<string, (n: number) => number>((n) => n * 3),
 		Task.Result.apply(Task.Result.make.err<string, number>("error val")),
@@ -432,7 +432,7 @@ test("Task.Result.apply propagates the error if value is Error", async () => {
 	expect(result).toStrictEqual({ kind: "Err", error: "error val" });
 });
 
-test("Task.Result.apply propagates the first error if both are Error", async () => {
+test("apply: propagates first error if both are Error", async () => {
 	const result = await pipe(
 		Task.Result.make.err<string, (n: number) => number>("error fn"),
 		Task.Result.apply(Task.Result.make.err<string, number>("error val")),
@@ -440,7 +440,7 @@ test("Task.Result.apply propagates the first error if both are Error", async () 
 	expect(result).toStrictEqual({ kind: "Err", error: "error fn" });
 });
 
-test("Task.Result.apply widens error types from function and argument", async () => {
+test("apply: widens error types from function and argument", async () => {
 	const fnTask: Task.Result<"ERR_FN", (n: number) => string> = Task.Result.make.ok((n: number) => String(n));
 	const argTask: Task.Result<"ERR_ARG", number> = Task.Result.make.err("ERR_ARG");
 	const result = await pipe(fnTask, Task.Result.apply(argTask))();
@@ -448,7 +448,7 @@ test("Task.Result.apply widens error types from function and argument", async ()
 	expect(result).toStrictEqual({ kind: "Err", error: "ERR_ARG" });
 });
 
-test("Task.Result.apply propagates the AbortSignal down to both sides in parallel", async () => {
+test("apply: propagates AbortSignal down to both sides in parallel", async () => {
 	let signalLeft: AbortSignal | undefined;
 	let signalRight: AbortSignal | undefined;
 
@@ -473,7 +473,7 @@ test("Task.Result.apply propagates the AbortSignal down to both sides in paralle
 // tapError
 // ---------------------------------------------------------------------------
 
-test("Task.Result.tapError calls side effect with error on Err", async () => {
+test("tapError: calls side effect with error on Err", async () => {
 	let captured: string | undefined;
 	await pipe(
 		Task.Result.make.err<string, number>("oops"),
@@ -484,7 +484,7 @@ test("Task.Result.tapError calls side effect with error on Err", async () => {
 	expect(captured).toBe("oops");
 });
 
-test("Task.Result.tapError does not call side effect on Ok", async () => {
+test("tapError: does not call side effect on Ok", async () => {
 	let called = false;
 	await pipe(
 		Task.Result.make.ok<string, number>(1),
@@ -495,12 +495,12 @@ test("Task.Result.tapError does not call side effect on Ok", async () => {
 	expect(called).toBe(false);
 });
 
-test("Task.Result.tapError returns original Err result unchanged", async () => {
+test("tapError: returns original Err result unchanged", async () => {
 	const result = await pipe(Task.Result.make.err<string, number>("oops"), Task.Result.tapError(() => {}))();
 	expect(result).toStrictEqual({ kind: "Err", error: "oops" });
 });
 
-test("Task.Result.tapError returns original Ok result unchanged", async () => {
+test("tapError: returns original Ok result unchanged", async () => {
 	const result = await pipe(Task.Result.make.ok<string, number>(42), Task.Result.tapError(() => {}))();
 	expect(result).toStrictEqual({ kind: "Ok", value: 42 });
 });
@@ -509,12 +509,12 @@ test("Task.Result.tapError returns original Ok result unchanged", async () => {
 // run
 // ---------------------------------------------------------------------------
 
-test("Task.Result.run executes the task and returns the Result", async () => {
+test("run: executes task and returns Result", async () => {
 	const result = await pipe(Task.Result.make.ok<string, number>(42), Task.Result.run());
 	expect(result).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
-test("Task.Result.run passes the signal to the task", async () => {
+test("run: passes signal to task", async () => {
 	const controller = new AbortController();
 	let receivedSignal: AbortSignal | undefined;
 	const task: Task.Result<never, void> = (signal) => {
@@ -527,48 +527,48 @@ test("Task.Result.run passes the signal to the task", async () => {
 
 // --- from.nullable ---
 
-test("Task.Result.from.nullable returns Ok for non-null value", async () => {
+test("from.nullable: returns Ok for non-null value", async () => {
 	const result = await Task.Result.from.nullable(() => "is null")(42)();
 	expect(result).toStrictEqual(Result.make.ok(42));
 });
 
-test("Task.Result.from.nullable returns Err for null", async () => {
+test("from.nullable: returns Err for null", async () => {
 	const result = await Task.Result.from.nullable(() => "is null")(null)();
 	expect(result).toStrictEqual(Result.make.err("is null"));
 });
 
-test("Task.Result.from.nullable returns Err for undefined", async () => {
+test("from.nullable: returns Err for undefined", async () => {
 	const result = await Task.Result.from.nullable(() => "is null")(undefined)();
 	expect(result).toStrictEqual(Result.make.err("is null"));
 });
 
 // --- fromMaybe ---
 
-test("Task.Result.fromMaybe returns Ok for Some", async () => {
+test("from.Maybe: returns Ok for Some", async () => {
 	const result = await Task.Result.from.Maybe(() => "is none")(Maybe.make.some(42))();
 	expect(result).toStrictEqual(Result.make.ok(42));
 });
 
-test("Task.Result.fromMaybe returns Err for None", async () => {
+test("from.Maybe: returns Err for None", async () => {
 	const result = await Task.Result.from.Maybe(() => "is none")(Maybe.make.none())();
 	expect(result).toStrictEqual(Result.make.err("is none"));
 });
 
 // --- fromResult ---
 
-test("Task.Result.fromResult returns Ok for Ok", async () => {
+test("from.Result: returns Ok for Ok", async () => {
 	const result = await Task.Result.from.Result(Result.make.ok(42))();
 	expect(result).toStrictEqual(Result.make.ok(42));
 });
 
-test("Task.Result.fromResult returns Err for Err", async () => {
+test("from.Result: returns Err for Err", async () => {
 	const result = await Task.Result.from.Result(Result.make.err("bad"))();
 	expect(result).toStrictEqual(Result.make.err("bad"));
 });
 
 // --- bindTo ---
 
-test("Task.Result.bindTo wraps a value in an accumulator object", async () => {
+test("bindTo: wraps value in accumulator object", async () => {
 	const task = pipe(Task.Result.make.ok<string, number>(2), Task.Result.bindTo("a"));
 	expectTypeOf(task).toEqualTypeOf<Task.Result<string, { a: number; }>>();
 
@@ -578,7 +578,7 @@ test("Task.Result.bindTo wraps a value in an accumulator object", async () => {
 
 // --- bind ---
 
-test("Task.Result.bind accumulates values key-by-key in a pipeline", async () => {
+test("bind: accumulates values key-by-key in pipeline", async () => {
 	const task = pipe(
 		Task.Result.make.ok<string, number>(2),
 		Task.Result.bindTo("a"),
@@ -591,7 +591,7 @@ test("Task.Result.bind accumulates values key-by-key in a pipeline", async () =>
 	expect(result).toStrictEqual(Result.make.ok({ a: 2, b: 6, c: 8 }));
 });
 
-test("Task.Result.bind short-circuits on Err", async () => {
+test("bind: short-circuits on Err", async () => {
 	let called = false;
 	const task = pipe(
 		Task.Result.make.ok<string, number>(2),
@@ -611,7 +611,7 @@ test("Task.Result.bind short-circuits on Err", async () => {
 
 // --- struct ---
 
-test("Task.Result.struct combines a record of Ok values into a single Ok record", async () => {
+test("struct: combines record of Ok values into single Ok record", async () => {
 	const res = await Task.Result.struct({
 		a: Task.Result.make.ok<string, number>(1),
 		b: Task.Result.make.ok<string, string>("hello"),
@@ -619,7 +619,7 @@ test("Task.Result.struct combines a record of Ok values into a single Ok record"
 	expect(res).toStrictEqual(Result.make.ok({ a: 1, b: "hello" }));
 });
 
-test("Task.Result.struct short-circuits on the first Err encountered", async () => {
+test("struct: short-circuits on first Err encountered", async () => {
 	const res = await Task.Result.struct({
 		a: Task.Result.make.ok<string, number>(1),
 		b: Task.Result.make.err<string, string>("first fail"),
@@ -628,7 +628,7 @@ test("Task.Result.struct short-circuits on the first Err encountered", async () 
 	expect(res).toStrictEqual(Result.make.err("first fail"));
 });
 
-test("Task.Result.struct propagates AbortSignal and executes in parallel", async () => {
+test("struct: propagates AbortSignal and executes in parallel", async () => {
 	let signalA: AbortSignal | undefined;
 	let signalB: AbortSignal | undefined;
 
@@ -649,7 +649,7 @@ test("Task.Result.struct propagates AbortSignal and executes in parallel", async
 	expect(signalB).toBe(controller.signal);
 });
 
-test("Task.Result.struct composes in a pipe pipeline", async () => {
+test("struct: composes in pipeline", async () => {
 	const res = await pipe(
 		Task.Result.make.ok<string, { name: string; }>({ name: "Alice" }),
 		Task.Result.map((u) => u.name),
@@ -663,14 +663,14 @@ test("Task.Result.struct composes in a pipe pipeline", async () => {
 	expect(res).toStrictEqual(Result.make.ok({ name: "Alice", valid: "Alice" }));
 });
 
-test("Task.Result.struct returns ok({}) when given an empty object", async () => {
+test("struct: returns ok({}) when given empty object", async () => {
 	const res = await Task.Result.struct({})();
 	expect(res).toStrictEqual(Result.make.ok({}));
 });
 
 // --- retry ---
 
-test("Task.Result.retry returns Ok on first attempt without retrying", async () => {
+test("retry: returns Ok on first attempt without retrying", async () => {
 	let calls = 0;
 	const task: Task.Result<string, number> = () => {
 		calls++;
@@ -683,7 +683,7 @@ test("Task.Result.retry returns Ok on first attempt without retrying", async () 
 	expect(calls).toBe(1);
 });
 
-test("Task.Result.retry retries on Err until success", async () => {
+test("retry: retries on Err until success", async () => {
 	let calls = 0;
 	const task: Task.Result<string, number> = () => {
 		calls++;
@@ -698,7 +698,7 @@ test("Task.Result.retry retries on Err until success", async () => {
 	expect(calls).toBe(3);
 });
 
-test("Task.Result.retry returns final Err after exhausting attempts", async () => {
+test("retry: returns final Err after exhausting attempts", async () => {
 	let calls = 0;
 	const task: Task.Result<string, number> = () => {
 		calls++;
@@ -711,7 +711,7 @@ test("Task.Result.retry returns final Err after exhausting attempts", async () =
 	expect(calls).toBe(3);
 });
 
-test("Task.Result.retry stops early when call site AbortSignal is aborted", async () => {
+test("retry: stops early when call site AbortSignal is aborted", async () => {
 	let calls = 0;
 	const controller = new AbortController();
 	const task: Task.Result<string, number> = () => {
@@ -730,7 +730,7 @@ test("Task.Result.retry stops early when call site AbortSignal is aborted", asyn
 
 // --- memoize ---
 
-test("Task.Result.memoize executes task only once across multiple invocations", async () => {
+test("memoize: executes task only once across multiple invocations", async () => {
 	let calls = 0;
 	const task: Task.Result<string, number> = () => {
 		calls++;
@@ -748,7 +748,7 @@ test("Task.Result.memoize executes task only once across multiple invocations", 
 
 // --- timeout ---
 
-test("Task.Result.timeout resolves to task Ok when task finishes before duration", async () => {
+test("timeout: resolves to task Ok when task finishes before duration", async () => {
 	const task: Task.Result<string, number> = () => Deferred.from.Promise(Promise.resolve(Result.make.ok(42)));
 	const res = await pipe(
 		task,
@@ -758,7 +758,7 @@ test("Task.Result.timeout resolves to task Ok when task finishes before duration
 	expect(res).toStrictEqual(Result.make.ok(42));
 });
 
-test("Task.Result.timeout resolves to Err(onTimeout()) when task exceeds duration", async () => {
+test("timeout: resolves to Err(onTimeout()) when task exceeds duration", async () => {
 	const task: Task.Result<string, number> = () =>
 		Deferred.from.Promise(new Promise((resolve) => setTimeout(() => resolve(Result.make.ok(42)), 100)));
 	const res = await pipe(
@@ -769,7 +769,7 @@ test("Task.Result.timeout resolves to Err(onTimeout()) when task exceeds duratio
 	expect(res).toStrictEqual(Result.make.err("timed_out"));
 });
 
-test("Task.Result.timeout handles pre-aborted signal", async () => {
+test("timeout: handles pre-aborted signal", async () => {
 	const controller = new AbortController();
 	controller.abort();
 	const task: Task.Result<string, number> = (sig) =>
@@ -783,7 +783,7 @@ test("Task.Result.timeout handles pre-aborted signal", async () => {
 	expect(res).toStrictEqual(Result.make.err("aborted"));
 });
 
-test("Task.Result.timeout handles signal aborted during execution", async () => {
+test("timeout: handles signal aborted during execution", async () => {
 	const controller = new AbortController();
 	const task: Task.Result<string, number> = () => {
 		setTimeout(() => controller.abort(), 10);
@@ -798,7 +798,7 @@ test("Task.Result.timeout handles signal aborted during execution", async () => 
 	expect(res).toStrictEqual(Result.make.ok(42));
 });
 
-test("Task.Result.retry aborts during wait delay", async () => {
+test("retry: aborts during wait delay", async () => {
 	const controller = new AbortController();
 	let attempts = 0;
 	const failingTask: Task.Result<string, number> = () => {
@@ -816,7 +816,7 @@ test("Task.Result.retry aborts during wait delay", async () => {
 
 // --- allSettled ---
 
-test("Task.Result.allSettled collects all Ok and Err results in parallel", async () => {
+test("allSettled: collects all Ok and Err results in parallel", async () => {
 	const t1: Task.Result<string, number> = () => Deferred.from.Promise(Promise.resolve(Result.make.ok(1)));
 	const t2: Task.Result<string, number> = () => Deferred.from.Promise(Promise.resolve(Result.make.err("e2")));
 	const t3: Task.Result<string, number> = () => Deferred.from.Promise(Promise.resolve(Result.make.ok(3)));
@@ -826,7 +826,7 @@ test("Task.Result.allSettled collects all Ok and Err results in parallel", async
 	expect(res).toStrictEqual([Result.make.ok(1), Result.make.err("e2"), Result.make.ok(3)]);
 });
 
-test("Task.Result.make creates ok and err tasks", async () => {
+test("make: creates ok and err tasks", async () => {
 	const okTask = Task.Result.make.ok(42);
 	const errTask = Task.Result.make.err("failed");
 
@@ -834,7 +834,7 @@ test("Task.Result.make creates ok and err tasks", async () => {
 	await expect(errTask()).resolves.toStrictEqual(Result.make.err("failed"));
 });
 
-test("Task.Result.chain supports error union widening", async () => {
+test("chain: supports error union widening", async () => {
 	const step1: Task.Result<"ERR_A", number> = Task.Result.make.ok(42);
 	const step2 = (_n: number): Task.Result<"ERR_B", string> => Task.Result.make.err("ERR_B");
 
@@ -842,7 +842,7 @@ test("Task.Result.chain supports error union widening", async () => {
 	expect(res).toStrictEqual({ kind: "Err", error: "ERR_B" });
 });
 
-test("Task.Result.chain infers exact error union without collapsing to unknown", async () => {
+test("chain: infers exact error union without collapsing to unknown", async () => {
 	const step1 = Task.Result.make.err("ERR_A" as const);
 	const step2 = (_: unknown) => Task.Result.make.err("ERR_B" as const);
 
@@ -854,7 +854,7 @@ test("Task.Result.chain infers exact error union without collapsing to unknown",
 	expect(res).toStrictEqual({ kind: "Err", error: "ERR_A" });
 });
 
-test("Task.Result.timeout infers exact error union without collapsing to unknown", async () => {
+test("timeout: infers exact error union without collapsing to unknown", async () => {
 	const step1: Task.Result<"ERR_A", number> = Task.Result.make.ok(42);
 	const taskRes = pipe(
 		step1,
@@ -865,7 +865,7 @@ test("Task.Result.timeout infers exact error union without collapsing to unknown
 	expectTypeOf(res).toEqualTypeOf<Result<"ERR_A" | "TIMEOUT", number>>();
 });
 
-test("Task.Result.to.Maybe converts Ok to Some and Err to None", async () => {
+test("to.Maybe: converts Ok to Some and Err to None", async () => {
 	const okTask = Task.Result.make.ok<string, number>(42);
 	const errTask = Task.Result.make.err<string, number>("oops");
 
@@ -876,7 +876,7 @@ test("Task.Result.to.Maybe converts Ok to Some and Err to None", async () => {
 type TestErr = { code: "NOT_FOUND" | "TIMEOUT"; };
 type TestVal = { id: number; };
 
-test("Task.Result.make.ok defaults error generic to never, allowing ternary error union inference", async () => {
+test("make.ok: defaults error generic to never, allowing ternary error union inference", async () => {
 	const step = (): Task.Result<TestErr, TestVal[]> => Task.Result.make.ok([{ id: 42 }]);
 
 	const task = pipe(
@@ -892,7 +892,7 @@ test("Task.Result.make.ok defaults error generic to never, allowing ternary erro
 	expect(res).toStrictEqual(Result.make.ok("42"));
 });
 
-test("Task.Result.tryCatch lifts async operations into Task.Result", async () => {
+test("tryCatch: lifts async operations into Task.Result", async () => {
 	const asyncOp = (): Promise<TestVal> => Promise.resolve({ id: 100 });
 	const task: Task.Result<TestErr, TestVal> = Task.Result.tryCatch(() => asyncOp(), {
 		onError: () => ({ code: "NOT_FOUND" }),
@@ -905,7 +905,7 @@ test("Task.Result.tryCatch lifts async operations into Task.Result", async () =>
 
 // --- recoverUnless ---
 
-test("Task.Result.recoverUnless recovers from Err when not blocked", async () => {
+test("recoverUnless: recovers from Err when not blocked", async () => {
 	const task = pipe(
 		Task.Result.make.err<string, number>("transient"),
 		Task.Result.recoverUnless((e) => e === "fatal", () => Task.Result.make.ok(99)),
@@ -914,7 +914,7 @@ test("Task.Result.recoverUnless recovers from Err when not blocked", async () =>
 	expect(res).toStrictEqual(Result.make.ok(99));
 });
 
-test("Task.Result.recoverUnless preserves Err when blocked", async () => {
+test("recoverUnless: preserves Err when blocked", async () => {
 	const task = pipe(
 		Task.Result.make.err<string, number>("fatal"),
 		Task.Result.recoverUnless((e) => e === "fatal", () => Task.Result.make.ok(99)),
@@ -923,7 +923,7 @@ test("Task.Result.recoverUnless preserves Err when blocked", async () => {
 	expect(res).toStrictEqual(Result.make.err("fatal"));
 });
 
-test("Task.Result.retry returns early when signal is already aborted before backoff wait", async () => {
+test("retry: returns early when signal is already aborted before backoff wait", async () => {
 	const controller = new AbortController();
 	controller.abort();
 	const policy = RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(100) });
@@ -933,7 +933,7 @@ test("Task.Result.retry returns early when signal is already aborted before back
 	expect(res).toStrictEqual(Result.make.err("err"));
 });
 
-test("Task.Result.retry returns early when signal aborts during backoff wait delay", async () => {
+test("retry: returns early when signal aborts during backoff wait delay", async () => {
 	const controller = new AbortController();
 	const policy = RetryPolicy.constant({ attempts: 5, delay: Duration.milliseconds(200) });
 
@@ -951,7 +951,7 @@ test("Task.Result.retry returns early when signal aborts during backoff wait del
 	expect(attempts).toBeLessThanOrEqual(2);
 });
 
-test("Task.Result.retry with when filter selectively retries only matching errors", async () => {
+test("retry: selectively retries only matching errors with when filter", async () => {
 	type HttpError = { status: number; };
 	const isHttpError = (err: unknown): err is HttpError => typeof err === "object" && err !== null && "status" in err;
 
@@ -973,7 +973,7 @@ test("Task.Result.retry with when filter selectively retries only matching error
 
 // --- ensure ---
 
-test("Task.Result.ensure leaves Ok untouched when predicate passes", async () => {
+test("ensure: leaves Ok untouched when predicate passes", async () => {
 	let called = false;
 	const task = pipe(
 		Task.Result.make.ok(42),
@@ -987,13 +987,13 @@ test("Task.Result.ensure leaves Ok untouched when predicate passes", async () =>
 	expect(called).toBe(false);
 });
 
-test("Task.Result.ensure converts Ok to Err when predicate fails", async () => {
+test("ensure: converts Ok to Err when predicate fails", async () => {
 	const task = pipe(Task.Result.make.ok(5), Task.Result.ensure((n) => n > 10, (n) => `${n} is too small`));
 	const res = await task();
 	expect(res).toStrictEqual(Result.make.err("5 is too small"));
 });
 
-test("Task.Result.ensure propagates existing Err without invoking predicate", async () => {
+test("ensure: propagates existing Err without invoking predicate", async () => {
 	let predicateCalled = false;
 	const task = pipe(
 		Task.Result.make.err<string, number>("original error"),
@@ -1009,7 +1009,7 @@ test("Task.Result.ensure propagates existing Err without invoking predicate", as
 
 // --- bimap ---
 
-test("Task.Result.bimap transforms Ok value and leaves Err branch untouched", async () => {
+test("bimap: transforms Ok value and leaves Err branch untouched", async () => {
 	let errCalled = false;
 	const task = pipe(
 		Task.Result.make.ok(10),
@@ -1023,7 +1023,7 @@ test("Task.Result.bimap transforms Ok value and leaves Err branch untouched", as
 	expect(errCalled).toBe(false);
 });
 
-test("Task.Result.bimap transforms Err value and leaves Ok branch untouched", async () => {
+test("bimap: transforms Err value and leaves Ok branch untouched", async () => {
 	let okCalled = false;
 	const task = pipe(
 		Task.Result.make.err<string, number>("network failure"),

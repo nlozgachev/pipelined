@@ -114,11 +114,11 @@ elements/characters, and `None` if it is empty:
 ```ts
 import { Arr, Rec, Uniq, Dict, Str } from "@nlozgachev/pipelined/data";
 
-const maybeArr = Arr.NonEmpty.from.Array([]); // None
-const maybeRec = Rec.NonEmpty.from.Record({ a: 1 }); // Some(Rec.NonEmpty<number, "a">)
-const maybeSet = Uniq.NonEmpty.from.Set(new Set([1, 2])); // Some(Uniq.NonEmpty<number>)
-const maybeMap = Dict.NonEmpty.from.Map(new Map()); // None
-const maybeStr = Str.NonEmpty.from.String("hello"); // Some(Str.NonEmpty)
+const maybeArr = Arr.NonEmpty.from.array([]); // None
+const maybeRec = Rec.NonEmpty.from.record({ a: 1 }); // Some(Rec.NonEmpty<number, "a">)
+const maybeSet = Uniq.NonEmpty.from.set(new Set([1, 2])); // Some(Uniq.NonEmpty<number>)
+const maybeMap = Dict.NonEmpty.from.map(new Map()); // None
+const maybeStr = Str.NonEmpty.from.string("hello"); // Some(Str.NonEmpty)
 ```
 
 ---

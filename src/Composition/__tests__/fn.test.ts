@@ -18,98 +18,98 @@ import {
 
 // --- identity ---
 
-test("identity - returns number unchanged", () => {
+test("identity: returns number unchanged", () => {
 	expect(identity(42)).toBe(42);
 });
 
-test("identity - returns string unchanged", () => {
+test("identity: returns string unchanged", () => {
 	expect(identity("hello")).toBe("hello");
 });
 
-test("identity - returns boolean unchanged", () => {
+test("identity: returns boolean unchanged", () => {
 	expect(identity(true)).toBe(true);
 	expect(identity(false)).toBe(false);
 });
 
-test("identity - returns null unchanged", () => {
+test("identity: returns null unchanged", () => {
 	expect(identity(null)).toBeNull();
 });
 
-test("identity - returns undefined unchanged", () => {
+test("identity: returns undefined unchanged", () => {
 	expect(identity(undefined)).toBeUndefined();
 });
 
-test("identity - returns object by same reference", () => {
+test("identity: returns object by same reference", () => {
 	const obj = { name: "Alice" };
 	expect(identity(obj)).toBe(obj);
 });
 
-test("identity - returns array by same reference", () => {
+test("identity: returns array by same reference", () => {
 	const arr = [1, 2, 3];
 	expect(identity(arr)).toBe(arr);
 });
 
 // --- constant ---
 
-test("constant - always returns the same value", () => {
+test("constant: always returns the same value", () => {
 	const always42 = constant(42);
 	expect(always42()).toBe(42);
 	expect(always42()).toBe(42);
 });
 
-test("constant - always returns the same string", () => {
+test("constant: always returns the same string", () => {
 	const alwaysHello = constant("hello");
 	expect(alwaysHello()).toBe("hello");
 });
 
-test("constant - returns same object reference", () => {
+test("constant: returns same object reference", () => {
 	const obj = { name: "Alice" };
 	const alwaysObj = constant(obj);
 	expect(alwaysObj()).toBe(obj);
 });
 
-test("constant - useful with map to fill arrays", () => {
+test("constant: fills arrays when used with map", () => {
 	const result = [1, 2, 3].map(constant("x"));
 	expect(result).toStrictEqual(["x", "x", "x"]);
 });
 
 // --- constTrue ---
 
-test("constTrue - always returns true", () => {
+test("constTrue: always returns true", () => {
 	expect(constTrue()).toBe(true);
 	expect(constTrue()).toBe(true);
 });
 
 // --- constFalse ---
 
-test("constFalse - always returns false", () => {
+test("constFalse: always returns false", () => {
 	expect(constFalse()).toBe(false);
 	expect(constFalse()).toBe(false);
 });
 
 // --- constNull ---
 
-test("constNull - always returns null", () => {
+test("constNull: always returns null", () => {
 	expect(constNull()).toBeNull();
 	expect(constNull()).toBeNull();
 });
 
 // --- constUndefined ---
 
-test("constUndefined - always returns undefined", () => {
+test("constUndefined: always returns undefined", () => {
 	expect(constUndefined()).toBeUndefined();
 	expect(constUndefined()).toBeUndefined();
 });
 
 // --- constVoid ---
 
-test("constVoid - always returns undefined (void)", () => {
+test("constVoid: always returns undefined", () => {
 	expect(constVoid()).toBeUndefined();
 });
 
 // --- and ---
 
-test("and - both true returns true", () => {
+test("and: returns true when both predicates are true", () => {
 	const isPositive = (n: number) => n > 0;
 	const isEven = (n: number) => n % 2 === 0;
 	const isPositiveEven = and(isPositive, isEven);
@@ -117,7 +117,7 @@ test("and - both true returns true", () => {
 	expect(isPositiveEven(4)).toBe(true);
 });
 
-test("and - first false returns false", () => {
+test("and: returns false when first predicate is false", () => {
 	const isPositive = (n: number) => n > 0;
 	const isEven = (n: number) => n % 2 === 0;
 	const isPositiveEven = and(isPositive, isEven);
@@ -125,7 +125,7 @@ test("and - first false returns false", () => {
 	expect(isPositiveEven(-2)).toBe(false);
 });
 
-test("and - second false returns false", () => {
+test("and: returns false when second predicate is false", () => {
 	const isPositive = (n: number) => n > 0;
 	const isEven = (n: number) => n % 2 === 0;
 	const isPositiveEven = and(isPositive, isEven);
@@ -133,7 +133,7 @@ test("and - second false returns false", () => {
 	expect(isPositiveEven(3)).toBe(false);
 });
 
-test("and - both false returns false", () => {
+test("and: returns false when both predicates are false", () => {
 	const isPositive = (n: number) => n > 0;
 	const isEven = (n: number) => n % 2 === 0;
 	const isPositiveEven = and(isPositive, isEven);
@@ -141,7 +141,7 @@ test("and - both false returns false", () => {
 	expect(isPositiveEven(-3)).toBe(false);
 });
 
-test("and - short circuits (second predicate not called when first is false)", () => {
+test("and: short-circuits when first predicate is false", () => {
 	let secondCalled = false;
 	const alwaysFalse = (_n: number) => false;
 	const tracker = (_n: number) => {
@@ -154,7 +154,7 @@ test("and - short circuits (second predicate not called when first is false)", (
 	expect(secondCalled).toBe(false);
 });
 
-test("and - works with Array.filter", () => {
+test("and: filters elements with Array.filter", () => {
 	const isPositive = (n: number) => n > 0;
 	const isEven = (n: number) => n % 2 === 0;
 
@@ -164,7 +164,7 @@ test("and - works with Array.filter", () => {
 
 // --- or ---
 
-test("or - both true returns true", () => {
+test("or: returns true when both predicates are true", () => {
 	const isNegative = (n: number) => n < 0;
 	const isZero = (n: number) => n === 0;
 	const isNonPositive = or(isNegative, isZero);
@@ -172,7 +172,7 @@ test("or - both true returns true", () => {
 	expect(isNonPositive(-1)).toBe(true);
 });
 
-test("or - first true returns true", () => {
+test("or: returns true when first predicate is true", () => {
 	const isNegative = (n: number) => n < 0;
 	const isZero = (n: number) => n === 0;
 	const isNonPositive = or(isNegative, isZero);
@@ -180,7 +180,7 @@ test("or - first true returns true", () => {
 	expect(isNonPositive(-5)).toBe(true);
 });
 
-test("or - second true returns true", () => {
+test("or: returns true when second predicate is true", () => {
 	const isNegative = (n: number) => n < 0;
 	const isZero = (n: number) => n === 0;
 	const isNonPositive = or(isNegative, isZero);
@@ -188,7 +188,7 @@ test("or - second true returns true", () => {
 	expect(isNonPositive(0)).toBe(true);
 });
 
-test("or - both false returns false", () => {
+test("or: returns false when both predicates are false", () => {
 	const isNegative = (n: number) => n < 0;
 	const isZero = (n: number) => n === 0;
 	const isNonPositive = or(isNegative, isZero);
@@ -196,7 +196,7 @@ test("or - both false returns false", () => {
 	expect(isNonPositive(1)).toBe(false);
 });
 
-test("or - short circuits (second predicate not called when first is true)", () => {
+test("or: short-circuits when first predicate is true", () => {
 	let secondCalled = false;
 	const alwaysTrue = (_n: number) => true;
 	const tracker = (_n: number) => {
@@ -209,7 +209,7 @@ test("or - short circuits (second predicate not called when first is true)", () 
 	expect(secondCalled).toBe(false);
 });
 
-test("or - works with Array.filter", () => {
+test("or: filters elements with Array.filter", () => {
 	const isNegative = (n: number) => n < 0;
 	const isGreaterThan3 = (n: number) => n > 3;
 
@@ -219,7 +219,7 @@ test("or - works with Array.filter", () => {
 
 // --- once ---
 
-test("once - first call executes the function", () => {
+test("once: executes function on first call", () => {
 	let count = 0;
 	const init = once(() => {
 		count++;
@@ -230,7 +230,7 @@ test("once - first call executes the function", () => {
 	expect(count).toBe(1);
 });
 
-test("once - subsequent calls return cached result", () => {
+test("once: returns cached result on subsequent calls", () => {
 	let count = 0;
 	const init = once(() => {
 		count++;
@@ -244,7 +244,7 @@ test("once - subsequent calls return cached result", () => {
 	expect(count).toBe(1);
 });
 
-test("once - returns same value on every call", () => {
+test("once: returns same value on every call", () => {
 	const init = once(() => Math.random());
 
 	const first = init();
@@ -255,7 +255,7 @@ test("once - returns same value on every call", () => {
 	expect(second).toBe(third);
 });
 
-test("once - works with side effects", () => {
+test("once: preserves side-effect result reference across calls", () => {
 	const effects: string[] = [];
 	const setup = once(() => {
 		effects.push("setup");
@@ -270,7 +270,7 @@ test("once - works with side effects", () => {
 	expect(r1).toStrictEqual({ ready: true });
 });
 
-test("once - caches falsy results correctly", () => {
+test("once: caches falsy results correctly", () => {
 	let callCount = 0;
 
 	const returnZero = once(() => {
@@ -302,7 +302,7 @@ test("once - caches falsy results correctly", () => {
 
 // --- defaultTo ---
 
-test("defaultTo - returns non-nullable value unchanged", () => {
+test("defaultTo: returns non-nullable value unchanged", () => {
 	const fallback = defaultTo("Guest");
 	expect(fallback("Alice")).toBe("Alice");
 	expect(fallback(0)).toBe(0);
@@ -310,13 +310,13 @@ test("defaultTo - returns non-nullable value unchanged", () => {
 	expect(fallback({ name: "Bob" })).toStrictEqual({ name: "Bob" });
 });
 
-test("defaultTo - returns fallback value for null or undefined", () => {
+test("defaultTo: returns fallback value for null or undefined", () => {
 	const fallback = defaultTo("Guest");
 	expect(fallback(null)).toBe("Guest");
 	expect(fallback(undefined)).toBe("Guest");
 });
 
-test("defaultTo - pipeline integration with flow", () => {
+test("defaultTo: integrates into pipeline with flow", () => {
 	const getName = flow((u: { name?: string | null; }) => u.name, defaultTo("Guest"), (name) => name.toUpperCase());
 
 	expect(getName({ name: "Alice" })).toBe("ALICE");
@@ -326,13 +326,13 @@ test("defaultTo - pipeline integration with flow", () => {
 
 // --- tuple & untuple ---
 
-test("tuple converts a multi-argument function into a single tuple function", () => {
+test("tuple: converts multi-argument function into tuple function", () => {
 	const add = (a: number, b: number) => a + b;
 	const addTuple = tuple(add);
 	expect(addTuple([2, 3])).toBe(5);
 });
 
-test("untuple converts a tuple function into a multi-argument function", () => {
+test("untuple: converts tuple function into multi-argument function", () => {
 	const addTuple = ([a, b]: readonly [number, number]) => a + b;
 	const add = untuple(addTuple);
 	expect(add(2, 3)).toBe(5);

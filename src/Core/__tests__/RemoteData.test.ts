@@ -8,23 +8,23 @@ import { Result } from "../Result.ts";
 // Constructors
 // ---------------------------------------------------------------------------
 
-test("remoteData.notAsked creates NotAsked", () => {
+test("make.notAsked: creates NotAsked", () => {
 	expect(RemoteData.make.notAsked()).toStrictEqual({ kind: "NotAsked" });
 });
 
-test("remoteData.loading creates Loading", () => {
+test("make.loading: creates Loading", () => {
 	expect(RemoteData.make.loading()).toStrictEqual({ kind: "Loading" });
 });
 
-test("remoteData.failure creates Failure", () => {
+test("make.failure: creates Failure", () => {
 	expect(RemoteData.make.failure("err")).toStrictEqual({ kind: "Failure", error: "err" });
 });
 
-test("remoteData.success creates Success", () => {
+test("make.success: creates Success", () => {
 	expect(RemoteData.make.success(42)).toStrictEqual({ kind: "Success", value: 42 });
 });
 
-test("remoteData.success is alias for success", () => {
+test("make.success: is alias for success", () => {
 	expect(RemoteData.make.success(42)).toStrictEqual(RemoteData.make.success(42));
 });
 
@@ -32,24 +32,24 @@ test("remoteData.success is alias for success", () => {
 // Type guards
 // ---------------------------------------------------------------------------
 
-test("remoteData.isNotAsked", () => {
+test("is.notAsked: returns true for NotAsked and false for others", () => {
 	expect(RemoteData.is.notAsked(RemoteData.make.notAsked())).toBe(true);
 	expect(RemoteData.is.notAsked(RemoteData.make.loading())).toBe(false);
 	expect(RemoteData.is.notAsked(RemoteData.make.failure("e"))).toBe(false);
 	expect(RemoteData.is.notAsked(RemoteData.make.success(1))).toBe(false);
 });
 
-test("remoteData.isLoading", () => {
+test("is.loading: returns true for Loading and false for others", () => {
 	expect(RemoteData.is.loading(RemoteData.make.loading())).toBe(true);
 	expect(RemoteData.is.loading(RemoteData.make.notAsked())).toBe(false);
 });
 
-test("remoteData.isFailure", () => {
+test("is.failure: returns true for Failure and false for others", () => {
 	expect(RemoteData.is.failure(RemoteData.make.failure("e"))).toBe(true);
 	expect(RemoteData.is.failure(RemoteData.make.success(1))).toBe(false);
 });
 
-test("remoteData.isSuccess", () => {
+test("is.success: returns true for Success and false for others", () => {
 	expect(RemoteData.is.success(RemoteData.make.success(1))).toBe(true);
 	expect(RemoteData.is.success(RemoteData.make.failure("e"))).toBe(false);
 });
@@ -58,25 +58,25 @@ test("remoteData.isSuccess", () => {
 // map
 // ---------------------------------------------------------------------------
 
-test("remoteData.map transforms Success value", () => {
+test("map: transforms Success value", () => {
 	const data: RemoteData<string, number> = RemoteData.make.success(5);
 	const result = pipe(data, RemoteData.map((n: number) => n * 2));
 	expect(result).toStrictEqual({ kind: "Success", value: 10 });
 });
 
-test("remoteData.map passes through NotAsked", () => {
+test("map: passes through NotAsked", () => {
 	const data: RemoteData<string, number> = RemoteData.make.notAsked();
 	const result = pipe(data, RemoteData.map((n: number) => n * 2));
 	expect(result).toStrictEqual({ kind: "NotAsked" });
 });
 
-test("remoteData.map passes through Loading", () => {
+test("map: passes through Loading", () => {
 	const data: RemoteData<string, number> = RemoteData.make.loading();
 	const result = pipe(data, RemoteData.map((n: number) => n * 2));
 	expect(result).toStrictEqual({ kind: "Loading" });
 });
 
-test("remoteData.map passes through Failure", () => {
+test("map: passes through Failure", () => {
 	const data: RemoteData<string, number> = RemoteData.make.failure("err");
 	const result = pipe(data, RemoteData.map((n: number) => n * 2));
 	expect(result).toStrictEqual({ kind: "Failure", error: "err" });
@@ -86,19 +86,19 @@ test("remoteData.map passes through Failure", () => {
 // mapError
 // ---------------------------------------------------------------------------
 
-test("remoteData.mapError transforms Failure error", () => {
+test("mapError: transforms Failure error", () => {
 	const data: RemoteData<string, number> = RemoteData.make.failure("oops");
 	const result = pipe(data, RemoteData.mapError((e: string) => e.toUpperCase()));
 	expect(result).toStrictEqual({ kind: "Failure", error: "OOPS" });
 });
 
-test("remoteData.mapError passes through Success", () => {
+test("mapError: passes through Success", () => {
 	const data: RemoteData<string, number> = RemoteData.make.success(5);
 	const result = pipe(data, RemoteData.mapError((e: string) => e.toUpperCase()));
 	expect(result).toStrictEqual({ kind: "Success", value: 5 });
 });
 
-test("remoteData.mapError passes through NotAsked and Loading", () => {
+test("mapError: passes through NotAsked and Loading", () => {
 	const f = RemoteData.mapError((e: string) => e.toUpperCase());
 	expect(f(RemoteData.make.notAsked())).toStrictEqual({ kind: "NotAsked" });
 	expect(f(RemoteData.make.loading())).toStrictEqual({ kind: "Loading" });
@@ -108,7 +108,7 @@ test("remoteData.mapError passes through NotAsked and Loading", () => {
 // chain
 // ---------------------------------------------------------------------------
 
-test("remoteData.chain applies function on Success", () => {
+test("chain: applies function on Success", () => {
 	const data: RemoteData<string, number> = RemoteData.make.success(5);
 	const result = pipe(
 		data,
@@ -117,25 +117,25 @@ test("remoteData.chain applies function on Success", () => {
 	expect(result).toStrictEqual({ kind: "Success", value: 10 });
 });
 
-test("remoteData.chain propagates Failure", () => {
+test("chain: propagates Failure", () => {
 	const data: RemoteData<string, number> = RemoteData.make.failure("err");
 	const result = pipe(data, RemoteData.chain((n: number) => RemoteData.make.success(n * 2)));
 	expect(result).toStrictEqual({ kind: "Failure", error: "err" });
 });
 
-test("remoteData.chain propagates Loading", () => {
+test("chain: propagates Loading", () => {
 	const data: RemoteData<string, number> = RemoteData.make.loading();
 	const result = pipe(data, RemoteData.chain((n: number) => RemoteData.make.success(n * 2)));
 	expect(result).toStrictEqual({ kind: "Loading" });
 });
 
-test("remoteData.chain propagates NotAsked", () => {
+test("chain: propagates NotAsked", () => {
 	const data: RemoteData<string, number> = RemoteData.make.notAsked();
 	const result = pipe(data, RemoteData.chain((n: number) => RemoteData.make.success(n * 2)));
 	expect(result).toStrictEqual({ kind: "NotAsked" });
 });
 
-test("remoteData.chain supports error union widening", () => {
+test("chain: supports error union widening", () => {
 	const step1: RemoteData<"ERR_A", number> = RemoteData.make.success(42);
 	const step2 = (_n: number): RemoteData<"ERR_B", string> => RemoteData.make.failure("ERR_B");
 
@@ -143,7 +143,7 @@ test("remoteData.chain supports error union widening", () => {
 	expect(res).toStrictEqual({ kind: "Failure", error: "ERR_B" });
 });
 
-test("remoteData.chain infers exact error union without collapsing to unknown", () => {
+test("chain: infers exact error union without collapsing to unknown", () => {
 	const step1 = RemoteData.make.failure("ERR_A" as const);
 	const step2 = (_: unknown) => RemoteData.make.failure("ERR_B" as const);
 
@@ -157,52 +157,52 @@ test("remoteData.chain infers exact error union without collapsing to unknown", 
 // apply
 // ---------------------------------------------------------------------------
 
-test("remoteData.apply applies function to value when both Success", () => {
+test("apply: applies function to value when both Success", () => {
 	const add = (a: number) => (b: number) => a + b;
 	const fn: RemoteData<string, typeof add> = RemoteData.make.success(add);
 	const result = pipe(fn, RemoteData.apply(RemoteData.make.success(5)), RemoteData.apply(RemoteData.make.success(3)));
 	expect(result).toStrictEqual({ kind: "Success", value: 8 });
 });
 
-test("remoteData.apply returns Failure when function is Failure", () => {
+test("apply: returns Failure when function is Failure", () => {
 	const fn: RemoteData<string, (n: number) => number> = RemoteData.make.failure("err");
 	const result = pipe(fn, RemoteData.apply(RemoteData.make.success(5)));
 	expect(result).toStrictEqual({ kind: "Failure", error: "err" });
 });
 
-test("remoteData.apply returns Failure when value is Failure", () => {
+test("apply: returns Failure when value is Failure", () => {
 	const double = (n: number) => n * 2;
 	const fn: RemoteData<string, typeof double> = RemoteData.make.success(double);
 	const result = pipe(fn, RemoteData.apply(RemoteData.make.failure<string>("err")));
 	expect(result).toStrictEqual({ kind: "Failure", error: "err" });
 });
 
-test("remoteData.apply returns Loading when either is Loading", () => {
+test("apply: returns Loading when either is Loading", () => {
 	const double = (n: number) => n * 2;
 	const fn: RemoteData<string, typeof double> = RemoteData.make.success(double);
 	const result = pipe(fn, RemoteData.apply(RemoteData.make.loading()));
 	expect(result).toStrictEqual({ kind: "Loading" });
 });
 
-test("remoteData.apply returns Failure of function when both are Failure", () => {
+test("apply: returns Failure of function when both are Failure", () => {
 	const fn: RemoteData<string, (n: number) => number> = RemoteData.make.failure("fn error");
 	const result = pipe(fn, RemoteData.apply(RemoteData.make.failure<string>("arg error")));
 	expect(result).toStrictEqual({ kind: "Failure", error: "fn error" });
 });
 
-test("remoteData.apply returns NotAsked when function is NotAsked and arg is Success", () => {
+test("apply: returns NotAsked when function is NotAsked and arg is Success", () => {
 	const fn: RemoteData<string, (n: number) => number> = RemoteData.make.notAsked();
 	const result = pipe(fn, RemoteData.apply(RemoteData.make.success(5)));
 	expect(result).toStrictEqual({ kind: "NotAsked" });
 });
 
-test("remoteData.apply returns Loading when function is Loading and arg is Success", () => {
+test("apply: returns Loading when function is Loading and arg is Success", () => {
 	const fn: RemoteData<string, (n: number) => number> = RemoteData.make.loading();
 	const result = pipe(fn, RemoteData.apply(RemoteData.make.success(5)));
 	expect(result).toStrictEqual({ kind: "Loading" });
 });
 
-test("remoteData.apply widens error types from function and argument", () => {
+test("apply: widens error types from function and argument", () => {
 	const fn = RemoteData.make.success((n: number) => String(n)) as RemoteData<"ERR_FN", (n: number) => string>;
 	const arg = RemoteData.make.failure("ERR_ARG") as RemoteData<"ERR_ARG", number>;
 	const result = pipe(fn, RemoteData.apply(arg));
@@ -214,7 +214,7 @@ test("remoteData.apply widens error types from function and argument", () => {
 // fold
 // ---------------------------------------------------------------------------
 
-test("remoteData.fold handles all four cases", () => {
+test("fold: handles all four cases", () => {
 	const handler = RemoteData.fold<string, number, string>(
 		(e) => `error: ${e}`,
 		() => "not asked",
@@ -232,7 +232,7 @@ test("remoteData.fold handles all four cases", () => {
 // match
 // ---------------------------------------------------------------------------
 
-test("remoteData.match handles all four cases", () => {
+test("match: handles all four cases", () => {
 	const handler = RemoteData.match<string, number, string>({
 		notAsked: () => "na",
 		loading: () => "ld",
@@ -246,7 +246,7 @@ test("remoteData.match handles all four cases", () => {
 	expect(handler(RemoteData.make.success(1))).toBe("s:1");
 });
 
-test("remoteData.match works in pipe", () => {
+test("match: works in pipe", () => {
 	const data: RemoteData<string, number> = RemoteData.make.success(42);
 	const result = pipe(
 		data,
@@ -264,13 +264,13 @@ test("remoteData.match works in pipe", () => {
 // getOrElse
 // ---------------------------------------------------------------------------
 
-test("remoteData.getOrElse returns value for Success", () => {
+test("getOrElse: returns value for Success", () => {
 	const data: RemoteData<string, number> = RemoteData.make.success(5);
 	const result = pipe(data, RemoteData.getOrElse(() => 0));
 	expect(result).toBe(5);
 });
 
-test("remoteData.getOrElse returns default for non-Success", () => {
+test("getOrElse: returns default for non-Success", () => {
 	const notAsked: RemoteData<string, number> = RemoteData.make.notAsked();
 	const loading: RemoteData<string, number> = RemoteData.make.loading();
 	const failure: RemoteData<string, number> = RemoteData.make.failure("e");
@@ -279,12 +279,12 @@ test("remoteData.getOrElse returns default for non-Success", () => {
 	expect(pipe(failure, RemoteData.getOrElse(() => 0))).toBe(0);
 });
 
-test("remoteData.getOrElse widens return type to A | B when default is a different type", () => {
+test("getOrElse: widens return type to union when default is different type", () => {
 	const result = pipe(RemoteData.make.loading(), RemoteData.getOrElse(() => null));
 	expect(result).toBeNull();
 });
 
-test("remoteData.getOrElse returns Success value typed as A | B when Success", () => {
+test("getOrElse: returns Success value typed as union when Success", () => {
 	const result = pipe(RemoteData.make.success(5), RemoteData.getOrElse(() => null));
 	expect(result).toBe(5);
 });
@@ -293,7 +293,7 @@ test("remoteData.getOrElse returns Success value typed as A | B when Success", (
 // tap
 // ---------------------------------------------------------------------------
 
-test("remoteData.tap executes side effect on Success", () => {
+test("tap: executes side effect on Success", () => {
 	let captured = 0;
 	const data: RemoteData<string, number> = RemoteData.make.success(42);
 	pipe(
@@ -305,7 +305,7 @@ test("remoteData.tap executes side effect on Success", () => {
 	expect(captured).toBe(42);
 });
 
-test("remoteData.tap does not execute on Failure", () => {
+test("tap: does not execute on Failure", () => {
 	let called = false;
 	const data: RemoteData<string, number> = RemoteData.make.failure("err");
 	pipe(
@@ -317,7 +317,7 @@ test("remoteData.tap does not execute on Failure", () => {
 	expect(called).toBe(false);
 });
 
-test("remoteData.tap does not execute on NotAsked or Loading", () => {
+test("tap: does not execute on NotAsked or Loading", () => {
 	let called = false;
 	const f = RemoteData.tap((_: number) => {
 		called = true;
@@ -327,7 +327,7 @@ test("remoteData.tap does not execute on NotAsked or Loading", () => {
 	expect(called).toBe(false);
 });
 
-test("remoteData.tap returns original value", () => {
+test("tap: returns original value", () => {
 	const data: RemoteData<string, number> = RemoteData.make.success(5);
 	const result = pipe(data, RemoteData.tap(() => {}));
 	expect(result).toStrictEqual({ kind: "Success", value: 5 });
@@ -337,7 +337,7 @@ test("remoteData.tap returns original value", () => {
 // tapError
 // ---------------------------------------------------------------------------
 
-test("remoteData.tapError calls f on Failure", () => {
+test("tapError: calls f on Failure", () => {
 	let called = false;
 	pipe(
 		RemoteData.make.failure("oops"),
@@ -348,7 +348,7 @@ test("remoteData.tapError calls f on Failure", () => {
 	expect(called).toBe(true);
 });
 
-test("remoteData.tapError does not call f on Success", () => {
+test("tapError: does not call f on Success", () => {
 	let called = false;
 	pipe(
 		RemoteData.make.success(42),
@@ -359,7 +359,7 @@ test("remoteData.tapError does not call f on Success", () => {
 	expect(called).toBe(false);
 });
 
-test("remoteData.tapError does not call f on Loading", () => {
+test("tapError: does not call f on Loading", () => {
 	let called = false;
 	pipe(
 		RemoteData.make.loading(),
@@ -370,13 +370,13 @@ test("remoteData.tapError does not call f on Loading", () => {
 	expect(called).toBe(false);
 });
 
-test("remoteData.tapError returns the RemoteData unchanged", () => {
+test("tapError: returns the RemoteData unchanged", () => {
 	const data = RemoteData.make.failure("oops");
 	const result = pipe(data, RemoteData.tapError(() => {}));
 	expect(result).toStrictEqual(data);
 });
 
-test("remoteData.tapError receives the error value", () => {
+test("tapError: receives the error value", () => {
 	let received: string | undefined;
 	pipe(
 		RemoteData.make.failure("oops"),
@@ -391,36 +391,36 @@ test("remoteData.tapError receives the error value", () => {
 // recover
 // ---------------------------------------------------------------------------
 
-test("remoteData.recover provides fallback for Failure", () => {
+test("recover: provides fallback for Failure", () => {
 	const data: RemoteData<string, number> = RemoteData.make.failure("err");
 	const result = pipe(data, RemoteData.recover((_e: string) => RemoteData.make.success(99)));
 	expect(result).toStrictEqual({ kind: "Success", value: 99 });
 });
 
-test("remoteData.recover passes through Success", () => {
+test("recover: passes through Success", () => {
 	const data: RemoteData<string, number> = RemoteData.make.success(5);
 	const result = pipe(data, RemoteData.recover((_e: string) => RemoteData.make.success(99)));
 	expect(result).toStrictEqual({ kind: "Success", value: 5 });
 });
 
-test("remoteData.recover passes through Loading", () => {
+test("recover: passes through Loading", () => {
 	const data: RemoteData<string, number> = RemoteData.make.loading();
 	const result = pipe(data, RemoteData.recover((_e: string) => RemoteData.make.success(99)));
 	expect(result).toStrictEqual({ kind: "Loading" });
 });
 
-test("remoteData.recover passes through NotAsked", () => {
+test("recover: passes through NotAsked", () => {
 	const data: RemoteData<string, number> = RemoteData.make.notAsked();
 	const result = pipe(data, RemoteData.recover((_e: string) => RemoteData.make.success(99)));
 	expect(result).toStrictEqual({ kind: "NotAsked" });
 });
 
-test("remoteData.recover widens to RemoteData<E, A | B> when fallback returns a different type", () => {
+test("recover: widens to RemoteData<E, A | B> when fallback returns different type", () => {
 	const result = pipe(RemoteData.make.failure("err"), RemoteData.recover((_e) => RemoteData.make.success("recovered")));
 	expect(result).toStrictEqual({ kind: "Success", value: "recovered" });
 });
 
-test("remoteData.recover preserves Success typed as RemoteData<E, A | B>", () => {
+test("recover: preserves Success typed as union", () => {
 	const result = pipe(RemoteData.make.success(5), RemoteData.recover((_e) => RemoteData.make.success("recovered")));
 	expect(result).toStrictEqual({ kind: "Success", value: 5 });
 });
@@ -429,11 +429,11 @@ test("remoteData.recover preserves Success typed as RemoteData<E, A | B>", () =>
 // toMaybe
 // ---------------------------------------------------------------------------
 
-test("remoteData.toMaybe returns Some for Success", () => {
+test("to.Maybe: returns Some for Success", () => {
 	expect(RemoteData.to.Maybe(RemoteData.make.success(42))).toStrictEqual({ kind: "Some", value: 42 });
 });
 
-test("remoteData.toMaybe returns None for non-Success", () => {
+test("to.Maybe: returns None for non-Success", () => {
 	expect(RemoteData.to.Maybe(RemoteData.make.notAsked())).toStrictEqual({ kind: "None" });
 	expect(RemoteData.to.Maybe(RemoteData.make.loading())).toStrictEqual({ kind: "None" });
 	expect(RemoteData.to.Maybe(RemoteData.make.failure("e"))).toStrictEqual({ kind: "None" });
@@ -443,19 +443,19 @@ test("remoteData.toMaybe returns None for non-Success", () => {
 // toResult
 // ---------------------------------------------------------------------------
 
-test("remoteData.toResult returns Ok for Success", () => {
+test("to.Result: returns Ok for Success", () => {
 	const data: RemoteData<string, number> = RemoteData.make.success(42);
 	const result = pipe(data, RemoteData.to.Result(() => "not ready"));
 	expect(result).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
-test("remoteData.toResult returns Err with original error for Failure", () => {
+test("to.Result: returns Err with original error for Failure", () => {
 	const data: RemoteData<string, number> = RemoteData.make.failure("bad");
 	const result = pipe(data, RemoteData.to.Result(() => "not ready"));
 	expect(result).toStrictEqual({ kind: "Err", error: "bad" });
 });
 
-test("remoteData.toResult returns Err with fallback for NotAsked/Loading", () => {
+test("to.Result: returns Err with fallback for NotAsked and Loading", () => {
 	const handler = RemoteData.to.Result<string>(() => "not ready");
 	expect(handler(RemoteData.make.notAsked())).toStrictEqual({ kind: "Err", error: "not ready" });
 	expect(handler(RemoteData.make.loading())).toStrictEqual({ kind: "Err", error: "not ready" });
@@ -465,7 +465,7 @@ test("remoteData.toResult returns Err with fallback for NotAsked/Loading", () =>
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("remoteData composes well in a pipe chain", () => {
+test("pipe: composes well in a pipe chain", () => {
 	const data: RemoteData<string, number> = RemoteData.make.success(5);
 	const result = pipe(
 		data,
@@ -480,21 +480,21 @@ test("remoteData composes well in a pipe chain", () => {
 // fromResult
 // ---------------------------------------------------------------------------
 
-test("remoteData.fromResult converts Ok to Success", () => {
+test("from.Result: converts Ok to Success", () => {
 	expect(RemoteData.from.Result(Result.make.ok(42))).toStrictEqual(RemoteData.make.success(42));
 });
 
-test("remoteData.fromResult converts Err to Failure", () => {
+test("from.Result: converts Err to Failure", () => {
 	expect(RemoteData.from.Result(Result.make.err("oops"))).toStrictEqual(RemoteData.make.failure("oops"));
 });
 
-test("remoteData.fromResult preserves complex value types", () => {
+test("from.Result: preserves complex value types", () => {
 	expect(RemoteData.from.Result(Result.make.ok({ id: 1, name: "Alice" }))).toStrictEqual(
 		RemoteData.make.success({ id: 1, name: "Alice" }),
 	);
 });
 
-test("remoteData.fromResult preserves complex error types", () => {
+test("from.Result: preserves complex error types", () => {
 	expect(RemoteData.from.Result(Result.make.err({ code: 404 }))).toStrictEqual(RemoteData.make.failure({ code: 404 }));
 });
 
@@ -502,25 +502,25 @@ test("remoteData.fromResult preserves complex error types", () => {
 // fromMaybe
 // ---------------------------------------------------------------------------
 
-test("remoteData.fromMaybe converts Some to Success", () => {
+test("from.Maybe: converts Some to Success", () => {
 	expect(RemoteData.from.Maybe(() => "missing")(Maybe.make.some(42))).toStrictEqual(RemoteData.make.success(42));
 });
 
-test("remoteData.fromMaybe converts None to Failure using onNone", () => {
+test("from.Maybe: converts None to Failure using onNone", () => {
 	expect(RemoteData.from.Maybe(() => "missing")(Maybe.make.none())).toStrictEqual(RemoteData.make.failure("missing"));
 });
 
-test("remoteData.fromMaybe preserves complex value types", () => {
+test("from.Maybe: preserves complex value types", () => {
 	expect(RemoteData.from.Maybe(() => "not found")(Maybe.make.some({ id: 1, name: "Alice" }))).toStrictEqual(
 		RemoteData.make.success({ id: 1, name: "Alice" }),
 	);
 });
 
-test("remoteData.fromMaybe composes in pipe", () => {
+test("from.Maybe: composes in pipe", () => {
 	expect(pipe(Maybe.make.some(5), RemoteData.from.Maybe(() => "no value"))).toStrictEqual(RemoteData.make.success(5));
 });
 
-test("remoteData.fromMaybe curried handler can be assigned and reused", () => {
+test("from.Maybe: curried handler can be assigned and reused", () => {
 	const toRemote = RemoteData.from.Maybe(() => "missing");
 	expect(toRemote(Maybe.make.some(1))).toStrictEqual(RemoteData.make.success(1));
 	expect(toRemote(Maybe.make.none())).toStrictEqual(RemoteData.make.failure("missing"));
@@ -530,31 +530,31 @@ test("remoteData.fromMaybe curried handler can be assigned and reused", () => {
 // filter
 // ---------------------------------------------------------------------------
 
-test("remoteData.filter keeps Success when predicate passes", () => {
+test("filter: keeps Success when predicate passes", () => {
 	expect(RemoteData.filter((n: number) => n > 0, () => "not positive")(RemoteData.make.success(5))).toStrictEqual({
 		kind: "Success",
 		value: 5,
 	});
 });
 
-test("remoteData.filter converts Success to Failure when predicate fails", () => {
+test("filter: converts Success to Failure when predicate fails", () => {
 	expect(RemoteData.filter((n: number) => n > 0, (n) => `${n} is not positive`)(RemoteData.make.success(-3)))
 		.toStrictEqual({ kind: "Failure", error: "-3 is not positive" });
 });
 
-test("remoteData.filter passes NotAsked through unchanged", () => {
+test("filter: passes NotAsked through unchanged", () => {
 	expect(RemoteData.filter((_: number) => true, () => "error")(RemoteData.make.notAsked())).toStrictEqual({
 		kind: "NotAsked",
 	});
 });
 
-test("remoteData.filter passes Loading through unchanged", () => {
+test("filter: passes Loading through unchanged", () => {
 	expect(RemoteData.filter((_: number) => true, () => "error")(RemoteData.make.loading())).toStrictEqual({
 		kind: "Loading",
 	});
 });
 
-test("remoteData.filter passes Failure through unchanged", () => {
+test("filter: passes Failure through unchanged", () => {
 	expect(RemoteData.filter((_: number) => true, () => "new error")(RemoteData.make.failure("original"))).toStrictEqual({
 		kind: "Failure",
 		error: "original",

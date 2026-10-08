@@ -115,8 +115,8 @@ export const TaskValidation = {
 		 * ```
 		 */
 		Result:
-			<E1, E2, A>(combineErrors: (errors: NonEmptyArr<E1>) => E2) => (data: Task.Validation<E1, A>): Task.Result<E2, A> =>
-				Task.map(CoreValidation.to.Result<E1, E2, A>(combineErrors))(data),
+			<E1, E2, A>(combineErrors: (errors: NonEmptyArr<E1>) => E2) => (task: Task.Validation<E1, A>): Task.Result<E2, A> =>
+				Task.map(CoreValidation.to.Result<E1, E2, A>(combineErrors))(task),
 
 		/**
 		 * Converts a `Task.Validation` to a `Task.Maybe`.
@@ -127,7 +127,7 @@ export const TaskValidation = {
 		 * Task.Validation.to.Maybe(validationTask);
 		 * ```
 		 */
-		Maybe: <E, A>(data: Task.Validation<E, A>): Task.Maybe<A> => Task.map(CoreValidation.to.Maybe<E, A>)(data),
+		Maybe: <E, A>(task: Task.Validation<E, A>): Task.Maybe<A> => Task.map(CoreValidation.to.Maybe<E, A>)(task),
 	},
 
 	/**
@@ -145,27 +145,32 @@ export const TaskValidation = {
 	 */
 	tryCatch:
 		<E, A>(
-			f: (signal?: AbortSignal) => Thenable<A>,
+			fn: (signal?: AbortSignal) => Thenable<A>,
 			options: { onError: (error: unknown) => E; },
 		): Task.Validation<E, A> =>
 		(signal) =>
 			Deferred.from.Promise(
 				// oxlint-disable-next-line require-await
-				globalThis.Promise.resolve().then(async () => f(signal)).then(CoreValidation.make.passed<E, A>).catch((error) =>
+				globalThis.Promise.resolve().then(async () => fn(signal)).then(CoreValidation.make.passed<E, A>).catch((error) =>
 					CoreValidation.make.failed<E>(options.onError(error))
 				),
 			),
 
 	/**
 	 * Transforms the success value inside a Task.Validation.
+	 *
+	 * @see {@link Task.Validation.mapError} to transform accumulated errors.
+	 * @see {@link Task.Validation.apply} to combine multiple validations in parallel.
 	 */
-	map: <E, A, B>(f: (a: A) => B) => (data: Task.Validation<E, A>): Task.Validation<E, B> =>
-		Task.map(CoreValidation.map<A, B>(f))(data),
+	map: <E, A, B>(transform: (value: A) => B) => (task: Task.Validation<E, A>): Task.Validation<E, B> =>
+		Task.map(CoreValidation.map<A, B>(transform))(task),
 
 	/**
 	 * Applies a function wrapped in a Task.Validation to a value wrapped in a
 	 * Task.Validation. Both Tasks run in parallel and errors from both sides
 	 * are accumulated.
+	 *
+	 * @see {@link Task.Validation.product} to combine two validations into a tuple.
 	 *
 	 * @example
 	 * ```ts
@@ -178,23 +183,27 @@ export const TaskValidation = {
 	 */
 	apply:
 		<E2, A>(arg: Task.Validation<E2, A>) =>
-		<B, E1 = never>(data: Task.Validation<E1, (a: A) => B>): Task.Validation<E1 | E2, B> =>
+		<B, E1 = never>(task: Task.Validation<E1, (value: A) => B>): Task.Validation<E1 | E2, B> =>
 		(signal) =>
 			Deferred.from.Promise(
-				Promise.all([Deferred.to.Promise(data(signal)), Deferred.to.Promise(arg(signal))]).then(([vf, va]) =>
+				Promise.all([Deferred.to.Promise(task(signal)), Deferred.to.Promise(arg(signal))]).then(([vf, va]) =>
 					CoreValidation.apply(va)(vf)
 				),
 			),
 
 	/**
 	 * Extracts a value from a Task.Validation by providing handlers for both cases.
+	 *
+	 * @see {@link Task.Validation.match} for named-case pattern matching with an object literal.
 	 */
 	fold:
-		<E, A, B>(onFailed: (errors: NonEmptyArr<E>) => B, onPassed: (a: A) => B) => (data: Task.Validation<E, A>): Task<B> =>
-			Task.map(CoreValidation.fold<E, A, B>(onFailed, onPassed))(data),
+		<E, A, B>(onFailed: (errors: NonEmptyArr<E>) => B, onPassed: (value: A) => B) =>
+		(task: Task.Validation<E, A>): Task<B> => Task.map(CoreValidation.fold<E, A, B>(onFailed, onPassed))(task),
 
 	/**
 	 * Pattern matches on a Task.Validation, returning a Task of the result.
+	 *
+	 * @see {@link Task.Validation.fold} for positional argument pattern matching.
 	 *
 	 * @example
 	 * ```ts
@@ -208,38 +217,44 @@ export const TaskValidation = {
 	 * ```
 	 */
 	match:
-		<E, A, B>(cases: { passed: (a: A) => B; failed: (errors: NonEmptyArr<E>) => B; }) =>
-		(data: Task.Validation<E, A>): Task<B> => Task.map(CoreValidation.match<E, A, B>(cases))(data),
+		<E, A, B>(cases: { passed: (value: A) => B; failed: (errors: NonEmptyArr<E>) => B; }) =>
+		(task: Task.Validation<E, A>): Task<B> => Task.map(CoreValidation.match<E, A, B>(cases))(task),
 
 	/**
 	 * Returns the success value or a default value if the Task.Validation is failed.
 	 * The default can be a different type, widening the result to `Task<A | B>`.
 	 */
-	getOrElse: <B>(defaultValue: () => B) => <E, A>(data: Task.Validation<E, A>): Task<A | B> =>
-		Task.map(CoreValidation.getOrElse<B>(defaultValue))(data),
+	getOrElse: <B>(fallback: () => B) => <E, A>(task: Task.Validation<E, A>): Task<A | B> =>
+		Task.map(CoreValidation.getOrElse<B>(fallback))(task),
 
 	/**
 	 * Executes a side effect on the success value without changing the Task.Validation.
 	 * Useful for logging or debugging.
+	 *
+	 * @see {@link Task.Validation.tapError} to perform a side effect on accumulated errors.
 	 */
-	tap: <E, A>(f: (a: A) => void) => (data: Task.Validation<E, A>): Task.Validation<E, A> =>
-		Task.map(CoreValidation.tap<E, A>(f))(data),
+	tap: <E, A>(sideEffect: (value: A) => void) => (task: Task.Validation<E, A>): Task.Validation<E, A> =>
+		Task.map(CoreValidation.tap<E, A>(sideEffect))(task),
 
 	/**
 	 * Recovers from a Failed state by providing a fallback Task.Validation.
 	 * The fallback receives the accumulated error list so callers can inspect which errors occurred.
 	 * The fallback can produce a different success type or resolve with a different error type.
+	 *
+	 * @see {@link Task.Validation.recoverUnless} to conditionally recover based on accumulated errors.
 	 */
 	recover:
 		<E1, E2, B>(fallback: (errors: NonEmptyArr<E1>) => Task.Validation<E2, B>) =>
-		<A>(data: Task.Validation<E1, A>): Task.Validation<E2, A | B> =>
+		<A>(task: Task.Validation<E1, A>): Task.Validation<E2, A | B> =>
 			Task.chain((validation: Validation<E1, A>) =>
 				CoreValidation.is.passed(validation) ? Task.make(validation as Validation<E2, A | B>) : fallback(validation.errors)
-			)(data as Task<Validation<E1, A>>),
+			)(task as Task<Validation<E1, A>>),
 
 	/**
 	 * Recovers from a Failed state unless the predicate `isBlocked` returns true for the accumulated errors.
 	 * The fallback receives the accumulated errors and can produce a different success type, widening the result to `Task.Validation<E1 | E2, A | B>`.
+	 *
+	 * @see {@link Task.Validation.recover} for unconditional error recovery.
 	 *
 	 * @example
 	 * ```ts
@@ -257,19 +272,22 @@ export const TaskValidation = {
 			isBlocked: (errors: NonEmptyArr<E1>) => boolean,
 			fallback: (errors: NonEmptyArr<E1>) => Task.Validation<E2, B>,
 		) =>
-		<A>(data: Task.Validation<E1, A>): Task.Validation<E1 | E2, A | B> =>
+		<A>(task: Task.Validation<E1, A>): Task.Validation<E1 | E2, A | B> =>
 			Task.chain((validation: Validation<E1, A>) =>
 				CoreValidation.is.passed(validation)
 					? Task.make(validation as Validation<E1 | E2, A | B>)
 					: isBlocked(validation.errors)
 					? Task.make(validation as unknown as Validation<E1 | E2, A | B>)
 					: fallback(validation.errors)
-			)(data as Task<Validation<E1, A>>),
+			)(task as Task<Validation<E1, A>>),
 
 	/**
 	 * Runs two Task.Validations concurrently and combines their results into a tuple.
 	 * If both are Passed, returns Passed with both values. If either fails, accumulates
 	 * errors from both sides.
+	 *
+	 * @see {@link Task.Validation.productAll} to combine a list of validations.
+	 * @see {@link Task.Validation.apply} to apply a curried function across validations.
 	 *
 	 * @example
 	 * ```ts
@@ -293,6 +311,8 @@ export const TaskValidation = {
 	 * If all are Passed, returns Passed with all values as an array.
 	 * If any fail, returns Failed with all accumulated errors.
 	 *
+	 * @see {@link Task.Validation.product} to combine two validations into a pair.
+	 *
 	 * @example
 	 * ```ts
 	 * await Task.Validation.productAll([
@@ -302,9 +322,9 @@ export const TaskValidation = {
 	 * ])(); // Passed([name, email, age]) or Failed([...all errors])
 	 * ```
 	 */
-	productAll: <E, A>(data: NonEmptyArr<Task.Validation<E, A>>): Task.Validation<E, readonly A[]> => (signal) =>
+	productAll: <E, A>(validations: NonEmptyArr<Task.Validation<E, A>>): Task.Validation<E, readonly A[]> => (signal) =>
 		Deferred.from.Promise(
-			Promise.all(data.map((t) => Deferred.to.Promise(t(signal)))).then((results) => {
+			Promise.all(validations.map((t) => Deferred.to.Promise(t(signal)))).then((results) => {
 				const [first, ...rest] = results;
 				return CoreValidation.productAll([first!, ...rest]);
 			}),
@@ -312,6 +332,8 @@ export const TaskValidation = {
 
 	/**
 	 * Transforms all accumulated errors inside a Task.Validation.
+	 *
+	 * @see {@link Task.Validation.map} to transform the success value.
 	 *
 	 * @example
 	 * ```ts
@@ -321,11 +343,13 @@ export const TaskValidation = {
 	 * ); // Task.Validation(Failed(["OOPS"]))
 	 * ```
 	 */
-	mapError: <E, F, A>(f: (e: E) => F) => (data: Task.Validation<E, A>): Task.Validation<F, A> =>
-		Task.map(CoreValidation.mapError<E, F, A>(f))(data),
+	mapError: <E, F, A>(transform: (error: E) => F) => (task: Task.Validation<E, A>): Task.Validation<F, A> =>
+		Task.map(CoreValidation.mapError<E, F, A>(transform))(task),
 
 	/**
 	 * Executes a side effect on the accumulated errors without changing the Task.Validation.
+	 *
+	 * @see {@link Task.Validation.tap} to perform a side effect on the success value.
 	 *
 	 * @example
 	 * ```ts
@@ -335,8 +359,9 @@ export const TaskValidation = {
 	 * );
 	 * ```
 	 */
-	tapError: <E, A>(f: (errors: NonEmptyArr<E>) => void) => (data: Task.Validation<E, A>): Task.Validation<E, A> =>
-		Task.map(CoreValidation.tapError<E, A>(f))(data),
+	tapError:
+		<E, A>(sideEffect: (errors: NonEmptyArr<E>) => void) => (task: Task.Validation<E, A>): Task.Validation<E, A> =>
+			Task.map(CoreValidation.tapError<E, A>(sideEffect))(task),
 
 	/**
 	 * Combines a record of Task.Validations into a single Task.Validation of a record.

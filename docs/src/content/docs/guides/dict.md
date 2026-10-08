@@ -40,7 +40,7 @@ const byId = Dict.from.entries([
 ]);
 
 // Convert a plain object
-const scores = Dict.from.Record({ alice: 85, bob: 92, carol: 74 });
+const scores = Dict.from.record({ alice: 85, bob: 92, carol: 74 });
 ```
 
 `Dict.singleton(key, value)` is also available to quickly construct a typed dictionary holding
@@ -56,7 +56,7 @@ Instead of returning nullable values, `Dict.lookup` explicitly yields a `Maybe` 
 import { pipe } from "@nlozgachev/pipelined/composition";
 import { Maybe } from "@nlozgachev/pipelined/core";
 
-const config = Dict.from.Record({ timeout: 5000, retries: 3 });
+const config = Dict.from.record({ timeout: 5000, retries: 3 });
 
 pipe(config, Dict.lookup("timeout")); // Some(5000)
 pipe(config, Dict.lookup("missing")); // None
@@ -85,7 +85,7 @@ If the transformation depends on the key as well as the value, `Dict.mapWithKey`
 callback:
 
 ```ts
-const userDetails = Dict.from.Record({ usr_1: "admin", usr_2: "member" });
+const userDetails = Dict.from.record({ usr_1: "admin", usr_2: "member" });
 
 const labels = pipe(
   userDetails,
@@ -99,7 +99,7 @@ When migrating key namespaces or prefixing identifiers, `Dict.mapKeys` applies a
 strictly to dictionary keys:
 
 ```ts
-const userRoles = Dict.from.Record({ 1: "admin", 2: "editor" });
+const userRoles = Dict.from.record({ 1: "admin", 2: "editor" });
 
 const prefixedRoles = pipe(
   userRoles,
@@ -113,7 +113,7 @@ To transform keys and values simultaneously in a single pass, `Dict.mapEntries` 
 `[key, value]` pair to a new tuple:
 
 ```ts
-const rawConfig = Dict.from.Record({ port: "8080", host: "localhost" });
+const rawConfig = Dict.from.record({ port: "8080", host: "localhost" });
 
 const parsedConfig = pipe(
   rawConfig,
@@ -134,7 +134,7 @@ const passing = pipe(scores, Dict.filter((score) => score >= 75));
 
 // Remove entries where the key starts with an internal prefix:
 const publicScores = pipe(
-  Dict.from.Record({ test_alice: 99, bob: 92 }),
+  Dict.from.record({ test_alice: 99, bob: 92 }),
   Dict.filterWithKey((key, _score) => !key.startsWith("test_")),
 ); // Map { "bob" => 92 }
 ```
@@ -152,7 +152,7 @@ const parseNumeric = (s: string): Maybe<number> => {
 };
 
 const parsed = pipe(
-  Dict.from.Record({ val_a: "42", val_b: "invalid_text", val_c: "100" }),
+  Dict.from.record({ val_a: "42", val_b: "invalid_text", val_c: "100" }),
   Dict.filterMap(parseNumeric),
 ); // Map { "val_a" => 42, "val_c" => 100 }
 ```
@@ -165,7 +165,7 @@ Unlike native `Map` operations, modifying a `Dict` never alters the original ins
 modification returns a fresh, structurally copied dictionary:
 
 ```ts
-const baseStats = Dict.from.Record({ visits: 100, likes: 25 });
+const baseStats = Dict.from.record({ visits: 100, likes: 25 });
 
 // Inserting a new key-value pair
 const expanded = pipe(baseStats, Dict.insert("shares", 5));
@@ -203,8 +203,8 @@ const initialStats = pipe(baseStats, Dict.upsert("shares", incrementCounter));
   dictionary.
 
 ```ts
-const defaults = Dict.from.Record({ timeout: 3000, retries: 3 });
-const overrides = Dict.from.Record({ timeout: 10000 });
+const defaults = Dict.from.record({ timeout: 3000, retries: 3 });
+const overrides = Dict.from.record({ timeout: 10000 });
 
 const merged = pipe(defaults, Dict.union(overrides));
 // Map { "timeout" => 10000, "retries" => 3 }
@@ -235,7 +235,7 @@ const aggregated = pipe(
 - `compact` collapses a dictionary of optional values `ReadonlyMap<K, Maybe<V>>` into a clean
   dictionary of values `ReadonlyMap<K, V>`, discarding `None` states.
 - `reduce` folds the dictionary values from the left into a single accumulator.
-- `toRecord` exports a string-keyed dictionary back into a plain JavaScript object.
+- `to.record` exports a string-keyed dictionary back into a plain JavaScript object.
 
 ```ts
 // Sum all scores:

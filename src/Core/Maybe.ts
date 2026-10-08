@@ -68,6 +68,8 @@ export const Maybe = {
 		/**
 		 * Type guard that checks if a Maybe is Some.
 		 *
+		 * @see {@link Maybe.is.none}
+		 *
 		 * @example
 		 * ```ts
 		 * const value = Maybe.make.some(42);
@@ -80,6 +82,8 @@ export const Maybe = {
 
 		/**
 		 * Type guard that checks if a Maybe is None.
+		 *
+		 * @see {@link Maybe.is.some}
 		 *
 		 * @example
 		 * ```ts
@@ -215,17 +219,22 @@ export const Maybe = {
 	/**
 	 * Transforms the value inside a Maybe if it exists.
 	 *
+	 * @see {@link Maybe.chain} for functions that return a Maybe.
+	 *
 	 * @example
 	 * ```ts
 	 * pipe(Maybe.make.some(5), Maybe.map(n => n * 2)); // Some(10)
 	 * pipe(Maybe.make.none(), Maybe.map(n => n * 2)); // None
 	 * ```
 	 */
-	map: <A, B>(f: (a: A) => B) => (data: Maybe<A>): Maybe<B> => (isSome(data) ? makeSome(f(data.value)) : data),
+	map: <A, B>(transform: (value: A) => B) => (maybe: Maybe<A>): Maybe<B> =>
+		isSome(maybe) ? makeSome(transform(maybe.value)) : maybe,
 
 	/**
-	 * Chains Maybe computations. If the first is Some, passes the value to f.
+	 * Chains Maybe computations. If the first is Some, passes the value to `transform`.
 	 * If the first is None, propagates None.
+	 *
+	 * @see {@link Maybe.map} for transforming with plain non-optional functions.
 	 *
 	 * @example
 	 * ```ts
@@ -238,10 +247,13 @@ export const Maybe = {
 	 * pipe(Maybe.make.some("abc"), Maybe.chain(parseNumber)); // None
 	 * ```
 	 */
-	chain: <A, B>(f: (a: A) => Maybe<B>) => (data: Maybe<A>): Maybe<B> => (isSome(data) ? f(data.value) : data),
+	chain: <A, B>(transform: (value: A) => Maybe<B>) => (maybe: Maybe<A>): Maybe<B> =>
+		isSome(maybe) ? transform(maybe.value) : maybe,
 
 	/**
 	 * Extracts the value from a Maybe by providing handlers for both cases.
+	 *
+	 * @see {@link Maybe.match} for named-case handling using an object.
 	 *
 	 * @example
 	 * ```ts
@@ -254,11 +266,13 @@ export const Maybe = {
 	 * ); // "Value: 5"
 	 * ```
 	 */
-	fold: <A, B>(onNone: () => B, onSome: (a: A) => B) => (data: Maybe<A>): B =>
-		isSome(data) ? onSome(data.value) : onNone(),
+	fold: <A, B>(onNone: () => B, onSome: (value: A) => B) => (maybe: Maybe<A>): B =>
+		isSome(maybe) ? onSome(maybe.value) : onNone(),
 
 	/**
 	 * Pattern matches on a Maybe, returning the result of the matching case.
+	 *
+	 * @see {@link Maybe.fold} for positional arguments (onNone, onSome).
 	 *
 	 * @example
 	 * ```ts
@@ -271,13 +285,16 @@ export const Maybe = {
 	 * );
 	 * ```
 	 */
-	match: <A, B>(cases: { none: () => B; some: (a: A) => B; }) => (data: Maybe<A>): B =>
-		isSome(data) ? cases.some(data.value) : cases.none(),
+	match: <A, B>(cases: { none: () => B; some: (value: A) => B; }) => (maybe: Maybe<A>): B =>
+		isSome(maybe) ? cases.some(maybe.value) : cases.none(),
 
 	/**
 	 * Returns the value inside a Maybe, or a default value if None.
 	 * The default is a thunk `() => B` — evaluated only when the Maybe is None.
 	 * The default can be a different type, widening the result to `A | B`.
+	 *
+	 * @see {@link Maybe.match}
+	 * @see {@link Maybe.to.nullable}
 	 *
 	 * @example
 	 * ```ts
@@ -286,11 +303,13 @@ export const Maybe = {
 	 * pipe(Maybe.make.none<string>(), Maybe.getOrElse(() => null)); // null — typed as string | null
 	 * ```
 	 */
-	getOrElse: <B>(defaultValue: () => B) => <A>(data: Maybe<A>): A | B => (isSome(data) ? data.value : defaultValue()),
+	getOrElse: <B>(defaultValue: () => B) => <A>(maybe: Maybe<A>): A | B => isSome(maybe) ? maybe.value : defaultValue(),
 
 	/**
 	 * Executes a side effect on the value without changing the Maybe.
 	 * Useful for logging or debugging.
+	 *
+	 * @see {@link Maybe.tapNone} for running side effects on None.
 	 *
 	 * @example
 	 * ```ts
@@ -301,15 +320,17 @@ export const Maybe = {
 	 * );
 	 * ```
 	 */
-	tap: <A>(f: (a: A) => void) => (data: Maybe<A>): Maybe<A> => {
-		if (isSome(data)) {
-			f(data.value);
+	tap: <A>(sideEffect: (value: A) => void) => (maybe: Maybe<A>): Maybe<A> => {
+		if (isSome(maybe)) {
+			sideEffect(maybe.value);
 		}
-		return data;
+		return maybe;
 	},
 
 	/**
 	 * Executes a side effect when the Maybe is None, without changing the Maybe.
+	 *
+	 * @see {@link Maybe.tap} for running side effects on Some.
 	 *
 	 * @example
 	 * ```ts
@@ -319,16 +340,18 @@ export const Maybe = {
 	 * );
 	 * ```
 	 */
-	tapNone: (f: () => void) => <A>(data: Maybe<A>): Maybe<A> => {
-		if (isNone(data)) {
-			f();
+	tapNone: (sideEffect: () => void) => <A>(maybe: Maybe<A>): Maybe<A> => {
+		if (isNone(maybe)) {
+			sideEffect();
 		}
-		return data;
+		return maybe;
 	},
 
 	/**
 	 * Filters a Maybe based on a predicate or type guard.
 	 * Returns None if the predicate returns false or if the Maybe is already None.
+	 *
+	 * @see {@link Maybe.map}
 	 *
 	 * @example
 	 * ```ts
@@ -338,17 +361,19 @@ export const Maybe = {
 	 * ```
 	 */
 	filter:
-		(<A, B extends A>(predicate: (a: A) => boolean) => (data: Maybe<A>): Maybe<B> =>
-			isSome(data)
-				? (predicate(data.value) ? (data as unknown as Maybe<B>) : makeNone())
-				: (data as unknown as Maybe<B>)) as {
-				<A, B extends A>(refinement: (a: A) => a is B): (data: Maybe<A>) => Maybe<B>;
-				<A>(predicate: (a: A) => boolean): (data: Maybe<A>) => Maybe<A>;
+		(<A, B extends A>(predicate: (value: A) => boolean) => (maybe: Maybe<A>): Maybe<B> =>
+			isSome(maybe)
+				? (predicate(maybe.value) ? (maybe as unknown as Maybe<B>) : makeNone())
+				: (maybe as unknown as Maybe<B>)) as {
+				<A, B extends A>(refinement: (value: A) => value is B): (maybe: Maybe<A>) => Maybe<B>;
+				<A>(predicate: (value: A) => boolean): (maybe: Maybe<A>) => Maybe<A>;
 			},
 
 	/**
 	 * Recovers from a None by providing a fallback Maybe.
 	 * The fallback can produce a different type, widening the result to `Maybe<A | B>`.
+	 *
+	 * @see {@link Maybe.getOrElse}
 	 *
 	 * @example
 	 * ```ts
@@ -356,7 +381,7 @@ export const Maybe = {
 	 * pipe(Maybe.make.some(10), Maybe.recover(() => Maybe.make.some(42))); // Some(10)
 	 * ```
 	 */
-	recover: <B>(fallback: () => Maybe<B>) => <A>(data: Maybe<A>): Maybe<A | B> => (isSome(data) ? data : fallback()),
+	recover: <B>(fallback: () => Maybe<B>) => <A>(maybe: Maybe<A>): Maybe<A | B> => (isSome(maybe) ? maybe : fallback()),
 
 	/**
 	 * Applies a function wrapped in a Maybe to a value wrapped in a Maybe.

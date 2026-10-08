@@ -3,18 +3,18 @@ import { Json } from "../Json.ts";
 
 // --- parse ---
 
-test("Json.parse returns Ok for valid JSON", () => {
+test("parse: returns Ok for valid JSON", () => {
 	const result = Json.parse('{"a":1}');
 	expect(result).toStrictEqual({ kind: "Ok", value: { a: 1 } });
 });
 
-test("Json.parse returns Err(SyntaxError) for invalid JSON", () => {
+test("parse: returns Err(SyntaxError) for invalid JSON", () => {
 	const result = Json.parse("{invalid}");
 	expect(result.kind).toBe("Err");
 	expect(result.kind === "Err" ? result.error : undefined).toBeInstanceOf(SyntaxError);
 });
 
-test("Json.parse wraps non-SyntaxError exception into SyntaxError", () => {
+test("parse: wraps non-SyntaxError exception into SyntaxError", () => {
 	const spy = vi.spyOn(JSON, "parse").mockImplementationOnce(() => {
 		throw new Error("custom non-syntax error");
 	});
@@ -26,12 +26,12 @@ test("Json.parse wraps non-SyntaxError exception into SyntaxError", () => {
 
 // --- stringify ---
 
-test("Json.stringify returns Ok for valid object", () => {
+test("stringify: returns Ok for valid object", () => {
 	const result = Json.stringify({ a: 1 });
 	expect(result).toStrictEqual({ kind: "Ok", value: '{"a":1}' });
 });
 
-test("Json.stringify returns Err(TypeError) for circular references", () => {
+test("stringify: returns Err(TypeError) for circular references", () => {
 	const circular: any = {};
 	circular.self = circular;
 	const result = Json.stringify(circular);
@@ -39,7 +39,7 @@ test("Json.stringify returns Err(TypeError) for circular references", () => {
 	expect(result.kind === "Err" ? result.error : undefined).toBeInstanceOf(TypeError);
 });
 
-test("Json.stringify wraps non-TypeError exception into TypeError", () => {
+test("stringify: wraps non-TypeError exception into TypeError", () => {
 	const badReplacer = () => {
 		throw new Error("custom error");
 	};

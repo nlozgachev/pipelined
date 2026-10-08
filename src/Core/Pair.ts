@@ -23,7 +23,7 @@
 export type Pair<A, B> = readonly [A, B];
 
 const makePair = <A, B>(first: A, second: B): Pair<A, B> => [first, second];
-const makeArray = <A, B>(arr: readonly [A, B]): Pair<A, B> => arr;
+const makeArray = <A, B>(items: readonly [A, B]): Pair<A, B> => items;
 
 export const Pair = {
 	/**
@@ -57,7 +57,7 @@ export const Pair = {
 	 * Pair.first(Pair.make("Paris", 2_161_000)); // "Paris"
 	 * ```
 	 */
-	first: <A, B>(p: Pair<A, B>): A => p[0],
+	first: <A, B>(pair: Pair<A, B>): A => pair[0],
 
 	/**
 	 * Returns the second value from the pair.
@@ -67,30 +67,39 @@ export const Pair = {
 	 * Pair.second(Pair.make("Paris", 2_161_000)); // 2161000
 	 * ```
 	 */
-	second: <A, B>(p: Pair<A, B>): B => p[1],
+	second: <A, B>(pair: Pair<A, B>): B => pair[1],
 
 	/**
 	 * Transforms the first value, leaving the second unchanged.
+	 *
+	 * @see {@link Pair.mapSecond} to transform the second element instead.
+	 * @see {@link Pair.mapBoth} to transform both elements at once.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(Pair.make("alice", 42), Pair.mapFirst((s) => s.toUpperCase())); // ["ALICE", 42]
 	 * ```
 	 */
-	mapFirst: <A, C>(f: (a: A) => C) => <B>(p: Pair<A, B>): Pair<C, B> => [f(p[0]), p[1]],
+	mapFirst: <A, C>(transform: (first: A) => C) => <B>(pair: Pair<A, B>): Pair<C, B> => [transform(pair[0]), pair[1]],
 
 	/**
 	 * Transforms the second value, leaving the first unchanged.
+	 *
+	 * @see {@link Pair.mapFirst} to transform the first element instead.
+	 * @see {@link Pair.mapBoth} to transform both elements at once.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(Pair.make("alice", 42), Pair.mapSecond((n) => n * 2)); // ["alice", 84]
 	 * ```
 	 */
-	mapSecond: <B, D>(f: (b: B) => D) => <A>(p: Pair<A, B>): Pair<A, D> => [p[0], f(p[1])],
+	mapSecond: <B, D>(transform: (second: B) => D) => <A>(pair: Pair<A, B>): Pair<A, D> => [pair[0], transform(pair[1])],
 
 	/**
 	 * Transforms both values independently in a single step.
+	 *
+	 * @see {@link Pair.mapFirst} to transform only the first element.
+	 * @see {@link Pair.mapSecond} to transform only the second element.
 	 *
 	 * @example
 	 * ```ts
@@ -104,9 +113,9 @@ export const Pair = {
 	 * ```
 	 */
 	mapBoth:
-		<A, C, B, D>(onFirst: (a: A) => C, onSecond: (b: B) => D) => (p: Pair<A, B>): Pair<C, D> => [
-			onFirst(p[0]),
-			onSecond(p[1]),
+		<A, C, B, D>(onFirst: (first: A) => C, onSecond: (second: B) => D) => (pair: Pair<A, B>): Pair<C, D> => [
+			onFirst(pair[0]),
+			onSecond(pair[1]),
 		],
 
 	/**
@@ -119,7 +128,7 @@ export const Pair = {
 	 * // "Alice: 100"
 	 * ```
 	 */
-	fold: <A, B, C>(f: (a: A, b: B) => C) => (p: Pair<A, B>): C => f(p[0], p[1]),
+	fold: <A, B, C>(reducer: (first: A, second: B) => C) => (pair: Pair<A, B>): C => reducer(pair[0], pair[1]),
 
 	/**
 	 * Swaps the two values: `[A, B]` becomes `[B, A]`.
@@ -129,7 +138,7 @@ export const Pair = {
 	 * Pair.swap(Pair.make("key", 1)); // [1, "key"]
 	 * ```
 	 */
-	swap: <A, B>(p: Pair<A, B>): Pair<B, A> => [p[1], p[0]],
+	swap: <A, B>(pair: Pair<A, B>): Pair<B, A> => [pair[1], pair[0]],
 
 	// --- to ---
 	to: {
@@ -138,10 +147,10 @@ export const Pair = {
 		 *
 		 * @example
 		 * ```ts
-		 * Pair.to.Array(Pair.make("hello", 42)); // ["hello", 42]
+		 * Pair.to.array(Pair.make("hello", 42)); // ["hello", 42]
 		 * ```
 		 */
-		Array: <A, B>(p: Pair<A, B>): readonly (A | B)[] => [...p],
+		array: <A, B>(pair: Pair<A, B>): readonly (A | B)[] => [...pair],
 	},
 
 	/**
@@ -157,8 +166,8 @@ export const Pair = {
 	 * ); // logs "Paris: 2161000", returns ["Paris", 2.161]
 	 * ```
 	 */
-	tap: <A, B>(f: (a: A, b: B) => void) => (p: Pair<A, B>): Pair<A, B> => {
-		f(p[0], p[1]);
-		return p;
+	tap: <A, B>(sideEffect: (first: A, second: B) => void) => (pair: Pair<A, B>): Pair<A, B> => {
+		sideEffect(pair[0], pair[1]);
+		return pair;
 	},
 };

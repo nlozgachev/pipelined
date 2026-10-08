@@ -4,7 +4,7 @@ import { pipe } from "../pipe.ts";
 
 // --- converge ---
 
-test("converge - applies input to both transformers and combines results", () => {
+test("converge: applies input to transformers and combines results", () => {
 	const toRecord = converge((lower: string, upper: string) => ({ lower, upper }), [
 		(s: string) => s.toLowerCase(),
 		(s: string) => s.toUpperCase(),
@@ -13,7 +13,7 @@ test("converge - applies input to both transformers and combines results", () =>
 	expect(toRecord("Hello")).toStrictEqual({ lower: "hello", upper: "HELLO" });
 });
 
-test("converge - both transformers receive the same input value", () => {
+test("converge: passes identical input to all transformers", () => {
 	const inputs: number[] = [];
 	const track = converge((a: number, b: number) => a + b, [(n: number) => {
 		inputs.push(n);
@@ -28,7 +28,7 @@ test("converge - both transformers receive the same input value", () => {
 	expect(inputs).toStrictEqual([5, 5]);
 });
 
-test("converge - three transformers", () => {
+test("converge: supports three transformers", () => {
 	const summarise = converge((min: number, max: number, sum: number) => ({ min, max, sum }), [
 		(ns: number[]) => Math.min(...ns),
 		(ns: number[]) => Math.max(...ns),
@@ -38,7 +38,7 @@ test("converge - three transformers", () => {
 	expect(summarise([1, 2, 3, 4])).toStrictEqual({ min: 1, max: 4, sum: 10 });
 });
 
-test("converge - four transformers", () => {
+test("converge: supports four transformers", () => {
 	const describe = converge((len: number, first: string, last: string, upper: string) => ({ len, first, last, upper }), [
 		(s: string) => s.length,
 		(s: string) => s[0],
@@ -49,7 +49,7 @@ test("converge - four transformers", () => {
 	expect(describe("hello")).toStrictEqual({ len: 5, first: "h", last: "o", upper: "HELLO" });
 });
 
-test("converge - works in a pipe chain", () => {
+test("pipe: integrates in pipeline", () => {
 	const toNameRecord = converge((trimmed: string, initials: string) => ({ trimmed, initials }), [
 		(name: string) => name.trim(),
 		(name: string) => name.split(" ").map((w) => w[0]).join(""),

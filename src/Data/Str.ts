@@ -24,18 +24,19 @@ const StrNonEmptyConst = {
 		 *
 		 * @example
 		 * ```ts
-		 * Str.NonEmpty.from.String("hello"); // Some("hello")
-		 * Str.NonEmpty.from.String("");      // None
+		 * Str.NonEmpty.from.string("hello"); // Some("hello")
+		 * Str.NonEmpty.from.string("");      // None
 		 * ```
 		 */
-		String: (
-			s: string,
-		): Maybe<NonEmptyString> => (s.length > 0 ? Maybe.make.some(s as NonEmptyString) : Maybe.make.none()),
+		string: (
+			text: string,
+		): Maybe<NonEmptyString> => (text.length > 0 ? Maybe.make.some(text as NonEmptyString) : Maybe.make.none()),
 	},
 };
 
-const isEmpty = (s: string): boolean => s.length === 0;
-const isNonEmpty = (s: string): s is NonEmptyString => s.length > 0;
+const isEmpty = (text: string): boolean => text.length === 0;
+const isNonEmpty = (text: string): text is NonEmptyString => text.length > 0;
+const isBlank = (text: string): boolean => text.trim().length === 0;
 
 // =============================================================================
 // Public Export
@@ -44,6 +45,8 @@ export const Str = {
 	is: {
 		/**
 		 * Returns `true` when the string is empty.
+		 *
+		 * @see {@link nonEmpty} for checking if a string contains at least one character.
 		 *
 		 * @example
 		 * ```ts
@@ -55,8 +58,23 @@ export const Str = {
 
 		/**
 		 * Type guard to check if a string is non-empty.
+		 *
+		 * @see {@link empty} for checking if a string has zero length.
 		 */
 		nonEmpty: isNonEmpty,
+
+		/**
+		 * Returns `true` when the string is empty or contains only whitespace.
+		 *
+		 * @see {@link empty} for checking zero length without trimming whitespace.
+		 *
+		 * @example
+		 * ```ts
+		 * pipe("   ", Str.is.blank); // true
+		 * pipe("hi", Str.is.blank);  // false
+		 * ```
+		 */
+		blank: isBlank,
 	},
 
 	/**
@@ -67,7 +85,7 @@ export const Str = {
 	 * pipe("a,b,c", Str.split(",")); // ["a", "b", "c"]
 	 * ```
 	 */
-	split: (separator: string | RegExp) => (s: string): readonly string[] => s.split(separator),
+	split: (separator: string | RegExp) => (text: string): readonly string[] => text.split(separator),
 
 	/**
 	 * Removes leading and trailing whitespace from a string.
@@ -77,7 +95,7 @@ export const Str = {
 	 * pipe("  hello  ", Str.trim); // "hello"
 	 * ```
 	 */
-	trim: (s: string): string => s.trim(),
+	trim: (text: string): string => text.trim(),
 
 	/**
 	 * Returns `true` when the string contains the given substring.
@@ -88,10 +106,12 @@ export const Str = {
 	 * pipe("hello world", Str.includes("xyz"));   // false
 	 * ```
 	 */
-	includes: (substring: string) => (s: string): boolean => s.includes(substring),
+	includes: (substring: string) => (text: string): boolean => text.includes(substring),
 
 	/**
 	 * Replaces the first occurrence of a pattern in a string. Data-last: use in `pipe`.
+	 *
+	 * @see {@link replaceAll} for substituting every occurrence instead of only the first.
 	 *
 	 * @example
 	 * ```ts
@@ -99,10 +119,13 @@ export const Str = {
 	 * pipe("Hello World", Str.replace(/world/i, "Earth")); // "Hello Earth"
 	 * ```
 	 */
-	replace: (pattern: string | RegExp, replacement: string) => (s: string): string => s.replace(pattern, replacement),
+	replace: (pattern: string | RegExp, replacement: string) => (text: string): string =>
+		text.replace(pattern, replacement),
 
 	/**
 	 * Replaces all occurrences of a pattern in a string. Data-last: use in `pipe`.
+	 *
+	 * @see {@link replace} for substituting only the first occurrence.
 	 *
 	 * @example
 	 * ```ts
@@ -110,11 +133,13 @@ export const Str = {
 	 * pipe("aAbBaA", Str.replaceAll(/a/gi, "x")); // "xxBBxx"
 	 * ```
 	 */
-	replaceAll: (pattern: string | RegExp, replacement: string) => (s: string): string =>
-		s.replaceAll(pattern, replacement),
+	replaceAll: (pattern: string | RegExp, replacement: string) => (text: string): string =>
+		text.replaceAll(pattern, replacement),
 
 	/**
 	 * Returns `true` when the string starts with the given prefix.
+	 *
+	 * @see {@link endsWith} for checking suffix matches.
 	 *
 	 * @example
 	 * ```ts
@@ -122,10 +147,12 @@ export const Str = {
 	 * pipe("hello world", Str.startsWith("world")); // false
 	 * ```
 	 */
-	startsWith: (prefix: string) => (s: string): boolean => s.startsWith(prefix),
+	startsWith: (prefix: string) => (text: string): boolean => text.startsWith(prefix),
 
 	/**
 	 * Returns `true` when the string ends with the given suffix.
+	 *
+	 * @see {@link startsWith} for checking prefix matches.
 	 *
 	 * @example
 	 * ```ts
@@ -133,37 +160,43 @@ export const Str = {
 	 * pipe("hello world", Str.endsWith("hello")); // false
 	 * ```
 	 */
-	endsWith: (suffix: string) => (s: string): boolean => s.endsWith(suffix),
+	endsWith: (suffix: string) => (text: string): boolean => text.endsWith(suffix),
 
 	/**
 	 * Converts a string to uppercase.
+	 *
+	 * @see {@link toLowerCase} for lowercasing characters.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe("hello", Str.toUpperCase); // "HELLO"
 	 * ```
 	 */
-	toUpperCase: (s: string): string => s.toUpperCase(),
+	toUpperCase: (text: string): string => text.toUpperCase(),
 
 	/**
 	 * Converts a string to lowercase.
+	 *
+	 * @see {@link toUpperCase} for uppercasing characters.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe("HELLO", Str.toLowerCase); // "hello"
 	 * ```
 	 */
-	toLowerCase: (s: string): string => s.toLowerCase(),
+	toLowerCase: (text: string): string => text.toLowerCase(),
 
 	/**
 	 * Converts the first character of a string to uppercase.
+	 *
+	 * @see {@link uncapitalize} for converting the first character to lowercase.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe("hello", Str.capitalize); // "Hello"
 	 * ```
 	 */
-	capitalize: (s: string): string => s.length === 0 ? "" : s.charAt(0).toUpperCase() + s.slice(1),
+	capitalize: (text: string): string => text.length === 0 ? "" : text.charAt(0).toUpperCase() + text.slice(1),
 
 	/**
 	 * Splits a string into lines, normalising `\r\n` and `\r` line endings.
@@ -174,7 +207,7 @@ export const Str = {
 	 * Str.lines("a\r\nb");         // ["a", "b"]
 	 * ```
 	 */
-	lines: (s: string): readonly string[] => s.split(/\r?\n|\r/),
+	lines: (text: string): readonly string[] => text.split(/\r?\n|\r/),
 
 	/**
 	 * Splits a string into words on any whitespace boundary, filtering out empty strings.
@@ -184,18 +217,7 @@ export const Str = {
 	 * Str.words("  hello   world  "); // ["hello", "world"]
 	 * ```
 	 */
-	words: (s: string): readonly string[] => s.trim().split(/\s+/).filter(Boolean),
-
-	/**
-	 * Returns `true` when the string is empty or contains only whitespace.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe("   ", Str.isBlank); // true
-	 * pipe("hi", Str.isBlank);  // false
-	 * ```
-	 */
-	isBlank: (s: string): boolean => s.trim().length === 0,
+	words: (text: string): readonly string[] => text.trim().split(/\s+/).filter(Boolean),
 
 	/**
 	 * Returns the length of the string.
@@ -206,7 +228,7 @@ export const Str = {
 	 * pipe("", Str.length);      // 0
 	 * ```
 	 */
-	length: (s: string): number => s.length,
+	length: (text: string): number => text.length,
 
 	/**
 	 * Extracts a substring between two indices. Data-last: use in `pipe`.
@@ -217,10 +239,12 @@ export const Str = {
 	 * pipe("hello", Str.slice(2));    // "llo"
 	 * ```
 	 */
-	slice: (start: number, end?: number) => (s: string): string => s.slice(start, end),
+	slice: (start: number, end?: number) => (text: string): string => text.slice(start, end),
 
 	/**
 	 * Pads the start of a string to a specified length. Data-last: use in `pipe`.
+	 *
+	 * @see {@link padEnd} for padding the right side of a string.
 	 *
 	 * @example
 	 * ```ts
@@ -228,10 +252,12 @@ export const Str = {
 	 * pipe("hi", Str.padStart(5));     // "   hi"
 	 * ```
 	 */
-	padStart: (maxLength: number, fillString?: string) => (s: string): string => s.padStart(maxLength, fillString),
+	padStart: (maxLength: number, fillString?: string) => (text: string): string => text.padStart(maxLength, fillString),
 
 	/**
 	 * Pads the end of a string to a specified length. Data-last: use in `pipe`.
+	 *
+	 * @see {@link padStart} for padding the left side of a string.
 	 *
 	 * @example
 	 * ```ts
@@ -239,7 +265,7 @@ export const Str = {
 	 * pipe("hi", Str.padEnd(5));       // "hi   "
 	 * ```
 	 */
-	padEnd: (maxLength: number, fillString?: string) => (s: string): string => s.padEnd(maxLength, fillString),
+	padEnd: (maxLength: number, fillString?: string) => (text: string): string => text.padEnd(maxLength, fillString),
 
 	/**
 	 * Safe number parsers that return `Maybe` instead of `NaN`.
@@ -248,6 +274,8 @@ export const Str = {
 		/**
 		 * Parses a string as an integer (base 10). Returns `None` if the result is `NaN`.
 		 *
+		 * @see {@link float} for parsing floating-point numbers.
+		 *
 		 * @example
 		 * ```ts
 		 * Str.parse.int("42");   // Some(42)
@@ -255,14 +283,16 @@ export const Str = {
 		 * Str.parse.int("abc");  // None
 		 * ```
 		 */
-		int: (s: string): Maybe<number> => {
-			if (s.length === 0) { return Maybe.make.none(); }
-			const n = Number.parseInt(s, 10);
+		int: (text: string): Maybe<number> => {
+			if (text.length === 0) { return Maybe.make.none(); }
+			const n = Number.parseInt(text, 10);
 			return Number.isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 		},
 
 		/**
 		 * Parses a string as a floating-point number. Returns `None` if the result is `NaN`.
+		 *
+		 * @see {@link int} for parsing base-10 integers.
 		 *
 		 * @example
 		 * ```ts
@@ -271,9 +301,9 @@ export const Str = {
 		 * Str.parse.float("abc");  // None
 		 * ```
 		 */
-		float: (s: string): Maybe<number> => {
-			if (s.length === 0) { return Maybe.make.none(); }
-			const n = Number.parseFloat(s);
+		float: (text: string): Maybe<number> => {
+			if (text.length === 0) { return Maybe.make.none(); }
+			const n = Number.parseFloat(text);
 			return Number.isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 		},
 	},
@@ -282,15 +312,17 @@ export const Str = {
 	 * Matches a string against a regular expression.
 	 * Pure and safe: resets `pattern.lastIndex = 0` to prevent bugs with stateful `/g` and `/y` regexes.
 	 *
+	 * @see {@link test} for boolean validation without extracting capture groups.
+	 *
 	 * @example
 	 * ```ts
 	 * pipe("hello 42", Str.match(/\d+/)); // Some(["42"])
 	 * pipe("hello", Str.match(/\d+/));    // None
 	 * ```
 	 */
-	match: (pattern: RegExp) => (s: string): Maybe<RegExpMatchArray> => {
+	match: (pattern: RegExp) => (text: string): Maybe<RegExpMatchArray> => {
 		pattern.lastIndex = 0;
-		const result = s.match(pattern);
+		const result = text.match(pattern);
 		return result !== null ? Maybe.make.some(result) : Maybe.make.none();
 	},
 
@@ -298,27 +330,31 @@ export const Str = {
 	 * Tests whether a string matches a regular expression.
 	 * Pure and safe: resets `pattern.lastIndex = 0` to prevent bugs with stateful `/g` and `/y` regexes.
 	 *
+	 * @see {@link match} for extracting capture groups into a Maybe.
+	 *
 	 * @example
 	 * ```ts
 	 * pipe("user@example.com", Str.test(/^[^@]+@[^@]+$/)); // true
 	 * pipe("invalid-email", Str.test(/^[^@]+@[^@]+$/));    // false
 	 * ```
 	 */
-	test: (pattern: RegExp) => (s: string): boolean => {
+	test: (pattern: RegExp) => (text: string): boolean => {
 		pattern.lastIndex = 0;
-		return pattern.test(s);
+		return pattern.test(text);
 	},
 
 	/**
 	 * Converts the first character of a string to lower case.
 	 *
+	 * @see {@link capitalize} for converting the first character to uppercase.
+	 *
 	 * @example
 	 * ```ts
-	 * Str.uncapitalize("Hello"); // "hello"
-	 * Str.uncapitalize("");      // ""
+	 * pipe("Hello", Str.uncapitalize); // "hello"
+	 * pipe("", Str.uncapitalize);      // ""
 	 * ```
 	 */
-	uncapitalize: (s: string): string => s.length === 0 ? "" : s.charAt(0).toLowerCase() + s.slice(1),
+	uncapitalize: (text: string): string => text.length === 0 ? "" : text.charAt(0).toLowerCase() + text.slice(1),
 
 	/**
 	 * Truncates a string to a maximum length, appending an optional suffix (default `"..."`).
@@ -331,15 +367,15 @@ export const Str = {
 	 * pipe("Hello, world!", Str.truncate({ length: 8, suffix: "…" })); // "Hello, w…"
 	 * ```
 	 */
-	truncate: (options: { length: number; suffix?: string; }) => (s: string): string => {
+	truncate: (options: { length: number; suffix?: string; }) => (text: string): string => {
 		const { length: targetLength, suffix = "..." } = options;
-		if (s.length <= targetLength) {
-			return s;
+		if (text.length <= targetLength) {
+			return text;
 		}
 		if (targetLength <= suffix.length) {
 			return suffix.slice(0, targetLength);
 		}
-		return s.slice(0, targetLength - suffix.length) + suffix;
+		return text.slice(0, targetLength - suffix.length) + suffix;
 	},
 
 	NonEmpty: StrNonEmptyConst,

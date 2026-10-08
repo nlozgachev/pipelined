@@ -56,7 +56,7 @@ const failOp = (msg = "fail", delayMs = 0): Op<[input: number], string, number> 
 // cancellableWait
 // ---------------------------------------------------------------------------
 
-test("cancellableWait resolves immediately when ms <= 0", async () => {
+test("cancellableWait: resolves immediately when ms <= 0", async () => {
 	let done = false;
 	const c = new AbortController();
 	cancellableWait(Duration.milliseconds(0), c.signal).then(() => {
@@ -66,14 +66,14 @@ test("cancellableWait resolves immediately when ms <= 0", async () => {
 	expect(done).toBe(true);
 });
 
-test("cancellableWait resolves after the specified delay", async () => {
+test("cancellableWait: resolves after specified delay", async () => {
 	const start = Date.now();
 	const c = new AbortController();
 	await cancellableWait(Duration.milliseconds(20), c.signal);
 	expect(Date.now() - start).toBeGreaterThanOrEqual(15);
 });
 
-test("cancellableWait resolves early when the signal is aborted", async () => {
+test("cancellableWait: resolves early when signal is aborted", async () => {
 	const start = Date.now();
 	const c = new AbortController();
 	setTimeout(() => c.abort(), 10);
@@ -81,7 +81,7 @@ test("cancellableWait resolves early when the signal is aborted", async () => {
 	expect(Date.now() - start).toBeLessThan(100);
 });
 
-test("cancellableWait resolves immediately when signal is already aborted", async () => {
+test("cancellableWait: resolves immediately when signal is already aborted", async () => {
 	const c = new AbortController();
 	c.abort();
 	let done = false;
@@ -97,7 +97,7 @@ test("cancellableWait resolves immediately when signal is already aborted", asyn
 // runWithRetry
 // ---------------------------------------------------------------------------
 
-test("runWithRetry returns Ok on first success", async () => {
+test("runWithRetry: returns Ok on first success", async () => {
 	const retrying: Op.Retrying<string>[] = [];
 	const result = await runWithRetry(
 		successOp(),
@@ -110,7 +110,7 @@ test("runWithRetry returns Ok on first success", async () => {
 	expect(retrying).toHaveLength(0);
 });
 
-test("runWithRetry retries on Err and returns Err when attempts exhausted", async () => {
+test("runWithRetry: retries on Err and returns Err when attempts exhausted", async () => {
 	let calls = 0;
 	const op = Op.create((_signal: AbortSignal) => (_: number) => {
 		calls++;
@@ -125,7 +125,7 @@ test("runWithRetry retries on Err and returns Err when attempts exhausted", asyn
 	expect(retrying[1]).toStrictEqual({ kind: "Retrying", attempt: 2, lastError: "boom" });
 });
 
-test("runWithRetry stops early on Ok without exhausting all attempts", async () => {
+test("runWithRetry: stops early on Ok without exhausting all attempts", async () => {
 	let calls = 0;
 	const op = Op.create((_signal: AbortSignal) => (_: number) => {
 		calls++;
@@ -136,7 +136,7 @@ test("runWithRetry stops early on Ok without exhausting all attempts", async () 
 	expect(calls).toBe(2);
 });
 
-test("runWithRetry respects the `when` guard and stops early on non-retryable error", async () => {
+test("runWithRetry: respects when guard and stops early on non-retryable error", async () => {
 	let calls = 0;
 	const op = Op.create((_signal: AbortSignal) => (_: number) => {
 		calls++;
@@ -150,7 +150,7 @@ test("runWithRetry respects the `when` guard and stops early on non-retryable er
 	expect(calls).toBe(1);
 });
 
-test("runWithRetry includes nextRetryIn when backoff is a number > 0", async () => {
+test("runWithRetry: includes nextRetryIn when backoff is number > 0", async () => {
 	const op = Op.create((_signal: AbortSignal) => (_: number) => Promise.reject(new Error("fail")), {
 		onError: (e) => (e as Error).message,
 	});
@@ -165,7 +165,7 @@ test("runWithRetry includes nextRetryIn when backoff is a number > 0", async () 
 	expect(retrying[0]).toStrictEqual({ kind: "Retrying", attempt: 1, lastError: "fail", nextRetryIn: 50 });
 });
 
-test("runWithRetry includes nextRetryIn when backoff is a function", async () => {
+test("runWithRetry: includes nextRetryIn when backoff is function", async () => {
 	const op = Op.create((_signal: AbortSignal) => (_: number) => Promise.reject(new Error("fail")), {
 		onError: (e) => (e as Error).message,
 	});
@@ -177,7 +177,7 @@ test("runWithRetry includes nextRetryIn when backoff is a function", async () =>
 	expect(retrying[0]).toStrictEqual({ kind: "Retrying", attempt: 1, lastError: "fail", nextRetryIn: 30 });
 });
 
-test("runWithRetry returns null when signal is aborted during backoff wait", async () => {
+test("runWithRetry: returns null when signal is aborted during backoff wait", async () => {
 	const op = Op.create((_signal: AbortSignal) => (_: number) => Promise.reject(new Error("fail")), {
 		onError: (e) => (e as Error).message,
 	});
@@ -197,19 +197,19 @@ test("runWithRetry returns null when signal is aborted during backoff wait", asy
 // execute
 // ---------------------------------------------------------------------------
 
-test("execute resolves to Ok when the factory succeeds", async () => {
+test("execute: resolves to Ok when factory succeeds", async () => {
 	const controller = new AbortController();
 	const outcome = await Deferred.to.Promise(execute(successOp(), [42], controller));
 	expect(outcome).toStrictEqual({ kind: "OpOk", value: 42 });
 });
 
-test("execute resolves to Err when the factory fails without retry", async () => {
+test("execute: resolves to Err when factory fails without retry", async () => {
 	const controller = new AbortController();
 	const outcome = await Deferred.to.Promise(execute(failOp("oops"), [1], controller));
 	expect(outcome).toStrictEqual({ kind: "OpErr", error: "oops" });
 });
 
-test("execute resolves to AbortedNil when the controller is aborted before the op finishes", async () => {
+test("execute: resolves to AbortedNil when controller is aborted before op finishes", async () => {
 	const controller = new AbortController();
 	const d = execute(successOp(100), [1], controller);
 	controller.abort();
@@ -217,14 +217,14 @@ test("execute resolves to AbortedNil when the controller is aborted before the o
 	expect(outcome).toStrictEqual({ kind: "OpNil", reason: "aborted" });
 });
 
-test("execute calls onRetrying when retryOptions is provided", async () => {
+test("execute: calls onRetrying when retryOptions is provided", async () => {
 	const controller = new AbortController();
 	const retrying: Op.Retrying<string>[] = [];
 	await Deferred.to.Promise(execute(failOp(), [1], controller, { attempts: 3 }, undefined, (r) => retrying.push(r)));
 	expect(retrying).toHaveLength(2);
 });
 
-test("execute resolves to Err(onTimeout()) when the timeout fires", async () => {
+test("execute: resolves to Err(onTimeout()) when timeout fires", async () => {
 	const controller = new AbortController();
 	const outcome = await Deferred.to.Promise(
 		execute(successOp(200), [1], controller, undefined, {
@@ -235,7 +235,7 @@ test("execute resolves to Err(onTimeout()) when the timeout fires", async () => 
 	expect(outcome).toStrictEqual({ kind: "OpErr", error: "timed out" });
 });
 
-test("execute resolves to Ok when the op finishes before the timeout", async () => {
+test("execute: resolves to Ok when op finishes before timeout", async () => {
 	const controller = new AbortController();
 	const outcome = await Deferred.to.Promise(
 		execute(successOp(0), [7], controller, undefined, {
@@ -306,13 +306,13 @@ test("makeBuffered: third run() evicts the waiting run()", async () => {
 // makeDebounced
 // ---------------------------------------------------------------------------
 
-test("makeDebounced (trailing): run() resolves after the debounce timer", async () => {
+test("makeDebounced: trailing run() resolves after debounce timer", async () => {
 	const manager = makeDebounced(successOp(), Duration.milliseconds(10), false);
 	const result = await manager.run(5);
 	expect(result).toStrictEqual({ kind: "OpOk", value: 5 });
 });
 
-test("makeDebounced (leading): run() fires immediately", async () => {
+test("makeDebounced: leading run() fires immediately", async () => {
 	const manager = makeDebounced(successOp(), Duration.milliseconds(30), true);
 	const p = manager.run(7);
 	expect(manager.state).toStrictEqual({ kind: "Pending" });
@@ -354,7 +354,7 @@ test("makeConcurrent: overflow=drop returns DroppedNil when all slots full", asy
 // makeKeyed
 // ---------------------------------------------------------------------------
 
-test("makeKeyed exclusive: same key while in-flight returns DroppedNil", async () => {
+test("makeKeyed: returns DroppedNil for duplicate key in exclusive mode", async () => {
 	const manager = makeKeyed(successOp(50), (n: number) => n, "exclusive");
 	const p1 = manager.run(1);
 	const p2 = manager.run(1); // same key → dropped
@@ -362,7 +362,7 @@ test("makeKeyed exclusive: same key while in-flight returns DroppedNil", async (
 	await expect(p1).resolves.toStrictEqual({ kind: "OpOk", value: 1 });
 });
 
-test("makeKeyed restartable: same key while in-flight cancels previous", async () => {
+test("makeKeyed: cancels previous in-flight run for duplicate key in restartable mode", async () => {
 	const manager = makeKeyed(successOp(50), (n: number) => n, "restartable");
 	const p1 = manager.run(1);
 	const p2 = manager.run(1); // same key → replaces
@@ -438,7 +438,7 @@ test("makeThrottled: onRetrying guard suppresses stale Retrying state from first
 	expect(retryingStates[0]).toStrictEqual({ kind: "Retrying", attempt: 1, lastError: "fail" });
 });
 
-test("makeDebounced (trailing): onRetrying guard suppresses stale Retrying state when timer fires again mid-execution", async () => {
+test("makeDebounced: onRetrying guard suppresses stale Retrying state when timer fires mid-execution", async () => {
 	// Pure trailing debounce (leading=false), op always fails after 25ms
 	// debounce ms=10ms, retry: attempts=2, backoff=0
 	//
@@ -491,19 +491,19 @@ test("makeDebounced (trailing): onRetrying guard suppresses stale Retrying state
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("cancellableWait composes with pipe to delay execution", async () => {
+test("cancellableWait: composes in pipe to delay execution", async () => {
 	const c = new AbortController();
 	const result = await pipe(Duration.milliseconds(10), (d) => cancellableWait(d, c.signal), (p) => p.then(() => "done"));
 	expect(result).toBe("done");
 });
 
-test("execute composes with Deferred.to.Promise in a pipe chain", async () => {
+test("execute: composes with Deferred.to.Promise in pipeline", async () => {
 	const controller = new AbortController();
 	const outcome = await pipe(execute(successOp(), [100], controller), Deferred.to.Promise);
 	expect(outcome).toStrictEqual({ kind: "OpOk", value: 100 });
 });
 
-test("mode runners emit Retrying states when retrying with retryOptions", async () => {
+test("runWithRetry: emits Retrying states across execution modes", async () => {
 	const failingOp = Op.create((_signal: AbortSignal) => (_input: number) => Promise.reject(new Error("err")), {
 		onError: (e) => (e as Error).message,
 	});
@@ -559,7 +559,7 @@ test("mode runners emit Retrying states when retrying with retryOptions", async 
 	expect(throttleStates.some((s) => s.kind === "Retrying")).toBe(true);
 });
 
-test("toInternalOp provides access to OP_FACTORY", async () => {
+test("toInternalOp: provides access to OP_FACTORY", async () => {
 	const op = Op.create((_signal) => (x: number) => Promise.resolve(x * 2), { onError: String });
 	const internal = toInternalOp(op);
 	expect(internal[OP_FACTORY]).toBeTypeOf("function");

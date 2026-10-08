@@ -7,13 +7,13 @@ import { Bool } from "../Bool.ts";
 // Boolean Algebra Laws
 // ---------------------------------------------------------------------------
 
-test("Bool.not — double negation law: not(not(a)) === a", () => {
+test("not: satisfies double negation law", () => {
 	fc.assert(fc.property(fc.boolean(), (a) => {
 		expect(pipe(a, Bool.not, Bool.not)).toBe(a);
 	}));
 });
 
-test("Bool.and / Bool.or — De Morgan's laws", () => {
+test("and: satisfies De Morgan laws with or", () => {
 	fc.assert(fc.property(fc.boolean(), fc.boolean(), (a, b) => {
 		// not (a and b) === (not a) or (not b)
 		const notAnd = Bool.not(pipe(a, Bool.and(b)));
@@ -27,7 +27,7 @@ test("Bool.and / Bool.or — De Morgan's laws", () => {
 	}));
 });
 
-test("Bool.and / Bool.or — commutativity: a op b === b op a", () => {
+test("and: satisfies commutativity alongside or and xor", () => {
 	fc.assert(fc.property(fc.boolean(), fc.boolean(), (a, b) => {
 		expect(pipe(a, Bool.and(b))).toBe(pipe(b, Bool.and(a)));
 		expect(pipe(a, Bool.or(b))).toBe(pipe(b, Bool.or(a)));
@@ -35,7 +35,7 @@ test("Bool.and / Bool.or — commutativity: a op b === b op a", () => {
 	}));
 });
 
-test("Bool.and / Bool.or — associativity: (a op b) op c === a op (b op c)", () => {
+test("and: satisfies associativity alongside or", () => {
 	fc.assert(fc.property(fc.boolean(), fc.boolean(), fc.boolean(), (a, b, c) => {
 		const andLHS = pipe(a, Bool.and(b), Bool.and(c));
 		const andRHS = pipe(a, Bool.and(pipe(b, Bool.and(c))));
@@ -47,7 +47,7 @@ test("Bool.and / Bool.or — associativity: (a op b) op c === a op (b op c)", ()
 	}));
 });
 
-test("Bool.and / Bool.or — identity laws", () => {
+test("and: satisfies identity laws with or", () => {
 	fc.assert(fc.property(fc.boolean(), (a) => {
 		// a and true === a
 		expect(pipe(a, Bool.and(true))).toBe(a);
@@ -56,7 +56,7 @@ test("Bool.and / Bool.or — identity laws", () => {
 	}));
 });
 
-test("Bool.and / Bool.or — idempotence laws", () => {
+test("and: satisfies idempotence laws with or", () => {
 	fc.assert(fc.property(fc.boolean(), (a) => {
 		// a and a === a
 		expect(pipe(a, Bool.and(a))).toBe(a);
@@ -65,7 +65,7 @@ test("Bool.and / Bool.or — idempotence laws", () => {
 	}));
 });
 
-test("Bool.all / Bool.any — array aggregation consistency", () => {
+test("all: aggregates arrays consistently with any", () => {
 	fc.assert(fc.property(fc.array(fc.boolean()), (bools) => {
 		const expectedAll = bools.every(Boolean);
 		const expectedAny = bools.some(Boolean);

@@ -42,7 +42,7 @@ We can lift raw arrays or individual elements into an immutable `Uniq` collectio
 import { Uniq } from "@nlozgachev/pipelined/data";
 
 // Create a collection from an array, automatically discarding duplicates
-const tags = Uniq.from.Array(["typescript", "functional", "typescript", "pipe"]);
+const tags = Uniq.from.array(["typescript", "functional", "typescript", "pipe"]);
 // Contains: "typescript", "functional", "pipe"
 
 // Create a collection with a single starting value
@@ -54,21 +54,21 @@ const emptyFlags = Uniq.empty<string>();
 
 ## Checking membership
 
-To inspect the contents of a collection, we use `Uniq.has` and `Uniq.isSubsetOf`. Because these functions are curried and place the collection as the last argument, they fit cleanly into composition pipelines:
+To inspect the contents of a collection, we use `Uniq.has` and `Uniq.is.subsetOf`. Because these functions are curried and place the collection as the last argument, they fit cleanly into composition pipelines:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 import { Uniq } from "@nlozgachev/pipelined/data";
 
-const permissions = Uniq.from.Array(["read", "write"]);
+const permissions = Uniq.from.array(["read", "write"]);
 
 // Test for direct membership
 const canWrite = pipe(permissions, Uniq.has("write")); // true
 const canDelete = pipe(permissions, Uniq.has("delete")); // false
 
 // Test if one collection is completely contained within another
-const required = Uniq.from.Array(["read", "write"]);
-const hasRequired = pipe(required, Uniq.isSubsetOf(permissions)); // true
+const required = Uniq.from.array(["read", "write"]);
+const hasRequired = pipe(required, Uniq.is.subsetOf(permissions)); // true
 ```
 
 ## Adding and removing items
@@ -76,7 +76,7 @@ const hasRequired = pipe(required, Uniq.isSubsetOf(permissions)); // true
 Adding or removing items returns a new `Uniq` collection. If the operation does not change the membership of the set, the original reference is preserved:
 
 ```ts
-const roles = Uniq.from.Array(["editor", "viewer"]);
+const roles = Uniq.from.array(["editor", "viewer"]);
 
 // Inserting a new item returns a new set
 const updatedRoles = pipe(roles, Uniq.insert("admin"));
@@ -96,7 +96,7 @@ const reducedRoles = pipe(roles, Uniq.remove("viewer"));
 We can transform the elements of a collection or filter them using pure functions. If a transformation produces duplicate values, `Uniq` automatically merges them to maintain uniqueness:
 
 ```ts
-const tags = Uniq.from.Array(["TypeScript", "typescript", "CSS"]);
+const tags = Uniq.from.array(["TypeScript", "typescript", "CSS"]);
 
 // Normalise all tags to lowercase
 const normalised = pipe(
@@ -122,8 +122,8 @@ In modern runtimes (including Node.js 22+, Chrome 122+, and Safari 17+), these o
 </Aside>
 
 ```ts
-const backendRoles = Uniq.from.Array(["alice", "bob", "carol"]);
-const frontendRoles = Uniq.from.Array(["bob", "carol", "dave"]);
+const backendRoles = Uniq.from.array(["alice", "bob", "carol"]);
+const frontendRoles = Uniq.from.array(["bob", "carol", "dave"]);
 
 // Combine both collections (All engineers across both teams)
 const allEngineers = pipe(backendRoles, Uniq.union(frontendRoles));
@@ -143,10 +143,10 @@ const backendOnly = pipe(backendRoles, Uniq.difference(frontendRoles));
 When it is time to leave the immutable context — either to serialize data for an API or to interface with a library that requires standard arrays — we can fold or convert our collection:
 
 ```ts
-const activeFlags = Uniq.from.Array(["logging", "analytics"]);
+const activeFlags = Uniq.from.array(["logging", "analytics"]);
 
 // Convert back to a standard JavaScript array
-const arrayFlags = Uniq.to.Array(activeFlags); // ["logging", "analytics"]
+const arrayFlags = Uniq.to.array(activeFlags); // ["logging", "analytics"]
 
 // Fold the collection into a single value
 const totalLength = pipe(
@@ -159,6 +159,6 @@ const totalLength = pipe(
 
 - **Managing unique collections in immutable state trees**: In React, Vue, or Zustand state models, mutating native `Set` objects in place bypasses change detection and causes UI rendering bugs. `Uniq` enforces structural immutability, returning fresh references on updates while reusing existing references when operations produce no changes.
 - **Permission algebra and role reconciliation**: In role-based access control (RBAC), applications frequently need to compute missing permissions (`Uniq.difference`), combine group privileges (`Uniq.union`), or find overlapping scopes (`Uniq.intersection`). `Uniq` provides pure, point-free set algebra operations.
-- **Entitlement and prerequisite checks (`Uniq.subset`)**: Verifying that a user's permission set covers all required scopes for an API endpoint or that a cart's tags meet promotional prerequisites in a single declarative comparison.
+- **Entitlement and prerequisite checks (`Uniq.is.subsetOf`)**: Verifying that a user's permission set covers all required scopes for an API endpoint or that a cart's tags meet promotional prerequisites in a single declarative comparison.
 - **Deduplicating tag lists and selected filters**: In search filter components and tag editors, adding, toggling, or removing selected items inside `pipe` pipelines without managing temporary arrays or mutable set instances.
 - **Point-free set mapping and aggregation**: Transforming or filtering unique collections (such as mapping user IDs to names while maintaining uniqueness) with `Uniq.map`, `Uniq.filter`, and `Uniq.reduce`.

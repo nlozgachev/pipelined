@@ -7,19 +7,19 @@ import { Str } from "../Str.ts";
 // split
 // ---------------------------------------------------------------------------
 
-test("Str.split splits a string by a separator", () => {
+test("split: splits string by separator", () => {
 	expect(pipe("a,b,c", Str.split(","))).toStrictEqual(["a", "b", "c"]);
 });
 
-test("Str.split splits by a regex", () => {
+test("split: splits string by regex", () => {
 	expect(pipe("a1b2c", Str.split(/\d/))).toStrictEqual(["a", "b", "c"]);
 });
 
-test("Str.split on missing separator returns single-element array", () => {
+test("split: returns single-element array on missing separator", () => {
 	expect(pipe("hello", Str.split(","))).toStrictEqual(["hello"]);
 });
 
-test("Str.split returns empty strings for adjacent separators", () => {
+test("split: returns empty strings for adjacent separators", () => {
 	expect(pipe("a,,b", Str.split(","))).toStrictEqual(["a", "", "b"]);
 });
 
@@ -27,15 +27,15 @@ test("Str.split returns empty strings for adjacent separators", () => {
 // trim
 // ---------------------------------------------------------------------------
 
-test("Str.trim removes leading and trailing whitespace", () => {
+test("trim: removes leading and trailing whitespace", () => {
 	expect(pipe("  hello  ", Str.trim)).toBe("hello");
 });
 
-test("Str.trim returns unchanged string when no whitespace", () => {
+test("trim: returns unchanged string when no whitespace", () => {
 	expect(pipe("hello", Str.trim)).toBe("hello");
 });
 
-test("Str.trim returns empty string for whitespace-only input", () => {
+test("trim: returns empty string for whitespace-only input", () => {
 	expect(pipe("   ", Str.trim)).toBe("");
 });
 
@@ -43,15 +43,15 @@ test("Str.trim returns empty string for whitespace-only input", () => {
 // includes
 // ---------------------------------------------------------------------------
 
-test("Str.includes returns true when substring is present", () => {
+test("includes: returns true when substring is present", () => {
 	expect(pipe("hello world", Str.includes("world"))).toBe(true);
 });
 
-test("Str.includes returns false when substring is absent", () => {
+test("includes: returns false when substring is absent", () => {
 	expect(pipe("hello world", Str.includes("xyz"))).toBe(false);
 });
 
-test("Str.includes matches at the start", () => {
+test("includes: matches at start of string", () => {
 	expect(pipe("hello world", Str.includes("hello"))).toBe(true);
 });
 
@@ -59,11 +59,11 @@ test("Str.includes matches at the start", () => {
 // startsWith
 // ---------------------------------------------------------------------------
 
-test("Str.startsWith returns true when string starts with prefix", () => {
+test("startsWith: returns true when string starts with prefix", () => {
 	expect(pipe("hello world", Str.startsWith("hello"))).toBe(true);
 });
 
-test("Str.startsWith returns false when string does not start with prefix", () => {
+test("startsWith: returns false when string does not start with prefix", () => {
 	expect(pipe("hello world", Str.startsWith("world"))).toBe(false);
 });
 
@@ -71,11 +71,11 @@ test("Str.startsWith returns false when string does not start with prefix", () =
 // endsWith
 // ---------------------------------------------------------------------------
 
-test("Str.endsWith returns true when string ends with suffix", () => {
+test("endsWith: returns true when string ends with suffix", () => {
 	expect(pipe("hello world", Str.endsWith("world"))).toBe(true);
 });
 
-test("Str.endsWith returns false when string does not end with suffix", () => {
+test("endsWith: returns false when string does not end with suffix", () => {
 	expect(pipe("hello world", Str.endsWith("hello"))).toBe(false);
 });
 
@@ -83,11 +83,11 @@ test("Str.endsWith returns false when string does not end with suffix", () => {
 // toUpperCase / toLowerCase
 // ---------------------------------------------------------------------------
 
-test("Str.toUpperCase converts all characters to uppercase", () => {
+test("toUpperCase: converts all characters to uppercase", () => {
 	expect(pipe("hello", Str.toUpperCase)).toBe("HELLO");
 });
 
-test("Str.toLowerCase converts all characters to lowercase", () => {
+test("toLowerCase: converts all characters to lowercase", () => {
 	expect(pipe("HELLO", Str.toLowerCase)).toBe("hello");
 });
 
@@ -95,27 +95,27 @@ test("Str.toLowerCase converts all characters to lowercase", () => {
 // capitalize
 // ---------------------------------------------------------------------------
 
-test("Str.capitalize converts the first character to uppercase", () => {
+test("capitalize: converts first character to uppercase", () => {
 	expect(pipe("hello", Str.capitalize)).toBe("Hello");
 });
 
-test("Str.capitalize leaves already capitalized strings unchanged", () => {
+test("capitalize: leaves already capitalized strings unchanged", () => {
 	expect(pipe("Hello", Str.capitalize)).toBe("Hello");
 });
 
-test("Str.capitalize leaves the rest of the string untouched", () => {
+test("capitalize: leaves rest of string untouched", () => {
 	expect(pipe("hELLO", Str.capitalize)).toBe("HELLO");
 });
 
-test("Str.capitalize handles single-character strings", () => {
+test("capitalize: handles single-character strings", () => {
 	expect(pipe("a", Str.capitalize)).toBe("A");
 });
 
-test("Str.capitalize handles empty strings", () => {
+test("capitalize: handles empty strings", () => {
 	expect(pipe("", Str.capitalize)).toBe("");
 });
 
-test("Str.capitalize composes in a pipe", () => {
+test("capitalize: composes in pipe workflow", () => {
 	expect(pipe("  hello  ", Str.trim, Str.capitalize)).toBe("Hello");
 });
 
@@ -123,23 +123,23 @@ test("Str.capitalize composes in a pipe", () => {
 // lines
 // ---------------------------------------------------------------------------
 
-test("Str.lines splits on LF line endings", () => {
+test("lines: splits on LF line endings", () => {
 	expect(Str.lines("one\ntwo\nthree")).toStrictEqual(["one", "two", "three"]);
 });
 
-test("Str.lines splits on CRLF line endings", () => {
+test("lines: splits on CRLF line endings", () => {
 	expect(Str.lines("one\r\ntwo\r\nthree")).toStrictEqual(["one", "two", "three"]);
 });
 
-test("Str.lines splits on CR line endings", () => {
+test("lines: splits on CR line endings", () => {
 	expect(Str.lines("one\rtwo")).toStrictEqual(["one", "two"]);
 });
 
-test("Str.lines returns single-element array for string with no newlines", () => {
+test("lines: returns single-element array for string without newlines", () => {
 	expect(Str.lines("hello")).toStrictEqual(["hello"]);
 });
 
-test("Str.lines returns two elements when string ends with newline", () => {
+test("lines: returns two elements when string ends with newline", () => {
 	expect(Str.lines("one\n")).toStrictEqual(["one", ""]);
 });
 
@@ -147,19 +147,19 @@ test("Str.lines returns two elements when string ends with newline", () => {
 // words
 // ---------------------------------------------------------------------------
 
-test("Str.words splits on whitespace and trims", () => {
+test("words: splits on whitespace and trims", () => {
 	expect(Str.words("  hello   world  ")).toStrictEqual(["hello", "world"]);
 });
 
-test("Str.words returns empty array for whitespace-only string", () => {
+test("words: returns empty array for whitespace-only string", () => {
 	expect(Str.words("   ")).toStrictEqual([]);
 });
 
-test("Str.words returns single word for single-word string", () => {
+test("words: returns single word for single-word string", () => {
 	expect(Str.words("hello")).toStrictEqual(["hello"]);
 });
 
-test("Str.words splits on mixed whitespace characters", () => {
+test("words: splits on mixed whitespace characters", () => {
 	expect(Str.words("a\tb\nc")).toStrictEqual(["a", "b", "c"]);
 });
 
@@ -167,19 +167,19 @@ test("Str.words splits on mixed whitespace characters", () => {
 // parse.int
 // ---------------------------------------------------------------------------
 
-test("str.parse.int returns Some for a valid integer string", () => {
+test("parse.int: returns Some for valid integer string", () => {
 	expect(Str.parse.int("42")).toStrictEqual(Maybe.make.some(42));
 });
 
-test("str.parse.int truncates floats", () => {
+test("parse.int: truncates floats", () => {
 	expect(Str.parse.int("3.7")).toStrictEqual(Maybe.make.some(3));
 });
 
-test("str.parse.int returns None for a non-numeric string", () => {
+test("parse.int: returns None for non-numeric string", () => {
 	expect(Str.parse.int("abc")).toStrictEqual(Maybe.make.none());
 });
 
-test("str.parse.int returns None for empty string", () => {
+test("parse.int: returns None for empty string", () => {
 	expect(Str.parse.int("")).toStrictEqual(Maybe.make.none());
 });
 
@@ -187,19 +187,19 @@ test("str.parse.int returns None for empty string", () => {
 // parse.float
 // ---------------------------------------------------------------------------
 
-test("str.parse.float returns Some for a valid float string", () => {
+test("parse.float: returns Some for valid float string", () => {
 	expect(Str.parse.float("3.14")).toStrictEqual(Maybe.make.some(3.14));
 });
 
-test("str.parse.float returns Some for an integer string", () => {
+test("parse.float: returns Some for integer string", () => {
 	expect(Str.parse.float("42")).toStrictEqual(Maybe.make.some(42));
 });
 
-test("str.parse.float returns None for a non-numeric string", () => {
+test("parse.float: returns None for non-numeric string", () => {
 	expect(Str.parse.float("abc")).toStrictEqual(Maybe.make.none());
 });
 
-test("str.parse.float returns None for empty string", () => {
+test("parse.float: returns None for empty string", () => {
 	expect(Str.parse.float("")).toStrictEqual(Maybe.make.none());
 });
 
@@ -207,15 +207,15 @@ test("str.parse.float returns None for empty string", () => {
 // replace
 // ---------------------------------------------------------------------------
 
-test("Str.replace replaces the first occurrence of a substring", () => {
+test("replace: replaces first occurrence of substring", () => {
 	expect(pipe("foo foo foo", Str.replace("foo", "bar"))).toBe("bar foo foo");
 });
 
-test("Str.replace works with a RegExp pattern", () => {
+test("replace: replaces matching RegExp pattern", () => {
 	expect(pipe("Hello World", Str.replace(/world/i, "Earth"))).toBe("Hello Earth");
 });
 
-test("Str.replace returns the string unchanged when pattern not found", () => {
+test("replace: returns string unchanged when pattern not found", () => {
 	expect(pipe("hello", Str.replace("xyz", "abc"))).toBe("hello");
 });
 
@@ -223,15 +223,15 @@ test("Str.replace returns the string unchanged when pattern not found", () => {
 // replaceAll
 // ---------------------------------------------------------------------------
 
-test("Str.replaceAll replaces all occurrences of a substring", () => {
+test("replaceAll: replaces all occurrences of substring", () => {
 	expect(pipe("foo foo foo", Str.replaceAll("foo", "bar"))).toBe("bar bar bar");
 });
 
-test("Str.replaceAll with a global RegExp replaces all matches", () => {
+test("replaceAll: replaces all matches with global RegExp", () => {
 	expect(pipe("aAbBaA", Str.replaceAll(/a/gi, "x"))).toBe("xxbBxx");
 });
 
-test("Str.replaceAll returns the string unchanged when pattern not found", () => {
+test("replaceAll: returns string unchanged when pattern not found", () => {
 	expect(pipe("hello", Str.replaceAll("xyz", "abc"))).toBe("hello");
 });
 
@@ -239,47 +239,47 @@ test("Str.replaceAll returns the string unchanged when pattern not found", () =>
 // isEmpty
 // ---------------------------------------------------------------------------
 
-test("Str.is.empty returns true for an empty string", () => {
+test("is.empty: returns true for empty string", () => {
 	expect(pipe("", Str.is.empty)).toBe(true);
 });
 
-test("Str.is.empty returns false for a non-empty string", () => {
+test("is.empty: returns false for non-empty string", () => {
 	expect(pipe("hi", Str.is.empty)).toBe(false);
 });
 
-test("Str.is.empty returns false for a whitespace-only string", () => {
+test("is.empty: returns false for whitespace-only string", () => {
 	expect(pipe("   ", Str.is.empty)).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
-// isBlank
+// is.blank
 // ---------------------------------------------------------------------------
 
-test("Str.isBlank returns true for an empty string", () => {
-	expect(pipe("", Str.isBlank)).toBe(true);
+test("is.blank: returns true for empty string", () => {
+	expect(pipe("", Str.is.blank)).toBe(true);
 });
 
-test("Str.isBlank returns true for a whitespace-only string", () => {
-	expect(pipe("   ", Str.isBlank)).toBe(true);
+test("is.blank: returns true for whitespace-only string", () => {
+	expect(pipe("   ", Str.is.blank)).toBe(true);
 });
 
-test("Str.isBlank returns false for a non-empty string", () => {
-	expect(pipe("hi", Str.isBlank)).toBe(false);
+test("is.blank: returns false for non-empty string", () => {
+	expect(pipe("hi", Str.is.blank)).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
 // length
 // ---------------------------------------------------------------------------
 
-test("Str.length returns the correct length", () => {
+test("length: returns correct length", () => {
 	expect(pipe("hello", Str.length)).toBe(5);
 });
 
-test("Str.length returns 0 for an empty string", () => {
+test("length: returns 0 for empty string", () => {
 	expect(pipe("", Str.length)).toBe(0);
 });
 
-test("Str.length includes whitespace in count", () => {
+test("length: includes whitespace in count", () => {
 	expect(pipe("a b c", Str.length)).toBe(5);
 });
 
@@ -287,19 +287,19 @@ test("Str.length includes whitespace in count", () => {
 // slice
 // ---------------------------------------------------------------------------
 
-test("Str.slice slices with start and end indices", () => {
+test("slice: slices with start and end indices", () => {
 	expect(pipe("hello", Str.slice(1, 3))).toBe("el");
 });
 
-test("Str.slice slices with only start index", () => {
+test("slice: slices with only start index", () => {
 	expect(pipe("hello", Str.slice(2))).toBe("llo");
 });
 
-test("Str.slice handles negative start index", () => {
+test("slice: handles negative start index", () => {
 	expect(pipe("hello", Str.slice(-2))).toBe("lo");
 });
 
-test("Str.slice with start beyond length returns empty string", () => {
+test("slice: returns empty string when start exceeds length", () => {
 	expect(pipe("hello", Str.slice(10))).toBe("");
 });
 
@@ -307,19 +307,19 @@ test("Str.slice with start beyond length returns empty string", () => {
 // padStart
 // ---------------------------------------------------------------------------
 
-test("Str.padStart pads to the specified length", () => {
+test("padStart: pads to specified length", () => {
 	expect(pipe("5", Str.padStart(3, "0"))).toBe("005");
 });
 
-test("Str.padStart with default fill uses space", () => {
+test("padStart: uses space as default fill", () => {
 	expect(pipe("hi", Str.padStart(5))).toBe("   hi");
 });
 
-test("Str.padStart is a no-op when string is already long enough", () => {
+test("padStart: leaves string unchanged when already long enough", () => {
 	expect(pipe("hello", Str.padStart(3, "0"))).toBe("hello");
 });
 
-test("Str.padStart pads with custom fill string", () => {
+test("padStart: pads with custom fill string", () => {
 	expect(pipe("x", Str.padStart(5, "ab"))).toBe("ababx");
 });
 
@@ -327,19 +327,19 @@ test("Str.padStart pads with custom fill string", () => {
 // padEnd
 // ---------------------------------------------------------------------------
 
-test("Str.padEnd pads to the specified length", () => {
+test("padEnd: pads to specified length", () => {
 	expect(pipe("hi", Str.padEnd(5, "."))).toBe("hi...");
 });
 
-test("Str.padEnd with default fill uses space", () => {
+test("padEnd: uses space as default fill", () => {
 	expect(pipe("hi", Str.padEnd(5))).toBe("hi   ");
 });
 
-test("Str.padEnd is a no-op when string is already long enough", () => {
+test("padEnd: leaves string unchanged when already long enough", () => {
 	expect(pipe("hello", Str.padEnd(3, "0"))).toBe("hello");
 });
 
-test("Str.padEnd pads with custom fill string", () => {
+test("padEnd: pads with custom fill string", () => {
 	expect(pipe("x", Str.padEnd(5, "ab"))).toBe("xabab");
 });
 
@@ -347,7 +347,7 @@ test("Str.padEnd pads with custom fill string", () => {
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("str pipe composition - trim then split then toUpperCase each word", () => {
+test("pipe: composes trim split and toUpperCase transformations", () => {
 	const result = pipe("  hello world  ", Str.trim, Str.split(" "), (words) => words.map(Str.toUpperCase));
 	expect(result).toStrictEqual(["HELLO", "WORLD"]);
 });
@@ -356,18 +356,18 @@ test("str pipe composition - trim then split then toUpperCase each word", () => 
 // match & test
 // ---------------------------------------------------------------------------
 
-test("Str.match returns Some with match array when regex matches", () => {
+test("match: returns Some with match array when regex matches", () => {
 	const result = pipe("hello 42 world", Str.match(/\d+/));
 	expect(pipe(result, Maybe.map((m) => m[0]))).toStrictEqual(Maybe.make.some("42"));
 	expect(pipe(result, Maybe.map((m) => m.index))).toStrictEqual(Maybe.make.some(6));
 });
 
-test("Str.match returns None when regex does not match", () => {
+test("match: returns None when regex does not match", () => {
 	const result = pipe("hello world", Str.match(/\d+/));
 	expect(result).toStrictEqual(Maybe.make.none());
 });
 
-test("Str.match is pure and resilient against stateful /g flag", () => {
+test("match: remains pure against stateful global RegExp", () => {
 	const regex = /abc/g;
 	const first = Str.match(regex)("abc");
 	const second = Str.match(regex)("abc");
@@ -375,17 +375,17 @@ test("Str.match is pure and resilient against stateful /g flag", () => {
 	expect(Maybe.is.some(second)).toBe(true);
 });
 
-test("Str.test returns true for matching regex", () => {
+test("test: returns true for matching regex", () => {
 	const result = pipe("user@example.com", Str.test(/^[^@]+@[^@]+$/));
 	expect(result).toBe(true);
 });
 
-test("Str.test returns false for non-matching regex", () => {
+test("test: returns false for non-matching regex", () => {
 	const result = pipe("invalid-email", Str.test(/^[^@]+@[^@]+$/));
 	expect(result).toBe(false);
 });
 
-test("Str.test is pure and resilient against stateful /g flag", () => {
+test("test: remains pure against stateful global RegExp", () => {
 	const regex = /pattern/g;
 	expect(Str.test(regex)("pattern")).toBe(true);
 	expect(Str.test(regex)("pattern")).toBe(true);
@@ -395,16 +395,16 @@ test("Str.test is pure and resilient against stateful /g flag", () => {
 // Str.NonEmpty
 // ---------------------------------------------------------------------------
 
-test("Str.is.nonEmpty - returns true for non-empty string", () => {
+test("is.nonEmpty: returns true for non-empty string", () => {
 	expect(Str.is.nonEmpty("hello")).toBe(true);
 });
 
-test("Str.is.nonEmpty - returns false for empty string", () => {
+test("is.nonEmpty: returns false for empty string", () => {
 	expect(Str.is.nonEmpty("")).toBe(false);
 });
 
-test("Str.NonEmpty.from.String - returns Some for non-empty string", () => {
-	const result = Str.NonEmpty.from.String("hello");
+test("NonEmpty.from.string: returns Some for non-empty string", () => {
+	const result = Str.NonEmpty.from.string("hello");
 	if (result.kind !== "Some") {
 		throw new Error("Expected Some");
 	}
@@ -412,21 +412,21 @@ test("Str.NonEmpty.from.String - returns Some for non-empty string", () => {
 	expectTypeOf(result.value).toEqualTypeOf<Str.NonEmpty>();
 });
 
-test("Str.NonEmpty.from.String - returns None for empty string", () => {
-	const result = Str.NonEmpty.from.String("");
+test("NonEmpty.from.string: returns None for empty string", () => {
+	const result = Str.NonEmpty.from.string("");
 	expect(result.kind).toBe("None");
 });
 
 // --- uncapitalize ---
 
-test("Str.uncapitalize lowercases the first character", () => {
+test("uncapitalize: lowercases first character", () => {
 	expect(Str.uncapitalize("Hello")).toBe("hello");
 	expect(Str.uncapitalize("")).toBe("");
 });
 
 // --- truncate ---
 
-test("Str.truncate truncates strings exceeding length", () => {
+test("truncate: truncates strings exceeding length", () => {
 	expect(pipe("Hello, world!", Str.truncate({ length: 8 }))).toBe("Hello...");
 	expect(pipe("Hello", Str.truncate({ length: 10 }))).toBe("Hello");
 	expect(pipe("Hello, world!", Str.truncate({ length: 8, suffix: "…" }))).toBe("Hello, …");

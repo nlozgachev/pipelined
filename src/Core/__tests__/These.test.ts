@@ -2,7 +2,7 @@ import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { These, TheseBoth } from "../These.ts";
 
-test("These type propagation check for chainFirst, chainSecond, and mapBoth", () => {
+test("types: propagates types correctly for chainFirst chainSecond and mapBoth", () => {
 	const t1: These<number, string> = These.make.both(42, "warning");
 	const res1 = pipe(t1, These.chainFirst((n) => These.make.first(n > 0)));
 	expectTypeOf(res1).toEqualTypeOf<These<boolean, string>>();
@@ -18,15 +18,15 @@ test("These type propagation check for chainFirst, chainSecond, and mapBoth", ()
 // first / second / both
 // ---------------------------------------------------------------------------
 
-test("These.make.first creates a These with only a first value", () => {
+test("make.first: creates a These with only a first value", () => {
 	expect(These.make.first(42)).toStrictEqual({ kind: "First", first: 42 });
 });
 
-test("These.make.second creates a These with only a second value", () => {
+test("make.second: creates a These with only a second value", () => {
 	expect(These.make.second("oops")).toStrictEqual({ kind: "Second", second: "oops" });
 });
 
-test("These.make.both creates a These with both values", () => {
+test("make.both: creates a These with both values", () => {
 	const result: TheseBoth<number, string> = These.make.both(42, "warn");
 	expect(result).toStrictEqual({ kind: "Both", first: 42, second: "warn" });
 });
@@ -35,39 +35,39 @@ test("These.make.both creates a These with both values", () => {
 // isFirst / isSecond / isBoth
 // ---------------------------------------------------------------------------
 
-test("These.is.first returns true for First", () => {
+test("is.first: returns true for First", () => {
 	expect(These.is.first(These.make.first(1))).toBe(true);
 });
 
-test("These.is.first returns false for Second", () => {
+test("is.first: returns false for Second", () => {
 	expect(These.is.first(These.make.second("e"))).toBe(false);
 });
 
-test("These.is.first returns false for Both", () => {
+test("is.first: returns false for Both", () => {
 	expect(These.is.first(These.make.both(1, "w"))).toBe(false);
 });
 
-test("These.is.second returns true for Second", () => {
+test("is.second: returns true for Second", () => {
 	expect(These.is.second(These.make.second("e"))).toBe(true);
 });
 
-test("These.is.second returns false for First", () => {
+test("is.second: returns false for First", () => {
 	expect(These.is.second(These.make.first(1))).toBe(false);
 });
 
-test("These.is.second returns false for Both", () => {
+test("is.second: returns false for Both", () => {
 	expect(These.is.second(These.make.both(1, "w"))).toBe(false);
 });
 
-test("These.is.both returns true for Both", () => {
+test("is.both: returns true for Both", () => {
 	expect(These.is.both(These.make.both(1, "w"))).toBe(true);
 });
 
-test("These.is.both returns false for First", () => {
+test("is.both: returns false for First", () => {
 	expect(These.is.both(These.make.first(1))).toBe(false);
 });
 
-test("These.is.both returns false for Second", () => {
+test("is.both: returns false for Second", () => {
 	expect(These.is.both(These.make.second("e"))).toBe(false);
 });
 
@@ -75,27 +75,27 @@ test("These.is.both returns false for Second", () => {
 // hasFirst / hasSecond
 // ---------------------------------------------------------------------------
 
-test("These.hasFirst returns true for First", () => {
+test("hasFirst: returns true for First", () => {
 	expect(These.hasFirst(These.make.first(1))).toBe(true);
 });
 
-test("These.hasFirst returns true for Both", () => {
+test("hasFirst: returns true for Both", () => {
 	expect(These.hasFirst(These.make.both(1, "w"))).toBe(true);
 });
 
-test("These.hasFirst returns false for Second", () => {
+test("hasFirst: returns false for Second", () => {
 	expect(These.hasFirst(These.make.second("e"))).toBe(false);
 });
 
-test("These.hasSecond returns true for Second", () => {
+test("hasSecond: returns true for Second", () => {
 	expect(These.hasSecond(These.make.second("e"))).toBe(true);
 });
 
-test("These.hasSecond returns true for Both", () => {
+test("hasSecond: returns true for Both", () => {
 	expect(These.hasSecond(These.make.both(1, "w"))).toBe(true);
 });
 
-test("These.hasSecond returns false for First", () => {
+test("hasSecond: returns false for First", () => {
 	expect(These.hasSecond(These.make.first(1))).toBe(false);
 });
 
@@ -103,11 +103,11 @@ test("These.hasSecond returns false for First", () => {
 // mapFirst
 // ---------------------------------------------------------------------------
 
-test("These.mapFirst transforms First value", () => {
+test("mapFirst: transforms First value", () => {
 	expect(pipe(These.make.first(5), These.mapFirst((n: number) => n * 2))).toStrictEqual({ kind: "First", first: 10 });
 });
 
-test("These.mapFirst transforms first value inside Both", () => {
+test("mapFirst: transforms first value inside Both", () => {
 	expect(pipe(These.make.both(5, "warn"), These.mapFirst((n: number) => n * 2))).toStrictEqual({
 		kind: "Both",
 		first: 10,
@@ -115,7 +115,7 @@ test("These.mapFirst transforms first value inside Both", () => {
 	});
 });
 
-test("These.mapFirst passes through Second unchanged", () => {
+test("mapFirst: passes through Second unchanged", () => {
 	expect(pipe(These.make.second<string>("err"), These.mapFirst((n: number) => n * 2))).toStrictEqual({
 		kind: "Second",
 		second: "err",
@@ -126,14 +126,14 @@ test("These.mapFirst passes through Second unchanged", () => {
 // mapSecond
 // ---------------------------------------------------------------------------
 
-test("These.mapSecond transforms Second value", () => {
+test("mapSecond: transforms Second value", () => {
 	expect(pipe(These.make.second("warn"), These.mapSecond((e: string) => e.toUpperCase()))).toStrictEqual({
 		kind: "Second",
 		second: "WARN",
 	});
 });
 
-test("These.mapSecond transforms second value inside Both", () => {
+test("mapSecond: transforms second value inside Both", () => {
 	expect(pipe(These.make.both(5, "warn"), These.mapSecond((e: string) => e.toUpperCase()))).toStrictEqual({
 		kind: "Both",
 		first: 5,
@@ -141,7 +141,7 @@ test("These.mapSecond transforms second value inside Both", () => {
 	});
 });
 
-test("These.mapSecond passes through First unchanged", () => {
+test("mapSecond: passes through First unchanged", () => {
 	expect(pipe(These.make.first<number>(5), These.mapSecond((e: string) => e.toUpperCase()))).toStrictEqual({
 		kind: "First",
 		first: 5,
@@ -152,19 +152,19 @@ test("These.mapSecond passes through First unchanged", () => {
 // mapBoth
 // ---------------------------------------------------------------------------
 
-test("These.mapBoth maps the first side for First", () => {
+test("mapBoth: maps first side for First", () => {
 	expect(pipe(These.make.first(5), These.mapBoth((n: number) => n * 2, (e: string) => e.toUpperCase()))).toStrictEqual({
 		kind: "First",
 		first: 10,
 	});
 });
 
-test("These.mapBoth maps the second side for Second", () => {
+test("mapBoth: maps second side for Second", () => {
 	expect(pipe(These.make.second("warn"), These.mapBoth((n: number) => n * 2, (e: string) => e.toUpperCase())))
 		.toStrictEqual({ kind: "Second", second: "WARN" });
 });
 
-test("These.mapBoth maps both sides for Both", () => {
+test("mapBoth: maps both sides for Both", () => {
 	expect(pipe(These.make.both(5, "warn"), These.mapBoth((n: number) => n * 2, (e: string) => e.toUpperCase())))
 		.toStrictEqual({ kind: "Both", first: 10, second: "WARN" });
 });
@@ -173,14 +173,14 @@ test("These.mapBoth maps both sides for Both", () => {
 // chainFirst
 // ---------------------------------------------------------------------------
 
-test("These.chainFirst applies function to First value", () => {
+test("chainFirst: applies function to First value", () => {
 	expect(pipe(These.make.first(5), These.chainFirst((n: number) => These.make.first(n * 2)))).toStrictEqual({
 		kind: "First",
 		first: 10,
 	});
 });
 
-test("These.chainFirst propagates Second without calling function", () => {
+test("chainFirst: propagates Second without calling function", () => {
 	let called = false;
 	pipe(
 		These.make.second<string>("warn"),
@@ -192,14 +192,14 @@ test("These.chainFirst propagates Second without calling function", () => {
 	expect(called).toBe(false);
 });
 
-test("These.chainFirst on Both applies function to first value", () => {
+test("chainFirst: applies function to first value on Both", () => {
 	expect(pipe(These.make.both(5, "warn"), These.chainFirst((n: number) => These.make.first(n * 2)))).toStrictEqual({
 		kind: "First",
 		first: 10,
 	});
 });
 
-test("These.chainFirst can change the first value type", () => {
+test("chainFirst: changes first value type", () => {
 	expect(pipe(These.make.first(42), These.chainFirst((n: number) => These.make.first(`num: ${n}`)))).toStrictEqual({
 		kind: "First",
 		first: "num: 42",
@@ -210,12 +210,12 @@ test("These.chainFirst can change the first value type", () => {
 // chainSecond
 // ---------------------------------------------------------------------------
 
-test("These.chainSecond applies function to Second value", () => {
+test("chainSecond: applies function to Second value", () => {
 	expect(pipe(These.make.second("warn"), These.chainSecond((s: string) => These.make.second(s.toUpperCase()))))
 		.toStrictEqual({ kind: "Second", second: "WARN" });
 });
 
-test("These.chainSecond propagates First without calling function", () => {
+test("chainSecond: propagates First without calling function", () => {
 	let called = false;
 	pipe(
 		These.make.first<number>(5),
@@ -227,12 +227,12 @@ test("These.chainSecond propagates First without calling function", () => {
 	expect(called).toBe(false);
 });
 
-test("These.chainSecond on Both applies function to second value", () => {
+test("chainSecond: applies function to second value on Both", () => {
 	expect(pipe(These.make.both(5, "warn"), These.chainSecond((s: string) => These.make.second(s.toUpperCase()))))
 		.toStrictEqual({ kind: "Second", second: "WARN" });
 });
 
-test("These.chainSecond can change the second value type", () => {
+test("chainSecond: changes second value type", () => {
 	expect(pipe(These.make.second("warn"), These.chainSecond((s: string) => These.make.second(s.length)))).toStrictEqual({
 		kind: "Second",
 		second: 4,
@@ -243,7 +243,7 @@ test("These.chainSecond can change the second value type", () => {
 // fold
 // ---------------------------------------------------------------------------
 
-test("These.fold calls onFirst for First", () => {
+test("fold: calls onFirst for First", () => {
 	expect(
 		pipe(
 			These.make.first(5),
@@ -252,7 +252,7 @@ test("These.fold calls onFirst for First", () => {
 	).toBe("first:5");
 });
 
-test("These.fold calls onSecond for Second", () => {
+test("fold: calls onSecond for Second", () => {
 	expect(
 		pipe(
 			These.make.second("e"),
@@ -261,7 +261,7 @@ test("These.fold calls onSecond for Second", () => {
 	).toBe("second:e");
 });
 
-test("These.fold calls onBoth for Both", () => {
+test("fold: calls onBoth for Both", () => {
 	expect(
 		pipe(
 			These.make.both(5, "w"),
@@ -274,7 +274,7 @@ test("These.fold calls onBoth for Both", () => {
 // match
 // ---------------------------------------------------------------------------
 
-test("These.match calls first handler for First", () => {
+test("match: calls first handler for First", () => {
 	expect(
 		pipe(
 			These.make.first(5),
@@ -287,7 +287,7 @@ test("These.match calls first handler for First", () => {
 	).toBe("first:5");
 });
 
-test("These.match calls second handler for Second", () => {
+test("match: calls second handler for Second", () => {
 	expect(
 		pipe(
 			These.make.second("e"),
@@ -300,7 +300,7 @@ test("These.match calls second handler for Second", () => {
 	).toBe("second:e");
 });
 
-test("These.match calls both handler for Both", () => {
+test("match: calls both handler for Both", () => {
 	expect(
 		pipe(
 			These.make.both(5, "w"),
@@ -317,29 +317,29 @@ test("These.match calls both handler for Both", () => {
 // getFirstOrElse / getSecondOrElse
 // ---------------------------------------------------------------------------
 
-test("These.getFirstOrElse returns first value for First", () => {
+test("getFirstOrElse: returns first value for First", () => {
 	expect(pipe(These.make.first(5), These.getFirstOrElse(() => 0))).toBe(5);
 });
 
-test("These.getFirstOrElse returns first value for Both", () => {
+test("getFirstOrElse: returns first value for Both", () => {
 	expect(pipe(These.make.both(5, "w"), These.getFirstOrElse(() => 0))).toBe(5);
 });
 
-test("These.getFirstOrElse returns default for Second", () => {
+test("getFirstOrElse: returns default for Second", () => {
 	expect(pipe(These.make.second<string>("warn"), These.getFirstOrElse(() => 0))).toBe(0);
 });
 
-test("These.getFirstOrElse widens return type to A | C when default is a different type", () => {
+test("getFirstOrElse: widens return type when default is different type", () => {
 	const result = pipe(These.make.second("warn"), These.getFirstOrElse(() => null));
 	expect(result).toBeNull();
 });
 
-test("These.getFirstOrElse returns first value typed as A | C when present", () => {
+test("getFirstOrElse: returns first value when present", () => {
 	const result = pipe(These.make.first(5), These.getFirstOrElse(() => null));
 	expect(result).toBe(5);
 });
 
-test("These.getFirstOrElse does not call thunk when value is present", () => {
+test("getFirstOrElse: does not call thunk when value is present", () => {
 	let called = false;
 	pipe(
 		These.make.first(5),
@@ -351,29 +351,29 @@ test("These.getFirstOrElse does not call thunk when value is present", () => {
 	expect(called).toBe(false);
 });
 
-test("These.getSecondOrElse returns second value for Second", () => {
+test("getSecondOrElse: returns second value for Second", () => {
 	expect(pipe(These.make.second("warn"), These.getSecondOrElse(() => "none"))).toBe("warn");
 });
 
-test("These.getSecondOrElse returns second value for Both", () => {
+test("getSecondOrElse: returns second value for Both", () => {
 	expect(pipe(These.make.both(5, "warn"), These.getSecondOrElse(() => "none"))).toBe("warn");
 });
 
-test("These.getSecondOrElse returns default for First", () => {
+test("getSecondOrElse: returns default for First", () => {
 	expect(pipe(These.make.first<number>(5), These.getSecondOrElse(() => "none"))).toBe("none");
 });
 
-test("These.getSecondOrElse widens return type to B | D when default is a different type", () => {
+test("getSecondOrElse: widens return type when default is different type", () => {
 	const result = pipe(These.make.first(5), These.getSecondOrElse(() => null));
 	expect(result).toBeNull();
 });
 
-test("These.getSecondOrElse returns second value typed as B | D when present", () => {
+test("getSecondOrElse: returns second value when present", () => {
 	const result = pipe(These.make.second("warn"), These.getSecondOrElse(() => null));
 	expect(result).toBe("warn");
 });
 
-test("These.getSecondOrElse does not call thunk when value is present", () => {
+test("getSecondOrElse: does not call thunk when value is present", () => {
 	let called = false;
 	pipe(
 		These.make.second("warn"),
@@ -389,7 +389,7 @@ test("These.getSecondOrElse does not call thunk when value is present", () => {
 // tap
 // ---------------------------------------------------------------------------
 
-test("These.tap executes side effect on First and returns original", () => {
+test("tap: executes side effect on First and returns original", () => {
 	let seen = 0;
 	const result = pipe(
 		These.make.first(5),
@@ -401,7 +401,7 @@ test("These.tap executes side effect on First and returns original", () => {
 	expect(result).toStrictEqual({ kind: "First", first: 5 });
 });
 
-test("These.tap executes side effect on Both and returns original", () => {
+test("tap: executes side effect on Both and returns original", () => {
 	let seen = 0;
 	const result = pipe(
 		These.make.both(7, "w"),
@@ -413,7 +413,7 @@ test("These.tap executes side effect on Both and returns original", () => {
 	expect(result).toStrictEqual({ kind: "Both", first: 7, second: "w" });
 });
 
-test("These.tap does not execute side effect on Second", () => {
+test("tap: does not execute side effect on Second", () => {
 	let called = false;
 	pipe(
 		These.make.second<string>("e"),
@@ -428,15 +428,15 @@ test("These.tap does not execute side effect on Second", () => {
 // swap
 // ---------------------------------------------------------------------------
 
-test("These.swap converts First to Second", () => {
+test("swap: converts First to Second", () => {
 	expect(These.swap(These.make.first(5))).toStrictEqual({ kind: "Second", second: 5 });
 });
 
-test("These.swap converts Second to First", () => {
+test("swap: converts Second to First", () => {
 	expect(These.swap(These.make.second("e"))).toStrictEqual({ kind: "First", first: "e" });
 });
 
-test("These.swap swaps Both sides", () => {
+test("swap: swaps Both sides", () => {
 	expect(These.swap(These.make.both(5, "w"))).toStrictEqual({ kind: "Both", first: "w", second: 5 });
 });
 
@@ -444,7 +444,7 @@ test("These.swap swaps Both sides", () => {
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("these composes well in a pipe chain", () => {
+test("pipe: composes in pipeline", () => {
 	const result = pipe(
 		These.make.first(5),
 		These.mapFirst((n: number) => n * 2),
@@ -454,7 +454,7 @@ test("these composes well in a pipe chain", () => {
 	expect(result).toBe(10);
 });
 
-test("these chainFirst on Both discards second", () => {
+test("chainFirst: discards second when invoked on Both", () => {
 	const result = pipe(
 		These.make.both(5, "original warning"),
 		These.mapFirst((n: number) => n + 1),

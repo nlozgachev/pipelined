@@ -11,44 +11,46 @@ export type BoolMatchCases<A, B> = { readonly true: () => A; readonly false: () 
 // =============================================================================
 // Private Helpers & Combinator Implementations
 // =============================================================================
-const isBoolean = (u: unknown): u is boolean => typeof u === "boolean";
-const isTrue = (u: unknown): u is true => u === true;
-const isFalse = (u: unknown): u is false => u === false;
-const isTruthy = <T>(u: T): u is Exclude<T, false | 0 | 0n | "" | null | undefined> => Boolean(u);
-const isFalsy = (u: unknown): u is false | 0 | 0n | "" | null | undefined => !u;
+const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
+const isTrue = (value: unknown): value is true => value === true;
+const isFalse = (value: unknown): value is false => value === false;
+const isTruthy = <T>(value: T): value is Exclude<T, false | 0 | 0n | "" | null | undefined> => Boolean(value);
+const isFalsy = (value: unknown): value is false | 0 | 0n | "" | null | undefined => !value;
 
-const not = (b: boolean): boolean => !b;
-const and = (that: boolean) => (self: boolean): boolean => self && that;
-const or = (that: boolean) => (self: boolean): boolean => self || that;
-const xor = (that: boolean) => (self: boolean): boolean => self !== that;
+const not = (condition: boolean): boolean => !condition;
+const and = (that: boolean) => (condition: boolean): boolean => condition && that;
+const or = (that: boolean) => (condition: boolean): boolean => condition || that;
+const xor = (that: boolean) => (condition: boolean): boolean => condition !== that;
 
-const andLazy = (that: () => boolean) => (self: boolean): boolean => self && that();
-const orLazy = (that: () => boolean) => (self: boolean): boolean => self || that();
+const andLazy = (that: () => boolean) => (condition: boolean): boolean => condition && that();
+const orLazy = (that: () => boolean) => (condition: boolean): boolean => condition || that();
 
-const all = (booleans: readonly boolean[]): boolean => {
-	for (let i = 0; i < booleans.length; i++) {
-		if (!booleans[i]) {
+const all = (conditions: readonly boolean[]): boolean => {
+	for (let i = 0; i < conditions.length; i++) {
+		if (!conditions[i]) {
 			return false;
 		}
 	}
 	return true;
 };
 
-const any = (booleans: readonly boolean[]): boolean => {
-	for (let i = 0; i < booleans.length; i++) {
-		if (booleans[i]) {
+const any = (conditions: readonly boolean[]): boolean => {
+	for (let i = 0; i < conditions.length; i++) {
+		if (conditions[i]) {
 			return true;
 		}
 	}
 	return false;
 };
 
-const fold = <A, B>(onFalse: () => A, onTrue: () => B) => (b: boolean): A | B => (b ? onTrue() : onFalse());
+const fold =
+	<A, B>(onFalse: () => A, onTrue: () => B) => (condition: boolean): A | B => (condition ? onTrue() : onFalse());
 
-const match = <A, B>(cases: BoolMatchCases<A, B>) => (b: boolean): A | B => (b ? cases.true() : cases.false());
+const match =
+	<A, B>(cases: BoolMatchCases<A, B>) => (condition: boolean): A | B => (condition ? cases.true() : cases.false());
 
-const fromString = (s: string): Maybe<boolean> => {
-	const trimmed = s.trim().toLowerCase();
+const fromString = (text: string): Maybe<boolean> => {
+	const trimmed = text.trim().toLowerCase();
 	if (trimmed === "true") {
 		return Maybe.make.some(true);
 	}
@@ -58,11 +60,11 @@ const fromString = (s: string): Maybe<boolean> => {
 	return Maybe.make.none();
 };
 
-const fromNumber = (n: number): Maybe<boolean> => {
-	if (n === 1) {
+const fromNumber = (value: number): Maybe<boolean> => {
+	if (value === 1) {
 		return Maybe.make.some(true);
 	}
-	if (n === 0) {
+	if (value === 0) {
 		return Maybe.make.some(false);
 	}
 	return Maybe.make.none();
@@ -70,14 +72,15 @@ const fromNumber = (n: number): Maybe<boolean> => {
 
 const fromTruthy = (value: unknown): boolean => Boolean(value);
 
-const toMaybe = <A>(onTrue: () => A) => (b: boolean): Maybe<A> => (b ? Maybe.make.some(onTrue()) : Maybe.make.none());
+const toMaybe =
+	<A>(onTrue: () => A) => (condition: boolean): Maybe<A> => (condition ? Maybe.make.some(onTrue()) : Maybe.make.none());
 
-const toResult = <E, A>(onErr: () => E, onOk: () => A) => (b: boolean): Result<E, A> =>
-	b ? Result.make.ok(onOk()) : Result.make.err(onErr());
+const toResult = <E, A>(onErr: () => E, onOk: () => A) => (condition: boolean): Result<E, A> =>
+	condition ? Result.make.ok(onOk()) : Result.make.err(onErr());
 
-const toNumber = (b: boolean): 1 | 0 => (b ? 1 : 0);
+const toNumber = (condition: boolean): 1 | 0 => (condition ? 1 : 0);
 
-const toString = (b: boolean): "true" | "false" => (b ? "true" : "false");
+const toString = (condition: boolean): "true" | "false" => (condition ? "true" : "false");
 
 // =============================================================================
 // Public Export
@@ -100,6 +103,8 @@ export const Bool = {
 		/**
 		 * Narrowing guard — checks if a value is strictly `true`.
 		 *
+		 * @see {@link Bool.is.false} to check if a value is strictly false.
+		 *
 		 * @example
 		 * ```ts
 		 * Bool.is.true(true);  // true
@@ -111,6 +116,8 @@ export const Bool = {
 		/**
 		 * Narrowing guard — checks if a value is strictly `false`.
 		 *
+		 * @see {@link Bool.is.true} to check if a value is strictly true.
+		 *
 		 * @example
 		 * ```ts
 		 * Bool.is.false(false); // true
@@ -121,6 +128,8 @@ export const Bool = {
 
 		/**
 		 * Type guard — checks if a value is truthy (not `false`, `0`, `0n`, `""`, `null`, `undefined`, or `NaN`).
+		 *
+		 * @see {@link Bool.is.falsy} to check if a value is falsy.
 		 *
 		 * @example
 		 * ```ts
@@ -134,6 +143,8 @@ export const Bool = {
 
 		/**
 		 * Type guard — checks if a value is falsy (`false`, `0`, `0n`, `""`, `null`, `undefined`, or `NaN`).
+		 *
+		 * @see {@link Bool.is.truthy} to check if a value is truthy.
 		 *
 		 * @example
 		 * ```ts
@@ -157,9 +168,12 @@ export const Bool = {
 	not,
 
 	/**
-	 * Logical AND combinator. Returns `true` only if both `self` and `that` are `true`.
+	 * Logical AND combinator. Returns `true` only if both `condition` and `that` are `true`.
 	 *
-	 * Data-last: `pipe(self, Bool.and(that))`.
+	 * Data-last: `pipe(condition, Bool.and(that))`.
+	 *
+	 * @see {@link Bool.or} for logical OR combinator.
+	 * @see {@link Bool.andLazy} for short-circuiting lazy evaluation.
 	 *
 	 * @example
 	 * ```ts
@@ -170,9 +184,12 @@ export const Bool = {
 	and,
 
 	/**
-	 * Logical OR combinator. Returns `true` if either `self` or `that` is `true`.
+	 * Logical OR combinator. Returns `true` if either `condition` or `that` is `true`.
 	 *
-	 * Data-last: `pipe(self, Bool.or(that))`.
+	 * Data-last: `pipe(condition, Bool.or(that))`.
+	 *
+	 * @see {@link Bool.and} for logical AND combinator.
+	 * @see {@link Bool.orLazy} for short-circuiting lazy evaluation.
 	 *
 	 * @example
 	 * ```ts
@@ -183,9 +200,9 @@ export const Bool = {
 	or,
 
 	/**
-	 * Logical XOR (exclusive OR) combinator. Returns `true` if exactly one of `self` and `that` is `true`.
+	 * Logical XOR (exclusive OR) combinator. Returns `true` if exactly one of `condition` and `that` is `true`.
 	 *
-	 * Data-last: `pipe(self, Bool.xor(that))`.
+	 * Data-last: `pipe(condition, Bool.xor(that))`.
 	 *
 	 * @example
 	 * ```ts
@@ -197,9 +214,12 @@ export const Bool = {
 
 	/**
 	 * Lazy logical AND combinator.
-	 * If `self` is `false`, the `that` computation is never evaluated.
+	 * If `condition` is `false`, the `that` computation is never evaluated.
 	 *
-	 * Data-last: `pipe(self, Bool.andLazy(that))`.
+	 * Data-last: `pipe(condition, Bool.andLazy(that))`.
+	 *
+	 * @see {@link Bool.orLazy} for lazy logical OR combinator.
+	 * @see {@link Bool.and} for strict logical AND evaluation.
 	 *
 	 * @example
 	 * ```ts
@@ -213,9 +233,12 @@ export const Bool = {
 
 	/**
 	 * Lazy logical OR combinator.
-	 * If `self` is `true`, the `that` computation is never evaluated.
+	 * If `condition` is `true`, the `that` computation is never evaluated.
 	 *
-	 * Data-last: `pipe(self, Bool.orLazy(that))`.
+	 * Data-last: `pipe(condition, Bool.orLazy(that))`.
+	 *
+	 * @see {@link Bool.andLazy} for lazy logical AND combinator.
+	 * @see {@link Bool.or} for strict logical OR evaluation.
 	 *
 	 * @example
 	 * ```ts
@@ -232,6 +255,8 @@ export const Bool = {
 	 * Returns `true` if every boolean is `true`, or for an empty array (vacuous truth).
 	 * Short-circuits on the first `false`.
 	 *
+	 * @see {@link Bool.any} to check if at least one boolean is true.
+	 *
 	 * @example
 	 * ```ts
 	 * Bool.all([true, true, true]);  // true
@@ -245,6 +270,8 @@ export const Bool = {
 	 * N-ary OR aggregation across an array of booleans.
 	 * Returns `true` if at least one boolean is `true`. Returns `false` for an empty array.
 	 * Short-circuits on the first `true`.
+	 *
+	 * @see {@link Bool.all} to check if all booleans are true.
 	 *
 	 * @example
 	 * ```ts
@@ -261,6 +288,8 @@ export const Bool = {
 	 * Positional ordering: `onFalse` first, `onTrue` second.
 	 * Aligned with `Result.fold(onErr, onOk)` and `Maybe.fold(onNone, onSome)`.
 	 *
+	 * @see {@link Bool.match} for named-case pattern matching with an object literal.
+	 *
 	 * @example
 	 * ```ts
 	 * pipe(
@@ -276,6 +305,8 @@ export const Bool = {
 
 	/**
 	 * Pattern matching on boolean using named cases `{ true, false }`.
+	 *
+	 * @see {@link Bool.fold} for positional argument pattern matching.
 	 *
 	 * @example
 	 * ```ts

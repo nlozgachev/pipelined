@@ -14,13 +14,13 @@ const arbValidation = fc.oneof(arbValid, arbInvalid);
 // map — functor laws
 // ---------------------------------------------------------------------------
 
-test("Validation.map — identity law", () => {
+test("map: satisfies identity law", () => {
 	fc.assert(fc.property(arbValidation, (v) => {
 		expect(Validation.map((x: number) => x)(v)).toStrictEqual(v);
 	}));
 });
 
-test("Validation.map — composition law", () => {
+test("map: satisfies composition law", () => {
 	fc.assert(fc.property(arbValidation, fc.integer(), fc.integer(), (v, a, b) => {
 		const f = (x: number) => x + a;
 		const g = (x: number) => x * b;
@@ -28,7 +28,7 @@ test("Validation.map — composition law", () => {
 	}));
 });
 
-test("Validation.map — identity on Invalid", () => {
+test("map: identity on Invalid", () => {
 	fc.assert(fc.property(arbInvalid, (v) => {
 		expect(Validation.map((x: number) => x)(v)).toBe(v);
 	}));
@@ -38,7 +38,7 @@ test("Validation.map — identity on Invalid", () => {
 // apply — error accumulation
 // ---------------------------------------------------------------------------
 
-test("Validation.apply — Valid(f) + Valid(a) = Valid(f(a))", () => {
+test("apply: combines Valid function and Valid argument", () => {
 	fc.assert(fc.property(fc.integer(), fc.integer(), (n, delta) => {
 		const vf = Validation.make.passed<string, (x: number) => number>((x: number) => x + delta);
 		const va = Validation.make.passed<string, number>(n);
@@ -46,7 +46,7 @@ test("Validation.apply — Valid(f) + Valid(a) = Valid(f(a))", () => {
 	}));
 });
 
-test("Validation.apply — Invalid(f) + Invalid(a) accumulates both error lists", () => {
+test("apply: accumulates errors from both Invalid sides", () => {
 	fc.assert(fc.property(fc.string(), fc.string(), (e1, e2) => {
 		const vf: Validation<string, (x: number) => number> = Validation.make.failed(e1);
 		const va: Validation<string, number> = Validation.make.failed(e2);
@@ -62,14 +62,14 @@ test("Validation.apply — Invalid(f) + Invalid(a) accumulates both error lists"
 // getOrElse
 // ---------------------------------------------------------------------------
 
-test("Validation.getOrElse — returns value on Valid", () => {
+test("getOrElse: returns value on Valid", () => {
 	fc.assert(fc.property(arbValid, (v) => {
 		const vv = v as Passed<number>;
 		expect(Validation.getOrElse(() => -1)(v)).toBe(vv.value);
 	}));
 });
 
-test("Validation.getOrElse — returns fallback on Invalid", () => {
+test("getOrElse: returns fallback on Invalid", () => {
 	fc.assert(fc.property(arbInvalid, fc.integer(), (v, fallback) => {
 		expect(Validation.getOrElse(() => fallback)(v)).toBe(fallback);
 	}));
@@ -79,7 +79,7 @@ test("Validation.getOrElse — returns fallback on Invalid", () => {
 // fold
 // ---------------------------------------------------------------------------
 
-test("Validation.fold — handles all variants without throwing", () => {
+test("fold: handles all variants without throwing", () => {
 	fc.assert(fc.property(arbValidation, (v) => {
 		const result = Validation.fold((errors) => `invalid:${errors.join(",")}`, (x: number) => `valid:${x}`)(v);
 		expectTypeOf(result).toBeString();
@@ -90,13 +90,13 @@ test("Validation.fold — handles all variants without throwing", () => {
 // tap / tapError
 // ---------------------------------------------------------------------------
 
-test("Validation.tap — always returns the identical reference", () => {
+test("tap: always returns identical reference", () => {
 	fc.assert(fc.property(arbValidation, (v) => {
 		expect(Validation.tap(() => {})(v)).toBe(v);
 	}));
 });
 
-test("Validation.tapError — always returns the identical reference", () => {
+test("tapError: always returns identical reference", () => {
 	fc.assert(fc.property(arbValidation, (v) => {
 		expect(Validation.tapError(() => {})(v)).toBe(v);
 	}));
@@ -106,7 +106,7 @@ test("Validation.tapError — always returns the identical reference", () => {
 // recover
 // ---------------------------------------------------------------------------
 
-test("Validation.recover — identity on Valid", () => {
+test("recover: identity on Valid", () => {
 	fc.assert(fc.property(arbValid, (v) => {
 		expect(Validation.recover((_) => Validation.make.passed(-999))(v)).toBe(v);
 	}));
@@ -116,13 +116,13 @@ test("Validation.recover — identity on Valid", () => {
 // from.Predicate
 // ---------------------------------------------------------------------------
 
-test("Validation.from.Predicate — always-true gives Valid with original value", () => {
+test("from.Predicate: always-true gives Valid with original value", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
 		expect(Validation.from.Predicate((_: number) => true, () => "bad")(n)).toStrictEqual(Validation.make.passed(n));
 	}));
 });
 
-test("Validation.from.Predicate — always-false gives Invalid via onFalse", () => {
+test("from.Predicate: always-false gives Invalid via onFalse", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
 		const result = Validation.from.Predicate((_: number) => false, (x) => `bad:${x}`)(n);
 		expect(Validation.is.failed(result)).toBe(true);
@@ -135,14 +135,14 @@ test("Validation.from.Predicate — always-false gives Invalid via onFalse", () 
 // product
 // ---------------------------------------------------------------------------
 
-test("Validation.product — two Valid produces Valid tuple", () => {
+test("product: combines two Valid instances into Valid tuple", () => {
 	fc.assert(fc.property(fc.integer(), fc.string(), (n, s) => {
 		expect(Validation.product(Validation.make.passed<string, number>(n), Validation.make.passed<string, string>(s)))
 			.toStrictEqual(Validation.make.passed([n, s]));
 	}));
 });
 
-test("Validation.product — at least one Invalid produces Invalid with accumulated errors", () => {
+test("product: accumulates errors when Invalid instances provided", () => {
 	fc.assert(fc.property(fc.string(), fc.string(), (e1, e2) => {
 		const result = Validation.product(
 			Validation.make.failed(e1) as Validation<string, number>,

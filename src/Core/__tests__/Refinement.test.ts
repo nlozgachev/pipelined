@@ -23,7 +23,7 @@ const isTrimmed: Refinement<NonEmptyString, TrimmedString> = Refinement.from.pre
 const isPositive: Refinement<number, PositiveNumber> = Refinement.from.predicate((n) => n > 0);
 const isEven: Refinement<number, EvenNumber> = Refinement.from.predicate((n) => n % 2 === 0);
 
-test("Refinement type propagation check for to.Maybe and to.Result", () => {
+test("to.Maybe: and to.Result propagate narrowed types", () => {
 	const mb = Refinement.to.Maybe(isNonEmpty)("hello");
 	expectTypeOf(mb).toEqualTypeOf<Maybe<NonEmptyString>>();
 
@@ -35,15 +35,15 @@ test("Refinement type propagation check for to.Maybe and to.Result", () => {
 // make
 // ---------------------------------------------------------------------------
 
-test("Refinement.from.predicate returns true when predicate passes", () => {
+test("from.predicate: returns true when predicate passes", () => {
 	expect(isNonEmpty("hello")).toBe(true);
 });
 
-test("Refinement.from.predicate returns false when predicate fails", () => {
+test("from.predicate: returns false when predicate fails", () => {
 	expect(isNonEmpty("")).toBe(false);
 });
 
-test("Refinement.from.predicate works as a type guard in conditional branches", () => {
+test("from.predicate: works as type guard in conditional branches", () => {
 	const value: string = "world";
 	expect(isNonEmpty(value)).toBe(true);
 	// TypeScript compile-time check: narrowed type must be assignable to NonEmptyString.
@@ -57,17 +57,17 @@ test("Refinement.from.predicate works as a type guard in conditional branches", 
 // compose
 // ---------------------------------------------------------------------------
 
-test("Refinement.compose narrows A to C when both refinements pass", () => {
+test("compose: narrows type when both refinements pass", () => {
 	const isNonEmptyTrimmed: Refinement<string, TrimmedString> = pipe(isNonEmpty, Refinement.compose(isTrimmed));
 	expect(isNonEmptyTrimmed("hello")).toBe(true);
 });
 
-test("Refinement.compose returns false when the first refinement fails", () => {
+test("compose: returns false when first refinement fails", () => {
 	const isNonEmptyTrimmed: Refinement<string, TrimmedString> = pipe(isNonEmpty, Refinement.compose(isTrimmed));
 	expect(isNonEmptyTrimmed("")).toBe(false);
 });
 
-test("Refinement.compose returns false when the second refinement fails", () => {
+test("compose: returns false when second refinement fails", () => {
 	const isNonEmptyTrimmed: Refinement<string, TrimmedString> = pipe(isNonEmpty, Refinement.compose(isTrimmed));
 	expect(isNonEmptyTrimmed("  spaces  ")).toBe(false);
 });
@@ -76,22 +76,22 @@ test("Refinement.compose returns false when the second refinement fails", () => 
 // and
 // ---------------------------------------------------------------------------
 
-test("Refinement.and returns true when both refinements pass", () => {
+test("and: returns true when both refinements pass", () => {
 	const isPositiveEven = pipe(isPositive, Refinement.and(isEven));
 	expect(isPositiveEven(4)).toBe(true);
 });
 
-test("Refinement.and returns false when the first refinement fails", () => {
+test("and: returns false when first refinement fails", () => {
 	const isPositiveEven = pipe(isPositive, Refinement.and(isEven));
 	expect(isPositiveEven(-2)).toBe(false);
 });
 
-test("Refinement.and returns false when the second refinement fails", () => {
+test("and: returns false when second refinement fails", () => {
 	const isPositiveEven = pipe(isPositive, Refinement.and(isEven));
 	expect(isPositiveEven(3)).toBe(false);
 });
 
-test("Refinement.and returns false when both refinements fail", () => {
+test("and: returns false when both refinements fail", () => {
 	const isPositiveEven = pipe(isPositive, Refinement.and(isEven));
 	expect(isPositiveEven(-3)).toBe(false);
 });
@@ -100,22 +100,22 @@ test("Refinement.and returns false when both refinements fail", () => {
 // or
 // ---------------------------------------------------------------------------
 
-test("Refinement.or returns true when the first refinement passes", () => {
+test("or: returns true when first refinement passes", () => {
 	const isPositiveOrEven = pipe(isPositive, Refinement.or(isEven));
 	expect(isPositiveOrEven(3)).toBe(true); // positive, odd
 });
 
-test("Refinement.or returns true when the second refinement passes", () => {
+test("or: returns true when second refinement passes", () => {
 	const isPositiveOrEven = pipe(isPositive, Refinement.or(isEven));
 	expect(isPositiveOrEven(-2)).toBe(true); // negative, even
 });
 
-test("Refinement.or returns true when both refinements pass", () => {
+test("or: returns true when both refinements pass", () => {
 	const isPositiveOrEven = pipe(isPositive, Refinement.or(isEven));
 	expect(isPositiveOrEven(4)).toBe(true); // positive and even
 });
 
-test("Refinement.or returns false when both refinements fail", () => {
+test("or: returns false when both refinements fail", () => {
 	const isPositiveOrEven = pipe(isPositive, Refinement.or(isEven));
 	expect(isPositiveOrEven(-3)).toBe(false); // negative and odd
 });
@@ -124,17 +124,17 @@ test("Refinement.or returns false when both refinements fail", () => {
 // toFilter
 // ---------------------------------------------------------------------------
 
-test("Refinement.to.Maybe returns Some when refinement passes", () => {
+test("to.Maybe: returns Some when refinement passes", () => {
 	const result = pipe("hello", Refinement.to.Maybe(isNonEmpty));
 	expect(result.kind).toBe("Some");
 	expect(result.kind === "Some" ? result.value as string : null).toBe("hello");
 });
 
-test("Refinement.to.Maybe returns None when refinement fails", () => {
+test("to.Maybe: returns None when refinement fails", () => {
 	expect(pipe("", Refinement.to.Maybe(isNonEmpty)) as Maybe<string>).toStrictEqual({ kind: "None" });
 });
 
-test("Refinement.to.Maybe works in a pipe chain with composed refinements", () => {
+test("to.Maybe: works in pipe chain with composed refinements", () => {
 	const isPositiveEven = pipe(isPositive, Refinement.and(isEven));
 	expect(Maybe.is.some(pipe(4, Refinement.to.Maybe(isPositiveEven)))).toBe(true);
 	expect(Maybe.is.none(pipe(3, Refinement.to.Maybe(isPositiveEven)))).toBe(true);
@@ -145,25 +145,25 @@ test("Refinement.to.Maybe works in a pipe chain with composed refinements", () =
 // toResult
 // ---------------------------------------------------------------------------
 
-test("Refinement.to.Result returns Ok when refinement passes", () => {
+test("to.Result: returns Ok when refinement passes", () => {
 	const result = pipe("hello", Refinement.to.Result(isNonEmpty, (s) => `"${s}" is empty`));
 	expect(result.kind).toBe("Ok");
 	expect(result.kind === "Ok" ? result.value as string : null).toBe("hello");
 });
 
-test("Refinement.to.Result returns Err with onFail value when refinement fails", () => {
+test("to.Result: returns Err with onFail value when refinement fails", () => {
 	expect(pipe("", Refinement.to.Result(isNonEmpty, (s) => `"${s}" is empty`)) as Result<string, string>).toStrictEqual({
 		kind: "Err",
 		error: '"" is empty',
 	});
 });
 
-test("Refinement.to.Result passes the failing value to onFail", () => {
+test("to.Result: passes failing value to onFail", () => {
 	const result = pipe(-5, Refinement.to.Result(isPositive, (n) => `${n} is not positive`)) as Result<string, number>;
 	expect(result).toStrictEqual({ kind: "Err", error: "-5 is not positive" });
 });
 
-test("Refinement.to.Result works in a pipe chain with composed refinements", () => {
+test("to.Result: works in pipe chain with composed refinements", () => {
 	const isPositiveEven = pipe(isPositive, Refinement.and(isEven));
 	expect(Result.is.ok(pipe(4, Refinement.to.Result(isPositiveEven, (n) => `${n} failed`)))).toBe(true);
 	expect(pipe(3, Refinement.to.Result(isPositiveEven, (n) => `${n} failed`)) as Result<string, number>).toStrictEqual({
@@ -174,7 +174,7 @@ test("Refinement.to.Result works in a pipe chain with composed refinements", () 
 
 // --- side-effect isolation ---
 
-test("Refinement.and executes second refinement when first passes", () => {
+test("and: executes second refinement when first passes", () => {
 	let called = false;
 	const first = Refinement.from.predicate(() => true);
 	const second = Refinement.from.predicate(() => {
@@ -185,7 +185,7 @@ test("Refinement.and executes second refinement when first passes", () => {
 	expect(called).toBe(true);
 });
 
-test("Refinement.and short-circuits second refinement when first fails", () => {
+test("and: short-circuits second refinement when first fails", () => {
 	let called = false;
 	const first = Refinement.from.predicate(() => false);
 	const second = Refinement.from.predicate(() => {

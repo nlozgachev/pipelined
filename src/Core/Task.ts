@@ -72,7 +72,7 @@ const fromPromise = <A>(f: (signal?: AbortSignal) => Thenable<A>): Task<A> => (s
 const getMs = (duration: Duration): number => Duration.to.milliseconds(duration);
 
 const makeTask = <A>(value: A): Task<A> => () => Deferred.from.Promise(globalThis.Promise.resolve(value));
-const syncTask = <A>(f: () => A): Task<A> => () => Deferred.from.Promise(globalThis.Promise.resolve(f()));
+const syncTask = <A>(fn: () => A): Task<A> => () => Deferred.from.Promise(globalThis.Promise.resolve(fn()));
 
 export const Task = {
 	/**
@@ -114,13 +114,15 @@ export const Task = {
 	 * ```
 	 */
 	tryCatch: <A>(
-		f: (signal?: AbortSignal) => globalThis.Promise<A>,
+		fn: (signal?: AbortSignal) => globalThis.Promise<A>,
 		options: { onError: (error: unknown) => A; },
 	): Task<A> =>
-		fromPromise((signal) => globalThis.Promise.resolve().then(() => f(signal)).catch((err) => options.onError(err))),
+		fromPromise((signal) => globalThis.Promise.resolve().then(() => fn(signal)).catch((err) => options.onError(err))),
 
 	/**
 	 * Transforms the value inside a Task.
+	 *
+	 * @see {@link Task.chain} to sequence operations that return a Task.
 	 *
 	 * @example
 	 * ```ts
@@ -130,10 +132,13 @@ export const Task = {
 	 * )(); // Deferred<10>
 	 * ```
 	 */
-	map: <A, B>(f: (a: A) => B) => (data: Task<A>): Task<B> => fromPromise((signal) => toPromise(data, signal).then(f)),
+	map: <A, B>(transform: (value: A) => B) => (task: Task<A>): Task<B> =>
+		fromPromise((signal) => toPromise(task, signal).then(transform)),
 
 	/**
-	 * Chains Task computations. Passes the resolved value of the first Task to f.
+	 * Chains Task computations. Passes the resolved value of the first Task to transform.
+	 *
+	 * @see {@link Task.map} to transform the resolved value without creating a new Task.
 	 *
 	 * @example
 	 * ```ts
@@ -147,12 +152,14 @@ export const Task = {
 	 * )(); // Deferred<Preferences>
 	 * ```
 	 */
-	chain: <A, B>(f: (a: A) => Task<B>) => (data: Task<A>): Task<B> =>
-		fromPromise((signal) => toPromise(data, signal).then((a) => toPromise(f(a), signal))),
+	chain: <A, B>(transform: (value: A) => Task<B>) => (task: Task<A>): Task<B> =>
+		fromPromise((signal) => toPromise(task, signal).then((a) => toPromise(transform(a), signal))),
 
 	/**
 	 * Applies a function wrapped in a Task to a value wrapped in a Task.
 	 * Both Tasks run in parallel.
+	 *
+	 * @see {@link Task.all} to run multiple independent Tasks in parallel.
 	 *
 	 * @example
 	 * ```ts
@@ -164,8 +171,8 @@ export const Task = {
 	 * )(); // Deferred<8>
 	 * ```
 	 */
-	apply: <A>(arg: Task<A>) => <B>(data: Task<(a: A) => B>): Task<B> =>
-		fromPromise((signal) => Promise.all([toPromise(data, signal), toPromise(arg, signal)]).then(([f, a]) => f(a))),
+	apply: <A>(arg: Task<A>) => <B>(task: Task<(value: A) => B>): Task<B> =>
+		fromPromise((signal) => Promise.all([toPromise(task, signal), toPromise(arg, signal)]).then(([f, a]) => f(a))),
 
 	/**
 	 * Executes a side effect on the value without changing the Task.
@@ -180,10 +187,10 @@ export const Task = {
 	 * );
 	 * ```
 	 */
-	tap: <A>(f: (a: A) => void) => (data: Task<A>): Task<A> =>
+	tap: <A>(sideEffect: (value: A) => void) => (task: Task<A>): Task<A> =>
 		fromPromise((signal) =>
-			toPromise(data, signal).then((a) => {
-				f(a);
+			toPromise(task, signal).then((a) => {
+				sideEffect(a);
 				return a;
 			})
 		),
@@ -191,6 +198,9 @@ export const Task = {
 	/**
 	 * Runs multiple Tasks in parallel and collects their results.
 	 * An optional `concurrency` option limits the number of tasks executing at any given time.
+	 *
+	 * @see {@link Task.sequence} to run an array of Tasks concurrently.
+	 * @see {@link Task.sequential} to run an array of Tasks one after another in order.
 	 *
 	 * @example
 	 * ```ts
@@ -243,26 +253,26 @@ export const Task = {
 	 * )(); // Resolves after 1 second
 	 * ```
 	 */
-	delay: (duration: Duration) => <A>(data: Task<A>): Task<A> =>
+	delay: (duration: Duration) => <A>(task: Task<A>): Task<A> =>
 		fromPromise((signal) =>
 			new Promise<A>((res) => {
 				// oxlint-disable-next-line prefer-const
 				let timerId: ReturnType<typeof setTimeout> | undefined;
 				const onAbort = () => {
 					clearTimeout(timerId);
-					res(toPromise(data, signal));
+					res(toPromise(task, signal));
 				};
 
 				if (signal) {
 					if (signal.aborted) {
-						return res(toPromise(data, signal));
+						return res(toPromise(task, signal));
 					}
 					signal.addEventListener("abort", onAbort, { once: true });
 				}
 
 				timerId = setTimeout(() => {
 					signal?.removeEventListener("abort", onAbort);
-					res(toPromise(data, signal));
+					res(toPromise(task, signal));
 				}, getMs(duration));
 			})
 		),
@@ -270,6 +280,8 @@ export const Task = {
 	/**
 	 * Runs a Task a fixed number of times sequentially, collecting all results into an array.
 	 * An optional delay duration can be inserted between runs.
+	 *
+	 * @see {@link Task.poll} to repeatedly run a Task until a predicate is satisfied.
 	 *
 	 * @example
 	 * ```ts
@@ -319,6 +331,8 @@ export const Task = {
 	 * An optional `attempts` cap stops the loop after N calls — the last value is returned
 	 * regardless of whether the predicate was satisfied.
 	 *
+	 * @see {@link Task.repeat} to run a Task a fixed number of times.
+	 *
 	 * @example
 	 * ```ts
 	 * pipe(
@@ -327,38 +341,39 @@ export const Task = {
 	 * )(); // polls every 500ms until status is "ready"
 	 * ```
 	 */
-	poll: <A>(options: { until: (a: A) => boolean; delay?: Duration; attempts?: number; }) => (task: Task<A>): Task<A> =>
-		fromPromise((signal) => {
-			const { until: predicate, delay: delayDuration, attempts } = options;
-			const wait = (): Promise<void> =>
-				new Promise((r) => {
-					// oxlint-disable-next-line prefer-const
-					let timerId: ReturnType<typeof setTimeout> | undefined;
-					const onAbort = () => {
-						clearTimeout(timerId);
-						r();
-					};
-					if (signal) {
-						signal.addEventListener("abort", onAbort, { once: true });
+	poll:
+		<A>(options: { until: (value: A) => boolean; delay?: Duration; attempts?: number; }) => (task: Task<A>): Task<A> =>
+			fromPromise((signal) => {
+				const { until: predicate, delay: delayDuration, attempts } = options;
+				const wait = (): Promise<void> =>
+					new Promise((r) => {
+						// oxlint-disable-next-line prefer-const
+						let timerId: ReturnType<typeof setTimeout> | undefined;
+						const onAbort = () => {
+							clearTimeout(timerId);
+							r();
+						};
+						if (signal) {
+							signal.addEventListener("abort", onAbort, { once: true });
+						}
+						timerId = setTimeout(() => {
+							signal?.removeEventListener("abort", onAbort);
+							r();
+						}, delayDuration ? getMs(delayDuration) : 0);
+					});
+				const run = (attempt: number, lastValue?: A): Promise<A> => {
+					if (signal?.aborted && lastValue !== undefined) {
+						return Promise.resolve(lastValue);
 					}
-					timerId = setTimeout(() => {
-						signal?.removeEventListener("abort", onAbort);
-						r();
-					}, delayDuration ? getMs(delayDuration) : 0);
-				});
-			const run = (attempt: number, lastValue?: A): Promise<A> => {
-				if (signal?.aborted && lastValue !== undefined) {
-					return Promise.resolve(lastValue);
-				}
-				return toPromise(task, signal).then((a) => {
-					if (predicate(a)) { return a; }
-					if (attempts !== undefined && attempt >= attempts) { return a; }
-					if (signal?.aborted) { return a; }
-					return wait().then(() => run(attempt + 1, a));
-				});
-			};
-			return run(1);
-		}),
+					return toPromise(task, signal).then((a) => {
+						if (predicate(a)) { return a; }
+						if (attempts !== undefined && attempt >= attempts) { return a; }
+						if (signal?.aborted) { return a; }
+						return wait().then(() => run(attempt + 1, a));
+					});
+				};
+				return run(1);
+			}),
 
 	/**
 	 * Resolves with the value of the first Task to complete. All Tasks start
@@ -409,6 +424,9 @@ export const Task = {
 	 * Runs an array of Tasks concurrently and collects their results in an array.
 	 * Forward-propagates the call site's AbortSignal to all subtasks concurrently.
 	 *
+	 * @see {@link Task.sequential} to run an array of tasks one after another in order.
+	 * @see {@link Task.all} to run an array or tuple of tasks in parallel with optional concurrency limit.
+	 *
 	 * @example
 	 * ```ts
 	 * Task.sequence([loadConfig, detectLocale, loadTheme])();
@@ -421,6 +439,8 @@ export const Task = {
 	/**
 	 * Runs an array of Tasks one at a time in order, collecting all results.
 	 * Each Task starts only after the previous one resolves.
+	 *
+	 * @see {@link Task.sequence} to run an array of tasks concurrently.
 	 *
 	 * @example
 	 * ```ts
@@ -568,8 +588,8 @@ export const Task = {
 	 * pipe(Task.make(42), Task.bindTo("value")); // Task({ value: 42 })
 	 * ```
 	 */
-	bindTo: <K extends string>(key: K) => <A>(data: Task<A>): Task<{ [P in K]: A; }> =>
-		fromPromise((signal) => toPromise(data, signal).then((a) => ({ [key]: a } as { [P in K]: A; }))),
+	bindTo: <K extends string>(key: K) => <A>(task: Task<A>): Task<{ [P in K]: A; }> =>
+		fromPromise((signal) => toPromise(task, signal).then((a) => ({ [key]: a } as { [P in K]: A; }))),
 
 	/**
 	 * Evaluates a new Task using the current accumulator and attaches the output to a new key.
@@ -582,12 +602,13 @@ export const Task = {
 	 * ); // Task({ a: 1, b: 2 })
 	 * ```
 	 */
-	bind: <K extends string, A, B>(key: K, f: (a: A) => Task<B>) => (data: Task<A>): Task<A & { [P in K]: B; }> =>
-		fromPromise((signal) =>
-			toPromise(data, signal).then((a) =>
-				toPromise(f(a), signal).then((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))
-			)
-		),
+	bind:
+		<K extends string, A, B>(key: K, transform: (value: A) => Task<B>) => (task: Task<A>): Task<A & { [P in K]: B; }> =>
+			fromPromise((signal) =>
+				toPromise(task, signal).then((a) =>
+					toPromise(transform(a), signal).then((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))
+				)
+			),
 
 	/**
 	 * Creates a memoized version of a Task. The task is executed at most once on first call,

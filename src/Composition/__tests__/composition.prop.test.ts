@@ -9,19 +9,19 @@ import { pipe } from "../pipe.ts";
 // pipe
 // ---------------------------------------------------------------------------
 
-test("pipe — identity", () => {
+test("pipe: preserves identity on raw values", () => {
 	fc.assert(fc.property(fc.integer(), (x) => {
 		expect(pipe(x)).toBe(x);
 	}));
 });
 
-test("pipe — single function", () => {
+test("pipe: applies single function transformation", () => {
 	fc.assert(fc.property(fc.integer(), fc.func<[number], number>(fc.integer()), (x, f) => {
 		expect(pipe(x, f)).toBe(f(x));
 	}));
 });
 
-test("pipe — two functions", () => {
+test("pipe: composes two functions in order", () => {
 	fc.assert(
 		fc.property(
 			fc.integer(),
@@ -34,7 +34,7 @@ test("pipe — two functions", () => {
 	);
 });
 
-test("pipe — three functions", () => {
+test("pipe: composes three functions in order", () => {
 	fc.assert(
 		fc.property(
 			fc.integer(),
@@ -52,13 +52,13 @@ test("pipe — three functions", () => {
 // flow
 // ---------------------------------------------------------------------------
 
-test("flow — single function", () => {
+test("flow: evaluates single function", () => {
 	fc.assert(fc.property(fc.integer(), fc.func<[number], number>(fc.integer()), (x, f) => {
 		expect(flow(f)(x)).toBe(f(x));
 	}));
 });
 
-test("flow — two functions", () => {
+test("flow: composes two functions in order", () => {
 	fc.assert(
 		fc.property(
 			fc.integer(),
@@ -71,7 +71,7 @@ test("flow — two functions", () => {
 	);
 });
 
-test("pipe + flow — equivalence", () => {
+test("flow: evaluates equivalently to pipe", () => {
 	fc.assert(
 		fc.property(
 			fc.integer(),
@@ -88,13 +88,13 @@ test("pipe + flow — equivalence", () => {
 // curry
 // ---------------------------------------------------------------------------
 
-test("curry — round-trip", () => {
+test("curry: round-trips binary function application", () => {
 	fc.assert(fc.property(fc.integer(), fc.integer(), fc.func<[number, number], number>(fc.integer()), (a, b, f) => {
 		expect(curry(f)(a)(b)).toBe(f(a, b));
 	}));
 });
 
-test("curry3 — round-trip", () => {
+test("curry3: round-trips ternary function application", () => {
 	fc.assert(
 		fc.property(
 			fc.integer(),
@@ -112,13 +112,13 @@ test("curry3 — round-trip", () => {
 // memoize
 // ---------------------------------------------------------------------------
 
-test("memoize — correctness", () => {
+test("memoize: preserves function correctness", () => {
 	fc.assert(fc.property(fc.integer(), fc.func<[number], number>(fc.integer()), (x, f) => {
 		expect(memoize(f)(x)).toBe(f(x));
 	}));
 });
 
-test("memoize — determinism", () => {
+test("memoize: satisfies determinism across repeated calls", () => {
 	fc.assert(fc.property(fc.integer(), fc.func<[number], number>(fc.integer()), (x, f) => {
 		const m = memoize(f);
 		expect(m(x)).toBe(m(x));

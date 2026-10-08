@@ -1,8 +1,7 @@
 {
 	"$schema": "./node_modules/oxlint/configuration_schema.json",
-	"plugins": [
-		"vitest"
-	],
+	"plugins": ["vitest"],
+	"jsPlugins": ["./scripts/oxlint-plugins/test-name.ts"],
 	"categories": {
 		"correctness": "error",
 		"suspicious": "warn",
@@ -53,6 +52,7 @@
 		"no-use-before-define": "error",
 		"no-loop-func": "error",
 		"no-implied-eval": "error",
+		"pipelined-internal/test-name": "error",
 		"vitest/no-identical-title": "error",
 		"vitest/no-disabled-tests": "warn",
 		"vitest/prefer-to-have-length": "warn",

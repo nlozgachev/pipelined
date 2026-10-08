@@ -6,23 +6,23 @@ import { Uniq } from "../Uniq.ts";
 // Arbitraries
 // ---------------------------------------------------------------------------
 
-const arbUniq = fc.array(fc.integer(), { maxLength: 10 }).map(Uniq.from.Array);
+const arbUniq = fc.array(fc.integer(), { maxLength: 10 }).map(Uniq.from.array);
 
 // ---------------------------------------------------------------------------
-// from.Array / toArray — round-trip
+// from.array / to.array — round-trip
 // ---------------------------------------------------------------------------
 
-test("uniq.from.Array → Uniq.to.Array — contains same unique elements", () => {
+test("from.array: contains same unique elements as to.array", () => {
 	fc.assert(fc.property(fc.array(fc.integer()), (arr) => {
-		const s = Uniq.from.Array(arr);
+		const s = Uniq.from.array(arr);
 		const unique = [...new Set(arr)].toSorted((a, b) => a - b);
-		expect([...Uniq.to.Array(s)].toSorted((a, b) => a - b)).toStrictEqual(unique);
+		expect([...Uniq.to.array(s)].toSorted((a, b) => a - b)).toStrictEqual(unique);
 	}));
 });
 
-test("Uniq.from.Array — idempotence on unique input", () => {
+test("from.array: satisfies idempotence on unique input", () => {
 	fc.assert(fc.property(arbUniq, (s) => {
-		expect(Uniq.from.Array(Uniq.to.Array(s))).toStrictEqual(s);
+		expect(Uniq.from.array(Uniq.to.array(s))).toStrictEqual(s);
 	}));
 });
 
@@ -30,13 +30,13 @@ test("Uniq.from.Array — idempotence on unique input", () => {
 // size / isEmpty
 // ---------------------------------------------------------------------------
 
-test("Uniq.size — agrees with toArray length", () => {
+test("size: agrees with to.array length", () => {
 	fc.assert(fc.property(arbUniq, (s) => {
-		expect(Uniq.size(s)).toBe(Uniq.to.Array(s).length);
+		expect(Uniq.size(s)).toBe(Uniq.to.array(s).length);
 	}));
 });
 
-test("Uniq.is.empty — iff size is 0", () => {
+test("is.empty: returns true if and only if size is zero", () => {
 	fc.assert(fc.property(arbUniq, (s) => {
 		expect(Uniq.is.empty(s)).toBe(Uniq.size(s) === 0);
 	}));
@@ -46,7 +46,7 @@ test("Uniq.is.empty — iff size is 0", () => {
 // map — functor laws
 // ---------------------------------------------------------------------------
 
-test("Uniq.map — identity law", () => {
+test("map: satisfies identity functor law", () => {
 	fc.assert(fc.property(arbUniq, (s) => {
 		expect(Uniq.map((x: number) => x)(s)).toStrictEqual(s);
 	}));
@@ -56,13 +56,13 @@ test("Uniq.map — identity law", () => {
 // insert / has
 // ---------------------------------------------------------------------------
 
-test("Uniq.insert — inserted item is found via has", () => {
+test("insert: ensures inserted item is found via has", () => {
 	fc.assert(fc.property(arbUniq, fc.integer(), (s, item) => {
 		expect(Uniq.has(item)(Uniq.insert(item)(s))).toBe(true);
 	}));
 });
 
-test("Uniq.insert — size increases by at most 1", () => {
+test("insert: increases size by at most one", () => {
 	fc.assert(fc.property(arbUniq, fc.integer(), (s, item) => {
 		const after = Uniq.insert(item)(s);
 		expect(Uniq.size(after)).toBeGreaterThanOrEqual(Uniq.size(s));
@@ -74,7 +74,7 @@ test("Uniq.insert — size increases by at most 1", () => {
 // remove
 // ---------------------------------------------------------------------------
 
-test("Uniq.remove — removed item is not found via has", () => {
+test("remove: ensures removed item is not found via has", () => {
 	fc.assert(fc.property(arbUniq, fc.integer(), (s, item) => {
 		expect(Uniq.has(item)(Uniq.remove(item)(s))).toBe(false);
 	}));
@@ -84,11 +84,11 @@ test("Uniq.remove — removed item is not found via has", () => {
 // union
 // ---------------------------------------------------------------------------
 
-test("Uniq.union — result contains all items from both sets", () => {
+test("union: contains all items from both sets", () => {
 	fc.assert(fc.property(arbUniq, arbUniq, (s1, s2) => {
 		const result = Uniq.union(s2)(s1);
-		Uniq.to.Array(s1).forEach((item) => expect(Uniq.has(item)(result)).toBe(true));
-		Uniq.to.Array(s2).forEach((item) => expect(Uniq.has(item)(result)).toBe(true));
+		Uniq.to.array(s1).forEach((item) => expect(Uniq.has(item)(result)).toBe(true));
+		Uniq.to.array(s2).forEach((item) => expect(Uniq.has(item)(result)).toBe(true));
 	}));
 });
 
@@ -96,10 +96,10 @@ test("Uniq.union — result contains all items from both sets", () => {
 // intersection
 // ---------------------------------------------------------------------------
 
-test("Uniq.intersection — result is subset of both inputs", () => {
+test("intersection: results in subset of both inputs", () => {
 	fc.assert(fc.property(arbUniq, arbUniq, (s1, s2) => {
 		const result = Uniq.intersection(s2)(s1);
-		Uniq.to.Array(result).forEach((item) => {
+		Uniq.to.array(result).forEach((item) => {
 			expect(Uniq.has(item)(s1)).toBe(true);
 			expect(Uniq.has(item)(s2)).toBe(true);
 		});
@@ -110,10 +110,10 @@ test("Uniq.intersection — result is subset of both inputs", () => {
 // difference
 // ---------------------------------------------------------------------------
 
-test("Uniq.difference — result is disjoint from the other set", () => {
+test("difference: produces set disjoint from second set", () => {
 	fc.assert(fc.property(arbUniq, arbUniq, (s1, s2) => {
 		const result = Uniq.difference(s2)(s1);
-		Uniq.to.Array(result).forEach((item) => {
+		Uniq.to.array(result).forEach((item) => {
 			expect(Uniq.has(item)(s2)).toBe(false);
 		});
 	}));
@@ -123,14 +123,14 @@ test("Uniq.difference — result is disjoint from the other set", () => {
 // filter
 // ---------------------------------------------------------------------------
 
-test("Uniq.filter(always true) — identity", () => {
+test("filter: acts as identity when predicate always returns true", () => {
 	fc.assert(fc.property(arbUniq, (s) => {
 		expect(Uniq.filter(() => true)(s)).toStrictEqual(s);
 	}));
 });
 
-test("Uniq.filter(always false) — empty result", () => {
+test("filter: returns empty set when predicate always returns false", () => {
 	fc.assert(fc.property(arbUniq, (_s) => {
-		expect(Uniq.filter(() => false)(Uniq.from.Array([1, 2, 3]))).toStrictEqual(Uniq.empty());
+		expect(Uniq.filter(() => false)(Uniq.from.array([1, 2, 3]))).toStrictEqual(Uniq.empty());
 	}));
 });

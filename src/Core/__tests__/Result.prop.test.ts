@@ -15,13 +15,13 @@ const arbResult = fc.oneof(arbOk, arbErr);
 // map — functor laws
 // ---------------------------------------------------------------------------
 
-test("Result.map — identity law", () => {
+test("map: satisfies identity law", () => {
 	fc.assert(fc.property(arbResult, (r) => {
 		expect(Result.map((x: number) => x)(r)).toStrictEqual(r);
 	}));
 });
 
-test("Result.map — composition law", () => {
+test("map: satisfies composition law", () => {
 	fc.assert(fc.property(arbResult, fc.integer(), fc.integer(), (r, a, b) => {
 		const f = (x: number) => x + a;
 		const g = (x: number) => x * b;
@@ -33,13 +33,13 @@ test("Result.map — composition law", () => {
 // mapError
 // ---------------------------------------------------------------------------
 
-test("Result.mapError — identity on Ok", () => {
+test("mapError: identity on Ok", () => {
 	fc.assert(fc.property(arbOk, (r) => {
 		expect(Result.mapError((e: string) => e.toUpperCase())(r)).toBe(r);
 	}));
 });
 
-test("Result.mapError — identity law on error value", () => {
+test("mapError: satisfies identity law on error value", () => {
 	fc.assert(fc.property(arbErr, (r) => {
 		expect(Result.mapError((x: string) => x)(r)).toStrictEqual(r);
 	}));
@@ -49,20 +49,20 @@ test("Result.mapError — identity law on error value", () => {
 // chain — monad laws
 // ---------------------------------------------------------------------------
 
-test("Result.chain — left identity", () => {
+test("chain: satisfies left identity", () => {
 	fc.assert(fc.property(fc.integer(), (a) => {
 		const f = (x: number): Result<string, string> => x > 0 ? Result.make.ok(String(x)) : Result.make.err("non-positive");
 		expect(Result.chain(f)(Result.make.ok(a))).toStrictEqual(f(a));
 	}));
 });
 
-test("Result.chain — right identity", () => {
+test("chain: satisfies right identity", () => {
 	fc.assert(fc.property(arbResult, (r) => {
 		expect(Result.chain(Result.make.ok)(r)).toStrictEqual(r);
 	}));
 });
 
-test("Result.chain — associativity", () => {
+test("chain: satisfies associativity", () => {
 	fc.assert(fc.property(arbResult, fc.integer(), (r, threshold) => {
 		const f = (x: number): Result<string, number> => x > 0 ? Result.make.ok(x * 2) : Result.make.err("non-positive");
 		const g = (x: number): Result<string, number> => x > threshold ? Result.make.ok(x + 1) : Result.make.err("too small");
@@ -70,7 +70,7 @@ test("Result.chain — associativity", () => {
 	}));
 });
 
-test("Result.chain — short-circuits on Error", () => {
+test("chain: short-circuits on Error", () => {
 	fc.assert(fc.property(arbErr, (r) => {
 		expect(Result.chain((_: number) => Result.make.ok(0))(r)).toBe(r);
 	}));
@@ -80,14 +80,14 @@ test("Result.chain — short-circuits on Error", () => {
 // getOrElse
 // ---------------------------------------------------------------------------
 
-test("Result.getOrElse — returns value on Ok", () => {
+test("getOrElse: returns value on Ok", () => {
 	fc.assert(fc.property(arbOk, (r) => {
 		const o = r as Ok<number>;
 		expect(Result.getOrElse(() => -1)(r)).toBe(o.value);
 	}));
 });
 
-test("Result.getOrElse — returns fallback on Error", () => {
+test("getOrElse: returns fallback on Error", () => {
 	fc.assert(fc.property(arbErr, fc.integer(), (r, fallback) => {
 		expect(Result.getOrElse(() => fallback)(r)).toBe(fallback);
 	}));
@@ -97,7 +97,7 @@ test("Result.getOrElse — returns fallback on Error", () => {
 // fold
 // ---------------------------------------------------------------------------
 
-test("Result.fold — handles all variants without throwing", () => {
+test("fold: handles all variants without throwing", () => {
 	fc.assert(fc.property(arbResult, (r) => {
 		const result = Result.fold((e: string) => `err:${e}`, (v: number) => `ok:${v}`)(r);
 		expectTypeOf(result).toBeString();
@@ -108,13 +108,13 @@ test("Result.fold — handles all variants without throwing", () => {
 // tap / tapError
 // ---------------------------------------------------------------------------
 
-test("Result.tap — always returns the identical reference", () => {
+test("tap: always returns identical reference", () => {
 	fc.assert(fc.property(arbResult, (r) => {
 		expect(Result.tap(() => {})(r)).toBe(r);
 	}));
 });
 
-test("Result.tapError — always returns the identical reference", () => {
+test("tapError: always returns identical reference", () => {
 	fc.assert(fc.property(arbResult, (r) => {
 		expect(Result.tapError(() => {})(r)).toBe(r);
 	}));
@@ -124,7 +124,7 @@ test("Result.tapError — always returns the identical reference", () => {
 // recover
 // ---------------------------------------------------------------------------
 
-test("Result.recover — identity on Ok", () => {
+test("recover: identity on Ok", () => {
 	fc.assert(fc.property(arbOk, (r) => {
 		expect(Result.recover((_: string) => Result.make.ok(-999))(r)).toBe(r);
 	}));
@@ -134,13 +134,13 @@ test("Result.recover — identity on Ok", () => {
 // from.Predicate
 // ---------------------------------------------------------------------------
 
-test("Result.from.Predicate — always-true gives Ok with original value", () => {
+test("from.Predicate: always-true gives Ok with original value", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
 		expect(Result.from.Predicate((_: number) => true, () => "bad")(n)).toStrictEqual(Result.make.ok(n));
 	}));
 });
 
-test("Result.from.Predicate — always-false gives Error via onFalse", () => {
+test("from.Predicate: always-false gives Err via onFalse", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
 		expect(Result.from.Predicate((_: number) => false, (x) => `bad:${x}`)(n)).toStrictEqual(Result.make.err(`bad:${n}`));
 	}));
@@ -150,14 +150,14 @@ test("Result.from.Predicate — always-false gives Error via onFalse", () => {
 // toMaybe
 // ---------------------------------------------------------------------------
 
-test("Result.toMaybe — Ok maps to Some", () => {
+test("to.Maybe: maps Ok to Some", () => {
 	fc.assert(fc.property(arbOk, (r) => {
 		const o = r as Ok<number>;
 		expect(Result.to.Maybe(r)).toStrictEqual(Maybe.make.some(o.value));
 	}));
 });
 
-test("Result.toMaybe — Error maps to None", () => {
+test("to.Maybe: maps Err to None", () => {
 	fc.assert(fc.property(arbErr, (r) => {
 		expect(Result.to.Maybe(r)).toStrictEqual(Maybe.make.none());
 	}));

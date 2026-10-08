@@ -7,7 +7,7 @@ import { Uniq } from "../Uniq.ts";
 // empty
 // ---------------------------------------------------------------------------
 
-test("Uniq.empty returns a ReadonlySet with size 0", () => {
+test("empty: returns ReadonlySet with size 0", () => {
 	expect(Uniq.empty<number>().size).toBe(0);
 });
 
@@ -15,27 +15,27 @@ test("Uniq.empty returns a ReadonlySet with size 0", () => {
 // singleton
 // ---------------------------------------------------------------------------
 
-test("Uniq.singleton returns a ReadonlySet with one item", () => {
+test("singleton: returns ReadonlySet with one item", () => {
 	const s = Uniq.singleton(42);
 	expect(s.size).toBe(1);
 	expect(s.has(42)).toBe(true);
 });
 
 // ---------------------------------------------------------------------------
-// from.Array
+// from.array
 // ---------------------------------------------------------------------------
 
-test("Uniq.from.Array deduplicates items", () => {
-	const s = Uniq.from.Array([1, 2, 2, 3, 3, 3]);
+test("from.array: deduplicates items", () => {
+	const s = Uniq.from.array([1, 2, 2, 3, 3, 3]);
 	expect(s.size).toBe(3);
 });
 
-test("Uniq.from.Array returns empty set for empty array", () => {
-	expect(Uniq.from.Array([]).size).toBe(0);
+test("from.array: returns empty set for empty array", () => {
+	expect(Uniq.from.array([]).size).toBe(0);
 });
 
-test("Uniq.from.Array preserves all unique items", () => {
-	const s = Uniq.from.Array([10, 20, 30]);
+test("from.array: preserves all unique items", () => {
+	const s = Uniq.from.array([10, 20, 30]);
 	expect(s.has(10)).toBe(true);
 	expect(s.has(20)).toBe(true);
 	expect(s.has(30)).toBe(true);
@@ -45,15 +45,15 @@ test("Uniq.from.Array preserves all unique items", () => {
 // has
 // ---------------------------------------------------------------------------
 
-test("Uniq.has returns true when item is in the set", () => {
-	expect(pipe(Uniq.from.Array([1, 2, 3]), Uniq.has(2))).toBe(true);
+test("has: returns true when item is in set", () => {
+	expect(pipe(Uniq.from.array([1, 2, 3]), Uniq.has(2))).toBe(true);
 });
 
-test("Uniq.has returns false when item is not in the set", () => {
-	expect(pipe(Uniq.from.Array([1, 2, 3]), Uniq.has(4))).toBe(false);
+test("has: returns false when item is not in set", () => {
+	expect(pipe(Uniq.from.array([1, 2, 3]), Uniq.has(4))).toBe(false);
 });
 
-test("Uniq.has returns false on empty set", () => {
+test("has: returns false on empty set", () => {
 	expect(pipe(Uniq.empty<number>(), Uniq.has(1))).toBe(false);
 });
 
@@ -61,8 +61,8 @@ test("Uniq.has returns false on empty set", () => {
 // size
 // ---------------------------------------------------------------------------
 
-test("Uniq.size returns the number of items", () => {
-	expect(Uniq.size(Uniq.from.Array([1, 2, 3]))).toBe(3);
+test("size: returns number of items", () => {
+	expect(Uniq.size(Uniq.from.array([1, 2, 3]))).toBe(3);
 	expect(Uniq.size(Uniq.empty())).toBe(0);
 });
 
@@ -70,52 +70,52 @@ test("Uniq.size returns the number of items", () => {
 // isEmpty
 // ---------------------------------------------------------------------------
 
-test("Uniq.is.empty returns true for empty set", () => {
+test("is.empty: returns true for empty set", () => {
 	expect(Uniq.is.empty(Uniq.empty())).toBe(true);
 });
 
-test("Uniq.is.empty returns false for non-empty set", () => {
+test("is.empty: returns false for non-empty set", () => {
 	expect(Uniq.is.empty(Uniq.singleton(1))).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
-// isSubsetOf
+// is.subsetOf
 // ---------------------------------------------------------------------------
 
-test("Uniq.isSubsetOf returns true when all items are in other", () => {
-	expect(pipe(Uniq.from.Array([1, 2]), Uniq.isSubsetOf(Uniq.from.Array([1, 2, 3])))).toBe(true);
+test("is.subsetOf: returns true when all items are in other", () => {
+	expect(pipe(Uniq.from.array([1, 2]), Uniq.is.subsetOf(Uniq.from.array([1, 2, 3])))).toBe(true);
 });
 
-test("Uniq.isSubsetOf returns false when some items are missing from other", () => {
-	expect(pipe(Uniq.from.Array([1, 4]), Uniq.isSubsetOf(Uniq.from.Array([1, 2, 3])))).toBe(false);
+test("is.subsetOf: returns false when some items are missing from other", () => {
+	expect(pipe(Uniq.from.array([1, 4]), Uniq.is.subsetOf(Uniq.from.array([1, 2, 3])))).toBe(false);
 });
 
-test("Uniq.isSubsetOf empty set is subset of any set", () => {
-	expect(pipe(Uniq.empty<number>(), Uniq.isSubsetOf(Uniq.from.Array([1, 2, 3])))).toBe(true);
+test("is.subsetOf: returns true when empty set is subset of any set", () => {
+	expect(pipe(Uniq.empty<number>(), Uniq.is.subsetOf(Uniq.from.array([1, 2, 3])))).toBe(true);
 });
 
-test("Uniq.isSubsetOf returns true when set equals other", () => {
-	expect(pipe(Uniq.from.Array([1, 2]), Uniq.isSubsetOf(Uniq.from.Array([1, 2])))).toBe(true);
+test("is.subsetOf: returns true when set equals other", () => {
+	expect(pipe(Uniq.from.array([1, 2]), Uniq.is.subsetOf(Uniq.from.array([1, 2])))).toBe(true);
 });
 
 // ---------------------------------------------------------------------------
 // insert
 // ---------------------------------------------------------------------------
 
-test("Uniq.insert adds a new item", () => {
-	const s = pipe(Uniq.from.Array([1, 2]), Uniq.insert(3));
+test("insert: adds a new item", () => {
+	const s = pipe(Uniq.from.array([1, 2]), Uniq.insert(3));
 	expect(s.size).toBe(3);
 	expect(s.has(3)).toBe(true);
 });
 
-test("Uniq.insert returns original reference when item already present", () => {
-	const original = Uniq.from.Array([1, 2, 3]);
+test("insert: returns original reference when item already present", () => {
+	const original = Uniq.from.array([1, 2, 3]);
 	const result = pipe(original, Uniq.insert(2));
 	expect(result).toBe(original);
 });
 
-test("Uniq.insert does not mutate the original", () => {
-	const original = Uniq.from.Array([1, 2]);
+test("insert: does not mutate original set", () => {
+	const original = Uniq.from.array([1, 2]);
 	pipe(original, Uniq.insert(3));
 	expect(original.size).toBe(2);
 });
@@ -124,20 +124,20 @@ test("Uniq.insert does not mutate the original", () => {
 // remove
 // ---------------------------------------------------------------------------
 
-test("Uniq.remove removes an existing item", () => {
-	const s = pipe(Uniq.from.Array([1, 2, 3]), Uniq.remove(2));
+test("remove: removes existing item", () => {
+	const s = pipe(Uniq.from.array([1, 2, 3]), Uniq.remove(2));
 	expect(s.size).toBe(2);
 	expect(s.has(2)).toBe(false);
 });
 
-test("Uniq.remove returns original reference when item not present", () => {
-	const original = Uniq.from.Array([1, 2, 3]);
+test("remove: returns original reference when item not present", () => {
+	const original = Uniq.from.array([1, 2, 3]);
 	const result = pipe(original, Uniq.remove(4));
 	expect(result).toBe(original);
 });
 
-test("Uniq.remove does not mutate the original", () => {
-	const original = Uniq.from.Array([1, 2, 3]);
+test("remove: does not mutate original set", () => {
+	const original = Uniq.from.array([1, 2, 3]);
 	pipe(original, Uniq.remove(1));
 	expect(original.size).toBe(3);
 });
@@ -146,17 +146,17 @@ test("Uniq.remove does not mutate the original", () => {
 // map
 // ---------------------------------------------------------------------------
 
-test("Uniq.map transforms all items", () => {
-	const s = pipe(Uniq.from.Array([1, 2, 3]), Uniq.map((n) => n * 2));
-	expect([...Uniq.to.Array(s)].toSorted((a, b) => a - b)).toStrictEqual([2, 4, 6]);
+test("map: transforms all items", () => {
+	const s = pipe(Uniq.from.array([1, 2, 3]), Uniq.map((n) => n * 2));
+	expect([...Uniq.to.array(s)].toSorted((a, b) => a - b)).toStrictEqual([2, 4, 6]);
 });
 
-test("Uniq.map merges duplicate results", () => {
-	const s = pipe(Uniq.from.Array([1, 2, 3, 4]), Uniq.map((n) => n % 3));
+test("map: merges duplicate results", () => {
+	const s = pipe(Uniq.from.array([1, 2, 3, 4]), Uniq.map((n) => n % 3));
 	expect(s.size).toBe(3); // 1%3=1, 2%3=2, 3%3=0, 4%3=1 — three unique values
 });
 
-test("Uniq.map on empty set returns empty set", () => {
+test("map: returns empty set when input is empty", () => {
 	expect(pipe(Uniq.empty<number>(), Uniq.map((n) => n * 2)).size).toBe(0);
 });
 
@@ -164,28 +164,28 @@ test("Uniq.map on empty set returns empty set", () => {
 // filter
 // ---------------------------------------------------------------------------
 
-test("Uniq.filter keeps items matching predicate", () => {
-	const s = pipe(Uniq.from.Array([1, 2, 3, 4, 5]), Uniq.filter((n) => n % 2 === 0));
-	expect([...Uniq.to.Array(s)].toSorted((a, b) => a - b)).toStrictEqual([2, 4]);
+test("filter: keeps items matching predicate", () => {
+	const s = pipe(Uniq.from.array([1, 2, 3, 4, 5]), Uniq.filter((n) => n % 2 === 0));
+	expect([...Uniq.to.array(s)].toSorted((a, b) => a - b)).toStrictEqual([2, 4]);
 });
 
-test("Uniq.filter returns empty set when nothing matches", () => {
-	expect(pipe(Uniq.from.Array([1, 3, 5]), Uniq.filter((n) => n % 2 === 0)).size).toBe(0);
+test("filter: returns empty set when nothing matches", () => {
+	expect(pipe(Uniq.from.array([1, 3, 5]), Uniq.filter((n) => n % 2 === 0)).size).toBe(0);
 });
 
 // ---------------------------------------------------------------------------
 // union
 // ---------------------------------------------------------------------------
 
-test("Uniq.union combines items from both sets", () => {
-	const s = pipe(Uniq.from.Array([1, 2, 3]), Uniq.union(Uniq.from.Array([2, 3, 4])));
+test("union: combines items from both sets", () => {
+	const s = pipe(Uniq.from.array([1, 2, 3]), Uniq.union(Uniq.from.array([2, 3, 4])));
 	expect(s.size).toBe(4);
 	expect(s.has(1)).toBe(true);
 	expect(s.has(4)).toBe(true);
 });
 
-test("Uniq.union with empty set returns equivalent set", () => {
-	const base = Uniq.from.Array([1, 2]);
+test("union: returns equivalent set when unioned with empty set", () => {
+	const base = Uniq.from.array([1, 2]);
 	const result = pipe(base, Uniq.union(Uniq.empty<number>()));
 	expect(result.size).toBe(2);
 });
@@ -194,8 +194,8 @@ test("Uniq.union with empty set returns equivalent set", () => {
 // intersection
 // ---------------------------------------------------------------------------
 
-test("Uniq.intersection keeps only items in both sets", () => {
-	const s = pipe(Uniq.from.Array([1, 2, 3]), Uniq.intersection(Uniq.from.Array([2, 3, 4])));
+test("intersection: keeps only items in both sets", () => {
+	const s = pipe(Uniq.from.array([1, 2, 3]), Uniq.intersection(Uniq.from.array([2, 3, 4])));
 	expect(s.size).toBe(2);
 	expect(s.has(2)).toBe(true);
 	expect(s.has(3)).toBe(true);
@@ -203,8 +203,8 @@ test("Uniq.intersection keeps only items in both sets", () => {
 	expect(s.has(4)).toBe(false);
 });
 
-test("Uniq.intersection returns empty set when no common items", () => {
-	const s = pipe(Uniq.from.Array([1, 2]), Uniq.intersection(Uniq.from.Array([3, 4])));
+test("intersection: returns empty set when no common items", () => {
+	const s = pipe(Uniq.from.array([1, 2]), Uniq.intersection(Uniq.from.array([3, 4])));
 	expect(s.size).toBe(0);
 });
 
@@ -212,20 +212,20 @@ test("Uniq.intersection returns empty set when no common items", () => {
 // difference
 // ---------------------------------------------------------------------------
 
-test("Uniq.difference keeps items from set that are not in other", () => {
-	const s = pipe(Uniq.from.Array([1, 2, 3, 4]), Uniq.difference(Uniq.from.Array([2, 4])));
+test("difference: keeps items from set that are not in other", () => {
+	const s = pipe(Uniq.from.array([1, 2, 3, 4]), Uniq.difference(Uniq.from.array([2, 4])));
 	expect(s.size).toBe(2);
 	expect(s.has(1)).toBe(true);
 	expect(s.has(3)).toBe(true);
 });
 
-test("Uniq.difference returns empty set when all items are in other", () => {
-	const s = pipe(Uniq.from.Array([1, 2]), Uniq.difference(Uniq.from.Array([1, 2, 3])));
+test("difference: returns empty set when all items are in other", () => {
+	const s = pipe(Uniq.from.array([1, 2]), Uniq.difference(Uniq.from.array([1, 2, 3])));
 	expect(s.size).toBe(0);
 });
 
-test("Uniq.difference with empty other returns equivalent set", () => {
-	const s = pipe(Uniq.from.Array([1, 2, 3]), Uniq.difference(Uniq.empty<number>()));
+test("difference: returns equivalent set when other is empty", () => {
+	const s = pipe(Uniq.from.array([1, 2, 3]), Uniq.difference(Uniq.empty<number>()));
 	expect(s.size).toBe(3);
 });
 
@@ -233,32 +233,32 @@ test("Uniq.difference with empty other returns equivalent set", () => {
 // isSubsetOf — polyfill path
 // ---------------------------------------------------------------------------
 
-test("Uniq.isSubsetOf polyfill path — true when all items in other", () => {
-	const s = Object.defineProperty(Uniq.from.Array([1, 2]) as Set<number>, "isSubsetOf", {
+test("is.subsetOf: handles polyfill path when all items in other", () => {
+	const s = Object.defineProperty(Uniq.from.array([1, 2]) as Set<number>, "isSubsetOf", {
 		value: undefined,
 		configurable: true,
 	});
-	expect(pipe(s, Uniq.isSubsetOf(Uniq.from.Array([1, 2, 3])))).toBe(true);
+	expect(pipe(s, Uniq.is.subsetOf(Uniq.from.array([1, 2, 3])))).toBe(true);
 });
 
-test("Uniq.isSubsetOf polyfill path — false when item missing from other", () => {
-	const s = Object.defineProperty(Uniq.from.Array([1, 4]) as Set<number>, "isSubsetOf", {
+test("is.subsetOf: handles polyfill path when item missing from other", () => {
+	const s = Object.defineProperty(Uniq.from.array([1, 4]) as Set<number>, "isSubsetOf", {
 		value: undefined,
 		configurable: true,
 	});
-	expect(pipe(s, Uniq.isSubsetOf(Uniq.from.Array([1, 2, 3])))).toBe(false);
+	expect(pipe(s, Uniq.is.subsetOf(Uniq.from.array([1, 2, 3])))).toBe(false);
 });
 
 // ---------------------------------------------------------------------------
 // union — polyfill path
 // ---------------------------------------------------------------------------
 
-test("Uniq.union polyfill path — combines items from both sets", () => {
-	const data = Object.defineProperty(Uniq.from.Array([1, 2, 3]) as Set<number>, "union", {
+test("union: handles polyfill path to combine items from both sets", () => {
+	const data = Object.defineProperty(Uniq.from.array([1, 2, 3]) as Set<number>, "union", {
 		value: undefined,
 		configurable: true,
 	});
-	const s = pipe(data, Uniq.union(Uniq.from.Array([2, 3, 4])));
+	const s = pipe(data, Uniq.union(Uniq.from.array([2, 3, 4])));
 	expect(s.size).toBe(4);
 	expect(s.has(1)).toBe(true);
 	expect(s.has(4)).toBe(true);
@@ -268,24 +268,24 @@ test("Uniq.union polyfill path — combines items from both sets", () => {
 // intersection — polyfill path
 // ---------------------------------------------------------------------------
 
-test("Uniq.intersection polyfill path — keeps only items in both sets", () => {
-	const data = Object.defineProperty(Uniq.from.Array([1, 2, 3]) as Set<number>, "intersection", {
+test("intersection: handles polyfill path to keep items in both sets", () => {
+	const data = Object.defineProperty(Uniq.from.array([1, 2, 3]) as Set<number>, "intersection", {
 		value: undefined,
 		configurable: true,
 	});
-	const s = pipe(data, Uniq.intersection(Uniq.from.Array([2, 3, 4])));
+	const s = pipe(data, Uniq.intersection(Uniq.from.array([2, 3, 4])));
 	expect(s.size).toBe(2);
 	expect(s.has(2)).toBe(true);
 	expect(s.has(3)).toBe(true);
 	expect(s.has(1)).toBe(false);
 });
 
-test("Uniq.intersection polyfill path — returns empty set when no common items", () => {
-	const data = Object.defineProperty(Uniq.from.Array([1, 2]) as Set<number>, "intersection", {
+test("intersection: handles polyfill path when no common items", () => {
+	const data = Object.defineProperty(Uniq.from.array([1, 2]) as Set<number>, "intersection", {
 		value: undefined,
 		configurable: true,
 	});
-	const s = pipe(data, Uniq.intersection(Uniq.from.Array([3, 4])));
+	const s = pipe(data, Uniq.intersection(Uniq.from.array([3, 4])));
 	expect(s.size).toBe(0);
 });
 
@@ -293,12 +293,12 @@ test("Uniq.intersection polyfill path — returns empty set when no common items
 // difference — polyfill path
 // ---------------------------------------------------------------------------
 
-test("Uniq.difference polyfill path — keeps items not in other", () => {
-	const data = Object.defineProperty(Uniq.from.Array([1, 2, 3, 4]) as Set<number>, "difference", {
+test("difference: handles polyfill path to keep items not in other", () => {
+	const data = Object.defineProperty(Uniq.from.array([1, 2, 3, 4]) as Set<number>, "difference", {
 		value: undefined,
 		configurable: true,
 	});
-	const s = pipe(data, Uniq.difference(Uniq.from.Array([2, 4])));
+	const s = pipe(data, Uniq.difference(Uniq.from.array([2, 4])));
 	expect(s.size).toBe(2);
 	expect(s.has(1)).toBe(true);
 	expect(s.has(3)).toBe(true);
@@ -308,11 +308,11 @@ test("Uniq.difference polyfill path — keeps items not in other", () => {
 // reduce
 // ---------------------------------------------------------------------------
 
-test("Uniq.reduce folds all items", () => {
-	expect(Uniq.reduce(0, (acc, n: number) => acc + n)(Uniq.from.Array([1, 2, 3, 4]))).toBe(10);
+test("reduce: folds all items", () => {
+	expect(Uniq.reduce(0, (acc, n: number) => acc + n)(Uniq.from.array([1, 2, 3, 4]))).toBe(10);
 });
 
-test("Uniq.reduce returns init for empty set", () => {
+test("reduce: returns initial value for empty set", () => {
 	expect(Uniq.reduce(42, (acc, n: number) => acc + n)(Uniq.empty())).toBe(42);
 });
 
@@ -320,21 +320,21 @@ test("Uniq.reduce returns init for empty set", () => {
 // toArray
 // ---------------------------------------------------------------------------
 
-test("Uniq.to.Array returns items in insertion order", () => {
-	expect(Uniq.to.Array(Uniq.from.Array([3, 1, 2]))).toStrictEqual([3, 1, 2]);
+test("to.array: returns items in insertion order", () => {
+	expect(Uniq.to.array(Uniq.from.array([3, 1, 2]))).toStrictEqual([3, 1, 2]);
 });
 
-test("Uniq.to.Array returns empty array for empty set", () => {
-	expect(Uniq.to.Array(Uniq.empty())).toStrictEqual([]);
+test("to.array: returns empty array for empty set", () => {
+	expect(Uniq.to.array(Uniq.empty())).toStrictEqual([]);
 });
 
 // ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("uniq pipe composition — from.Array, filter, map, reduce", () => {
+test("pipe: composes from.array filter map and reduce", () => {
 	const result = pipe(
-		Uniq.from.Array([1, 2, 3, 4, 5, 6, 1, 2]), // dedup → {1,2,3,4,5,6}
+		Uniq.from.array([1, 2, 3, 4, 5, 6, 1, 2]), // dedup → {1,2,3,4,5,6}
 		Uniq.filter((n) => n % 2 === 0), // {2,4,6}
 		Uniq.map((n) => n * 10), // {20,40,60}
 		Uniq.reduce(0, (acc, n) => acc + n), // 120
@@ -342,9 +342,9 @@ test("uniq pipe composition — from.Array, filter, map, reduce", () => {
 	expect(result).toBe(120);
 });
 
-test("uniq pipe composition — set operations", () => {
-	const admins = Uniq.from.Array(["alice", "carol"]);
-	const editors = Uniq.from.Array(["bob", "carol", "dave"]);
+test("pipe: composes set operations across pipelines", () => {
+	const admins = Uniq.from.array(["alice", "carol"]);
+	const editors = Uniq.from.array(["bob", "carol", "dave"]);
 	const privileged = pipe(
 		admins,
 		Uniq.union(editors), // all users with any role
@@ -362,23 +362,23 @@ test("uniq pipe composition — set operations", () => {
 // Uniq.NonEmpty
 // ---------------------------------------------------------------------------
 
-test("Uniq.is.nonEmpty - returns true for non-empty set", () => {
+test("is.nonEmpty: returns true for non-empty set", () => {
 	expect(Uniq.is.nonEmpty(Uniq.singleton(42))).toBe(true);
 });
 
-test("Uniq.is.nonEmpty - returns false for empty set", () => {
+test("is.nonEmpty: returns false for empty set", () => {
 	expect(Uniq.is.nonEmpty(Uniq.empty())).toBe(false);
 });
 
-test("Uniq.NonEmpty.singleton - creates a single-element set", () => {
+test("NonEmpty.singleton: creates a single-element set", () => {
 	const result = Uniq.NonEmpty.singleton(42);
 	expect(result.size).toBe(1);
 	expect(result.has(42)).toBe(true);
 	expectTypeOf(result).toEqualTypeOf<Uniq.NonEmpty<number>>();
 });
 
-test("Uniq.NonEmpty.from.Set - returns Some for non-empty set", () => {
-	const result = Uniq.NonEmpty.from.Set(Uniq.singleton(42));
+test("NonEmpty.from.set: returns Some for non-empty set", () => {
+	const result = Uniq.NonEmpty.from.set(Uniq.singleton(42));
 	if (result.kind !== "Some") {
 		throw new Error("Expected Some");
 	}
@@ -386,53 +386,53 @@ test("Uniq.NonEmpty.from.Set - returns Some for non-empty set", () => {
 	expectTypeOf(result.value).toEqualTypeOf<Uniq.NonEmpty<number>>();
 });
 
-test("Uniq.NonEmpty.from.Set - returns None for empty set", () => {
-	const result = Uniq.NonEmpty.from.Set(Uniq.empty());
+test("NonEmpty.from.set: returns None for empty set", () => {
+	const result = Uniq.NonEmpty.from.set(Uniq.empty());
 	expect(result.kind).toBe("None");
 });
 
-test("Uniq.NonEmpty.reduce - reduces non-empty set without initial seed", () => {
+test("NonEmpty.reduce: reduces non-empty set without initial seed", () => {
 	const s = Uniq.NonEmpty.singleton(10);
 	const result = pipe(s, Uniq.NonEmpty.reduce((a, b) => a + b));
 	expect(result).toBe(10);
 });
 
-test("Uniq.NonEmpty.to.Array - returns non-empty array of elements", () => {
+test("NonEmpty.to.array: returns non-empty array of elements", () => {
 	const s = Uniq.NonEmpty.singleton(42);
-	const result = Uniq.NonEmpty.to.Array(s);
+	const result = Uniq.NonEmpty.to.array(s);
 	expect(result).toStrictEqual([42]);
 	expectTypeOf(result).toEqualTypeOf<readonly [number, ...number[]]>();
 });
 
-test("Uniq.map on NonEmpty - returns standard ReadonlySet", () => {
+test("map: returns standard ReadonlySet when called on NonEmpty", () => {
 	const s = Uniq.NonEmpty.singleton(10);
 	const mapped = Uniq.map((n: number) => n * 2)(s);
 	expect(mapped.has(20)).toBe(true);
 	expectTypeOf(mapped).toEqualTypeOf<ReadonlySet<number>>();
 });
 
-test("Uniq.NonEmpty.map - maps items and preserves NonEmpty type", () => {
+test("NonEmpty.map: maps items and preserves NonEmpty type", () => {
 	const s = Uniq.NonEmpty.singleton(10);
 	const mapped = pipe(s, Uniq.NonEmpty.map((n) => n * 2));
 	expect(mapped.has(20)).toBe(true);
 	expectTypeOf(mapped).toEqualTypeOf<Uniq.NonEmpty<number>>();
 });
 
-test("Uniq.NonEmpty pipe composition", () => {
-	const result = pipe(Uniq.NonEmpty.singleton(5), Uniq.NonEmpty.map((n) => n * 2), Uniq.NonEmpty.to.Array);
+test("NonEmpty: composes in pipe workflow", () => {
+	const result = pipe(Uniq.NonEmpty.singleton(5), Uniq.NonEmpty.map((n) => n * 2), Uniq.NonEmpty.to.array);
 	expect(result).toStrictEqual([10]);
 });
 
-test("Uniq.toggle toggles item inclusion", () => {
-	const set1 = Uniq.from.Array([1, 2]);
+test("toggle: toggles item inclusion", () => {
+	const set1 = Uniq.from.array([1, 2]);
 	const set2 = pipe(set1, Uniq.toggle(2));
 	expect(set2.has(2)).toBe(false);
 	const set3 = pipe(set2, Uniq.toggle(2));
 	expect(set3.has(2)).toBe(true);
 });
 
-test("Uniq.filterMap filters and maps elements", () => {
-	const set = Uniq.from.Array([1, 2, 3, 4]);
+test("filterMap: filters and maps elements", () => {
+	const set = Uniq.from.array([1, 2, 3, 4]);
 	const res = pipe(set, Uniq.filterMap((n) => (n % 2 === 0 ? Maybe.make.some(n * 10) : Maybe.make.none())));
-	expect(res).toStrictEqual(Uniq.from.Array([20, 40]));
+	expect(res).toStrictEqual(Uniq.from.array([20, 40]));
 });

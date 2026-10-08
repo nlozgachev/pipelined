@@ -7,15 +7,15 @@ import { Maybe } from "../Maybe.ts";
 // string
 // ---------------------------------------------------------------------------
 
-test("Combinable.string combines two strings by concatenation", () => {
+test("string: combines two strings by concatenation", () => {
 	expect(Combinable.string.combine(" world")("hello")).toBe("hello world");
 });
 
-test("Combinable.string empty is a left identity: combine(empty)(a) = a", () => {
+test("string: satisfies left identity with empty", () => {
 	expect(Combinable.string.combine(Combinable.string.empty)("hello")).toBe("hello");
 });
 
-test("Combinable.string empty is a right identity: combine(a)(empty) = a", () => {
+test("string: satisfies right identity with empty", () => {
 	expect(Combinable.string.combine("hello")(Combinable.string.empty)).toBe("hello");
 });
 
@@ -23,11 +23,11 @@ test("Combinable.string empty is a right identity: combine(a)(empty) = a", () =>
 // sum
 // ---------------------------------------------------------------------------
 
-test("Combinable.sum combines numbers by addition", () => {
+test("sum: combines numbers by addition", () => {
 	expect(Combinable.sum.combine(3)(2)).toBe(5);
 });
 
-test("Combinable.sum has 0 as its neutral element", () => {
+test("sum: has 0 as neutral element", () => {
 	expect(Combinable.sum.combine(0)(42)).toBe(42);
 	expect(Combinable.sum.combine(42)(0)).toBe(42);
 });
@@ -36,11 +36,11 @@ test("Combinable.sum has 0 as its neutral element", () => {
 // product
 // ---------------------------------------------------------------------------
 
-test("Combinable.product combines numbers by multiplication", () => {
+test("product: combines numbers by multiplication", () => {
 	expect(Combinable.product.combine(3)(2)).toBe(6);
 });
 
-test("Combinable.product has 1 as its neutral element", () => {
+test("product: has 1 as neutral element", () => {
 	expect(Combinable.product.combine(1)(5)).toBe(5);
 	expect(Combinable.product.combine(5)(1)).toBe(5);
 });
@@ -49,16 +49,16 @@ test("Combinable.product has 1 as its neutral element", () => {
 // all
 // ---------------------------------------------------------------------------
 
-test("Combinable.all returns true when both values are true", () => {
+test("all: returns true when both values are true", () => {
 	expect(Combinable.all.combine(true)(true)).toBe(true);
 });
 
-test("Combinable.all returns false when either value is false", () => {
+test("all: returns false when either value is false", () => {
 	expect(Combinable.all.combine(false)(true)).toBe(false);
 	expect(Combinable.all.combine(true)(false)).toBe(false);
 });
 
-test("Combinable.all has true as its neutral element", () => {
+test("all: has true as neutral element", () => {
 	expect(Combinable.all.combine(true)(true)).toBe(true);
 	expect(Combinable.all.combine(false)(true)).toBe(false);
 });
@@ -67,16 +67,16 @@ test("Combinable.all has true as its neutral element", () => {
 // any
 // ---------------------------------------------------------------------------
 
-test("Combinable.any returns true when either value is true", () => {
+test("any: returns true when either value is true", () => {
 	expect(Combinable.any.combine(true)(false)).toBe(true);
 	expect(Combinable.any.combine(false)(true)).toBe(true);
 });
 
-test("Combinable.any returns false when both values are false", () => {
+test("any: returns false when both values are false", () => {
 	expect(Combinable.any.combine(false)(false)).toBe(false);
 });
 
-test("Combinable.any has false as its neutral element", () => {
+test("any: has false as neutral element", () => {
 	expect(Combinable.any.combine(false)(true)).toBe(true);
 	expect(Combinable.any.combine(false)(false)).toBe(false);
 });
@@ -85,11 +85,11 @@ test("Combinable.any has false as its neutral element", () => {
 // array
 // ---------------------------------------------------------------------------
 
-test("Combinable.array concatenates two arrays", () => {
+test("array: concatenates two arrays", () => {
 	expect(Combinable.array<number>().combine([3, 4])([1, 2])).toStrictEqual([1, 2, 3, 4]);
 });
 
-test("Combinable.array has empty array as its neutral element", () => {
+test("array: has empty array as neutral element", () => {
 	expect(Combinable.array<number>().combine([])([1, 2])).toStrictEqual([1, 2]);
 	expect(Combinable.array<number>().combine([1, 2])([])).toStrictEqual([1, 2]);
 });
@@ -98,22 +98,22 @@ test("Combinable.array has empty array as its neutral element", () => {
 // maybe
 // ---------------------------------------------------------------------------
 
-test("Combinable.maybe combines two Somes using the inner Combinable", () => {
+test("maybe: combines two Some values using inner Combinable", () => {
 	const result = Combinable.maybe(Combinable.sum).combine(Maybe.make.some(3))(Maybe.make.some(2));
 	expect(result).toStrictEqual(Maybe.make.some(5));
 });
 
-test("Combinable.maybe treats None as neutral: combine(None)(Some(x)) = Some(x)", () => {
+test("maybe: treats None as left neutral element", () => {
 	const result = Combinable.maybe(Combinable.sum).combine(Maybe.make.none())(Maybe.make.some(5));
 	expect(result).toStrictEqual(Maybe.make.some(5));
 });
 
-test("Combinable.maybe treats None as neutral: combine(Some(x))(None) = Some(x)", () => {
+test("maybe: treats None as right neutral element", () => {
 	const result = Combinable.maybe(Combinable.sum).combine(Maybe.make.some(5))(Maybe.make.none());
 	expect(result).toStrictEqual(Maybe.make.some(5));
 });
 
-test("Combinable.maybe empty is None", () => {
+test("maybe: has None as empty element", () => {
 	expect(Combinable.maybe(Combinable.sum).empty).toStrictEqual(Maybe.make.none());
 });
 
@@ -121,19 +121,19 @@ test("Combinable.maybe empty is None", () => {
 // fold
 // ---------------------------------------------------------------------------
 
-test("Combinable.fold concatenates a string array", () => {
+test("fold: concatenates string array", () => {
 	expect(pipe(["hello", ", ", "world"], Combinable.fold(Combinable.string))).toBe("hello, world");
 });
 
-test("Combinable.fold sums a number array", () => {
+test("fold: sums number array", () => {
 	expect(pipe([1, 2, 3, 4, 5], Combinable.fold(Combinable.sum))).toBe(15);
 });
 
-test("Combinable.fold computes the product of a number array", () => {
+test("fold: computes product of number array", () => {
 	expect(pipe([2, 3, 4], Combinable.fold(Combinable.product))).toBe(24);
 });
 
-test("Combinable.fold returns the empty element for an empty array", () => {
+test("fold: returns empty element for empty array", () => {
 	expect(pipe([] as number[], Combinable.fold(Combinable.sum))).toBe(0);
 	expect(pipe([] as number[], Combinable.fold(Combinable.product))).toBe(1);
 });
@@ -142,7 +142,7 @@ test("Combinable.fold returns the empty element for an empty array", () => {
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("Combinable.fold works in a pipe with Maybe values", () => {
+test("fold: works in pipe with Maybe values", () => {
 	const result = pipe(
 		[Maybe.make.some(1), Maybe.make.some(2), Maybe.make.some(3)],
 		Combinable.fold(Combinable.maybe(Combinable.sum)),
@@ -152,7 +152,7 @@ test("Combinable.fold works in a pipe with Maybe values", () => {
 
 // --- struct ---
 
-test("Combinable.struct combines record structures by field combinables", () => {
+test("struct: combines record structures by field combinables", () => {
 	const Stats = Combinable.struct({ count: Combinable.sum, tags: Combinable.array<string>() });
 
 	expect(Stats.empty).toStrictEqual({ count: 0, tags: [] });
@@ -160,7 +160,7 @@ test("Combinable.struct combines record structures by field combinables", () => 
 	expect(res).toStrictEqual({ count: 15, tags: ["a", "b"] });
 });
 
-test("Combinable.struct ignores prototype properties on fields definition", () => {
+test("struct: ignores prototype properties on fields definition", () => {
 	const proto = { protoField: Combinable.sum };
 	const fields = Object.create(proto);
 	fields.count = Combinable.sum;
@@ -171,7 +171,7 @@ test("Combinable.struct ignores prototype properties on fields definition", () =
 
 // --- side-effect isolation ---
 
-test("Combinable.fold executes side effects during combination", () => {
+test("fold: executes side effects during combination", () => {
 	let called = false;
 	const custom: Combinable<number> = {
 		empty: 0,
@@ -184,7 +184,7 @@ test("Combinable.fold executes side effects during combination", () => {
 	expect(called).toBe(true);
 });
 
-test("Combinable.fold does not execute side effects on empty array", () => {
+test("fold: does not execute side effects on empty array", () => {
 	let called = false;
 	const custom: Combinable<number> = {
 		empty: 0,

@@ -26,7 +26,7 @@ async function bundleCode(inputCode: string, minify = false): Promise<string> {
 	return result.outputFiles[0].text;
 }
 
-test("Tree-shaking: importing only Maybe from #core excludes Op, EventBus, and Dict", async () => {
+test("core: excludes Op, EventBus, and Dict when importing only Maybe", async () => {
 	const code = `
 		import { Maybe } from "#core";
 		const val = Maybe.make.some(42);
@@ -39,7 +39,7 @@ test("Tree-shaking: importing only Maybe from #core excludes Op, EventBus, and D
 	expect(output).not.toContain("TaskValidation");
 });
 
-test("Tree-shaking: importing only Result from #core excludes Op and EventBus", async () => {
+test("core: excludes Op and EventBus when importing only Result", async () => {
 	const code = `
 		import { Result } from "#core";
 		const res = Result.make.ok("success");
@@ -51,7 +51,7 @@ test("Tree-shaking: importing only Result from #core excludes Op and EventBus", 
 	expect(output).not.toContain("TaskValidation");
 });
 
-test("Tree-shaking: importing only Arr from #data excludes Dict, Rec, Str, and Uniq", async () => {
+test("data: excludes Dict, Rec, Str, and Uniq when importing only Arr", async () => {
 	const code = `
 		import { Arr } from "#data";
 		const res = Arr.head([1, 2, 3]);
@@ -63,7 +63,7 @@ test("Tree-shaking: importing only Arr from #data excludes Dict, Rec, Str, and U
 	expect(output).not.toContain("NonEmptyString");
 });
 
-test("Tree-shaking: importing only Dict from #data excludes Arr, Rec, Str, and Uniq", async () => {
+test("data: excludes Arr, Rec, Str, and Uniq when importing only Dict", async () => {
 	const code = `
 		import { Dict } from "#data";
 		const m = Dict.empty();
@@ -75,7 +75,7 @@ test("Tree-shaking: importing only Dict from #data excludes Arr, Rec, Str, and U
 	expect(output).not.toContain("NonEmptyString");
 });
 
-test("Tree-shaking: importing only pipe from #composition excludes Core and Data abstractions", async () => {
+test("composition: excludes Core and Data abstractions when importing only pipe", async () => {
 	const code = `
 		import { pipe } from "#composition";
 		const res = pipe(5, (n: number) => n * 2);
@@ -89,7 +89,7 @@ test("Tree-shaking: importing only pipe from #composition excludes Core and Data
 	expect(output.length).toBeLessThan(3000);
 });
 
-test("Tree-shaking: importing Duration from #types excludes Core, Data, and Composition", async () => {
+test("types: excludes Core, Data, and Composition when importing Duration", async () => {
 	const code = `
 		import { Duration } from "#types";
 		const d = Duration.seconds(5);
@@ -102,7 +102,7 @@ test("Tree-shaking: importing Duration from #types excludes Core, Data, and Comp
 	expect(output).not.toContain("function pipe");
 });
 
-test("Tree-shaking: minified bundle using pipe + Maybe.map is under 6 KB", async () => {
+test("bundle: minified size using pipe and Maybe combinators is under 6 KB", async () => {
 	const code = `
 		import { pipe } from "#composition";
 		import { Maybe } from "#core";

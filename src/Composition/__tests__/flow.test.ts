@@ -3,23 +3,23 @@ import { Deferred } from "../../Core/Deferred.ts";
 import { Maybe } from "../../Core/Maybe.ts";
 import { flow } from "../flow.ts";
 
-test("flow - single function wraps it", () => {
+test("flow: wraps single function", () => {
 	const double = flow((n: number) => n * 2);
 	expect(double(5)).toBe(10);
 });
 
-test("flow - two functions execute left-to-right", () => {
+test("flow: executes two functions left-to-right", () => {
 	const addOneThenDouble = flow((n: number) => n + 1, (n: number) => n * 2);
 	// 5 + 1 = 6, 6 * 2 = 12
 	expect(addOneThenDouble(5)).toBe(12);
 });
 
-test("flow - three functions execute left-to-right", () => {
+test("flow: executes three functions left-to-right", () => {
 	const fn = flow((n: number) => n + 1, (n: number) => n * 2, (n: number) => `Result: ${n}`);
 	expect(fn(5)).toBe("Result: 12");
 });
 
-test("flow - left-to-right order confirmed", () => {
+test("flow: executes functions in left-to-right order", () => {
 	const log: string[] = [];
 	const a = (x: string) => {
 		log.push("a");
@@ -38,7 +38,7 @@ test("flow - left-to-right order confirmed", () => {
 	expect(log).toStrictEqual(["a", "b", "c"]);
 });
 
-test("flow - reusability of created function", () => {
+test("flow: allows reusability of created function", () => {
 	const process = flow(
 		(s: string) => s.trim(),
 		(s: string) => s.toLowerCase(),
@@ -50,17 +50,17 @@ test("flow - reusability of created function", () => {
 	expect(process("  Already Clean")).toBe("already-clean");
 });
 
-test("flow - multi-argument first function", () => {
+test("flow: supports multi-argument first function", () => {
 	const add = flow((a: number, b: number) => a + b, (sum: number) => sum * 10);
 	expect(add(3, 4)).toBe(70);
 });
 
-test("flow - multi-argument first function with three args", () => {
+test("flow: supports multi-argument first function with three arguments", () => {
 	const fn = flow((a: number, b: number, c: number) => a + b + c, (sum: number) => `Sum: ${sum}`);
 	expect(fn(1, 2, 3)).toBe("Sum: 6");
 });
 
-test("flow - integration with Maybe", () => {
+test("flow: integrates with Maybe in pipeline", () => {
 	const safeParseAndDouble = flow(
 		(s: string) => {
 			const n = parseInt(s, 10);
@@ -74,14 +74,14 @@ test("flow - integration with Maybe", () => {
 	expect(safeParseAndDouble("abc")).toBe(0);
 });
 
-test("flow - can be used as argument to higher-order functions", () => {
+test("flow: can be passed to higher-order functions", () => {
 	const transform = flow((n: number) => n * 2, (n: number) => n + 1);
 
 	const results = [1, 2, 3].map(transform);
 	expect(results).toStrictEqual([3, 5, 7]);
 });
 
-test("flow - type transformation across functions", () => {
+test("flow: transforms types across steps", () => {
 	const fn = flow((n: number) => String(n), (s: string) => s.length, (len: number) => len > 1);
 	expect(fn(5)).toBe(false);
 	expect(fn(10)).toBe(true);
@@ -97,35 +97,35 @@ test("flow - type transformation across functions", () => {
 
 const inc = (n: number) => n + 1;
 
-test("flow - 4 functions", () => {
+test("flow: composes 4 functions", () => {
 	expect(flow(inc, inc, inc, inc)(0)).toBe(4);
 });
 
-test("flow - 5 functions", () => {
+test("flow: composes 5 functions", () => {
 	expect(flow(inc, inc, inc, inc, inc)(0)).toBe(5);
 });
 
-test("flow - 6 functions", () => {
+test("flow: composes 6 functions", () => {
 	expect(flow(inc, inc, inc, inc, inc, inc)(0)).toBe(6);
 });
 
-test("flow - 7 functions", () => {
+test("flow: composes 7 functions", () => {
 	expect(flow(inc, inc, inc, inc, inc, inc, inc)(0)).toBe(7);
 });
 
-test("flow - 8 functions", () => {
+test("flow: composes 8 functions", () => {
 	expect(flow(inc, inc, inc, inc, inc, inc, inc, inc)(0)).toBe(8);
 });
 
-test("flow - 9 functions", () => {
+test("flow: composes 9 functions", () => {
 	expect(flow(inc, inc, inc, inc, inc, inc, inc, inc, inc)(0)).toBe(9);
 });
 
-test("flow - 10 functions", () => {
+test("flow: composes 10 functions", () => {
 	expect(flow(inc, inc, inc, inc, inc, inc, inc, inc, inc, inc)(0)).toBe(10);
 });
 
-test("flow - zero functions returns the first argument unchanged", () => {
+test("flow: returns first argument unchanged when called with zero functions", () => {
 	// The typed overloads don't expose flow() with no arguments, but the
 	// underlying implementation has a defensive guard: if no functions are
 	// provided, return the first argument as-is.
@@ -136,7 +136,7 @@ test("flow - zero functions returns the first argument unchanged", () => {
 
 // --- flow.when ---
 
-test("flow.when - runs onTrue if predicate is met", () => {
+test("when: runs onTrue if predicate is met", () => {
 	let called = false;
 	const run = flow.when((n: number) => n > 5, (n: number) => {
 		called = true;
@@ -146,7 +146,7 @@ test("flow.when - runs onTrue if predicate is met", () => {
 	expect(called).toBe(true);
 });
 
-test("flow.when - returns value unchanged if predicate is not met", () => {
+test("when: returns value unchanged if predicate is not met", () => {
 	let called = false;
 	const run = flow.when((n: number) => n > 5, (n: number) => {
 		called = true;
@@ -158,7 +158,7 @@ test("flow.when - returns value unchanged if predicate is not met", () => {
 
 // --- flow.unless ---
 
-test("flow.unless - runs onFalse if predicate is not met", () => {
+test("unless: runs onFalse if predicate is not met", () => {
 	let called = false;
 	const run = flow.unless((n: number) => n > 5, (n: number) => {
 		called = true;
@@ -168,7 +168,7 @@ test("flow.unless - runs onFalse if predicate is not met", () => {
 	expect(called).toBe(true);
 });
 
-test("flow.unless - returns value unchanged if predicate is met", () => {
+test("unless: returns value unchanged if predicate is met", () => {
 	let called = false;
 	const run = flow.unless((n: number) => n > 5, (n: number) => {
 		called = true;
@@ -180,7 +180,7 @@ test("flow.unless - returns value unchanged if predicate is met", () => {
 
 // --- flow.either ---
 
-test("flow.either - runs onTrue if predicate is met", () => {
+test("either: runs onTrue if predicate is met", () => {
 	let trueCalled = false;
 	let falseCalled = false;
 	const run = flow.either((n: number) => n > 5, (n: number) => {
@@ -195,7 +195,7 @@ test("flow.either - runs onTrue if predicate is met", () => {
 	expect(falseCalled).toBe(false);
 });
 
-test("flow.either - runs onFalse if predicate is not met", () => {
+test("either: runs onFalse if predicate is not met", () => {
 	let trueCalled = false;
 	let falseCalled = false;
 	const run = flow.either((n: number) => n > 5, (n: number) => {
@@ -212,7 +212,7 @@ test("flow.either - runs onFalse if predicate is not met", () => {
 
 // --- flow.try ---
 
-test("flow.try - returns result of success path", () => {
+test("try: returns result of success path", () => {
 	let errorCalled = false;
 	const run = flow.try((s: string) => JSON.parse(s), () => {
 		errorCalled = true;
@@ -222,7 +222,7 @@ test("flow.try - returns result of success path", () => {
 	expect(errorCalled).toBe(false);
 });
 
-test("flow.try - handles error and returns fallback value", () => {
+test("try: handles error and returns fallback value", () => {
 	let errorCalled = false;
 	const run = flow.try((s: string) => JSON.parse(s), (err, input) => {
 		errorCalled = true;
@@ -236,7 +236,7 @@ test("flow.try - handles error and returns fallback value", () => {
 
 // --- flow.struct ---
 
-test("flow.struct - builds structured object from inputs", () => {
+test("struct: builds structured object from inputs", () => {
 	const run = flow.struct<number, { double: number; str: string; isEven: boolean; }>({
 		double: (n) => n * 2,
 		str: (n) => `value is ${n}`,
@@ -247,12 +247,12 @@ test("flow.struct - builds structured object from inputs", () => {
 
 // --- flow.safe ---
 
-test("flow.safe - runs all steps if none are nil", () => {
+test("safe: runs all steps if none are nil", () => {
 	const run = flow.safe((n: number) => n * 2, (n: number) => n + 1);
 	expect(run(5)).toBe(11);
 });
 
-test("flow.safe - short circuits on null immediately", () => {
+test("safe: short-circuits on null immediately", () => {
 	let secondCalled = false;
 	const run = flow.safe((n: number) => (n > 5 ? null : n * 2), (n: number) => {
 		secondCalled = true;
@@ -262,7 +262,7 @@ test("flow.safe - short circuits on null immediately", () => {
 	expect(secondCalled).toBe(false);
 });
 
-test("flow.safe - short circuits on undefined immediately", () => {
+test("safe: short-circuits on undefined immediately", () => {
 	let secondCalled = false;
 	const run = flow.safe((n: number) => (n > 5 ? undefined : n * 2), (n: number) => {
 		secondCalled = true;
@@ -272,7 +272,7 @@ test("flow.safe - short circuits on undefined immediately", () => {
 	expect(secondCalled).toBe(false);
 });
 
-test("flow.safe - short-circuits initial null/undefined", () => {
+test("safe: short-circuits initial null and undefined", () => {
 	let firstCalled = false;
 	const run = flow.safe<number | null | undefined, number>((n) => {
 		firstCalled = true;
@@ -285,7 +285,7 @@ test("flow.safe - short-circuits initial null/undefined", () => {
 
 // --- flow.async ---
 
-test("flow.async - awaits synchronous and asynchronous steps", async () => {
+test("async: awaits synchronous and asynchronous steps", async () => {
 	const run = flow.async(
 		(n: number) => Promise.resolve(n * 2),
 		(n: number) => n + 1,
@@ -295,7 +295,7 @@ test("flow.async - awaits synchronous and asynchronous steps", async () => {
 	expect(res).toBe("result: 11");
 });
 
-test("flow.async - supports input promise", async () => {
+test("async: supports input promise", async () => {
 	const run = flow.async((n: number) => Promise.resolve(n * 2));
 	const res = await run(Promise.resolve(5));
 	expect(res).toBe(10);
@@ -303,13 +303,13 @@ test("flow.async - supports input promise", async () => {
 
 // --- integration/composition ---
 
-test("flow - integration with other composition helpers", () => {
+test("flow: integrates with other composition combinators", () => {
 	const run = flow((n: number) => n + 1, flow.when((n) => n > 5, (n) => n * 2), (n) => `Final: ${n}`);
 	expect(run(5)).toBe("Final: 12");
 	expect(run(3)).toBe("Final: 4");
 });
 
-test("flow.async - resolves Deferred values and functions returning Deferred", async () => {
+test("async: resolves Deferred values and functions returning Deferred", async () => {
 	const run = flow.async(
 		(n: number) => Deferred.from.Promise(Promise.resolve(n * 2)),
 		(n: number) => n + 1,

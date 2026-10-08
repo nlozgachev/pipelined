@@ -4,7 +4,7 @@ import { pipe } from "../pipe.ts";
 
 // --- flip ---
 
-test("flip - reverses argument order of curried function", () => {
+test("flip: reverses argument order of curried function", () => {
 	const subtract = (a: number) => (b: number) => a - b;
 	const flipped = flip(subtract);
 
@@ -14,7 +14,7 @@ test("flip - reverses argument order of curried function", () => {
 	expect(flipped(3)(10)).toBe(7);
 });
 
-test("flip - reverses string concatenation order", () => {
+test("flip: reverses string concatenation order", () => {
 	const prepend = (prefix: string) => (str: string) => prefix + str;
 	const append = flip(prepend);
 
@@ -22,7 +22,7 @@ test("flip - reverses string concatenation order", () => {
 	expect(append("World")("Hello, ")).toBe("Hello, World");
 });
 
-test("flip - applied twice returns original behavior", () => {
+test("flip: double application is an involution", () => {
 	const divide = (a: number) => (b: number) => a / b;
 	const flippedOnce = flip(divide);
 	const flippedTwice = flip(flippedOnce);
@@ -31,7 +31,7 @@ test("flip - applied twice returns original behavior", () => {
 	expect(flippedTwice(10)(2)).toBe(5);
 });
 
-test("flip - partial application with flipped arguments", () => {
+test("flip: supports partial application with flipped arguments", () => {
 	const greet = (greeting: string) => (name: string) => `${greeting}, ${name}!`;
 	const forAlice = flip(greet)("Alice");
 
@@ -39,7 +39,7 @@ test("flip - partial application with flipped arguments", () => {
 	expect(forAlice("Hi")).toBe("Hi, Alice!");
 });
 
-test("flip - works with pipe", () => {
+test("pipe: integrates in pipeline", () => {
 	const format = (value: number) => (template: string) => template.replace("{}", String(value));
 
 	const formatValue = flip(format);
@@ -48,7 +48,7 @@ test("flip - works with pipe", () => {
 	expect(result).toBe("Value: 42");
 });
 
-test("flip - data-last to data-first conversion", () => {
+test("flip: converts data-last function to data-first", () => {
 	const contains = (item: number) => (arr: number[]) => arr.includes(item);
 	const containsIn = flip(contains);
 

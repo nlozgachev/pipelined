@@ -42,13 +42,13 @@ const settled = <E, A>(o: Op.Outcome<E, A>): Deferred<Op.Outcome<E, A>> => Defer
 // Pure outcome combinators — algebraic laws
 // ---------------------------------------------------------------------------
 
-test("Op.map — identity law", () => {
+test("map: preserves identity", () => {
 	fc.assert(fc.property(arbOutcome, (o) => {
 		expect(Op.map((x: number) => x)(o)).toStrictEqual(o);
 	}));
 });
 
-test("Op.map — composition law", () => {
+test("map: preserves composition", () => {
 	fc.assert(fc.property(arbOutcome, fc.integer(), fc.integer(), (o, a, b) => {
 		const f = (x: number) => x + a;
 		const g = (x: number) => x * b;
@@ -56,13 +56,13 @@ test("Op.map — composition law", () => {
 	}));
 });
 
-test("Op.chain — short-circuits on Err and Nil", () => {
+test("chain: short-circuits on Err and Nil", () => {
 	fc.assert(fc.property(fc.oneof(arbErrOutcome, arbNilOutcome), (o) => {
 		expect(Op.chain((_: number) => Op.make.ok(0))(o)).toBe(o);
 	}));
 });
 
-test("Op.chain — associativity on Ok", () => {
+test("chain: is associative on Ok", () => {
 	fc.assert(fc.property(arbOkOutcome, fc.integer(), (o, threshold) => {
 		const f = (x: number): Op.Outcome<string, number> => x > 0 ? Op.make.ok(x * 2) : Op.make.err("non-positive");
 		const g = (x: number): Op.Outcome<string, number> => x > threshold ? Op.make.ok(x + 1) : Op.make.err("too small");
@@ -70,19 +70,19 @@ test("Op.chain — associativity on Ok", () => {
 	}));
 });
 
-test("Op.recover — identity on Ok and Nil", () => {
+test("recover: preserves identity on Ok and Nil", () => {
 	fc.assert(fc.property(fc.oneof(arbOkOutcome, arbNilOutcome), (o) => {
 		expect(Op.recover((_: string) => Op.make.ok(0))(o)).toBe(o);
 	}));
 });
 
-test("Op.tap — always returns the identical outcome reference", () => {
+test("tap: returns identical outcome reference", () => {
 	fc.assert(fc.property(arbOutcome, (o) => {
 		expect(Op.tap(() => {})(o)).toBe(o);
 	}));
 });
 
-test("Op.fold — handles all outcome kinds without throwing", () => {
+test("fold: handles all outcome kinds without throwing", () => {
 	fc.assert(fc.property(arbOutcome, (o) => {
 		const result = Op.fold((e: string) => `err:${e}`, () => "nil", (v: number) => `ok:${v}`)(o);
 		expectTypeOf(result).toBeString();
@@ -93,19 +93,19 @@ test("Op.fold — handles all outcome kinds without throwing", () => {
 // Op.all — algebraic laws
 // ---------------------------------------------------------------------------
 
-test("Op.all — empty array resolves to empty array", async () => {
+test("all: empty array resolves to empty array", async () => {
 	const result = await Op.all([]);
 	expect(result).toStrictEqual([]);
 });
 
-test("Op.all — result order matches input order", async () => {
+test("all: result order matches input order", async () => {
 	await fc.assert(fc.asyncProperty(fc.array(arbOutcome, { maxLength: 8 }), async (outcomes) => {
 		const results = await Op.all(outcomes.map(settled));
 		expect(results).toStrictEqual(outcomes);
 	}));
 });
 
-test("Op.all — singleton resolves to that deferred's outcome", async () => {
+test("all: singleton resolves to deferred outcome", async () => {
 	await fc.assert(fc.asyncProperty(arbOutcome, async (o) => {
 		const [result] = await Op.all([settled(o)]);
 		expect(result).toStrictEqual(o);
@@ -116,14 +116,14 @@ test("Op.all — singleton resolves to that deferred's outcome", async () => {
 // Op.race — algebraic laws
 // ---------------------------------------------------------------------------
 
-test("Op.race — singleton resolves to that deferred's outcome", async () => {
+test("race: singleton resolves to deferred outcome", async () => {
 	await fc.assert(fc.asyncProperty(arbOutcome, async (o) => {
 		const result = await Op.race([settled(o)]);
 		expect(result).toStrictEqual(o);
 	}));
 });
 
-test("Op.race — pre-resolved deferred wins regardless of its position", async () => {
+test("race: pre-resolved deferred wins regardless of position", async () => {
 	await fc.assert(
 		fc.asyncProperty(
 			arbOutcome,
@@ -146,7 +146,7 @@ test("Op.race — pre-resolved deferred wins regardless of its position", async 
 // Strategy invariants — exclusive
 // ---------------------------------------------------------------------------
 
-test("Op.interpret exclusive — burst of N produces exactly 1 Ok and N-1 DroppedNil", async () => {
+test("interpret: exclusive burst produces exactly 1 Ok and N-1 DroppedNil", async () => {
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 2, max: 8 }), async (n) => {
 		const manager = Op.interpret(immediateOp, { strategy: "exclusive" });
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
@@ -160,7 +160,7 @@ test("Op.interpret exclusive — burst of N produces exactly 1 Ok and N-1 Droppe
 // Strategy invariants — restartable
 // ---------------------------------------------------------------------------
 
-test("Op.interpret restartable — burst of N produces exactly 1 Ok and N-1 ReplacedNil", async () => {
+test("interpret: restartable burst produces exactly 1 Ok and N-1 ReplacedNil", async () => {
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 2, max: 8 }), async (n) => {
 		const manager = Op.interpret(immediateOp, { strategy: "restartable" });
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
@@ -170,7 +170,7 @@ test("Op.interpret restartable — burst of N produces exactly 1 Ok and N-1 Repl
 	}));
 });
 
-test("Op.interpret restartable — single run resolves to Ok", async () => {
+test("interpret: restartable single run resolves to Ok", async () => {
 	await fc.assert(fc.asyncProperty(fc.integer(), async (n) => {
 		const manager = Op.interpret(immediateOp, { strategy: "restartable" });
 		const outcome = await manager.run(n);
@@ -178,7 +178,7 @@ test("Op.interpret restartable — single run resolves to Ok", async () => {
 	}));
 });
 
-test("Op.interpret restartable — abort() resolves all in-flight Deferreds as Nil", async () => {
+test("interpret: restartable abort resolves all in-flight Deferreds as Nil", async () => {
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 1, max: 4 }), async (n) => {
 		const manager = Op.interpret(neverOp, { strategy: "restartable" });
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
@@ -192,7 +192,7 @@ test("Op.interpret restartable — abort() resolves all in-flight Deferreds as N
 // Strategy invariants — queue
 // ---------------------------------------------------------------------------
 
-test("Op.interpret queue — all runs resolve to Ok when op always succeeds", async () => {
+test("interpret: queue resolves all runs to Ok when op succeeds", async () => {
 	await fc.assert(fc.asyncProperty(fc.array(fc.integer(), { minLength: 1, maxLength: 6 }), async (inputs) => {
 		const manager = Op.interpret(immediateOp, { strategy: "queue" });
 		const outcomes = (await Promise.all(inputs.map((i) => manager.run(i)).map(Deferred.to.Promise))) as Op.Outcome<
@@ -203,7 +203,7 @@ test("Op.interpret queue — all runs resolve to Ok when op always succeeds", as
 	}));
 });
 
-test("Op.interpret queue — Ok values arrive in submission order", async () => {
+test("interpret: queue preserves submission order for Ok values", async () => {
 	await fc.assert(fc.asyncProperty(fc.array(fc.integer(), { minLength: 1, maxLength: 6 }), async (inputs) => {
 		const manager = Op.interpret(immediateOp, { strategy: "queue" });
 		const outcomes = (await Promise.all(inputs.map((i) => manager.run(i)).map(Deferred.to.Promise))) as Op.Outcome<
@@ -214,7 +214,7 @@ test("Op.interpret queue — Ok values arrive in submission order", async () => 
 	}));
 });
 
-test("Op.interpret queue — abort() resolves all Deferreds as AbortedNil", async () => {
+test("interpret: queue abort resolves all Deferreds as AbortedNil", async () => {
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 1, max: 6 }), async (n) => {
 		const manager = Op.interpret(signalNeverOp, { strategy: "queue" });
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
@@ -230,7 +230,7 @@ test("Op.interpret queue — abort() resolves all Deferreds as AbortedNil", asyn
 // Strategy invariants — once
 // ---------------------------------------------------------------------------
 
-test("Op.interpret once — first run produces Ok, subsequent burst runs produce DroppedNil", async () => {
+test("interpret: once produces Ok on first run and DroppedNil on subsequent burst", async () => {
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 2, max: 8 }), async (n) => {
 		const manager = Op.interpret(tickOp, { strategy: "once" });
 		const deferreds = Array.from({ length: n }, (_, i) => manager.run(i));
@@ -240,7 +240,7 @@ test("Op.interpret once — first run produces Ok, subsequent burst runs produce
 	}));
 });
 
-test("Op.interpret once — post-completion runs always produce DroppedNil", async () => {
+test("interpret: once post-completion runs produce DroppedNil", async () => {
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 1, max: 5 }), async (n) => {
 		const manager = Op.interpret(immediateOp, { strategy: "once" });
 		await manager.run(0);
@@ -254,7 +254,7 @@ test("Op.interpret once — post-completion runs always produce DroppedNil", asy
 // Retry count invariant
 // ---------------------------------------------------------------------------
 
-test("Op.interpret retry — factory is called exactly attempts times when always failing", async () => {
+test("interpret: retries factory exactly specified attempts when failing", async () => {
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 1, max: 5 }), async (attempts) => {
 		let calls = 0;
 		const countingOp = Op.create((_signal: AbortSignal) => (_: number) => {
@@ -271,7 +271,7 @@ test("Op.interpret retry — factory is called exactly attempts times when alway
 // Strategy invariants — exclusive cooldown
 // ---------------------------------------------------------------------------
 
-test("Op.interpret exclusive cooldown — synchronous burst after completion all produce DroppedNil", async () => {
+test("interpret: exclusive cooldown synchronous burst after completion produces DroppedNil", async () => {
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 1, max: 6 }), async (n) => {
 		const manager = Op.interpret(immediateOp, { strategy: "exclusive", cooldown: Duration.milliseconds(200) });
 		await manager.run(0); // completes; starts 200ms cooldown
@@ -285,7 +285,7 @@ test("Op.interpret exclusive cooldown — synchronous burst after completion all
 // Strategy invariants — restartable minInterval
 // ---------------------------------------------------------------------------
 
-test("Op.interpret restartable with minInterval: 0 — burst still produces 1 Ok and N-1 ReplacedNil", async () => {
+test("interpret: restartable with zero minInterval burst produces 1 Ok and N-1 ReplacedNil", async () => {
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 2, max: 8 }), async (n) => {
 		// minInterval: 0 means gap=0 so no actual wait; algebraic invariant is unchanged
 		const manager = Op.interpret(immediateOp, { strategy: "restartable", minInterval: Duration.milliseconds(0) });
@@ -300,7 +300,7 @@ test("Op.interpret restartable with minInterval: 0 — burst still produces 1 Ok
 // Strategy invariants — buffered size
 // ---------------------------------------------------------------------------
 
-test("Op.interpret buffered size=k — burst of N > k+1 produces exactly k+1 Ok and N-k-1 EvictedNil", async () => {
+test("interpret: buffered size burst exceeding capacity produces EvictedNil", async () => {
 	await fc.assert(
 		fc.asyncProperty(
 			fc.integer({ min: 1, max: 4 }).chain((k) => fc.integer({ min: k + 2, max: k + 8 }).map((n) => ({ k, n }))),
@@ -315,7 +315,7 @@ test("Op.interpret buffered size=k — burst of N > k+1 produces exactly k+1 Ok 
 	);
 });
 
-test("Op.interpret buffered size=k — burst of N <= k+1 all resolve to Ok", async () => {
+test("interpret: buffered size burst within capacity all resolve to Ok", async () => {
 	await fc.assert(
 		fc.asyncProperty(
 			fc.integer({ min: 1, max: 5 }).chain((k) => fc.integer({ min: 1, max: k + 1 }).map((n) => ({ k, n }))),
@@ -333,7 +333,7 @@ test("Op.interpret buffered size=k — burst of N <= k+1 all resolve to Ok", asy
 // Strategy invariants — queue maxSize
 // ---------------------------------------------------------------------------
 
-test("Op.interpret queue maxSize=m — burst of N > m+1 produces m+1 Ok and N-m-1 DroppedNil", async () => {
+test("interpret: queue maxSize burst exceeding capacity produces DroppedNil", async () => {
 	await fc.assert(
 		fc.asyncProperty(
 			fc.integer({ min: 1, max: 4 }).chain((m) => fc.integer({ min: m + 2, max: m + 8 }).map((n) => ({ m, n }))),
@@ -352,7 +352,7 @@ test("Op.interpret queue maxSize=m — burst of N > m+1 produces m+1 Ok and N-m-
 // Strategy invariants — queue overflow replace-last
 // ---------------------------------------------------------------------------
 
-test("Op.interpret queue overflow replace-last — burst of N > m+1 produces m+1 Ok and N-m-1 EvictedNil", async () => {
+test("interpret: queue replace-last overflow burst produces EvictedNil", async () => {
 	await fc.assert(
 		fc.asyncProperty(
 			fc.integer({ min: 1, max: 3 }).chain((m) => fc.integer({ min: m + 2, max: m + 6 }).map((n) => ({ m, n }))),
@@ -371,7 +371,7 @@ test("Op.interpret queue overflow replace-last — burst of N > m+1 produces m+1
 // Strategy invariants — queue concurrency
 // ---------------------------------------------------------------------------
 
-test("Op.interpret queue concurrency=k — all N inputs resolve to Ok when op succeeds", async () => {
+test("interpret: queue concurrency resolves all inputs to Ok when op succeeds", async () => {
 	await fc.assert(
 		fc.asyncProperty(
 			fc.integer({ min: 1, max: 4 }),
@@ -392,7 +392,7 @@ test("Op.interpret queue concurrency=k — all N inputs resolve to Ok when op su
 // Strategy invariants — queue dedupe
 // ---------------------------------------------------------------------------
 
-test("Op.interpret queue dedupe — N equal inputs produce 2 Ok and N-2 DroppedNil", async () => {
+test("interpret: queue dedupe drops duplicate queued inputs", async () => {
 	// In-flight item is never deduped (dedupe only scans the queue).
 	// Each new call drops the previous queued duplicate, so only the last queued item runs.
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 2, max: 8 }), fc.integer(), async (n, input) => {
@@ -408,7 +408,7 @@ test("Op.interpret queue dedupe — N equal inputs produce 2 Ok and N-2 DroppedN
 // Strategy invariants — debounced leading
 // ---------------------------------------------------------------------------
 
-test("Op.interpret debounced leading — single run resolves to Ok with the input value", async () => {
+test("interpret: debounced leading single run resolves to Ok with input value", async () => {
 	await fc.assert(fc.asyncProperty(fc.integer(), async (n) => {
 		const manager = Op.interpret(immediateOp, {
 			strategy: "debounced",
@@ -424,7 +424,7 @@ test("Op.interpret debounced leading — single run resolves to Ok with the inpu
 // Strategy invariants — throttled trailing
 // ---------------------------------------------------------------------------
 
-test("Op.interpret throttled trailing — burst of N >= 3 produces 2 Ok (leading + trailing) and N-2 EvictedNil", async () => {
+test("interpret: throttled trailing burst produces leading and trailing Ok with EvictedNil", async () => {
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 3, max: 8 }), async (n) => {
 		const manager = Op.interpret(immediateOp, {
 			strategy: "throttled",
@@ -442,7 +442,7 @@ test("Op.interpret throttled trailing — burst of N >= 3 produces 2 Ok (leading
 // Strategy invariants — debounced leading
 // ---------------------------------------------------------------------------
 
-test("Op.interpret debounced leading — burst of N produces Ok for first and last, EvictedNil for intermediates", async () => {
+test("interpret: debounced leading burst produces Ok for first and last and EvictedNil for intermediates", async () => {
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 2, max: 8 }), async (n) => {
 		const manager = Op.interpret(immediateOp, {
 			strategy: "debounced",

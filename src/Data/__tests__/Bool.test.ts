@@ -8,7 +8,7 @@ import { Bool } from "../Bool.ts";
 // is
 // ---------------------------------------------------------------------------
 
-test("Bool.is.boolean identifies boolean primitives", () => {
+test("is.boolean: identifies boolean primitives", () => {
 	expect(Bool.is.boolean(true)).toBe(true);
 	expect(Bool.is.boolean(false)).toBe(true);
 	expect(Bool.is.boolean("true")).toBe(false);
@@ -18,21 +18,21 @@ test("Bool.is.boolean identifies boolean primitives", () => {
 	expect(Bool.is.boolean({})).toBe(false);
 });
 
-test("Bool.is.true narrows literal true", () => {
+test("is.true: narrows literal true", () => {
 	expect(Bool.is.true(true)).toBe(true);
 	expect(Bool.is.true(false)).toBe(false);
 	expect(Bool.is.true("true")).toBe(false);
 	expect(Bool.is.true(1)).toBe(false);
 });
 
-test("Bool.is.false narrows literal false", () => {
+test("is.false: narrows literal false", () => {
 	expect(Bool.is.false(false)).toBe(true);
 	expect(Bool.is.false(true)).toBe(false);
 	expect(Bool.is.false("false")).toBe(false);
 	expect(Bool.is.false(0)).toBe(false);
 });
 
-test("Bool.is.truthy identifies truthy values", () => {
+test("is.truthy: identifies truthy values", () => {
 	expect(Bool.is.truthy(true)).toBe(true);
 	expect(Bool.is.truthy("hello")).toBe(true);
 	expect(Bool.is.truthy(42)).toBe(true);
@@ -49,7 +49,7 @@ test("Bool.is.truthy identifies truthy values", () => {
 	expect(Bool.is.truthy(NaN)).toBe(false);
 });
 
-test("Bool.is.falsy identifies falsy values", () => {
+test("is.falsy: identifies falsy values", () => {
 	expect(Bool.is.falsy(false)).toBe(true);
 	expect(Bool.is.falsy(0)).toBe(true);
 	expect(Bool.is.falsy(-0)).toBe(true);
@@ -69,7 +69,7 @@ test("Bool.is.falsy identifies falsy values", () => {
 // not
 // ---------------------------------------------------------------------------
 
-test("Bool.not inverts boolean values", () => {
+test("not: inverts boolean values", () => {
 	expect(Bool.not(true)).toBe(false);
 	expect(Bool.not(false)).toBe(true);
 	expect(pipe(true, Bool.not)).toBe(false);
@@ -80,7 +80,7 @@ test("Bool.not inverts boolean values", () => {
 // and
 // ---------------------------------------------------------------------------
 
-test("Bool.and performs logical AND (data-last)", () => {
+test("and: performs logical AND", () => {
 	expect(pipe(true, Bool.and(true))).toBe(true);
 	expect(pipe(true, Bool.and(false))).toBe(false);
 	expect(pipe(false, Bool.and(true))).toBe(false);
@@ -91,7 +91,7 @@ test("Bool.and performs logical AND (data-last)", () => {
 // or
 // ---------------------------------------------------------------------------
 
-test("Bool.or performs logical OR (data-last)", () => {
+test("or: performs logical OR", () => {
 	expect(pipe(true, Bool.or(true))).toBe(true);
 	expect(pipe(true, Bool.or(false))).toBe(true);
 	expect(pipe(false, Bool.or(true))).toBe(true);
@@ -102,7 +102,7 @@ test("Bool.or performs logical OR (data-last)", () => {
 // xor
 // ---------------------------------------------------------------------------
 
-test("Bool.xor performs exclusive OR (data-last)", () => {
+test("xor: performs exclusive OR", () => {
 	expect(pipe(true, Bool.xor(false))).toBe(true);
 	expect(pipe(false, Bool.xor(true))).toBe(true);
 	expect(pipe(true, Bool.xor(true))).toBe(false);
@@ -113,7 +113,7 @@ test("Bool.xor performs exclusive OR (data-last)", () => {
 // andLazy
 // ---------------------------------------------------------------------------
 
-test("Bool.andLazy evaluates computation when self is true", () => {
+test("andLazy: evaluates computation when input is true", () => {
 	let called = false;
 	const result = pipe(
 		true,
@@ -126,7 +126,7 @@ test("Bool.andLazy evaluates computation when self is true", () => {
 	expect(called).toBe(true);
 });
 
-test("Bool.andLazy short-circuits and does not evaluate when self is false", () => {
+test("andLazy: short-circuits when input is false", () => {
 	let called = false;
 	const result = pipe(
 		false,
@@ -143,7 +143,7 @@ test("Bool.andLazy short-circuits and does not evaluate when self is false", () 
 // orLazy
 // ---------------------------------------------------------------------------
 
-test("Bool.orLazy short-circuits and does not evaluate when self is true", () => {
+test("orLazy: short-circuits when input is true", () => {
 	let called = false;
 	const result = pipe(
 		true,
@@ -156,7 +156,7 @@ test("Bool.orLazy short-circuits and does not evaluate when self is true", () =>
 	expect(called).toBe(false);
 });
 
-test("Bool.orLazy evaluates computation when self is false", () => {
+test("orLazy: evaluates computation when input is false", () => {
 	let called = false;
 	const result = pipe(
 		false,
@@ -173,13 +173,13 @@ test("Bool.orLazy evaluates computation when self is false", () => {
 // all
 // ---------------------------------------------------------------------------
 
-test("Bool.all returns true only when all booleans are true", () => {
+test("all: returns true only when all booleans are true", () => {
 	expect(Bool.all([true, true, true])).toBe(true);
 	expect(Bool.all([true, false, true])).toBe(false);
 	expect(Bool.all([false, false])).toBe(false);
 });
 
-test("Bool.all returns true for an empty array (vacuous truth)", () => {
+test("all: returns true for empty array", () => {
 	expect(Bool.all([])).toBe(true);
 });
 
@@ -187,13 +187,13 @@ test("Bool.all returns true for an empty array (vacuous truth)", () => {
 // any
 // ---------------------------------------------------------------------------
 
-test("Bool.any returns true if at least one boolean is true", () => {
+test("any: returns true if at least one boolean is true", () => {
 	expect(Bool.any([false, true, false])).toBe(true);
 	expect(Bool.any([false, false, false])).toBe(false);
 	expect(Bool.any([true, true])).toBe(true);
 });
 
-test("Bool.any returns false for an empty array", () => {
+test("any: returns false for empty array", () => {
 	expect(Bool.any([])).toBe(false);
 });
 
@@ -201,7 +201,7 @@ test("Bool.any returns false for an empty array", () => {
 // fold
 // ---------------------------------------------------------------------------
 
-test("Bool.fold evaluates onTrue when true and does not evaluate onFalse", () => {
+test("fold: evaluates onTrue when true", () => {
 	let falseCalled = false;
 	let trueCalled = false;
 	const result = pipe(
@@ -219,7 +219,7 @@ test("Bool.fold evaluates onTrue when true and does not evaluate onFalse", () =>
 	expect(falseCalled).toBe(false);
 });
 
-test("Bool.fold evaluates onFalse when false and does not evaluate onTrue", () => {
+test("fold: evaluates onFalse when false", () => {
 	let falseCalled = false;
 	let trueCalled = false;
 	const result = pipe(
@@ -241,7 +241,7 @@ test("Bool.fold evaluates onFalse when false and does not evaluate onTrue", () =
 // match
 // ---------------------------------------------------------------------------
 
-test("Bool.match evaluates true branch on true", () => {
+test("match: evaluates true branch on true", () => {
 	let falseCalled = false;
 	const result = pipe(
 		true,
@@ -257,7 +257,7 @@ test("Bool.match evaluates true branch on true", () => {
 	expect(falseCalled).toBe(false);
 });
 
-test("Bool.match evaluates false branch on false", () => {
+test("match: evaluates false branch on false", () => {
 	let trueCalled = false;
 	const result = pipe(
 		false,
@@ -277,7 +277,7 @@ test("Bool.match evaluates false branch on false", () => {
 // from
 // ---------------------------------------------------------------------------
 
-test("Bool.from.string parses true and false strings (case-insensitive & trimmed)", () => {
+test("from.string: parses true and false strings", () => {
 	expect(Bool.from.string("true")).toStrictEqual(Maybe.make.some(true));
 	expect(Bool.from.string("TRUE")).toStrictEqual(Maybe.make.some(true));
 	expect(Bool.from.string("  True  ")).toStrictEqual(Maybe.make.some(true));
@@ -293,7 +293,7 @@ test("Bool.from.string parses true and false strings (case-insensitive & trimmed
 	expect(Bool.from.string("anything")).toStrictEqual(Maybe.make.none());
 });
 
-test("Bool.from.number parses strict 1 and 0", () => {
+test("from.number: parses strict 1 and 0", () => {
 	expect(Bool.from.number(1)).toStrictEqual(Maybe.make.some(true));
 	expect(Bool.from.number(0)).toStrictEqual(Maybe.make.some(false));
 
@@ -304,7 +304,7 @@ test("Bool.from.number parses strict 1 and 0", () => {
 	expect(Bool.from.number(Infinity)).toStrictEqual(Maybe.make.none());
 });
 
-test("Bool.from.truthy coerces values to boolean", () => {
+test("from.truthy: coerces values to boolean", () => {
 	expect(Bool.from.truthy("hello")).toBe(true);
 	expect(Bool.from.truthy(42)).toBe(true);
 	expect(Bool.from.truthy({})).toBe(true);
@@ -317,7 +317,7 @@ test("Bool.from.truthy coerces values to boolean", () => {
 // to
 // ---------------------------------------------------------------------------
 
-test("Bool.to.Maybe converts true to Some and evaluates value lazily", () => {
+test("to.Maybe: converts true to Some and evaluates value lazily", () => {
 	let called = false;
 	const result = pipe(
 		true,
@@ -330,7 +330,7 @@ test("Bool.to.Maybe converts true to Some and evaluates value lazily", () => {
 	expect(called).toBe(true);
 });
 
-test("Bool.to.Maybe converts false to None without calling onTrue", () => {
+test("to.Maybe: converts false to None without calling onTrue", () => {
 	let called = false;
 	const result = pipe(
 		false,
@@ -343,7 +343,7 @@ test("Bool.to.Maybe converts false to None without calling onTrue", () => {
 	expect(called).toBe(false);
 });
 
-test("Bool.to.Result converts true to Ok and does not evaluate onErr", () => {
+test("to.Result: converts true to Ok and does not evaluate onErr", () => {
 	let errCalled = false;
 	const result = pipe(
 		true,
@@ -356,7 +356,7 @@ test("Bool.to.Result converts true to Ok and does not evaluate onErr", () => {
 	expect(errCalled).toBe(false);
 });
 
-test("Bool.to.Result converts false to Err and does not evaluate onOk", () => {
+test("to.Result: converts false to Err and does not evaluate onOk", () => {
 	let okCalled = false;
 	const result = pipe(
 		false,
@@ -369,12 +369,12 @@ test("Bool.to.Result converts false to Err and does not evaluate onOk", () => {
 	expect(okCalled).toBe(false);
 });
 
-test("Bool.to.number converts boolean to 1 or 0", () => {
+test("to.number: converts boolean to 1 or 0", () => {
 	expect(Bool.to.number(true)).toBe(1);
 	expect(Bool.to.number(false)).toBe(0);
 });
 
-test("Bool.to.string converts boolean to string literal", () => {
+test("to.string: converts boolean to string literal", () => {
 	expect(Bool.to.string(true)).toBe("true");
 	expect(Bool.to.string(false)).toBe("false");
 });
@@ -383,7 +383,7 @@ test("Bool.to.string converts boolean to string literal", () => {
 // Pipe composition
 // ---------------------------------------------------------------------------
 
-test("Bool composes cleanly in pipeline workflows", () => {
+test("pipe: composes cleanly in pipeline workflows", () => {
 	type User = { isActive: boolean; isVerified: boolean; isBanned: boolean; token: string; };
 
 	const user: User = { isActive: true, isVerified: true, isBanned: false, token: "tok_123" };

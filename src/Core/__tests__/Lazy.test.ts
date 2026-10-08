@@ -6,12 +6,12 @@ import { Lazy } from "../Lazy.ts";
 // from + evaluate
 // ---------------------------------------------------------------------------
 
-test("Lazy.evaluate returns the computed value", () => {
+test("evaluate: returns computed value", () => {
 	const lazy = Lazy.from(() => 42);
 	expect(Lazy.evaluate(lazy)).toBe(42);
 });
 
-test("Lazy.from memoizes: factory runs exactly once across multiple evaluations", () => {
+test("from: memoizes and runs factory exactly once across multiple evaluations", () => {
 	let count = 0;
 	const lazy = Lazy.from(() => {
 		count++;
@@ -23,7 +23,7 @@ test("Lazy.from memoizes: factory runs exactly once across multiple evaluations"
 	expect(count).toBe(1);
 });
 
-test("Lazy.evaluate returns the same reference on repeated calls", () => {
+test("evaluate: returns same reference on repeated calls", () => {
 	const obj = { x: 1 };
 	const lazy = Lazy.from(() => obj);
 	expect(Lazy.evaluate(lazy)).toBe(Lazy.evaluate(lazy));
@@ -33,12 +33,12 @@ test("Lazy.evaluate returns the same reference on repeated calls", () => {
 // map
 // ---------------------------------------------------------------------------
 
-test("Lazy.map transforms the value", () => {
+test("map: transforms value", () => {
 	const lazy = pipe(Lazy.from(() => 10), Lazy.map((n) => n * 2));
 	expect(Lazy.evaluate(lazy)).toBe(20);
 });
 
-test("Lazy.map does not evaluate until evaluate is called", () => {
+test("map: defers evaluation until evaluate is called", () => {
 	let ran = false;
 	const lazy = pipe(
 		Lazy.from(() => {
@@ -52,7 +52,7 @@ test("Lazy.map does not evaluate until evaluate is called", () => {
 	expect(ran).toBe(true);
 });
 
-test("Lazy.map factory runs once even with multiple evaluations", () => {
+test("map: factory runs once even with multiple evaluations", () => {
 	let sourceCount = 0;
 	let mapCount = 0;
 	const lazy = pipe(
@@ -75,12 +75,12 @@ test("Lazy.map factory runs once even with multiple evaluations", () => {
 // chain
 // ---------------------------------------------------------------------------
 
-test("Lazy.chain composes two lazy computations", () => {
+test("chain: composes two lazy computations", () => {
 	const lazy = pipe(Lazy.from(() => "hello"), Lazy.chain((s) => Lazy.from(() => s.length)));
 	expect(Lazy.evaluate(lazy)).toBe(5);
 });
 
-test("Lazy.chain stays lazy until evaluate is called", () => {
+test("chain: stays lazy until evaluate is called", () => {
 	let ran = false;
 	const lazy = pipe(
 		Lazy.from(() => 1),
@@ -96,7 +96,7 @@ test("Lazy.chain stays lazy until evaluate is called", () => {
 	expect(ran).toBe(true);
 });
 
-test("Lazy.chain inner factory runs once across multiple evaluations", () => {
+test("chain: inner factory runs once across multiple evaluations", () => {
 	let count = 0;
 	const lazy = pipe(
 		Lazy.from(() => 1),
@@ -116,7 +116,7 @@ test("Lazy.chain inner factory runs once across multiple evaluations", () => {
 // tap
 // ---------------------------------------------------------------------------
 
-test("Lazy.tap runs the side effect when evaluated", () => {
+test("tap: runs side effect when evaluated", () => {
 	let seen: number | undefined;
 	const lazy = pipe(
 		Lazy.from(() => 99),
@@ -129,12 +129,12 @@ test("Lazy.tap runs the side effect when evaluated", () => {
 	expect(seen).toBe(99);
 });
 
-test("Lazy.tap returns the original value unchanged", () => {
+test("tap: returns original value unchanged", () => {
 	const lazy = pipe(Lazy.from(() => "abc"), Lazy.tap(() => {}));
 	expect(Lazy.evaluate(lazy)).toBe("abc");
 });
 
-test("Lazy.tap side effect fires exactly once across multiple evaluations", () => {
+test("tap: fires side effect exactly once across multiple evaluations", () => {
 	let count = 0;
 	const lazy = pipe(
 		Lazy.from(() => 1),
@@ -151,7 +151,7 @@ test("Lazy.tap side effect fires exactly once across multiple evaluations", () =
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("lazy composes map, chain, and tap in a pipe", () => {
+test("pipe: composes map chain and tap", () => {
 	const log: string[] = [];
 	const lazy = pipe(
 		Lazy.from(() => 5),
@@ -166,7 +166,7 @@ test("lazy composes map, chain, and tap in a pipe", () => {
 
 // --- side-effect isolation ---
 
-test("Lazy.from defers side effect until evaluate is called", () => {
+test("from: defers side effect until evaluate is called", () => {
 	let called = false;
 	const lazy = Lazy.from(() => {
 		called = true;
@@ -177,7 +177,7 @@ test("Lazy.from defers side effect until evaluate is called", () => {
 	expect(called).toBe(true);
 });
 
-test("Lazy.tap executes side effect when evaluated", () => {
+test("tap: executes side effect when evaluated", () => {
 	let called = false;
 	const lazy = pipe(
 		Lazy.from(() => 10),

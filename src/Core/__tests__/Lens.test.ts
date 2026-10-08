@@ -12,7 +12,7 @@ const alice: User = { name: "Alice", age: 30, address: { city: "Berlin", zip: "1
 // make
 // ---------------------------------------------------------------------------
 
-test("Lens.from.accessors constructs a lens from getter and setter", () => {
+test("from.accessors: constructs a lens from getter and setter", () => {
 	const nameLens = Lens.from.accessors((u: User) => u.name, (name) => (u) => ({ ...u, name }));
 	expect(nameLens.get(alice)).toBe("Alice");
 	expect(nameLens.set("Bob")(alice)).toStrictEqual({ ...alice, name: "Bob" });
@@ -22,18 +22,18 @@ test("Lens.from.accessors constructs a lens from getter and setter", () => {
 // prop
 // ---------------------------------------------------------------------------
 
-test("Lens.from.property focuses on a top-level property", () => {
+test("from.property: focuses on a top-level property", () => {
 	const nameLens = Lens.from.property<User>()("name");
 	expect(nameLens.get(alice)).toBe("Alice");
 });
 
-test("Lens.from.property set returns a new object with the property replaced", () => {
+test("set: returns a new object with the property replaced", () => {
 	const nameLens = Lens.from.property<User>()("name");
 	const updated = nameLens.set("Bob")(alice);
 	expect(updated).toStrictEqual({ ...alice, name: "Bob" });
 });
 
-test("Lens.from.property set does not mutate the original", () => {
+test("set: does not mutate the original", () => {
 	const nameLens = Lens.from.property<User>()("name");
 	nameLens.set("Bob")(alice);
 	expect(alice.name).toBe("Alice");
@@ -43,7 +43,7 @@ test("Lens.from.property set does not mutate the original", () => {
 // get
 // ---------------------------------------------------------------------------
 
-test("Lens.get extracts the focused value", () => {
+test("get: extracts the focused value", () => {
 	const ageLens = Lens.from.property<User>()("age");
 	expect(pipe(alice, Lens.get(ageLens))).toBe(30);
 });
@@ -52,7 +52,7 @@ test("Lens.get extracts the focused value", () => {
 // set
 // ---------------------------------------------------------------------------
 
-test("Lens.set replaces the focused value", () => {
+test("set: replaces the focused value", () => {
 	const ageLens = Lens.from.property<User>()("age");
 	expect(pipe(alice, Lens.set(ageLens)(31))).toStrictEqual({ ...alice, age: 31 });
 });
@@ -61,12 +61,12 @@ test("Lens.set replaces the focused value", () => {
 // modify
 // ---------------------------------------------------------------------------
 
-test("Lens.modify applies a function to the focused value", () => {
+test("modify: applies a function to the focused value", () => {
 	const ageLens = Lens.from.property<User>()("age");
 	expect(pipe(alice, Lens.modify(ageLens)((n) => n + 1))).toStrictEqual({ ...alice, age: 31 });
 });
 
-test("Lens.modify does not change the structure when function is identity", () => {
+test("modify: does not change the structure when function is identity", () => {
 	const nameLens = Lens.from.property<User>()("name");
 	expect(pipe(alice, Lens.modify(nameLens)((n) => n))).toStrictEqual(alice);
 });
@@ -75,7 +75,7 @@ test("Lens.modify does not change the structure when function is identity", () =
 // andThen
 // ---------------------------------------------------------------------------
 
-test("Lens.andThen composes two lenses", () => {
+test("andThen: composes two lenses", () => {
 	const addressLens = Lens.from.property<User>()("address");
 	const cityLens = Lens.from.property<Address>()("city");
 	const userCityLens = pipe(addressLens, Lens.andThen(cityLens));
@@ -83,7 +83,7 @@ test("Lens.andThen composes two lenses", () => {
 	expect(pipe(alice, Lens.get(userCityLens))).toBe("Berlin");
 });
 
-test("Lens.andThen set updates the nested field", () => {
+test("andThen: updates the nested field on set", () => {
 	const addressLens = Lens.from.property<User>()("address");
 	const cityLens = Lens.from.property<Address>()("city");
 	const userCityLens = pipe(addressLens, Lens.andThen(cityLens));
@@ -94,7 +94,7 @@ test("Lens.andThen set updates the nested field", () => {
 	expect(updated.name).toStrictEqual(alice.name);
 });
 
-test("Lens.andThen modify updates the nested field", () => {
+test("andThen: updates the nested field on modify", () => {
 	const addressLens = Lens.from.property<User>()("address");
 	const cityLens = Lens.from.property<Address>()("city");
 	const userCityLens = pipe(addressLens, Lens.andThen(cityLens));
@@ -113,7 +113,7 @@ type UserWithProfile = { name: string; profile: Profile; };
 const userWithBio: UserWithProfile = { name: "Alice", profile: { username: "alice", bio: "hi" } };
 const userNoBio: UserWithProfile = { name: "Alice", profile: { username: "alice" } };
 
-test("Lens.andThenOptional get returns Some when inner focus present", () => {
+test("andThenOptional: returns Some when inner focus present", () => {
 	const profileLens = Lens.from.property<UserWithProfile>()("profile");
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	const userBioOpt = pipe(profileLens, Lens.andThenOptional(bioOpt));
@@ -121,7 +121,7 @@ test("Lens.andThenOptional get returns Some when inner focus present", () => {
 	expect(pipe(userWithBio, Optional.get(userBioOpt))).toStrictEqual({ kind: "Some", value: "hi" });
 });
 
-test("Lens.andThenOptional get returns None when inner focus absent", () => {
+test("andThenOptional: returns None when inner focus absent", () => {
 	const profileLens = Lens.from.property<UserWithProfile>()("profile");
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	const userBioOpt = pipe(profileLens, Lens.andThenOptional(bioOpt));
@@ -129,7 +129,7 @@ test("Lens.andThenOptional get returns None when inner focus absent", () => {
 	expect(pipe(userNoBio, Optional.get(userBioOpt))).toStrictEqual({ kind: "None" });
 });
 
-test("Lens.andThenOptional set updates inner value", () => {
+test("andThenOptional: updates inner value on set", () => {
 	const profileLens = Lens.from.property<UserWithProfile>()("profile");
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	const userBioOpt = pipe(profileLens, Lens.andThenOptional(bioOpt));
@@ -142,21 +142,21 @@ test("Lens.andThenOptional set updates inner value", () => {
 // toOptional
 // ---------------------------------------------------------------------------
 
-test("Lens.toOptional get always returns Some", () => {
+test("toOptional: get always returns Some", () => {
 	const nameLens = Lens.from.property<User>()("name");
 	const nameOpt = Lens.toOptional(nameLens);
 
 	expect(nameOpt.get(alice)).toStrictEqual({ kind: "Some", value: "Alice" });
 });
 
-test("Lens.toOptional set behaves identically to the original lens", () => {
+test("toOptional: set behaves identically to the original lens", () => {
 	const nameLens = Lens.from.property<User>()("name");
 	const nameOpt = Lens.toOptional(nameLens);
 
 	expect(nameOpt.set("Bob")(alice)).toStrictEqual(nameLens.set("Bob")(alice));
 });
 
-test("lens.toOptional composes with Optional.andThen", () => {
+test("toOptional: composes with Optional.andThen", () => {
 	const addressLens = Lens.from.property<User>()("address");
 	const landmarkOpt = Optional.from.property<Address & { landmark?: string; }>()("landmark");
 
@@ -167,7 +167,7 @@ test("lens.toOptional composes with Optional.andThen", () => {
 
 // --- side-effect isolation ---
 
-test("Lens.modify executes side effect during modification", () => {
+test("modify: executes side effect during modification", () => {
 	let called = false;
 	const ageLens = Lens.from.property<User>()("age");
 	pipe(
@@ -180,7 +180,7 @@ test("Lens.modify executes side effect during modification", () => {
 	expect(called).toBe(true);
 });
 
-test("Lens.from.accessors getter executes side effect", () => {
+test("from.accessors: getter executes side effect", () => {
 	let called = false;
 	const nameLens = Lens.from.accessors((u: User) => {
 		called = true;

@@ -9,7 +9,7 @@ type Profile = { username: string; bio?: string; };
 // make
 // ---------------------------------------------------------------------------
 
-test("Optional.from.accessors constructs an optional from getter and setter", () => {
+test("from.accessors: constructs an optional from getter and setter", () => {
 	const firstChar = Optional.from.accessors(
 		(s: string) => s.length > 0 ? { kind: "Some" as const, value: s[0] } : { kind: "None" as const },
 		(c) => (s) => s.length > 0 ? c + s.slice(1) : s,
@@ -24,26 +24,26 @@ test("Optional.from.accessors constructs an optional from getter and setter", ()
 // prop
 // ---------------------------------------------------------------------------
 
-test("Optional.from.property get returns Some when field is present", () => {
+test("from.property: returns Some when field is present", () => {
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	const profile: Profile = { username: "alice", bio: "hello" };
 	expect(bioOpt.get(profile)).toStrictEqual({ kind: "Some", value: "hello" });
 });
 
-test("Optional.from.property get returns None when field is absent", () => {
+test("from.property: returns None when field is absent", () => {
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	const profile: Profile = { username: "alice" };
 	expect(bioOpt.get(profile)).toStrictEqual({ kind: "None" });
 });
 
-test("Optional.from.property set inserts the field when absent", () => {
+test("set: inserts field when absent via from.property", () => {
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	const profile: Profile = { username: "alice" };
 	const updated = bioOpt.set("hello")(profile);
 	expect(updated).toStrictEqual({ username: "alice", bio: "hello" });
 });
 
-test("Optional.from.property set replaces the field when present", () => {
+test("set: replaces field when present via from.property", () => {
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	const profile: Profile = { username: "alice", bio: "old" };
 	expect(bioOpt.set("new")(profile)).toStrictEqual({ username: "alice", bio: "new" });
@@ -53,45 +53,45 @@ test("Optional.from.property set replaces the field when present", () => {
 // index
 // ---------------------------------------------------------------------------
 
-test("Optional.index get returns Some for in-bounds index", () => {
+test("index: returns Some for in-bounds index", () => {
 	const firstOpt = Optional.index<string>(0);
 	expect(firstOpt.get(["a", "b", "c"])).toStrictEqual({ kind: "Some", value: "a" });
 });
 
-test("Optional.index get returns None for empty array", () => {
+test("index: returns None for empty array", () => {
 	const firstOpt = Optional.index<string>(0);
 	expect(firstOpt.get([])).toStrictEqual({ kind: "None" });
 });
 
-test("Optional.index get returns None for out-of-bounds index", () => {
+test("index: returns None for out-of-bounds index", () => {
 	const thirdOpt = Optional.index<string>(2);
 	expect(thirdOpt.get(["a"])).toStrictEqual({ kind: "None" });
 });
 
-test("Optional.index get returns None for negative index", () => {
+test("index: returns None for negative index", () => {
 	const negOpt = Optional.index<string>(-1);
 	expect(negOpt.get(["a", "b"])).toStrictEqual({ kind: "None" });
 });
 
-test("Optional.index set replaces element at in-bounds index", () => {
+test("index: replaces element at in-bounds index on set", () => {
 	const firstOpt = Optional.index<string>(0);
 	expect(firstOpt.set("z")(["a", "b", "c"])).toStrictEqual(["z", "b", "c"]);
 });
 
-test("Optional.index set does not mutate the original array", () => {
+test("index: does not mutate original array on set", () => {
 	const firstOpt = Optional.index<string>(0);
 	const arr = ["a", "b"];
 	firstOpt.set("z")(arr);
 	expect(arr).toStrictEqual(["a", "b"]);
 });
 
-test("Optional.index set is a no-op for out-of-bounds index", () => {
+test("index: no-op on set for out-of-bounds index", () => {
 	const thirdOpt = Optional.index<string>(5);
 	const arr = ["a", "b"];
 	expect(thirdOpt.set("z")(arr)).toStrictEqual(arr);
 });
 
-test("Optional.index set is a no-op for negative index", () => {
+test("index: no-op on set for negative index", () => {
 	const negOpt = Optional.index<string>(-1);
 	const arr = ["a", "b"];
 	expect(negOpt.set("z")(arr)).toStrictEqual(arr);
@@ -101,12 +101,12 @@ test("Optional.index set is a no-op for negative index", () => {
 // get
 // ---------------------------------------------------------------------------
 
-test("Optional.get returns Some for present focus", () => {
+test("get: returns Some for present focus", () => {
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	expect(pipe({ username: "alice", bio: "hi" }, Optional.get(bioOpt))).toStrictEqual({ kind: "Some", value: "hi" });
 });
 
-test("Optional.get returns None for absent focus", () => {
+test("get: returns None for absent focus", () => {
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	expect(pipe({ username: "alice" }, Optional.get(bioOpt))).toStrictEqual({ kind: "None" });
 });
@@ -115,7 +115,7 @@ test("Optional.get returns None for absent focus", () => {
 // set
 // ---------------------------------------------------------------------------
 
-test("Optional.set replaces the focused value", () => {
+test("set: replaces the focused value", () => {
 	const firstOpt = Optional.index<number>(0);
 	expect(pipe([1, 2, 3], Optional.set(firstOpt)(99))).toStrictEqual([99, 2, 3]);
 });
@@ -124,7 +124,7 @@ test("Optional.set replaces the focused value", () => {
 // modify
 // ---------------------------------------------------------------------------
 
-test("Optional.modify applies function when focus is present", () => {
+test("modify: applies function when focus is present", () => {
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	const profile: Profile = { username: "alice", bio: "hello" };
 	expect(pipe(profile, Optional.modify(bioOpt)((s) => s.toUpperCase()))).toStrictEqual({
@@ -133,7 +133,7 @@ test("Optional.modify applies function when focus is present", () => {
 	});
 });
 
-test("Optional.modify is a no-op when focus is absent", () => {
+test("modify: no-op when focus is absent", () => {
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	const profile: Profile = { username: "alice" };
 	expect(pipe(profile, Optional.modify(bioOpt)((s) => s.toUpperCase()))).toStrictEqual(profile);
@@ -143,12 +143,12 @@ test("Optional.modify is a no-op when focus is absent", () => {
 // getOrElse
 // ---------------------------------------------------------------------------
 
-test("Optional.getOrElse returns focused value when present", () => {
+test("getOrElse: returns focused value when present", () => {
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	expect(pipe({ username: "alice", bio: "hi" }, Optional.getOrElse(bioOpt)(() => "none"))).toBe("hi");
 });
 
-test("Optional.getOrElse returns default when focus is absent", () => {
+test("getOrElse: returns default when focus is absent", () => {
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	expect(pipe({ username: "alice" }, Optional.getOrElse(bioOpt)(() => "none"))).toBe("none");
 });
@@ -157,14 +157,14 @@ test("Optional.getOrElse returns default when focus is absent", () => {
 // fold
 // ---------------------------------------------------------------------------
 
-test("Optional.fold calls onSome when focus is present", () => {
+test("fold: calls onSome when focus is present", () => {
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	expect(pipe({ username: "alice", bio: "hi" }, Optional.fold(bioOpt)(() => "none", (bio) => `bio:${bio}`))).toBe(
 		"bio:hi",
 	);
 });
 
-test("Optional.fold calls onNone when focus is absent", () => {
+test("fold: calls onNone when focus is absent", () => {
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	expect(pipe({ username: "alice" }, Optional.fold(bioOpt)(() => "none", (bio) => `bio:${bio}`))).toBe("none");
 });
@@ -173,14 +173,14 @@ test("Optional.fold calls onNone when focus is absent", () => {
 // match
 // ---------------------------------------------------------------------------
 
-test("Optional.match calls some handler when focus is present", () => {
+test("match: calls some handler when focus is present", () => {
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	expect(
 		pipe({ username: "alice", bio: "hi" }, Optional.match(bioOpt)({ none: () => "none", some: (bio) => `bio:${bio}` })),
 	).toBe("bio:hi");
 });
 
-test("Optional.match calls none handler when focus is absent", () => {
+test("match: calls none handler when focus is absent", () => {
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	expect(pipe({ username: "alice" }, Optional.match(bioOpt)({ none: () => "none", some: (bio) => `bio:${bio}` }))).toBe(
 		"none",
@@ -194,7 +194,7 @@ test("Optional.match calls none handler when focus is absent", () => {
 type City = { name: string; landmark?: string; };
 type Region = { capital?: City; };
 
-test("Optional.andThen get returns Some when both focuses are present", () => {
+test("andThen: returns Some on get when both focuses are present", () => {
 	const capitalOpt = Optional.from.property<Region>()("capital");
 	const landmarkOpt = Optional.from.property<City>()("landmark");
 	const regionLandmarkOpt = pipe(capitalOpt, Optional.andThen(landmarkOpt));
@@ -203,7 +203,7 @@ test("Optional.andThen get returns Some when both focuses are present", () => {
 	expect(pipe(region, Optional.get(regionLandmarkOpt))).toStrictEqual({ kind: "Some", value: "Eiffel Tower" });
 });
 
-test("Optional.andThen get returns None when outer focus is absent", () => {
+test("andThen: returns None on get when outer focus is absent", () => {
 	const capitalOpt = Optional.from.property<Region>()("capital");
 	const landmarkOpt = Optional.from.property<City>()("landmark");
 	const regionLandmarkOpt = pipe(capitalOpt, Optional.andThen(landmarkOpt));
@@ -211,16 +211,15 @@ test("Optional.andThen get returns None when outer focus is absent", () => {
 	expect(pipe({}, Optional.get(regionLandmarkOpt))).toStrictEqual({ kind: "None" });
 });
 
-test("Optional.andThen get returns None when inner focus is absent", () => {
+test("andThen: returns None on get when inner focus is absent", () => {
 	const capitalOpt = Optional.from.property<Region>()("capital");
 	const landmarkOpt = Optional.from.property<City>()("landmark");
 	const regionLandmarkOpt = pipe(capitalOpt, Optional.andThen(landmarkOpt));
 
-	const region: Region = { capital: { name: "Paris" } };
-	expect(pipe(region, Optional.get(regionLandmarkOpt))).toStrictEqual({ kind: "None" });
+	expect(pipe({ capital: { name: "Paris" } }, Optional.get(regionLandmarkOpt))).toStrictEqual({ kind: "None" });
 });
 
-test("Optional.andThen set updates inner value when both focuses present", () => {
+test("andThen: updates inner value on set when both focuses present", () => {
 	const capitalOpt = Optional.from.property<Region>()("capital");
 	const landmarkOpt = Optional.from.property<City>()("landmark");
 	const regionLandmarkOpt = pipe(capitalOpt, Optional.andThen(landmarkOpt));
@@ -230,7 +229,7 @@ test("Optional.andThen set updates inner value when both focuses present", () =>
 	expect(updated.capital?.landmark).toBe("new");
 });
 
-test("Optional.andThen set is a no-op when outer focus is absent", () => {
+test("andThen: no-op on set when outer focus is absent", () => {
 	const capitalOpt = Optional.from.property<Region>()("capital");
 	const landmarkOpt = Optional.from.property<City>()("landmark");
 	const regionLandmarkOpt = pipe(capitalOpt, Optional.andThen(landmarkOpt));
@@ -239,7 +238,7 @@ test("Optional.andThen set is a no-op when outer focus is absent", () => {
 	expect(pipe(region, Optional.set(regionLandmarkOpt)("new"))).toStrictEqual(region);
 });
 
-test("Optional.andThen set is a no-op when inner focus is absent", () => {
+test("andThen: no-op on set when inner focus is absent", () => {
 	const capitalOpt = Optional.from.property<Region>()("capital");
 	const landmarkOpt = Optional.from.property<City>()("landmark");
 	const regionLandmarkOpt = pipe(capitalOpt, Optional.andThen(landmarkOpt));
@@ -253,7 +252,7 @@ test("Optional.andThen set is a no-op when inner focus is absent", () => {
 // andThenLens
 // ---------------------------------------------------------------------------
 
-test("Optional.andThenLens get returns Some when optional focus is present", () => {
+test("andThenLens: returns Some on get when optional focus is present", () => {
 	const capitalOpt = Optional.from.property<Region>()("capital");
 	const nameLens = Lens.from.property<City>()("name");
 	const capitalNameOpt = pipe(capitalOpt, Optional.andThenLens(nameLens));
@@ -262,7 +261,7 @@ test("Optional.andThenLens get returns Some when optional focus is present", () 
 	expect(pipe(region, Optional.get(capitalNameOpt))).toStrictEqual({ kind: "Some", value: "Paris" });
 });
 
-test("Optional.andThenLens get returns None when optional focus is absent", () => {
+test("andThenLens: returns None on get when optional focus is absent", () => {
 	const capitalOpt = Optional.from.property<Region>()("capital");
 	const nameLens = Lens.from.property<City>()("name");
 	const capitalNameOpt = pipe(capitalOpt, Optional.andThenLens(nameLens));
@@ -270,7 +269,7 @@ test("Optional.andThenLens get returns None when optional focus is absent", () =
 	expect(pipe({}, Optional.get(capitalNameOpt))).toStrictEqual({ kind: "None" });
 });
 
-test("Optional.andThenLens set updates when optional focus is present", () => {
+test("andThenLens: updates on set when optional focus is present", () => {
 	const capitalOpt = Optional.from.property<Region>()("capital");
 	const nameLens = Lens.from.property<City>()("name");
 	const capitalNameOpt = pipe(capitalOpt, Optional.andThenLens(nameLens));
@@ -280,7 +279,7 @@ test("Optional.andThenLens set updates when optional focus is present", () => {
 	expect(updated.capital?.name).toBe("Lyon");
 });
 
-test("Optional.andThenLens set is a no-op when optional focus is absent", () => {
+test("andThenLens: no-op on set when optional focus is absent", () => {
 	const capitalOpt = Optional.from.property<Region>()("capital");
 	const nameLens = Lens.from.property<City>()("name");
 	const capitalNameOpt = pipe(capitalOpt, Optional.andThenLens(nameLens));
@@ -291,7 +290,7 @@ test("Optional.andThenLens set is a no-op when optional focus is absent", () => 
 
 // --- side-effect isolation ---
 
-test("Optional.modify executes side effect when focus is present", () => {
+test("modify: executes side effect when focus is present", () => {
 	let called = false;
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	pipe(
@@ -304,7 +303,7 @@ test("Optional.modify executes side effect when focus is present", () => {
 	expect(called).toBe(true);
 });
 
-test("Optional.modify does not execute side effect when focus is absent", () => {
+test("modify: does not execute side effect when focus is absent", () => {
 	let called = false;
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	pipe(

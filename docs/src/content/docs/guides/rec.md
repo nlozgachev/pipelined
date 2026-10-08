@@ -262,13 +262,13 @@ if (Rec.is.nonEmpty(userRecord)) {
 ```
 
 You can create a non-empty record directly using `Rec.NonEmpty.singleton` or parse a standard record
-using `Rec.NonEmpty.from.Record`:
+using `Rec.NonEmpty.from.record`:
 
 ```ts
 const singletonRec = Rec.NonEmpty.singleton("main", 42); // Rec.NonEmpty<number>
 
-const parsedRec = Rec.NonEmpty.from.Record(userRecord); // Some(Rec.NonEmpty<string>)
-const emptyRec = Rec.NonEmpty.from.Record({});          // None
+const parsedRec = Rec.NonEmpty.from.record(userRecord); // Some(Rec.NonEmpty<string>)
+const emptyRec = Rec.NonEmpty.from.record({});          // None
 ```
 
 Operating on `Rec.NonEmpty<A>` ensures that operations which would normally return standard arrays

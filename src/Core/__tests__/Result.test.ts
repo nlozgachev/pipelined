@@ -8,16 +8,16 @@ import { Validation } from "../Validation.ts";
 // of / ok
 // ---------------------------------------------------------------------------
 
-test("Result.make.ok wraps a value in Ok", () => {
+test("make.ok: wraps a value in Ok", () => {
 	const result = Result.make.ok(42);
 	expect(result).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
-test("Result.make.ok creates an Ok with the given value", () => {
+test("make.ok: creates an Ok with the given value", () => {
 	expect(Result.make.ok("hello")).toStrictEqual({ kind: "Ok", value: "hello" });
 });
 
-test("result.ok and Result.make.ok produce equivalent results", () => {
+test("make.ok: produces consistent result across invocations", () => {
 	expect(Result.make.ok(10)).toStrictEqual(Result.make.ok(10));
 });
 
@@ -25,11 +25,11 @@ test("result.ok and Result.make.ok produce equivalent results", () => {
 // err
 // ---------------------------------------------------------------------------
 
-test("Result.make.err creates an Err with the given error", () => {
+test("make.err: creates an Err with the given error", () => {
 	expect(Result.make.err("something went wrong")).toStrictEqual({ kind: "Err", error: "something went wrong" });
 });
 
-test("Result.make.err works with complex error types", () => {
+test("make.err: works with complex error types", () => {
 	const err = Result.make.err({ code: 404, message: "Not Found" });
 	expect(err).toStrictEqual({ kind: "Err", error: { code: 404, message: "Not Found" } });
 });
@@ -38,19 +38,19 @@ test("Result.make.err works with complex error types", () => {
 // isOk / isErr
 // ---------------------------------------------------------------------------
 
-test("Result.is.ok returns true for Ok", () => {
+test("is.ok: returns true for Ok", () => {
 	expect(Result.is.ok(Result.make.ok(1))).toBe(true);
 });
 
-test("Result.is.ok returns false for Err", () => {
+test("is.ok: returns false for Err", () => {
 	expect(Result.is.ok(Result.make.err("e"))).toBe(false);
 });
 
-test("Result.is.err returns true for Err", () => {
+test("is.err: returns true for Err", () => {
 	expect(Result.is.err(Result.make.err("e"))).toBe(true);
 });
 
-test("Result.is.err returns false for Ok", () => {
+test("is.err: returns false for Ok", () => {
 	expect(Result.is.err(Result.make.ok(1))).toBe(false);
 });
 
@@ -58,17 +58,17 @@ test("Result.is.err returns false for Ok", () => {
 // tryCatch
 // ---------------------------------------------------------------------------
 
-test("Result.tryCatch returns Ok when function succeeds", () => {
+test("tryCatch: returns Ok when function succeeds", () => {
 	const result = Result.tryCatch(() => JSON.parse('{"a":1}'), { onError: (e) => `Parse error: ${e}` });
 	expect(result).toStrictEqual({ kind: "Ok", value: { a: 1 } });
 });
 
-test("Result.tryCatch returns Err when function throws", () => {
+test("tryCatch: returns Err when function throws", () => {
 	const result = Result.tryCatch(() => JSON.parse("invalid json!!!"), { onError: () => "Parse error" });
 	expect(result).toStrictEqual({ kind: "Err", error: "Parse error" });
 });
 
-test("Result.tryCatch passes the thrown error to onError", () => {
+test("tryCatch: passes the thrown error to onError", () => {
 	const result = Result.tryCatch(() => {
 		throw new Error("boom");
 	}, { onError: (e) => (e as Error).message });
@@ -79,17 +79,17 @@ test("Result.tryCatch passes the thrown error to onError", () => {
 // map
 // ---------------------------------------------------------------------------
 
-test("Result.map transforms Ok value", () => {
+test("map: transforms Ok value", () => {
 	const result = pipe(Result.make.ok(5), Result.map((n: number) => n * 2));
 	expect(result).toStrictEqual({ kind: "Ok", value: 10 });
 });
 
-test("Result.map passes through Err unchanged", () => {
+test("map: passes through Err unchanged", () => {
 	const result = pipe(Result.make.err("error"), Result.map((n: number) => n * 2));
 	expect(result).toStrictEqual({ kind: "Err", error: "error" });
 });
 
-test("Result.map can change the value type", () => {
+test("map: can change the value type", () => {
 	const result = pipe(Result.make.ok(42), Result.map((n: number) => `num: ${n}`));
 	expect(result).toStrictEqual({ kind: "Ok", value: "num: 42" });
 });
@@ -98,12 +98,12 @@ test("Result.map can change the value type", () => {
 // mapError
 // ---------------------------------------------------------------------------
 
-test("Result.mapError transforms Err value", () => {
+test("mapError: transforms Err value", () => {
 	const result = pipe(Result.make.err("oops"), Result.mapError((e: string) => e.toUpperCase()));
 	expect(result).toStrictEqual({ kind: "Err", error: "OOPS" });
 });
 
-test("Result.mapError passes through Ok unchanged", () => {
+test("mapError: passes through Ok unchanged", () => {
 	const result = pipe(Result.make.ok(5), Result.mapError((e: string) => e.toUpperCase()));
 	expect(result).toStrictEqual({ kind: "Ok", value: 5 });
 });
@@ -112,21 +112,21 @@ test("Result.mapError passes through Ok unchanged", () => {
 // chain
 // ---------------------------------------------------------------------------
 
-test("Result.chain applies function when Ok", () => {
+test("chain: applies function when Ok", () => {
 	const validatePositive = (n: number) => n > 0 ? Result.make.ok(n) : Result.make.err("Must be positive");
 
 	const result = pipe(Result.make.ok(5), Result.chain(validatePositive));
 	expect(result).toStrictEqual({ kind: "Ok", value: 5 });
 });
 
-test("Result.chain returns Err when function returns Err", () => {
+test("chain: returns Err when function returns Err", () => {
 	const validatePositive = (n: number) => n > 0 ? Result.make.ok(n) : Result.make.err("Must be positive");
 
 	const result = pipe(Result.make.ok(-1), Result.chain(validatePositive));
 	expect(result).toStrictEqual({ kind: "Err", error: "Must be positive" });
 });
 
-test("Result.chain propagates Err without calling function", () => {
+test("chain: propagates Err without calling function", () => {
 	let called = false;
 	pipe(
 		Result.make.err("error"),
@@ -138,7 +138,7 @@ test("Result.chain propagates Err without calling function", () => {
 	expect(called).toBe(false);
 });
 
-test("Result.chain supports error union widening", () => {
+test("chain: supports error union widening", () => {
 	const step1: Result<"ERR_A", number> = Result.make.ok(42);
 	const step2 = (_n: number): Result<"ERR_B", string> => Result.make.err("ERR_B");
 
@@ -146,7 +146,7 @@ test("Result.chain supports error union widening", () => {
 	expect(res).toStrictEqual({ kind: "Err", error: "ERR_B" });
 });
 
-test("Result.chain infers exact error union without collapsing to unknown", () => {
+test("chain: infers exact error union without collapsing to unknown", () => {
 	const step1 = Result.make.err("ERR_A" as const);
 	const step2 = (_: unknown) => Result.make.err("ERR_B" as const);
 
@@ -156,7 +156,7 @@ test("Result.chain infers exact error union without collapsing to unknown", () =
 	expect(res).toStrictEqual({ kind: "Err", error: "ERR_A" });
 });
 
-test("Result.ensure infers exact error union without collapsing to unknown", () => {
+test("ensure: infers exact error union without collapsing to unknown", () => {
 	const step1 = Result.make.ok(15) as Result<"ERR_A", number>;
 	const res = pipe(step1, Result.ensure((n) => n >= 18, (n) => `Underage: ${n}` as const));
 
@@ -167,12 +167,12 @@ test("Result.ensure infers exact error union without collapsing to unknown", () 
 // fold
 // ---------------------------------------------------------------------------
 
-test("Result.fold calls onOk for Ok", () => {
+test("fold: calls onOk for Ok", () => {
 	const result = pipe(Result.make.ok(5), Result.fold((e: string) => `Error: ${e}`, (n: number) => `Value: ${n}`));
 	expect(result).toBe("Value: 5");
 });
 
-test("Result.fold calls onErr for Err", () => {
+test("fold: calls onErr for Err", () => {
 	const result = pipe(Result.make.err("bad"), Result.fold((e: string) => `Error: ${e}`, (n: number) => `Value: ${n}`));
 	expect(result).toBe("Error: bad");
 });
@@ -181,7 +181,7 @@ test("Result.fold calls onErr for Err", () => {
 // match (data-last)
 // ---------------------------------------------------------------------------
 
-test("Result.match calls ok handler for Ok", () => {
+test("match: calls ok handler for Ok", () => {
 	const result = pipe(
 		Result.make.ok(5),
 		Result.match({ ok: (n: number) => `got ${n}`, err: (e: string) => `failed: ${e}` }),
@@ -189,7 +189,7 @@ test("Result.match calls ok handler for Ok", () => {
 	expect(result).toBe("got 5");
 });
 
-test("Result.match calls err handler for Err", () => {
+test("match: calls err handler for Err", () => {
 	const result = pipe(
 		Result.make.err("bad"),
 		Result.match({ ok: (n: number) => `got ${n}`, err: (e: string) => `failed: ${e}` }),
@@ -197,7 +197,7 @@ test("Result.match calls err handler for Err", () => {
 	expect(result).toBe("failed: bad");
 });
 
-test("Result.match is data-last (returns a function first)", () => {
+test("match: is data-last (returns a function first)", () => {
 	const handler = Result.match({ ok: (n) => `val: ${n}`, err: (e) => `err: ${e}` });
 	expect(handler(Result.make.ok(3))).toBe("val: 3");
 	expect(handler(Result.make.err("x"))).toBe("err: x");
@@ -207,22 +207,22 @@ test("Result.match is data-last (returns a function first)", () => {
 // getOrElse
 // ---------------------------------------------------------------------------
 
-test("Result.getOrElse returns value for Ok", () => {
+test("getOrElse: returns value for Ok", () => {
 	const result = pipe(Result.make.ok(5), Result.getOrElse(() => 0));
 	expect(result).toBe(5);
 });
 
-test("Result.getOrElse returns default for Err", () => {
+test("getOrElse: returns default for Err", () => {
 	const result = pipe(Result.make.err("error"), Result.getOrElse(() => 0));
 	expect(result).toBe(0);
 });
 
-test("Result.getOrElse widens return type to A | B when default is a different type", () => {
+test("getOrElse: widens return type to A | B when default is a different type", () => {
 	const result = pipe(Result.make.err("error"), Result.getOrElse(() => null));
 	expect(result).toBeNull();
 });
 
-test("Result.getOrElse returns Ok value typed as A | B when Ok", () => {
+test("getOrElse: returns Ok value typed as A | B when Ok", () => {
 	const result = pipe(Result.make.ok(5), Result.getOrElse(() => null));
 	expect(result).toBe(5);
 });
@@ -231,7 +231,7 @@ test("Result.getOrElse returns Ok value typed as A | B when Ok", () => {
 // tap
 // ---------------------------------------------------------------------------
 
-test("Result.tap executes side effect on Ok and returns original", () => {
+test("tap: executes side effect on Ok and returns original", () => {
 	let sideEffect = 0;
 	const result = pipe(
 		Result.make.ok(5),
@@ -243,7 +243,7 @@ test("Result.tap executes side effect on Ok and returns original", () => {
 	expect(result).toStrictEqual({ kind: "Ok", value: 5 });
 });
 
-test("Result.tap does not execute side effect on Err", () => {
+test("tap: does not execute side effect on Err", () => {
 	let called = false;
 	const result = pipe(
 		Result.make.err("error"),
@@ -259,7 +259,7 @@ test("Result.tap does not execute side effect on Err", () => {
 // recover
 // ---------------------------------------------------------------------------
 
-test("Result.recover returns original Ok without calling fallback", () => {
+test("recover: returns original Ok without calling fallback", () => {
 	let called = false;
 	const result = pipe(
 		Result.make.ok(5),
@@ -272,22 +272,22 @@ test("Result.recover returns original Ok without calling fallback", () => {
 	expect(result).toStrictEqual({ kind: "Ok", value: 5 });
 });
 
-test("Result.recover provides fallback for Err", () => {
+test("recover: provides fallback for Err", () => {
 	const result = pipe(Result.make.err("error"), Result.recover((_e) => Result.make.ok(99)));
 	expect(result).toStrictEqual({ kind: "Ok", value: 99 });
 });
 
-test("Result.recover widens to Result<E, A | B> when fallback returns a different type", () => {
+test("recover: widens to Result<E, A | B> when fallback returns a different type", () => {
 	const result = pipe(Result.make.err("error"), Result.recover((_e) => Result.make.ok("recovered")));
 	expect(result).toStrictEqual({ kind: "Ok", value: "recovered" });
 });
 
-test("Result.recover preserves Ok typed as Result<E, A | B>", () => {
+test("recover: preserves Ok typed as Result<E, A | B>", () => {
 	const result = pipe(Result.make.ok(5), Result.recover((_e) => Result.make.ok("recovered")));
 	expect(result).toStrictEqual({ kind: "Ok", value: 5 });
 });
 
-test("Result.recover passes the error to the fallback", () => {
+test("recover: passes the error to the fallback", () => {
 	const result = pipe(Result.make.err("original error"), Result.recover((e) => Result.make.ok(`handled: ${e}`)));
 	expect(result).toStrictEqual({ kind: "Ok", value: "handled: original error" });
 });
@@ -296,7 +296,7 @@ test("Result.recover passes the error to the fallback", () => {
 // recoverUnless
 // ---------------------------------------------------------------------------
 
-test("result.recoverUnless recovers when predicate returns false", () => {
+test("recoverUnless: recovers when predicate returns false", () => {
 	const result = pipe(
 		Result.make.err("recoverable"),
 		Result.recoverUnless((e) => e === "fatal", () => Result.make.ok(42)),
@@ -304,17 +304,17 @@ test("result.recoverUnless recovers when predicate returns false", () => {
 	expect(result).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
-test("result.recoverUnless does NOT recover when predicate returns true", () => {
+test("recoverUnless: does not recover when predicate returns true", () => {
 	const result = pipe(Result.make.err("fatal"), Result.recoverUnless((e) => e === "fatal", () => Result.make.ok(42)));
 	expect(result).toStrictEqual({ kind: "Err", error: "fatal" });
 });
 
-test("Result.recoverUnless passes through Ok unchanged", () => {
+test("recoverUnless: passes through Ok unchanged", () => {
 	const result = pipe(Result.make.ok(10), Result.recoverUnless((e) => e === "fatal", () => Result.make.ok(42)));
 	expect(result).toStrictEqual({ kind: "Ok", value: 10 });
 });
 
-test("result.recoverUnless widens to Result<E, A | B> when fallback returns a different type", () => {
+test("recoverUnless: widens to Result<E, A | B> when fallback returns a different type", () => {
 	const result = pipe(
 		Result.make.err("recoverable"),
 		Result.recoverUnless((e) => e === "fatal", () => Result.make.ok("recovered")),
@@ -322,7 +322,7 @@ test("result.recoverUnless widens to Result<E, A | B> when fallback returns a di
 	expect(result).toStrictEqual({ kind: "Ok", value: "recovered" });
 });
 
-test("result.recoverUnless uses predicate — works with object errors", () => {
+test("recoverUnless: works with object errors", () => {
 	const err = new Error("recoverable");
 	const result = pipe(Result.make.err(err), Result.recoverUnless((e) => e.message === "fatal", () => Result.make.ok(0)));
 	expect(result).toStrictEqual({ kind: "Ok", value: 0 });
@@ -332,28 +332,28 @@ test("result.recoverUnless uses predicate — works with object errors", () => {
 // apply
 // ---------------------------------------------------------------------------
 
-test("Result.apply applies Ok function to Ok value", () => {
+test("apply: applies Ok function to Ok value", () => {
 	const add = (a: number) => (b: number) => a + b;
 	const result = pipe(Result.make.ok(add), Result.apply(Result.make.ok(5)), Result.apply(Result.make.ok(3)));
 	expect(result).toStrictEqual({ kind: "Ok", value: 8 });
 });
 
-test("Result.apply returns Err when function is Err", () => {
+test("apply: returns Err when function is Err", () => {
 	const result = pipe(Result.make.err("fn error"), Result.apply(Result.make.ok(5)));
 	expect(result).toStrictEqual({ kind: "Err", error: "fn error" });
 });
 
-test("Result.apply returns Err when value is Err", () => {
+test("apply: returns Err when value is Err", () => {
 	const result = pipe(Result.make.ok<(n: number) => number>((n) => n * 2), Result.apply(Result.make.err("val error")));
 	expect(result).toStrictEqual({ kind: "Err", error: "val error" });
 });
 
-test("Result.apply returns first Err when both are Err", () => {
+test("apply: returns first Err when both are Err", () => {
 	const result = pipe(Result.make.err("fn error"), Result.apply(Result.make.err("val error")));
 	expect(result).toStrictEqual({ kind: "Err", error: "fn error" });
 });
 
-test("Result.apply widens error types from function and argument", () => {
+test("apply: widens error types from function and argument", () => {
 	const fnResult = Result.make.ok((n: number) => String(n)) as Result<"ERR_FN", (n: number) => string>;
 	const argResult = Result.make.err("ERR_ARG") as Result<"ERR_ARG", number>;
 	const result = pipe(fnResult, Result.apply(argResult));
@@ -361,14 +361,14 @@ test("Result.apply widens error types from function and argument", () => {
 	expect(result).toStrictEqual({ kind: "Err", error: "ERR_ARG" });
 });
 
-test("Result.recover widens error types when fallback can fail with different error", () => {
+test("recover: widens error types when fallback can fail with different error", () => {
 	const initial = Result.make.err("INIT_ERR") as Result<"INIT_ERR", number>;
 	const result = pipe(initial, Result.recover((_e): Result<"FALLBACK_ERR", number> => Result.make.err("FALLBACK_ERR")));
 	expectTypeOf(result).toEqualTypeOf<Result<"FALLBACK_ERR", number>>();
 	expect(result).toStrictEqual({ kind: "Err", error: "FALLBACK_ERR" });
 });
 
-test("Result.bindTo returns Err when given Err", () => {
+test("bindTo: returns Err when given Err", () => {
 	const result = pipe(Result.make.err("err"), Result.bindTo("key"));
 	expect(result).toStrictEqual(Result.make.err("err"));
 });
@@ -377,12 +377,12 @@ test("Result.bindTo returns Err when given Err", () => {
 // toMaybe
 // ---------------------------------------------------------------------------
 
-test("Result.toMaybe converts Ok to Some", () => {
+test("to.Maybe: converts Ok to Some", () => {
 	const result = Result.to.Maybe(Result.make.ok(42));
 	expect(result).toStrictEqual({ kind: "Some", value: 42 });
 });
 
-test("Result.toMaybe converts Err to None", () => {
+test("to.Maybe: converts Err to None", () => {
 	const result = Result.to.Maybe(Result.make.err("oops"));
 	expect(result).toStrictEqual({ kind: "None" });
 });
@@ -391,7 +391,7 @@ test("Result.toMaybe converts Err to None", () => {
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("result composes well in a pipe chain", () => {
+test("pipe: composes well in pipeline", () => {
 	const divide = (a: number, b: number) => b === 0 ? Result.make.err("Division by zero") : Result.make.ok(a / b);
 
 	const result = pipe(
@@ -403,7 +403,7 @@ test("result composes well in a pipe chain", () => {
 	expect(result).toBe(15);
 });
 
-test("result pipe short-circuits on Err", () => {
+test("pipe: short-circuits on Err", () => {
 	const divide = (a: number, b: number) => b === 0 ? Result.make.err("Division by zero") : Result.make.ok(a / b);
 
 	const result = pipe(divide(10, 0), Result.map((n: number) => n * 3), Result.getOrElse(() => -1));
@@ -414,7 +414,7 @@ test("result pipe short-circuits on Err", () => {
 // tapError
 // ---------------------------------------------------------------------------
 
-test("Result.tapError calls side effect with error value on Err", () => {
+test("tapError: calls side effect with error value on Err", () => {
 	let captured: string | undefined;
 	pipe(
 		Result.make.err("oops"),
@@ -425,7 +425,7 @@ test("Result.tapError calls side effect with error value on Err", () => {
 	expect(captured).toBe("oops");
 });
 
-test("Result.tapError does not call side effect on Ok", () => {
+test("tapError: does not call side effect on Ok", () => {
 	let called = false;
 	pipe(
 		Result.make.ok(1),
@@ -436,12 +436,12 @@ test("Result.tapError does not call side effect on Ok", () => {
 	expect(called).toBe(false);
 });
 
-test("Result.tapError returns original Err unchanged", () => {
+test("tapError: returns original Err unchanged", () => {
 	const r = Result.make.err("oops");
 	expect(pipe(r, Result.tapError(() => {}))).toStrictEqual(r);
 });
 
-test("Result.tapError returns original Ok unchanged", () => {
+test("tapError: returns original Ok unchanged", () => {
 	const r = Result.make.ok(42);
 	expect(pipe(r, Result.tapError(() => {}))).toStrictEqual(r);
 });
@@ -450,29 +450,29 @@ test("Result.tapError returns original Ok unchanged", () => {
 // from.Predicate
 // ---------------------------------------------------------------------------
 
-test("Result.from.Predicate returns Ok when predicate passes", () => {
+test("from.Predicate: returns Ok when predicate passes", () => {
 	expect(pipe(5, Result.from.Predicate((n) => n > 0, (n) => `${n} is not positive`))).toStrictEqual(Result.make.ok(5));
 });
 
-test("Result.from.Predicate returns Err when predicate fails", () => {
+test("from.Predicate: returns Err when predicate fails", () => {
 	expect(pipe(-1, Result.from.Predicate((n) => n > 0, (n) => `${n} is not positive`))).toStrictEqual(
 		Result.make.err("-1 is not positive"),
 	);
 });
 
-test("Result.from.Predicate returns Err for boundary value", () => {
+test("from.Predicate: returns Err for boundary value", () => {
 	expect(pipe(0, Result.from.Predicate((n) => n > 0, () => "must be positive"))).toStrictEqual(
 		Result.make.err("must be positive"),
 	);
 });
 
-test("Result.from.Predicate works with string predicates", () => {
+test("from.Predicate: works with string predicates", () => {
 	const nonEmpty = Result.from.Predicate((s: string) => s.length > 0, () => "empty string");
 	expect(pipe("hi", nonEmpty)).toStrictEqual(Result.make.ok("hi"));
 	expect(pipe("", nonEmpty)).toStrictEqual(Result.make.err("empty string"));
 });
 
-test("Result.from.Predicate composes in pipe with chain", () => {
+test("from.Predicate: composes in pipe with chain", () => {
 	const result = pipe(
 		-5,
 		Result.from.Predicate((n: number) => n >= 0, (n) => `${n} is negative`),
@@ -485,26 +485,26 @@ test("Result.from.Predicate composes in pipe with chain", () => {
 // Type inference
 // ---------------------------------------------------------------------------
 
-test("Result.map — type-safe return type on mapped function output", () => {
+test("map: type-safe return type on mapped function output", () => {
 	const r: Result<string, number> = Result.make.ok(42);
 	const mapped = Result.map<string, number, string>((n: number) => String(n))(r);
 	expect(mapped).toStrictEqual({ kind: "Ok", value: "42" });
 });
 
-test("Result.mapError — type-safe return type on mapped error output", () => {
+test("mapError: type-safe return type on mapped error output", () => {
 	const r: Result<string, number> = Result.make.err("oops");
 	const mapped = Result.mapError<string, number, number>((e: string) => e.length)(r);
 	expect(mapped).toStrictEqual({ kind: "Err", error: 4 });
 });
 
-test("Result.getOrElse — type-safe widening to A | B", () => {
+test("getOrElse: type-safe widening to union", () => {
 	const r: Result<string, number> = Result.make.err("e");
 	const fn = Result.getOrElse<null>((): null => null);
 	const result = fn(r);
 	expect(result).toBeNull();
 });
 
-test("Result.fold — type-safe return type from both branches", () => {
+test("fold: type-safe return type from both branches", () => {
 	const r: Result<string, number> = Result.make.ok(1);
 	const result = Result.fold<string, number, string>(
 		(e: string): string => `err:${e}`,
@@ -515,43 +515,43 @@ test("Result.fold — type-safe return type from both branches", () => {
 
 // --- from.nullable ---
 
-test("Result.from.nullable returns Ok for non-null values", () => {
+test("from.nullable: returns Ok for non-null values", () => {
 	const result = Result.from.nullable(() => "is null")(42);
 	expect(result).toStrictEqual(Result.make.ok(42));
 });
 
-test("Result.from.nullable returns Err for null", () => {
+test("from.nullable: returns Err for null", () => {
 	const result = Result.from.nullable(() => "is null")(null);
 	expect(result).toStrictEqual(Result.make.err("is null"));
 });
 
-test("Result.from.nullable returns Err for undefined", () => {
+test("from.nullable: returns Err for undefined", () => {
 	const result = Result.from.nullable(() => "is null")(undefined);
 	expect(result).toStrictEqual(Result.make.err("is null"));
 });
 
 // --- fromMaybe ---
 
-test("Result.fromMaybe returns Ok for Some", () => {
+test("from.Maybe: returns Ok for Some", () => {
 	const result = Result.from.Maybe(() => "is none")(Maybe.make.some(42));
 	expect(result).toStrictEqual(Result.make.ok(42));
 });
 
-test("Result.fromMaybe returns Err for None", () => {
+test("from.Maybe: returns Err for None", () => {
 	const result = Result.from.Maybe(() => "is none")(Maybe.make.none());
 	expect(result).toStrictEqual(Result.make.err("is none"));
 });
 
 // --- bindTo ---
 
-test("Result.bindTo wraps a value in an accumulator object", () => {
+test("bindTo: wraps a value in an accumulator object", () => {
 	const result = pipe(Result.make.ok(2), Result.bindTo("a"));
 	expect(result).toStrictEqual(Result.make.ok({ a: 2 }));
 });
 
 // --- bind ---
 
-test("Result.bind accumulates values key-by-key in a pipeline", () => {
+test("bind: accumulates values key-by-key in a pipeline", () => {
 	const result = pipe(
 		Result.make.ok(2),
 		Result.bindTo("a"),
@@ -561,7 +561,7 @@ test("Result.bind accumulates values key-by-key in a pipeline", () => {
 	expect(result).toStrictEqual(Result.make.ok({ a: 2, b: 6, c: 8 }));
 });
 
-test("Result.bind short-circuits on Err", () => {
+test("bind: short-circuits on Err", () => {
 	let called = false;
 	const result = pipe(
 		Result.make.ok(2),
@@ -578,12 +578,12 @@ test("Result.bind short-circuits on Err", () => {
 
 // --- struct ---
 
-test("Result.struct combines a record of Ok values into a single Ok record", () => {
+test("struct: combines a record of Ok values into a single Ok record", () => {
 	const res = Result.struct({ a: Result.make.ok(1), b: Result.make.ok("hello") });
 	expect(res).toStrictEqual(Result.make.ok({ a: 1, b: "hello" }));
 });
 
-test("Result.struct short-circuits on the first Err encountered", () => {
+test("struct: short-circuits on the first Err encountered", () => {
 	const res = Result.struct({
 		a: Result.make.ok(1),
 		b: Result.make.err("first fail"),
@@ -592,7 +592,7 @@ test("Result.struct short-circuits on the first Err encountered", () => {
 	expect(res).toStrictEqual(Result.make.err("first fail"));
 });
 
-test("Result.struct composes in a pipe pipeline", () => {
+test("struct: composes in a pipe pipeline", () => {
 	const res = pipe(
 		Result.make.ok({ name: "Alice" }),
 		Result.map((u) => u.name),
@@ -606,7 +606,7 @@ test("Result.struct composes in a pipe pipeline", () => {
 	expect(res).toStrictEqual(Result.make.ok({ name: "Alice", valid: "Alice" }));
 });
 
-test("Result.struct ignores inherited prototype properties", () => {
+test("struct: ignores inherited prototype properties", () => {
 	const proto = { b: Result.make.ok(2) };
 	const fields = Object.create(proto);
 	fields.a = Result.make.ok(1);
@@ -614,65 +614,65 @@ test("Result.struct ignores inherited prototype properties", () => {
 	expect(res).toStrictEqual(Result.make.ok({ a: 1 }));
 });
 
-test("Result.struct returns ok({}) when given an empty object", () => {
+test("struct: returns ok({}) when given an empty object", () => {
 	const res = Result.struct({});
 	expect(res).toStrictEqual(Result.make.ok({}));
 });
 
 // --- transposeMaybe ---
 
-test("Result.transposeMaybe swaps Ok(Some) to Some(Ok)", () => {
+test("transposeMaybe: swaps Ok(Some) to Some(Ok)", () => {
 	const res = Result.transposeMaybe(Result.make.ok(Maybe.make.some(42)));
 	expect(res).toStrictEqual(Maybe.make.some(Result.make.ok(42)));
 });
 
-test("Result.transposeMaybe swaps Ok(None) to None", () => {
+test("transposeMaybe: swaps Ok(None) to None", () => {
 	const res = Result.transposeMaybe(Result.make.ok(Maybe.make.none()));
 	expect(res).toStrictEqual(Maybe.make.none());
 });
 
-test("Result.transposeMaybe swaps Err(e) to Some(Err(e))", () => {
+test("transposeMaybe: swaps Err(e) to Some(Err(e))", () => {
 	const res = Result.transposeMaybe(Result.make.err("error"));
 	expect(res).toStrictEqual(Maybe.make.some(Result.make.err("error")));
 });
 
 // --- Validation conversions ---
 
-test("Result.from.Validation converts Passed to Ok", () => {
+test("from.Validation: converts Passed to Ok", () => {
 	const res = Result.from.Validation((errs: readonly string[]) => errs.join(", "))(Validation.make.passed(42));
 	expect(res).toStrictEqual(Result.make.ok(42));
 });
 
-test("Result.from.Validation converts Failed to Err using combineErrors", () => {
+test("from.Validation: converts Failed to Err using combineErrors", () => {
 	const res = Result.from.Validation((errs: readonly string[]) => errs.join("; "))(
 		Validation.make.failedAll(["err1", "err2"]),
 	);
 	expect(res).toStrictEqual(Result.make.err("err1; err2"));
 });
 
-test("Result.to.Validation converts Ok to Passed", () => {
+test("to.Validation: converts Ok to Passed", () => {
 	const res = Result.to.Validation(Result.make.ok(42));
 	expect(res).toStrictEqual(Validation.make.passed(42));
 });
 
-test("Result.to.Validation converts Err to Failed with array error", () => {
+test("to.Validation: converts Err to Failed with array error", () => {
 	const res = Result.to.Validation(Result.make.err("oops"));
 	expect(res).toStrictEqual(Validation.make.failed("oops"));
 });
 
 // --- ensure ---
 
-test("Result.ensure preserves Ok when predicate passes", () => {
+test("ensure: preserves Ok when predicate passes", () => {
 	const res = pipe(Result.make.ok(42), Result.ensure((n) => n > 0, (n) => `Must be positive: ${n}`));
 	expect(res).toStrictEqual(Result.make.ok(42));
 });
 
-test("Result.ensure converts Ok to Err when predicate fails", () => {
+test("ensure: converts Ok to Err when predicate fails", () => {
 	const res = pipe(Result.make.ok(-5), Result.ensure((n) => n > 0, (n) => `Must be positive: ${n}`));
 	expect(res).toStrictEqual(Result.make.err("Must be positive: -5"));
 });
 
-test("Result.ensure passes through Err unchanged", () => {
+test("ensure: passes through Err unchanged", () => {
 	const res = pipe(
 		Result.make.err("initial_error"),
 		Result.ensure((n: number) => n > 0, (n) => `Must be positive: ${n}`),
@@ -682,12 +682,12 @@ test("Result.ensure passes through Err unchanged", () => {
 
 // --- bimap ---
 
-test("Result.bimap applies onOk to Ok values", () => {
+test("bimap: applies onOk to Ok values", () => {
 	const res = pipe(Result.make.ok(5), Result.bimap((e) => `Err: ${e}`, (n) => n * 2));
 	expect(res).toStrictEqual(Result.make.ok(10));
 });
 
-test("Result.bimap applies onErr to Err values", () => {
+test("bimap: applies onErr to Err values", () => {
 	const res = pipe(Result.make.err("oops"), Result.bimap((e) => `Err: ${e}`, (n: number) => n * 2));
 	expect(res).toStrictEqual(Result.make.err("Err: oops"));
 });

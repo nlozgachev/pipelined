@@ -42,7 +42,7 @@ import { Maybe } from "@nlozgachev/pipelined/core";
 const total = pipe(
   BigNum.from.string("100"),
   Maybe.map(BigNum.add(50n)),
-  Maybe.chain(BigNum.div(2n)),
+  Maybe.chain(BigNum.divide(2n)),
 ); // Some(75n)
 ```
 
@@ -64,4 +64,5 @@ const total = pipe(
   blocks.
 - **Pipelined BigInt transformations and boundary clamping**: Chaining mathematical adjustments
   (such as calculating fee tiers, applying percentage splits, and clamping transaction minimums)
-  inside `pipe` using curried, data-last combinators (`BigNum.add`, `BigNum.mul`, `BigNum.clamp`).
+  inside `pipe` using curried, data-last combinators (`BigNum.add`, `BigNum.multiply`,
+  `BigNum.between`, `BigNum.clamp`).

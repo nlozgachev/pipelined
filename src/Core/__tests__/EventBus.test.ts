@@ -10,7 +10,7 @@ type TestSchema = {
 
 // --- EventBus.make ---
 
-test("EventBus.make creates an event bus instance", () => {
+test("make: creates an event bus instance", () => {
 	const s = EventBus.make<TestSchema>({ name: "test-bus" });
 	expect(s.options?.name).toBe("test-bus");
 	expect(s._listeners.size).toBe(0);
@@ -18,7 +18,7 @@ test("EventBus.make creates an event bus instance", () => {
 
 // --- EventBus.emit ---
 
-test("EventBus.emit dispatches messages to subscribers", () => {
+test("emit: dispatches messages to subscribers", () => {
 	const s = EventBus.make<TestSchema>();
 	let received: EventBus.Message<TestSchema> | null = null;
 
@@ -31,7 +31,7 @@ test("EventBus.emit dispatches messages to subscribers", () => {
 	expect(received).toStrictEqual({ kind: "A", value: { value: 42 } });
 });
 
-test("EventBus.emit broadcasts to multiple target event buses", () => {
+test("emit: broadcasts to multiple target event buses", () => {
 	const s1 = EventBus.make<TestSchema>();
 	const s2 = EventBus.make<TestSchema>();
 
@@ -51,7 +51,7 @@ test("EventBus.emit broadcasts to multiple target event buses", () => {
 	expect(s2Count).toBe(1);
 });
 
-test("EventBus.emit passes errors to onError option handler if provided", () => {
+test("emit: passes errors to onError option handler if provided", () => {
 	let caughtError: unknown = null;
 	const s = EventBus.make<TestSchema>({
 		onError: (err) => {
@@ -68,7 +68,7 @@ test("EventBus.emit passes errors to onError option handler if provided", () => 
 	expect((caughtError as Error).message).toBe("listener error");
 });
 
-test("EventBus.emit throws error if listener throws and no onError handler is provided", () => {
+test("emit: throws error if listener throws and no onError handler is provided", () => {
 	const s = EventBus.make<TestSchema>();
 	EventBus.listen(s, "A").tap(() => {
 		throw new Error("uncaught error");
@@ -79,7 +79,7 @@ test("EventBus.emit throws error if listener throws and no onError handler is pr
 
 // --- Re-entrant Emissions & Trampoline Queue ---
 
-test("EventBus.emit processes re-entrant emissions breadth-first", () => {
+test("emit: processes re-entrant emissions breadth-first", () => {
 	const s = EventBus.make<TestSchema>();
 	const log: string[] = [];
 
@@ -102,7 +102,7 @@ test("EventBus.emit processes re-entrant emissions breadth-first", () => {
 	expect(log).toStrictEqual(["L1: A", "L2: A", "L3: B"]);
 });
 
-test("EventBus.emit processes deep re-entrant emission cascades without stack overflow", () => {
+test("emit: processes deep re-entrant emission cascades without stack overflow", () => {
 	const s = EventBus.make<TestSchema>();
 	let count = 0;
 
@@ -119,7 +119,7 @@ test("EventBus.emit processes deep re-entrant emission cascades without stack ov
 
 // --- EventBus.listen & reduce / tap ---
 
-test("EventBus.listen reduce accumulates state over matching events", () => {
+test("listen: accumulates state over matching events with reduce", () => {
 	const s = EventBus.make<TestSchema>();
 
 	const sub = EventBus.listen(s, ["A", "B"]).reduce((msg, state) => {
@@ -145,7 +145,7 @@ test("EventBus.listen reduce accumulates state over matching events", () => {
 	expect(sub.getState()).toStrictEqual({ sum: 5, texts: ["first"] });
 });
 
-test("EventBus.listen reduce with once: true unsubscribes after first reduction", () => {
+test("listen: unsubscribes after first reduction when once is true", () => {
 	const s = EventBus.make<TestSchema>();
 	const sub = EventBus.listen(s, "A", { once: true }).reduce((_msg, state) => ({ count: state.count + 1 }), {
 		count: 0,
@@ -158,7 +158,7 @@ test("EventBus.listen reduce with once: true unsubscribes after first reduction"
 	expect(s._listeners.size).toBe(0);
 });
 
-test("EventBus.listen tap returns an unsubscribe function that removes the listener", () => {
+test("listen: returns an unsubscribe function that removes the listener from tap", () => {
 	const s = EventBus.make<TestSchema>();
 	let count = 0;
 	const unsubscribe = EventBus.listen(s, "A").tap(() => {
@@ -176,7 +176,7 @@ test("EventBus.listen tap returns an unsubscribe function that removes the liste
 
 // --- Sequence options ---
 
-test("EventBus.listen ordered matches sequence in exact order", () => {
+test("listen: matches sequence in exact order with ordered", () => {
 	const s = EventBus.make<TestSchema>();
 	let sequenceFiredCount = 0;
 
@@ -196,7 +196,7 @@ test("EventBus.listen ordered matches sequence in exact order", () => {
 	expect(sequenceFiredCount).toBe(1);
 });
 
-test("EventBus.listen strict resets sequence on unexpected event", () => {
+test("listen: resets sequence on unexpected event with strict", () => {
 	const s = EventBus.make<TestSchema>();
 	let sequenceFiredCount = 0;
 
@@ -220,7 +220,7 @@ test("EventBus.listen strict resets sequence on unexpected event", () => {
 	expect(sequenceFiredCount).toBe(1);
 });
 
-test("EventBus.listen sequence resets to index 1 when unexpected event matches first event in sequence", () => {
+test("listen: resets sequence to index 1 when unexpected event matches first event in sequence", () => {
 	const s = EventBus.make<TestSchema>();
 	let firedCount = 0;
 
@@ -236,7 +236,7 @@ test("EventBus.listen sequence resets to index 1 when unexpected event matches f
 	expect(firedCount).toBe(1);
 });
 
-test("EventBus.listen relaxed sequence resets to index 0 when out-of-order event in eventList arrives", () => {
+test("listen: resets relaxed sequence to index 0 when out-of-order event in eventList arrives", () => {
 	const s = EventBus.make<TestSchema>();
 	let firedCount = 0;
 
@@ -253,7 +253,7 @@ test("EventBus.listen relaxed sequence resets to index 0 when out-of-order event
 	expect(firedCount).toBe(0);
 });
 
-test("EventBus.listen optional skips optional events in sequence when next event matches", () => {
+test("listen: skips optional events in sequence when next event matches", () => {
 	const s = EventBus.make<TestSchema>();
 	let fired = 0;
 
@@ -269,7 +269,7 @@ test("EventBus.listen optional skips optional events in sequence when next event
 	expect(fired).toBe(1);
 });
 
-test("EventBus.listen relaxed sequence resets to index 1 when out-of-order event matches eventList[0]", () => {
+test("listen: resets relaxed sequence to index 1 when out-of-order event matches eventList[0]", () => {
 	const s = EventBus.make<TestSchema>();
 	let firedCount = 0;
 
@@ -287,7 +287,7 @@ test("EventBus.listen relaxed sequence resets to index 1 when out-of-order event
 	expect(firedCount).toBe(1);
 });
 
-test("EventBus.listen optional ignores lookahead if unexpected event does not match after optional items", () => {
+test("listen: ignores lookahead if unexpected event does not match after optional items", () => {
 	const s = EventBus.make<TestSchema>();
 	let fired = 0;
 	EventBus.listen(s, ["A", "B", "C"], { ordered: true, optional: ["B"] }).tap(() => {
@@ -300,7 +300,7 @@ test("EventBus.listen optional ignores lookahead if unexpected event does not ma
 	expect(fired).toBe(1);
 });
 
-test("EventBus.listen relaxed sequence ignores events not present in eventList", () => {
+test("listen: ignores events not present in eventList in relaxed sequence", () => {
 	const s = EventBus.make<TestSchema>();
 	let fired = 0;
 	EventBus.listen(s, ["A", "B"], { ordered: true, strict: false }).tap(() => {
@@ -312,7 +312,7 @@ test("EventBus.listen relaxed sequence ignores events not present in eventList",
 	expect(fired).toBe(1);
 });
 
-test("EventBus.listen once automatically unsubscribes after first match", () => {
+test("listen: automatically unsubscribes after first match with once", () => {
 	const s = EventBus.make<TestSchema>();
 	let fireCount = 0;
 
@@ -327,7 +327,7 @@ test("EventBus.listen once automatically unsubscribes after first match", () => 
 	expect(s._listeners.size).toBe(0);
 });
 
-test("EventBus.listen reset option accepts array of event kinds and resets sequence tracking", () => {
+test("listen: accepts array of event kinds and resets sequence tracking", () => {
 	const s = EventBus.make<TestSchema>();
 	let sequenceFiredCount = 0;
 
@@ -345,7 +345,7 @@ test("EventBus.listen reset option accepts array of event kinds and resets seque
 	expect(sequenceFiredCount).toBe(0);
 });
 
-test("EventBus.listen reset option accepts single string and resets sequence tracking", () => {
+test("listen: accepts single string and resets sequence tracking", () => {
 	const s = EventBus.make<TestSchema>();
 	let sequenceFiredCount = 0;
 
@@ -363,7 +363,7 @@ test("EventBus.listen reset option accepts single string and resets sequence tra
 	expect(sequenceFiredCount).toBe(0);
 });
 
-test("EventBus.listen relaxed ordered sequence resets correctly when event from eventList is received out of order", () => {
+test("listen: resets correctly when event from eventList is received out of order", () => {
 	const s = EventBus.make<TestSchema>();
 	let count = 0;
 
@@ -387,7 +387,7 @@ test("EventBus.listen relaxed ordered sequence resets correctly when event from 
 	expect(count).toBe(0);
 });
 
-test("EventBus.listen ordered sequence matches when an optional step is present", () => {
+test("listen: matches sequence when an optional step is present", () => {
 	const s = EventBus.make<TestSchema>();
 	let count = 0;
 
@@ -402,7 +402,7 @@ test("EventBus.listen ordered sequence matches when an optional step is present"
 	expect(count).toBe(1);
 });
 
-test("EventBus.listen ordered sequence matches when an optional step is skipped", () => {
+test("listen: matches sequence when an optional step is skipped", () => {
 	const s = EventBus.make<TestSchema>();
 	let count = 0;
 
@@ -419,7 +419,7 @@ test("EventBus.listen ordered sequence matches when an optional step is skipped"
 
 // --- EventBus.forward ---
 
-test("EventBus.forward pipes messages from source event bus to target event bus", () => {
+test("forward: pipes messages from source to target event bus", () => {
 	const s1 = EventBus.make<TestSchema>();
 	const s2 = EventBus.make<TestSchema>();
 
@@ -446,7 +446,7 @@ test("EventBus.forward pipes messages from source event bus to target event bus"
 	expect(s2Received).toBe("forwarded");
 });
 
-test("EventBus.forward pipes messages to multiple target event buses", () => {
+test("forward: pipes messages to multiple target event buses", () => {
 	const s1 = EventBus.make<TestSchema>();
 	const s2 = EventBus.make<TestSchema>();
 	const s3 = EventBus.make<TestSchema>();

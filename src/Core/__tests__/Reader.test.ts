@@ -10,12 +10,12 @@ const testConfig: Config = { baseUrl: "https://api.example.com", apiKey: "secret
 // resolve
 // ---------------------------------------------------------------------------
 
-test("Reader.resolve always returns the value regardless of environment", () => {
+test("resolve: always returns value regardless of environment", () => {
 	const reader = Reader.resolve<Config, number>(42);
 	expect(reader(testConfig)).toBe(42);
 });
 
-test("Reader.resolve ignores the environment", () => {
+test("resolve: ignores environment", () => {
 	const reader = Reader.resolve<Config, string>("hello");
 	expect(reader({ baseUrl: "x", apiKey: "y", timeout: 0 })).toBe("hello");
 	expect(reader(testConfig)).toBe("hello");
@@ -25,7 +25,7 @@ test("Reader.resolve ignores the environment", () => {
 // ask
 // ---------------------------------------------------------------------------
 
-test("Reader.ask returns the full environment", () => {
+test("ask: returns full environment", () => {
 	const reader = Reader.ask<Config>();
 	expect(reader(testConfig)).toStrictEqual(testConfig);
 });
@@ -34,12 +34,12 @@ test("Reader.ask returns the full environment", () => {
 // asks
 // ---------------------------------------------------------------------------
 
-test("Reader.asks projects a value from the environment", () => {
+test("asks: projects value from environment", () => {
 	const getBaseUrl = Reader.asks((c: Config) => c.baseUrl);
 	expect(getBaseUrl(testConfig)).toBe("https://api.example.com");
 });
 
-test("Reader.asks applies the selector to the environment", () => {
+test("asks: applies selector to environment", () => {
 	const getTimeout = Reader.asks((c: Config) => c.timeout);
 	expect(getTimeout(testConfig)).toBe(5000);
 });
@@ -48,17 +48,17 @@ test("Reader.asks applies the selector to the environment", () => {
 // map
 // ---------------------------------------------------------------------------
 
-test("Reader.map transforms the produced value", () => {
+test("map: transforms produced value", () => {
 	const reader = pipe(Reader.asks((c: Config) => c.baseUrl), Reader.map((url) => url.toUpperCase()));
 	expect(reader(testConfig)).toBe("HTTPS://API.EXAMPLE.COM");
 });
 
-test("Reader.map can change the value type", () => {
+test("map: can change value type", () => {
 	const reader = pipe(Reader.asks((c: Config) => c.timeout), Reader.map((ms) => `${ms}ms`));
 	expect(reader(testConfig)).toBe("5000ms");
 });
 
-test("Reader.map still receives the same environment", () => {
+test("map: still receives same environment", () => {
 	let receivedEnv: Config | undefined;
 	const reader = pipe(
 		Reader.ask<Config>(),
@@ -75,7 +75,7 @@ test("Reader.map still receives the same environment", () => {
 // chain
 // ---------------------------------------------------------------------------
 
-test("Reader.chain sequences two readers sharing the same environment", () => {
+test("chain: sequences two readers sharing same environment", () => {
 	const buildUrl = Reader.asks((c: Config) => `${c.baseUrl}/users`);
 	const addAuth = (url: string): Reader<Config, string> => Reader.asks((c) => `${url}?key=${c.apiKey}`);
 
@@ -83,12 +83,12 @@ test("Reader.chain sequences two readers sharing the same environment", () => {
 	expect(reader(testConfig)).toBe("https://api.example.com/users?key=secret");
 });
 
-test("Reader.chain passes the output of the first reader to the function", () => {
+test("chain: passes output of first reader to function", () => {
 	const reader = pipe(Reader.resolve<Config, number>(10), Reader.chain((n) => Reader.resolve(n * 2)));
 	expect(reader(testConfig)).toBe(20);
 });
 
-test("Reader.chain threads the environment through multiple steps", () => {
+test("chain: threads environment through multiple steps", () => {
 	const reader = pipe(
 		Reader.asks((c: Config) => c.baseUrl),
 		Reader.chain((url) => Reader.asks((c) => `${url}:${c.timeout}`)),
@@ -102,7 +102,7 @@ test("Reader.chain threads the environment through multiple steps", () => {
 // apply
 // ---------------------------------------------------------------------------
 
-test("Reader.apply applies a function reader to a value reader", () => {
+test("apply: applies function reader to value reader", () => {
 	const add = (a: number) => (b: number) => a + b;
 	const reader = pipe(
 		Reader.resolve<Config, typeof add>(add),
@@ -112,7 +112,7 @@ test("Reader.apply applies a function reader to a value reader", () => {
 	expect(reader(testConfig)).toBe(5500);
 });
 
-test("Reader.apply both readers see the same environment", () => {
+test("apply: passes same environment to both readers", () => {
 	const combine = (a: string) => (b: string) => `${a}/${b}`;
 	const reader = pipe(
 		Reader.resolve<Config, typeof combine>(combine),
@@ -126,7 +126,7 @@ test("Reader.apply both readers see the same environment", () => {
 // tap
 // ---------------------------------------------------------------------------
 
-test("Reader.tap executes a side effect and returns the original value", () => {
+test("tap: executes side effect and returns original value", () => {
 	let captured = "";
 	const reader = pipe(
 		Reader.asks((c: Config) => c.baseUrl),
@@ -139,7 +139,7 @@ test("Reader.tap executes a side effect and returns the original value", () => {
 	expect(captured).toBe("https://api.example.com");
 });
 
-test("Reader.tap does not alter the produced value", () => {
+test("tap: does not alter produced value", () => {
 	const reader = pipe(
 		Reader.resolve<Config, number>(42),
 		Reader.tap(() => {/* side effect */}),
@@ -152,7 +152,7 @@ test("Reader.tap does not alter the produced value", () => {
 // local
 // ---------------------------------------------------------------------------
 
-test("Reader.local adapts the environment before passing it to the reader", () => {
+test("local: adapts environment before passing to reader", () => {
 	type AppEnv = { config: Config; debug: boolean; };
 
 	const getBaseUrl: Reader<Config, string> = Reader.asks((c) => c.baseUrl);
@@ -163,7 +163,7 @@ test("Reader.local adapts the environment before passing it to the reader", () =
 	expect(fromAppEnv(appEnv)).toBe("https://api.example.com");
 });
 
-test("Reader.local allows composing readers with different environments", () => {
+test("local: allows composing readers with different environments", () => {
 	type DbEnv = { host: string; port: number; };
 	type AppEnv = { db: DbEnv; name: string; };
 
@@ -179,12 +179,12 @@ test("Reader.local allows composing readers with different environments", () => 
 // run
 // ---------------------------------------------------------------------------
 
-test("Reader.run executes a reader with the provided environment", () => {
+test("run: executes reader with provided environment", () => {
 	const reader = Reader.asks((c: Config) => c.apiKey);
 	expect(Reader.run(testConfig)(reader)).toBe("secret");
 });
 
-test("Reader.run works as a data-last step in pipe", () => {
+test("run: works as data-last step in pipe", () => {
 	const result = pipe(
 		Reader.asks((c: Config) => c.baseUrl),
 		Reader.map((url) => `${url}/health`),
@@ -197,7 +197,7 @@ test("Reader.run works as a data-last step in pipe", () => {
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("reader composes a realistic URL-building pipeline", () => {
+test("pipe: composes realistic URL-building pipeline", () => {
 	const buildUrl = (path: string): Reader<Config, string> => Reader.asks((c) => `${c.baseUrl}${path}`);
 
 	const addApiKey = (url: string): Reader<Config, string> => Reader.asks((c) => `${url}?key=${c.apiKey}`);
@@ -207,21 +207,21 @@ test("reader composes a realistic URL-building pipeline", () => {
 	expect(endpoint).toBe("https://api.example.com/data?key=secret");
 });
 
-test("reader.resolve and Reader.chain work together like map", () => {
+test("chain: works with resolve to simulate map", () => {
 	const doubled = pipe(Reader.asks((c: Config) => c.timeout), Reader.chain((n) => Reader.resolve(n * 2)));
 	expect(doubled(testConfig)).toBe(10_000);
 });
 
 // --- bindTo ---
 
-test("Reader.bindTo wraps a value in an accumulator object", () => {
+test("bindTo: wraps value in accumulator object", () => {
 	const result = pipe(Reader.resolve<Config, number>(2), Reader.bindTo("a"))(testConfig);
 	expect(result).toStrictEqual({ a: 2 });
 });
 
 // --- bind ---
 
-test("Reader.bind accumulates values key-by-key in a pipeline", () => {
+test("bind: accumulates values key-by-key in pipeline", () => {
 	const result = pipe(
 		Reader.resolve<Config, number>(2),
 		Reader.bindTo("a"),
@@ -233,7 +233,7 @@ test("Reader.bind accumulates values key-by-key in a pipeline", () => {
 
 // --- side-effect isolation ---
 
-test("Reader.tap executes side effect callback when reader is run", () => {
+test("tap: executes side effect callback when reader is run", () => {
 	let called = false;
 	const reader = pipe(
 		Reader.resolve<Config, number>(42),
@@ -246,7 +246,7 @@ test("Reader.tap executes side effect callback when reader is run", () => {
 	expect(called).toBe(true);
 });
 
-test("Reader.map executes side effect callback when reader is run", () => {
+test("map: executes side effect callback when reader is run", () => {
 	let called = false;
 	const reader = pipe(
 		Reader.resolve<Config, number>(10),

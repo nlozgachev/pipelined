@@ -11,21 +11,21 @@ const minMax = fc.tuple(fc.integer({ min: -1000, max: 1000 }), fc.integer({ min:
 // clamp
 // ---------------------------------------------------------------------------
 
-test("Num.clamp — result is always within range", () => {
+test("clamp: keeps result within range", () => {
 	fc.assert(fc.property(fc.integer(), minMax, (n, [min, max]) => {
 		const result = Num.clamp(min, max)(n);
 		expect(result >= min && result <= max).toBe(true);
 	}));
 });
 
-test("Num.clamp — idempotence", () => {
+test("clamp: satisfies idempotence", () => {
 	fc.assert(fc.property(fc.integer(), minMax, (n, [min, max]) => {
 		const clamped = Num.clamp(min, max)(n);
 		expect(Num.clamp(min, max)(clamped)).toBe(clamped);
 	}));
 });
 
-test("Num.clamp — identity when already in range", () => {
+test("clamp: behaves as identity when already in range", () => {
 	fc.assert(fc.property(minMax, ([min, max]) => {
 		const [n] = fc.sample(fc.integer({ min, max }), 1);
 		expect(Num.clamp(min, max)(n)).toBe(n);
@@ -36,13 +36,13 @@ test("Num.clamp — identity when already in range", () => {
 // between
 // ---------------------------------------------------------------------------
 
-test("Num.between — agrees with clamp", () => {
+test("between: agrees with clamp", () => {
 	fc.assert(fc.property(fc.integer(), minMax, (n, [min, max]) => {
 		expect(Num.between(min, max)(n)).toBe(Num.clamp(min, max)(n) === n);
 	}));
 });
 
-test("Num.inRange — agrees with definition", () => {
+test("inRange: agrees with half-open range definition", () => {
 	fc.assert(fc.property(fc.integer(), minMax, (n, [min, max]) => {
 		expect(Num.inRange(min, max)(n)).toBe(n >= min && n < max);
 	}));
@@ -52,7 +52,7 @@ test("Num.inRange — agrees with definition", () => {
 // add / subtract
 // ---------------------------------------------------------------------------
 
-test("num.add + Num.subtract — inverse", () => {
+test("add: acts as inverse of subtract", () => {
 	fc.assert(fc.property(fc.integer(), fc.integer(), (n, b) => {
 		expect(Num.add(b)(Num.subtract(b)(n))).toBe(n);
 	}));
@@ -62,7 +62,7 @@ test("num.add + Num.subtract — inverse", () => {
 // multiply / divide
 // ---------------------------------------------------------------------------
 
-test("num.multiply + Num.divide — inverse", () => {
+test("multiply: acts as inverse of divide", () => {
 	fc.assert(
 		fc.property(
 			fc.integer({ min: -1000, max: 1000 }),
@@ -80,14 +80,14 @@ test("num.multiply + Num.divide — inverse", () => {
 // range
 // ---------------------------------------------------------------------------
 
-test("Num.range — length equals to - from + 1", () => {
+test("range: produces length equal to difference plus one", () => {
 	fc.assert(fc.property(fc.integer({ min: -500, max: 500 }), fc.integer({ min: 0, max: 1000 }), (from, delta) => {
 		const to = from + delta;
 		expect(Num.range(from, to)).toHaveLength(delta + 1);
 	}));
 });
 
-test("Num.range — every value is within bounds", () => {
+test("range: keeps every value within bounds", () => {
 	fc.assert(fc.property(fc.integer({ min: -500, max: 500 }), fc.integer({ min: 0, max: 1000 }), (from, delta) => {
 		const to = from + delta;
 		expect(Num.range(from, to).every((v) => v >= from && v <= to)).toBe(true);

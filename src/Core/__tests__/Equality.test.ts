@@ -6,15 +6,15 @@ import { Equality } from "../Equality.ts";
 // string
 // ---------------------------------------------------------------------------
 
-test("Equality.string returns true for equal strings", () => {
+test("string: returns true for equal strings", () => {
 	expect(Equality.string("hello", "hello")).toBe(true);
 });
 
-test("Equality.string returns false for different strings", () => {
+test("string: returns false for different strings", () => {
 	expect(Equality.string("hello", "world")).toBe(false);
 });
 
-test("Equality.string is case-sensitive", () => {
+test("string: is case-sensitive", () => {
 	expect(Equality.string("Hello", "hello")).toBe(false);
 });
 
@@ -22,11 +22,11 @@ test("Equality.string is case-sensitive", () => {
 // number
 // ---------------------------------------------------------------------------
 
-test("Equality.number returns true for equal numbers", () => {
+test("number: returns true for equal numbers", () => {
 	expect(Equality.number(42, 42)).toBe(true);
 });
 
-test("Equality.number returns false for different numbers", () => {
+test("number: returns false for different numbers", () => {
 	expect(Equality.number(1, 2)).toBe(false);
 });
 
@@ -34,12 +34,12 @@ test("Equality.number returns false for different numbers", () => {
 // boolean
 // ---------------------------------------------------------------------------
 
-test("Equality.boolean returns true for matching booleans", () => {
+test("boolean: returns true for matching booleans", () => {
 	expect(Equality.boolean(true, true)).toBe(true);
 	expect(Equality.boolean(false, false)).toBe(true);
 });
 
-test("Equality.boolean returns false for different booleans", () => {
+test("boolean: returns false for different booleans", () => {
 	expect(Equality.boolean(true, false)).toBe(false);
 });
 
@@ -47,11 +47,11 @@ test("Equality.boolean returns false for different booleans", () => {
 // date
 // ---------------------------------------------------------------------------
 
-test("Equality.date returns true for dates with the same time value", () => {
+test("date: returns true for dates with same time value", () => {
 	expect(Equality.date(new Date("2024-01-01"), new Date("2024-01-01"))).toBe(true);
 });
 
-test("Equality.date returns false for dates with different time values", () => {
+test("date: returns false for dates with different time values", () => {
 	expect(Equality.date(new Date("2024-01-01"), new Date("2024-01-02"))).toBe(false);
 });
 
@@ -59,19 +59,19 @@ test("Equality.date returns false for dates with different time values", () => {
 // array
 // ---------------------------------------------------------------------------
 
-test("Equality.array returns true for element-wise equal arrays", () => {
+test("array: returns true for element-wise equal arrays", () => {
 	expect(Equality.array(Equality.number)([1, 2, 3], [1, 2, 3])).toBe(true);
 });
 
-test("Equality.array returns false for arrays of different length", () => {
+test("array: returns false for arrays of different length", () => {
 	expect(Equality.array(Equality.number)([1, 2], [1, 2, 3])).toBe(false);
 });
 
-test("Equality.array returns false for arrays with a differing element", () => {
+test("array: returns false for arrays with differing element", () => {
 	expect(Equality.array(Equality.number)([1, 2, 3], [1, 2, 4])).toBe(false);
 });
 
-test("Equality.array returns true for two empty arrays", () => {
+test("array: returns true for two empty arrays", () => {
 	expect(Equality.array(Equality.number)([], [])).toBe(true);
 });
 
@@ -79,7 +79,7 @@ test("Equality.array returns true for two empty arrays", () => {
 // by
 // ---------------------------------------------------------------------------
 
-test("Equality.by compares objects by an extracted field", () => {
+test("by: compares objects by extracted field", () => {
 	type User = { name: string; age: number; };
 	const byName = pipe(Equality.string, Equality.by((u: User) => u.name));
 	expect(byName({ name: "Alice", age: 30 }, { name: "Alice", age: 25 })).toBe(true);
@@ -90,7 +90,7 @@ test("Equality.by compares objects by an extracted field", () => {
 // and
 // ---------------------------------------------------------------------------
 
-test("Equality.and returns true when both checks pass", () => {
+test("and: returns true when both checks pass", () => {
 	type User = { name: string; role: string; };
 	const byName = pipe(Equality.string, Equality.by((u: User) => u.name));
 	const byRole = pipe(Equality.string, Equality.by((u: User) => u.role));
@@ -98,7 +98,7 @@ test("Equality.and returns true when both checks pass", () => {
 	expect(eq({ name: "Alice", role: "admin" }, { name: "Alice", role: "admin" })).toBe(true);
 });
 
-test("Equality.and returns false when the first check fails", () => {
+test("and: returns false when first check fails", () => {
 	type User = { name: string; role: string; };
 	const byName = pipe(Equality.string, Equality.by((u: User) => u.name));
 	const byRole = pipe(Equality.string, Equality.by((u: User) => u.role));
@@ -106,7 +106,7 @@ test("Equality.and returns false when the first check fails", () => {
 	expect(eq({ name: "Alice", role: "admin" }, { name: "Bob", role: "admin" })).toBe(false);
 });
 
-test("Equality.and returns false when the second check fails", () => {
+test("and: returns false when second check fails", () => {
 	type User = { name: string; role: string; };
 	const byName = pipe(Equality.string, Equality.by((u: User) => u.name));
 	const byRole = pipe(Equality.string, Equality.by((u: User) => u.role));
@@ -116,20 +116,20 @@ test("Equality.and returns false when the second check fails", () => {
 
 // --- struct & tuple ---
 
-test("Equality.struct compares objects field-by-field", () => {
+test("struct: compares objects field-by-field", () => {
 	const userEq = Equality.struct({ id: Equality.string, age: Equality.number });
 	expect(userEq({ id: "1", age: 20 }, { id: "1", age: 20 })).toBe(true);
 	expect(userEq({ id: "1", age: 20 }, { id: "1", age: 21 })).toBe(false);
 });
 
-test("Equality.struct ignores inherited prototype properties in fields definition", () => {
+test("struct: ignores inherited prototype properties in fields definition", () => {
 	const proto = { inherited: Equality.string };
 	const fields = Object.assign(Object.create(proto), { id: Equality.string });
 	const eq = Equality.struct(fields);
 	expect(eq({ id: "1" } as any, { id: "1" } as any)).toBe(true);
 });
 
-test("Equality.tuple compares tuples element-by-element", () => {
+test("tuple: compares tuples element-by-element", () => {
 	const pairEq = Equality.tuple(Equality.string, Equality.number);
 	expect(pairEq(["a", 1], ["a", 1])).toBe(true);
 	expect(pairEq(["a", 1], ["a", 2])).toBe(false);
@@ -138,7 +138,7 @@ test("Equality.tuple compares tuples element-by-element", () => {
 
 // --- side-effect isolation ---
 
-test("Equality.by executes side effect function during comparison", () => {
+test("by: executes side-effect function during comparison", () => {
 	let called = false;
 	const eq = Equality.by((x: number) => {
 		called = true;
@@ -148,7 +148,7 @@ test("Equality.by executes side effect function during comparison", () => {
 	expect(called).toBe(true);
 });
 
-test("Equality.and short-circuits side effect if first comparison fails", () => {
+test("and: short-circuits side effect if first comparison fails", () => {
 	let called = false;
 	const first = () => false;
 	const second = () => {
