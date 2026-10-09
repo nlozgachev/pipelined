@@ -179,6 +179,12 @@ test("is.idle: returns true only for Idle state", async () => {
 	await run;
 });
 
+test("is.pending: returns true only for Pending state", () => {
+	expect(Op.is.pending({ kind: "Pending" })).toBe(true);
+	expect(Op.is.pending({ kind: "Idle" })).toBe(false);
+	expect(Op.is.pending(Op.Outcome.make.ok(1))).toBe(false);
+});
+
 test("is.queued: returns true only for Queued state", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "queue" });
 	manager.run(1);

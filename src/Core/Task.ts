@@ -484,14 +484,12 @@ export const Task = {
 			const controller = new AbortController();
 			let timerId: ReturnType<typeof setTimeout> | undefined;
 
-			let cleanUp = () => {};
-
 			const onOuterAbort = () => {
-				cleanUp();
+				clearTimeout(timerId);
 				controller.abort();
 			};
 
-			cleanUp = () => {
+			const cleanUp = () => {
 				clearTimeout(timerId);
 				outerSignal?.removeEventListener("abort", onOuterAbort);
 			};

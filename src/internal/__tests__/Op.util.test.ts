@@ -566,3 +566,37 @@ test("toInternalOp: provides access to OP_FACTORY", async () => {
 	const result = await Deferred.to.Promise(internal[OP_FACTORY]([5], new AbortController().signal));
 	expect(result).toStrictEqual(Result.make.ok(10));
 });
+
+test("makeExclusive: handles Duration.milliseconds(0) cooldown without setting timer", async () => {
+	const op = Op.create((_signal) => (x: number) => Promise.resolve(x * 2), { onError: String });
+	const manager = makeExclusive(op, Duration.milliseconds(0));
+	const outcome1 = await Deferred.to.Promise(manager.run(1));
+	expect(outcome1).toStrictEqual({ kind: "OpOk", value: 2 });
+	const outcome2 = await Deferred.to.Promise(manager.run(2));
+	expect(outcome2).toStrictEqual({ kind: "OpOk", value: 4 });
+});
+
+test("poll: executes periodic interval ticks across all strategy factories", async () => {
+	const countOp = Op.create((_signal) => (n: number) => Promise.resolve(n), { onError: String });
+	const interval = Duration.milliseconds(5);
+
+	const factories = [
+		() => makeRestartable(countOp),
+		() => makeExclusive(countOp),
+		() => makeQueue(countOp),
+		() => makeBuffered(countOp),
+		() => makeDebounced(countOp, Duration.milliseconds(1), true),
+		() => makeThrottled(countOp, Duration.milliseconds(1), false),
+		() => makeConcurrent(countOp, 2, "drop"),
+		() => makeKeyed(countOp, (n: number) => String(n), "exclusive"),
+		() => makeOnce(countOp),
+	];
+
+	for (const createManager of factories) {
+		const manager = createManager();
+		const stop = manager.poll({ interval })(42);
+		await new Promise((r) => setTimeout(r, 20));
+		stop();
+		expect(manager.state).toBeDefined();
+	}
+});

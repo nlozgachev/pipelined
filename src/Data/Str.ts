@@ -25,18 +25,13 @@ const isAscii = (text: string): boolean => {
 	return true;
 };
 
-let cachedSegmenter: Intl.Segmenter | null | undefined;
+let cachedSegmenter: Intl.Segmenter | undefined;
 
 const getSegmenter = (): Intl.Segmenter => {
-	if (cachedSegmenter === undefined) {
-		cachedSegmenter = typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
-			? new Intl.Segmenter(undefined, { granularity: "grapheme" })
-			: null;
-	}
-	if (cachedSegmenter === null) {
+	if (typeof Intl?.Segmenter !== "function") {
 		throw new TypeError("Str.graphemeSize requires Intl.Segmenter to be supported in the runtime environment.");
 	}
-	return cachedSegmenter;
+	return (cachedSegmenter ??= new Intl.Segmenter(undefined, { granularity: "grapheme" }));
 };
 
 const StrNonEmptyConst = {

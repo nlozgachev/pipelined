@@ -289,6 +289,18 @@ test("graphemeSize: counts human-perceived characters and emojis correctly", () 
 	expect(pipe("hello 🌍!", Str.graphemeSize)).toBe(8);
 });
 
+test("graphemeSize: throws TypeError when Intl.Segmenter is not supported", () => {
+	const original = Intl.Segmenter;
+	try {
+		delete (Intl as any).Segmenter;
+		expect(() => Str.graphemeSize("🌍")).toThrow(
+			new TypeError("Str.graphemeSize requires Intl.Segmenter to be supported in the runtime environment."),
+		);
+	} finally {
+		(Intl as any).Segmenter = original;
+	}
+});
+
 // ---------------------------------------------------------------------------
 // slice
 // ---------------------------------------------------------------------------

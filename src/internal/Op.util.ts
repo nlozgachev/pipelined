@@ -182,11 +182,9 @@ export const makeRestartable = <Args extends readonly any[], E, A>(
 					lastStartTime = Date.now();
 					emit(_pending);
 
-					const onRetrying = retryOptions
-						? (r: Op.Retrying<E>) => {
-							if (currentController === controller) { emit(r); }
-						}
-						: undefined;
+					// Passing emit directly is safe: superseding or aborting calls controller.abort(),
+					// causing runWithRetry to exit early before onRetrying is ever invoked.
+					const onRetrying = retryOptions ? emit : undefined;
 
 					execute(op, args, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
 						if (currentController !== controller) { return; // superseded — already resolved by next run()
@@ -274,11 +272,9 @@ export const makeExclusive = <Args extends readonly any[], E, A>(
 				const controller = currentController;
 				emit(_pending);
 
-				const onRetrying = retryOptions
-					? (r: Op.Retrying<E>) => {
-						if (currentController === controller) { emit(r); }
-					}
-					: undefined;
+				// Passing emit directly is safe: exclusive drops overlapping runs, and abort()
+				// calls controller.abort(), causing runWithRetry to exit before onRetrying fires.
+				const onRetrying = retryOptions ? emit : undefined;
 
 				execute(op, args, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
 					if (currentController !== controller) { return; }
@@ -363,11 +359,9 @@ export const makeQueue = <Args extends readonly any[], E, A>(
 		inflightResolvers.push(resolve);
 		emit(_pending);
 
-		const onRetrying = retryOptions
-			? (r: Op.Retrying<E>) => {
-				if (generation === myGeneration && inflightControllers.has(controller)) { emit(r); }
-			}
-			: undefined;
+		// Passing emit directly is safe: abort() aborts all inflightControllers,
+		// causing runWithRetry to exit early before onRetrying fires.
+		const onRetrying = retryOptions ? emit : undefined;
 
 		execute(op, args, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
 			inflightControllers.delete(controller);
@@ -494,11 +488,9 @@ export const makeBuffered = <Args extends readonly any[], E, A>(
 		const controller = currentController;
 		emit(_pending);
 
-		const onRetrying = retryOptions
-			? (r: Op.Retrying<E>) => {
-				if (currentController === controller) { emit(r); }
-			}
-			: undefined;
+		// Passing emit directly is safe: buffered calls run strictly sequentially, and abort()
+		// calls controller.abort(), causing runWithRetry to exit early before onRetrying fires.
+		const onRetrying = retryOptions ? emit : undefined;
 
 		execute(op, args, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
 			if (currentController !== controller) { return; }
@@ -597,11 +589,9 @@ export const makeDebounced = <Args extends readonly any[], E, A>(
 		leadingResolve = resolve;
 		emit(_pending);
 
-		const onRetrying = retryOptions
-			? (r: Op.Retrying<E>) => {
-				if (leadingController === controller) { emit(r); }
-			}
-			: undefined;
+		// Passing emit directly is safe: leading calls fire only on fresh bursts, and abort()
+		// calls controller.abort(), causing runWithRetry to exit early before onRetrying fires.
+		const onRetrying = retryOptions ? emit : undefined;
 
 		execute(op, args, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
 			if (leadingController !== controller) { return; }
@@ -627,6 +617,8 @@ export const makeDebounced = <Args extends readonly any[], E, A>(
 		const controller = currentController;
 		emit(_pending);
 
+		// Guard required: fireTrailing runs when the debounce timer expires without aborting
+		// an in-flight execution, so retries from the predecessor must not overwrite current state.
 		const onRetrying = retryOptions
 			? (r: Op.Retrying<E>) => {
 				if (currentController === controller) { emit(r); }
@@ -750,6 +742,8 @@ export const makeThrottled = <Args extends readonly any[], E, A>(
 		const controller = currentController;
 		emit(_pending);
 
+		// Guard required: fireOp for trailing execution starts when cooldown expires without aborting
+		// an in-flight execution, so retries from the predecessor must not overwrite current state.
 		const onRetrying = retryOptions
 			? (r: Op.Retrying<E>) => {
 				if (currentController === controller) { emit(r); }
@@ -866,11 +860,9 @@ export const makeConcurrent = <Args extends readonly any[], E, A>(
 		inflightResolvers.push(resolve);
 		emit(_pending);
 
-		const onRetrying = retryOptions
-			? (r: Op.Retrying<E>) => {
-				if (generation === myGeneration && controllers.has(controller)) { emit(r); }
-			}
-			: undefined;
+		// Passing emit directly is safe: abort() aborts all controllers,
+		// causing runWithRetry to exit early before onRetrying fires.
+		const onRetrying = retryOptions ? emit : undefined;
 
 		execute(op, args, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
 			controllers.delete(controller);
@@ -1075,11 +1067,9 @@ export const makeOnce = <Args extends readonly any[], E, A>(
 				const controller = currentController;
 				emit(_pending);
 
-				const onRetrying = retryOptions
-					? (r: Op.Retrying<E>) => {
-						if (currentController === controller) { emit(r); }
-					}
-					: undefined;
+				// Passing emit directly is safe: once drops subsequent runs, and abort()
+				// calls controller.abort(), causing runWithRetry to exit early before onRetrying fires.
+				const onRetrying = retryOptions ? emit : undefined;
 
 				execute(op, args, controller, retryOptions, timeoutOptions, onRetrying).then((outcome) => {
 					if (currentController !== controller) { return; }
