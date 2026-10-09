@@ -95,8 +95,8 @@ const userManager = Op.interpret(fetchUserOp, { strategy: "exclusive" });
 // 3. Listen to transitions
 userManager.subscribe((state) => {
   if (Op.is.pending(state)) showSpinner();
-  if (Op.is.ok(state))      renderProfile(state.value);
-  if (Op.is.err(state))     showError(state.error);
+  if (Op.Outcome.is.ok(state))      renderProfile(state.value);
+  if (Op.Outcome.is.err(state))     showError(state.error);
 });
 
 // 4. Trigger execution
@@ -125,22 +125,22 @@ You can unpack invocation outcomes using direct type guards:
 ```ts
 const outcome = await userManager.run("user_123");
 
-if (Op.is.ok(outcome)) {
+if (Op.Outcome.is.ok(outcome)) {
   console.log("Value:", outcome.value);
-} else if (Op.is.err(outcome)) {
+} else if (Op.Outcome.is.err(outcome)) {
   console.error("Error:", outcome.error);
 } else {
   console.log("Operation skipped:", outcome.reason); // "aborted", "dropped", etc.
 }
 ```
 
-Alternatively, you can transform values inside `Ok` using `map`, or perform comprehensive case mapping using `match` or `fold`:
+Alternatively, you can transform values inside `Ok` using `Op.Outcome.map`, or perform comprehensive case mapping using `Op.Outcome.match` or `Op.Outcome.fold`:
 
 ```ts
-Op.match({
+Op.Outcome.match({
   ok:  (user) => renderDashboard(user),
   err: (err)  => renderAlert(err),
-  nil: (nil)  => console.log(`Skipped: ${nil.reason}`),
+  nil: (reason)  => console.log(`Skipped: ${reason}`),
 })(outcome);
 ```
 
@@ -230,8 +230,8 @@ const userProfileManager = Op.interpret(fetchUserOp, {
 
 userProfileManager.subscribe((map) => {
   for (const [userId, state] of map) {
-    if (Op.is.pending(state)) showRowSpinner(userId);
-    if (Op.is.ok(state))      renderRow(userId, state.value);
+    if (Op.is.pending(state))         showRowSpinner(userId);
+    if (Op.Outcome.is.ok(state))      renderRow(userId, state.value);
   }
 });
 
@@ -249,9 +249,9 @@ The manager returned by `Op.interpret` maintains the active state machine. You c
 const manager = Op.interpret(searchUsers, { strategy: "restartable" });
 
 manager.subscribe((state) => {
-  if (Op.is.pending(state)) showSpinner();
-  if (Op.is.ok(state))      renderList(state.value);
-  if (Op.is.nil(state))     clearUI();
+  if (Op.is.pending(state))    showSpinner();
+  if (Op.Outcome.is.ok(state))  renderList(state.value);
+  if (Op.Outcome.is.nil(state)) clearUI();
 });
 ```
 
@@ -269,24 +269,24 @@ To return a manager to `Idle` without cancelling active in-flight requests, use 
 
 ---
 
-## Per-Invocation Awaiting
+## Per-Invocation Awaiting and Concurrency
 
-Every time you invoke `manager.run(input)`, it returns a `Deferred` value that resolves to the specific outcome of that invocation. This allows you to `await` outcomes inline inside sequential, imperative flows:
+Every time you invoke `manager.run(input)`, it returns a `Deferred` value that resolves to the specific settled outcome (`Op.Outcome`) of that invocation. This allows you to `await` outcomes inline inside sequential, imperative flows:
 
 ```ts
 const outcome = await checkoutManager.run(cartData);
 
-if (Op.is.ok(outcome)) {
+if (Op.Outcome.is.ok(outcome)) {
   navigateTo("/receipt");
-} else if (Op.is.err(outcome)) {
+} else if (Op.Outcome.is.err(outcome)) {
   renderAlert(outcome.error.message);
 }
 ```
 
-You can coordinate multiple runs in parallel using `Op.all` or `Op.race` without managing manual promise plumbing:
+Because `manager.run()` returns a `Deferred`, combining multiple in-flight invocations uses the library's canonical async coordinators, `Deferred.all` or `Deferred.race`:
 
 ```ts
-const [profile, settings] = await Op.all([
+const [profile, settings] = await Deferred.all([
   fetchProfile.run(userId),
   fetchSettings.run(userId),
 ]);
@@ -321,19 +321,19 @@ If a retry policy is active, the manager's state automatically expands to includ
 
 At boundaries, you can map an `Outcome` back to other library primitives.
 
-`Op.to.Result` maps `Ok` to `Ok` and `Err` to `Err`. Because `Result` has no concept of cancellations, you must provide a fallback error to represent `Nil` states:
+`Op.Outcome.to.Result` maps `Ok` to `Ok` and `Err` to `Err`. Because `Result` has no concept of cancellations, you provide a fallback error callback that receives the `NilReason` to represent `Nil` states:
 
 ```ts
 const resultOutcome = pipe(
   outcome,
-  Op.to.Result(() => new ApiError("Request was cancelled")),
+  Op.Outcome.to.Result((reason) => new ApiError(`Request skipped: ${reason}`)),
 ); // Result<ApiError, A>
 ```
 
-`Op.to.Maybe` maps `Ok` to `Some` and maps both `Err` and `Nil` states to `None`:
+`Op.Outcome.to.Maybe` maps `Ok` to `Some` and maps both `Err` and `Nil` states to `None`:
 
 ```ts
-const maybeOutcome = Op.to.Maybe(outcome); // Some(A) or None
+const maybeOutcome = Op.Outcome.to.Maybe(outcome); // Some(A) or None
 ```
 
 To wire the success of one manager directly to the invocation of another, use `Op.wire`:

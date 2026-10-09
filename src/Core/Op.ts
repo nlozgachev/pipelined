@@ -56,9 +56,9 @@ declare const _opBrand: unique symbol;
  * const manager = Op.interpret(fetchUser, { strategy: "restartable" });
  * manager.subscribe(state => {
  *   if (Op.is.pending(state)) showSpinner();
- *   if (Op.is.ok(state))      render(state.value);
- *   if (Op.is.err(state))     showError(state.error);
- *   if (Op.is.nil(state))     resetUI();
+ *   if (Op.Outcome.is.ok(state)) render(state.value);
+ *   if (Op.Outcome.is.err(state)) showError(state.error);
+ *   if (Op.Outcome.is.nil(state)) resetUI();
  * });
  * manager.run(userId);
  * ```
@@ -137,13 +137,16 @@ const makeOk = <A>(value: A): Op.Ok<A> => ({ kind: "OpOk", value });
 const makeErr = <E>(error: E): Op.Err<E> => ({ kind: "OpErr", error });
 const makeNil = (reason: Op.NilReason): Op.Nil => ({ kind: "OpNil", reason });
 
-const isIdle = <E, A>(state: Op.State<E, A>): state is Op.Idle => state.kind === "Idle";
-const isPending = <E, A>(state: Op.State<E, A>): state is Op.Pending => state.kind === "Pending";
-const isQueued = <E, A>(state: Op.State<E, A>): state is Op.Queued => state.kind === "Queued";
-const isRetrying = <E, A>(state: Op.State<E, A>): state is Op.Retrying<E> => state.kind === "Retrying";
-const isOk = <E, A>(state: Op.State<E, A>): state is Op.Ok<A> => state.kind === "OpOk";
-const isErr = <E, A>(state: Op.State<E, A>): state is Op.Err<E> => state.kind === "OpErr";
-const isNil = <E, A>(state: Op.State<E, A>): state is Op.Nil => state.kind === "OpNil";
+const isIdle = <E = unknown, A = unknown>(state: Op.State<E, A>): state is Op.Idle => state.kind === "Idle";
+const isPending = <E = unknown, A = unknown>(state: Op.State<E, A>): state is Op.Pending => state.kind === "Pending";
+const isQueued = <E = unknown, A = unknown>(state: Op.State<E, A>): state is Op.Queued => state.kind === "Queued";
+const isRetrying = <E = unknown, A = unknown>(state: Op.State<E, A>): state is Op.Retrying<E> =>
+	state.kind === "Retrying";
+const isOk = <A = unknown>(stateOrOutcome: { readonly kind: string; }): stateOrOutcome is Op.Ok<A> =>
+	stateOrOutcome.kind === "OpOk";
+const isErr = <E = unknown>(stateOrOutcome: { readonly kind: string; }): stateOrOutcome is Op.Err<E> =>
+	stateOrOutcome.kind === "OpErr";
+const isNil = (stateOrOutcome: { readonly kind: string; }): stateOrOutcome is Op.Nil => stateOrOutcome.kind === "OpNil";
 
 function interpretFn<Args extends readonly any[], E, A, O extends AllInterpretOptions<Args, E>>(
 	op: Op<Args, E, A>,
@@ -231,14 +234,17 @@ function interpretFn<Args extends readonly any[], E, A>(
 	}
 }
 
-export const Op = {
+const OpOutcome = {
 	make: {
 		/**
 		 * Creates an Ok outcome with the given value.
 		 *
+		 * @see {@link Op.Outcome.make.err} to create an Err outcome.
+		 * @see {@link Op.Outcome.make.nil} to create a Nil outcome.
+		 *
 		 * @example
 		 * ```ts
-		 * Op.make.ok(42); // { kind: "OpOk", value: 42 }
+		 * Op.Outcome.make.ok(42); // { kind: "OpOk", value: 42 }
 		 * ```
 		 */
 		ok: makeOk,
@@ -246,19 +252,25 @@ export const Op = {
 		/**
 		 * Creates an Err outcome with the given error.
 		 *
+		 * @see {@link Op.Outcome.make.ok} to create an Ok outcome.
+		 * @see {@link Op.Outcome.make.nil} to create a Nil outcome.
+		 *
 		 * @example
 		 * ```ts
-		 * Op.make.err("Something went wrong"); // { kind: "OpErr", error: "Something went wrong" }
+		 * Op.Outcome.make.err("Something went wrong"); // { kind: "OpErr", error: "Something went wrong" }
 		 * ```
 		 */
 		err: makeErr,
 
 		/**
-		 * Creates a Nil outcome with the given cancellation/drop reason.
+		 * Creates a Nil outcome with the given cancellation or drop reason.
+		 *
+		 * @see {@link Op.Outcome.make.ok} to create an Ok outcome.
+		 * @see {@link Op.Outcome.make.err} to create an Err outcome.
 		 *
 		 * @example
 		 * ```ts
-		 * Op.make.nil("aborted"); // { kind: "OpNil", reason: "aborted" }
+		 * Op.Outcome.make.nil("aborted"); // { kind: "OpNil", reason: "aborted" }
 		 * ```
 		 */
 		nil: makeNil,
@@ -266,7 +278,253 @@ export const Op = {
 
 	is: {
 		/**
+		 * Type guard that checks if an Op state or outcome is Ok.
+		 *
+		 * @see {@link Op.Outcome.is.err} to check if an outcome or state is Err.
+		 * @see {@link Op.Outcome.is.nil} to check if an outcome or state is Nil.
+		 *
+		 * @example
+		 * ```ts
+		 * if (Op.Outcome.is.ok(outcome)) {
+		 *   render(outcome.value);
+		 * }
+		 * ```
+		 */
+		ok: isOk,
+
+		/**
+		 * Type guard that checks if an Op state or outcome is Err.
+		 *
+		 * @see {@link Op.Outcome.is.ok} to check if an outcome or state is Ok.
+		 * @see {@link Op.Outcome.is.nil} to check if an outcome or state is Nil.
+		 *
+		 * @example
+		 * ```ts
+		 * if (Op.Outcome.is.err(outcome)) {
+		 *   showError(outcome.error);
+		 * }
+		 * ```
+		 */
+		err: isErr,
+
+		/**
+		 * Type guard that checks if an Op state or outcome is Nil.
+		 *
+		 * @see {@link Op.Outcome.is.ok} to check if an outcome or state is Ok.
+		 * @see {@link Op.Outcome.is.err} to check if an outcome or state is Err.
+		 *
+		 * @example
+		 * ```ts
+		 * if (Op.Outcome.is.nil(outcome)) {
+		 *   console.log("Skipped due to:", outcome.reason);
+		 * }
+		 * ```
+		 */
+		nil: isNil,
+	},
+
+	/**
+	 * Matches on an Op outcome by providing handlers for each variant.
+	 *
+	 * @see {@link Op.Outcome.fold} for positional argument folding.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   outcome,
+	 *   Op.Outcome.match({
+	 *     ok: (value) => `Value: ${value}`,
+	 *     err: (error) => `Error: ${error}`,
+	 *     nil: (reason) => `Cancelled: ${reason}`,
+	 *   }),
+	 * );
+	 * ```
+	 */
+	match:
+		<E, A, B>(cases: { ok: (value: A) => B; err: (error: E) => B; nil: (reason: Op.NilReason) => B; }) =>
+		(outcome: Op.Outcome<E, A>): B => {
+			if (outcome.kind === "OpOk") {
+				return cases.ok(outcome.value);
+			}
+			if (outcome.kind === "OpErr") {
+				return cases.err(outcome.error);
+			}
+			return cases.nil(outcome.reason);
+		},
+
+	/**
+	 * Extracts the value from an Op outcome by providing positional handlers for each variant.
+	 *
+	 * @see {@link Op.Outcome.match} for named-case pattern matching with an object literal.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   outcome,
+	 *   Op.Outcome.fold(
+	 *     (error) => `Error: ${error}`,
+	 *     (reason) => `Cancelled: ${reason}`,
+	 *     (value) => `Value: ${value}`,
+	 *   ),
+	 * );
+	 * ```
+	 */
+	fold:
+		<E, A, B>(onErr: (error: E) => B, onNil: (reason: Op.NilReason) => B, onOk: (value: A) => B) =>
+		(outcome: Op.Outcome<E, A>): B => {
+			if (outcome.kind === "OpOk") {
+				return onOk(outcome.value);
+			}
+			if (outcome.kind === "OpErr") {
+				return onErr(outcome.error);
+			}
+			return onNil(outcome.reason);
+		},
+
+	/**
+	 * Returns the value if Ok, otherwise executes the fallback function and returns its result.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(outcome, Op.Outcome.getOrElse(() => defaultValue));
+	 * ```
+	 */
+	getOrElse: <B>(fallback: () => B) => <E = never, A = never>(outcome: Op.Outcome<E, A>): A | B =>
+		outcome.kind === "OpOk" ? outcome.value : fallback(),
+
+	/**
+	 * Transforms the value inside an Ok outcome using the provided function.
+	 *
+	 * @see {@link Op.Outcome.chain} to sequence operations that themselves return an Op.Outcome.
+	 * @see {@link Op.Outcome.mapError} to transform the error inside an Err outcome.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(outcome, Op.Outcome.map((x) => x * 2));
+	 * ```
+	 */
+	map: <A, B>(transform: (value: A) => B) => <E = never>(outcome: Op.Outcome<E, A>): Op.Outcome<E, B> =>
+		outcome.kind === "OpOk" ? makeOk(transform(outcome.value)) : outcome as Op.Outcome<E, B>,
+
+	/**
+	 * Transforms the error inside an Err outcome using the provided function.
+	 *
+	 * @see {@link Op.Outcome.map} to transform the value inside an Ok outcome.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(outcome, Op.Outcome.mapError((err) => new CustomError(err)));
+	 * ```
+	 */
+	mapError: <E, F>(transform: (error: E) => F) => <A = never>(outcome: Op.Outcome<E, A>): Op.Outcome<F, A> =>
+		outcome.kind === "OpErr" ? makeErr(transform(outcome.error)) : outcome as Op.Outcome<F, A>,
+
+	/**
+	 * Sequences an operation that produces an Op.Outcome if the current outcome is Ok.
+	 *
+	 * @see {@link Op.Outcome.map} to transform the inner value without returning a new Op.Outcome.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(outcome, Op.Outcome.chain((val) => validate(val)));
+	 * ```
+	 */
+	chain:
+		<E2, A, B>(transform: (value: A) => Op.Outcome<E2, B>) =>
+		<E1 = never>(outcome: Op.Outcome<E1, A>): Op.Outcome<E1 | E2, B> =>
+			outcome.kind === "OpOk" ? transform(outcome.value) : outcome as Op.Outcome<E1 | E2, B>,
+
+	/**
+	 * Executes a side effect if the outcome is Ok and returns the original outcome unchanged.
+	 *
+	 * @see {@link Op.Outcome.tapError} to execute a side effect on Err outcomes.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(outcome, Op.Outcome.tap((val) => console.log(val)));
+	 * ```
+	 */
+	tap: <A>(sideEffect: (value: A) => void) => <E = never>(outcome: Op.Outcome<E, A>): Op.Outcome<E, A> => {
+		if (outcome.kind === "OpOk") {
+			sideEffect(outcome.value);
+		}
+		return outcome;
+	},
+
+	/**
+	 * Executes a side effect if the outcome is Err and returns the original outcome unchanged.
+	 *
+	 * @see {@link Op.Outcome.tap} to execute a side effect on Ok outcomes.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(outcome, Op.Outcome.tapError((err) => console.error(err)));
+	 * ```
+	 */
+	tapError: <E>(sideEffect: (error: E) => void) => <A = never>(outcome: Op.Outcome<E, A>): Op.Outcome<E, A> => {
+		if (outcome.kind === "OpErr") {
+			sideEffect(outcome.error);
+		}
+		return outcome;
+	},
+
+	/**
+	 * Recovers from an Err outcome by applying a recovery function that returns a new Op.Outcome.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(outcome, Op.Outcome.recover((err) => Op.Outcome.make.ok(fallbackValue)));
+	 * ```
+	 */
+	recover:
+		<E1, E2, B>(handler: (error: E1) => Op.Outcome<E2, B>) =>
+		<A = never>(outcome: Op.Outcome<E1, A>): Op.Outcome<E2, A | B> =>
+			outcome.kind === "OpErr" ? handler(outcome.error) : outcome as Op.Outcome<E2, A | B>,
+
+	to: {
+		/**
+		 * Converts an Op.Outcome to a Result.
+		 *
+		 * @see {@link Op.Outcome.to.Maybe} to convert an outcome to a Maybe.
+		 *
+		 * @example
+		 * ```ts
+		 * pipe(outcome, Op.Outcome.to.Result((reason) => new Error(`Skipped: ${reason}`)));
+		 * ```
+		 */
+		Result:
+			<E2>(onNil: (reason: Op.NilReason) => E2) =>
+			<E1 = never, A = never>(outcome: Op.Outcome<E1, A>): CoreResult<E1 | E2, A> => {
+				if (outcome.kind === "OpOk") {
+					return CoreResult.make.ok(outcome.value);
+				}
+				if (outcome.kind === "OpErr") {
+					return CoreResult.make.err(outcome.error);
+				}
+				return CoreResult.make.err(onNil(outcome.reason));
+			},
+
+		/**
+		 * Converts an Op.Outcome to a Maybe, mapping Ok to Some and both Err and Nil to None.
+		 *
+		 * @see {@link Op.Outcome.to.Result} to convert an outcome to a Result.
+		 *
+		 * @example
+		 * ```ts
+		 * pipe(outcome, Op.Outcome.to.Maybe);
+		 * ```
+		 */
+		Maybe: <E = never, A = never>(outcome: Op.Outcome<E, A>): CoreMaybe<A> =>
+			outcome.kind === "OpOk" ? CoreMaybe.make.some(outcome.value) : CoreMaybe.make.none(),
+	},
+};
+
+export const Op = {
+	is: {
+		/**
 		 * Type guard that checks if an Op state is Idle.
+		 *
+		 * @see {@link Op.is.pending} to check if an Op is actively executing.
 		 *
 		 * @example
 		 * ```ts
@@ -280,6 +538,8 @@ export const Op = {
 		/**
 		 * Type guard that checks if an Op state is Pending (actively executing).
 		 *
+		 * @see {@link Op.is.idle} to check if an Op is waiting to execute.
+		 *
 		 * @example
 		 * ```ts
 		 * if (Op.is.pending(manager.state)) {
@@ -291,6 +551,8 @@ export const Op = {
 
 		/**
 		 * Type guard that checks if an Op state is Queued (waiting in a concurrency queue).
+		 *
+		 * @see {@link Op.is.pending} to check if an Op is actively executing.
 		 *
 		 * @example
 		 * ```ts
@@ -304,6 +566,8 @@ export const Op = {
 		/**
 		 * Type guard that checks if an Op state is Retrying after a failure.
 		 *
+		 * @see {@link Op.is.pending} to check if an Op is actively executing.
+		 *
 		 * @example
 		 * ```ts
 		 * if (Op.is.retrying(manager.state)) {
@@ -312,42 +576,6 @@ export const Op = {
 		 * ```
 		 */
 		retrying: isRetrying,
-
-		/**
-		 * Type guard that checks if an Op state or outcome is Ok.
-		 *
-		 * @example
-		 * ```ts
-		 * if (Op.is.ok(outcome)) {
-		 *   render(outcome.value);
-		 * }
-		 * ```
-		 */
-		ok: isOk,
-
-		/**
-		 * Type guard that checks if an Op state or outcome is Err.
-		 *
-		 * @example
-		 * ```ts
-		 * if (Op.is.err(outcome)) {
-		 *   showError(outcome.error);
-		 * }
-		 * ```
-		 */
-		err: isErr,
-
-		/**
-		 * Type guard that checks if an Op state or outcome is Nil.
-		 *
-		 * @example
-		 * ```ts
-		 * if (Op.is.nil(outcome)) {
-		 *   console.log("Skipped due to:", outcome.reason);
-		 * }
-		 * ```
-		 */
-		nil: isNil,
 	},
 
 	/**
@@ -356,11 +584,13 @@ export const Op = {
 	 *
 	 * Arguments to the returned function are automatically inferred as tuple parameters via `Parameters<Fn>`.
 	 *
+	 * @see {@link Op.lift} to construct an Op without explicit error transformation.
+	 *
 	 * @example
 	 * ```ts
 	 * const fetchUser = Op.create(
 	 *   (signal) => (id: string) => fetch(`/users/${id}`, { signal }).then(r => r.json() as Promise<User>),
-	 *   { onError: (e) => new ApiError(e) },
+	 *   { onError: (error) => new ApiError(error) },
 	 * );
 	 * ```
 	 */
@@ -382,68 +612,56 @@ export const Op = {
 				),
 		}) as unknown as Op<Parameters<Fn>, E, Awaited<ReturnType<Fn>>>,
 
+	/**
+	 * Lifts an async action into an Op without requiring explicit error transformation.
+	 * Unknown errors thrown by the async action are passed through untyped.
+	 *
+	 * @see {@link Op.create} to construct an Op with a typed error transformation.
+	 *
+	 * @example
+	 * ```ts
+	 * const fetchOp = Op.lift((signal) => (url: string) => fetch(url, { signal }));
+	 * ```
+	 */
 	lift: <Fn extends (...args: any[]) => Promise<any>>(
-		f: (signal: AbortSignal) => Fn,
-	): Op<Parameters<Fn>, unknown, Awaited<ReturnType<Fn>>> => Op.create(f, { onError: (e) => e }),
+		factory: (signal: AbortSignal) => Fn,
+	): Op<Parameters<Fn>, unknown, Awaited<ReturnType<Fn>>> => Op.create(factory, { onError: (error) => error }),
 
-	match: <E, A, B>(cases: { ok: (a: A) => B; err: (e: E) => B; nil: () => B; }) => (outcome: Op.Outcome<E, A>): B => {
-		if (outcome.kind === "OpOk") { return cases.ok(outcome.value); }
-		if (outcome.kind === "OpErr") { return cases.err(outcome.error); }
-		return cases.nil();
-	},
-
-	fold: <E, A, B>(onErr: (e: E) => B, onNil: () => B, onOk: (a: A) => B) => (outcome: Op.Outcome<E, A>): B => {
-		if (outcome.kind === "OpOk") { return onOk(outcome.value); }
-		if (outcome.kind === "OpErr") { return onErr(outcome.error); }
-		return onNil();
-	},
-
-	getOrElse: <E, A, B>(defaultValue: () => B) => (outcome: Op.Outcome<E, A>): A | B =>
-		outcome.kind === "OpOk" ? outcome.value : defaultValue(),
-
-	map: <E, A, B>(f: (a: A) => B) => (outcome: Op.Outcome<E, A>): Op.Outcome<E, B> =>
-		outcome.kind === "OpOk" ? makeOk(f(outcome.value)) : outcome as Op.Outcome<E, B>,
-
-	mapError: <E, F, A>(f: (e: E) => F) => (outcome: Op.Outcome<E, A>): Op.Outcome<F, A> =>
-		outcome.kind === "OpErr" ? makeErr(f(outcome.error)) : outcome as Op.Outcome<F, A>,
-
-	chain: <E, A, B>(f: (a: A) => Op.Outcome<E, B>) => (outcome: Op.Outcome<E, A>): Op.Outcome<E, B> =>
-		outcome.kind === "OpOk" ? f(outcome.value) : outcome as Op.Outcome<E, B>,
-
-	tap: <E, A>(f: (a: A) => void) => (outcome: Op.Outcome<E, A>): Op.Outcome<E, A> => {
-		if (outcome.kind === "OpOk") { f(outcome.value); }
-		return outcome;
-	},
-
-	recover: <E, A, B>(f: (e: E) => Op.Outcome<E, B>) => (outcome: Op.Outcome<E, A>): Op.Outcome<E, A | B> =>
-		outcome.kind === "OpErr" ? f(outcome.error) : outcome as Op.Outcome<E, A | B>,
-
-	to: {
-		Result: <E, A>(onNil: () => E) => (outcome: Op.Outcome<E, A>): CoreResult<E, A> => {
-			if (outcome.kind === "OpOk") { return CoreResult.make.ok(outcome.value); }
-			if (outcome.kind === "OpErr") { return CoreResult.make.err(outcome.error); }
-			return CoreResult.make.err(onNil());
-		},
-
-		Maybe: <E, A>(outcome: Op.Outcome<E, A>): CoreMaybe<A> =>
-			outcome.kind === "OpOk" ? CoreMaybe.make.some(outcome.value) : CoreMaybe.make.none(),
-	},
-
-	all: <E, A>(invocations: ReadonlyArray<Deferred<Op.Outcome<E, A>>>): Deferred<ReadonlyArray<Op.Outcome<E, A>>> =>
-		Deferred.from.Promise(Promise.all(invocations.map(Deferred.to.Promise))),
-
-	race: <E, A>(invocations: ReadonlyArray<Deferred<Op.Outcome<E, A>>>): Deferred<Op.Outcome<E, A>> =>
-		Deferred.from.Promise(Promise.race(invocations.map(Deferred.to.Promise))),
-
+	/**
+	 * Subscribes to an Op manager and executes a side-effect whenever the manager emits an Ok outcome.
+	 * Returns an unsubscribe callback.
+	 *
+	 * @example
+	 * ```ts
+	 * const unsubscribe = Op.wire(userManager, (user) => analyticsManager.run(user.id));
+	 * ```
+	 */
 	wire: <Args extends readonly any[], E, A, S extends Op.State<E, A>>(
 		source: Op.Manager<Args, E, A, S>,
-		f: (a: A) => void,
+		sideEffect: (value: A) => void,
 	): () => void =>
 		source.subscribe((state) => {
-			if (isOk(state)) { f(state.value); }
+			if (isOk<A>(state)) {
+				sideEffect(state.value);
+			}
 		}),
 
+	/**
+	 * Interprets an Op blueprint with a concurrency and lifecycle strategy, returning a Manager.
+	 *
+	 * @see {@link Op.create} to construct an Op blueprint.
+	 *
+	 * @example
+	 * ```ts
+	 * const manager = Op.interpret(fetchUser, { strategy: "restartable" });
+	 * ```
+	 */
 	interpret: interpretFn,
+
+	/**
+	 * Settled outcome value constructors, type guards, eliminators, and combinators.
+	 */
+	Outcome: OpOutcome,
 };
 
 export namespace Op {
@@ -467,6 +685,23 @@ export namespace Op {
 	};
 	export type Manager<Args extends readonly any[], E, A, S extends State<E, A>> = {
 		readonly state: S;
+		/**
+		 * Triggers execution of the operation with the given arguments.
+		 * Resolves with the settled `Op.Outcome` wrapped in a `Deferred`.
+		 *
+		 * Coordinate concurrent runs using `Deferred.all` or `Deferred.race`.
+		 *
+		 * @example
+		 * ```ts
+		 * const outcome = await manager.run("user_123");
+		 *
+		 * // Coordinate concurrent runs:
+		 * const [user, settings] = await Deferred.all([
+		 *   userManager.run("user_123"),
+		 *   settingsManager.run(),
+		 * ]);
+		 * ```
+		 */
 		run: (...args: Args) => Deferred<Exclude<S, Idle | Pending | Queued | Retrying<E>>>;
 		abort: () => void;
 		subscribe: (cb: (state: S) => void) => () => void;
@@ -475,6 +710,20 @@ export namespace Op {
 	};
 	export type KeyedManager<Args extends readonly any[], K, E, PerKeyS> = {
 		readonly state: ReadonlyMap<K, PerKeyS>;
+		/**
+		 * Triggers execution for the specific keyed item with the given arguments.
+		 * Resolves with the settled `Op.Outcome` wrapped in a `Deferred`.
+		 *
+		 * Coordinate concurrent runs across keys using `Deferred.all` or `Deferred.race`.
+		 *
+		 * @example
+		 * ```ts
+		 * const [item1, item2] = await Deferred.all([
+		 *   keyedManager.run("item_1"),
+		 *   keyedManager.run("item_2"),
+		 * ]);
+		 * ```
+		 */
 		run: (...args: Args) => Deferred<Exclude<PerKeyS, Pending | Retrying<E>>>;
 		abort: (key?: K) => void;
 		subscribe: (cb: (state: ReadonlyMap<K, PerKeyS>) => void) => () => void;
