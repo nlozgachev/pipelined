@@ -11,7 +11,7 @@ import type { Brand } from "#types";
 /**
  * A branded type representing a unique collection with at least one element.
  */
-export type NonEmptySet<A> = Brand<InternalNonEmpty<"Uniq">, ReadonlySet<A>>;
+type NonEmptySet<A> = Brand<InternalNonEmpty<"Uniq">, ReadonlySet<A>>;
 
 // =============================================================================
 // Private Helpers & Combinator Implementations
@@ -29,7 +29,7 @@ const fromArray = <A>(items: readonly A[]): ReadonlySet<A> => new globalThis.Set
 /**
  * Returns `true` when the set contains the given element.
  *
- * @see {@link add} for inserting an element into a set.
+ * @see {@link insert} for inserting an element into a set.
  * @see {@link remove} for deleting an element from a set.
  */
 const has = <A>(item: A) => (set: ReadonlySet<A>): boolean => set.has(item);
@@ -42,7 +42,7 @@ const size = <A>(set: ReadonlySet<A>): number => set.size;
  * @see {@link remove} for deleting an element from a set.
  * @see {@link toggle} for toggling presence of an element.
  */
-const add = <A>(item: A) => (set: ReadonlySet<A>): ReadonlySet<A> => {
+const insert = <A>(item: A) => (set: ReadonlySet<A>): ReadonlySet<A> => {
 	if (set.has(item)) {
 		return set;
 	}
@@ -54,7 +54,7 @@ const add = <A>(item: A) => (set: ReadonlySet<A>): ReadonlySet<A> => {
 /**
  * Returns a new set with the element removed.
  *
- * @see {@link add} for adding an element to a set.
+ * @see {@link insert} for adding an element to a set.
  */
 const remove = <A>(item: A) => (set: ReadonlySet<A>): ReadonlySet<A> => {
 	if (!set.has(item)) {
@@ -231,8 +231,7 @@ export const Uniq = {
 	from: { array: fromArray },
 	has,
 	size,
-	add,
-	insert: add,
+	insert,
 	remove,
 	toggle,
 	map,

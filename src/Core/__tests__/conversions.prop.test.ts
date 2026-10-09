@@ -2,7 +2,7 @@ import fc from "fast-check";
 import { expect, test } from "vitest";
 import { Maybe } from "../Maybe.ts";
 import { RemoteData } from "../RemoteData.ts";
-import { type Ok as ResultOk, Result } from "../Result.ts";
+import { Result } from "../Result.ts";
 import { Validation } from "../Validation.ts";
 
 // ---------------------------------------------------------------------------
@@ -36,7 +36,7 @@ test("to.Result: round-trip with Result.to.Maybe preserves None", () => {
 
 test("to.Maybe: round-trip with Maybe.to.Result preserves Ok value", () => {
 	fc.assert(fc.property(arbOk, (r) => {
-		const o = r as ResultOk<number>;
+		const o = r as Result.Ok<number>;
 		const asResult = Maybe.to.Result(() => "missing")(Result.to.Maybe(r));
 		expect(asResult).toStrictEqual(Result.make.ok(o.value));
 	}));

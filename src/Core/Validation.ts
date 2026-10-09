@@ -32,20 +32,19 @@ import { isNonEmptyArr, type NonEmptyArr, type WithErrors, type WithKind, type W
  * // Failed(["Name is required", "Age must be positive"])
  * ```
  */
-export type Validation<E, A> = Passed<A> | Failed<E>;
-
-export type Passed<A> = WithKind<"Passed"> & WithValue<A>;
-export type Failed<E> = WithKind<"Failed"> & WithErrors<E>;
+export type Validation<E, A> = Validation.Passed<A> | Validation.Failed<E>;
 
 // =============================================================================
 // Private Helpers & Variant Constructors
 // =============================================================================
 const makePassed = <E, A>(value: A): Validation<E, A> => ({ kind: "Passed", value });
-const makeFailed = <E>(error: E): Failed<E> => ({ kind: "Failed", errors: [error] });
-const makeFailedAll = <E>(errors: NonEmptyArr<E>): Failed<E> => ({ kind: "Failed", errors });
+const makeFailed = <E>(error: E): Validation.Failed<E> => ({ kind: "Failed", errors: [error] });
+const makeFailedAll = <E>(errors: NonEmptyArr<E>): Validation.Failed<E> => ({ kind: "Failed", errors });
 
-const isPassed = <E, A>(validation: Validation<E, A>): validation is Passed<A> => validation.kind === "Passed";
-const isFailed = <E, A>(validation: Validation<E, A>): validation is Failed<E> => validation.kind === "Failed";
+const isPassed = <E, A>(validation: Validation<E, A>): validation is Validation.Passed<A> =>
+	validation.kind === "Passed";
+const isFailed = <E, A>(validation: Validation<E, A>): validation is Validation.Failed<E> =>
+	validation.kind === "Failed";
 
 // =============================================================================
 // Combinators
@@ -589,7 +588,7 @@ export const Validation = {
 			 */
 			passed: <T extends Record<string, any>, E>(
 				keyed: { readonly [K in keyof T]: Validation<E, T[K]>; },
-			): keyed is { readonly [K in keyof T]: Passed<T[K]>; } => {
+			): keyed is { readonly [K in keyof T]: Validation.Passed<T[K]>; } => {
 				for (const key of Object.keys(keyed) as (keyof T)[]) {
 					if (keyed[key].kind !== "Passed") {
 						return false;
@@ -674,7 +673,6 @@ export const Validation = {
 	},
 };
 
-// oxlint-disable no-shadow
 export namespace Validation {
 	export type Passed<A> = WithKind<"Passed"> & WithValue<A>;
 	export type Failed<E> = WithKind<"Failed"> & WithErrors<E>;

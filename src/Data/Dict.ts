@@ -11,7 +11,7 @@ import type { Brand } from "#types";
 /**
  * A branded type representing a key-value dictionary with at least one entry.
  */
-export type NonEmptyMap<K, V> = Brand<InternalNonEmpty<"Dict">, ReadonlyMap<K, V>>;
+type NonEmptyMap<K, V> = Brand<InternalNonEmpty<"Dict">, ReadonlyMap<K, V>>;
 
 // =============================================================================
 // Private Helpers & Combinator Implementations

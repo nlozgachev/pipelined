@@ -11,9 +11,9 @@ This guide acts as a comprehensive reference for these tools. If you are new to 
 
 ---
 
-## pipe, flow, and compose
+## pipe and flow
 
-These three functions are different ways of sequencing transformations.
+These two functions sequence transformations top-to-bottom.
 
 `pipe` evaluates a starting value immediately through a sequence of steps. `flow` defers execution, returning a reusable function.
 
@@ -37,25 +37,8 @@ const toSlug = flow(
 const slugs = ["  Alice  ", "  Bob  "].map(toSlug); // ["alice", "bob"]
 ```
 
-`compose` is the right-to-left counterpart of `flow`. While `flow(f, g)` executes `f` first and `g` second, `compose(g, f)` runs them in reverse order, matching traditional mathematical notation `(g ∘ f)`:
-
-```ts
-import { compose, flow } from "@nlozgachev/pipelined/composition";
-
-const double = (n: number) => n * 2;
-const addOne = (n: number) => n + 1;
-
-// flow: addOne(5) = 6, then double(6) = 12
-flow(addOne, double)(5); // 12
-
-// compose: double(5) = 10, then addOne(10) = 11
-compose(addOne, double)(5); // 11
-```
-
-Use `compose` primarily when adapting code from third-party libraries that rely on right-to-left composition patterns.
-
 <Aside title="The ten-step limit in pipelines">
-`pipe`, `flow`, and `compose` are typed for up to **10 steps**. If you exceed this limit, TypeScript will raise a compilation error. This boundary is chosen to align with the JIT optimization limits of modern JavaScript runtimes.
+`pipe` and `flow` are typed for up to **10 steps**. If you exceed this limit, TypeScript will raise a compilation error. This boundary is chosen to align with the JIT optimization limits of modern JavaScript runtimes.
 
 **TypeScript type inference.** TypeScript lacks a native syntax to represent a variadic function where the input of each argument must match the output of the preceding one. The only way to type this is to write explicit overloads for every chain length. Each additional overload adds significant work for the compiler, slowing down IDE completions across the entire codebase.
 
@@ -76,53 +59,51 @@ Dividing the pipeline into cohesive sub-pipelines provides cleaner type boundari
 
 ---
 
-## pipe extensions
+## Conditional execution: when, unless, and either
 
-Piping raw values through standard functions works well for clean, linear logic. However, real-world applications frequently require optional branches, safe error handling, object reshaping, or asynchronous steps. Rather than forcing you to write noisy inline arrow functions, the `pipe` combinator provides several specialized extension helpers.
+Piping raw values through standard functions works well for clean, linear logic. However, real-world applications frequently require optional branches. Rather than forcing you to write noisy inline arrow functions with ternary expressions, `Composition` provides declarative branching combinators that slot into `pipe` and `flow`.
 
-### Conditional steps
-
-Real-world flows often involve optional steps, such as applying a discount only if a user is a VIP. In standard code, this often results in verbose inline conditions:
+`when` and `unless` execute a transformation only when a predicate evaluates to `true` (or `false`), returning the original input value unchanged otherwise:
 
 ```ts
+import { pipe, when } from "@nlozgachev/pipelined/composition";
+
 const invoice = pipe(
   cart,
-  (c) => c.isVip ? applyDiscount(c) : c,
+  when((c) => c.isVip, applyDiscount),
   calculateTax,
 );
 ```
 
-`pipe.when` and `pipe.unless` allow you to describe these conditions declaratively, executing the step only when the predicate evaluates to `true` (or `false`):
+`either` functions like an inline branch, selecting one of two transformation functions based on a predicate:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
+import { either, flow, pipe } from "@nlozgachev/pipelined/composition";
 
-const invoice = pipe(
-  cart,
-  pipe.when((c) => c.isVip, applyDiscount),
-  calculateTax,
-);
-```
-
-`pipe.either` functions like an inline ternary branch, picking one of two functions to execute based on a condition:
-
-```ts
 const label = pipe(
   score,
-  pipe.either((n) => n >= 80, () => "Excellent", () => "Needs Improvement"),
+  either((n) => n >= 80, () => "Excellent", () => "Needs Improvement"),
+);
+
+const classifyScore = flow(
+  either((score: number) => score >= 80, () => "Excellent", () => "Pass"),
 );
 ```
 
-### Safe steps with try
+---
 
-Certain functions (like `JSON.parse` or filesystem reads) throw runtime exceptions. Wrapping a single step in a `try/catch` block breaks the visual flow of a pipeline.
+## Safe exception handling: tryCatch
 
-`pipe.try` intercepts exceptions for a specific step, allowing you to handle the error and supply a safe fallback value:
+Certain operations (such as `JSON.parse` or filesystem access) throw runtime exceptions. Wrapping individual steps in imperative `try/catch` blocks breaks the visual flow of a pipeline.
+
+`tryCatch` wraps a throwing operation in a safety boundary, intercepting any exception and routing it to an error fallback function:
 
 ```ts
+import { pipe, tryCatch } from "@nlozgachev/pipelined/composition";
+
 const config = pipe(
   rawJson,
-  pipe.try(
+  tryCatch(
     (s) => JSON.parse(s),
     (error) => {
       console.warn("Invalid config format; using defaults", error);
@@ -133,134 +114,61 @@ const config = pipe(
 );
 ```
 
-### Reshaping objects with struct
+---
 
-When deriving a structured object from a single input value, we often write verbose mapping wrappers. 
+## Reshaping objects: struct
 
-`pipe.struct` allows you to construct a fresh object by running a record of field-level transformer functions on the piped value:
+When deriving a structured record from a single input value, mapping wrapper functions can become repetitive.
+
+`struct` compiles a record of field-level transformer functions into a single transformation that maps the input into a structured object:
 
 ```ts
+import { flow, pipe, struct } from "@nlozgachev/pipelined/composition";
+
 const summary = pipe(
   userProfile,
-  pipe.struct({
+  struct({
     fullName: (u) => `${u.firstName} ${u.lastName}`,
     age: (u) => calculateAge(u.birthDate),
     isAdmin: (u) => u.roles.includes("admin"),
   }),
 ); // { fullName: "Alice Smith", age: 30, isAdmin: true }
-```
 
-### Short-circuiting nulls with safe
-
-Optional chaining (`?.`) is highly convenient, but when piping functions, you often have to guard each step to avoid runtime failures on empty values: `(x) => x ? f(x) : null`.
-
-`pipe.safe` automatically short-circuits and propagates `null` or `undefined` the moment any intermediate step evaluates to a nil value:
-
-```ts
-const usernameLength = pipe.safe(
-  apiResponse.user, // User | null
-  (u) => u.profile,
-  (p) => p.username,
-  (name) => name.trim(),
-  (name) => name.length,
-); // Returns number | null (short-circuits if user or profile is null)
-```
-
-### Asynchronous steps with async
-
-Standard pipelines expect synchronous steps. If a step returns a `Promise`, all subsequent steps receive the promise object itself instead of the resolved value.
-
-`pipe.async` resolves promises returned at any stage before passing the resolved value to the next step, returning a final `Promise`:
-
-```ts
-const userConfig = await pipe.async(
-  userId,
-  fetchUserAsync,  // returns Promise<User>
-  (user) => user.configId,
-  fetchConfigAsync, // returns Promise<Config>
-); // Promise<Config>
+const buildSummary = flow(
+  struct({
+    name: (u: User) => `${u.firstName} ${u.lastName}`,
+    age: (u: User) => calculateAge(u.birthDate),
+  }),
+);
 ```
 
 ---
 
-## flow extensions
+## Asynchronous pipelines: pipeAsync and flowAsync
 
-Symmetrically to `pipe`, the `flow` combinator provides extension helpers that compile these branching, catching, and asynchronous behaviors into reusable, deferred functions.
+`pipe` and `flow` are strictly synchronous and infallible. If a step returns a `Promise`, standard `pipe` does not await it — subsequent steps receive the promise instance itself rather than the resolved value.
 
-### Conditional composition
-
-`flow.when` and `flow.unless` let you inject optional steps into a reusable pipeline:
-
-```ts
-import { flow } from "@nlozgachev/pipelined/composition";
-
-const processItem = flow(
-  calculateTax,
-  flow.when((item) => item.isOnSale, applyDiscount),
-  formatPrice,
-);
-```
-
-`flow.either` generates a branching step that picks one of two paths:
+When a pipeline includes asynchronous transitions, use the dedicated async runners:
+- `pipeAsync`: Evaluates a starting value or promise immediately through a sequence of synchronous or asynchronous steps, returning a `Promise`.
+- `flowAsync`: Compiles a sequence of steps into a reusable function that returns a `Promise`.
 
 ```ts
-const classifyScore = flow(
-  flow.either((score) => score >= 80, () => "Excellent", () => "Pass"),
-);
-```
+import { flowAsync, pipeAsync } from "@nlozgachev/pipelined/composition";
 
-### Safe composition with try
-
-`flow.try` creates a reusable step that wraps a throwing operation in a safety net, converting exceptions into default or fallback values:
-
-```ts
-const parseConfig = flow(
-  flow.try(
-    (s: string) => JSON.parse(s),
-    (error) => {
-      console.error("Config parse failure:", error);
-      return DEFAULT_CONFIG;
-    },
-  ),
-  (config) => config.theme,
-);
-```
-
-### Structured objects with struct
-
-`flow.struct` compiles a record of transformer functions into a single mapping function that produces a structured object:
-
-```ts
-const buildSummary = flow(
-  flow.struct({
-    name: (u: User) => `${u.firstName} ${u.lastName}`,
-    age: (u) => calculateAge(u.birthDate),
-  }),
-); // Returns a function: (u: User) => { name: string; age: number }
-```
-
-### Short-circuiting nulls with safe
-
-`flow.safe` creates a reusable pipeline that safely propagates `null` or `undefined` down the chain, short-circuiting on nil values:
-
-```ts
-const getUsernameLength = flow.safe(
-  (u: User | null) => u?.profile,
-  (p) => p.username,
-  (name) => name.length,
-); // Returns a function: (u: User | null) => number | null
-```
-
-### Asynchronous composition with async
-
-`flow.async` creates an asynchronous composition chain, awaiting intermediate promises before moving to the next transformation:
-
-```ts
-const loadConfig = flow.async(
-  fetchUserAsync, // returns Promise<User>
+// pipeAsync: immediate execution
+const userConfig = await pipeAsync(
+  userId,
+  fetchUserAsync,   // returns Promise<User>
   (user) => user.configId,
   fetchConfigAsync, // returns Promise<Config>
-); // Returns a function: (userId: string) => Promise<Config>
+);
+
+// flowAsync: reusable deferred pipeline
+const loadConfig = flowAsync(
+  fetchUserAsync,
+  (user) => user.configId,
+  fetchConfigAsync,
+);
 ```
 
 ---
@@ -462,33 +370,9 @@ initConnection(); // Returns the cached connection (no second log or connection)
 
 ---
 
-## Predicate combinators
+## Predicate composition
 
-`not` inverts a predicate function:
-
-```ts
-import { not } from "@nlozgachev/pipelined/composition";
-
-const isEven = (n: number) => n % 2 === 0;
-const isOdd = not(isEven);
-
-[1, 2, 3, 4, 5].filter(isOdd); // [1, 3, 5]
-```
-
-`and` and `or` combine two predicate functions with standard short-circuit evaluation:
-
-```ts
-import { and, or } from "@nlozgachev/pipelined/composition";
-
-const isPositive = (n: number) => n > 0;
-const isInteger = (n: number) => Number.isInteger(n);
-
-const isPositiveInteger = and(isPositive, isInteger);
-isPositiveInteger(3.5); // false
-
-const isNonZero = or(isPositive, (n: number) => n < 0);
-isNonZero(0); // false
-```
+To negate, combine, or project boolean checks, use the `Predicate` module from `@nlozgachev/pipelined/core`. It provides `Predicate.not`, `Predicate.and`, `Predicate.or`, `Predicate.using`, `Predicate.all`, and `Predicate.any`. For full details, see the [Predicate guide](/guides/predicate).
 
 ---
 
@@ -587,21 +471,19 @@ const sorted = [...tracks].sort(byDuration);
 ## When to use each utility
 
 *   **`pipe`** — Sequence transformations top-to-bottom on an immediate value.
-*   **`pipe.when` / `pipe.unless`** — Run a step conditionally in a pipeline.
-*   **`pipe.either`** — Branch a pipeline step to one of two paths based on a condition.
-*   **`pipe.try`** — Wrap a single throwing step with an error fallback.
-*   **`pipe.struct`** — Reshape a single input value into a structured object of transforms.
-*   **`pipe.safe`** — Short-circuit and propagate `null`/`undefined` across steps automatically.
-*   **`pipe.async`** — Sequence transformations containing asynchronous transitions.
+*   **`pipeAsync`** — Sequence transformations containing asynchronous promise steps.
 *   **`flow`** — Build a reusable, deferred transformation function.
-*   **`compose`** — Sequence reusable transformations right-to-left.
+*   **`flowAsync`** — Build a reusable, deferred asynchronous transformation function.
+*   **`when` / `unless`** — Run a step conditionally in a pipeline.
+*   **`either`** — Branch a pipeline step to one of two paths based on a condition.
+*   **`tryCatch`** — Wrap a single throwing step with an error fallback.
+*   **`struct`** — Reshape a single input value into a structured object of transforms.
 *   **`curry` / `curry3` / `curry4`** — Convert multi-argument functions to curried steps.
 *   **`uncurry` / `uncurry3` / `uncurry4`** — Convert curried functions back to multi-argument format.
 *   **`flip`** — Reverse the argument order of a curried binary function.
 *   **`identity`** — A no-op callback that returns its input exactly as received.
 *   **`constant`** — Create a function that always returns a static value.
 *   **`once`** — Ensure a function executes only on its first invocation.
-*   **`not` / `and` / `or`** — Combine and invert predicate functions.
 *   **`memoize`** — Cache results using primitive keys.
 *   **`memoizeWeak`** — Cache results using object keys, allowing garbage collection.
 *   **`tap`** — Execute a side effect in a pipeline without altering the value.

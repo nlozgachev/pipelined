@@ -34,6 +34,6 @@ All entry points are published with `"sideEffects": false`. Modern bundlers (Vit
 
 ### Compatibility Rationale
 
-- **Node.js Runtime Compatibility**: Built-in runtime feature detection provides zero-dependency fallbacks for newer ECMAScript features (such as `Set.prototype.union` and `Array.prototype.toSorted`), allowing `@nlozgachev/pipelined` to run on Node.js 18+ and all modern JS runtimes.
+- **Node.js Runtime Compatibility**: Built-in runtime feature detection provides zero-dependency fallbacks for newer ECMAScript features (such as `Set.prototype.union` and `Array.prototype.toSorted`), while `Intl.Segmenter` is loaded lazily for `Str.graphemeSize`, allowing `@nlozgachev/pipelined` to run on Node.js 18+ and all modern JS runtimes.
 - **TypeScript 5.5+**: Required because standard ECMAScript 2023 Array methods (`.toSorted()`, `.toReversed()`) and ECMAScript 2024 Set methods (`.union()`, `.intersection()`, `.isSubsetOf()`) were introduced into TypeScript's standard library (`lib.es2023` / `lib.es2024`) in version 5.5.
 - **Strict Mode**: Required for type-level guarantees — specifically exhaustiveness checking in `match` pattern branches and narrowing in type guards.

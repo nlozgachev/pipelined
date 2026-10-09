@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { expect, expectTypeOf, test } from "vitest";
-import { Passed, Validation } from "../Validation.ts";
+import { Validation } from "../Validation.ts";
 
 // ---------------------------------------------------------------------------
 // Arbitraries
@@ -64,7 +64,7 @@ test("apply: accumulates errors from both Invalid sides", () => {
 
 test("getOrElse: returns value on Valid", () => {
 	fc.assert(fc.property(arbValid, (v) => {
-		const vv = v as Passed<number>;
+		const vv = v as Validation.Passed<number>;
 		expect(Validation.getOrElse(() => -1)(v)).toBe(vv.value);
 	}));
 });

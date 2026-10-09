@@ -19,18 +19,6 @@ test("make: creates Logged with explicit log", () => {
 	expect(result.log).toStrictEqual(["init"]);
 });
 
-test("from.value: creates Logged with empty log", () => {
-	const result = Logged.from.value<string, number>(42);
-	expect(result.value).toBe(42);
-	expect(result.log).toStrictEqual([]);
-});
-
-test("from.value: works with string value", () => {
-	const result = Logged.from.value<string, string>("hello");
-	expect(result.value).toBe("hello");
-	expect(result.log).toStrictEqual([]);
-});
-
 // ---------------------------------------------------------------------------
 // tell
 // ---------------------------------------------------------------------------
@@ -52,7 +40,7 @@ test("from.entry: works with number entry", () => {
 // ---------------------------------------------------------------------------
 
 test("map: transforms value", () => {
-	const result = pipe(Logged.from.value<string, number>(5), Logged.map((n) => n * 2));
+	const result = pipe(Logged.make<string, number>(5), Logged.map((n) => n * 2));
 	expect(result.value).toBe(10);
 });
 
@@ -64,7 +52,7 @@ test("map: does not change log", () => {
 });
 
 test("map: can change value type", () => {
-	const result = pipe(Logged.from.value<string, number>(42), Logged.map((n) => `value: ${n}`));
+	const result = pipe(Logged.make<string, number>(42), Logged.map((n) => `value: ${n}`));
 	expect(result.value).toBe("value: 42");
 });
 
@@ -74,7 +62,7 @@ test("map: can change value type", () => {
 
 test("chain: sequences computations and concatenates logs", () => {
 	const result = pipe(
-		Logged.from.value<string, number>(1),
+		Logged.make<string, number>(1),
 		Logged.chain((n) => pipe(Logged.from.entry("first"), Logged.map(() => n + 1))),
 		Logged.chain((n) => pipe(Logged.from.entry("second"), Logged.map(() => n * 10))),
 	);
@@ -83,10 +71,7 @@ test("chain: sequences computations and concatenates logs", () => {
 });
 
 test("chain: passes value to next computation", () => {
-	const result = pipe(
-		Logged.from.value<string, number>(3),
-		Logged.chain((n) => Logged.from.value<string, number>(n * 7)),
-	);
+	const result = pipe(Logged.make<string, number>(3), Logged.chain((n) => Logged.make<string, number>(n * 7)));
 	expect(result.value).toBe(21);
 	expect(result.log).toStrictEqual([]);
 });
@@ -99,7 +84,7 @@ test("chain: accumulates logs from both sides", () => {
 });
 
 test("chain: preserves empty log when both sides have empty logs", () => {
-	const result = pipe(Logged.from.value<string, number>(1), Logged.chain((n) => Logged.from.value(n + 1)));
+	const result = pipe(Logged.make<string, number>(1), Logged.chain((n) => Logged.make(n + 1)));
 	expect(result.value).toBe(2);
 	expect(result.log).toStrictEqual([]);
 });
@@ -153,7 +138,7 @@ test("run: returns value and log tuple", () => {
 });
 
 test("run: returns empty log for value created via from.value", () => {
-	const [value, log] = Logged.run(Logged.from.value(99));
+	const [value, log] = Logged.run(Logged.make(99));
 	expect(value).toBe(99);
 	expect(log).toStrictEqual([]);
 });
@@ -169,7 +154,7 @@ test("pipe: composes in pipeline with tell and map", () => {
 			: pipe(Logged.from.entry(`rejected: "${input}"`), Logged.map(() => "(empty)"));
 
 	const program = pipe(
-		Logged.from.value<string, string>(" hello "),
+		Logged.make<string, string>(" hello "),
 		Logged.chain(validated),
 		Logged.chain((s) => pipe(Logged.from.entry(`processed: "${s}"`), Logged.map(() => s.toUpperCase()))),
 	);
@@ -184,7 +169,7 @@ test("pipe: accumulates logs across multiple chain steps", () => {
 	const program = steps.reduce(
 		(acc: Logged<string, number>, step) =>
 			pipe(acc, Logged.chain((n) => pipe(Logged.from.entry(step), Logged.map(() => n + 1)))),
-		Logged.from.value<string, number>(0),
+		Logged.make<string, number>(0),
 	);
 	const [value, log] = Logged.run(program);
 	expect(value).toBe(3);
@@ -194,7 +179,7 @@ test("pipe: accumulates logs across multiple chain steps", () => {
 // --- bindTo ---
 
 test("bindTo: wraps value in accumulator object", () => {
-	const result = pipe(Logged.from.value<string, number>(2), Logged.bindTo("a"));
+	const result = pipe(Logged.make<string, number>(2), Logged.bindTo("a"));
 	const [value, log] = Logged.run(result);
 	expect(value).toStrictEqual({ a: 2 });
 	expect(log).toStrictEqual([]);
@@ -204,7 +189,7 @@ test("bindTo: wraps value in accumulator object", () => {
 
 test("bind: accumulates values key-by-key in pipeline", () => {
 	const result = pipe(
-		Logged.from.value<string, number>(2),
+		Logged.make<string, number>(2),
 		Logged.bindTo("a"),
 		Logged.bind("b", ({ a }) => pipe(Logged.from.entry("logged b"), Logged.map(() => a * 3))),
 		Logged.bind("c", ({ a, b }) => pipe(Logged.from.entry("logged c"), Logged.map(() => a + b))),
@@ -218,7 +203,7 @@ test("bind: accumulates values key-by-key in pipeline", () => {
 
 test("focus: focuses value transformation via Lens", () => {
 	const nameLens = Lens.from.property<{ name: string; }>()("name");
-	const input = Logged.from.value<string, { name: string; }>({ name: "alice" });
+	const input = Logged.make<string, { name: string; }>({ name: "alice" });
 	const result = pipe(input, Logged.focus(nameLens)((s) => s.toUpperCase()));
 
 	expect(result.value).toStrictEqual({ name: "ALICE" });
@@ -230,7 +215,7 @@ test("focus: focuses value transformation via Lens", () => {
 test("tap: executes side effect callback", () => {
 	let called = false;
 	pipe(
-		Logged.from.value<string, number>(42),
+		Logged.make<string, number>(42),
 		Logged.tap(() => {
 			called = true;
 		}),
@@ -241,7 +226,7 @@ test("tap: executes side effect callback", () => {
 test("map: executes side effect callback", () => {
 	let called = false;
 	pipe(
-		Logged.from.value<string, number>(42),
+		Logged.make<string, number>(42),
 		Logged.map((n) => {
 			called = true;
 			return n * 2;

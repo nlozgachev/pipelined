@@ -1410,7 +1410,6 @@ export const Arr = {
 	prepend,
 	append,
 	size,
-	length: size,
 	some,
 	every,
 	reverse,

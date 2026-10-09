@@ -11,11 +11,34 @@ import type { Brand } from "#types";
 /**
  * A branded type representing a string with at least one character.
  */
-export type NonEmptyString = Brand<InternalNonEmpty<"Str">, string>;
+type NonEmptyString = Brand<InternalNonEmpty<"Str">, string>;
 
 // =============================================================================
 // Private Helpers & NonEmpty Constructors
 // =============================================================================
+const isAscii = (text: string): boolean => {
+	for (let i = 0; i < text.length; i++) {
+		if (text.charCodeAt(i) > 127) {
+			return false;
+		}
+	}
+	return true;
+};
+
+let cachedSegmenter: Intl.Segmenter | null | undefined;
+
+const getSegmenter = (): Intl.Segmenter => {
+	if (cachedSegmenter === undefined) {
+		cachedSegmenter = typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
+			? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+			: null;
+	}
+	if (cachedSegmenter === null) {
+		throw new TypeError("Str.graphemeSize requires Intl.Segmenter to be supported in the runtime environment.");
+	}
+	return cachedSegmenter;
+};
+
 const StrNonEmptyConst = {
 	// --- from ---
 	from: {
@@ -220,15 +243,44 @@ export const Str = {
 	words: (text: string): readonly string[] => text.trim().split(/\s+/).filter(Boolean),
 
 	/**
-	 * Returns the length of the string.
+	 * Returns the UTF-16 code-unit length of the string.
+	 *
+	 * @see {@link graphemeSize} for counting user-perceived characters/emojis.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe("hello", Str.length); // 5
-	 * pipe("", Str.length);      // 0
+	 * pipe("hello", Str.size); // 5
+	 * pipe("", Str.size);      // 0
 	 * ```
 	 */
-	length: (text: string): number => text.length,
+	size: (text: string): number => text.length,
+
+	/**
+	 * Returns the number of user-perceived characters (grapheme clusters) in the string,
+	 * correctly counting emojis and complex Unicode sequences.
+	 *
+	 * @see {@link size} for fast UTF-16 code-unit length.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe("👨‍👩‍👧‍👦", Str.graphemeSize); // 1
+	 * pipe("👨‍👩‍👧‍👦", Str.size);         // 11
+	 * ```
+	 */
+	graphemeSize: (text: string): number => {
+		if (text.length === 0) {
+			return 0;
+		}
+		if (isAscii(text)) {
+			return text.length;
+		}
+		const segmenter = getSegmenter();
+		let count = 0;
+		for (const _ of segmenter.segment(text)) {
+			count++;
+		}
+		return count;
+	},
 
 	/**
 	 * Extracts a substring between two indices. Data-last: use in `pipe`.

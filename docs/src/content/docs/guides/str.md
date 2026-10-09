@@ -80,6 +80,32 @@ Str.capitalize("hello world"); // "Hello world"
 Str.trim("  user input  "); // "user input"
 ```
 
+## Measuring length: size and graphemeSize
+
+JavaScript's native `String.prototype.length` counts UTF-16 code units rather than perceived
+characters. For multi-byte characters such as emojis or composite grapheme clusters (flags, skin
+tone modifiers, or zero-width joiner sequences), `.length` returns counter-intuitive counts (for
+example, `"👋".length === 2` and `"👨‍👩‍👧‍👦".length === 11`).
+
+`Str` provides two complementary measurement utilities:
+
+- `Str.size`: Returns the standard UTF-16 code unit count (equivalent to `.length`), designed for
+  data-last pipelines.
+- `Str.graphemeSize`: Counts human-perceived characters (grapheme clusters) using `Intl.Segmenter`.
+
+```ts
+import { Str } from "@nlozgachev/pipelined/data";
+
+// Standard UTF-16 code-unit count
+Str.size("hello"); // 5
+Str.size("👋"); // 2
+
+// Human-perceived character count
+Str.graphemeSize("hello"); // 5
+Str.graphemeSize("👋"); // 1
+Str.graphemeSize("👨‍👩‍👧‍👦"); // 1 (complex ZWJ sequence)
+```
+
 ## Splitting and segmenting text
 
 Standard JavaScript `split` returns a plain array, but handles multi-line endings and multiple
@@ -218,7 +244,7 @@ const cleanedTags = pipe(
   Str.trim,
   Str.split(","),
   Arr.map(Str.trim),
-  Arr.filter((tag) => tag.length > 0),
+  Arr.filter(Str.is.nonEmpty),
   Arr.map(Str.toLowerCase),
 );
 // ["typescript", "functional", "pipe"]
@@ -231,6 +257,11 @@ const cleanedTags = pipe(
   native string methods require writing manual arrow wrappers inside `pipe`. `Str` provides curried,
   data-last combinators (`Str.trim`, `Str.toLowerCase`, `Str.split`, `Str.replace`) that chain
   directly.
+- **Accurate character and grapheme counting (`Str.size`, `Str.graphemeSize`)**: In
+  internationalized applications or user interfaces with character counters, native `.length`
+  miscounts surrogate pairs and compound emojis. `Str.graphemeSize` counts actual user-perceived
+  glyphs via `Intl.Segmenter`, while `Str.size` provides a uniform data-last UTF-16 code-unit
+  accessor across data collections.
 - **Pure regular expression matching without stateful bugs**: Native `RegExp` flags (`/g`, `/y`)
   maintain internal `lastIndex` pointer offsets that cause successive checks to fail intermittently.
   `Str.match` and `Str.test` reset state to index zero on every execution, guaranteeing pure,

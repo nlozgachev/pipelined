@@ -23,19 +23,21 @@ import type { NonEmptyArr, WithError, WithKind, WithValue } from "#internal";
  * ); // 10
  * ```
  */
-export type Result<E, A> = Ok<A> | Err<E>;
+export type Result<E, A> = Result.Ok<A> | Result.Err<E>;
 
-export type Ok<A> = WithKind<"Ok"> & WithValue<A>;
-export type Err<E> = WithKind<"Err"> & WithError<E>;
+export namespace Result {
+	export type Ok<A> = WithKind<"Ok"> & WithValue<A>;
+	export type Err<E> = WithKind<"Err"> & WithError<E>;
+}
 
 // =============================================================================
 // Private Helpers & Variant Constructors
 // =============================================================================
-const makeOk = <A>(value: A): Ok<A> => ({ kind: "Ok", value });
-const makeErr = <E>(error: E): Err<E> => ({ kind: "Err", error });
+const makeOk = <A>(value: A): Result.Ok<A> => ({ kind: "Ok", value });
+const makeErr = <E>(error: E): Result.Err<E> => ({ kind: "Err", error });
 
-const isOk = <E, A>(result: Result<E, A>): result is Ok<A> => result.kind === "Ok";
-const isErr = <E, A>(result: Result<E, A>): result is Err<E> => result.kind === "Err";
+const isOk = <E, A>(result: Result<E, A>): result is Result.Ok<A> => result.kind === "Ok";
+const isErr = <E, A>(result: Result<E, A>): result is Result.Err<E> => result.kind === "Err";
 
 // =============================================================================
 // Public Export
@@ -178,7 +180,7 @@ export const Result = {
 	 * ```
 	 */
 	fold: <E, A, B>(onErr: (error: E) => B, onOk: (value: A) => B) => (result: Result<E, A>): B =>
-		isOk(result) ? onOk(result.value) : onErr((result as Err<E>).error),
+		isOk(result) ? onOk(result.value) : onErr((result as Result.Err<E>).error),
 
 	/**
 	 * Pattern matches on a Result, returning the result of the matching case.
@@ -197,7 +199,7 @@ export const Result = {
 	 * ```
 	 */
 	match: <E, A, B>(cases: { ok: (value: A) => B; err: (error: E) => B; }) => (result: Result<E, A>): B =>
-		isOk(result) ? cases.ok(result.value) : cases.err((result as Err<E>).error),
+		isOk(result) ? cases.ok(result.value) : cases.err((result as Result.Err<E>).error),
 
 	/**
 	 * Returns the success value or a default value if the Result is an error.
@@ -318,7 +320,7 @@ export const Result = {
 	 * @see {@link Result.recoverUnless} to conditionally recover based on the error value.
 	 */
 	recover: <E1, E2, B>(fallback: (error: E1) => Result<E2, B>) => <A>(result: Result<E1, A>): Result<E2, A | B> =>
-		isOk(result) ? result : fallback((result as Err<E1>).error),
+		isOk(result) ? result : fallback((result as Result.Err<E1>).error),
 
 	/**
 	 * Recovers from an error unless the predicate `isBlocked` returns true for that error.
@@ -395,7 +397,7 @@ export const Result = {
 	 * ```
 	 */
 	apply: <E2, A>(arg: Result<E2, A>) => <E1, B>(result: Result<E1, (value: A) => B>): Result<E1 | E2, B> =>
-		isOk(result) && isOk(arg) ? makeOk(result.value(arg.value)) : (isErr(result) ? result : (arg as Err<E2>)),
+		isOk(result) && isOk(arg) ? makeOk(result.value(arg.value)) : (isErr(result) ? result : (arg as Result.Err<E2>)),
 
 	/**
 	 * Converts a Result value into an object containing a single property.

@@ -1418,9 +1418,9 @@ test("unfold: generates array from seed until None", () => {
 	expect(res).toStrictEqual([1, 2, 3]);
 });
 
-test("length: returns length of array", () => {
-	expect(Arr.length([1, 2])).toBe(2);
-	expect(Arr.length([])).toBe(0);
+test("size: returns size of array", () => {
+	expect(Arr.size([1, 2])).toBe(2);
+	expect(Arr.size([])).toBe(0);
 });
 
 test("is: distinguishes empty and non-empty arrays", () => {

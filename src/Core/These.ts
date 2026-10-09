@@ -23,24 +23,26 @@ import type { WithFirst, WithKind, WithSecond } from "#internal";
  * };
  * ```
  */
-export type These<A, B> = TheseFirst<A> | TheseSecond<B> | TheseBoth<A, B>;
+export type These<A, B> = These.First<A> | These.Second<B> | These.Both<A, B>;
 
-export type TheseFirst<T> = WithKind<"First"> & WithFirst<T>;
-export type TheseSecond<T> = WithKind<"Second"> & WithSecond<T>;
-export type TheseBoth<First, Second> = WithKind<"Both"> & WithFirst<First> & WithSecond<Second>;
+export namespace These {
+	export type First<T> = WithKind<"First"> & WithFirst<T>;
+	export type Second<T> = WithKind<"Second"> & WithSecond<T>;
+	export type Both<A, B> = WithKind<"Both"> & WithFirst<A> & WithSecond<B>;
+}
 
-const makeFirst = <A>(value: A): TheseFirst<A> => ({ kind: "First", first: value });
-const makeSecond = <B>(value: B): TheseSecond<B> => ({ kind: "Second", second: value });
-const makeBoth = <A, B>(first: A, second: B): TheseBoth<A, B> => ({ kind: "Both", first, second });
+const makeFirst = <A>(value: A): These.First<A> => ({ kind: "First", first: value });
+const makeSecond = <B>(value: B): These.Second<B> => ({ kind: "Second", second: value });
+const makeBoth = <A, B>(first: A, second: B): These.Both<A, B> => ({ kind: "Both", first, second });
 
-const isFirst = <A, B>(these: These<A, B>): these is TheseFirst<A> => these.kind === "First";
-const isSecond = <A, B>(these: These<A, B>): these is TheseSecond<B> => these.kind === "Second";
-const isBoth = <A, B>(these: These<A, B>): these is TheseBoth<A, B> => these.kind === "Both";
+const isFirst = <A, B>(these: These<A, B>): these is These.First<A> => these.kind === "First";
+const isSecond = <A, B>(these: These<A, B>): these is These.Second<B> => these.kind === "Second";
+const isBoth = <A, B>(these: These<A, B>): these is These.Both<A, B> => these.kind === "Both";
 
-const hasFirst = <A, B>(these: These<A, B>): these is TheseFirst<A> | TheseBoth<A, B> =>
+const hasFirst = <A, B>(these: These<A, B>): these is These.First<A> | These.Both<A, B> =>
 	these.kind === "First" || these.kind === "Both";
 
-const hasSecond = <A, B>(these: These<A, B>): these is TheseSecond<B> | TheseBoth<A, B> =>
+const hasSecond = <A, B>(these: These<A, B>): these is These.Second<B> | These.Both<A, B> =>
 	these.kind === "Second" || these.kind === "Both";
 
 export const These = {

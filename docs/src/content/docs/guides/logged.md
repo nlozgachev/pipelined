@@ -32,7 +32,7 @@ To begin logging, we lift our values into `Logged` using its core constructors:
 import { Logged } from "@nlozgachev/pipelined/core";
 
 // Lifting a raw value with an empty log
-const start = Logged.from.value(0); // { value: 0, log: [] }
+const start = Logged.make(0); // { value: 0, log: [] }
 
 // Logging a single entry with an empty value
 const note = Logged.from.entry("Initializing calculations"); 
@@ -57,7 +57,7 @@ completely untouched:
 import { pipe } from "@nlozgachev/pipelined/composition";
 
 const doubled = pipe(
-  Logged.from.value<string, number>(5),
+  Logged.make<string, number>(5),
   Logged.map((n) => n * 2),
 ); // { value: 10, log: [] }
 ```
@@ -70,7 +70,7 @@ order:
 
 ```ts
 const program = pipe(
-  Logged.from.value<string, number>(1),
+  Logged.make<string, number>(1),
   Logged.chain((n) => pipe(Logged.from.entry("Incremented value"), Logged.map(() => n + 1))),
   Logged.chain((n) => pipe(Logged.from.entry("Doubled value"), Logged.map(() => n * 2))),
 );
@@ -104,7 +104,7 @@ const applyBulkPromo: DiscountRule = (price) =>
 
 const calculateTotal = (basePrice: number): Logged<string, number> =>
   pipe(
-    Logged.from.value<string, number>(basePrice),
+    Logged.make<string, number>(basePrice),
     Logged.chain(applyMemberPromo),
     Logged.chain(applyBulkPromo),
   );
@@ -166,7 +166,7 @@ readable pipeline.
 
 ```ts
 pipe(
-  Logged.from.value<string, number>(42),
+  Logged.make<string, number>(42),
   Logged.bindTo("value")
 ); // Logged({ value: 42 })
 ```

@@ -1,6 +1,6 @@
 import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
-import { These, TheseBoth } from "../These.ts";
+import { These } from "../These.ts";
 
 test("types: propagates types correctly for chainFirst chainSecond and mapBoth", () => {
 	const t1: These<number, string> = These.make.both(42, "warning");
@@ -27,7 +27,7 @@ test("make.second: creates a These with only a second value", () => {
 });
 
 test("make.both: creates a These with both values", () => {
-	const result: TheseBoth<number, string> = These.make.both(42, "warn");
+	const result: These.Both<number, string> = These.make.both(42, "warn");
 	expect(result).toStrictEqual({ kind: "Both", first: 42, second: "warn" });
 });
 

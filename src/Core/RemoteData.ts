@@ -27,28 +27,34 @@ import type { WithError, WithKind, WithValue } from "#internal";
  * );
  * ```
  */
-export type RemoteData<E, A> = NotAsked | Loading | Failure<E> | Success<A>;
+export type RemoteData<E, A> = RemoteData.NotAsked | RemoteData.Loading | RemoteData.Failure<E> | RemoteData.Success<A>;
 
-export type NotAsked = WithKind<"NotAsked">;
-export type Loading = WithKind<"Loading">;
-export type Failure<E> = WithKind<"Failure"> & WithError<E>;
-export type Success<A> = WithKind<"Success"> & WithValue<A>;
+export namespace RemoteData {
+	export type NotAsked = WithKind<"NotAsked">;
+	export type Loading = WithKind<"Loading">;
+	export type Failure<E> = WithKind<"Failure"> & WithError<E>;
+	export type Success<A> = WithKind<"Success"> & WithValue<A>;
+}
 
 // =============================================================================
 // Private Helpers & Variant Constructors
 // =============================================================================
-const _notAsked: NotAsked = { kind: "NotAsked" };
-const _loading: Loading = { kind: "Loading" };
+const _notAsked: RemoteData.NotAsked = { kind: "NotAsked" };
+const _loading: RemoteData.Loading = { kind: "Loading" };
 
-const makeNotAsked = (): NotAsked => _notAsked;
-const makeLoading = (): Loading => _loading;
-const makeFailure = <E>(error: E): Failure<E> => ({ kind: "Failure", error });
-const makeSuccess = <A>(value: A): Success<A> => ({ kind: "Success", value });
+const makeNotAsked = (): RemoteData.NotAsked => _notAsked;
+const makeLoading = (): RemoteData.Loading => _loading;
+const makeFailure = <E>(error: E): RemoteData.Failure<E> => ({ kind: "Failure", error });
+const makeSuccess = <A>(value: A): RemoteData.Success<A> => ({ kind: "Success", value });
 
-const isNotAsked = <E, A>(remoteData: RemoteData<E, A>): remoteData is NotAsked => remoteData.kind === "NotAsked";
-const isLoading = <E, A>(remoteData: RemoteData<E, A>): remoteData is Loading => remoteData.kind === "Loading";
-const isFailure = <E, A>(remoteData: RemoteData<E, A>): remoteData is Failure<E> => remoteData.kind === "Failure";
-const isSuccess = <E, A>(remoteData: RemoteData<E, A>): remoteData is Success<A> => remoteData.kind === "Success";
+const isNotAsked = <E, A>(remoteData: RemoteData<E, A>): remoteData is RemoteData.NotAsked =>
+	remoteData.kind === "NotAsked";
+const isLoading = <E, A>(remoteData: RemoteData<E, A>): remoteData is RemoteData.Loading =>
+	remoteData.kind === "Loading";
+const isFailure = <E, A>(remoteData: RemoteData<E, A>): remoteData is RemoteData.Failure<E> =>
+	remoteData.kind === "Failure";
+const isSuccess = <E, A>(remoteData: RemoteData<E, A>): remoteData is RemoteData.Success<A> =>
+	remoteData.kind === "Success";
 
 // =============================================================================
 // Public Export

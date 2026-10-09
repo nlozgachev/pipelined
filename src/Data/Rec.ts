@@ -1,7 +1,7 @@
 // =============================================================================
 // Imports
 // =============================================================================
-import { Maybe as CoreMaybe, None as CoreNone, Result as CoreResult, Some as CoreSome } from "#core";
+import { Maybe as CoreMaybe, Result as CoreResult } from "#core";
 import { type NonEmpty as InternalNonEmpty, type NonEmptyArr } from "#internal";
 import type { Brand } from "#types";
 
@@ -11,7 +11,7 @@ import type { Brand } from "#types";
 /**
  * A branded type representing a record with at least one key-value pair.
  */
-export type NonEmptyRecord<A, K extends string = string> = Brand<InternalNonEmpty<"Rec">, Readonly<Record<K, A>>>;
+type NonEmptyRecord<A, K extends string = string> = Brand<InternalNonEmpty<"Rec">, Readonly<Record<K, A>>>;
 
 // =============================================================================
 // Private Helpers & Traverse/Sequence Implementations
@@ -314,7 +314,9 @@ const filterWithKey =
  * ```
  */
 const lookup = <K extends string>(key: K) => <V>(record: Record<string, V>): CoreMaybe<V> =>
-	Object.hasOwn(record, key) ? { kind: "Some", value: record[key] } as CoreSome<V> : { kind: "None" } as CoreNone;
+	Object.hasOwn(record, key)
+		? { kind: "Some", value: record[key] } as CoreMaybe.Some<V>
+		: { kind: "None" } as CoreMaybe.None;
 
 /**
  * Returns all keys of a record.

@@ -72,42 +72,6 @@ export const constUndefined = (): undefined => undefined;
 export const constVoid = (): void => {};
 
 /**
- * Combines two predicates with logical AND.
- *
- * @example
- * ```ts
- * const isPositive = (n: number) => n > 0;
- * const isEven = (n: number) => n % 2 === 0;
- * const isPositiveEven = and(isPositive, isEven);
- *
- * isPositiveEven(4); // true
- * isPositiveEven(-2); // false
- * isPositiveEven(3); // false
- * ```
- */
-export const and =
-	<A extends ReadonlyArray<unknown>>(p1: (...args: A) => boolean, p2: (...args: A) => boolean) =>
-	(...args: A): boolean => p1(...args) && p2(...args);
-
-/**
- * Combines two predicates with logical OR.
- *
- * @example
- * ```ts
- * const isNegative = (n: number) => n < 0;
- * const isZero = (n: number) => n === 0;
- * const isNonPositive = or(isNegative, isZero);
- *
- * isNonPositive(-1); // true
- * isNonPositive(0); // true
- * isNonPositive(1); // false
- * ```
- */
-export const or =
-	<A extends ReadonlyArray<unknown>>(p1: (...args: A) => boolean, p2: (...args: A) => boolean) =>
-	(...args: A): boolean => p1(...args) || p2(...args);
-
-/**
  * Creates a function that executes at most once.
  * Subsequent calls return the cached result from the first execution.
  *

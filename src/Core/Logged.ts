@@ -28,7 +28,6 @@ import type { Lens } from "./Lens.ts";
  */
 export type Logged<L, A> = WithValue<A> & WithLog<L>;
 
-const makeValue = <W, A>(val: A): Logged<W, A> => ({ value: val, log: [] });
 const makeEntry = <W>(logEntry: W): Logged<W, undefined> => ({ value: undefined, log: [logEntry] });
 
 const mapLogged = <W, A, B>(f: (a: A) => B) => (data: Logged<W, A>): Logged<W, B> => ({
@@ -55,16 +54,6 @@ export const Logged = {
 
 	// --- from ---
 	from: {
-		/**
-		 * Wraps a pure value into a `Logged` with an empty log.
-		 *
-		 * @example
-		 * ```ts
-		 * Logged.from.value<string, number>(42); // { value: 42, log: [] }
-		 * ```
-		 */
-		value: makeValue,
-
 		/**
 		 * Creates a `Logged` that records a single log entry and produces no
 		 * meaningful value. Use this to append to the log inside a `chain`.

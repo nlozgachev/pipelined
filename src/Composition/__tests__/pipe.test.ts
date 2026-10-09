@@ -2,7 +2,13 @@ import { expect, expectTypeOf, test } from "vitest";
 import { Deferred } from "../../Core/Deferred.ts";
 import { Maybe } from "../../Core/Maybe.ts";
 import { Result } from "../../Core/Result.ts";
+import { either } from "../either.ts";
 import { pipe } from "../pipe.ts";
+import { pipeAsync } from "../pipeAsync.ts";
+import { struct } from "../struct.ts";
+import { tryCatch } from "../tryCatch.ts";
+import { unless } from "../unless.ts";
+import { when } from "../when.ts";
 
 test("pipe: propagates multi-stage error union", () => {
 	const step1: Result<"ERR_A", string> = Result.make.ok("start");
@@ -120,94 +126,57 @@ test("pipe: passes through 10 functions", () => {
 	expect(pipe(0, inc, inc, inc, inc, inc, inc, inc, inc, inc, inc)).toBe(10);
 });
 
-// --- pipe.when / pipe.unless / pipe.either ---
+// --- when / unless / either ---
 
 test("when: applies onTrue if predicate holds", () => {
-	const doubleEven = pipe.when((n: number) => n % 2 === 0, (n: number) => n * 2);
+	const doubleEven = when((n: number) => n % 2 === 0, (n: number) => n * 2);
 	expect(doubleEven(2)).toBe(4);
 	expect(doubleEven(3)).toBe(3);
 });
 
 test("unless: applies onFalse if predicate does not hold", () => {
-	const doubleOdd = pipe.unless((n: number) => n % 2 === 0, (n: number) => n * 2);
+	const doubleOdd = unless((n: number) => n % 2 === 0, (n: number) => n * 2);
 	expect(doubleOdd(3)).toBe(6);
 	expect(doubleOdd(2)).toBe(2);
 });
 
 test("either: branches appropriately based on predicate", () => {
-	const describe = pipe.either((n: number) => n > 0, () => "positive", () => "non-positive");
+	const describe = either((n: number) => n > 0, () => "positive", () => "non-positive");
 	expect(describe(5)).toBe("positive");
 	expect(describe(-1)).toBe("non-positive");
 });
 
-// --- pipe.try ---
+// --- tryCatch ---
 
-test("try: returns result on success", () => {
-	const parsed = pipe('{"value": 42}', pipe.try((s) => JSON.parse(s), () => ({ error: true })));
+test("tryCatch: returns result on success", () => {
+	const parsed = pipe('{"value": 42}', tryCatch((s) => JSON.parse(s), () => ({ error: true })));
 	expect(parsed).toStrictEqual({ value: 42 });
 });
 
-test("try: returns fallback on error", () => {
-	const parsed = pipe("invalid", pipe.try((s) => JSON.parse(s), (err, input) => ({ error: true, input })));
+test("tryCatch: returns fallback on error", () => {
+	const parsed = pipe("invalid", tryCatch((s) => JSON.parse(s), (err, input) => ({ error: true, input })));
 	expect(parsed).toStrictEqual({ error: true, input: "invalid" });
 });
 
-// --- pipe.struct ---
+// --- struct ---
 
 test("struct: builds objects dynamically", () => {
 	const result = pipe(
 		{ firstName: "Alice", lastName: "Smith" },
-		pipe.struct({ fullName: (u) => `${u.firstName} ${u.lastName}`, upper: (u) => u.firstName.toUpperCase() }),
+		struct({ fullName: (u) => `${u.firstName} ${u.lastName}`, upper: (u) => u.firstName.toUpperCase() }),
 	);
 	expect(result).toStrictEqual({ fullName: "Alice Smith", upper: "ALICE" });
 });
 
-// --- pipe.safe ---
+// --- pipeAsync ---
 
-test("safe: pipes values normally when not nil", () => {
-	const result = pipe.safe("hello", (s) => s.toUpperCase(), (s) => s.length);
-	expect(result).toBe(5);
-});
-
-test("safe: short-circuits on null", () => {
-	let called = false;
-	const result = pipe.safe(null as string | null, (s) => {
-		called = true;
-		return s.toUpperCase();
-	}, (s) => s.length);
-	expect(result).toBeNull();
-	expect(called).toBe(false);
-});
-
-test("safe: short-circuits on undefined", () => {
-	let called = false;
-	const result = pipe.safe(undefined as string | undefined, (s) => {
-		called = true;
-		return s.toUpperCase();
-	});
-	expect(result).toBeUndefined();
-	expect(called).toBe(false);
-});
-
-test("safe: short-circuits if intermediate step returns null", () => {
-	let called = false;
-	const result = pipe.safe({ name: null } as { name: string | null; }, (u) => u.name, (name) => {
-		called = true;
-		return name.length;
-	});
-	expect(result).toBeNull();
-	expect(called).toBe(false);
-});
-
-// --- pipe.async ---
-
-test("async: resolves synchronous chains", async () => {
-	const result = await pipe.async(5, (n: number) => n * 2, (n: number) => n + 1);
+test("pipeAsync: resolves synchronous chains", async () => {
+	const result = await pipeAsync(5, (n: number) => n * 2, (n: number) => n + 1);
 	expect(result).toBe(11);
 });
 
-test("async: resolves asynchronous chains", async () => {
-	const result = await pipe.async(
+test("pipeAsync: resolves asynchronous chains", async () => {
+	const result = await pipeAsync(
 		Promise.resolve(5),
 		(n: number) => Promise.resolve(n * 2),
 		(n: number) => Promise.resolve(n + 1),
@@ -215,14 +184,14 @@ test("async: resolves asynchronous chains", async () => {
 	expect(result).toBe(11);
 });
 
-test("async: resolves hybrid sync and async chains", async () => {
-	const result = await pipe.async(5, (n: number) => Promise.resolve(n * 2), (n: number) => n + 1);
+test("pipeAsync: resolves hybrid sync and async chains", async () => {
+	const result = await pipeAsync(5, (n: number) => Promise.resolve(n * 2), (n: number) => n + 1);
 	expect(result).toBe(11);
 });
 
-test("async: resolves Deferred values and functions returning Deferred", async () => {
+test("pipeAsync: resolves Deferred values and functions returning Deferred", async () => {
 	const val = Deferred.from.Promise(Promise.resolve(5));
-	const result = await pipe.async(
+	const result = await pipeAsync(
 		val,
 		(n: number) => Deferred.from.Promise(Promise.resolve(n * 2)),
 		(n: number) => n + 1,

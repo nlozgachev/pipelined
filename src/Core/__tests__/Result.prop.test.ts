@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { expect, expectTypeOf, test } from "vitest";
 import { Maybe } from "../Maybe.ts";
-import { Ok, Result } from "../Result.ts";
+import { Result } from "../Result.ts";
 
 // ---------------------------------------------------------------------------
 // Arbitraries
@@ -82,7 +82,7 @@ test("chain: short-circuits on Error", () => {
 
 test("getOrElse: returns value on Ok", () => {
 	fc.assert(fc.property(arbOk, (r) => {
-		const o = r as Ok<number>;
+		const o = r as Result.Ok<number>;
 		expect(Result.getOrElse(() => -1)(r)).toBe(o.value);
 	}));
 });
@@ -152,7 +152,7 @@ test("from.Predicate: always-false gives Err via onFalse", () => {
 
 test("to.Maybe: maps Ok to Some", () => {
 	fc.assert(fc.property(arbOk, (r) => {
-		const o = r as Ok<number>;
+		const o = r as Result.Ok<number>;
 		expect(Result.to.Maybe(r)).toStrictEqual(Maybe.make.some(o.value));
 	}));
 });

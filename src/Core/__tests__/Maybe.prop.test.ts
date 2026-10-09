@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { expect, expectTypeOf, test } from "vitest";
-import { Maybe, Some } from "../Maybe.ts";
+import { Maybe } from "../Maybe.ts";
 
 // ---------------------------------------------------------------------------
 // Arbitraries
@@ -65,7 +65,7 @@ test("chain: short-circuits on None", () => {
 
 test("getOrElse: returns value on Some", () => {
 	fc.assert(fc.property(arbSome, (m) => {
-		const s = m as Some<number>;
+		const s = m as Maybe.Some<number>;
 		expect(Maybe.getOrElse(() => -1)(m)).toBe(s.value);
 	}));
 });

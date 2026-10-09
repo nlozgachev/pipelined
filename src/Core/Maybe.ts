@@ -22,21 +22,23 @@ import { WithKind, WithValue } from "#internal";
  * ); // "ALICE@EXAMPLE.COM"
  * ```
  */
-export type Maybe<T> = Some<T> | None;
+export type Maybe<T> = Maybe.Some<T> | Maybe.None;
 
-export type Some<A> = WithKind<"Some"> & WithValue<A>;
-export type None = WithKind<"None">;
+export namespace Maybe {
+	export type Some<A> = WithKind<"Some"> & WithValue<A>;
+	export type None = WithKind<"None">;
+}
 
 // =============================================================================
 // Private Helpers & Variant Constructors
 // =============================================================================
-const _none: None = { kind: "None" };
+const _none: Maybe.None = { kind: "None" };
 
-const makeSome = <A>(value: A): Some<A> => ({ kind: "Some", value });
-const makeNone = (): None => _none;
+const makeSome = <A>(value: A): Maybe.Some<A> => ({ kind: "Some", value });
+const makeNone = (): Maybe.None => _none;
 
-const isSome = <A>(data: Maybe<A>): data is Some<A> => data.kind === "Some";
-const isNone = <A>(data: Maybe<A>): data is None => data.kind === "None";
+const isSome = <A>(data: Maybe<A>): data is Maybe.Some<A> => data.kind === "Some";
+const isNone = <A>(data: Maybe<A>): data is Maybe.None => data.kind === "None";
 
 // =============================================================================
 // Public Export

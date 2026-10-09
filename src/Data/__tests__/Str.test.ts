@@ -268,19 +268,24 @@ test("is.blank: returns false for non-empty string", () => {
 });
 
 // ---------------------------------------------------------------------------
-// length
+// size & graphemeSize
 // ---------------------------------------------------------------------------
 
-test("length: returns correct length", () => {
-	expect(pipe("hello", Str.length)).toBe(5);
+test("size: returns correct UTF-16 code-unit length", () => {
+	expect(pipe("hello", Str.size)).toBe(5);
+	expect(pipe("", Str.size)).toBe(0);
+	expect(pipe("a b c", Str.size)).toBe(5);
+	expect(pipe("👨‍👩‍👧‍👦", Str.size)).toBe(11);
+	expect(pipe("👋🏽", Str.size)).toBe(4);
 });
 
-test("length: returns 0 for empty string", () => {
-	expect(pipe("", Str.length)).toBe(0);
-});
-
-test("length: includes whitespace in count", () => {
-	expect(pipe("a b c", Str.length)).toBe(5);
+test("graphemeSize: counts human-perceived characters and emojis correctly", () => {
+	expect(pipe("hello", Str.graphemeSize)).toBe(5);
+	expect(pipe("", Str.graphemeSize)).toBe(0);
+	expect(pipe("a b c", Str.graphemeSize)).toBe(5);
+	expect(pipe("👨‍👩‍👧‍👦", Str.graphemeSize)).toBe(1);
+	expect(pipe("👋🏽", Str.graphemeSize)).toBe(1);
+	expect(pipe("hello 🌍!", Str.graphemeSize)).toBe(8);
 });
 
 // ---------------------------------------------------------------------------

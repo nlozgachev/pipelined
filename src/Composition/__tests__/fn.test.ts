@@ -1,7 +1,6 @@
 import { expect, test } from "vitest";
 import { flow } from "../flow.ts";
 import {
-	and,
 	constant,
 	constFalse,
 	constNull,
@@ -11,7 +10,6 @@ import {
 	defaultTo,
 	identity,
 	once,
-	or,
 	tuple,
 	untuple,
 } from "../fn.ts";
@@ -105,116 +103,6 @@ test("constUndefined: always returns undefined", () => {
 
 test("constVoid: always returns undefined", () => {
 	expect(constVoid()).toBeUndefined();
-});
-
-// --- and ---
-
-test("and: returns true when both predicates are true", () => {
-	const isPositive = (n: number) => n > 0;
-	const isEven = (n: number) => n % 2 === 0;
-	const isPositiveEven = and(isPositive, isEven);
-
-	expect(isPositiveEven(4)).toBe(true);
-});
-
-test("and: returns false when first predicate is false", () => {
-	const isPositive = (n: number) => n > 0;
-	const isEven = (n: number) => n % 2 === 0;
-	const isPositiveEven = and(isPositive, isEven);
-
-	expect(isPositiveEven(-2)).toBe(false);
-});
-
-test("and: returns false when second predicate is false", () => {
-	const isPositive = (n: number) => n > 0;
-	const isEven = (n: number) => n % 2 === 0;
-	const isPositiveEven = and(isPositive, isEven);
-
-	expect(isPositiveEven(3)).toBe(false);
-});
-
-test("and: returns false when both predicates are false", () => {
-	const isPositive = (n: number) => n > 0;
-	const isEven = (n: number) => n % 2 === 0;
-	const isPositiveEven = and(isPositive, isEven);
-
-	expect(isPositiveEven(-3)).toBe(false);
-});
-
-test("and: short-circuits when first predicate is false", () => {
-	let secondCalled = false;
-	const alwaysFalse = (_n: number) => false;
-	const tracker = (_n: number) => {
-		secondCalled = true;
-		return true;
-	};
-	const combined = and(alwaysFalse, tracker);
-
-	combined(1);
-	expect(secondCalled).toBe(false);
-});
-
-test("and: filters elements with Array.filter", () => {
-	const isPositive = (n: number) => n > 0;
-	const isEven = (n: number) => n % 2 === 0;
-
-	const result = [-4, -3, -2, -1, 0, 1, 2, 3, 4].filter(and(isPositive, isEven));
-	expect(result).toStrictEqual([2, 4]);
-});
-
-// --- or ---
-
-test("or: returns true when both predicates are true", () => {
-	const isNegative = (n: number) => n < 0;
-	const isZero = (n: number) => n === 0;
-	const isNonPositive = or(isNegative, isZero);
-
-	expect(isNonPositive(-1)).toBe(true);
-});
-
-test("or: returns true when first predicate is true", () => {
-	const isNegative = (n: number) => n < 0;
-	const isZero = (n: number) => n === 0;
-	const isNonPositive = or(isNegative, isZero);
-
-	expect(isNonPositive(-5)).toBe(true);
-});
-
-test("or: returns true when second predicate is true", () => {
-	const isNegative = (n: number) => n < 0;
-	const isZero = (n: number) => n === 0;
-	const isNonPositive = or(isNegative, isZero);
-
-	expect(isNonPositive(0)).toBe(true);
-});
-
-test("or: returns false when both predicates are false", () => {
-	const isNegative = (n: number) => n < 0;
-	const isZero = (n: number) => n === 0;
-	const isNonPositive = or(isNegative, isZero);
-
-	expect(isNonPositive(1)).toBe(false);
-});
-
-test("or: short-circuits when first predicate is true", () => {
-	let secondCalled = false;
-	const alwaysTrue = (_n: number) => true;
-	const tracker = (_n: number) => {
-		secondCalled = true;
-		return false;
-	};
-	const combined = or(alwaysTrue, tracker);
-
-	combined(1);
-	expect(secondCalled).toBe(false);
-});
-
-test("or: filters elements with Array.filter", () => {
-	const isNegative = (n: number) => n < 0;
-	const isGreaterThan3 = (n: number) => n > 3;
-
-	const result = [-2, -1, 0, 1, 2, 3, 4, 5].filter(or(isNegative, isGreaterThan3));
-	expect(result).toStrictEqual([-2, -1, 4, 5]);
 });
 
 // --- once ---
