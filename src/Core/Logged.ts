@@ -12,7 +12,7 @@ import type { Lens } from "./Lens.ts";
  * @example
  * ```ts
  * const program = pipe(
- *   Logged.from.value<string, number>(0),
+ *   Logged.make<string, number>(0),
  *   Logged.chain(n => pipe(
  *     Logged.from.entry("start"),
  *     Logged.map(() => n + 1),
@@ -72,7 +72,7 @@ export const Logged = {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Logged.from.value<string, number>(5),
+	 *   Logged.make<string, number>(5),
 	 *   Logged.map(n => n * 2),
 	 * ); // { value: 10, log: [] }
 	 * ```
@@ -89,7 +89,7 @@ export const Logged = {
 	 * @example
 	 * ```ts
 	 * const result = pipe(
-	 *   Logged.from.value<string, number>(1),
+	 *   Logged.make<string, number>(1),
 	 *   Logged.chain(n => pipe(Logged.from.entry("step"), Logged.map(() => n + 1))),
 	 *   Logged.chain(n => pipe(Logged.from.entry("done"), Logged.map(() => n * 10))),
 	 * );
@@ -127,7 +127,7 @@ export const Logged = {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Logged.from.value<string, number>(42),
+	 *   Logged.make<string, number>(42),
 	 *   Logged.tap(n => console.log("value:", n)),
 	 * );
 	 * ```
@@ -144,7 +144,7 @@ export const Logged = {
 	 * @example
 	 * ```ts
 	 * const result = pipe(
-	 *   Logged.from.value<string, number>(1),
+	 *   Logged.make<string, number>(1),
 	 *   Logged.chain(n => pipe(Logged.from.entry("incremented"), Logged.map(() => n + 1))),
 	 * );
 	 *
@@ -159,7 +159,7 @@ export const Logged = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Logged.from.value<string, number>(42), Logged.bindTo("value")); // Logged({ value: 42 })
+	 * pipe(Logged.make<string, number>(42), Logged.bindTo("value")); // Logged({ value: 42 })
 	 * ```
 	 */
 	bindTo: <K extends string>(key: K) => <W, A>(data: Logged<W, A>): Logged<W, { [P in K]: A; }> =>
@@ -171,8 +171,8 @@ export const Logged = {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Logged.from.value<string, { a: number }>({ a: 1 }),
-	 *   Logged.bind("b", ({ a }) => Logged.from.value<string, number>(a + 1))
+	 *   Logged.make<string, { a: number }>({ a: 1 }),
+	 *   Logged.bind("b", ({ a }) => Logged.make<string, number>(a + 1))
 	 * ); // Logged({ value: { a: 1, b: 2 } })
 	 * ```
 	 */
@@ -189,7 +189,7 @@ export const Logged = {
 	 * @example
 	 * ```ts
 	 * const nameLens = Lens.from.property<{ name: string }>()("name");
-	 * const logged = Logged.from.value<string, { name: string }>({ name: "alice" });
+	 * const logged = Logged.make<string, { name: string }>({ name: "alice" });
 	 * pipe(logged, Logged.focus(nameLens)(s => s.toUpperCase()));
 	 * ```
 	 */

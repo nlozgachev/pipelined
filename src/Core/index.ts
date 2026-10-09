@@ -2,7 +2,6 @@ export * from "./Combinable";
 export * from "./Deferred";
 export * from "./Equality";
 export * from "./EventBus";
-export * from "./Lazy";
 export * from "./Lens";
 export * from "./Logged";
 export * from "./Maybe";

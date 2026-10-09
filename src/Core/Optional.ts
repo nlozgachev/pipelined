@@ -8,7 +8,7 @@ type OptionalKeys<T> = { [K in keyof T]-?: undefined extends T[K] ? K : never; }
  * not be present. Like a Lens, but get returns Maybe<A>.
  *
  * Compose with other Optionals via `andThen`, or with a Lens via `andThenLens`.
- * Convert a Lens to an Optional with `Lens.toOptional`.
+ * Convert a Lens to an Optional with `Lens.to.Optional`.
  *
  * @example
  * ```ts

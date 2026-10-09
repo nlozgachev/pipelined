@@ -58,14 +58,14 @@ interface ApiConfig {
 }
 
 // Projecting specific values from the environment
-const getBaseUrl: Reader<ApiConfig, string> = Reader.asks((c) => c.baseUrl);
-const getApiKey: Reader<ApiConfig, string> = Reader.asks((c) => c.apiKey);
+const getBaseUrl: Reader<ApiConfig, string> = (c) => c.baseUrl;
+const getApiKey: Reader<ApiConfig, string> = (c) => c.apiKey;
 ```
 
-`Reader.asks` is the primary constructor. It takes a selector function that projects a value from
-the environment. If a step requires the entire environment, you can use `Reader.ask()`. If you want
-to lift a static value that does not depend on the environment at all, you can use
-`Reader.resolve(value)`.
+Because a `Reader<R, A>` is a plain function `(env: R) => A`, any function that accepts an
+environment is already a valid `Reader`. If a step requires the entire environment as a pipeline
+step, you can use `Reader.ask()`. If you want to lift a static value that does not depend on the
+environment at all, you can use `Reader.make(value)`.
 
 ---
 
@@ -89,9 +89,7 @@ interface LocaleConfig {
 }
 
 const formatPrice = (cents: number): Reader<LocaleConfig, string> =>
-  Reader.asks(
-    (locale) => `${locale.symbol}${(cents / 100).toFixed(2).replace(".", locale.decimalSeparator)}`,
-  );
+  (locale) => `${locale.symbol}${(cents / 100).toFixed(2).replace(".", locale.decimalSeparator)}`;
 
 const renderPriceTag = (label: string, cents: number): Reader<LocaleConfig, string> =>
   pipe(
@@ -117,8 +115,8 @@ together. Both steps automatically receive the same shared context:
 ```ts
 const buildEndpoint = (path: string): Reader<ApiConfig, string> =>
   pipe(
-    Reader.asks((c: ApiConfig) => `${c.baseUrl}${path}`),
-    Reader.chain((url) => Reader.asks((c) => `${url}?key=${c.apiKey}`)),
+    (c: ApiConfig) => `${c.baseUrl}${path}`,
+    Reader.chain((url) => (c) => `${url}?key=${c.apiKey}`),
   );
 ```
 
@@ -141,14 +139,12 @@ interface LoggerConfig { level: string }
 interface AppEnv { db: DbConfig; log: LoggerConfig }
 
 // This Reader only knows about DbConfig
-const dbConnectionString: Reader<DbConfig, string> = Reader.asks(
-  (db) => `postgres://${db.host}:5432/db`,
-);
+const dbConnectionString: Reader<DbConfig, string> =
+  (db) => `postgres://${db.host}:5432/db`;
 
 // This Reader only knows about LoggerConfig
-const activeLogLevel: Reader<LoggerConfig, string> = Reader.asks(
-  (log) => `Log level: ${log.level}`,
-);
+const activeLogLevel: Reader<LoggerConfig, string> =
+  (log) => `Log level: ${log.level}`;
 
 // Lift both into the broader AppEnv
 const systemDiagnostics: Reader<AppEnv, string> = pipe(
@@ -178,11 +174,11 @@ operations receive the same environment:
 ```ts
 const calculateTotal = (tax: number) => (price: number) => price + tax;
 
-const productPrice: Reader<ApiConfig, number> = Reader.asks((c) => c.defaultPrice);
-const productTax: Reader<ApiConfig, number> = Reader.asks((c) => c.defaultTax);
+const productPrice: Reader<ApiConfig, number> = (c) => c.defaultPrice;
+const productTax: Reader<ApiConfig, number> = (c) => c.defaultTax;
 
 const total: Reader<ApiConfig, number> = pipe(
-  Reader.resolve(calculateTotal),
+  Reader.make(calculateTotal),
   Reader.apply(productTax),
   Reader.apply(productPrice),
 );
@@ -252,7 +248,7 @@ key-by-key in a flat, readable pipeline.
 
 ```ts
 pipe(
-  Reader.resolve(42),
+  Reader.make(42),
   Reader.bindTo("value")
 ); // Reader({ value: 42 })
 ```

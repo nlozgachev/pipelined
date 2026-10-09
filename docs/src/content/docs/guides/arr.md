@@ -316,13 +316,12 @@ pipe([20, 25, 30], Arr.traverse.Result(validateAge)); // Ok([20, 25, 30])
 pipe([20, 16, 30], Arr.traverse.Result(validateAge)); // Err("Age 16 is underage")
 ```
 
-### Asynchronous traversal with `Arr.traverse.Task` and `Arr.traverse.Task.Result`
+### Asynchronous traversal with `Arr.traverse.Task`
 
-- `Arr.traverse.Task` runs asynchronous tasks, resolving to a `Task<A[]>` once all complete. By
-  default, it executes all tasks in parallel. Pass `{ concurrency }` to limit concurrent execution.
-- `Arr.traverse.Task.Result` traverses fallible tasks, short-circuiting on the first `Err`
-  encountered. By default, it executes sequentially. Pass `{ concurrency }` to execute with a
-  bounded worker pool.
+`Arr.traverse.Task` runs asynchronous tasks, resolving to a `Task<readonly A[]>` once all complete.
+By default, it executes all tasks in parallel. Pass `{ concurrency }` to limit concurrent execution.
+For fallible tasks (`Task.Result<E, A>`), traverse with `Arr.traverse.Task` and invert the collected
+results using `Task.map(Arr.sequence.Result)`:
 
 ```ts
 // Parallel user profile fetch bounded to 3 in-flight requests:
@@ -334,7 +333,8 @@ pipe(
 // Fallible batch processing bounded to 5 concurrent workers:
 pipe(
   userIds,
-  Arr.traverse.Task.Result((id) => fetchUserTaskResult(id), { concurrency: 5 }),
+  Arr.traverse.Task((id) => fetchUserTaskResult(id), { concurrency: 5 }),
+  Task.map(Arr.sequence.Result),
 )();
 ```
 
@@ -446,6 +446,7 @@ dedicated [NonEmpty Guide](../nonempty).
   paginated cursor workflows without imperative `while` loops or mutable array allocations.
 - **Traversing collections of fallible or asynchronous steps (`Arr.traverse`)**: When running batch
   operations (such as validating an array of input records or fetching details for a list of IDs),
-  standard mapping produces `Array<Task.Result<E, A>>`. `Arr.traverse.Task.Result` sequences or
-  parallels the collection with optional bounded concurrency into a single `Task.Result<E, A[]>`,
-  handling failures and collection inversion automatically.
+  standard mapping produces collections of containers like `Array<Result<E, A>>` or
+  `Array<Task<A>>`. `Arr.traverse.Result` and `Arr.traverse.Task` sequence or parallelize the
+  collection with optional bounded concurrency into a single container (`Result<E, readonly A[]>` or
+  `Task<readonly A[]>`), handling failures and collection inversion automatically.

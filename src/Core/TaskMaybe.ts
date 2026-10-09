@@ -90,7 +90,7 @@ export const TaskMaybe = {
 		 *
 		 * @example
 		 * ```ts
-		 * Task.Maybe.from.Task(Task.resolve(42)); // resolves to Some(42)
+		 * Task.Maybe.from.Task(Task.make(42)); // resolves to Some(42)
 		 * ```
 		 */
 		Task: <A>(task: Task<A>): Task.Maybe<A> => Task.map(CoreMaybe.make.some)(task),

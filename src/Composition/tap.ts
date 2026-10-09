@@ -51,12 +51,12 @@ export function tap<A>(f: (a: A) => void) {
  * ```ts
  * pipe(
  *   42,
- *   tap.log(), // logs: 42
- *   tap.log({ label: "Count" }) // logs: [Count]: 42
+ *   tapLog(), // logs: 42
+ *   tapLog({ label: "Count" }) // logs: [Count]: 42
  * );
  * ```
  */
-const log = <A>(options?: tap.LogOptions<A>) => (a: A): A => {
+export const tapLog = <A>(options?: tapLog.Options<A>) => (a: A): A => {
 	const logger = options?.logger ?? console.log;
 	const formatter = options?.formatter ?? ((val: A) => {
 		try {
@@ -82,11 +82,11 @@ const log = <A>(options?: tap.LogOptions<A>) => (a: A): A => {
  * ```ts
  * pipe(
  *   { user: { name: "Alice", details: { age: 30 } } },
- *   tap.inspect({ label: "User Object", depth: 2 })
+ *   tapInspect({ label: "User Object", depth: 2 })
  * );
  * ```
  */
-const inspect = <A>(options?: tap.InspectOptions) => (a: A): A => {
+export const tapInspect = <A>(options?: tapInspect.Options) => (a: A): A => {
 	const label = options?.label;
 	const depth = options?.depth ?? null;
 	const colors = options?.colors ?? true;
@@ -123,13 +123,13 @@ const inspect = <A>(options?: tap.InspectOptions) => (a: A): A => {
  *
  * pipe(
  *   user,
- *   tap.async(async (u) => {
+ *   tapAsync(async (u) => {
  *     await saveToDatabase(u);
  *   }, { onError: (err) => logError(err) })
  * );
  * ```
  */
-const async = <A>(fn: (a: A) => Thenable<unknown>, options?: tap.AsyncOptions) => (a: A): A => {
+export const tapAsync = <A>(fn: (a: A) => Thenable<unknown>, options?: tapAsync.Options) => (a: A): A => {
 	const onError = options?.onError ?? console.error;
 	Promise.resolve(fn(a)).catch((err) => {
 		onError(err);
@@ -152,19 +152,19 @@ const async = <A>(fn: (a: A) => Thenable<unknown>, options?: tap.AsyncOptions) =
  * // Time a synchronous computation
  * pipe(
  *   data,
- *   tap.time(processData, { label: "sync-process" })
+ *   tapTime(processData, { label: "sync-process" })
  * );
  *
  * // Time an asynchronous fetch with custom metrics callback
  * pipe(
  *   data,
- *   tap.time(fetchData, {
+ *   tapTime(fetchData, {
  *     onFinish: (dur) => metrics.histogram("api.time", Duration.to.milliseconds(dur))
  *   })
  * );
  * ```
  */
-const time = <A>(fn: (a: A) => unknown, config: tap.TimeConfig) => (a: A): A => {
+export const tapTime = <A>(fn: (a: A) => unknown, config: tapTime.Config) => (a: A): A => {
 	const start = performance.now();
 	const triggerFinish = (duration: Duration) => {
 		if (config.label !== undefined) {
@@ -198,16 +198,11 @@ const time = <A>(fn: (a: A) => unknown, config: tap.TimeConfig) => (a: A): A => 
 	return a;
 };
 
-tap.log = log;
-tap.inspect = inspect;
-tap.async = async;
-tap.time = time;
-
-export namespace tap {
+export namespace tapLog {
 	/**
-	 * Configuration options for {@link tap.log}.
+	 * Configuration options for {@link tapLog}.
 	 */
-	export type LogOptions<A> = {
+	export type Options<A> = {
 		/**
 		 * An optional label prefix for the log output (e.g., `[label]: value`).
 		 */
@@ -222,11 +217,13 @@ export namespace tap {
 		 */
 		readonly formatter?: (value: A) => string;
 	};
+}
 
+export namespace tapInspect {
 	/**
-	 * Configuration options for {@link tap.inspect}.
+	 * Configuration options for {@link tapInspect}.
 	 */
-	export type InspectOptions = {
+	export type Options = {
 		/**
 		 * An optional label prefix for the inspect output (e.g., `[label]: value`).
 		 */
@@ -242,24 +239,25 @@ export namespace tap {
 		 */
 		readonly colors?: boolean;
 	};
+}
 
+export namespace tapAsync {
 	/**
-	 * Configuration options for {@link tap.async}.
+	 * Configuration options for {@link tapAsync}.
 	 */
-	export type AsyncOptions = {
+	export type Options = {
 		/**
 		 * A callback to handle exceptions thrown by the async side-effect.
 		 * Defaults to logging via `console.error`.
 		 */
 		readonly onError?: (error: unknown) => void;
 	};
+}
 
+export namespace tapTime {
 	/**
-	 * Configuration options for {@link tap.time}, enforcing mutual exclusivity
+	 * Configuration options for {@link tapTime}, enforcing mutual exclusivity
 	 * between console logging and custom handlers.
 	 */
-	export type TimeConfig = { label: string; onFinish?: never; } | {
-		onFinish: (duration: Duration) => void;
-		label?: never;
-	};
+	export type Config = { label: string; onFinish?: never; } | { onFinish: (duration: Duration) => void; label?: never; };
 }

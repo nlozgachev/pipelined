@@ -1,7 +1,7 @@
 // =============================================================================
 // Imports
 // =============================================================================
-import { Deferred, Equality, Ordering } from "#core";
+import { Equality, Ordering } from "#core";
 import { isNonEmptyArr, type NonEmptyArr } from "#internal";
 import { Maybe as CoreMaybe } from "../Core/Maybe.ts";
 import { Result as CoreResult } from "../Core/Result.ts";
@@ -148,97 +148,6 @@ namespace ArrValidation {
 		traverse<E, CoreValidation<E, A>, A>((item) => item)(items);
 }
 
-namespace ArrTaskResult {
-	/**
-	 * Maps each element to a Task.Result and runs them sequentially.
-	 * Returns the first Err encountered, or Ok of all results if all succeed.
-	 *
-	 * @see {@link sequence} for collecting an existing array of Task.Result values.
-	 *
-	 * @example
-	 * ```ts
-	 * const validate = (n: number): Task.Result<string, number> =>
-	 *   n > 0 ? Task.Result.ok(n) : Task.Result.err("non-positive");
-	 *
-	 * pipe(
-	 *   [1, 2, 3],
-	 *   Arr.traverse.Task.Result(validate)
-	 * )(); // Deferred<Ok([1, 2, 3])>
-	 *
-	 * pipe(
-	 *   [1, -1, 3],
-	 *   Arr.traverse.Task.Result(validate)
-	 * )(); // Deferred<Err("non-positive")>
-	 * ```
-	 */
-	export const traverse =
-		<E, A, B>(transform: (item: A) => CoreTask.Result<E, B>, options?: { concurrency?: number; }) =>
-		(items: readonly A[]): CoreTask.Result<E, readonly B[]> =>
-		(signal) =>
-			Deferred.from.Promise((async () => {
-				const concurrency = options?.concurrency;
-				const len = items.length;
-				if (concurrency === undefined || concurrency <= 1 || len <= 1) {
-					const result: B[] = [];
-					for (const a of items) {
-						const r = await Deferred.to.Promise(transform(a)(signal));
-						if (CoreResult.is.err(r)) { return r; }
-						result.push(r.value);
-					}
-					return CoreResult.make.ok(result);
-				}
-
-				return new Promise<CoreResult<E, readonly B[]>>((resolve) => {
-					const results: B[] = new Array(len);
-					let nextIndex = 0;
-					let settled = false;
-
-					const worker = async () => {
-						while (nextIndex < len && !settled) {
-							const currentIndex = nextIndex++;
-							const r = await Deferred.to.Promise(transform(items[currentIndex])(signal));
-							if (settled) { return; }
-							if (CoreResult.is.err(r)) {
-								settled = true;
-								resolve(r);
-								return;
-							}
-							results[currentIndex] = r.value;
-						}
-					};
-
-					const workerCount = Math.min(concurrency, len);
-					const workers: Promise<void>[] = [];
-					for (let i = 0; i < workerCount; i++) {
-						workers.push(worker());
-					}
-
-					Promise.all(workers).then(() => {
-						if (!settled) {
-							resolve(CoreResult.make.ok(results));
-						}
-					});
-				});
-			})());
-
-	/**
-	 * Collects an array of Task.Results into a Task.Result of array.
-	 * Returns the first Err if any element is Err, runs sequentially.
-	 *
-	 * @see {@link traverse} for mapping elements to Task.Result instances and collecting them.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   [Task.Result.ok(1), Task.Result.ok(2)],
-	 *   Arr.sequence.Task.Result
-	 * )(); // Deferred<Ok([1, 2])>
-	 * ```
-	 */
-	export const sequence = <E, A>(items: readonly CoreTask.Result<E, A>[]): CoreTask.Result<E, readonly A[]> =>
-		traverse<E, CoreTask.Result<E, A>, A>((item) => item)(items);
-}
-
 namespace ArrTask {
 	/**
 	 * Maps each element to a Task and collects their results into an array.
@@ -273,8 +182,6 @@ namespace ArrTask {
 	 */
 	export const sequence = <A>(items: readonly CoreTask<A>[]): CoreTask<readonly A[]> =>
 		traverse<CoreTask<A>, A>((item) => item)(items);
-
-	export const Result = ArrTaskResult;
 }
 
 /**
@@ -877,27 +784,6 @@ const flatMap = <A, B>(transform: (item: A) => readonly B[]) => (items: readonly
 const reduce = <A, B>(initial: B, reducer: (accumulator: B, item: A) => B) => (items: readonly A[]): B =>
 	items.reduce(reducer, initial);
 
-// --- Traverse / Sequence ---
-
-interface TaskTraverse {
-	<A, B>(f: (a: A) => CoreTask<B>, options?: { concurrency?: number; }): (data: readonly A[]) => CoreTask<readonly B[]>;
-	Result: typeof ArrTaskResult.traverse;
-}
-
-const _traverseTask: TaskTraverse = Object.assign(
-	<A, B>(f: (a: A) => CoreTask<B>, options?: { concurrency?: number; }) => ArrTask.traverse(f, options),
-	{ Result: ArrTaskResult.traverse },
-);
-
-interface TaskSequence {
-	<A>(data: readonly CoreTask<A>[]): CoreTask<readonly A[]>;
-	Result: typeof ArrTaskResult.sequence;
-}
-
-const _sequenceTask: TaskSequence = Object.assign(<A>(data: readonly CoreTask<A>[]) => ArrTask.sequence(data), {
-	Result: ArrTaskResult.sequence,
-});
-
 /**
  * Prepends a value to the beginning of an array, returning a NonEmptyArr.
  *
@@ -1434,13 +1320,13 @@ export const Arr = {
 	traverse: {
 		Maybe: ArrMaybe.traverse,
 		Result: ArrResult.traverse,
-		Task: _traverseTask,
+		Task: ArrTask.traverse,
 		Validation: ArrValidation.traverse,
 	},
 	sequence: {
 		Maybe: ArrMaybe.sequence,
 		Result: ArrResult.sequence,
-		Task: _sequenceTask,
+		Task: ArrTask.sequence,
 		Validation: ArrValidation.sequence,
 	},
 	NonEmpty: ArrNonEmpty,

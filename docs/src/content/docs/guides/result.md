@@ -345,15 +345,15 @@ const resultValue = pipe(
 ); // Err("Value was absent")
 ```
 
-### Swapping container contexts: transposeMaybe
+### Swapping container contexts: sequence.Maybe
 
 When working with operations that return nested optional results (such as `Result<E, Maybe<A>>`),
-`Result.transposeMaybe` swaps the outer and inner contexts, producing `Maybe<Result<E, A>>`:
+`Result.sequence.Maybe` swaps the outer and inner contexts, producing `Maybe<Result<E, A>>`:
 
 ```ts
-Result.transposeMaybe(Result.make.ok(Maybe.make.some(42))); // Some(Ok(42))
-Result.transposeMaybe(Result.make.ok(Maybe.make.none()));   // None
-Result.transposeMaybe(Result.make.err("DB error"));         // Some(Err("DB error"))
+Result.sequence.Maybe(Result.make.ok(Maybe.make.some(42))); // Some(Ok(42))
+Result.sequence.Maybe(Result.make.ok(Maybe.make.none()));   // None
+Result.sequence.Maybe(Result.make.err("DB error"));         // Some(Err("DB error"))
 ```
 
 ---

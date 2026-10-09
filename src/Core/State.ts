@@ -42,10 +42,10 @@ export const State = {
 	 *
 	 * @example
 	 * ```ts
-	 * State.run(10)(State.resolve(42)); // [42, 10] — value 42, state unchanged
+	 * State.run(10)(State.make(42)); // [42, 10] — value 42, state unchanged
 	 * ```
 	 */
-	resolve: <S, A>(value: A): State<S, A> => (s) => [value, s],
+	make: <S, A>(value: A): State<S, A> => (s) => [value, s],
 
 	/**
 	 * Produces the current state as the value, without modifying it.
@@ -57,19 +57,6 @@ export const State = {
 	 * ```
 	 */
 	get: <S>(): State<S, S> => (s) => [s, s],
-
-	/**
-	 * Reads a projection of the state without modifying it.
-	 * Equivalent to `pipe(State.get(), State.map(f))` but more direct.
-	 *
-	 * @example
-	 * ```ts
-	 * type AppState = { count: number; label: string };
-	 * const readCount: State<AppState, number> = State.gets(s => s.count);
-	 * State.run({ count: 5, label: "x" })(readCount); // [5, { count: 5, label: "x" }]
-	 * ```
-	 */
-	gets: <S, A>(f: (s: S) => A): State<S, A> => (s) => [f(s), s],
 
 	/**
 	 * Replaces the current state with a new value. Produces no meaningful value.
@@ -143,9 +130,9 @@ export const State = {
 	 * ```ts
 	 * const addCounted = (n: number) => (m: number) => n + m;
 	 * const program = pipe(
-	 *   State.resolve<number, typeof addCounted>(addCounted),
-	 *   State.apply(State.gets((s: number) => s * 2)),
-	 *   State.apply(State.gets((s: number) => s)),
+	 *   State.make<number, typeof addCounted>(addCounted),
+	 *   State.apply(pipe(State.get<number>(), State.map((s) => s * 2))),
+	 *   State.apply(State.get<number>()),
 	 * );
 	 *
 	 * State.evaluate(3)(program); // 6 + 3 = 9
@@ -226,7 +213,7 @@ export const State = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(State.resolve(42), State.bindTo("value")); // State({ value: 42 })
+	 * pipe(State.make(42), State.bindTo("value")); // State({ value: 42 })
 	 * ```
 	 */
 	bindTo: <K extends string>(key: K) => <S, A>(data: State<S, A>): State<S, { [P in K]: A; }> =>
@@ -238,8 +225,8 @@ export const State = {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   State.resolve({ a: 1 }),
-	 *   State.bind("b", ({ a }) => State.resolve(a + 1))
+	 *   State.make({ a: 1 }),
+	 *   State.bind("b", ({ a }) => State.make(a + 1))
 	 * ); // State({ a: 1, b: 2 })
 	 * ```
 	 */

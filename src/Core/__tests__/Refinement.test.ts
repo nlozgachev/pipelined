@@ -18,10 +18,10 @@ type TrimmedString = NonEmptyString & { readonly [_trimmed]: true; };
 type PositiveNumber = number & { readonly [_positive]: true; };
 type EvenNumber = number & { readonly [_even]: true; };
 
-const isNonEmpty: Refinement<string, NonEmptyString> = Refinement.from.predicate((s) => s.length > 0);
-const isTrimmed: Refinement<NonEmptyString, TrimmedString> = Refinement.from.predicate((s) => s === s.trim());
-const isPositive: Refinement<number, PositiveNumber> = Refinement.from.predicate((n) => n > 0);
-const isEven: Refinement<number, EvenNumber> = Refinement.from.predicate((n) => n % 2 === 0);
+const isNonEmpty: Refinement<string, NonEmptyString> = Refinement.from.Predicate((s) => s.length > 0);
+const isTrimmed: Refinement<NonEmptyString, TrimmedString> = Refinement.from.Predicate((s) => s === s.trim());
+const isPositive: Refinement<number, PositiveNumber> = Refinement.from.Predicate((n) => n > 0);
+const isEven: Refinement<number, EvenNumber> = Refinement.from.Predicate((n) => n % 2 === 0);
 
 test("to.Maybe: and to.Result propagate narrowed types", () => {
 	const mb = Refinement.to.Maybe(isNonEmpty)("hello");
@@ -35,15 +35,15 @@ test("to.Maybe: and to.Result propagate narrowed types", () => {
 // make
 // ---------------------------------------------------------------------------
 
-test("from.predicate: returns true when predicate passes", () => {
+test("from.Predicate: returns true when predicate passes", () => {
 	expect(isNonEmpty("hello")).toBe(true);
 });
 
-test("from.predicate: returns false when predicate fails", () => {
+test("from.Predicate: returns false when predicate fails", () => {
 	expect(isNonEmpty("")).toBe(false);
 });
 
-test("from.predicate: works as type guard in conditional branches", () => {
+test("from.Predicate: works as type guard in conditional branches", () => {
 	const value: string = "world";
 	expect(isNonEmpty(value)).toBe(true);
 	// TypeScript compile-time check: narrowed type must be assignable to NonEmptyString.
@@ -176,8 +176,8 @@ test("to.Result: works in pipe chain with composed refinements", () => {
 
 test("and: executes second refinement when first passes", () => {
 	let called = false;
-	const first = Refinement.from.predicate(() => true);
-	const second = Refinement.from.predicate(() => {
+	const first = Refinement.from.Predicate(() => true);
+	const second = Refinement.from.Predicate(() => {
 		called = true;
 		return true;
 	});
@@ -187,8 +187,8 @@ test("and: executes second refinement when first passes", () => {
 
 test("and: short-circuits second refinement when first fails", () => {
 	let called = false;
-	const first = Refinement.from.predicate(() => false);
-	const second = Refinement.from.predicate(() => {
+	const first = Refinement.from.Predicate(() => false);
+	const second = Refinement.from.Predicate(() => {
 		called = true;
 		return true;
 	});

@@ -127,7 +127,7 @@ export const Task = {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Task.resolve(5),
+	 *   Task.make(5),
 	 *   Task.map(n => n * 2)
 	 * )(); // Deferred<10>
 	 * ```
@@ -142,9 +142,9 @@ export const Task = {
 	 *
 	 * @example
 	 * ```ts
-	 * const readUserId: Task<string> = Task.resolve(session.userId);
+	 * const readUserId: Task<string> = Task.make(session.userId);
 	 * const loadPrefs = (id: string): Task<Preferences> =>
-	 *   Task.resolve(prefsCache.get(id));
+	 *   Task.make(prefsCache.get(id));
 	 *
 	 * pipe(
 	 *   readUserId,

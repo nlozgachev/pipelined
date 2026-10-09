@@ -4,17 +4,17 @@ import { Lens } from "../Lens.ts";
 import { State } from "../State.ts";
 
 // ---------------------------------------------------------------------------
-// resolve
+// make
 // ---------------------------------------------------------------------------
 
-test("resolve: produces the given value and leaves state unchanged", () => {
-	const [value, state] = State.run(10)(State.resolve(42));
+test("make: produces the given value and leaves state unchanged", () => {
+	const [value, state] = State.run(10)(State.make(42));
 	expect(value).toBe(42);
 	expect(state).toBe(10);
 });
 
-test("resolve: works with string state", () => {
-	const [value, state] = State.run("s")(State.resolve("hello"));
+test("make: works with string state", () => {
+	const [value, state] = State.run("s")(State.make("hello"));
 	expect(value).toBe("hello");
 	expect(state).toBe("s");
 });
@@ -32,21 +32,6 @@ test("get: produces the current state as the value", () => {
 test("get: does not modify the state", () => {
 	const [, finalState] = State.run(7)(State.get());
 	expect(finalState).toBe(7);
-});
-
-// ---------------------------------------------------------------------------
-// gets
-// ---------------------------------------------------------------------------
-
-test("gets: projects a field from the state", () => {
-	type S = { count: number; };
-	const [value] = State.run({ count: 5 })(State.gets((s: S) => s.count));
-	expect(value).toBe(5);
-});
-
-test("gets: does not modify the state", () => {
-	const [, state] = State.run(42)(State.gets((n: number) => n * 2));
-	expect(state).toBe(42);
 });
 
 // ---------------------------------------------------------------------------
@@ -99,7 +84,7 @@ test("map: does not change the state", () => {
 });
 
 test("map: chains multiple transformations", () => {
-	const program = pipe(State.resolve<number, number>(3), State.map((n) => n + 1), State.map((n) => n * 10));
+	const program = pipe(State.make<number, number>(3), State.map((n) => n + 1), State.map((n) => n * 10));
 	const [value] = State.run(0)(program);
 	expect(value).toBe(40);
 });
@@ -120,7 +105,7 @@ test("chain: sequences two computations, threading state", () => {
 });
 
 test("chain: passes the value from one step to the next", () => {
-	const program = pipe(State.resolve<number, number>(10), State.chain((n) => State.resolve(n * 2)));
+	const program = pipe(State.make<number, number>(10), State.chain((n) => State.make(n * 2)));
 	const [value] = State.run(0)(program);
 	expect(value).toBe(20);
 });
@@ -144,17 +129,17 @@ test("chain: builds a stack via modify and get", () => {
 
 test("apply: applies a wrapped function to a wrapped value", () => {
 	const double = (n: number) => n * 2;
-	const program = pipe(State.resolve<number, (n: number) => number>(double), State.apply(State.resolve(7)));
+	const program = pipe(State.make<number, (n: number) => number>(double), State.apply(State.make(7)));
 	const [value] = State.run(0)(program);
 	expect(value).toBe(14);
 });
 
 test("apply: threads state through function then argument", () => {
 	const program = pipe(
-		State.resolve<number, (n: number) => number>((n) => n + 1),
-		State.apply(State.gets((s: number) => s * 10)),
+		State.make<number, (n: number) => number>((n) => n + 1),
+		State.apply(pipe(State.get<number>(), State.map((s) => s * 10))),
 	);
-	// state = 3 → gets reads 30, adds 1 → value = 31
+	// state = 3 → reads 30, adds 1 → value = 31
 	const [value, state] = State.run(3)(program);
 	expect(value).toBe(31);
 	expect(state).toBe(3);
@@ -189,7 +174,7 @@ test("run: returns [value, finalState]", () => {
 });
 
 test("evaluate: returns only the produced value", () => {
-	const result = State.evaluate(5)(State.gets((n: number) => n * 3));
+	const result = State.evaluate(5)(pipe(State.get<number>(), State.map((n) => n * 3)));
 	expect(result).toBe(15);
 });
 
@@ -211,7 +196,7 @@ test("pipe: composes state updates in sequence", () => {
 		addItem("apple", 1),
 		State.chain(() => addItem("bread", 2)),
 		State.chain(() => addItem("milk", 1)),
-		State.chain(() => State.gets((cart: Cart) => cart.total)),
+		State.chain(() => pipe(State.get<Cart>(), State.map((cart) => cart.total))),
 	);
 
 	const total = State.evaluate({ items: [] as string[], total: 0 })(program);
@@ -221,7 +206,7 @@ test("pipe: composes state updates in sequence", () => {
 // --- bindTo ---
 
 test("bindTo: wraps a value in an accumulator object", () => {
-	const result = pipe(State.resolve<number, number>(2), State.bindTo("a"));
+	const result = pipe(State.make<number, number>(2), State.bindTo("a"));
 	const [value, state] = State.run(99)(result);
 	expect(value).toStrictEqual({ a: 2 });
 	expect(state).toBe(99);
@@ -231,10 +216,10 @@ test("bindTo: wraps a value in an accumulator object", () => {
 
 test("bind: accumulates values key-by-key in a pipeline", () => {
 	const result = pipe(
-		State.resolve<number, number>(2),
+		State.make<number, number>(2),
 		State.bindTo("a"),
-		State.bind("b", ({ a }) => State.resolve(a * 3)),
-		State.bind("c", ({ a, b }) => State.resolve(a + b)),
+		State.bind("b", ({ a }) => State.make(a * 3)),
+		State.bind("c", ({ a, b }) => State.make(a + b)),
 	);
 	const [value, state] = State.run(99)(result);
 	expect(value).toStrictEqual({ a: 2, b: 6, c: 8 });
@@ -259,7 +244,7 @@ test("focus: focuses a state computation on a sub-state via Lens", () => {
 test("tap: executes side effect callback when run", () => {
 	let called = false;
 	const program = pipe(
-		State.resolve<number, number>(42),
+		State.make<number, number>(42),
 		State.tap(() => {
 			called = true;
 		}),

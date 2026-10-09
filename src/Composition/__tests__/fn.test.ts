@@ -1,18 +1,5 @@
 import { expect, test } from "vitest";
-import { flow } from "../flow.ts";
-import {
-	constant,
-	constFalse,
-	constNull,
-	constTrue,
-	constUndefined,
-	constVoid,
-	defaultTo,
-	identity,
-	once,
-	tuple,
-	untuple,
-} from "../fn.ts";
+import { constant, identity, once, tuple, untuple } from "../fn.ts";
 
 // --- identity ---
 
@@ -69,40 +56,6 @@ test("constant: returns same object reference", () => {
 test("constant: fills arrays when used with map", () => {
 	const result = [1, 2, 3].map(constant("x"));
 	expect(result).toStrictEqual(["x", "x", "x"]);
-});
-
-// --- constTrue ---
-
-test("constTrue: always returns true", () => {
-	expect(constTrue()).toBe(true);
-	expect(constTrue()).toBe(true);
-});
-
-// --- constFalse ---
-
-test("constFalse: always returns false", () => {
-	expect(constFalse()).toBe(false);
-	expect(constFalse()).toBe(false);
-});
-
-// --- constNull ---
-
-test("constNull: always returns null", () => {
-	expect(constNull()).toBeNull();
-	expect(constNull()).toBeNull();
-});
-
-// --- constUndefined ---
-
-test("constUndefined: always returns undefined", () => {
-	expect(constUndefined()).toBeUndefined();
-	expect(constUndefined()).toBeUndefined();
-});
-
-// --- constVoid ---
-
-test("constVoid: always returns undefined", () => {
-	expect(constVoid()).toBeUndefined();
 });
 
 // --- once ---
@@ -186,30 +139,6 @@ test("once: caches falsy results correctly", () => {
 	expect(returnNull()).toBeNull();
 	expect(returnNull()).toBeNull();
 	expect(callCount3).toBe(1);
-});
-
-// --- defaultTo ---
-
-test("defaultTo: returns non-nullable value unchanged", () => {
-	const fallback = defaultTo("Guest");
-	expect(fallback("Alice")).toBe("Alice");
-	expect(fallback(0)).toBe(0);
-	expect(fallback(false)).toBe(false);
-	expect(fallback({ name: "Bob" })).toStrictEqual({ name: "Bob" });
-});
-
-test("defaultTo: returns fallback value for null or undefined", () => {
-	const fallback = defaultTo("Guest");
-	expect(fallback(null)).toBe("Guest");
-	expect(fallback(undefined)).toBe("Guest");
-});
-
-test("defaultTo: integrates into pipeline with flow", () => {
-	const getName = flow((u: { name?: string | null; }) => u.name, defaultTo("Guest"), (name) => name.toUpperCase());
-
-	expect(getName({ name: "Alice" })).toBe("ALICE");
-	expect(getName({ name: null })).toBe("GUEST");
-	expect(getName({})).toBe("GUEST");
 });
 
 // --- tuple & untuple ---

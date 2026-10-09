@@ -642,61 +642,6 @@ test("traverse.Task: handles asynchronous operations", async () => {
 	expect(result).toStrictEqual([2, 4, 6]);
 });
 
-test("sequence.Task: runs all tasks in parallel and collects results", async () => {
-	const tasks: Task<number>[] = [Task.make(10), Task.make(20), Task.make(30)];
-	const result = await Arr.sequence.Task(tasks)();
-	expect(result).toStrictEqual([10, 20, 30]);
-});
-
-test("sequence.Task: resolves to empty array for empty input", async () => {
-	const result = await Arr.sequence.Task([] as Task<number>[])();
-	expect(result).toStrictEqual([]);
-});
-
-test("sequence.Task: preserves order despite varying completion times", async () => {
-	const tasks: Task<string>[] = [
-		Task.tryCatch(() => new Promise<string>((resolve) => setTimeout(() => resolve("slow"), 30)), { onError: () => "" }),
-		Task.tryCatch(() => new Promise<string>((resolve) => setTimeout(() => resolve("fast"), 5)), { onError: () => "" }),
-		Task.tryCatch(() => new Promise<string>((resolve) => setTimeout(() => resolve("medium"), 15)), { onError: () => "" }),
-	];
-	const result = await Arr.sequence.Task(tasks)();
-	expect(result).toStrictEqual(["slow", "fast", "medium"]);
-});
-
-// --- traverseTaskResult / sequenceTaskResult ---
-
-test("traverse.Task.Result: returns Ok of results when all succeed", async () => {
-	const validate = (n: number): Task<Result<string, number>> =>
-		n > 0 ? Task.make(Result.make.ok(n)) : Task.make(Result.make.err("non-positive"));
-	const taskRes = pipe([1, 2, 3], Arr.traverse.Task.Result(validate));
-	expectTypeOf(taskRes).toEqualTypeOf<Task<Result<string, readonly number[]>>>();
-	const result = await taskRes();
-	expect(result).toStrictEqual(Result.make.ok([1, 2, 3]));
-});
-
-test("traverse.Task.Result: short-circuits on first error", async () => {
-	const order: number[] = [];
-	const validate = (n: number): Task<Result<string, number>> =>
-		Task.tryCatch(() => {
-			order.push(n);
-			return Promise.resolve(n > 0 ? Result.make.ok(n) : Result.make.err("non-positive"));
-		}, { onError: () => Result.make.err("failed") });
-	const result = await pipe([1, -1, 3], Arr.traverse.Task.Result(validate))();
-	expect(result).toStrictEqual(Result.make.err("non-positive"));
-	expect(order).toStrictEqual([1, -1]); // 3 was not processed
-});
-
-test("traverse.Task.Result: returns Ok of empty array for empty input", async () => {
-	const result = await Arr.traverse.Task.Result((n: number) => Task.make(Result.make.ok(n)))([])();
-	expect(result).toStrictEqual(Result.make.ok([]));
-});
-
-test("sequence.Task.Result: collects Ok results", async () => {
-	const tasks: Task<Result<string, number>>[] = [Task.make(Result.make.ok(10)), Task.make(Result.make.ok(20))];
-	const result = await Arr.sequence.Task.Result(tasks)();
-	expect(result).toStrictEqual(Result.make.ok([10, 20]));
-});
-
 test("traverse.Task: respects concurrency limit option", async () => {
 	let active = 0;
 	let maxActive = 0;
@@ -719,60 +664,25 @@ test("traverse.Task: respects concurrency limit option", async () => {
 	expect(maxActive).toBe(2);
 });
 
-test("traverse.Task.Result: respects concurrency limit and short-circuits", async () => {
-	let active = 0;
-	let maxActive = 0;
-
-	const taskFn = (n: number): Task.Result<string, number> => (signal) =>
-		Task.Result.tryCatch(() =>
-			new Promise<number>((resolve, reject) => {
-				active++;
-				if (active > maxActive) {
-					maxActive = active;
-				}
-				setTimeout(() => {
-					active--;
-					if (n < 0) {
-						reject(new Error("negative"));
-					} else {
-						resolve(n * 2);
-					}
-				}, 15);
-			}), { onError: (err) => (err instanceof Error ? err.message : String(err)) })(signal);
-
-	const successResult = await pipe([1, 2, 3, 4], Arr.traverse.Task.Result(taskFn, { concurrency: 2 }))();
-	expect(successResult).toStrictEqual(Result.make.ok([2, 4, 6, 8]));
-	expect(maxActive).toBe(2);
-
-	const failResult = await pipe([1, -1, 3, 4], Arr.traverse.Task.Result(taskFn, { concurrency: 2 }))();
-	expect(failResult).toStrictEqual(Result.make.err("negative"));
+test("sequence.Task: runs all tasks in parallel and collects results", async () => {
+	const tasks: Task<number>[] = [Task.make(10), Task.make(20), Task.make(30)];
+	const result = await Arr.sequence.Task(tasks)();
+	expect(result).toStrictEqual([10, 20, 30]);
 });
 
-test("traverse.Task.Result: cancels remaining workers when failure occurs", async () => {
-	const taskFn = (n: number): Task.Result<string, number> =>
-		Task.Result.tryCatch(() =>
-			new Promise<number>((resolve, reject) => {
-				setTimeout(() => {
-					if (n === 2) {
-						reject(new Error("fail-fast"));
-					} else {
-						resolve(n);
-					}
-				}, n === 2 ? 10 : 40);
-			}), { onError: (err) => (err instanceof Error ? err.message : String(err)) });
-
-	const res = await pipe([1, 2], Arr.traverse.Task.Result(taskFn, { concurrency: 2 }))();
-	expect(res).toStrictEqual(Result.make.err("fail-fast"));
+test("sequence.Task: resolves to empty array for empty input", async () => {
+	const result = await Arr.sequence.Task([] as Task<number>[])();
+	expect(result).toStrictEqual([]);
 });
 
-test("sequence.Task.Result: returns first Err when task fails", async () => {
-	const tasks: Task<Result<string, number>>[] = [
-		Task.make(Result.make.ok(10)),
-		Task.make(Result.make.err("oops")),
-		Task.make(Result.make.ok(30)),
+test("sequence.Task: preserves order despite varying completion times", async () => {
+	const tasks: Task<string>[] = [
+		Task.tryCatch(() => new Promise<string>((resolve) => setTimeout(() => resolve("slow"), 30)), { onError: () => "" }),
+		Task.tryCatch(() => new Promise<string>((resolve) => setTimeout(() => resolve("fast"), 5)), { onError: () => "" }),
+		Task.tryCatch(() => new Promise<string>((resolve) => setTimeout(() => resolve("medium"), 15)), { onError: () => "" }),
 	];
-	const result = await Arr.sequence.Task.Result(tasks)();
-	expect(result).toStrictEqual(Result.make.err("oops"));
+	const result = await Arr.sequence.Task(tasks)();
+	expect(result).toStrictEqual(["slow", "fast", "medium"]);
 });
 
 // --- Predicates: isNonEmpty, some, every ---

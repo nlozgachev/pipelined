@@ -1,7 +1,7 @@
 import { expect, test, vi } from "vitest";
 import { Deferred } from "../../Core/Deferred.ts";
 import { pipe } from "../pipe.ts";
-import { tap } from "../tap.ts";
+import { tap, tapAsync, tapInspect, tapLog, tapTime } from "../tap.ts";
 
 test("tap: executes side effect", () => {
 	let sideEffect = 0;
@@ -87,7 +87,7 @@ test("tap: handles array values", () => {
 	expect(length).toBe(3);
 });
 
-// --- tap.log ---
+// --- tapLog ---
 
 test("log: logs formatted string to custom logger", () => {
 	let logged = "";
@@ -95,7 +95,7 @@ test("log: logs formatted string to custom logger", () => {
 		logged = msg;
 	};
 
-	const res = pipe(42, tap.log({ logger }));
+	const res = pipe(42, tapLog({ logger }));
 
 	expect(res).toBe(42);
 	expect(logged).toBe("42");
@@ -107,7 +107,7 @@ test("log: applies label prefix when provided", () => {
 		logged = msg;
 	};
 
-	const res = pipe("hello", tap.log({ label: "Greeting", logger }));
+	const res = pipe("hello", tapLog({ label: "Greeting", logger }));
 
 	expect(res).toBe("hello");
 	expect(logged).toBe("[Greeting]: hello");
@@ -119,19 +119,19 @@ test("log: uses custom formatter when provided", () => {
 		logged = msg;
 	};
 
-	const res = pipe({ value: 10 }, tap.log({ logger, formatter: (obj) => `value is ${obj.value}` }));
+	const res = pipe({ value: 10 }, tapLog({ logger, formatter: (obj) => `value is ${obj.value}` }));
 
 	expect(res).toStrictEqual({ value: 10 });
 	expect(logged).toBe("value is 10");
 });
 
-// --- tap.inspect ---
+// --- tapInspect ---
 
 test("inspect: prints deep object structure using node inspect", () => {
 	const spy = vi.spyOn(console, "log").mockImplementation(() => {});
 	const obj = { nested: { deep: { value: 100 } } };
 
-	const res = pipe(obj, tap.inspect());
+	const res = pipe(obj, tapInspect());
 
 	expect(res).toBe(obj);
 	expect(spy).toHaveBeenCalledWith(expect.any(String));
@@ -147,7 +147,7 @@ test("inspect: prepends label prefix when provided", () => {
 	const spy = vi.spyOn(console, "log").mockImplementation(() => {});
 	const obj = { a: 1 };
 
-	pipe(obj, tap.inspect({ label: "Debug" }));
+	pipe(obj, tapInspect({ label: "Debug" }));
 
 	expect(spy).toHaveBeenCalledWith(expect.any(String));
 	const [firstCall] = spy.mock.calls;
@@ -155,7 +155,7 @@ test("inspect: prepends label prefix when provided", () => {
 	spy.mockRestore();
 });
 
-// --- tap.async ---
+// --- tapAsync ---
 
 test("async: executes side effect asynchronously and returns value immediately", async () => {
 	let resolved = false;
@@ -164,7 +164,7 @@ test("async: executes side effect asynchronously and returns value immediately",
 		resolved = true;
 	};
 
-	const res = pipe(42, tap.async(asyncSideEffect));
+	const res = pipe(42, tapAsync(asyncSideEffect));
 
 	// Should return value immediately before the 10ms promise completes
 	expect(res).toBe(42);
@@ -184,7 +184,7 @@ test("async: catches promise rejection and routes to onError", async () => {
 
 	const res = pipe(
 		42,
-		tap.async(failingAsyncEffect, {
+		tapAsync(failingAsyncEffect, {
 			onError: (err) => {
 				caughtError = err;
 			},
@@ -200,7 +200,7 @@ test("async: catches promise rejection and routes to onError", async () => {
 	expect((caughtError as Error).message).toBe("async failure");
 });
 
-// --- tap.time ---
+// --- tapTime ---
 
 test("time: times synchronous execution and triggers onFinish callback", () => {
 	let finishedDuration: any = null;
@@ -208,7 +208,7 @@ test("time: times synchronous execution and triggers onFinish callback", () => {
 
 	const res = pipe(
 		10,
-		tap.time(syncFn, {
+		tapTime(syncFn, {
 			onFinish: (dur) => {
 				finishedDuration = dur;
 			},
@@ -227,7 +227,7 @@ test("time: times asynchronous resolution and triggers onFinish callback", async
 
 	const res = pipe(
 		10,
-		tap.time(asyncFn, {
+		tapTime(asyncFn, {
 			onFinish: (dur) => {
 				finishedDuration = dur;
 			},
@@ -251,7 +251,7 @@ test("time: triggers onFinish callback when function throws", () => {
 	expect(() => {
 		pipe(
 			42,
-			tap.time(throwingFn, {
+			tapTime(throwingFn, {
 				onFinish: (dur) => {
 					finishedDuration = dur;
 				},
@@ -266,7 +266,7 @@ test("time: logs to console when label config is provided", () => {
 	const spy = vi.spyOn(console, "log").mockImplementation(() => {});
 	const syncFn = (n: number) => n * 2;
 
-	pipe(10, tap.time(syncFn, { label: "timer-label" }));
+	pipe(10, tapTime(syncFn, { label: "timer-label" }));
 
 	expect(spy).toHaveBeenCalledWith(expect.any(String));
 	const [firstCall] = spy.mock.calls;
@@ -282,7 +282,7 @@ test("log: handles circular objects gracefully", () => {
 	const circular: any = {};
 	circular.self = circular;
 
-	const res = pipe(circular, tap.log({ logger }));
+	const res = pipe(circular, tapLog({ logger }));
 
 	expect(res).toBe(circular);
 	expect(logged).toBe("[object Object]");
@@ -292,18 +292,24 @@ test("inspect: handles circular objects with fallback formatting", async () => {
 	vi.resetModules();
 	// oxlint-disable-next-line vitest/prefer-import-in-mock
 	vi.doMock("node:util", () => ({ inspect: undefined }));
-	const { tap: dynamicTap } = await import("../tap");
+	const {
+		tap: dynamicTap,
+		tapLog: dynamicTapLog,
+		tapAsync: dynamicTapAsync,
+		tapTime: dynamicTapTime,
+		tapInspect: dynamicTapInspect,
+	} = await import("../tap");
 	const spy = vi.spyOn(console, "log").mockImplementation(() => {});
 	const circular: any = {};
 	circular.self = circular;
 
 	// Satisfy code coverage for the dynamically imported module instance
 	dynamicTap(() => {})(10);
-	dynamicTap.log({ label: "test" })(10);
-	dynamicTap.async(async () => {})(10);
-	dynamicTap.time(() => {}, { label: "test" })(10);
+	dynamicTapLog({ label: "test" })(10);
+	dynamicTapAsync(async () => {})(10);
+	dynamicTapTime(() => {}, { label: "test" })(10);
 
-	dynamicTap.inspect()(circular);
+	dynamicTapInspect()(circular);
 
 	expect(spy).toHaveBeenCalledWith("[object Object]");
 	spy.mockRestore();
@@ -324,7 +330,7 @@ test("time: triggers onFinish callback when async function rejects", async () =>
 
 	const res = pipe(
 		10,
-		tap.time(asyncRejectFn, {
+		tapTime(asyncRejectFn, {
 			onFinish: (dur) => {
 				finishedDuration = dur;
 			},
@@ -347,7 +353,7 @@ test("async: operates with Deferred tasks", async () => {
 		}));
 	};
 
-	const res = pipe(42, tap.async(deferredFn));
+	const res = pipe(42, tapAsync(deferredFn));
 
 	expect(res).toBe(42);
 	expect(resolved).toBe(false);
@@ -366,7 +372,7 @@ test("time: times Deferred function and triggers onFinish asynchronously", async
 
 	const res = pipe(
 		10,
-		tap.time(deferredFn, {
+		tapTime(deferredFn, {
 			onFinish: (dur) => {
 				finishedDuration = dur;
 			},
@@ -390,7 +396,7 @@ test("log: handles circular objects using fallback formatting", () => {
 		loggedMsg = msg;
 	};
 
-	tap.log({ logger })(circular);
+	tapLog({ logger })(circular);
 	expect(loggedMsg).toBe("[object Object]");
 });
 
@@ -401,7 +407,7 @@ test("time: logs to console on throw when label config is provided", () => {
 	};
 
 	expect(() => {
-		pipe(42, tap.time(throwingFn, { label: "err-label" }));
+		pipe(42, tapTime(throwingFn, { label: "err-label" }));
 	}).toThrow("sync crash");
 
 	expect(spy).toHaveBeenCalledWith(expect.any(String));
@@ -419,7 +425,7 @@ test("time: logs to console on async rejection when label config is provided", a
 		return capturedPromise;
 	};
 
-	pipe(10, tap.time(asyncRejectFn, { label: "async-err-label" }));
+	pipe(10, tapTime(asyncRejectFn, { label: "async-err-label" }));
 	await expect(capturedPromise).rejects.toThrow("async reject");
 	expect(spy).toHaveBeenCalledWith(expect.any(String));
 	spy.mockRestore();

@@ -367,21 +367,24 @@ export const Result = {
 		Validation: <E, A>(result: Result<E, A>): Validation<E, A> => CoreValidation.from.Result(result),
 	},
 
-	/**
-	 * Swaps the outer `Result` and inner `Maybe` context.
-	 * `Ok(Some(a))` becomes `Some(Ok(a))`, `Ok(None)` becomes `None`, and `Err(e)` becomes `Some(Err(e))`.
-	 *
-	 * @example
-	 * ```ts
-	 * Result.transposeMaybe(Result.make.ok(Maybe.make.some(42))); // Some(Ok(42))
-	 * Result.transposeMaybe(Result.make.ok(Maybe.make.none()));   // None
-	 * Result.transposeMaybe(Result.make.err("error"));           // Some(Err("error"))
-	 * ```
-	 */
-	transposeMaybe: <E, A>(result: Result<E, Maybe<A>>): Maybe<Result<E, A>> =>
-		isErr(result)
-			? CoreMaybe.make.some(result)
-			: (CoreMaybe.is.some(result.value) ? CoreMaybe.make.some(makeOk(result.value.value)) : CoreMaybe.make.none()),
+	// --- sequence ---
+	sequence: {
+		/**
+		 * Swaps the outer `Result` and inner `Maybe` context.
+		 * `Ok(Some(a))` becomes `Some(Ok(a))`, `Ok(None)` becomes `None`, and `Err(e)` becomes `Some(Err(e))`.
+		 *
+		 * @example
+		 * ```ts
+		 * Result.sequence.Maybe(Result.make.ok(Maybe.make.some(42))); // Some(Ok(42))
+		 * Result.sequence.Maybe(Result.make.ok(Maybe.make.none()));   // None
+		 * Result.sequence.Maybe(Result.make.err("error"));           // Some(Err("error"))
+		 * ```
+		 */
+		Maybe: <E, A>(result: Result<E, Maybe<A>>): Maybe<Result<E, A>> =>
+			isErr(result)
+				? CoreMaybe.make.some(result)
+				: (CoreMaybe.is.some(result.value) ? CoreMaybe.make.some(makeOk(result.value.value)) : CoreMaybe.make.none()),
+	},
 
 	/**
 	 * Applies a function wrapped in a Result to a value wrapped in a Result.

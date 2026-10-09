@@ -1,6 +1,5 @@
 export * from "./converge";
 export * from "./curry";
-export * from "./either";
 export * from "./flip";
 export * from "./flow";
 export * from "./flowAsync";
@@ -12,7 +11,6 @@ export * from "./pipe";
 export * from "./pipeAsync";
 export * from "./struct";
 export * from "./tap";
-export * from "./tryCatch";
 export * from "./uncurry";
 export * from "./unless";
 export * from "./when";

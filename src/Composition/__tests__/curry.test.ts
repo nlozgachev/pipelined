@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
-import { curry, curry3, curry4 } from "../curry.ts";
-import { uncurry, uncurry3, uncurry4 } from "../uncurry.ts";
+import { curry } from "../curry.ts";
+import { uncurry } from "../uncurry.ts";
 
 // --- curry (2-argument) ---
 
@@ -37,26 +37,26 @@ test("curry: round-trips with uncurry", () => {
 	expect(uncurried(3, 4)).toBe(7);
 });
 
-// --- curry3 ---
+// --- curry (3-argument) ---
 
-test("curry3: supports full application", () => {
+test("curry: supports 3-argument full application", () => {
 	const add3 = (a: number, b: number, c: number) => a + b + c;
-	const curried = curry3(add3);
+	const curried = curry(add3);
 	expect(curried(1)(2)(3)).toBe(6);
 });
 
-test("curry3: supports partial application at each step", () => {
+test("curry: supports 3-argument partial application at each step", () => {
 	const add3 = (a: number, b: number, c: number) => a + b + c;
-	const curried = curry3(add3);
+	const curried = curry(add3);
 
 	const withFirst = curried(10);
 	const withSecond = withFirst(20);
 	expect(withSecond(30)).toBe(60);
 });
 
-test("curry3: allows reuse of partial applications", () => {
+test("curry: allows reuse of partial applications (3-arg)", () => {
 	const volume = (l: number, w: number, h: number) => l * w * h;
-	const curried = curry3(volume);
+	const curried = curry(volume);
 
 	const withLength10 = curried(10);
 	const box10x5 = withLength10(5);
@@ -64,24 +64,24 @@ test("curry3: allows reuse of partial applications", () => {
 	expect(box10x5(3)).toBe(150);
 });
 
-test("curry3: round-trips with uncurry3", () => {
+test("curry: round-trips 3-argument function with uncurry", () => {
 	const add3 = (a: number, b: number, c: number) => a + b + c;
-	const curried = curry3(add3);
-	const uncurried = uncurry3(curried);
+	const curried = curry(add3);
+	const uncurried = uncurry(curried);
 	expect(uncurried(1, 2, 3)).toBe(6);
 });
 
-// --- curry4 ---
+// --- curry (4-argument) ---
 
-test("curry4: supports full application", () => {
+test("curry: supports 4-argument full application", () => {
 	const add4 = (a: number, b: number, c: number, d: number) => a + b + c + d;
-	const curried = curry4(add4);
+	const curried = curry(add4);
 	expect(curried(1)(2)(3)(4)).toBe(10);
 });
 
-test("curry4: supports partial application at each step", () => {
+test("curry: supports 4-argument partial application at each step", () => {
 	const add4 = (a: number, b: number, c: number, d: number) => a + b + c + d;
-	const curried = curry4(add4);
+	const curried = curry(add4);
 
 	const step1 = curried(10);
 	const step2 = step1(20);
@@ -89,9 +89,9 @@ test("curry4: supports partial application at each step", () => {
 	expect(step3(40)).toBe(100);
 });
 
-test("curry4: allows reuse of partial applications", () => {
+test("curry: allows reuse of partial applications (4-arg)", () => {
 	const format = (a: string, b: string, c: string, d: string) => `${a}-${b}-${c}-${d}`;
-	const curried = curry4(format);
+	const curried = curry(format);
 
 	const withA = curried("A");
 	const withAB = withA("B");
@@ -99,9 +99,9 @@ test("curry4: allows reuse of partial applications", () => {
 	expect(withAB("X")("Y")).toBe("A-B-X-Y");
 });
 
-test("curry4: round-trips with uncurry4", () => {
+test("curry: round-trips 4-argument function with uncurry", () => {
 	const add4 = (a: number, b: number, c: number, d: number) => a + b + c + d;
-	const curried = curry4(add4);
-	const uncurried = uncurry4(curried);
+	const curried = curry(add4);
+	const uncurried = uncurry(curried);
 	expect(uncurried(1, 2, 3, 4)).toBe(10);
 });

@@ -184,8 +184,8 @@ const nextSettings = pipe(
 ## Bridging Lenses and Optionals
 
 It is very common for a path to start with fields that are guaranteed to exist, and then reach a
-field that is optional. We can transition from a `Lens` to an `Optional` using `Lens.toOptional`, or
-compose a lens directly using `Optional.andThenLens` or `Lens.andThenOptional`:
+field that is optional. We can transition from a `Lens` to an `Optional` using `Lens.to.Optional`,
+or compose a lens directly using `Optional.andThenLens` or `Lens.andThenOptional`:
 
 ```ts
 import { Lens } from "@nlozgachev/pipelined/core";
@@ -206,7 +206,7 @@ const sslOptional = Optional.from.property<Config["server"]>()("ssl");
 // Compose a guaranteed path with an optional path
 const sslCertOptional = pipe(
   serverLens,
-  Lens.toOptional,
+  Lens.to.Optional,
   Optional.andThen(sslOptional)
 );
 ```

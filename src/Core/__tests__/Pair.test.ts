@@ -8,12 +8,6 @@ test("make: creates Pair tuple", () => {
 	expect(p).toStrictEqual(["alice", 42]);
 });
 
-test("from.array: creates Pair from 2-element array", () => {
-	const p = Pair.from.array(["paris", 2000] as const);
-	expectTypeOf(p).toEqualTypeOf<Pair<"paris", 2000>>();
-	expect(p).toStrictEqual(["paris", 2000]);
-});
-
 test("first: and second extract elements", () => {
 	const p = Pair.make("foo", 100);
 	expect(Pair.first(p)).toBe("foo");

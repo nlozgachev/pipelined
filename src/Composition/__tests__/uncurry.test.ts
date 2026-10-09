@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { uncurry, uncurry3, uncurry4 } from "../uncurry.ts";
+import { uncurry } from "../uncurry.ts";
 
 // --- uncurry: thunk () => () => C ---
 
@@ -49,43 +49,43 @@ test("uncurry: uncurries functions with distinct argument types", () => {
 	expect(repeat("ab", 3)).toBe("ababab");
 });
 
-// --- uncurry3 ---
+// --- uncurry (3-argument) ---
 
-test("uncurry3: uncurries 3-argument function", () => {
+test("uncurry: uncurries 3-argument function", () => {
 	const curried = (a: number) => (b: number) => (c: number) => a + b + c;
-	const flat = uncurry3(curried);
+	const flat = uncurry(curried);
 	expect(flat(1, 2, 3)).toBe(6);
 });
 
-test("uncurry3: uncurries ternary string formatting function", () => {
+test("uncurry: uncurries ternary string formatting function", () => {
 	const curried = (first: string) => (middle: string) => (last: string) => `${first} ${middle} ${last}`;
-	const format = uncurry3(curried);
+	const format = uncurry(curried);
 	expect(format("John", "Q", "Doe")).toBe("John Q Doe");
 });
 
-test("uncurry3: uncurries functions with mixed argument types", () => {
+test("uncurry: uncurries functions with mixed argument types", () => {
 	const curried = (name: string) => (age: number) => (active: boolean) =>
 		`${name} is ${age} and ${active ? "active" : "inactive"}`;
-	const describe = uncurry3(curried);
+	const describe = uncurry(curried);
 	expect(describe("Alice", 30, true)).toBe("Alice is 30 and active");
 });
 
-// --- uncurry4 ---
+// --- uncurry (4-argument) ---
 
-test("uncurry4: uncurries 4-argument function", () => {
+test("uncurry: uncurries 4-argument function", () => {
 	const curried = (a: number) => (b: number) => (c: number) => (d: number) => a + b + c + d;
-	const flat = uncurry4(curried);
+	const flat = uncurry(curried);
 	expect(flat(1, 2, 3, 4)).toBe(10);
 });
 
-test("uncurry4: uncurries 4-argument string formatting function", () => {
+test("uncurry: uncurries 4-argument string formatting function", () => {
 	const curried = (a: string) => (b: string) => (c: string) => (d: string) => `${a}-${b}-${c}-${d}`;
-	const format = uncurry4(curried);
+	const format = uncurry(curried);
 	expect(format("A", "B", "C", "D")).toBe("A-B-C-D");
 });
 
-test("uncurry4: uncurries 4-argument multiplication function", () => {
+test("uncurry: uncurries 4-argument multiplication function", () => {
 	const curried = (a: number) => (b: number) => (c: number) => (d: number) => a * b * c * d;
-	const multiply = uncurry4(curried);
+	const multiply = uncurry(curried);
 	expect(multiply(2, 3, 4, 5)).toBe(120);
 });

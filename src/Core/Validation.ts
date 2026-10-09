@@ -247,7 +247,7 @@ export const Validation = {
 	 * Accumulates errors from both sides if both fail, using optional `combineErrors`
 	 * or default concatenation.
 	 *
-	 * @see {@link Validation.product} to combine two validations into a tuple.
+	 * @see {@link Validation.struct} to combine record validations.
 	 *
 	 * @example
 	 * ```ts
@@ -452,63 +452,6 @@ export const Validation = {
 		 */
 		Maybe: <E, A>(validation: Validation<E, A>): Maybe<A> =>
 			isPassed(validation) ? CoreMaybe.make.some(validation.value) : CoreMaybe.make.none(),
-	},
-
-	/**
-	 * Combines two independent Validation instances into a tuple.
-	 * If both are Passed, returns Passed with both values as a tuple.
-	 * If either is Failed, accumulates errors from both sides.
-	 *
-	 * @see {@link Validation.productAll} to combine a non-empty list of validations.
-	 * @see {@link Validation.apply} to apply a curried function across validations.
-	 *
-	 * @example
-	 * ```ts
-	 * Validation.product(
-	 *   Validation.make.passed("alice"),
-	 *   Validation.make.passed(30)
-	 * ); // Passed(["alice", 30])
-	 *
-	 * Validation.product(
-	 *   Validation.make.failed("Name required"),
-	 *   Validation.make.failed("Age must be >= 0")
-	 * ); // Failed(["Name required", "Age must be >= 0"])
-	 * ```
-	 */
-	product: <E, A, B>(first: Validation<E, A>, second: Validation<E, B>): Validation<E, readonly [A, B]> => {
-		if (isPassed(first)) {
-			return isPassed(second) ? makePassed([first.value, second.value]) : makeFailedAll(second.errors);
-		}
-		return isPassed(second)
-			? makeFailedAll(first.errors)
-			: makeFailedAll([...first.errors, ...second.errors] as NonEmptyArr<E>);
-	},
-
-	/**
-	 * Combines a non-empty list of Validation instances, accumulating all errors.
-	 * If all are Passed, returns Passed with all values collected into an array.
-	 * If any are Failed, returns Failed with all accumulated errors.
-	 *
-	 * @see {@link Validation.product} to combine exactly two validations into a pair.
-	 *
-	 * @example
-	 * ```ts
-	 * Validation.productAll([
-	 *   validateName(name),
-	 *   validateEmail(email),
-	 *   validateAge(age)
-	 * ]);
-	 * // Passed([name, email, age]) or Failed([...all errors])
-	 * ```
-	 */
-	productAll: <E, A>(validations: NonEmptyArr<Validation<E, A>>): Validation<E, readonly A[]> => {
-		const values: A[] = [];
-		const errors: E[] = [];
-		for (const v of validations) {
-			if (isPassed(v)) { values.push(v.value); }
-			else { errors.push(...v.errors); }
-		}
-		return isNonEmptyArr(errors) ? makeFailedAll(errors) : makePassed(values);
 	},
 
 	/**

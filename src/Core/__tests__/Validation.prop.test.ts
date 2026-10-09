@@ -132,22 +132,23 @@ test("from.Predicate: always-false gives Invalid via onFalse", () => {
 });
 
 // ---------------------------------------------------------------------------
-// product
+// struct
 // ---------------------------------------------------------------------------
 
-test("product: combines two Valid instances into Valid tuple", () => {
+test("struct: combines Valid instances into Valid record", () => {
 	fc.assert(fc.property(fc.integer(), fc.string(), (n, s) => {
-		expect(Validation.product(Validation.make.passed<string, number>(n), Validation.make.passed<string, string>(s)))
-			.toStrictEqual(Validation.make.passed([n, s]));
+		expect(
+			Validation.struct({ n: Validation.make.passed<string, number>(n), s: Validation.make.passed<string, string>(s) }),
+		).toStrictEqual(Validation.make.passed({ n, s }));
 	}));
 });
 
-test("product: accumulates errors when Invalid instances provided", () => {
+test("struct: accumulates errors when Invalid instances provided", () => {
 	fc.assert(fc.property(fc.string(), fc.string(), (e1, e2) => {
-		const result = Validation.product(
-			Validation.make.failed(e1) as Validation<string, number>,
-			Validation.make.failed(e2) as Validation<string, string>,
-		);
+		const result = Validation.struct({
+			a: Validation.make.failed(e1) as Validation<string, number>,
+			b: Validation.make.failed(e2) as Validation<string, string>,
+		});
 		expect(Validation.is.failed(result)).toBe(true);
 		const invalid = result as unknown as { errors: string[]; };
 		expect(invalid.errors).toHaveLength(2);

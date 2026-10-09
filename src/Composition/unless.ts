@@ -15,7 +15,6 @@
  * ```
  *
  * @see {@link when} for executing when a predicate is met
- * @see {@link either} for branching based on a predicate
  */
 export const unless = <A>(predicate: (value: A) => boolean, onFalse: (value: A) => A) => (value: A): A =>
 	predicate(value) ? value : onFalse(value);

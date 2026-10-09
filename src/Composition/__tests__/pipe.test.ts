@@ -2,11 +2,9 @@ import { expect, expectTypeOf, test } from "vitest";
 import { Deferred } from "../../Core/Deferred.ts";
 import { Maybe } from "../../Core/Maybe.ts";
 import { Result } from "../../Core/Result.ts";
-import { either } from "../either.ts";
 import { pipe } from "../pipe.ts";
 import { pipeAsync } from "../pipeAsync.ts";
 import { struct } from "../struct.ts";
-import { tryCatch } from "../tryCatch.ts";
 import { unless } from "../unless.ts";
 import { when } from "../when.ts";
 
@@ -126,7 +124,7 @@ test("pipe: passes through 10 functions", () => {
 	expect(pipe(0, inc, inc, inc, inc, inc, inc, inc, inc, inc, inc)).toBe(10);
 });
 
-// --- when / unless / either ---
+// --- when / unless ---
 
 test("when: applies onTrue if predicate holds", () => {
 	const doubleEven = when((n: number) => n % 2 === 0, (n: number) => n * 2);
@@ -138,24 +136,6 @@ test("unless: applies onFalse if predicate does not hold", () => {
 	const doubleOdd = unless((n: number) => n % 2 === 0, (n: number) => n * 2);
 	expect(doubleOdd(3)).toBe(6);
 	expect(doubleOdd(2)).toBe(2);
-});
-
-test("either: branches appropriately based on predicate", () => {
-	const describe = either((n: number) => n > 0, () => "positive", () => "non-positive");
-	expect(describe(5)).toBe("positive");
-	expect(describe(-1)).toBe("non-positive");
-});
-
-// --- tryCatch ---
-
-test("tryCatch: returns result on success", () => {
-	const parsed = pipe('{"value": 42}', tryCatch((s) => JSON.parse(s), () => ({ error: true })));
-	expect(parsed).toStrictEqual({ value: 42 });
-});
-
-test("tryCatch: returns fallback on error", () => {
-	const parsed = pipe("invalid", tryCatch((s) => JSON.parse(s), (err, input) => ({ error: true, input })));
-	expect(parsed).toStrictEqual({ error: true, input: "invalid" });
 });
 
 // --- struct ---

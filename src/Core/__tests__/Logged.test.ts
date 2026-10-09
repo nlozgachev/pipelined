@@ -137,7 +137,7 @@ test("run: returns value and log tuple", () => {
 	expect(log).toStrictEqual(["a", "b"]);
 });
 
-test("run: returns empty log for value created via from.value", () => {
+test("run: returns empty log for value created via make", () => {
 	const [value, log] = Logged.run(Logged.make(99));
 	expect(value).toBe(99);
 	expect(log).toStrictEqual([]);

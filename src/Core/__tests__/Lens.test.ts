@@ -139,28 +139,31 @@ test("andThenOptional: updates inner value on set", () => {
 });
 
 // ---------------------------------------------------------------------------
-// toOptional
+// to.Optional
 // ---------------------------------------------------------------------------
 
-test("toOptional: get always returns Some", () => {
+test("to.Optional: get always returns Some", () => {
 	const nameLens = Lens.from.property<User>()("name");
-	const nameOpt = Lens.toOptional(nameLens);
+	const nameOpt = Lens.to.Optional(nameLens);
 
 	expect(nameOpt.get(alice)).toStrictEqual({ kind: "Some", value: "Alice" });
 });
 
-test("toOptional: set behaves identically to the original lens", () => {
+test("to.Optional: set behaves identically to the original lens", () => {
 	const nameLens = Lens.from.property<User>()("name");
-	const nameOpt = Lens.toOptional(nameLens);
+	const nameOpt = Lens.to.Optional(nameLens);
 
 	expect(nameOpt.set("Bob")(alice)).toStrictEqual(nameLens.set("Bob")(alice));
 });
 
-test("toOptional: composes with Optional.andThen", () => {
+test("to.Optional: composes with Optional.andThen", () => {
 	const addressLens = Lens.from.property<User>()("address");
 	const landmarkOpt = Optional.from.property<Address & { landmark?: string; }>()("landmark");
 
-	const userLandmarkOpt = pipe(Lens.toOptional(addressLens), Optional.andThen(landmarkOpt as Optional<Address, string>));
+	const userLandmarkOpt = pipe(
+		Lens.to.Optional(addressLens),
+		Optional.andThen(landmarkOpt as Optional<Address, string>),
+	);
 
 	expect(userLandmarkOpt.get(alice)).toStrictEqual({ kind: "None" });
 });

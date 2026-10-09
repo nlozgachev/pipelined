@@ -22,56 +22,6 @@ export const identity = <A>(a: A): A => a;
 export const constant = <A>(a: A) => (): A => a;
 
 /**
- * Always returns `true`.
- *
- * @example
- * ```ts
- * constTrue(); // true
- * ```
- */
-export const constTrue = (): true => true;
-
-/**
- * Always returns `false`.
- *
- * @example
- * ```ts
- * constFalse(); // false
- * ```
- */
-export const constFalse = (): false => false;
-
-/**
- * Always returns `null`.
- *
- * @example
- * ```ts
- * constNull(); // null
- * ```
- */
-export const constNull = (): null => null;
-
-/**
- * Always returns `undefined`.
- *
- * @example
- * ```ts
- * constUndefined(); // undefined
- * ```
- */
-export const constUndefined = (): undefined => undefined;
-
-/**
- * Always returns `void`.
- *
- * @example
- * ```ts
- * constVoid(); // undefined
- * ```
- */
-export const constVoid = (): void => {};
-
-/**
  * Creates a function that executes at most once.
  * Subsequent calls return the cached result from the first execution.
  *
@@ -95,22 +45,6 @@ export const once = <A>(f: () => A): () => A => {
 		return result;
 	};
 };
-
-/**
- * Returns a fallback value if the input is null or undefined; otherwise returns the input value.
- * Highly useful as a data-last default value step inside pipelines.
- *
- * @example
- * ```ts
- * const getName = flow(
- *   (u: { name?: string | null }) => u.name,
- *   defaultTo("Guest"),
- *   (name: string) => name.toUpperCase()
- * ); // returns string
- * ```
- */
-export const defaultTo = <B>(fallback: B) => <A>(a: A): NonNullable<A> | B =>
-	a === null || a === undefined ? fallback : (a as NonNullable<A>);
 
 /**
  * Converts a function taking multiple arguments into a function taking a single tuple argument.

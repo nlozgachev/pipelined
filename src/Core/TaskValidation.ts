@@ -170,7 +170,7 @@ export const TaskValidation = {
 	 * Task.Validation. Both Tasks run in parallel and errors from both sides
 	 * are accumulated.
 	 *
-	 * @see {@link Task.Validation.product} to combine two validations into a tuple.
+	 * @see {@link Task.Validation.struct} to combine multiple validations into a record.
 	 *
 	 * @example
 	 * ```ts
@@ -280,55 +280,6 @@ export const TaskValidation = {
 					? Task.make(validation as unknown as Validation<E1 | E2, A | B>)
 					: fallback(validation.errors)
 			)(task as Task<Validation<E1, A>>),
-
-	/**
-	 * Runs two Task.Validations concurrently and combines their results into a tuple.
-	 * If both are Passed, returns Passed with both values. If either fails, accumulates
-	 * errors from both sides.
-	 *
-	 * @see {@link Task.Validation.productAll} to combine a list of validations.
-	 * @see {@link Task.Validation.apply} to apply a curried function across validations.
-	 *
-	 * @example
-	 * ```ts
-	 * await Task.Validation.product(
-	 *   validateName(form.name),
-	 *   validateAge(form.age),
-	 * )(); // Passed(["Alice", 30]) or Failed([...errors])
-	 * ```
-	 */
-	product:
-		<E, A, B>(first: Task.Validation<E, A>, second: Task.Validation<E, B>): Task.Validation<E, readonly [A, B]> =>
-		(signal) =>
-			Deferred.from.Promise(
-				Promise.all([Deferred.to.Promise(first(signal)), Deferred.to.Promise(second(signal))]).then(([va, vb]) =>
-					CoreValidation.product(va, vb)
-				),
-			),
-
-	/**
-	 * Runs all Task.Validations concurrently and collects results.
-	 * If all are Passed, returns Passed with all values as an array.
-	 * If any fail, returns Failed with all accumulated errors.
-	 *
-	 * @see {@link Task.Validation.product} to combine two validations into a pair.
-	 *
-	 * @example
-	 * ```ts
-	 * await Task.Validation.productAll([
-	 *   validateName(form.name),
-	 *   validateEmail(form.email),
-	 *   validateAge(form.age),
-	 * ])(); // Passed([name, email, age]) or Failed([...all errors])
-	 * ```
-	 */
-	productAll: <E, A>(validations: NonEmptyArr<Task.Validation<E, A>>): Task.Validation<E, readonly A[]> => (signal) =>
-		Deferred.from.Promise(
-			Promise.all(validations.map((t) => Deferred.to.Promise(t(signal)))).then((results) => {
-				const [first, ...rest] = results;
-				return CoreValidation.productAll([first!, ...rest]);
-			}),
-		),
 
 	/**
 	 * Transforms all accumulated errors inside a Task.Validation.

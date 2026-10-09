@@ -94,47 +94,6 @@ guaranteed to run, and every failure is gathered into a single consolidated `Fai
 
 ---
 
-## Alternative Combinators: product and productAll
-
-If the curried `apply` pattern feels unfamiliar or syntactically complex, `Validation` provides
-simpler, array-based alternatives.
-
-### Combining two checks with `product`
-
-`product` takes two independent validations and merges them into a single `Validation` carrying a
-tuple of both values:
-
-```ts
-const combined = Validation.product(
-  validateName(form.name),
-  validateAge(form.age),
-); // Passed([name, age]) or Failed([nameErrors..., ageErrors...])
-```
-
-If either validation has failed, the errors from both sides are collected and merged.
-
-### Combining many checks with `productAll`
-
-`productAll` accepts an array of validations, runs all of them, and returns either a `Passed` tuple
-containing all successfully validated values, or a `Failed` list containing every accumulated error:
-
-```ts
-const formValidation = Validation.productAll([
-  validateName(form.name),
-  validateEmail(form.email),
-  validateAge(form.age),
-]);
-// Passed([name, email, age]) — if all pass
-// Failed([...all errors]) — if any fail
-```
-
-Because `productAll` expects an `Arr.NonEmpty` (a non-empty array) of validations, you are
-guaranteed that the input list has at least one validation check, carrying a type-safe array of
-values, completely avoiding the possibility of empty array inputs or undefined states at compile
-time.
-
----
-
 ## Transforming values
 
 You can transform the success value inside a `Passed` container without worrying about the failure
@@ -270,7 +229,7 @@ combiner function to `to.Result`:
 
 ```ts
 pipe(
-  Validation.productAll([validateName(form.name), validateEmail(form.email)]),
+  Validation.struct({ name: validateName(form.name), email: validateEmail(form.email) }),
   Validation.to.Result((errors) => errors.join("; ")), // Passed becomes Ok, Failed becomes Err("err1; err2")
   Result.chain((data) => db.saveUser(data)), // Sequential, fail-fast side effect
   Result.getOrElse(() => null),

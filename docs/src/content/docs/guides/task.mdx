@@ -346,7 +346,7 @@ const formatted = pipe(
 
 ### Non-short-circuiting batching with `allSettled`
 
-When evaluating multiple independent fallible requests in parallel, `Task.Result.struct` or `Arr.traverse.Task.Result` short-circuits on the first error encountered. If you need all tasks to run to completion regardless of individual failures (such as health check probes or bulk batch processing), use `Task.Result.allSettled`:
+When evaluating multiple independent fallible requests in parallel, `Task.Result.struct` short-circuits on the first error encountered. If you need all tasks to run to completion regardless of individual failures (such as health check probes or bulk batch processing), use `Task.Result.allSettled`:
 
 ```ts
 import { Result } from "@nlozgachev/pipelined/core";

@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { expect, test } from "vitest";
-import { curry, curry3 } from "../curry.ts";
+import { curry } from "../curry.ts";
 import { flow } from "../flow.ts";
 import { memoize } from "../memoize.ts";
 import { pipe } from "../pipe.ts";
@@ -90,11 +90,12 @@ test("flow: evaluates equivalently to pipe", () => {
 
 test("curry: round-trips binary function application", () => {
 	fc.assert(fc.property(fc.integer(), fc.integer(), fc.func<[number, number], number>(fc.integer()), (a, b, f) => {
-		expect(curry(f)(a)(b)).toBe(f(a, b));
+		const binary = (x: number, y: number) => f(x, y);
+		expect(curry(binary)(a)(b)).toBe(f(a, b));
 	}));
 });
 
-test("curry3: round-trips ternary function application", () => {
+test("curry: round-trips ternary function application", () => {
 	fc.assert(
 		fc.property(
 			fc.integer(),
@@ -102,7 +103,24 @@ test("curry3: round-trips ternary function application", () => {
 			fc.integer(),
 			fc.func<[number, number, number], number>(fc.integer()),
 			(a, b, c, f) => {
-				expect(curry3(f)(a)(b)(c)).toBe(f(a, b, c));
+				const ternary = (x: number, y: number, z: number) => f(x, y, z);
+				expect(curry(ternary)(a)(b)(c)).toBe(f(a, b, c));
+			},
+		),
+	);
+});
+
+test("curry: round-trips quaternary function application", () => {
+	fc.assert(
+		fc.property(
+			fc.integer(),
+			fc.integer(),
+			fc.integer(),
+			fc.integer(),
+			fc.func<[number, number, number, number], number>(fc.integer()),
+			(a, b, c, d, f) => {
+				const quaternary = (w: number, x: number, y: number, z: number) => f(w, x, y, z);
+				expect(curry(quaternary)(a)(b)(c)(d)).toBe(f(a, b, c, d));
 			},
 		),
 	);

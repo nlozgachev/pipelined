@@ -158,7 +158,7 @@ export const Predicate = {
 		 * @example
 		 * ```ts
 		 * const isString: Refinement<unknown, string> =
-		 *   Refinement.from.predicate(x => typeof x === "string");
+		 *   Refinement.from.Predicate(x => typeof x === "string");
 		 *
 		 * const isShortString: Predicate<unknown> = pipe(
 		 *   Predicate.from.Refinement(isString),

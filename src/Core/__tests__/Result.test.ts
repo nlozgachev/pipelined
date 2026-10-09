@@ -619,20 +619,20 @@ test("struct: returns ok({}) when given an empty object", () => {
 	expect(res).toStrictEqual(Result.make.ok({}));
 });
 
-// --- transposeMaybe ---
+// --- sequence.Maybe ---
 
-test("transposeMaybe: swaps Ok(Some) to Some(Ok)", () => {
-	const res = Result.transposeMaybe(Result.make.ok(Maybe.make.some(42)));
+test("sequence.Maybe: swaps Ok(Some) to Some(Ok)", () => {
+	const res = Result.sequence.Maybe(Result.make.ok(Maybe.make.some(42)));
 	expect(res).toStrictEqual(Maybe.make.some(Result.make.ok(42)));
 });
 
-test("transposeMaybe: swaps Ok(None) to None", () => {
-	const res = Result.transposeMaybe(Result.make.ok(Maybe.make.none()));
+test("sequence.Maybe: swaps Ok(None) to None", () => {
+	const res = Result.sequence.Maybe(Result.make.ok(Maybe.make.none()));
 	expect(res).toStrictEqual(Maybe.make.none());
 });
 
-test("transposeMaybe: swaps Err(e) to Some(Err(e))", () => {
-	const res = Result.transposeMaybe(Result.make.err("error"));
+test("sequence.Maybe: swaps Err(e) to Some(Err(e))", () => {
+	const res = Result.sequence.Maybe(Result.make.err("error"));
 	expect(res).toStrictEqual(Maybe.make.some(Result.make.err("error")));
 });
 

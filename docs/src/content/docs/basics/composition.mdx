@@ -59,7 +59,7 @@ Dividing the pipeline into cohesive sub-pipelines provides cleaner type boundari
 
 ---
 
-## Conditional execution: when, unless, and either
+## Conditional execution: when and unless
 
 Piping raw values through standard functions works well for clean, linear logic. However, real-world applications frequently require optional branches. Rather than forcing you to write noisy inline arrow functions with ternary expressions, `Composition` provides declarative branching combinators that slot into `pipe` and `flow`.
 
@@ -72,45 +72,6 @@ const invoice = pipe(
   cart,
   when((c) => c.isVip, applyDiscount),
   calculateTax,
-);
-```
-
-`either` functions like an inline branch, selecting one of two transformation functions based on a predicate:
-
-```ts
-import { either, flow, pipe } from "@nlozgachev/pipelined/composition";
-
-const label = pipe(
-  score,
-  either((n) => n >= 80, () => "Excellent", () => "Needs Improvement"),
-);
-
-const classifyScore = flow(
-  either((score: number) => score >= 80, () => "Excellent", () => "Pass"),
-);
-```
-
----
-
-## Safe exception handling: tryCatch
-
-Certain operations (such as `JSON.parse` or filesystem access) throw runtime exceptions. Wrapping individual steps in imperative `try/catch` blocks breaks the visual flow of a pipeline.
-
-`tryCatch` wraps a throwing operation in a safety boundary, intercepting any exception and routing it to an error fallback function:
-
-```ts
-import { pipe, tryCatch } from "@nlozgachev/pipelined/composition";
-
-const config = pipe(
-  rawJson,
-  tryCatch(
-    (s) => JSON.parse(s),
-    (error) => {
-      console.warn("Invalid config format; using defaults", error);
-      return DEFAULT_CONFIG;
-    },
-  ),
-  (c) => c.theme,
 );
 ```
 
@@ -187,12 +148,12 @@ atLeastZero(-5); // 0
 atLeastZero(3);  // 3
 ```
 
-This is highly useful for preparing multi-argument functions to slot as steps inside `pipe` or `flow`. `curry3` and `curry4` handle three- and four-argument functions respectively:
+This is highly useful for preparing multi-argument functions to slot as steps inside `pipe` or `flow`. `curry` is overloaded to support functions of 2, 3, or 4 arguments:
 
 ```ts
-import { curry3 } from "@nlozgachev/pipelined/composition";
+import { curry } from "@nlozgachev/pipelined/composition";
 
-const between = curry3(
+const between = curry(
   (min: number, max: number, n: number) => Math.min(max, Math.max(min, n)),
 );
 const clamp0to100 = between(0)(100);
@@ -205,7 +166,7 @@ clamp0to100(-10); // 0
 
 ## Reversing currying
 
-`uncurry` is the inverse of `curry`. It converts a curried, single-argument function back into a standard multi-argument format. This is useful when passing curried library helpers to external APIs that expect standard JavaScript functions:
+`uncurry` is the inverse of `curry`. It converts a curried, single-argument function back into a standard multi-argument format (supporting 2, 3, or 4 arguments). This is useful when passing curried library helpers to external APIs that expect standard JavaScript functions:
 
 ```ts
 import { curry, uncurry } from "@nlozgachev/pipelined/composition";
@@ -215,8 +176,6 @@ const add = uncurry(curriedAdd);
 
 add(3, 4); // 7
 ```
-
-`uncurry3` and `uncurry4` provide the same reversal for three- and four-argument signatures.
 
 ---
 
@@ -254,46 +213,50 @@ const result = pipe(
 
 ### Diagnostic taps
 
-For debugging, performance auditing, and background tasks, `tap` provides several specialized, configuration-based side-effect helpers.
+For debugging, performance auditing, and background tasks, the module provides several standalone, configuration-based side-effect helpers: `tapLog`, `tapInspect`, `tapAsync`, and `tapTime`.
 
-#### Printing values with tap.log
+#### Printing values with tapLog
 
-`tap.log` logs the piped value to the console. You can optionally supply a `label` to prefix the log output, a custom `logger` destination, or a custom string `formatter` (which defaults to `JSON.stringify` for objects):
+`tapLog` logs the piped value to the console. You can optionally supply a `label` to prefix the log output, a custom `logger` destination, or a custom string `formatter` (which defaults to `JSON.stringify` for objects):
 
 ```ts
-import { pipe, tap } from "@nlozgachev/pipelined/composition";
+import { pipe, tapLog } from "@nlozgachev/pipelined/composition";
 
 pipe(
   42,
-  tap.log(), // logs: 42
-  tap.log({ label: "Total Score" }), // logs: [Total Score]: 42
-  tap.log({
+  tapLog(), // logs: 42
+  tapLog({ label: "Total Score" }), // logs: [Total Score]: 42
+  tapLog({
     label: "Custom Format",
     formatter: (n) => `Value is ${n * 2}`,
   }), // logs: [Custom Format]: Value is 84
 );
 ```
 
-#### Detailed object inspection with tap.inspect
+#### Detailed object inspection with tapInspect
 
-For deeply nested objects, `tap.log` might output truncated representations. `tap.inspect` formats objects with infinite depth by default, utilizing Node's `util.inspect` engine under the hood:
+For deeply nested objects, `tapLog` might output truncated representations. `tapInspect` formats objects with infinite depth by default, utilizing Node's `util.inspect` engine under the hood:
 
 ```ts
+import { pipe, tapInspect } from "@nlozgachev/pipelined/composition";
+
 pipe(
   { user: { name: "Alice", details: { age: 30, roles: ["admin"] } } },
-  tap.inspect({ label: "User Payload", depth: 2 })
+  tapInspect({ label: "User Payload", depth: 2 })
 );
 // logs: [User Payload]: { name: 'Alice', details: { age: 30, roles: [Array] } }
 ```
 
-#### Background operations with tap.async
+#### Background operations with tapAsync
 
-To trigger asynchronous operations (like telemetry hits, audits, or database writes) without blocking the pipeline or turning it into an async promise chain, use `tap.async`. It runs the promise in the background, intercepts any rejections, and routes them to `onError` (defaulting to `console.error`):
+To trigger asynchronous operations (like telemetry hits, audits, or database writes) without blocking the pipeline or turning it into an async promise chain, use `tapAsync`. It runs the promise in the background, intercepts any rejections, and routes them to `onError` (defaulting to `console.error`):
 
 ```ts
+import { pipe, tapAsync } from "@nlozgachev/pipelined/composition";
+
 pipe(
   userId,
-  tap.async(
+  tapAsync(
     async (id) => {
       await saveAnalyticsSession(id);
     },
@@ -302,25 +265,26 @@ pipe(
 ); // returns userId immediately; analytics save runs in background
 ```
 
-#### Timing steps with tap.time
+#### Timing steps with tapTime
 
-`tap.time` measures the execution duration of a side-effect function. It supports both synchronous and asynchronous operations (for promises, the duration is tracked until the promise resolves or rejects).
+`tapTime` measures the execution duration of a side-effect function. It supports both synchronous and asynchronous operations (for promises, the duration is tracked until the promise resolves or rejects).
 
 The configuration object requires either a `label` (to log to the console automatically) or an `onFinish` callback (to route the typed `Duration` elsewhere), which are mutually exclusive to avoid conflicts:
 
 ```ts
+import { pipe, tapTime } from "@nlozgachev/pipelined/composition";
 import { Duration } from "@nlozgachev/pipelined/types";
 
 // Scenario A: Auto-log to console
 pipe(
   data,
-  tap.time(syncCalculation, { label: "heavy-math" })
+  tapTime(syncCalculation, { label: "heavy-math" })
 ); // logs: [heavy-math]: 12ms
 
 // Scenario B: Custom APM callback receiving Duration
 pipe(
   data,
-  tap.time(asyncApiFetch, {
+  tapTime(asyncApiFetch, {
     onFinish: (duration) => {
       metrics.send("api.duration_ms", Duration.to.milliseconds(duration));
     }
@@ -351,8 +315,6 @@ alwaysFive(); // 5
 
 [1, 2, 3].map(constant("placeholder")); // ["placeholder", "placeholder", "placeholder"]
 ```
-
-`constTrue`, `constFalse`, `constNull`, `constUndefined`, and `constVoid` are optimized shortcuts for common static returns.
 
 `once` ensures a function is only executed on its first invocation, caching and returning that original result for all subsequent calls:
 
@@ -475,11 +437,9 @@ const sorted = [...tracks].sort(byDuration);
 *   **`flow`** — Build a reusable, deferred transformation function.
 *   **`flowAsync`** — Build a reusable, deferred asynchronous transformation function.
 *   **`when` / `unless`** — Run a step conditionally in a pipeline.
-*   **`either`** — Branch a pipeline step to one of two paths based on a condition.
-*   **`tryCatch`** — Wrap a single throwing step with an error fallback.
 *   **`struct`** — Reshape a single input value into a structured object of transforms.
-*   **`curry` / `curry3` / `curry4`** — Convert multi-argument functions to curried steps.
-*   **`uncurry` / `uncurry3` / `uncurry4`** — Convert curried functions back to multi-argument format.
+*   **`curry`** — Convert multi-argument functions to curried steps (2, 3, or 4 arguments).
+*   **`uncurry`** — Convert curried functions back to multi-argument format (2, 3, or 4 arguments).
 *   **`flip`** — Reverse the argument order of a curried binary function.
 *   **`identity`** — A no-op callback that returns its input exactly as received.
 *   **`constant`** — Create a function that always returns a static value.
@@ -487,6 +447,10 @@ const sorted = [...tracks].sort(byDuration);
 *   **`memoize`** — Cache results using primitive keys.
 *   **`memoizeWeak`** — Cache results using object keys, allowing garbage collection.
 *   **`tap`** — Execute a side effect in a pipeline without altering the value.
+*   **`tapLog`** — Log piped values to console or custom logger without altering the value.
+*   **`tapInspect`** — Deeply inspect piped objects without altering the value.
+*   **`tapAsync`** — Trigger non-blocking asynchronous side effects without altering the value.
+*   **`tapTime`** — Measure execution time of a side effect without altering the value.
 *   **`converge`** — Fan out an input through multiple transformers and combine the results.
 *   **`juxt`** — Fan out an input through multiple transformers and collect them in a tuple.
 *   **`on`** — Build comparators or equality checks by comparing projected properties.

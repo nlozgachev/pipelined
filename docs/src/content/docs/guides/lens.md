@@ -177,7 +177,7 @@ optional (e.g. `host?: string`) or we want to focus on an element of an array th
 we must transition from a `Lens` to an `Optional`.
 
 We can compose a `Lens` with an `Optional` path using `Lens.andThenOptional` or convert a lens
-entirely with `Lens.toOptional`:
+entirely with `Lens.to.Optional`:
 
 ```ts
 import { Optional } from "@nlozgachev/pipelined/core";
@@ -195,7 +195,7 @@ const preferencesOptional = Optional.from.property<UserProfile>()("preferences")
 // Transition from guaranteed path (Lens) to optional path (Optional)
 const themeOptional = pipe(
   Lens.from.property<UserProfile>()("preferences"),
-  Lens.toOptional,
+  Lens.to.Optional,
   Optional.andThen(Optional.from.property<{ theme?: string }>()("theme"))
 );
 ```

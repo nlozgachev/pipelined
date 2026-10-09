@@ -36,11 +36,11 @@ export const Reader = {
 	 *
 	 * @example
 	 * ```ts
-	 * const always42: Reader<Config, number> = Reader.resolve(42);
+	 * const always42: Reader<Config, number> = Reader.make(42);
 	 * always42(anyConfig); // 42
 	 * ```
 	 */
-	resolve: <R, A>(value: A): Reader<R, A> => (_env) => value,
+	make: <R, A>(value: A): Reader<R, A> => (_env) => value,
 
 	/**
 	 * Returns the full environment as the result.
@@ -57,24 +57,12 @@ export const Reader = {
 	ask: <R>(): Reader<R, R> => (env) => env,
 
 	/**
-	 * Projects a value from the environment using a selector function.
-	 * Equivalent to `pipe(Reader.ask(), Reader.map(f))` but more direct.
-	 *
-	 * @example
-	 * ```ts
-	 * const getBaseUrl: Reader<Config, string> = Reader.asks(c => c.baseUrl);
-	 * getBaseUrl(appConfig); // "https://api.example.com"
-	 * ```
-	 */
-	asks: <R, A>(f: (env: R) => A): Reader<R, A> => (env) => f(env),
-
-	/**
 	 * Transforms the value produced by a Reader.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Reader.asks((c: Config) => c.baseUrl),
+	 *   (c: Config) => c.baseUrl,
 	 *   Reader.map(url => url.toUpperCase())
 	 * )(appConfig); // "HTTPS://API.EXAMPLE.COM"
 	 * ```
@@ -88,10 +76,10 @@ export const Reader = {
 	 * @example
 	 * ```ts
 	 * const buildUrl = (path: string): Reader<Config, string> =>
-	 *   Reader.asks(c => `${c.baseUrl}${path}`);
+	 *   c => `${c.baseUrl}${path}`;
 	 *
 	 * const addAuth = (url: string): Reader<Config, string> =>
-	 *   Reader.asks(c => `${url}?key=${c.apiKey}`);
+	 *   c => `${url}?key=${c.apiKey}`;
 	 *
 	 * pipe(
 	 *   buildUrl("/items"),
@@ -109,9 +97,9 @@ export const Reader = {
 	 * ```ts
 	 * const add = (a: number) => (b: number) => a + b;
 	 * pipe(
-	 *   Reader.resolve<Config, typeof add>(add),
-	 *   Reader.apply(Reader.asks(c => c.timeout)),
-	 *   Reader.apply(Reader.resolve(5))
+	 *   Reader.make<Config, typeof add>(add),
+	 *   Reader.apply((c: Config) => c.timeout),
+	 *   Reader.apply(Reader.make(5))
 	 * )(appConfig);
 	 * ```
 	 */
@@ -146,7 +134,7 @@ export const Reader = {
 	 * type AppEnv = { db: DbPool; config: Config; logger: Logger };
 	 *
 	 * // buildUrl only needs Config
-	 * const buildUrl: Reader<Config, string> = Reader.asks(c => c.baseUrl);
+	 * const buildUrl: Reader<Config, string> = c => c.baseUrl;
 	 *
 	 * // Zoom in from AppEnv to Config
 	 * const buildUrlFromApp: Reader<AppEnv, string> =
@@ -176,7 +164,7 @@ export const Reader = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Reader.resolve(42), Reader.bindTo("value")); // Reader({ value: 42 })
+	 * pipe(Reader.make(42), Reader.bindTo("value")); // Reader({ value: 42 })
 	 * ```
 	 */
 	bindTo: <K extends string>(key: K) => <R, A>(data: Reader<R, A>): Reader<R, { [P in K]: A; }> =>
@@ -188,8 +176,8 @@ export const Reader = {
 	 * @example
 	 * ```ts
 	 * pipe(
-	 *   Reader.resolve({ a: 1 }),
-	 *   Reader.bind("b", ({ a }) => Reader.resolve(a + 1))
+	 *   Reader.make({ a: 1 }),
+	 *   Reader.bind("b", ({ a }) => Reader.make(a + 1))
 	 * ); // Reader({ a: 1, b: 2 })
 	 * ```
 	 */

@@ -1,11 +1,9 @@
 import { expect, test } from "vitest";
 import { Deferred } from "../../Core/Deferred.ts";
 import { Maybe } from "../../Core/Maybe.ts";
-import { either } from "../either.ts";
 import { flow } from "../flow.ts";
 import { flowAsync } from "../flowAsync.ts";
 import { struct } from "../struct.ts";
-import { tryCatch } from "../tryCatch.ts";
 import { unless } from "../unless.ts";
 import { when } from "../when.ts";
 
@@ -182,62 +180,6 @@ test("unless: returns value unchanged if predicate is met", () => {
 	});
 	expect(run(6)).toBe(6);
 	expect(called).toBe(false);
-});
-
-// --- either ---
-
-test("either: runs onTrue if predicate is met", () => {
-	let trueCalled = false;
-	let falseCalled = false;
-	const run = either((n: number) => n > 5, (n: number) => {
-		trueCalled = true;
-		return n * 2;
-	}, (n: number) => {
-		falseCalled = true;
-		return n + 10;
-	});
-	expect(run(6)).toBe(12);
-	expect(trueCalled).toBe(true);
-	expect(falseCalled).toBe(false);
-});
-
-test("either: runs onFalse if predicate is not met", () => {
-	let trueCalled = false;
-	let falseCalled = false;
-	const run = either((n: number) => n > 5, (n: number) => {
-		trueCalled = true;
-		return n * 2;
-	}, (n: number) => {
-		falseCalled = true;
-		return n + 10;
-	});
-	expect(run(4)).toBe(14);
-	expect(trueCalled).toBe(false);
-	expect(falseCalled).toBe(true);
-});
-
-// --- tryCatch ---
-
-test("tryCatch: returns result of success path", () => {
-	let errorCalled = false;
-	const run = tryCatch((s: string) => JSON.parse(s), () => {
-		errorCalled = true;
-		return { fallback: true };
-	});
-	expect(run('{"a": 1}')).toStrictEqual({ a: 1 });
-	expect(errorCalled).toBe(false);
-});
-
-test("tryCatch: handles error and returns fallback value", () => {
-	let errorCalled = false;
-	const run = tryCatch((s: string) => JSON.parse(s), (err, input) => {
-		errorCalled = true;
-		expect(err).toBeInstanceOf(Error);
-		expect(input).toBe("invalid json");
-		return { fallback: true };
-	});
-	expect(run("invalid json")).toStrictEqual({ fallback: true });
-	expect(errorCalled).toBe(true);
 });
 
 // --- struct ---

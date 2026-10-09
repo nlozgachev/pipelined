@@ -14,7 +14,7 @@ import { Maybe as CoreMaybe, Result as CoreResult } from "#core";
  * type NonEmptyString = string & { readonly _tag: "NonEmptyString" };
  *
  * const isNonEmpty: Refinement<string, NonEmptyString> =
- *   Refinement.from.predicate(s => s.length > 0);
+ *   Refinement.from.Predicate(s => s.length > 0);
  *
  * pipe(
  *   "hello",
@@ -42,10 +42,10 @@ export const Refinement = {
 		 * type PositiveNumber = number & { readonly _tag: "PositiveNumber" };
 		 *
 		 * const isPositive: Refinement<number, PositiveNumber> =
-		 *   Refinement.from.predicate(n => n > 0);
+		 *   Refinement.from.Predicate(n => n > 0);
 		 * ```
 		 */
-		predicate: fromPredicate,
+		Predicate: fromPredicate,
 	},
 
 	/**
@@ -60,9 +60,9 @@ export const Refinement = {
 	 * type TrimmedString  = NonEmptyString & { readonly _tag: "Trimmed" };
 	 *
 	 * const isNonEmpty: Refinement<string, NonEmptyString> =
-	 *   Refinement.from.predicate(s => s.length > 0);
+	 *   Refinement.from.Predicate(s => s.length > 0);
 	 * const isTrimmed: Refinement<NonEmptyString, TrimmedString> =
-	 *   Refinement.from.predicate(s => s === s.trim());
+	 *   Refinement.from.Predicate(s => s === s.trim());
 	 *
 	 * const isNonEmptyTrimmed: Refinement<string, TrimmedString> = pipe(
 	 *   isNonEmpty,
@@ -82,9 +82,9 @@ export const Refinement = {
 	 *
 	 * @example
 	 * ```ts
-	 * const isString: Refinement<unknown, string> = Refinement.from.predicate(x => typeof x === "string");
+	 * const isString: Refinement<unknown, string> = Refinement.from.Predicate(x => typeof x === "string");
 	 * const isNonEmpty: Refinement<unknown, { length: number }> =
-	 *   Refinement.from.predicate(x => (x as any).length > 0);
+	 *   Refinement.from.Predicate(x => (x as any).length > 0);
 	 *
 	 * const isNonEmptyString = pipe(isString, Refinement.and(isNonEmpty));
 	 * isNonEmptyString("hi");  // true
@@ -104,8 +104,8 @@ export const Refinement = {
 	 *
 	 * @example
 	 * ```ts
-	 * const isString:  Refinement<unknown, string>  = Refinement.from.predicate(x => typeof x === "string");
-	 * const isNumber:  Refinement<unknown, number>  = Refinement.from.predicate(x => typeof x === "number");
+	 * const isString:  Refinement<unknown, string>  = Refinement.from.Predicate(x => typeof x === "string");
+	 * const isNumber:  Refinement<unknown, number>  = Refinement.from.Predicate(x => typeof x === "number");
 	 *
 	 * const isStringOrNumber = pipe(isString, Refinement.or(isNumber));
 	 * isStringOrNumber("hi"); // true
@@ -130,7 +130,7 @@ export const Refinement = {
 		 * ```ts
 		 * type PositiveNumber = number & { readonly _tag: "Positive" };
 		 * const isPositive: Refinement<number, PositiveNumber> =
-		 *   Refinement.from.predicate(n => n > 0);
+		 *   Refinement.from.Predicate(n => n > 0);
 		 *
 		 * pipe(-1, Refinement.to.Maybe(isPositive)); // None
 		 * pipe(42, Refinement.to.Maybe(isPositive)); // Some(42)
@@ -149,7 +149,7 @@ export const Refinement = {
 		 * ```ts
 		 * type NonEmptyString = string & { readonly _tag: "NonEmpty" };
 		 * const isNonEmpty: Refinement<string, NonEmptyString> =
-		 *   Refinement.from.predicate(s => s.length > 0);
+		 *   Refinement.from.Predicate(s => s.length > 0);
 		 *
 		 * pipe("", Refinement.to.Result(isNonEmpty, () => "must not be empty")); // Err(...)
 		 * pipe("hi", Refinement.to.Result(isNonEmpty, () => "must not be empty")); // Ok("hi")

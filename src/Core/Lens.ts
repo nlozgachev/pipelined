@@ -117,21 +117,24 @@ export const Lens = {
 		set: (b) => (s) => outer.set(inner.set(b)(outer.get(s)))(s),
 	}),
 
-	/**
-	 * Converts a Lens to an Optional. Every Lens is a valid Optional
-	 * whose get always returns Some.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   Lens.from.property<User>()("address"),
-	 *   Lens.toOptional,
-	 *   Optional.andThen(Optional.from.property<Address>()("landmark")),
-	 * );
-	 * ```
-	 */
-	toOptional: <S, A>(lens: Lens<S, A>): Optional<S, A> => ({
-		get: (s) => ({ kind: "Some", value: lens.get(s) }),
-		set: lens.set,
-	}),
+	// --- to ---
+	to: {
+		/**
+		 * Converts a Lens to an Optional. Every Lens is a valid Optional
+		 * whose get always returns Some.
+		 *
+		 * @example
+		 * ```ts
+		 * pipe(
+		 *   Lens.from.property<User>()("address"),
+		 *   Lens.to.Optional,
+		 *   Optional.andThen(Optional.from.property<Address>()("landmark")),
+		 * );
+		 * ```
+		 */
+		Optional: <S, A>(lens: Lens<S, A>): Optional<S, A> => ({
+			get: (s) => ({ kind: "Some", value: lens.get(s) }),
+			set: lens.set,
+		}),
+	},
 };

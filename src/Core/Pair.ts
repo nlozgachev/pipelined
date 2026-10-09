@@ -23,7 +23,6 @@
 export type Pair<A, B> = readonly [A, B];
 
 const makePair = <A, B>(first: A, second: B): Pair<A, B> => [first, second];
-const makeArray = <A, B>(items: readonly [A, B]): Pair<A, B> => items;
 
 export const Pair = {
 	/**
@@ -35,19 +34,6 @@ export const Pair = {
 	 * ```
 	 */
 	make: makePair,
-
-	// --- from ---
-	from: {
-		/**
-		 * Creates a Pair from a two-element array.
-		 *
-		 * @example
-		 * ```ts
-		 * Pair.from.array(["Paris", 2_161_000] as const); // ["Paris", 2161000]
-		 * ```
-		 */
-		array: makeArray,
-	},
 
 	/**
 	 * Returns the first value from the pair.

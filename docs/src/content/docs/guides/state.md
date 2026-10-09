@@ -67,8 +67,7 @@ const overwrite = State.put(42);
 - `State.get` reads the current state, returning it as the produced value.
 - `State.modify` updates the state using a mapping function.
 - `State.put` overwrites the active state with a new value.
-- `State.gets` projects a specific slice from a structured state record.
-- `State.resolve` lifts a constant value into the `State` context without touching the state itself.
+- `State.make` lifts a constant value into the `State` context without touching the state itself.
 
 ---
 
@@ -113,7 +112,7 @@ const checkout = pipe(
   addItem("coffee", 4),
   State.chain(() => addItem("croissant", 3)),
   State.chain(() => addItem("juice", 2)),
-  State.chain(() => State.gets((c: Cart) => c.total)),
+  State.chain(() => pipe(State.get<Cart>(), State.map((c) => c.total))),
 );
 ```
 
@@ -171,7 +170,7 @@ const generateId: State<IdState, number> = pipe(
   State.chain((id) =>
     pipe(
       State.put(id + 1),
-      State.chain(() => State.resolve(id)),
+      State.chain(() => State.make(id)),
     )
   ),
 );
@@ -182,7 +181,7 @@ const buildNodes = pipe(
     pipe(
       generateId,
       State.chain((id2) =>
-        State.resolve([
+        State.make([
           { id: id1, label: "parent_node" },
           { id: id2, label: "child_node" },
         ])
@@ -231,7 +230,7 @@ readable pipeline.
 
 ```ts
 pipe(
-  State.resolve(42),
+  State.make(42),
   State.bindTo("value")
 ); // State({ value: 42 })
 ```

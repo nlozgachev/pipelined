@@ -100,9 +100,7 @@ export default defineConfig({
 				{
 					label: "Comparing & combining",
 					collapsed: false,
-					items: [{ slug: "guides/equality" }, { slug: "guides/ordering" }, { slug: "guides/combinable" }, {
-						slug: "guides/lazy",
-					}],
+					items: [{ slug: "guides/equality" }, { slug: "guides/ordering" }, { slug: "guides/combinable" }],
 				},
 				{
 					label: "Collection utilities",

@@ -4,11 +4,6 @@
 import { Maybe, Result } from "#core";
 
 // =============================================================================
-// Types
-// =============================================================================
-export type BoolMatchCases<A, B> = { readonly true: () => A; readonly false: () => B; };
-
-// =============================================================================
 // Private Helpers & Combinator Implementations
 // =============================================================================
 const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
@@ -46,8 +41,8 @@ const any = (conditions: readonly boolean[]): boolean => {
 const fold =
 	<A, B>(onFalse: () => A, onTrue: () => B) => (condition: boolean): A | B => (condition ? onTrue() : onFalse());
 
-const match =
-	<A, B>(cases: BoolMatchCases<A, B>) => (condition: boolean): A | B => (condition ? cases.true() : cases.false());
+const match = <A, B>(cases: { readonly true: () => A; readonly false: () => B; }) => (condition: boolean): A | B =>
+	condition ? cases.true() : cases.false();
 
 const fromString = (text: string): Maybe<boolean> => {
 	const trimmed = text.trim().toLowerCase();

@@ -458,21 +458,24 @@ export const Maybe = {
 		return makeSome(result);
 	},
 
-	/**
-	 * Swaps the outer `Maybe` and inner `Result` context.
-	 * `Some(Ok(a))` becomes `Ok(Some(a))`, `Some(Err(e))` becomes `Err(e)`, and `None` becomes `Ok(None)`.
-	 *
-	 * @example
-	 * ```ts
-	 * Maybe.transposeResult(Maybe.make.some(Result.make.ok(42)));  // Ok(Some(42))
-	 * Maybe.transposeResult(Maybe.make.some(Result.make.err("e"))); // Err("e")
-	 * Maybe.transposeResult(Maybe.make.none());                     // Ok(None)
-	 * ```
-	 */
-	transposeResult: <E, A>(data: Maybe<Result<E, A>>): Result<E, Maybe<A>> =>
-		isNone(data)
-			? CoreResult.make.ok(makeNone())
-			: CoreResult.is.ok(data.value)
-			? CoreResult.make.ok(makeSome(data.value.value))
-			: CoreResult.make.err(data.value.error),
+	// --- sequence ---
+	sequence: {
+		/**
+		 * Swaps the outer `Maybe` and inner `Result` context.
+		 * `Some(Ok(a))` becomes `Ok(Some(a))`, `Some(Err(e))` becomes `Err(e)`, and `None` becomes `Ok(None)`.
+		 *
+		 * @example
+		 * ```ts
+		 * Maybe.sequence.Result(Maybe.make.some(Result.make.ok(42)));  // Ok(Some(42))
+		 * Maybe.sequence.Result(Maybe.make.some(Result.make.err("e"))); // Err("e")
+		 * Maybe.sequence.Result(Maybe.make.none());                     // Ok(None)
+		 * ```
+		 */
+		Result: <E, A>(data: Maybe<Result<E, A>>): Result<E, Maybe<A>> =>
+			isNone(data)
+				? CoreResult.make.ok(makeNone())
+				: CoreResult.is.ok(data.value)
+				? CoreResult.make.ok(makeSome(data.value.value))
+				: CoreResult.make.err(data.value.error),
+	},
 };
