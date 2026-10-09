@@ -1229,7 +1229,7 @@ const ArrIs = {
 	 *
 	 * @see {@link nonEmpty} for checking if an array contains elements.
 	 */
-	empty: <A>(items: readonly A[]): items is readonly [] => items.length === 0,
+	empty: <A>(items: readonly A[]): boolean => items.length === 0,
 
 	/**
 	 * Returns `true` when the array contains at least one element.

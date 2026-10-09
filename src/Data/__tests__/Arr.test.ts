@@ -1334,8 +1334,22 @@ test("size: returns size of array", () => {
 });
 
 test("is: distinguishes empty and non-empty arrays", () => {
-	expect(Arr.is.empty([])).toBe(true);
-	expect(Arr.is.empty([1])).toBe(false);
-	expect(Arr.is.nonEmpty([1])).toBe(true);
-	expect(Arr.is.nonEmpty([])).toBe(false);
+	const emptyList: number[] = [];
+	const nonEmptyList: readonly number[] = [1];
+	expect(Arr.is.empty(emptyList)).toBe(true);
+	expect(Arr.is.empty(nonEmptyList)).toBe(false);
+	expect(Arr.is.nonEmpty(nonEmptyList)).toBe(true);
+	expect(Arr.is.nonEmpty(emptyList)).toBe(false);
+
+	expectTypeOf(Arr.is.empty(emptyList)).toBeBoolean();
+
+	if (Arr.is.empty(emptyList)) {
+		expectTypeOf(emptyList).toEqualTypeOf<number[]>();
+	} else {
+		expectTypeOf(emptyList).toEqualTypeOf<number[]>();
+	}
+
+	if (Arr.is.nonEmpty(nonEmptyList)) {
+		expectTypeOf(nonEmptyList).toEqualTypeOf<Arr.NonEmpty<number>>();
+	}
 });
