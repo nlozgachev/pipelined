@@ -1,6 +1,10 @@
 import EventEmitter from "node:events";
-import { bench, describe } from "vitest";
+import { test } from "vitest";
 import { EventBus } from "../EventBus.ts";
+
+const eventBusMake = EventBus.make;
+const eventBusListen = EventBus.listen;
+const eventBusEmit = EventBus.emit;
 
 type AppSchema = {
 	ping: { count: number; };
@@ -11,8 +15,8 @@ type AppSchema = {
 };
 
 const setup1Listener = () => {
-	const bus = EventBus.make<AppSchema>();
-	EventBus.listen(bus, "ping").tap(() => {});
+	const bus = eventBusMake<AppSchema>();
+	eventBusListen(bus, "ping").tap(() => {});
 
 	const ee = new EventEmitter();
 	ee.on("ping", () => {});
@@ -21,9 +25,9 @@ const setup1Listener = () => {
 };
 
 const setup10Listeners = () => {
-	const bus = EventBus.make<AppSchema>();
+	const bus = eventBusMake<AppSchema>();
 	for (let i = 0; i < 10; i++) {
-		EventBus.listen(bus, "ping").tap(() => {});
+		eventBusListen(bus, "ping").tap(() => {});
 	}
 
 	const ee = new EventEmitter();
@@ -35,17 +39,17 @@ const setup10Listeners = () => {
 };
 
 const setupSequenceMatching = () => {
-	const bus = EventBus.make<AppSchema>();
+	const bus = eventBusMake<AppSchema>();
 	let sequenceMatches = 0;
-	EventBus.listen(bus, ["step1", "step2", "step3"], { ordered: true }).tap(() => {
+	eventBusListen(bus, ["step1", "step2", "step3"], { ordered: true }).tap(() => {
 		sequenceMatches++;
 	});
 	return { bus, getMatches: () => sequenceMatches };
 };
 
 const setupStateReduction = () => {
-	const bus = EventBus.make<{ ping: { count: number; }; }>();
-	const sub = EventBus.listen(bus, "ping").reduce((msg, state) => ({ total: state.total + msg.value.count }), {
+	const bus = eventBusMake<{ ping: { count: number; }; }>();
+	const sub = eventBusListen(bus, "ping").reduce((msg, state) => ({ total: state.total + msg.value.count }), {
 		total: 0,
 	});
 	return { bus, sub };
@@ -55,54 +59,56 @@ const setupStateReduction = () => {
 // Scenario 1: Emission throughput across subscribers
 // =============================================================================
 
-describe("event-bus-emission-1-listener", () => {
+test("event-bus-emission-1-listener", async ({ bench }) => {
 	const { bus, ee } = setup1Listener();
 
-	bench("1. (current) EventBus.emit (1 listener)", () => {
-		EventBus.emit(bus, { kind: "ping", value: { count: 1 } });
-	});
-
-	bench("2. EventEmitter.emit (1 listener)", () => {
-		ee.emit("ping", { count: 1 });
-	});
+	await bench.compare(
+		bench("1. (current) EventBus.emit (1 listener)", () => {
+			eventBusEmit(bus, { kind: "ping", value: { count: 1 } });
+		}),
+		bench("2. EventEmitter.emit (1 listener)", () => {
+			ee.emit("ping", { count: 1 });
+		}),
+	);
 });
 
-describe("event-bus-emission-10-listeners", () => {
+test("event-bus-emission-10-listeners", async ({ bench }) => {
 	const { bus, ee } = setup10Listeners();
 
-	bench("1. (current) EventBus.emit (10 listeners)", () => {
-		EventBus.emit(bus, { kind: "ping", value: { count: 1 } });
-	});
-
-	bench("2. EventEmitter.emit (10 listeners)", () => {
-		ee.emit("ping", { count: 1 });
-	});
+	await bench.compare(
+		bench("1. (current) EventBus.emit (10 listeners)", () => {
+			eventBusEmit(bus, { kind: "ping", value: { count: 1 } });
+		}),
+		bench("2. EventEmitter.emit (10 listeners)", () => {
+			ee.emit("ping", { count: 1 });
+		}),
+	);
 });
 
 // =============================================================================
 // Scenario 2: Sequence Pattern Matching
 // =============================================================================
 
-describe("event-bus-sequence-matching", () => {
+test("event-bus-sequence-matching", async ({ bench }) => {
 	const { bus, getMatches } = setupSequenceMatching();
 
-	bench("1. EventBus ordered sequence matching (step1 -> step2 -> step3)", () => {
-		EventBus.emit(bus, { kind: "step1", value: { id: "a" } });
-		EventBus.emit(bus, { kind: "step2", value: { id: "a" } });
-		EventBus.emit(bus, { kind: "step3", value: { id: "a" } });
+	await bench("1. EventBus ordered sequence matching (step1 -> step2 -> step3)", () => {
+		eventBusEmit(bus, { kind: "step1", value: { id: "a" } });
+		eventBusEmit(bus, { kind: "step2", value: { id: "a" } });
+		eventBusEmit(bus, { kind: "step3", value: { id: "a" } });
 		getMatches();
-	});
+	}).run();
 });
 
 // =============================================================================
 // Scenario 3: State Reduction
 // =============================================================================
 
-describe("event-bus-state-reduction", () => {
+test("event-bus-state-reduction", async ({ bench }) => {
 	const { bus, sub } = setupStateReduction();
 
-	bench("1. EventBus state reduction", () => {
-		EventBus.emit(bus, { kind: "ping", value: { count: 5 } });
+	await bench("1. EventBus state reduction", () => {
+		eventBusEmit(bus, { kind: "ping", value: { count: 5 } });
 		sub.getState();
-	});
+	}).run();
 });

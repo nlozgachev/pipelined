@@ -1,4 +1,4 @@
-import { bench, describe } from "vitest";
+import { test } from "vitest";
 
 // ---------------------------------------------------------------------------
 // Implementations to benchmark
@@ -80,74 +80,82 @@ const extremeData = Array.from({ length: 70_000 }, (_, i) => [i]);
 // Benchmarks
 // ---------------------------------------------------------------------------
 
-describe("flatten-wide-shallow-10k", () => {
-	bench("1. concat-spread", () => {
-		flattenConcatSpread(wideShallowData);
-	});
-	bench("2. push-loop", () => {
-		flattenPushLoop(wideShallowData);
-	});
-	bench("3. (current) pre-alloc-loop", () => {
-		flattenPreAlloc(wideShallowData);
-	});
-	bench("4. native-flat-1", () => {
-		flattenNativeFlat(wideShallowData);
-	});
-	bench("5. concat-loop", () => {
-		flattenConcatLoop(wideShallowData);
-	});
+test("flatten-wide-shallow-10k", async ({ bench }) => {
+	await bench.compare(
+		bench("1. concat-spread", () => {
+			flattenConcatSpread(wideShallowData);
+		}),
+		bench("2. push-loop", () => {
+			flattenPushLoop(wideShallowData);
+		}),
+		bench("3. (current) pre-alloc-loop", () => {
+			flattenPreAlloc(wideShallowData);
+		}),
+		bench("4. native-flat-1", () => {
+			flattenNativeFlat(wideShallowData);
+		}),
+		bench("5. concat-loop", () => {
+			flattenConcatLoop(wideShallowData);
+		}),
+	);
 });
 
-describe("flatten-narrow-deep-10k", () => {
-	bench("1. concat-spread", () => {
-		flattenConcatSpread(narrowDeepData);
-	});
-	bench("2. push-loop", () => {
-		flattenPushLoop(narrowDeepData);
-	});
-	bench("3. (current) pre-alloc-loop", () => {
-		flattenPreAlloc(narrowDeepData);
-	});
-	bench("4. native-flat-1", () => {
-		flattenNativeFlat(narrowDeepData);
-	});
-	bench("5. concat-loop", () => {
-		flattenConcatLoop(narrowDeepData);
-	});
+test("flatten-narrow-deep-10k", async ({ bench }) => {
+	await bench.compare(
+		bench("1. concat-spread", () => {
+			flattenConcatSpread(narrowDeepData);
+		}),
+		bench("2. push-loop", () => {
+			flattenPushLoop(narrowDeepData);
+		}),
+		bench("3. (current) pre-alloc-loop", () => {
+			flattenPreAlloc(narrowDeepData);
+		}),
+		bench("4. native-flat-1", () => {
+			flattenNativeFlat(narrowDeepData);
+		}),
+		bench("5. concat-loop", () => {
+			flattenConcatLoop(narrowDeepData);
+		}),
+	);
 });
 
-describe("flatten-large-100k", () => {
-	bench("1. concat-spread", () => {
-		flattenConcatSpread(largeData);
-	});
-	bench("2. push-loop", () => {
-		flattenPushLoop(largeData);
-	});
-	bench("3. (current) pre-alloc-loop", () => {
-		flattenPreAlloc(largeData);
-	});
-	bench("4. native-flat-1", () => {
-		flattenNativeFlat(largeData);
-	});
-	bench("5. concat-loop", () => {
-		flattenConcatLoop(largeData);
-	});
+test("flatten-large-100k", async ({ bench }) => {
+	await bench.compare(
+		bench("1. concat-spread", () => {
+			flattenConcatSpread(largeData);
+		}),
+		bench("2. push-loop", () => {
+			flattenPushLoop(largeData);
+		}),
+		bench("3. (current) pre-alloc-loop", () => {
+			flattenPreAlloc(largeData);
+		}),
+		bench("4. native-flat-1", () => {
+			flattenNativeFlat(largeData);
+		}),
+		bench("5. concat-loop", () => {
+			flattenConcatLoop(largeData);
+		}),
+	);
 });
 
-describe("flatten-extreme-70k-arrays (stack overflow shape)", () => {
-	bench("1. concat-spread - overflow caught", () => {
-		flattenConcatSpread(extremeData);
-	});
-	bench("2. push-loop", () => {
-		flattenPushLoop(extremeData);
-	});
-	bench("3. (current) pre-alloc-loop", () => {
-		flattenPreAlloc(extremeData);
-	});
-	bench("4. native-flat-1", () => {
-		flattenNativeFlat(extremeData);
-	});
-	bench("5. concat-loop", () => {
-		flattenConcatLoop(extremeData);
-	});
+test("flatten-extreme-70k-arrays (stack overflow shape)", async ({ bench }) => {
+	await bench.compare(
+		bench("1. concat-spread - overflow caught", () => {
+			flattenConcatSpread(extremeData);
+		}),
+		bench("2. push-loop", () => {
+			flattenPushLoop(extremeData);
+		}),
+		bench("3. (current) pre-alloc-loop", () => {
+			flattenPreAlloc(extremeData);
+		}),
+		bench("4. native-flat-1", () => {
+			flattenNativeFlat(extremeData);
+		}),
+		bench("5. concat-loop", () => {
+			flattenConcatLoop(extremeData);
+		}),
+	);
 });

@@ -14,6 +14,7 @@ export default defineConfig({
 	},
 	test: {
 		include: ["src/**/*.test.ts"],
+		benchmark: { include: ["src/**/__bench__/**/*.bench.ts"] },
 		coverage: {
 			provider: "v8",
 			reporter: ["lcov", "text", "html"],

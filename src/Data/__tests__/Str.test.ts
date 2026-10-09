@@ -285,6 +285,7 @@ test("graphemeSize: counts human-perceived characters and emojis correctly", () 
 	expect(pipe("a b c", Str.graphemeSize)).toBe(5);
 	expect(pipe("👨‍👩‍👧‍👦", Str.graphemeSize)).toBe(1);
 	expect(pipe("👋🏽", Str.graphemeSize)).toBe(1);
+	expect(pipe("🇺🇸", Str.graphemeSize)).toBe(1);
 	expect(pipe("hello 🌍!", Str.graphemeSize)).toBe(8);
 });
 

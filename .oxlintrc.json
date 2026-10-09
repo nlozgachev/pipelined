@@ -63,5 +63,13 @@
 		"new-cap": "off",
 		"one-var": "off",
 		"no-redeclare": "off"
-	}
+	},
+	"overrides": [
+		{
+			"files": ["src/**/__bench__/**"],
+			"rules": {
+				"vitest/expect-expect": "off"
+			}
+		}
+	]
 }
