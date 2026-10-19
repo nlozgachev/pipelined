@@ -10,7 +10,7 @@ import { Result } from "../Result.ts";
 
 /** Op that resolves with the input value after an optional delay. */
 const delayedOp = (delayMs = 0): Op<[input: number], string, number> =>
-	Op.create((signal: AbortSignal) => (input: number) =>
+	Op.make((signal: AbortSignal) => (input: number) =>
 		new Promise<number>((resolve, reject) => {
 			const id = setTimeout(() => resolve(input), delayMs);
 			signal.addEventListener("abort", () => {
@@ -21,7 +21,7 @@ const delayedOp = (delayMs = 0): Op<[input: number], string, number> =>
 
 /** Op that always rejects with `error` after an optional delay. */
 const failingOp = (error: string, delayMs = 0): Op<[input: number], string, number> =>
-	Op.create((signal: AbortSignal) => (_input: number) =>
+	Op.make((signal: AbortSignal) => (_input: number) =>
 		new Promise<never>((_resolve, reject) => {
 			const id = setTimeout(() => reject(new Error(error)), delayMs);
 			signal.addEventListener("abort", () => {
@@ -51,10 +51,10 @@ const runAndCollect = <Args extends readonly any[], E, A, S extends Op.State<E, 
 	});
 };
 
-// --- Op.create ---
+// --- Op.make ---
 
-test("create: does not expose _factory as an enumerable or public property", () => {
-	const op = Op.create((_signal) => () => Promise.resolve(1), { onError: String });
+test("make: does not expose _factory as an enumerable or public property", () => {
+	const op = Op.make((_signal) => () => Promise.resolve(1), { onError: String });
 	// @ts-expect-error — _factory is an internal implementation detail and must not be accessible on Op
 	const hiddenFactory = op._factory;
 	expect(hiddenFactory).toBeUndefined();
@@ -64,23 +64,21 @@ test("create: does not expose _factory as an enumerable or public property", () 
 	expect(Reflect.ownKeys(op).some((k) => typeof k === "symbol")).toBe(true);
 });
 
-test("create: infers Op<[]> when factory takes no input", () => {
-	const op = Op.create((_signal) => () => Promise.resolve(42), { onError: String });
+test("make: infers Op<[]> when factory takes no input", () => {
+	const op = Op.make((_signal) => () => Promise.resolve(42), { onError: String });
 	expectTypeOf(op).toEqualTypeOf<Op<[], string, number>>();
 });
 
-test("create: manager.run accepts no arguments when factory takes no input", async () => {
-	const op = Op.create((_signal) => () => Promise.resolve(99), { onError: String });
+test("make: manager.run accepts no arguments when factory takes no input", async () => {
+	const op = Op.make((_signal) => () => Promise.resolve(99), { onError: String });
 	const manager = Op.interpret(op, { strategy: "once" });
 	// run() with no args must type-check and resolve Ok
 	const result = await manager.run();
 	expect(result).toStrictEqual(Op.Outcome.make.ok(99));
 });
 
-test("create: infers multi-arg action parameters", async () => {
-	const op = Op.create((_signal) => (name: string, age: number) => Promise.resolve(`${name}:${age}`), {
-		onError: String,
-	});
+test("make: infers multi-arg action parameters", async () => {
+	const op = Op.make((_signal) => (name: string, age: number) => Promise.resolve(`${name}:${age}`), { onError: String });
 	const manager = Op.interpret(op, { strategy: "once" });
 	const result = await manager.run("Alice", 30);
 	expect(result).toStrictEqual(Op.Outcome.make.ok("Alice:30"));
@@ -141,6 +139,22 @@ test("Outcome.is.ok: returns true only for Ok", () => {
 	expect(Op.Outcome.is.ok(ok)).toBe(true);
 	expect(Op.Outcome.is.ok(e)).toBe(false);
 	expect(Op.Outcome.is.ok(n)).toBe(false);
+	if (Op.Outcome.is.ok(ok)) {
+		expectTypeOf(ok.value).toEqualTypeOf<number>();
+	}
+	const state = Op.Outcome.make.ok(1) as Op.State<string, number>;
+	if (Op.Outcome.is.ok(state)) {
+		expectTypeOf(state.value).toEqualTypeOf<number>();
+	}
+
+	const directOk = Op.Outcome.make.ok(42);
+	if (Op.Outcome.is.ok(directOk)) {
+		expectTypeOf(directOk.value).toEqualTypeOf<number>();
+	}
+
+	const items: Op.Outcome<string, number>[] = [];
+	const filtered = items.filter(Op.Outcome.is.ok);
+	expectTypeOf(filtered).toEqualTypeOf<Op.Ok<number>[]>();
 });
 
 test("Outcome.is.err: returns true only for Err", () => {
@@ -150,6 +164,10 @@ test("Outcome.is.err: returns true only for Err", () => {
 	expect(Op.Outcome.is.err(e)).toBe(true);
 	expect(Op.Outcome.is.err(ok)).toBe(false);
 	expect(Op.Outcome.is.err(n)).toBe(false);
+
+	const items: Op.Outcome<string, number>[] = [];
+	const filtered = items.filter(Op.Outcome.is.err);
+	expectTypeOf(filtered).toEqualTypeOf<Op.Err<string>[]>();
 });
 
 test("Outcome.is.nil: returns true only for Nil", () => {
@@ -159,6 +177,10 @@ test("Outcome.is.nil: returns true only for Nil", () => {
 	expect(Op.Outcome.is.nil(n)).toBe(true);
 	expect(Op.Outcome.is.nil(ok)).toBe(false);
 	expect(Op.Outcome.is.nil(e)).toBe(false);
+
+	const items: Op.Outcome<string, number>[] = [];
+	const filtered = items.filter(Op.Outcome.is.nil);
+	expectTypeOf(filtered).toEqualTypeOf<Op.Nil[]>();
 });
 
 test("is: contains only lifecycle guards", () => {
@@ -169,6 +191,10 @@ test("is: contains only lifecycle guards", () => {
 	expect("pending" in Op.is).toBe(true);
 	expect("queued" in Op.is).toBe(true);
 	expect("retrying" in Op.is).toBe(true);
+
+	const states: Op.State<string, number>[] = [];
+	const retrying = states.filter(Op.is.retrying);
+	expectTypeOf(retrying).toEqualTypeOf<Op.Retrying<string>[]>();
 });
 
 test("is.idle: returns true only for Idle state", async () => {
@@ -198,7 +224,7 @@ test("is.queued: returns true only for Queued state", async () => {
 
 test("is.retrying: returns true only for Retrying state", async () => {
 	let attempt = 0;
-	const op = Op.create((_signal: AbortSignal) => (_: number) => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		attempt++;
 		if (attempt < 2) { return Promise.reject(new Error("fail")); }
 		return Promise.resolve(42);
@@ -510,7 +536,7 @@ test("interpret: restartable subscribe fires immediately with current non-Idle s
 
 test("interpret: restartable with retry emits Retrying between attempts", async () => {
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (_: number) => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("fail"));
 	}, { onError: (e) => (e as Error).message });
@@ -525,7 +551,7 @@ test("interpret: restartable with retry emits Retrying between attempts", async 
 
 test("interpret: restartable with retry stops retrying on Ok", async () => {
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (_: number) => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return calls < 2 ? Promise.reject(new Error("not yet")) : Promise.resolve(99);
 	}, { onError: (e) => (e as Error).message });
@@ -537,7 +563,7 @@ test("interpret: restartable with retry stops retrying on Ok", async () => {
 
 test("interpret: restartable with retry respects when guard", async () => {
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (_: number) => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("non-retryable"));
 	}, { onError: (e) => (e as Error).message });
@@ -574,7 +600,7 @@ test("interpret: restartable with timeout resolves Ok when op finishes in time",
 
 test("interpret: restartable retry and timeout wraps entire retry sequence with deadline", async () => {
 	let calls = 0;
-	const op = Op.create((signal: AbortSignal) => (_: number) =>
+	const op = Op.make((signal: AbortSignal) => (_: number) =>
 		new Promise<never>((res, reject) => {
 			calls++;
 			const id = setTimeout(() => reject(new Error("fail")), 20);
@@ -763,7 +789,7 @@ test("interpret: debounced waits for idle period before running", async () => {
 
 test("interpret: debounced resets timer on new call and runs only latest input", async () => {
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (input: number) => {
+	const op = Op.make((_signal: AbortSignal) => (input: number) => {
 		calls++;
 		return Promise.resolve(input);
 	}, { onError: String });
@@ -807,7 +833,7 @@ test("interpret: once emits Pending then Err on failure", async () => {
 
 test("interpret: once ignores subsequent calls and runs only first", async () => {
 	let calls = 0;
-	const op = Op.create((signal: AbortSignal) => (input: number) =>
+	const op = Op.make((signal: AbortSignal) => (input: number) =>
 		new Promise<number>((resolve, reject) => {
 			calls++;
 			const id = setTimeout(() => resolve(input), 20);
@@ -854,7 +880,7 @@ test("interpret: once abort emits Nil and subsequent calls are no-ops", () => {
 
 test("interpret: once with retry retries on Err then settles", async () => {
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (_: number) => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return calls < 3 ? Promise.reject(new Error("not yet")) : Promise.resolve(99);
 	}, { onError: (e) => (e as Error).message });
@@ -1098,7 +1124,7 @@ test("interpret: throttled subscribe after run started fires immediately with cu
 
 test("interpret: throttled trailing fires trailing call after cooldown", async () => {
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (input: number) => {
+	const op = Op.make((_signal: AbortSignal) => (input: number) => {
 		calls++;
 		return Promise.resolve(input);
 	}, { onError: String });
@@ -1319,7 +1345,7 @@ test("interpret: debounced with leading fires immediately on first call", async 
 
 test("interpret: debounced with leading fires trailing call after quiet period", async () => {
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (input: number) => {
+	const op = Op.make((_signal: AbortSignal) => (input: number) => {
 		calls++;
 		return Promise.resolve(input);
 	}, { onError: String });
@@ -1356,7 +1382,7 @@ test("interpret: debounced with leading resolves intermediate calls with Evicted
 
 test("interpret: debounced with maxWait fires after maxWait without quiet period", async () => {
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (input: number) => {
+	const op = Op.make((_signal: AbortSignal) => (input: number) => {
 		calls++;
 		return Promise.resolve(input);
 	}, { onError: String });
@@ -1449,7 +1475,7 @@ test("interpret: buffered with capacity holds waiting calls and evicts oldest wh
 
 test("interpret: buffered processes buffer in FIFO order", async () => {
 	const order: number[] = [];
-	const op = Op.create((_signal: AbortSignal) => (input: number) => {
+	const op = Op.make((_signal: AbortSignal) => (input: number) => {
 		order.push(input);
 		return Promise.resolve(input);
 	}, { onError: String });
@@ -1507,7 +1533,7 @@ test("interpret: queue with dedupe drops duplicate queued items", async () => {
 
 test("interpret: queue with concurrency runs multiple items in-flight simultaneously", async () => {
 	const startTimes: number[] = [];
-	const op = Op.create((signal: AbortSignal) => (input: number) =>
+	const op = Op.make((signal: AbortSignal) => (input: number) =>
 		new Promise<number>((resolve, reject) => {
 			startTimes.push(Date.now());
 			const id = setTimeout(() => resolve(input), 30);
@@ -1554,7 +1580,7 @@ test("interpret: queue with replace-last and dedupe produces DroppedNil and Evic
 
 test("interpret: queue with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (_: number) => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("fail"));
 	}, { onError: (e) => (e as Error).message });
@@ -1569,7 +1595,7 @@ test("interpret: queue with retry emits Retrying states between attempts", async
 
 test("interpret: buffered with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (_: number) => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("fail"));
 	}, { onError: (e) => (e as Error).message });
@@ -1584,7 +1610,7 @@ test("interpret: buffered with retry emits Retrying states between attempts", as
 
 test("interpret: debounced leading with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (_: number) => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("fail"));
 	}, { onError: (e) => (e as Error).message });
@@ -1604,7 +1630,7 @@ test("interpret: debounced leading with retry emits Retrying states between atte
 
 test("interpret: debounced trailing with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (_: number) => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("fail"));
 	}, { onError: (e) => (e as Error).message });
@@ -1623,7 +1649,7 @@ test("interpret: debounced trailing with retry emits Retrying states between att
 
 test("interpret: throttled with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (_: number) => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("fail"));
 	}, { onError: (e) => (e as Error).message });
@@ -1642,7 +1668,7 @@ test("interpret: throttled with retry emits Retrying states between attempts", a
 
 test("interpret: concurrent with retry emits Retrying states between attempts", async () => {
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (_: number) => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("fail"));
 	}, { onError: (e) => (e as Error).message });
@@ -1729,7 +1755,7 @@ test("interpret: keyed without key or perKey uses identity key and exclusive def
 test("interpret: restartable with numeric backoff emits Retrying with nextRetryIn", async () => {
 	// Covers the `backoff` as a plain number branch (line 56) and the ms>0 nextRetryIn path (lines 70-73)
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (_: number) => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("fail"));
 	}, { onError: (e) => (e as Error).message });
@@ -1746,7 +1772,7 @@ test("interpret: restartable with numeric backoff emits Retrying with nextRetryI
 
 test("interpret: exclusive with numeric backoff emits Retrying with nextRetryIn", async () => {
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (_: number) => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("fail"));
 	}, { onError: (e) => (e as Error).message });
@@ -1949,7 +1975,7 @@ test("poll: stop handle cancels future runs", async () => {
 });
 
 test("poll: supports reusable poller handle and zero-arg ops", async () => {
-	const zeroOp = Op.create((_signal: AbortSignal) => () => Promise.resolve(99), { onError: String });
+	const zeroOp = Op.make((_signal: AbortSignal) => () => Promise.resolve(99), { onError: String });
 	const zeroManager = Op.interpret(zeroOp, { strategy: "once" });
 	const poller = zeroManager.poll({ interval: Duration.milliseconds(10_000) });
 	const stop = poller();
@@ -2207,7 +2233,7 @@ test("interpret: restartable strategy with Duration minInterval", async () => {
 
 test("interpret: retry policy with Duration backoff", async () => {
 	let attempt = 0;
-	const op = Op.create((_signal: AbortSignal) => (_: number) => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		attempt++;
 		if (attempt < 2) { return Promise.reject(new Error("fail")); }
 		return Promise.resolve(42);
@@ -2222,7 +2248,7 @@ test("interpret: retry policy with Duration backoff", async () => {
 
 test("interpret: retry policy with Duration backoff function", async () => {
 	let attempt = 0;
-	const op = Op.create((_signal: AbortSignal) => (_: number) => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		attempt++;
 		if (attempt < 2) { return Promise.reject(new Error("fail")); }
 		return Promise.resolve(42);
@@ -2236,7 +2262,7 @@ test("interpret: retry policy with Duration backoff function", async () => {
 });
 
 test("interpret: timeout policy with Duration", async () => {
-	const op = Op.create((signal: AbortSignal) => (_: number) =>
+	const op = Op.make((signal: AbortSignal) => (_: number) =>
 		new Promise<number>((_resolve, reject) => {
 			signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
 		}), { onError: (e) => String(e) });

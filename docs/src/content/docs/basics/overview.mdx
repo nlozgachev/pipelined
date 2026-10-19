@@ -129,8 +129,8 @@ Managing in-flight request cancellation, debouncing, and retries in UI component
 import { Op } from "@nlozgachev/pipelined/core";
 
 // 1. Define the task once
-const searchApi = Op.create(
-  (query: string, signal: AbortSignal) =>
+const searchApi = Op.make(
+  (signal) => (query: string) =>
     fetch(`/api/search?q=${query}`, { signal }).then((r) => r.json()),
   { onError: (err) => `Search failed: ${err}` },
 );
@@ -227,8 +227,8 @@ const validateSignup = (name: string, email: string) =>
 
 // 2. Define an async submission operation with cancellation (Op)
 const submitUserOp = Op.interpret(
-  Op.create(
-    (payload: { name: string; email: string }, signal: AbortSignal) =>
+  Op.make(
+    (signal) => (payload: { name: string; email: string }) =>
       fetch("/api/register", {
         method: "POST",
         body: JSON.stringify(payload),

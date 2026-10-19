@@ -36,7 +36,7 @@ declare const _opBrand: unique symbol;
  * A reusable description of async work — decoupled from execution strategy and lifetime.
  *
  * Separate concerns:
- * - **What** to do: encoded in the `Op` via `Op.create`
+ * - **What** to do: encoded in the `Op` via `Op.make`
  * - **How** to execute: chosen at `Op.interpret` time (restartable, exclusive, queue, etc.)
  *
  * An `Op` never runs on its own. It only executes when passed to `Op.interpret`, which
@@ -44,7 +44,7 @@ declare const _opBrand: unique symbol;
  *
  * @example
  * ```ts
- * const fetchUser = Op.create(
+ * const fetchUser = Op.make(
  *   (signal) => (id: string) =>
  *     fetch(`/users/${id}`, { signal }).then(r => {
  *       if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
@@ -140,13 +140,10 @@ const makeNil = (reason: Op.NilReason): Op.Nil => ({ kind: "OpNil", reason });
 const isIdle = <E = unknown, A = unknown>(state: Op.State<E, A>): state is Op.Idle => state.kind === "Idle";
 const isPending = <E = unknown, A = unknown>(state: Op.State<E, A>): state is Op.Pending => state.kind === "Pending";
 const isQueued = <E = unknown, A = unknown>(state: Op.State<E, A>): state is Op.Queued => state.kind === "Queued";
-const isRetrying = <E = unknown, A = unknown>(state: Op.State<E, A>): state is Op.Retrying<E> =>
-	state.kind === "Retrying";
-const isOk = <A = unknown>(stateOrOutcome: { readonly kind: string; }): stateOrOutcome is Op.Ok<A> =>
-	stateOrOutcome.kind === "OpOk";
-const isErr = <E = unknown>(stateOrOutcome: { readonly kind: string; }): stateOrOutcome is Op.Err<E> =>
-	stateOrOutcome.kind === "OpErr";
-const isNil = (stateOrOutcome: { readonly kind: string; }): stateOrOutcome is Op.Nil => stateOrOutcome.kind === "OpNil";
+const isRetrying = <E, A>(state: Op.State<E, A>): state is Op.Retrying<E> => state.kind === "Retrying";
+const isOk = <E, A>(stateOrOutcome: Op.State<E, A>): stateOrOutcome is Op.Ok<A> => stateOrOutcome.kind === "OpOk";
+const isErr = <E, A>(stateOrOutcome: Op.State<E, A>): stateOrOutcome is Op.Err<E> => stateOrOutcome.kind === "OpErr";
+const isNil = <E, A>(stateOrOutcome: Op.State<E, A>): stateOrOutcome is Op.Nil => stateOrOutcome.kind === "OpNil";
 
 function interpretFn<Args extends readonly any[], E, A, O extends AllInterpretOptions<Args, E>>(
 	op: Op<Args, E, A>,
@@ -588,13 +585,13 @@ export const Op = {
 	 *
 	 * @example
 	 * ```ts
-	 * const fetchUser = Op.create(
+	 * const fetchUser = Op.make(
 	 *   (signal) => (id: string) => fetch(`/users/${id}`, { signal }).then(r => r.json() as Promise<User>),
 	 *   { onError: (error) => new ApiError(error) },
 	 * );
 	 * ```
 	 */
-	create: <Fn extends (...args: any[]) => Promise<any>, E = unknown>(
+	make: <Fn extends (...args: any[]) => Promise<any>, E = unknown>(
 		factory: (signal: AbortSignal) => Fn,
 		options: { onError: (error: unknown) => E; },
 	): Op<Parameters<Fn>, E, Awaited<ReturnType<Fn>>> =>
@@ -616,7 +613,7 @@ export const Op = {
 	 * Lifts an async action into an Op without requiring explicit error transformation.
 	 * Unknown errors thrown by the async action are passed through untyped.
 	 *
-	 * @see {@link Op.create} to construct an Op with a typed error transformation.
+	 * @see {@link Op.make} to construct an Op with a typed error transformation.
 	 *
 	 * @example
 	 * ```ts
@@ -625,7 +622,7 @@ export const Op = {
 	 */
 	lift: <Fn extends (...args: any[]) => Promise<any>>(
 		factory: (signal: AbortSignal) => Fn,
-	): Op<Parameters<Fn>, unknown, Awaited<ReturnType<Fn>>> => Op.create(factory, { onError: (error) => error }),
+	): Op<Parameters<Fn>, unknown, Awaited<ReturnType<Fn>>> => Op.make(factory, { onError: (error) => error }),
 
 	/**
 	 * Subscribes to an Op manager and executes a side-effect whenever the manager emits an Ok outcome.
@@ -641,7 +638,7 @@ export const Op = {
 		sideEffect: (value: A) => void,
 	): () => void =>
 		source.subscribe((state) => {
-			if (isOk<A>(state)) {
+			if (isOk(state)) {
 				sideEffect(state.value);
 			}
 		}),
@@ -649,7 +646,7 @@ export const Op = {
 	/**
 	 * Interprets an Op blueprint with a concurrency and lifecycle strategy, returning a Manager.
 	 *
-	 * @see {@link Op.create} to construct an Op blueprint.
+	 * @see {@link Op.make} to construct an Op blueprint.
 	 *
 	 * @example
 	 * ```ts

@@ -297,7 +297,7 @@ import { Op } from "@nlozgachev/pipelined/core";
 import { Duration } from "@nlozgachev/pipelined/types";
 
 const fetchUser = Op.interpret(
-  Op.create(
+  Op.make(
     (signal) => (id: string) =>
       fetch(`/users/${id}`, { signal }).then((r) => r.json() as Promise<User>),
     { onError: (e) => new ApiError(e) },
@@ -342,7 +342,7 @@ declare the concurrency strategy as a clean configuration choice:
 import { Op } from "@nlozgachev/pipelined/core";
 import { Duration } from "@nlozgachev/pipelined/types";
 
-const searchOp = Op.create(
+const searchOp = Op.make(
   (signal) => (query: string) =>
     fetch(`/search?q=${query}`, { signal }).then((r) =>
       r.json() as Promise<SearchResult[]>
@@ -368,7 +368,7 @@ input.addEventListener("input", (e) => search.run(e.currentTarget.value));
 **Form submit — drop concurrent duplicate submissions:**
 
 ```ts
-const submitOp = Op.create(
+const submitOp = Op.make(
   (signal) => (data: FormData) =>
     fetch("/orders", { method: "POST", body: data, signal }).then((r) =>
       r.json()

@@ -32,7 +32,7 @@ import {
 
 /** Op that resolves with the input value after an optional delay. */
 const successOp = (delayMs = 0): Op<[input: number], string, number> =>
-	Op.create((signal: AbortSignal) => (input: number) =>
+	Op.make((signal: AbortSignal) => (input: number) =>
 		new Promise<number>((resolve, reject) => {
 			const id = setTimeout(() => resolve(input), delayMs);
 			signal.addEventListener("abort", () => {
@@ -43,7 +43,7 @@ const successOp = (delayMs = 0): Op<[input: number], string, number> =>
 
 /** Op that always rejects with `msg` after an optional delay. */
 const failOp = (msg = "fail", delayMs = 0): Op<[input: number], string, number> =>
-	Op.create((signal: AbortSignal) => (_input: number) =>
+	Op.make((signal: AbortSignal) => (_input: number) =>
 		new Promise<never>((_resolve, reject) => {
 			const id = setTimeout(() => reject(new Error(msg)), delayMs);
 			signal.addEventListener("abort", () => {
@@ -112,7 +112,7 @@ test("runWithRetry: returns Ok on first success", async () => {
 
 test("runWithRetry: retries on Err and returns Err when attempts exhausted", async () => {
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (_: number) => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("boom"));
 	}, { onError: (e) => (e as Error).message });
@@ -127,7 +127,7 @@ test("runWithRetry: retries on Err and returns Err when attempts exhausted", asy
 
 test("runWithRetry: stops early on Ok without exhausting all attempts", async () => {
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (_: number) => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return calls < 2 ? Promise.reject(new Error("not yet")) : Promise.resolve(99);
 	}, { onError: (e) => (e as Error).message });
@@ -138,7 +138,7 @@ test("runWithRetry: stops early on Ok without exhausting all attempts", async ()
 
 test("runWithRetry: respects when guard and stops early on non-retryable error", async () => {
 	let calls = 0;
-	const op = Op.create((_signal: AbortSignal) => (_: number) => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		calls++;
 		return Promise.reject(new Error("not-retryable"));
 	}, { onError: (e) => (e as Error).message });
@@ -151,7 +151,7 @@ test("runWithRetry: respects when guard and stops early on non-retryable error",
 });
 
 test("runWithRetry: includes nextRetryIn when backoff is number > 0", async () => {
-	const op = Op.create((_signal: AbortSignal) => (_: number) => Promise.reject(new Error("fail")), {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => Promise.reject(new Error("fail")), {
 		onError: (e) => (e as Error).message,
 	});
 	const retrying: Op.Retrying<string>[] = [];
@@ -166,7 +166,7 @@ test("runWithRetry: includes nextRetryIn when backoff is number > 0", async () =
 });
 
 test("runWithRetry: includes nextRetryIn when backoff is function", async () => {
-	const op = Op.create((_signal: AbortSignal) => (_: number) => Promise.reject(new Error("fail")), {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => Promise.reject(new Error("fail")), {
 		onError: (e) => (e as Error).message,
 	});
 	const retrying: Op.Retrying<string>[] = [];
@@ -178,7 +178,7 @@ test("runWithRetry: includes nextRetryIn when backoff is function", async () => 
 });
 
 test("runWithRetry: returns null when signal is aborted during backoff wait", async () => {
-	const op = Op.create((_signal: AbortSignal) => (_: number) => Promise.reject(new Error("fail")), {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => Promise.reject(new Error("fail")), {
 		onError: (e) => (e as Error).message,
 	});
 	const controller = new AbortController();
@@ -408,7 +408,7 @@ test("makeThrottled: onRetrying guard suppresses stale Retrying state from first
 	// Net result: only one Retrying emitted (from op2), not two (op1's is suppressed).
 
 	let factoryCalls = 0;
-	const op = Op.create((signal: AbortSignal) => (_: number) =>
+	const op = Op.make((signal: AbortSignal) => (_: number) =>
 		new Promise<never>((_r, reject) => {
 			factoryCalls++;
 			const id = setTimeout(() => reject(new Error("fail")), 20);
@@ -454,7 +454,7 @@ test("makeDebounced: onRetrying guard suppresses stale Retrying state when timer
 	// Net result: only one Retrying emitted (from op2 attempt 1), not two.
 
 	let factoryCalls = 0;
-	const op = Op.create((signal: AbortSignal) => (_: number) =>
+	const op = Op.make((signal: AbortSignal) => (_: number) =>
 		new Promise<never>((_r, reject) => {
 			factoryCalls++;
 			const id = setTimeout(() => reject(new Error("fail")), 25);
@@ -504,7 +504,7 @@ test("execute: composes with Deferred.to.Promise in pipeline", async () => {
 });
 
 test("runWithRetry: emits Retrying states across execution modes", async () => {
-	const failingOp = Op.create((_signal: AbortSignal) => (_input: number) => Promise.reject(new Error("err")), {
+	const failingOp = Op.make((_signal: AbortSignal) => (_input: number) => Promise.reject(new Error("err")), {
 		onError: (e) => (e as Error).message,
 	});
 	const retryOpt = { attempts: 2, backoff: Duration.milliseconds(1) };
@@ -560,7 +560,7 @@ test("runWithRetry: emits Retrying states across execution modes", async () => {
 });
 
 test("toInternalOp: provides access to OP_FACTORY", async () => {
-	const op = Op.create((_signal) => (x: number) => Promise.resolve(x * 2), { onError: String });
+	const op = Op.make((_signal) => (x: number) => Promise.resolve(x * 2), { onError: String });
 	const internal = toInternalOp(op);
 	expect(internal[OP_FACTORY]).toBeTypeOf("function");
 	const result = await Deferred.to.Promise(internal[OP_FACTORY]([5], new AbortController().signal));
@@ -568,7 +568,7 @@ test("toInternalOp: provides access to OP_FACTORY", async () => {
 });
 
 test("makeExclusive: handles Duration.milliseconds(0) cooldown without setting timer", async () => {
-	const op = Op.create((_signal) => (x: number) => Promise.resolve(x * 2), { onError: String });
+	const op = Op.make((_signal) => (x: number) => Promise.resolve(x * 2), { onError: String });
 	const manager = makeExclusive(op, Duration.milliseconds(0));
 	const outcome1 = await Deferred.to.Promise(manager.run(1));
 	expect(outcome1).toStrictEqual({ kind: "OpOk", value: 2 });
@@ -577,7 +577,7 @@ test("makeExclusive: handles Duration.milliseconds(0) cooldown without setting t
 });
 
 test("poll: executes periodic interval ticks across all strategy factories", async () => {
-	const countOp = Op.create((_signal) => (n: number) => Promise.resolve(n), { onError: String });
+	const countOp = Op.make((_signal) => (n: number) => Promise.resolve(n), { onError: String });
 	const interval = Duration.milliseconds(5);
 
 	const factories = [

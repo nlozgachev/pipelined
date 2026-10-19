@@ -7,7 +7,7 @@ const outcomeMake = Op.Outcome.make;
 const outcomeMap = Op.Outcome.map;
 const outcomeChain = Op.Outcome.chain;
 const outcomeFold = Op.Outcome.fold;
-const opCreate = Op.create;
+const opMake = Op.make;
 const opInterpret = Op.interpret;
 
 // =============================================================================
@@ -41,7 +41,7 @@ test("op-sync-transformations", async ({ bench }) => {
 // =============================================================================
 
 test("op-interpret-execution", async ({ bench }) => {
-	const op = opCreate((_signal: AbortSignal) => (n: number) => Promise.resolve(n * 2), { onError: String });
+	const op = opMake((_signal: AbortSignal) => (n: number) => Promise.resolve(n * 2), { onError: String });
 	const manager = opInterpret(op, { strategy: "once" });
 
 	await bench.compare(

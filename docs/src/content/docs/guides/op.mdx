@@ -9,14 +9,14 @@ Rapid asynchronous operations—such as search autocomplete—can result in out-
 
 `Op<I, E, A>` decouples the asynchronous operation from its execution strategy:
 
-*   **Task Definition**: The core asynchronous work is defined once using `Op.create`.
+*   **Task Definition**: The core asynchronous work is defined once using `Op.make`.
 *   **Execution Strategy**: Concurrency models (`restartable`, `exclusive`, `parallel`), retries with backoff, and timeouts are configured via `Op.interpret`.
 
 ---
 
 ## Creating an Op
 
-`Op.create` defines an operation by accepting an asynchronous runner function and an error options object:
+`Op.make` defines an operation by accepting an asynchronous runner function and an error options object:
 
 ```ts
 import { Op } from "@nlozgachev/pipelined/core";
@@ -24,7 +24,7 @@ import { Op } from "@nlozgachev/pipelined/core";
 interface User { id: string; name: string }
 class ApiError extends Error { constructor(public reason: unknown) { super() } }
 
-const fetchUser = Op.create(
+const fetchUser = Op.make(
   (signal) => (id: string) =>
     fetch(`/users/${id}`, { signal }).then((r) => {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -42,7 +42,7 @@ If the async function is defined elsewhere with signal curried first, you can pa
 const getUserData = (signal: AbortSignal) => (id: string): Promise<User> =>
   fetch(`/users/${id}`, { signal }).then((r) => r.json());
 
-const fetchUserOp = Op.create(getUserData, {
+const fetchUserOp = Op.make(getUserData, {
   onError: (error) => new ApiError(error),
 });
 ```
@@ -74,7 +74,7 @@ Four steps take you from a raw, uncancellable fetch to a managed UI flow:
 
 ```mermaid
 flowchart TD
-    A[1. Op.create] -->|Describe the work once| B[2. Op.interpret]
+    A[1. Op.make] -->|Describe the work once| B[2. Op.interpret]
     B -->|Select a concurrency strategy| C[3. manager.subscribe]
     C -->|Listen to loading and outcome states| D[4. manager.run]
     D -->|Execute execution| E{Outcome}
@@ -83,7 +83,7 @@ flowchart TD
     E -->|Cancelled or Dropped| Nil[Nil reason]
 ```
 
-1.  **Create**: Describe the core async task once.
+1.  **Define (`Op.make`)**: Describe the core async task once.
 2.  **Interpret**: Choose a concurrency and lifecycle strategy, returning a manager.
 3.  **Subscribe**: Attach listeners to react to loading states and outcomes.
 4.  **Run**: Trigger the operation with an input value.

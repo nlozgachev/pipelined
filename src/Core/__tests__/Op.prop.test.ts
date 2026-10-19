@@ -9,13 +9,13 @@ import { Op } from "../Op.ts";
 // ---------------------------------------------------------------------------
 
 /** Resolves immediately with the input value. */
-const immediateOp = Op.create((_signal: AbortSignal) => (n: number) => Promise.resolve(n), { onError: String });
+const immediateOp = Op.make((_signal: AbortSignal) => (n: number) => Promise.resolve(n), { onError: String });
 
 /** Resolves after one microtask tick — genuinely async without a real timer. */
-const tickOp = Op.create((_signal: AbortSignal) => (n: number) => Promise.resolve().then(() => n), { onError: String });
+const tickOp = Op.make((_signal: AbortSignal) => (n: number) => Promise.resolve().then(() => n), { onError: String });
 
 /** Promise that never settles — useful for abort() tests on restartable. */
-const neverOp = Op.create((_signal: AbortSignal) => (_: number) => new Promise<number>(() => {}), { onError: String });
+const neverOp = Op.make((_signal: AbortSignal) => (_: number) => new Promise<number>(() => {}), { onError: String });
 
 /**
  * Like neverOp but rejects when the AbortSignal fires.
@@ -23,7 +23,7 @@ const neverOp = Op.create((_signal: AbortSignal) => (_: number) => new Promise<n
  * in-flight item's Deferred after execute() settles, so the factory must
  * respect the signal to avoid hanging forever.
  */
-const signalNeverOp = Op.create((signal: AbortSignal) => (_: number) =>
+const signalNeverOp = Op.make((signal: AbortSignal) => (_: number) =>
 	new Promise<number>((res, reject) => {
 		signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
 	}), { onError: () => "aborted" });
@@ -257,7 +257,7 @@ test("interpret: once post-completion runs produce DroppedNil", async () => {
 test("interpret: retries factory exactly specified attempts when failing", async () => {
 	await fc.assert(fc.asyncProperty(fc.integer({ min: 1, max: 5 }), async (attempts) => {
 		let calls = 0;
-		const countingOp = Op.create((_signal: AbortSignal) => (_: number) => {
+		const countingOp = Op.make((_signal: AbortSignal) => (_: number) => {
 			calls++;
 			return Promise.reject(new Error("fail"));
 		}, { onError: (e) => (e as Error).message });
