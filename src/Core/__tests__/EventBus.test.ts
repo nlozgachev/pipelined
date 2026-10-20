@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 import { EventBus } from "../EventBus.ts";
 
 type TestSchema = {
@@ -10,10 +10,10 @@ type TestSchema = {
 
 // --- EventBus.make ---
 
-test("make: creates an event bus instance", () => {
+test("make: creates an opaque event bus instance with no public properties", () => {
 	const s = EventBus.make<TestSchema>({ name: "test-bus" });
-	expect(s.options?.name).toBe("test-bus");
-	expect(s._listeners.size).toBe(0);
+	expect(Object.keys(s)).toStrictEqual([]);
+	expect(Reflect.ownKeys(s).filter((k) => typeof k === "string")).toStrictEqual([]);
 });
 
 // --- EventBus.emit ---
@@ -155,7 +155,6 @@ test("listen: unsubscribes after first reduction when once is true", () => {
 	EventBus.emit(s, { kind: "A", value: { value: 2 } });
 
 	expect(sub.getState()).toStrictEqual({ count: 1 });
-	expect(s._listeners.size).toBe(0);
 });
 
 test("listen: returns an unsubscribe function that removes the listener from tap", () => {
@@ -171,7 +170,6 @@ test("listen: returns an unsubscribe function that removes the listener from tap
 	unsubscribe();
 	EventBus.emit(s, { kind: "A", value: { value: 2 } });
 	expect(count).toBe(1);
-	expect(s._listeners.size).toBe(0);
 });
 
 // --- Sequence options ---
@@ -324,7 +322,6 @@ test("listen: automatically unsubscribes after first match with once", () => {
 	EventBus.emit(s, { kind: "A", value: { value: 2 } });
 
 	expect(fireCount).toBe(1);
-	expect(s._listeners.size).toBe(0);
 });
 
 test("listen: accepts array of event kinds and resets sequence tracking", () => {
@@ -467,4 +464,310 @@ test("forward: pipes messages to multiple target event buses", () => {
 	expect(count3).toBe(1);
 
 	disconnect();
+});
+
+// --- Type Narrowing & Safe Indexing ---
+
+test("listen: narrows msg.kind to listened keys in reduce", () => {
+	const s = EventBus.make<TestSchema>();
+	const memo: { A: number; B: number; } = { A: 10, B: 20 };
+	const matchedValues: number[] = [];
+
+	EventBus.listen(s, ["A", "B"]).reduce((msg, state) => {
+		expectTypeOf(msg.kind).toEqualTypeOf<"A" | "B">();
+		// Safe indexing without type errors because msg.kind is narrowed to "A" | "B"
+		const val = memo[msg.kind];
+		matchedValues.push(val);
+		return state;
+	}, 0);
+
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	EventBus.emit(s, { kind: "B", value: { text: "hello" } });
+
+	expect(matchedValues).toStrictEqual([10, 20]);
+});
+
+test("listen: narrows msg.kind to listened keys in tap", () => {
+	const s = EventBus.make<TestSchema>();
+	let receivedKind: "A" | null = null;
+
+	EventBus.listen(s, "A").tap((msg) => {
+		expectTypeOf(msg.kind).toEqualTypeOf<"A">();
+		expectTypeOf(msg.value).toEqualTypeOf<{ value: number; }>();
+		receivedKind = msg.kind;
+	});
+
+	EventBus.emit(s, { kind: "A", value: { value: 42 } });
+	expect(receivedKind).toBe("A");
+});
+
+// --- EventBus.listen & collect ---
+
+test("collect: delivers completed payload snapshot in ordered sequence", () => {
+	const s = EventBus.make<TestSchema>();
+	const snapshots: Array<{ A: { value: number; }; B: { text: string; }; }> = [];
+
+	EventBus.listen(s, ["A", "B"], { ordered: true }).collect((payloads) => {
+		expectTypeOf(payloads.A).toEqualTypeOf<{ value: number; }>();
+		expectTypeOf(payloads.B).toEqualTypeOf<{ text: string; }>();
+		snapshots.push(payloads);
+	});
+
+	// Out of order: B alone does not fire
+	EventBus.emit(s, { kind: "B", value: { text: "early" } });
+	expect(snapshots).toStrictEqual([]);
+
+	// A followed by B fires with composite snapshot
+	EventBus.emit(s, { kind: "A", value: { value: 10 } });
+	expect(snapshots).toStrictEqual([]);
+
+	EventBus.emit(s, { kind: "B", value: { text: "first" } });
+	expect(snapshots).toStrictEqual([{ A: { value: 10 }, B: { text: "first" } }]);
+
+	// Consecutive sequence fires again with fresh snapshot
+	EventBus.emit(s, { kind: "A", value: { value: 20 } });
+	EventBus.emit(s, { kind: "B", value: { text: "second" } });
+	expect(snapshots).toStrictEqual([{ A: { value: 10 }, B: { text: "first" } }, {
+		A: { value: 20 },
+		B: { text: "second" },
+	}]);
+});
+
+test("collect: clears buffer on strict mismatch", () => {
+	const s = EventBus.make<TestSchema>();
+	let fired = 0;
+
+	EventBus.listen(s, ["A", "B"], { ordered: true, strict: true }).collect(() => {
+		fired++;
+	});
+
+	// A -> C (intervening event in strict mode resets buffer and index) -> B
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	EventBus.emit(s, { kind: "C", value: { flag: true } });
+	EventBus.emit(s, { kind: "B", value: { text: "b" } });
+	expect(fired).toBe(0);
+
+	// Now consecutive sequence completes
+	EventBus.emit(s, { kind: "A", value: { value: 2 } });
+	EventBus.emit(s, { kind: "B", value: { text: "b2" } });
+	expect(fired).toBe(1);
+});
+
+test("collect: updates buffer when unexpected event matches step 0", () => {
+	const s = EventBus.make<TestSchema>();
+	let captured: { A: { value: number; }; B: { text: string; }; } | null = null;
+
+	EventBus.listen(s, ["A", "B"], { ordered: true, strict: true }).collect((payloads) => {
+		captured = payloads;
+	});
+
+	// A (val 1) -> A (val 2, resets sequence to index 1 with new val) -> B
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	EventBus.emit(s, { kind: "A", value: { value: 2 } });
+	EventBus.emit(s, { kind: "B", value: { text: "match" } });
+
+	expect(captured).toStrictEqual({ A: { value: 2 }, B: { text: "match" } });
+});
+
+test("collect: resets buffer when reset event arrives", () => {
+	const s = EventBus.make<TestSchema>();
+	let fired = 0;
+
+	EventBus.listen(s, ["A", "B"], { ordered: true, reset: "ResetEvent" }).collect(() => {
+		fired++;
+	});
+
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	EventBus.emit(s, { kind: "ResetEvent", value: { reason: "abort" } });
+	EventBus.emit(s, { kind: "B", value: { text: "after reset" } });
+
+	expect(fired).toBe(0);
+});
+
+test("collect: skips optional step and sets its value to undefined", () => {
+	const s = EventBus.make<TestSchema>();
+	let captured: { A: { value: number; }; C: { flag: boolean; }; B?: { text: string; }; } | null = null;
+
+	EventBus.listen(s, ["A", "B", "C"], { ordered: true, optional: ["B"] }).collect((payloads) => {
+		expectTypeOf(payloads.A).toEqualTypeOf<{ value: number; }>();
+		expectTypeOf(payloads.C).toEqualTypeOf<{ flag: boolean; }>();
+		expectTypeOf(payloads.B).toEqualTypeOf<{ text: string; } | undefined>();
+		captured = payloads;
+	});
+
+	// A -> C (skipping optional B)
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	EventBus.emit(s, { kind: "C", value: { flag: true } });
+
+	expect(captured).toStrictEqual({ A: { value: 1 }, C: { flag: true } });
+	expect((captured as any)?.B).toBeUndefined();
+});
+
+test("collect: captures optional step when present in sequence", () => {
+	const s = EventBus.make<TestSchema>();
+	let captured: { A: { value: number; }; C: { flag: boolean; }; B?: { text: string; }; } | null = null;
+
+	EventBus.listen(s, ["A", "B", "C"], { ordered: true, optional: "B" }).collect((payloads) => {
+		captured = payloads;
+	});
+
+	// A -> B -> C (optional B is present)
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	EventBus.emit(s, { kind: "B", value: { text: "present" } });
+	EventBus.emit(s, { kind: "C", value: { flag: true } });
+
+	expect(captured).toStrictEqual({ A: { value: 1 }, B: { text: "present" }, C: { flag: true } });
+});
+
+test("collect: unsubscribes after first completion with once option", () => {
+	const s = EventBus.make<TestSchema>();
+	let count = 0;
+
+	EventBus.listen(s, ["A", "B"], { ordered: true, once: true }).collect(() => {
+		count++;
+	});
+
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	EventBus.emit(s, { kind: "B", value: { text: "1" } });
+	expect(count).toBe(1);
+
+	EventBus.emit(s, { kind: "A", value: { value: 2 } });
+	EventBus.emit(s, { kind: "B", value: { text: "2" } });
+	expect(count).toBe(1);
+});
+
+test("collect: aggregates unordered events once all required have arrived", () => {
+	const s = EventBus.make<TestSchema>();
+	let captured: { A: { value: number; }; B: { text: string; }; } | null = null;
+
+	EventBus.listen(s, ["A", "B"]).collect((payloads) => {
+		captured = payloads;
+	});
+
+	// B arrives first
+	EventBus.emit(s, { kind: "B", value: { text: "first" } });
+	expect(captured).toBeNull();
+
+	// A arrives second -> fires!
+	EventBus.emit(s, { kind: "A", value: { value: 42 } });
+	expect(captured).toStrictEqual({ A: { value: 42 }, B: { text: "first" } });
+});
+
+test("collect: unsubscribes after first completion in unordered mode with once option", () => {
+	const s = EventBus.make<TestSchema>();
+	let count = 0;
+
+	EventBus.listen(s, ["A", "B"], { once: true }).collect(() => {
+		count++;
+	});
+
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	EventBus.emit(s, { kind: "B", value: { text: "1" } });
+	expect(count).toBe(1);
+
+	EventBus.emit(s, { kind: "A", value: { value: 2 } });
+	EventBus.emit(s, { kind: "B", value: { text: "2" } });
+	expect(count).toBe(1);
+});
+
+test("collect: supports optional events in unordered mode", () => {
+	const s = EventBus.make<TestSchema>();
+	let captured: { A: { value: number; }; B?: { text: string; }; C: { flag: boolean; }; } | null = null;
+
+	EventBus.listen(s, ["A", "B", "C"], { optional: ["B"] }).collect((payloads) => {
+		captured = payloads;
+	});
+
+	// Emitting only A and C satisfies all required events in unordered mode
+	EventBus.emit(s, { kind: "A", value: { value: 10 } });
+	expect(captured).toBeNull();
+
+	EventBus.emit(s, { kind: "C", value: { flag: true } });
+	expect(captured).toStrictEqual({ A: { value: 10 }, C: { flag: true } });
+});
+
+test("collect: ignores lookahead mismatch when unexpected event arrives after optional item", () => {
+	const s = EventBus.make<TestSchema>();
+	let captured: { A: { value: number; }; B?: { text: string; }; C: { flag: boolean; }; } | null = null;
+
+	EventBus.listen(s, ["A", "B", "C"], { ordered: true, optional: ["B"] }).collect((payloads) => {
+		captured = payloads;
+	});
+
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	// ResetEvent is not in lookahead; sequence should not fire
+	EventBus.emit(s, { kind: "ResetEvent", value: { reason: "test" } });
+	expect(captured).toBeNull();
+});
+
+test("collect: ignores irrelevant events in relaxed ordered sequence", () => {
+	const s = EventBus.make<TestSchema>();
+	let captured: { A: { value: number; }; B: { text: string; }; } | null = null;
+
+	EventBus.listen(s, ["A", "B"], { ordered: true, strict: false }).collect((payloads) => {
+		captured = payloads;
+	});
+
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	// C is not in eventList and ignored in relaxed mode
+	EventBus.emit(s, { kind: "C", value: { flag: true } });
+	expect(captured).toBeNull();
+
+	EventBus.emit(s, { kind: "B", value: { text: "after C" } });
+	expect(captured).toStrictEqual({ A: { value: 1 }, B: { text: "after C" } });
+});
+
+test("collect: ignores non-matching events in unordered mode", () => {
+	const s = EventBus.make<TestSchema>();
+	let captured: { A: { value: number; }; B: { text: string; }; } | null = null;
+
+	EventBus.listen(s, ["A", "B"]).collect((payloads) => {
+		captured = payloads;
+	});
+
+	// C is not in eventList and ignored
+	EventBus.emit(s, { kind: "C", value: { flag: true } });
+	expect(captured).toBeNull();
+
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	EventBus.emit(s, { kind: "B", value: { text: "b" } });
+	expect(captured).toStrictEqual({ A: { value: 1 }, B: { text: "b" } });
+});
+
+test("collect: resets relaxed sequence to step 1 when out-of-order event matches step 0", () => {
+	const s = EventBus.make<TestSchema>();
+	let captured: { A: { value: number; }; B: { text: string; }; C: { flag: boolean; }; } | null = null;
+
+	// A -> B -> A -> B -> C in relaxed mode
+	EventBus.listen(s, ["A", "B", "C"], { ordered: true, strict: false }).collect((payloads) => {
+		captured = payloads;
+	});
+
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	EventBus.emit(s, { kind: "B", value: { text: "1" } });
+	// Out-of-order A resets sequence to 1 and buffer to { A: 2 }
+	EventBus.emit(s, { kind: "A", value: { value: 2 } });
+	EventBus.emit(s, { kind: "B", value: { text: "2" } });
+	EventBus.emit(s, { kind: "C", value: { flag: true } });
+
+	expect(captured).toStrictEqual({ A: { value: 2 }, B: { text: "2" }, C: { flag: true } });
+});
+
+test("collect: returns an unsubscribe function that removes the listener", () => {
+	const s = EventBus.make<TestSchema>();
+	let count = 0;
+
+	const unsubscribe = EventBus.listen(s, ["A", "B"]).collect(() => {
+		count++;
+	});
+
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	EventBus.emit(s, { kind: "B", value: { text: "1" } });
+	expect(count).toBe(1);
+
+	unsubscribe();
+
+	EventBus.emit(s, { kind: "A", value: { value: 2 } });
+	EventBus.emit(s, { kind: "B", value: { text: "2" } });
+	expect(count).toBe(1);
 });

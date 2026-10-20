@@ -139,7 +139,6 @@ type OnboardingState = {
 const subscription = EventBus.listen(
   authBus,
   ["sessionStarted", "emailEntered", "otpVerified"],
-  { ordered: true }
 ).reduce(
   (msg, state) => {
     if (msg.kind === "emailEntered") {
@@ -185,6 +184,61 @@ const unsubscribe = EventBus.listen(analyticsBus, "buttonClicked").tap((msg) => 
 
 // Remove listener
 unsubscribe();
+```
+
+---
+
+## Sequence Payload Collection
+
+`.collect(callback)` registers a terminal listener that aggregates payloads into a single keyed
+record (`{ [Event]: Payload }`), returning an unsubscribe disposer. The callback executes each time
+all required events have been emitted (in sequence when `{ ordered: true }`, or in any order when
+omitted), recurring on every completion unless `{ once: true }` is set.
+
+```ts
+import { EventBus } from "@nlozgachev/pipelined/core";
+
+type CheckoutMessages = {
+  addressValidated: { shippingAddress: string };
+  paymentAuthorized: { transactionId: string; amount: number };
+  orderConfirmed: { orderId: string };
+};
+
+const checkoutBus = EventBus.make<CheckoutMessages>();
+
+// Listen for the complete multi-step checkout sequence:
+const unsubscribe = EventBus.listen(
+  checkoutBus,
+  ["addressValidated", "paymentAuthorized", "orderConfirmed"],
+  { ordered: true, strict: true },
+).collect((payloads) => {
+  // payloads is typed as:
+  // {
+  //   addressValidated: { shippingAddress: string };
+  //   paymentAuthorized: { transactionId: string; amount: number };
+  //   orderConfirmed: { orderId: string };
+  // }
+  console.log("Order processed:", payloads.orderConfirmed.orderId);
+  console.log("Payment amount:", payloads.paymentAuthorized.amount);
+});
+```
+
+If an event is configured as optional via `{ optional: [...] }`, it may be skipped in the sequence.
+In `.collect()`, skipped optional events evaluate to `undefined`, and TypeScript marks their
+properties as optional (`T | undefined`) to enforce proper narrowing:
+
+```ts
+const sub = EventBus.listen(
+  checkoutBus,
+  ["addressValidated", "paymentAuthorized"],
+  { ordered: true, optional: ["paymentAuthorized"] },
+).collect((payloads) => {
+  console.log(payloads.addressValidated.shippingAddress);
+
+  if (payloads.paymentAuthorized !== undefined) {
+    console.log("Payment captured:", payloads.paymentAuthorized.transactionId);
+  }
+});
 ```
 
 ---
