@@ -84,6 +84,36 @@ test("make: infers multi-arg action parameters", async () => {
 	expect(result).toStrictEqual(Op.Outcome.make.ok("Alice:30"));
 });
 
+test("make: supports generic wrapper functions with generic Args and Out", () => {
+	function wrap<Args extends readonly unknown[], Out>(fn: (...args: Args) => Out) {
+		return Op.make((_signal) => fn, { onError: String });
+	}
+	const op = wrap((a: string, b: number) => `${a}:${b}`);
+	expectTypeOf(op).toEqualTypeOf<Op<[a: string, b: number], string, string>>();
+});
+
+test("make: supports explicit generic type arguments <Args, A, E>", async () => {
+	interface User {
+		id: string;
+		name: string;
+	}
+	const op = Op.make<[id: string], User, string>((_signal) => (id) => Promise.resolve({ id, name: "User" }), {
+		onError: String,
+	});
+	expectTypeOf(op).toEqualTypeOf<Op<[id: string], string, User>>();
+	const manager = Op.interpret(op, { strategy: "once" });
+	const result = await manager.run("42");
+	expect(result).toStrictEqual(Op.Outcome.make.ok({ id: "42", name: "User" }));
+});
+
+test("make: supports synchronous actions returning Out directly without Promise wrapper", async () => {
+	const op = Op.make((_signal) => (n: number) => n * 2, { onError: String });
+	expectTypeOf(op).toEqualTypeOf<Op<[n: number], string, number>>();
+	const manager = Op.interpret(op, { strategy: "once" });
+	const result = await manager.run(21);
+	expect(result).toStrictEqual(Op.Outcome.make.ok(42));
+});
+
 // --- Op.lift ---
 
 test("lift: creates an op from a plain async function", async () => {

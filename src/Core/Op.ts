@@ -63,7 +63,7 @@ declare const _opBrand: unique symbol;
  * manager.run(userId);
  * ```
  */
-export type Op<Args extends readonly any[] = any[], E = unknown, A = unknown> = {
+export type Op<Args extends readonly unknown[] = readonly unknown[], E = unknown, A = unknown> = {
 	readonly [_opBrand]: { readonly _args: (...args: Args) => void; readonly _error: () => E; readonly _value: () => A; };
 };
 
@@ -76,7 +76,7 @@ type MaybeRetry<E, O> = O extends { retry: InternalRetryOptions<E>; } ? Op.Retry
 
 // Union of all valid option shapes — exposed as a single type so the TS language service
 // can show all strategy literals in autocomplete (overload aggregation is unreliable).
-type AllInterpretOptions<Args extends readonly any[], E> =
+type AllInterpretOptions<Args extends readonly unknown[], E> =
 	| ({ strategy: "once"; retry?: InternalRetryOptions<E>; } & WithTimeout<E>)
 	| ({ strategy: "restartable"; retry?: InternalRetryOptions<E>; } & WithMinInterval & WithTimeout<E>)
 	| ({ strategy: "exclusive"; retry?: InternalRetryOptions<E>; } & WithCooldown & WithTimeout<E>)
@@ -102,12 +102,13 @@ type AllInterpretOptions<Args extends readonly any[], E> =
 	| ({ strategy: "keyed"; perKey?: "exclusive" | "restartable"; key: (...args: Args) => unknown; } & WithTimeout<E>);
 
 // Extracts the key type from the `keyed` strategy's `key` function.
-type KeyType<Args extends readonly any[], O> = O extends { key: (...args: Args) => infer K; } ? K : unknown;
+type KeyType<Args extends readonly unknown[], O> = O extends { key: (...args: Args) => infer K; } ? K : unknown;
 
 // Conditional return type — dispatches on strategy (and variant flags) to preserve
 // precise state-union typing without needing per-strategy overloads.
 // Tuple form `[O] extends [...]` prevents distribution over unions.
-type InterpretResult<Args extends readonly any[], E, A, O> = [O] extends [{ strategy: "throttled"; trailing: true; }]
+type InterpretResult<Args extends readonly unknown[], E, A, O> = [O] extends
+	[{ strategy: "throttled"; trailing: true; }]
 	? Op.Manager<Args, E, A, Op.ThrottledTrailingState<E, A> | MaybeRetry<E, O>>
 	: [O] extends [{ strategy: "throttled"; }] ? Op.Manager<Args, E, A, Op.ThrottledState<E, A> | MaybeRetry<E, O>>
 	: [O] extends [{ strategy: "debounced"; }] ? Op.Manager<Args, E, A, Op.DebouncedState<E, A> | MaybeRetry<E, O>>
@@ -145,11 +146,11 @@ const isOk = <E, A>(stateOrOutcome: Op.State<E, A>): stateOrOutcome is Op.Ok<A> 
 const isErr = <E, A>(stateOrOutcome: Op.State<E, A>): stateOrOutcome is Op.Err<E> => stateOrOutcome.kind === "OpErr";
 const isNil = <E, A>(stateOrOutcome: Op.State<E, A>): stateOrOutcome is Op.Nil => stateOrOutcome.kind === "OpNil";
 
-function interpretFn<Args extends readonly any[], E, A, O extends AllInterpretOptions<Args, E>>(
+function interpretFn<Args extends readonly unknown[], E, A, O extends AllInterpretOptions<Args, E>>(
 	op: Op<Args, E, A>,
 	options: O,
 ): InterpretResult<Args, E, A, O>;
-function interpretFn<Args extends readonly any[], E, A>(
+function interpretFn<Args extends readonly unknown[], E, A>(
 	op: Op<Args, E, A>,
 	options: {
 		strategy:
@@ -591,23 +592,21 @@ export const Op = {
 	 * );
 	 * ```
 	 */
-	make: <Fn extends (...args: any[]) => Promise<any>, E = unknown>(
-		factory: (signal: AbortSignal) => Fn,
+	make: <Args extends readonly unknown[], A, E = unknown>(
+		factory: (signal: AbortSignal) => (...args: Args) => PromiseLike<A> | A,
 		options: { onError: (error: unknown) => E; },
-	): Op<Parameters<Fn>, E, Awaited<ReturnType<Fn>>> =>
+	): Op<Args, E, A> =>
 		({
-			[OP_FACTORY]: (args: Parameters<Fn>, signal: AbortSignal) =>
+			[OP_FACTORY]: (args: Args, signal: AbortSignal) =>
 				Deferred.from.Promise(
 					(async () => {
 						const fn = factory(signal);
 						return await fn(...args);
-					})().then((value): CoreResult<E, Awaited<ReturnType<Fn>>> => CoreResult.make.ok(value)).catch((
-						error,
-					): CoreResult<E, Awaited<ReturnType<Fn>>> | null =>
+					})().then((value): CoreResult<E, A> => CoreResult.make.ok(value as A)).catch((error): CoreResult<E, A> | null =>
 						signal.aborted ? null : CoreResult.make.err(options.onError(error))
 					),
 				),
-		}) as unknown as Op<Parameters<Fn>, E, Awaited<ReturnType<Fn>>>,
+		}) as unknown as Op<Args, E, A>,
 
 	/**
 	 * Lifts an async action into an Op without requiring explicit error transformation.
@@ -620,9 +619,9 @@ export const Op = {
 	 * const fetchOp = Op.lift((signal) => (url: string) => fetch(url, { signal }));
 	 * ```
 	 */
-	lift: <Fn extends (...args: any[]) => Promise<any>>(
-		factory: (signal: AbortSignal) => Fn,
-	): Op<Parameters<Fn>, unknown, Awaited<ReturnType<Fn>>> => Op.make(factory, { onError: (error) => error }),
+	lift: <Args extends readonly unknown[], A>(
+		factory: (signal: AbortSignal) => (...args: Args) => PromiseLike<A> | A,
+	): Op<Args, unknown, A> => Op.make(factory, { onError: (error) => error }),
 
 	/**
 	 * Subscribes to an Op manager and executes a side-effect whenever the manager emits an Ok outcome.
@@ -633,7 +632,7 @@ export const Op = {
 	 * const unsubscribe = Op.wire(userManager, (user) => analyticsManager.run(user.id));
 	 * ```
 	 */
-	wire: <Args extends readonly any[], E, A, S extends Op.State<E, A>>(
+	wire: <Args extends readonly unknown[], E, A, S extends Op.State<E, A>>(
 		source: Op.Manager<Args, E, A, S>,
 		sideEffect: (value: A) => void,
 	): () => void =>
@@ -680,7 +679,7 @@ export namespace Op {
 		readonly lastError: E;
 		readonly nextRetryIn?: number;
 	};
-	export type Manager<Args extends readonly any[], E, A, S extends State<E, A>> = {
+	export type Manager<Args extends readonly unknown[], E, A, S extends State<E, A>> = {
 		readonly state: S;
 		/**
 		 * Triggers execution of the operation with the given arguments.
@@ -705,7 +704,7 @@ export namespace Op {
 		reset: () => void;
 		poll: (options: { interval: Duration; }) => (...args: Args) => () => void;
 	};
-	export type KeyedManager<Args extends readonly any[], K, E, PerKeyS> = {
+	export type KeyedManager<Args extends readonly unknown[], K, E, PerKeyS> = {
 		readonly state: ReadonlyMap<K, PerKeyS>;
 		/**
 		 * Triggers execution for the specific keyed item with the given arguments.
