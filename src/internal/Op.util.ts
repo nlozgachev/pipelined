@@ -25,13 +25,13 @@ const getMs = (duration: Duration): number => Duration.to.milliseconds(duration)
 // OP_FACTORY private symbol & internal type
 // ---------------------------------------------------------------------------
 
-export const OP_FACTORY: unique symbol = Symbol.for("@nlozgachev/pipelined/Op.factory") as any;
+export const OP_FACTORY: unique symbol = Symbol.for("@nlozgachev/pipelined/Op.factory") as typeof OP_FACTORY;
 
-export type InternalOp<Args extends readonly any[] = any[], E = unknown, A = unknown> = Op<Args, E, A> & {
-	readonly [OP_FACTORY]: (args: Args, signal: AbortSignal) => Deferred<Result<E, A> | null>;
-};
+export type InternalOp<Args extends readonly unknown[] = readonly unknown[], E = unknown, A = unknown> =
+	& Op<Args, E, A>
+	& { readonly [OP_FACTORY]: (args: Args, signal: AbortSignal) => Deferred<Result<E, A> | null>; };
 
-export const toInternalOp = <Args extends readonly any[], E, A>(op: Op<Args, E, A>): InternalOp<Args, E, A> =>
+export const toInternalOp = <Args extends readonly unknown[], E, A>(op: Op<Args, E, A>): InternalOp<Args, E, A> =>
 	op as unknown as InternalOp<Args, E, A>;
 
 // ---------------------------------------------------------------------------
@@ -59,7 +59,7 @@ export const cancellableWait = (duration: Duration, signal: AbortSignal): Promis
  * Runs the factory with retry logic. Calls `onRetrying` before each retry delay.
  * Stops on Ok, Nil (null), abort, or exhausted attempts.
  */
-export const runWithRetry = <Args extends readonly any[], E, A>(
+export const runWithRetry = <Args extends readonly unknown[], E, A>(
 	op: Op<Args, E, A>,
 	args: Args,
 	signal: AbortSignal,
@@ -107,7 +107,7 @@ export const runWithRetry = <Args extends readonly any[], E, A>(
  * If the deadline fires, it aborts the `controller` and returns `Err(onTimeout())`.
  * A null result from the factory (signal aborted) becomes `_abortedNil`.
  */
-export const execute = <Args extends readonly any[], E, A>(
+export const execute = <Args extends readonly unknown[], E, A>(
 	op: Op<Args, E, A>,
 	args: Args,
 	controller: AbortController,
@@ -145,7 +145,7 @@ export const execute = <Args extends readonly any[], E, A>(
 // Strategy factories
 // ---------------------------------------------------------------------------
 
-export const makeRestartable = <Args extends readonly any[], E, A>(
+export const makeRestartable = <Args extends readonly unknown[], E, A>(
 	op: Op<Args, E, A>,
 	minInterval?: Duration,
 	retryOptions?: Op.RetryOptions<E>,
@@ -243,7 +243,7 @@ export const makeRestartable = <Args extends readonly any[], E, A>(
 	};
 };
 
-export const makeExclusive = <Args extends readonly any[], E, A>(
+export const makeExclusive = <Args extends readonly unknown[], E, A>(
 	op: Op<Args, E, A>,
 	cooldown?: Duration,
 	retryOptions?: Op.RetryOptions<E>,
@@ -329,7 +329,7 @@ export const makeExclusive = <Args extends readonly any[], E, A>(
 	};
 };
 
-export const makeQueue = <Args extends readonly any[], E, A>(
+export const makeQueue = <Args extends readonly unknown[], E, A>(
 	op: Op<Args, E, A>,
 	maxSize?: number,
 	overflow?: "drop" | "replace-last",
@@ -464,7 +464,7 @@ export const makeQueue = <Args extends readonly any[], E, A>(
 	};
 };
 
-export const makeBuffered = <Args extends readonly any[], E, A>(
+export const makeBuffered = <Args extends readonly unknown[], E, A>(
 	op: Op<Args, E, A>,
 	size?: number,
 	retryOptions?: Op.RetryOptions<E>,
@@ -556,7 +556,7 @@ export const makeBuffered = <Args extends readonly any[], E, A>(
 	};
 };
 
-export const makeDebounced = <Args extends readonly any[], E, A>(
+export const makeDebounced = <Args extends readonly unknown[], E, A>(
 	op: Op<Args, E, A>,
 	duration: Duration,
 	leading: boolean,
@@ -716,7 +716,7 @@ export const makeDebounced = <Args extends readonly any[], E, A>(
 	};
 };
 
-export const makeThrottled = <Args extends readonly any[], E, A>(
+export const makeThrottled = <Args extends readonly unknown[], E, A>(
 	op: Op<Args, E, A>,
 	duration: Duration,
 	trailing: boolean,
@@ -833,7 +833,7 @@ export const makeThrottled = <Args extends readonly any[], E, A>(
 	};
 };
 
-export const makeConcurrent = <Args extends readonly any[], E, A>(
+export const makeConcurrent = <Args extends readonly unknown[], E, A>(
 	op: Op<Args, E, A>,
 	n: number,
 	overflow: "queue" | "drop",
@@ -940,7 +940,7 @@ export const makeConcurrent = <Args extends readonly any[], E, A>(
 	};
 };
 
-export const makeKeyed = <Args extends readonly any[], K, E, A>(
+export const makeKeyed = <Args extends readonly unknown[], K, E, A>(
 	op: Op<Args, E, A>,
 	keyFn: (...args: Args) => K,
 	perKey: "exclusive" | "restartable",
@@ -1040,7 +1040,7 @@ export const makeKeyed = <Args extends readonly any[], K, E, A>(
 	};
 };
 
-export const makeOnce = <Args extends readonly any[], E, A>(
+export const makeOnce = <Args extends readonly unknown[], E, A>(
 	op: Op<Args, E, A>,
 	retryOptions?: Op.RetryOptions<E>,
 	timeoutOptions?: Op.TimeoutOptions<E>,

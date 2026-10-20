@@ -180,7 +180,7 @@ function interpretFn<Args extends readonly unknown[], E, A>(
 		retry?: InternalRetryOptions<E>;
 		timeout?: Op.TimeoutOptions<E>;
 	},
-): any {
+): unknown {
 	const { strategy, retry: retryOptions, timeout: timeoutOptions } = options;
 	switch (strategy) {
 		case "once": {
@@ -517,6 +517,50 @@ const OpOutcome = {
 	},
 };
 
+type NormalizeArgs<T> = [T] extends [void] ? [] : T extends readonly unknown[] ? T : [T];
+
+function makeFn<Fn extends (...args: never[]) => unknown, E = unknown>(
+	factory: (signal: AbortSignal) => Fn,
+	options: { onError: (error: unknown) => E; },
+): Op<Parameters<Fn>, E, Awaited<ReturnType<Fn>>>;
+function makeFn<Input, Out, E = unknown>(
+	factory: (signal: AbortSignal) => (...args: NormalizeArgs<Input>) => PromiseLike<Out> | Out,
+	options: { onError: (error: unknown) => E; },
+): Op<NormalizeArgs<Input>, E, Awaited<Out>>;
+function makeFn<Args extends readonly unknown[], Out, E = unknown>(
+	factory: (signal: AbortSignal) => (...args: Args) => PromiseLike<Out> | Out,
+	options: { onError: (error: unknown) => E; },
+): Op<Args, E, Awaited<Out>>;
+function makeFn(
+	factory: (signal: AbortSignal) => (...args: readonly unknown[]) => unknown,
+	options: { onError: (error: unknown) => unknown; },
+): unknown {
+	return {
+		[OP_FACTORY]: (args: readonly unknown[], signal: AbortSignal) =>
+			Deferred.from.Promise(
+				(async () => {
+					const fn = factory(signal);
+					return await fn(...args);
+				})().then((value): CoreResult<unknown, unknown> => CoreResult.make.ok(value)).catch((
+					error,
+				): CoreResult<unknown, unknown> | null => signal.aborted ? null : CoreResult.make.err(options.onError(error))),
+			),
+	};
+}
+
+function liftFn<Fn extends (...args: never[]) => unknown>(
+	factory: (signal: AbortSignal) => Fn,
+): Op<Parameters<Fn>, unknown, Awaited<ReturnType<Fn>>>;
+function liftFn<Input, Out>(
+	factory: (signal: AbortSignal) => (...args: NormalizeArgs<Input>) => PromiseLike<Out> | Out,
+): Op<NormalizeArgs<Input>, unknown, Awaited<Out>>;
+function liftFn<Args extends readonly unknown[], Out>(
+	factory: (signal: AbortSignal) => (...args: Args) => PromiseLike<Out> | Out,
+): Op<Args, unknown, Awaited<Out>>;
+function liftFn(factory: (signal: AbortSignal) => (...args: readonly unknown[]) => unknown): unknown {
+	return makeFn(factory, { onError: (error) => error });
+}
+
 export const Op = {
 	is: {
 		/**
@@ -577,10 +621,13 @@ export const Op = {
 	},
 
 	/**
-	 * Creates an Op from a signal-accepting factory function that returns the async action,
+	 * Creates an Op blueprint from a signal-accepting factory function that returns the async action,
 	 * along with an error mapping handler.
 	 *
-	 * Arguments to the returned function are automatically inferred as tuple parameters via `Parameters<Fn>`.
+	 * Arguments to the returned function can be inferred automatically or provided as explicit generics:
+	 * - `Op.make((signal) => (opts: Payload) => ...)` (inferred)
+	 * - `Op.make<Payload, User>((signal) => (opts) => ...)` (explicit input/output)
+	 * - `Op.make<typeof apiFn>((signal) => apiFn)` (explicit function signature)
 	 *
 	 * @see {@link Op.lift} to construct an Op without explicit error transformation.
 	 *
@@ -592,25 +639,16 @@ export const Op = {
 	 * );
 	 * ```
 	 */
-	make: <Args extends readonly unknown[], A, E = unknown>(
-		factory: (signal: AbortSignal) => (...args: Args) => PromiseLike<A> | A,
-		options: { onError: (error: unknown) => E; },
-	): Op<Args, E, A> =>
-		({
-			[OP_FACTORY]: (args: Args, signal: AbortSignal) =>
-				Deferred.from.Promise(
-					(async () => {
-						const fn = factory(signal);
-						return await fn(...args);
-					})().then((value): CoreResult<E, A> => CoreResult.make.ok(value as A)).catch((error): CoreResult<E, A> | null =>
-						signal.aborted ? null : CoreResult.make.err(options.onError(error))
-					),
-				),
-		}) as unknown as Op<Args, E, A>,
+	make: makeFn,
 
 	/**
-	 * Lifts an async action into an Op without requiring explicit error transformation.
+	 * Lifts an async action into an Op blueprint without requiring explicit error transformation.
 	 * Unknown errors thrown by the async action are passed through untyped.
+	 *
+	 * Arguments to the returned function can be inferred automatically or provided as explicit generics:
+	 * - `Op.lift((signal) => (opts: Payload) => ...)` (inferred)
+	 * - `Op.lift<Payload, User>((signal) => (opts) => ...)` (explicit input/output)
+	 * - `Op.lift<typeof apiFn>((signal) => apiFn)` (explicit function signature)
 	 *
 	 * @see {@link Op.make} to construct an Op with a typed error transformation.
 	 *
@@ -619,9 +657,7 @@ export const Op = {
 	 * const fetchOp = Op.lift((signal) => (url: string) => fetch(url, { signal }));
 	 * ```
 	 */
-	lift: <Args extends readonly unknown[], A>(
-		factory: (signal: AbortSignal) => (...args: Args) => PromiseLike<A> | A,
-	): Op<Args, unknown, A> => Op.make(factory, { onError: (error) => error }),
+	lift: liftFn,
 
 	/**
 	 * Subscribes to an Op manager and executes a side-effect whenever the manager emits an Ok outcome.
@@ -661,6 +697,7 @@ export const Op = {
 };
 
 export namespace Op {
+	export type ToArgs<T> = NormalizeArgs<T>;
 	export type Outcome<E, A> = Ok<A> | Err<E> | Nil;
 	export type Ok<A> = WithKind<"OpOk"> & WithValue<A>;
 	export type Err<E> = WithKind<"OpErr"> & WithError<E>;

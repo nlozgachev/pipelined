@@ -34,7 +34,7 @@ const failingOp = (error: string, delayMs = 0): Op<[input: number], string, numb
  * Subscribes to a manager, calls run(input), and collects states until a terminal one arrives.
  * Subscribes before run() so the manager is Idle when subscribing (no immediate notification).
  */
-const runAndCollect = <Args extends readonly any[], E, A, S extends Op.State<E, A>>(
+const runAndCollect = <Args extends readonly unknown[], E, A, S extends Op.State<E, A>>(
 	manager: Op.Manager<Args, E, A, S>,
 	...args: Args
 ): Promise<S[]> => {
@@ -106,6 +106,67 @@ test("make: supports explicit generic type arguments <Args, A, E>", async () => 
 	expect(result).toStrictEqual(Op.Outcome.make.ok({ id: "42", name: "User" }));
 });
 
+test("make: single typed object argument", async () => {
+	interface Payload {
+		id: string;
+		name: string;
+	}
+	const searchApi = (payload: Payload): Promise<{ success: boolean; id: string; }> =>
+		Promise.resolve({ success: true, id: payload.id });
+
+	const opFromFn = Op.make((_signal) => searchApi, { onError: String });
+	expectTypeOf(opFromFn).toEqualTypeOf<Op<[payload: Payload], string, { success: boolean; id: string; }>>();
+
+	const op = Op.make((_signal) => (payload: Payload) => Promise.resolve({ success: true, id: payload.id }), {
+		onError: String,
+	});
+	expectTypeOf(op).toEqualTypeOf<Op<[payload: Payload], string, { success: boolean; id: string; }>>();
+	const manager = Op.interpret(op, { strategy: "once" });
+	const result = await manager.run({ id: "123", name: "Alice" });
+	expect(result).toStrictEqual(Op.Outcome.make.ok({ success: true, id: "123" }));
+});
+
+test("make: explicit single object generic parameter <Payload, User>", async () => {
+	interface Payload {
+		id: string;
+		name: string;
+	}
+	interface User {
+		id: string;
+		name: string;
+	}
+	const op = Op.make<Payload, User, string>(
+		(_signal) => (payload) => Promise.resolve({ id: payload.id, name: payload.name }),
+		{ onError: String },
+	);
+	expectTypeOf(op).toEqualTypeOf<Op<[Payload], string, User>>();
+	const manager = Op.interpret(op, { strategy: "once" });
+	const result = await manager.run({ id: "42", name: "Alice" });
+	expect(result).toStrictEqual(Op.Outcome.make.ok({ id: "42", name: "Alice" }));
+});
+
+test("make: explicit function type parameter <typeof apiFn>", async () => {
+	interface Payload {
+		id: string;
+	}
+	const searchApi = (payload: Payload): Promise<{ success: boolean; id: string; }> =>
+		Promise.resolve({ success: true, id: payload.id });
+
+	const op = Op.make<typeof searchApi, string>((_signal) => searchApi, { onError: String });
+	expectTypeOf(op).toEqualTypeOf<Op<[payload: Payload], string, { success: boolean; id: string; }>>();
+	const manager = Op.interpret(op, { strategy: "once" });
+	const result = await manager.run({ id: "99" });
+	expect(result).toStrictEqual(Op.Outcome.make.ok({ success: true, id: "99" }));
+});
+
+test("make: explicit void generic parameter <void, number>", async () => {
+	const op = Op.make<void, number, string>((_signal) => () => Promise.resolve(100), { onError: String });
+	expectTypeOf(op).toEqualTypeOf<Op<[], string, number>>();
+	const manager = Op.interpret(op, { strategy: "once" });
+	const result = await manager.run();
+	expect(result).toStrictEqual(Op.Outcome.make.ok(100));
+});
+
 test("make: supports synchronous actions returning Out directly without Promise wrapper", async () => {
 	const op = Op.make((_signal) => (n: number) => n * 2, { onError: String });
 	expectTypeOf(op).toEqualTypeOf<Op<[n: number], string, number>>();
@@ -141,6 +202,44 @@ test("lift: passes signal to async function", async () => {
 	const manager = Op.interpret(op, { strategy: "restartable" });
 	await manager.run(0);
 	expect(capturedSignal).toBeInstanceOf(AbortSignal);
+});
+
+test("lift: supports explicit single object generic parameter <Payload, User>", async () => {
+	interface Payload {
+		id: string;
+		name: string;
+	}
+	interface User {
+		id: string;
+		name: string;
+	}
+	const op = Op.lift<Payload, User>((_signal) => (payload) => Promise.resolve({ id: payload.id, name: payload.name }));
+	expectTypeOf(op).toEqualTypeOf<Op<[Payload], unknown, User>>();
+	const manager = Op.interpret(op, { strategy: "once" });
+	const result = await manager.run({ id: "101", name: "Bob" });
+	expect(result).toStrictEqual(Op.Outcome.make.ok({ id: "101", name: "Bob" }));
+});
+
+test("lift: supports explicit function type parameter <typeof apiFn>", async () => {
+	interface Payload {
+		id: string;
+	}
+	const searchApi = (payload: Payload): Promise<{ success: boolean; id: string; }> =>
+		Promise.resolve({ success: true, id: payload.id });
+
+	const op = Op.lift<typeof searchApi>((_signal) => searchApi);
+	expectTypeOf(op).toEqualTypeOf<Op<[payload: Payload], unknown, { success: boolean; id: string; }>>();
+	const manager = Op.interpret(op, { strategy: "once" });
+	const result = await manager.run({ id: "202" });
+	expect(result).toStrictEqual(Op.Outcome.make.ok({ success: true, id: "202" }));
+});
+
+test("lift: supports synchronous action returning Out directly", async () => {
+	const op = Op.lift((_signal) => (n: number) => n * 3);
+	expectTypeOf(op).toEqualTypeOf<Op<[n: number], unknown, number>>();
+	const manager = Op.interpret(op, { strategy: "once" });
+	const result = await manager.run(10);
+	expect(result).toStrictEqual(Op.Outcome.make.ok(30));
 });
 
 // --- Outcome constructors ---
