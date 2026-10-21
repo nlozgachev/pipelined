@@ -130,28 +130,17 @@ pipe(
 As with other modules in this library, `getOrElse` expects a function (a thunk) to defer evaluating
 the fallback value, saving execution costs if the validation checks pass successfully.
 
-### Exhaustive matching with `match` and `fold`
+### Exhaustive matching with `match`
 
-To drive distinct UI rendering or business branches based on the outcome, you can analyze both cases
-using `match` or `fold`:
+To drive distinct UI rendering or business branches based on the outcome, use `match`:
 
 ```ts
-// Named cases using match
 const view = pipe(
   formValidation,
   Validation.match({
     passed: (data) => renderSuccessDashboard(data),
     failed: (errors) => renderErrorList(errors), // errors is Arr.NonEmpty<E>
   }),
-);
-
-// Positional callbacks using fold (failed handler first)
-const status = pipe(
-  formValidation,
-  Validation.fold(
-    (errors) => `Failed with ${errors.length} errors`,
-    (data) => `Success: user ${data[0]} verified`,
-  ),
 );
 ```
 

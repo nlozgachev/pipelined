@@ -201,29 +201,7 @@ export const TaskValidation = {
 			),
 
 	/**
-	 * Extracts a value from a Task.Validation by providing handlers for both cases.
-	 *
-	 * @see {@link Task.Validation.match} for named-case pattern matching with an object literal.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   Task.Validation.make.passed(42),
-	 *   Task.Validation.fold(
-	 *     errors => `Failed: ${errors.join(", ")}`,
-	 *     value => `Passed: ${value}`,
-	 *   ),
-	 * ); // Task resolving to "Passed: 42"
-	 * ```
-	 */
-	fold:
-		<E, A, B>(onFailed: (errors: NonEmptyArr<E>) => B, onPassed: (value: A) => B) =>
-		(task: Task.Validation<E, A>): Task<B> => Task.map(CoreValidation.fold<E, A, B>(onFailed, onPassed))(task),
-
-	/**
 	 * Pattern matches on a Task.Validation, returning a Task of the result.
-	 *
-	 * @see {@link Task.Validation.fold} for positional argument pattern matching.
 	 *
 	 * @example
 	 * ```ts
@@ -270,7 +248,7 @@ export const TaskValidation = {
 	 * ```
 	 */
 	tap: <A>(sideEffect: (value: A) => void) => <E = never>(task: Task.Validation<E, A>): Task.Validation<E, A> =>
-		Task.map(CoreValidation.tap<E, A>(sideEffect))(task),
+		Task.map(CoreValidation.tap<A>(sideEffect))(task),
 
 	/**
 	 * Recovers from a Failed state by providing a fallback Task.Validation.
@@ -357,7 +335,7 @@ export const TaskValidation = {
 	tapError:
 		<E>(sideEffect: (errors: NonEmptyArr<E>) => void) =>
 		<A = never>(task: Task.Validation<E, A>): Task.Validation<E, A> =>
-			Task.map(CoreValidation.tapError<E, A>(sideEffect))(task),
+			Task.map(CoreValidation.tapError<E>(sideEffect))(task),
 
 	/**
 	 * Combines a record of Task.Validations into a single Task.Validation of a record.

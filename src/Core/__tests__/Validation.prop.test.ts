@@ -35,8 +35,35 @@ test("map: identity on Invalid", () => {
 });
 
 // ---------------------------------------------------------------------------
-// apply — error accumulation
+// apply — error accumulation & applicative laws
 // ---------------------------------------------------------------------------
+
+test("apply: satisfies applicative identity law", () => {
+	const id = (x: number) => x;
+	fc.assert(fc.property(arbValidation, (v) => {
+		const res = Validation.apply(v)(Validation.make.passed<string, typeof id>(id));
+		expect(res).toStrictEqual(v);
+	}));
+});
+
+test("apply: satisfies applicative homomorphism law", () => {
+	fc.assert(fc.property(fc.integer(), fc.integer(), (x, c) => {
+		const f = (n: number) => n + c;
+		const lhs = Validation.apply(Validation.make.passed<string, number>(x))(Validation.make.passed<string, typeof f>(f));
+		const rhs = Validation.make.passed<string, number>(f(x));
+		expect(lhs).toStrictEqual(rhs);
+	}));
+});
+
+test("apply: satisfies applicative interchange law", () => {
+	fc.assert(fc.property(fc.integer(), fc.integer(), (y, c) => {
+		const u = Validation.make.passed<string, (n: number) => number>((n) => n * c);
+		const lhs = Validation.apply(Validation.make.passed<string, number>(y))(u);
+		const evalY = (f: (n: number) => number) => f(y);
+		const rhs = Validation.apply(u)(Validation.make.passed<string, typeof evalY>(evalY));
+		expect(lhs).toStrictEqual(rhs);
+	}));
+});
 
 test("apply: combines Valid function and Valid argument", () => {
 	fc.assert(fc.property(fc.integer(), fc.integer(), (n, delta) => {
@@ -76,12 +103,15 @@ test("getOrElse: returns fallback on Invalid", () => {
 });
 
 // ---------------------------------------------------------------------------
-// fold
+// match
 // ---------------------------------------------------------------------------
 
-test("fold: handles all variants without throwing", () => {
+test("match: handles all variants without throwing", () => {
 	fc.assert(fc.property(arbValidation, (v) => {
-		const result = Validation.fold((errors) => `invalid:${errors.join(",")}`, (x: number) => `valid:${x}`)(v);
+		const result = Validation.match({
+			failed: (errors) => `invalid:${errors.join(",")}`,
+			passed: (x: number) => `valid:${x}`,
+		})(v);
 		expectTypeOf(result).toBeString();
 	}));
 });

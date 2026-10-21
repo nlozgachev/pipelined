@@ -167,26 +167,6 @@ test("apply: propagates AbortSignal down to both sides", async () => {
 	expect(signalRight).toBe(controller.signal);
 });
 
-// --- fold ---
-
-test("fold: calls onValid for Valid", async () => {
-	await expect(
-		pipe(
-			Task.Validation.make.passed(5),
-			Task.Validation.fold((errs) => `invalid:${errs}`, (n: number) => `valid:${n}`),
-		)(),
-	).resolves.toBe("valid:5");
-});
-
-test("fold: calls onInvalid for Invalid", async () => {
-	await expect(
-		pipe(
-			Task.Validation.make.failed<string, number>("e"),
-			Task.Validation.fold((errs) => `invalid:${errs.join(",")}`, (n: number) => `valid:${n}`),
-		)(),
-	).resolves.toBe("invalid:e");
-});
-
 // --- match ---
 
 test("match: calls valid handler for Valid", async () => {
