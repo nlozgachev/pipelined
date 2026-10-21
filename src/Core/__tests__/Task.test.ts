@@ -1031,3 +1031,50 @@ test("Validation: is structurally equivalent to Task<Validation<E, A>>", async (
 	const res = await passedTask();
 	expect(res).toStrictEqual({ kind: "Passed", value: true });
 });
+
+// ---------------------------------------------------------------------------
+// Hardening & Edge Cases
+// ---------------------------------------------------------------------------
+
+test("withProgress: preserves generic type inference in curried pipeline", async () => {
+	const progress: number[] = [];
+	const task = pipe(Task.make(42), Task.withProgress((ratio) => progress.push(ratio)));
+	expectTypeOf(task).toEqualTypeOf<Task<number>>();
+	const result = await task();
+	expect(result).toBe(42);
+	expect(progress).toStrictEqual([0, 1]);
+});
+
+test("all: does not start queued tasks when signal is aborted during execution", async () => {
+	const controller = new AbortController();
+	let executedCount = 0;
+	const tasks = [
+		fromPromise(() => {
+			executedCount++;
+			controller.abort();
+			return Promise.resolve(1);
+		}),
+		fromPromise(() => {
+			executedCount++;
+			return Promise.resolve(2);
+		}),
+	];
+	await Task.all(tasks, { concurrency: 1 })(controller.signal);
+	expect(executedCount).toBe(1);
+});
+
+test("repeat: exits wait immediately if signal is already aborted", async () => {
+	const controller = new AbortController();
+	controller.abort();
+	const result = await pipe(Task.make(1), Task.repeat({ times: 3, delay: Duration.seconds(10) }))(controller.signal);
+	expect(result).toStrictEqual([]);
+});
+
+test("poll: exits wait immediately if signal is already aborted", async () => {
+	const controller = new AbortController();
+	controller.abort();
+	const result = await pipe(Task.make(1), Task.poll({ until: (n) => n === 10, delay: Duration.seconds(10) }))(
+		controller.signal,
+	);
+	expect(result).toBe(1);
+});

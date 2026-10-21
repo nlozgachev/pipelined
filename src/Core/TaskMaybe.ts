@@ -21,7 +21,7 @@ export const TaskMaybe = {
 	 *
 	 * @example
 	 * ```ts
-	 * const task = Task.Maybe.some(42);
+	 * const task = Task.Maybe.make.some(42);
 	 * const res = await task(); // Some(42)
 	 * ```
 	 */
@@ -115,6 +115,14 @@ export const TaskMaybe = {
 	 * Transforms the value inside a Task.Maybe.
 	 *
 	 * @see {@link Task.Maybe.chain} to sequence operations that themselves return a Task.Maybe.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Task.Maybe.make.some(5),
+	 *   Task.Maybe.map(n => n * 2),
+	 * ); // Task.Maybe resolving to Some(10)
+	 * ```
 	 */
 	map: mapTaskMaybe,
 
@@ -137,6 +145,16 @@ export const TaskMaybe = {
 	/**
 	 * Applies a function wrapped in a Task.Maybe to a value wrapped in a Task.Maybe.
 	 * Both Tasks run in parallel.
+	 *
+	 * @example
+	 * ```ts
+	 * const add = (a: number) => (b: number) => a + b;
+	 * pipe(
+	 *   Task.Maybe.make.some(add),
+	 *   Task.Maybe.apply(Task.Maybe.make.some(5)),
+	 *   Task.Maybe.apply(Task.Maybe.make.some(3)),
+	 * ); // Task.Maybe resolving to Some(8)
+	 * ```
 	 */
 	apply: <A>(arg: Task.Maybe<A>) => <B>(task: Task.Maybe<(value: A) => B>): Task.Maybe<B> => (signal) =>
 		Deferred.from.Promise(
@@ -149,6 +167,17 @@ export const TaskMaybe = {
 	 * Extracts a value from a Task.Maybe by providing handlers for both cases.
 	 *
 	 * @see {@link Task.Maybe.match} for named-case pattern matching with an object literal.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Task.Maybe.make.some(42),
+	 *   Task.Maybe.fold(
+	 *     () => "no value",
+	 *     n => `value is ${n}`,
+	 *   ),
+	 * ); // Task resolving to "value is 42"
+	 * ```
 	 */
 	fold: <A, B>(onNone: () => B, onSome: (value: A) => B) => (task: Task.Maybe<A>): Task<B> =>
 		Task.map(CoreMaybe.fold(onNone, onSome))(task),
@@ -175,6 +204,14 @@ export const TaskMaybe = {
 	/**
 	 * Returns the value or a default if the Task.Maybe resolves to None.
 	 * The default can be a different type, widening the result to `Task<A | B>`.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Task.Maybe.make.none(),
+	 *   Task.Maybe.getOrElse(() => 0),
+	 * ); // Task resolving to 0
+	 * ```
 	 */
 	getOrElse: <B>(fallback: () => B) => <A>(task: Task.Maybe<A>): Task<A | B> =>
 		Task.map(CoreMaybe.getOrElse<B>(fallback))(task),
@@ -182,15 +219,45 @@ export const TaskMaybe = {
 	/**
 	 * Executes a side effect on the value without changing the Task.Maybe.
 	 * Useful for logging or debugging.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Task.Maybe.make.some(42),
+	 *   Task.Maybe.tap(n => console.log("Value:", n)),
+	 * );
+	 * ```
 	 */
 	tap: <A>(sideEffect: (value: A) => void) => (task: Task.Maybe<A>): Task.Maybe<A> =>
 		Task.map(CoreMaybe.tap(sideEffect))(task),
 
 	/**
 	 * Filters the value inside a Task.Maybe. Returns None if the predicate fails.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Task.Maybe.make.some(42),
+	 *   Task.Maybe.filter(n => n > 50),
+	 * ); // Task.Maybe resolving to None
+	 * ```
 	 */
 	filter: <A>(predicate: (value: A) => boolean) => (task: Task.Maybe<A>): Task.Maybe<A> =>
 		Task.map(CoreMaybe.filter(predicate))(task),
+
+	/**
+	 * Executes a `Task.Maybe` with an optional signal, returning `Deferred<Maybe<A>>`.
+	 * Use as a terminal step in a `pipe` chain.
+	 *
+	 * @example
+	 * ```ts
+	 * const result = await pipe(
+	 *   Task.Maybe.make.some(42),
+	 *   Task.Maybe.run(),
+	 * );
+	 * ```
+	 */
+	run: (signal?: AbortSignal) => <A>(task: Task.Maybe<A>): Deferred<Maybe<A>> => task(signal),
 
 	// --- to ---
 	to: {
@@ -266,22 +333,27 @@ export const TaskMaybe = {
 	 * }); // Task.Maybe({ name: "Alice", age: 30 })
 	 * ```
 	 */
-	struct: <R extends Record<string, any>>(fields: { [K in keyof R]: Task.Maybe<R[K]>; }): Task.Maybe<R> => (signal) =>
-		Deferred.from.Promise((() => {
-			const keys = Object.keys(fields);
-			const promises = keys.map((key) => Deferred.to.Promise(fields[key](signal)));
-			return Promise.all(promises).then((results) => {
-				const record = {} as R;
-				for (let i = 0; i < keys.length; i++) {
-					const res = results[i] as Maybe<any>;
-					if (CoreMaybe.is.none(res)) {
-						return res;
-					}
-					record[keys[i] as keyof R] = res.value;
+	struct:
+		<R extends Record<string, unknown>>(fields: { [K in keyof R]: Task.Maybe<R[K]>; }): Task.Maybe<R> => (signal) =>
+			Deferred.from.Promise((() => {
+				const keys = Object.keys(fields);
+				const len = keys.length;
+				const promises = new Array<Promise<Maybe<unknown>>>(len);
+				for (let i = 0; i < len; i++) {
+					promises[i] = Deferred.to.Promise(fields[keys[i]](signal));
 				}
-				return CoreMaybe.make.some(record);
-			});
-		})()),
+				return Promise.all(promises).then((results) => {
+					const record = {} as R;
+					for (let i = 0; i < len; i++) {
+						const res = results[i] as Maybe<unknown>;
+						if (CoreMaybe.is.none(res)) {
+							return res;
+						}
+						record[keys[i] as keyof R] = res.value as R[keyof R];
+					}
+					return CoreMaybe.make.some(record);
+				});
+			})()),
 
 	/**
 	 * Creates a memoized version of a Task.Maybe. The task is executed at most once on first call,

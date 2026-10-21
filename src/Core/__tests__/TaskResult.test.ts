@@ -57,8 +57,16 @@ test("map: transforms Ok value", async () => {
 	expect(result).toStrictEqual({ kind: "Ok", value: 10 });
 });
 
-test("map: passes through Err unchanged", async () => {
-	const result = await pipe(Task.Result.make.err<string, number>("error"), Task.Result.map((n: number) => n * 2))();
+test("map: passes through Err unchanged without calling transform", async () => {
+	let called = false;
+	const result = await pipe(
+		Task.Result.make.err<string, number>("error"),
+		Task.Result.map((n: number) => {
+			called = true;
+			return n * 2;
+		}),
+	)();
+	expect(called).toBe(false);
 	expect(result).toStrictEqual({ kind: "Err", error: "error" });
 });
 
@@ -79,11 +87,16 @@ test("mapError: transforms Err value", async () => {
 	expect(result).toStrictEqual({ kind: "Err", error: "OOPS" });
 });
 
-test("mapError: passes through Ok unchanged", async () => {
+test("mapError: passes through Ok unchanged without calling transform", async () => {
+	let called = false;
 	const result = await pipe(
 		Task.Result.make.ok<string, number>(5),
-		Task.Result.mapError((e: string) => e.toUpperCase()),
+		Task.Result.mapError((e: string) => {
+			called = true;
+			return e.toUpperCase();
+		}),
 	)();
+	expect(called).toBe(false);
 	expect(result).toStrictEqual({ kind: "Ok", value: 5 });
 });
 
@@ -1035,4 +1048,93 @@ test("bimap: transforms Err value and leaves Ok branch untouched", async () => {
 	const res = await task();
 	expect(res).toStrictEqual(Result.make.err(new Error("network failure")));
 	expect(okCalled).toBe(false);
+});
+
+// ---------------------------------------------------------------------------
+// Hardening & Concurrency Safety
+// ---------------------------------------------------------------------------
+
+test("timeout: aborts inner task signal when timeout fires", async () => {
+	let innerSignal: AbortSignal | undefined;
+	const task: Task.Result<string, number> = (signal) => {
+		innerSignal = signal;
+		return Deferred.from.Promise(
+			new Promise((resolve) => {
+				setTimeout(() => resolve(Result.make.ok(42)), 100);
+			}),
+		);
+	};
+	const res = await pipe(
+		task,
+		Task.Result.timeout({ duration: Duration.milliseconds(20), onTimeout: () => "timed_out" }),
+	)();
+	expect(res).toStrictEqual(Result.make.err("timed_out"));
+	expect(innerSignal?.aborted).toBe(true);
+});
+
+test("timeout: handles throwing onTimeout gracefully", async () => {
+	const task: Task.Result<string, number> = () =>
+		Deferred.from.Promise(new Promise((resolve) => setTimeout(() => resolve(Result.make.ok(42)), 50)));
+	const res = await pipe(
+		task,
+		Task.Result.timeout({
+			duration: Duration.milliseconds(10),
+			onTimeout: () => {
+				throw new Error("timeout error");
+			},
+		}),
+	)();
+	expect(res.kind).toBe("Err");
+});
+
+test("retry: exits wait immediately if signal is already aborted", async () => {
+	const controller = new AbortController();
+	controller.abort();
+	const policy = RetryPolicy.constant({ attempts: 3, delay: Duration.seconds(10) });
+	const result = await pipe(Task.Result.make.err("fail"), Task.Result.retry(policy))(controller.signal);
+	expect(result).toStrictEqual(Result.make.err("fail"));
+});
+
+test("retry: handles throwing when predicate gracefully", async () => {
+	const policy = RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(10) });
+	const result = await pipe(
+		Task.Result.make.err("fail"),
+		Task.Result.retry(policy, {
+			when: () => {
+				throw new Error("predicate error");
+			},
+		}),
+	)();
+	expect(result).toStrictEqual(Result.make.err("fail"));
+});
+
+test("retry: handles throwing policy.getDelay gracefully", async () => {
+	const faultyPolicy: RetryPolicy = {
+		attempts: 3,
+		getDelay: () => {
+			throw new Error("getDelay error");
+		},
+	};
+	const result = await pipe(Task.Result.make.err("fail"), Task.Result.retry(faultyPolicy))();
+	expect(result).toStrictEqual(Result.make.err("fail"));
+});
+
+test("type: curried map, mapError, tap, tapError preserve exact types", () => {
+	const mapper = Task.Result.map((n: number) => n * 2);
+	const mapped = mapper(Task.Result.make.ok<"MY_ERR", number>(5));
+	expectTypeOf(mapped).toEqualTypeOf<Task.Result<"MY_ERR", number>>();
+
+	const errorMapper = Task.Result.mapError((e: "ERR_1") => `formatted: ${e}`);
+	const errorMapped = errorMapper(Task.Result.make.err<"ERR_1", number>("ERR_1"));
+	expectTypeOf(errorMapped).toEqualTypeOf<Task.Result<string, number>>();
+
+	const tapper = Task.Result.tap((n: number) => console.log(n));
+	const tapped = tapper(Task.Result.make.ok<"MY_ERR", number>(10));
+	expectTypeOf(tapped).toEqualTypeOf<Task.Result<"MY_ERR", number>>();
+
+	const errorTapper = Task.Result.tapError((e: "MY_ERR") => console.error(e));
+	const errorTapped = errorTapper(Task.Result.make.err<"MY_ERR", number>("MY_ERR"));
+	expectTypeOf(errorTapped).toEqualTypeOf<Task.Result<"MY_ERR", number>>();
+
+	expect(true).toBe(true);
 });

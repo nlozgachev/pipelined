@@ -115,7 +115,8 @@ export const TaskValidation = {
 		 * ```
 		 */
 		Result:
-			<E1, E2, A>(combineErrors: (errors: NonEmptyArr<E1>) => E2) => (task: Task.Validation<E1, A>): Task.Result<E2, A> =>
+			<E1, E2>(combineErrors: (errors: NonEmptyArr<E1>) => E2) =>
+			<A = unknown>(task: Task.Validation<E1, A>): Task.Result<E2, A> =>
 				Task.map(CoreValidation.to.Result<E1, E2, A>(combineErrors))(task),
 
 		/**
@@ -161,8 +162,16 @@ export const TaskValidation = {
 	 *
 	 * @see {@link Task.Validation.mapError} to transform accumulated errors.
 	 * @see {@link Task.Validation.apply} to combine multiple validations in parallel.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Task.Validation.make.passed(5),
+	 *   Task.Validation.map(n => n * 2),
+	 * ); // Task.Validation resolving to Passed(10)
+	 * ```
 	 */
-	map: <E, A, B>(transform: (value: A) => B) => (task: Task.Validation<E, A>): Task.Validation<E, B> =>
+	map: <A, B>(transform: (value: A) => B) => <E = never>(task: Task.Validation<E, A>): Task.Validation<E, B> =>
 		Task.map(CoreValidation.map<A, B>(transform))(task),
 
 	/**
@@ -195,6 +204,17 @@ export const TaskValidation = {
 	 * Extracts a value from a Task.Validation by providing handlers for both cases.
 	 *
 	 * @see {@link Task.Validation.match} for named-case pattern matching with an object literal.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Task.Validation.make.passed(42),
+	 *   Task.Validation.fold(
+	 *     errors => `Failed: ${errors.join(", ")}`,
+	 *     value => `Passed: ${value}`,
+	 *   ),
+	 * ); // Task resolving to "Passed: 42"
+	 * ```
 	 */
 	fold:
 		<E, A, B>(onFailed: (errors: NonEmptyArr<E>) => B, onPassed: (value: A) => B) =>
@@ -223,6 +243,14 @@ export const TaskValidation = {
 	/**
 	 * Returns the success value or a default value if the Task.Validation is failed.
 	 * The default can be a different type, widening the result to `Task<A | B>`.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Task.Validation.make.failed("invalid"),
+	 *   Task.Validation.getOrElse(() => 0),
+	 * ); // Task resolving to 0
+	 * ```
 	 */
 	getOrElse: <B>(fallback: () => B) => <E, A>(task: Task.Validation<E, A>): Task<A | B> =>
 		Task.map(CoreValidation.getOrElse<B>(fallback))(task),
@@ -232,8 +260,16 @@ export const TaskValidation = {
 	 * Useful for logging or debugging.
 	 *
 	 * @see {@link Task.Validation.tapError} to perform a side effect on accumulated errors.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Task.Validation.make.passed(42),
+	 *   Task.Validation.tap(n => console.log("Validated:", n)),
+	 * );
+	 * ```
 	 */
-	tap: <E, A>(sideEffect: (value: A) => void) => (task: Task.Validation<E, A>): Task.Validation<E, A> =>
+	tap: <A>(sideEffect: (value: A) => void) => <E = never>(task: Task.Validation<E, A>): Task.Validation<E, A> =>
 		Task.map(CoreValidation.tap<E, A>(sideEffect))(task),
 
 	/**
@@ -242,6 +278,14 @@ export const TaskValidation = {
 	 * The fallback can produce a different success type or resolve with a different error type.
 	 *
 	 * @see {@link Task.Validation.recoverUnless} to conditionally recover based on accumulated errors.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Task.Validation.make.failed("missing"),
+	 *   Task.Validation.recover(() => Task.Validation.make.passed("default")),
+	 * ); // Task.Validation resolving to Passed("default")
+	 * ```
 	 */
 	recover:
 		<E1, E2, B>(fallback: (errors: NonEmptyArr<E1>) => Task.Validation<E2, B>) =>
@@ -294,7 +338,7 @@ export const TaskValidation = {
 	 * ); // Task.Validation(Failed(["OOPS"]))
 	 * ```
 	 */
-	mapError: <E, F, A>(transform: (error: E) => F) => (task: Task.Validation<E, A>): Task.Validation<F, A> =>
+	mapError: <E, F>(transform: (error: E) => F) => <A = never>(task: Task.Validation<E, A>): Task.Validation<F, A> =>
 		Task.map(CoreValidation.mapError<E, F, A>(transform))(task),
 
 	/**
@@ -311,7 +355,8 @@ export const TaskValidation = {
 	 * ```
 	 */
 	tapError:
-		<E, A>(sideEffect: (errors: NonEmptyArr<E>) => void) => (task: Task.Validation<E, A>): Task.Validation<E, A> =>
+		<E>(sideEffect: (errors: NonEmptyArr<E>) => void) =>
+		<A = never>(task: Task.Validation<E, A>): Task.Validation<E, A> =>
 			Task.map(CoreValidation.tapError<E, A>(sideEffect))(task),
 
 	/**
@@ -327,18 +372,24 @@ export const TaskValidation = {
 	 * ```
 	 */
 	struct:
-		<E, R extends Record<string, any>>(fields: { [K in keyof R]: Task.Validation<E, R[K]>; }): Task.Validation<E, R> =>
+		<E, R extends Record<string, unknown>>(
+			fields: { [K in keyof R]: Task.Validation<E, R[K]>; },
+		): Task.Validation<E, R> =>
 		(signal) =>
 			Deferred.from.Promise((() => {
 				const keys = Object.keys(fields);
-				const promises = keys.map((key) => Deferred.to.Promise(fields[key](signal)));
+				const len = keys.length;
+				const promises = new Array<Promise<Validation<E, unknown>>>(len);
+				for (let i = 0; i < len; i++) {
+					promises[i] = Deferred.to.Promise(fields[keys[i]](signal));
+				}
 				return Promise.all(promises).then((results) => {
 					const record = {} as R;
 					const errors: E[] = [];
-					for (let i = 0; i < keys.length; i++) {
-						const res = results[i] as Validation<E, any>;
+					for (let i = 0; i < len; i++) {
+						const res = results[i] as Validation<E, unknown>;
 						if (CoreValidation.is.passed(res)) {
-							record[keys[i] as keyof R] = res.value;
+							record[keys[i] as keyof R] = res.value as R[keyof R];
 						} else {
 							errors.push(...res.errors);
 						}
@@ -346,6 +397,20 @@ export const TaskValidation = {
 					return isNonEmptyArr(errors) ? CoreValidation.make.failedAll(errors) : CoreValidation.make.passed(record);
 				});
 			})()),
+
+	/**
+	 * Executes a `Task.Validation` with an optional signal, returning `Deferred<Validation<E, A>>`.
+	 * Use as a terminal step in a `pipe` chain.
+	 *
+	 * @example
+	 * ```ts
+	 * const result = await pipe(
+	 *   Task.Validation.make.passed(42),
+	 *   Task.Validation.run(),
+	 * );
+	 * ```
+	 */
+	run: (signal?: AbortSignal) => <E, A>(task: Task.Validation<E, A>): Deferred<Validation<E, A>> => task(signal),
 
 	/**
 	 * Creates a memoized version of a Task.Validation. The task is executed at most once on first call,

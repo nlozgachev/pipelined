@@ -92,9 +92,17 @@ test("map: transforms Valid value", async () => {
 		.resolves.toStrictEqual({ kind: "Passed", value: 10 });
 });
 
-test("map: passes through Invalid unchanged", async () => {
-	await expect(pipe(Task.Validation.make.failed<string, number>("err"), Task.Validation.map((n: number) => n * 2))())
-		.resolves.toStrictEqual({ kind: "Failed", errors: ["err"] });
+test("map: passes through Invalid unchanged without calling transform", async () => {
+	let called = false;
+	const res = await pipe(
+		Task.Validation.make.failed<string, number>("err"),
+		Task.Validation.map((n: number) => {
+			called = true;
+			return n * 2;
+		}),
+	)();
+	expect(called).toBe(false);
+	expect(res).toStrictEqual({ kind: "Failed", errors: ["err"] });
 });
 
 test("map: can change value type", async () => {
@@ -377,11 +385,16 @@ test("mapError: transforms accumulated errors", async () => {
 	expect(result).toStrictEqual({ kind: "Failed", errors: ["ERROR"] });
 });
 
-test("mapError: passes through Passed unchanged", async () => {
+test("mapError: passes through Passed unchanged without calling transform", async () => {
+	let called = false;
 	const result = await pipe(
 		Task.Validation.make.passed<string, number>(42),
-		Task.Validation.mapError((s) => s.toUpperCase()),
+		Task.Validation.mapError((s) => {
+			called = true;
+			return s.toUpperCase();
+		}),
 	)();
+	expect(called).toBe(false);
 	expect(result).toStrictEqual({ kind: "Passed", value: 42 });
 });
 
@@ -501,4 +514,46 @@ test("recoverUnless: preserves Passed when called on a Passed task", async () =>
 	);
 	const res = await task();
 	expect(res).toStrictEqual(Validation.make.passed(42));
+});
+
+// ---------------------------------------------------------------------------
+// run
+// ---------------------------------------------------------------------------
+
+test("run: executes Task.Validation in a pipeline", async () => {
+	const controller = new AbortController();
+	const res = await pipe(Task.Validation.make.passed(42), Task.Validation.run(controller.signal));
+	expect(res).toStrictEqual(Validation.make.passed(42));
+});
+
+// ---------------------------------------------------------------------------
+// Type Inference
+// ---------------------------------------------------------------------------
+
+test("type: curried map, mapError, tap, tapError, to.Result preserve exact types", () => {
+	const mapper = Task.Validation.map((n: number) => n * 2);
+	const mapped = mapper(Task.Validation.make.passed<"VALID_ERR", number>(5));
+	expectTypeOf(mapped).toEqualTypeOf<Task.Validation<"VALID_ERR", number>>();
+
+	const errorMapper = Task.Validation.mapError((e: "ERR_A") => `prefix: ${e}`);
+	const errorMapped = errorMapper(Task.Validation.make.failed<"ERR_A", number>("ERR_A"));
+	expectTypeOf(errorMapped).toEqualTypeOf<Task.Validation<string, number>>();
+
+	const tapper = Task.Validation.tap((n: number) => console.log(n));
+	const tapped = tapper(Task.Validation.make.passed<"VALID_ERR", number>(10));
+	expectTypeOf(tapped).toEqualTypeOf<Task.Validation<"VALID_ERR", number>>();
+
+	const errorTapped = pipe(
+		Task.Validation.make.failed<"VALID_ERR", number>("VALID_ERR"),
+		Task.Validation.tapError((errs) => console.error(errs)),
+	);
+	expectTypeOf(errorTapped).toEqualTypeOf<Task.Validation<"VALID_ERR", number>>();
+
+	const converted = pipe(
+		Task.Validation.make.passed<string, number>(100),
+		Task.Validation.to.Result((errs) => errs.join("; ")),
+	);
+	expectTypeOf(converted).toEqualTypeOf<Task.Result<string, number>>();
+
+	expect(true).toBe(true);
 });

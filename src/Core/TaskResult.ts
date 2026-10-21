@@ -8,7 +8,7 @@ import { Task } from "./Task.ts";
 const makeOk = <E = never, A = unknown>(value: A): Task.Result<E, A> => Task.make(CoreResult.make.ok(value));
 const makeErr = <E, A = never>(error: E): Task.Result<E, A> => Task.make(CoreResult.make.err(error));
 
-const mapTaskResult = <E, A, B>(transform: (value: A) => B) => (task: Task.Result<E, A>): Task.Result<E, B> =>
+const mapTaskResult = <A, B>(transform: (value: A) => B) => <E = never>(task: Task.Result<E, A>): Task.Result<E, B> =>
 	Task.map(CoreResult.map<E, A, B>(transform))(task);
 
 const chainTaskResult =
@@ -126,6 +126,14 @@ export const TaskResult = {
 	 *
 	 * @see {@link Task.Result.chain} to sequence operations that themselves return a Task.Result.
 	 * @see {@link Task.Result.mapError} to transform the error value instead of the success value.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Task.Result.make.ok(5),
+	 *   Task.Result.map(n => n * 2),
+	 * ); // Task.Result resolving to Ok(10)
+	 * ```
 	 */
 	map: mapTaskResult,
 
@@ -133,8 +141,16 @@ export const TaskResult = {
 	 * Transforms the error value inside a Task.Result.
 	 *
 	 * @see {@link Task.Result.map} to transform the success value instead of the error value.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Task.Result.make.err("not found"),
+	 *   Task.Result.mapError(e => `Error: ${e}`),
+	 * ); // Task.Result resolving to Err("Error: not found")
+	 * ```
 	 */
-	mapError: <E, F, A>(transform: (error: E) => F) => (task: Task.Result<E, A>): Task.Result<F, A> =>
+	mapError: <E, F>(transform: (error: E) => F) => <A = never>(task: Task.Result<E, A>): Task.Result<F, A> =>
 		Task.map(CoreResult.mapError<E, F, A>(transform))(task),
 
 	/**
@@ -142,6 +158,18 @@ export const TaskResult = {
 	 * If the first fails, propagates the error.
 	 *
 	 * @see {@link Task.Result.map} to transform the inner value without returning a new Task.Result.
+	 *
+	 * @example
+	 * ```ts
+	 * const loadUserId: Task.Result<string, number> = Task.Result.make.ok(42);
+	 * const loadProfile = (id: number): Task.Result<string, { id: number; name: string }> =>
+	 *   Task.Result.make.ok({ id, name: "Alice" });
+	 *
+	 * pipe(
+	 *   loadUserId,
+	 *   Task.Result.chain(loadProfile),
+	 * ); // Task.Result resolving to Ok({ id: 42, name: "Alice" })
+	 * ```
 	 */
 	chain: chainTaskResult,
 
@@ -149,6 +177,17 @@ export const TaskResult = {
 	 * Extracts the value from a Task.Result by providing handlers for both cases.
 	 *
 	 * @see {@link Task.Result.match} for named-case pattern matching with an object literal.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Task.Result.make.ok(42),
+	 *   Task.Result.fold(
+	 *     err => `Failed: ${err}`,
+	 *     val => `Value: ${val}`,
+	 *   ),
+	 * ); // Task resolving to "Value: 42"
+	 * ```
 	 */
 	fold: <E, A, B>(onErr: (error: E) => B, onOk: (value: A) => B) => (task: Task.Result<E, A>): Task<B> =>
 		Task.map(CoreResult.fold(onErr, onOk))(task),
@@ -157,6 +196,17 @@ export const TaskResult = {
 	 * Pattern matches on a Task.Result, returning a Task of the result.
 	 *
 	 * @see {@link Task.Result.fold} for positional argument pattern matching.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Task.Result.make.ok(42),
+	 *   Task.Result.match({
+	 *     err: e => `Error: ${e}`,
+	 *     ok: v => `Got ${v}`,
+	 *   }),
+	 * ); // Task resolving to "Got 42"
+	 * ```
 	 */
 	match: <E, A, B>(cases: { err: (error: E) => B; ok: (value: A) => B; }) => (task: Task.Result<E, A>): Task<B> =>
 		Task.map(CoreResult.match<E, A, B>(cases))(task),
@@ -166,6 +216,14 @@ export const TaskResult = {
 	 * The fallback can produce a different success type or resolve with a different error type.
 	 *
 	 * @see {@link Task.Result.recoverUnless} to conditionally recover based on the error value.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Task.Result.make.err("disk error"),
+	 *   Task.Result.recover(() => Task.Result.make.ok("cached value")),
+	 * ); // Task.Result resolving to Ok("cached value")
+	 * ```
 	 */
 	recover:
 		<E1, E2, B>(fallback: (error: E1) => Task.Result<E2, B>) => <A>(task: Task.Result<E1, A>): Task.Result<E2, A | B> =>
@@ -202,6 +260,14 @@ export const TaskResult = {
 	/**
 	 * Returns the success value or a default value if the Task.Result is an error.
 	 * The default can be a different type, widening the result to `Task<A | B>`.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Task.Result.make.err("oops"),
+	 *   Task.Result.getOrElse(() => 0),
+	 * ); // Task resolving to 0
+	 * ```
 	 */
 	getOrElse: <B>(fallback: () => B) => <E, A>(task: Task.Result<E, A>): Task<A | B> =>
 		Task.map(CoreResult.getOrElse<B>(fallback))(task),
@@ -211,8 +277,16 @@ export const TaskResult = {
 	 * Useful for logging or debugging.
 	 *
 	 * @see {@link Task.Result.tapError} to perform a side effect on the error value.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Task.Result.make.ok({ status: "done" }),
+	 *   Task.Result.tap(v => console.log("Success:", v)),
+	 * );
+	 * ```
 	 */
-	tap: <E, A>(sideEffect: (value: A) => void) => (task: Task.Result<E, A>): Task.Result<E, A> =>
+	tap: <A>(sideEffect: (value: A) => void) => <E = never>(task: Task.Result<E, A>): Task.Result<E, A> =>
 		Task.map(CoreResult.tap<E, A>(sideEffect))(task),
 
 	/**
@@ -230,12 +304,22 @@ export const TaskResult = {
 	 * )
 	 * ```
 	 */
-	tapError: <E, A>(sideEffect: (error: E) => void) => (task: Task.Result<E, A>): Task.Result<E, A> =>
+	tapError: <E>(sideEffect: (error: E) => void) => <A = never>(task: Task.Result<E, A>): Task.Result<E, A> =>
 		Task.map(CoreResult.tapError<E, A>(sideEffect))(task),
 
 	/**
 	 * Applies a function wrapped in a Task.Result to a value wrapped in a Task.Result.
 	 * Both Tasks run in parallel.
+	 *
+	 * @example
+	 * ```ts
+	 * const add = (a: number) => (b: number) => a + b;
+	 * pipe(
+	 *   Task.Result.make.ok(add),
+	 *   Task.Result.apply(Task.Result.make.ok(5)),
+	 *   Task.Result.apply(Task.Result.make.ok(3)),
+	 * ); // Task.Result resolving to Ok(8)
+	 * ```
 	 */
 	apply:
 		<E2, A>(arg: Task.Result<E2, A>) =>
@@ -248,7 +332,7 @@ export const TaskResult = {
 			),
 
 	/**
-	 * Executes a `Task.Result` with an optional signal, returning `Promise<Result<E, A>>`.
+	 * Executes a `Task.Result` with an optional signal, returning `Deferred<Result<E, A>>`.
 	 * Use as a terminal step in a `pipe` chain.
 	 *
 	 * @example
@@ -274,7 +358,7 @@ export const TaskResult = {
 	 * ```
 	 */
 	bindTo: <K extends string>(key: K) => <E, A>(task: Task.Result<E, A>): Task.Result<E, { [P in K]: A; }> =>
-		mapTaskResult<E, A, { [P in K]: A; }>((value) => ({ [key]: value } as { [P in K]: A; }))(task),
+		mapTaskResult<A, { [P in K]: A; }>((value) => ({ [key]: value } as { [P in K]: A; }))(task),
 
 	/**
 	 * Evaluates a new Task.Result using the current accumulator and attaches the output to a new key.
@@ -291,7 +375,7 @@ export const TaskResult = {
 		<K extends string, E2, A, B>(key: K, transform: (value: A) => Task.Result<E2, B>) =>
 		<E1 = never>(task: Task.Result<E1, A>): Task.Result<E1 | E2, A & { [P in K]: B; }> =>
 			chainTaskResult<E2, A, A & { [P in K]: B; }>((acc) =>
-				mapTaskResult<E2, B, A & { [P in K]: B; }>((val) => ({ ...(acc as any), [key]: val } as A & { [P in K]: B; }))(
+				mapTaskResult<B, A & { [P in K]: B; }>((val) => ({ ...(acc as any), [key]: val } as A & { [P in K]: B; }))(
 					transform(acc),
 				)
 			)(task),
@@ -310,19 +394,23 @@ export const TaskResult = {
 	 * ```
 	 */
 	struct:
-		<E, R extends Record<string, any>>(fields: { [K in keyof R]: Task.Result<E, R[K]>; }): Task.Result<E, R> =>
+		<E, R extends Record<string, unknown>>(fields: { [K in keyof R]: Task.Result<E, R[K]>; }): Task.Result<E, R> =>
 		(signal) =>
 			Deferred.from.Promise((() => {
 				const keys = Object.keys(fields);
-				const promises = keys.map((key) => Deferred.to.Promise(fields[key](signal)));
+				const len = keys.length;
+				const promises = new Array<Promise<Result<E, unknown>>>(len);
+				for (let i = 0; i < len; i++) {
+					promises[i] = Deferred.to.Promise(fields[keys[i]](signal));
+				}
 				return Promise.all(promises).then((results) => {
 					const record = {} as R;
-					for (let i = 0; i < keys.length; i++) {
+					for (let i = 0; i < len; i++) {
 						const res = results[i];
 						if (CoreResult.is.err(res)) {
 							return res;
 						}
-						record[keys[i] as keyof R] = res.value;
+						record[keys[i] as keyof R] = res.value as R[keyof R];
 					}
 					return CoreResult.make.ok(record);
 				});
@@ -369,10 +457,21 @@ export const TaskResult = {
 						if (CoreResult.is.ok(res) || attempt >= attempts || signal?.aborted) {
 							return res;
 						}
-						if (options?.when && !options.when(res.error)) {
+						if (options?.when) {
+							try {
+								if (!options.when(res.error)) {
+									return res;
+								}
+							} catch {
+								return res;
+							}
+						}
+						let delay: Duration;
+						try {
+							delay = policy.getDelay(attempt);
+						} catch {
 							return res;
 						}
-						const delay = policy.getDelay(attempt);
 						return wait(delay).then(() => executeAttempt(attempt + 1));
 					});
 
@@ -405,35 +504,49 @@ export const TaskResult = {
 	timeout:
 		<E2>(options: { duration: Duration; onTimeout: () => E2; }) =>
 		<E1 = never, A = unknown>(task: Task.Result<E1, A>): Task.Result<E1 | E2, A> =>
-		(signal) =>
-			Deferred.from.Promise(
-				new Promise<Result<E1 | E2, A>>((resolve) => {
-					const ms = Duration.to.milliseconds(options.duration);
-					// oxlint-disable-next-line prefer-const
-					let timerId: ReturnType<typeof setTimeout> | undefined;
-					const onAbort = () => {
-						clearTimeout(timerId);
-					};
+		(outerSignal) =>
+			Deferred.from.Promise((() => {
+				const controller = new AbortController();
+				let timerId: ReturnType<typeof setTimeout> | undefined;
 
-					if (signal) {
-						if (signal.aborted) {
-							return Deferred.to.Promise(task(signal)).then(resolve);
-						}
-						signal.addEventListener("abort", onAbort, { once: true });
+				const onOuterAbort = () => {
+					clearTimeout(timerId);
+					controller.abort();
+				};
+
+				const cleanUp = () => {
+					clearTimeout(timerId);
+					outerSignal?.removeEventListener("abort", onOuterAbort);
+				};
+
+				if (outerSignal) {
+					if (outerSignal.aborted) {
+						controller.abort();
+					} else {
+						outerSignal.addEventListener("abort", onOuterAbort, { once: true });
 					}
+				}
 
-					timerId = setTimeout(() => {
-						signal?.removeEventListener("abort", onAbort);
-						resolve(CoreResult.make.err(options.onTimeout()));
-					}, ms);
-
-					Deferred.to.Promise(task(signal)).then((res) => {
-						clearTimeout(timerId);
-						signal?.removeEventListener("abort", onAbort);
-						resolve(res);
-					});
-				}),
-			),
+				return Promise.race([
+					Deferred.to.Promise(task(controller.signal)).then((res): Result<E1 | E2, A> => {
+						cleanUp();
+						return res;
+					}),
+					new Promise<Result<E1 | E2, A>>((resolve) => {
+						timerId = setTimeout(() => {
+							controller.abort();
+							cleanUp();
+							let errVal: E2;
+							try {
+								errVal = options.onTimeout();
+							} catch (e) {
+								errVal = e as E2;
+							}
+							resolve(CoreResult.make.err(errVal));
+						}, Duration.to.milliseconds(options.duration));
+					}),
+				]);
+			})()),
 
 	/**
 	 * Runs a list of fallible tasks in parallel and collects all outcomes (`Ok` and `Err`)
@@ -446,7 +559,14 @@ export const TaskResult = {
 	 * ```
 	 */
 	allSettled: <E, A>(tasks: ReadonlyArray<Task.Result<E, A>>): Task<ReadonlyArray<Result<E, A>>> => (signal) =>
-		Deferred.from.Promise(Promise.all(tasks.map((task) => Deferred.to.Promise(task(signal))))),
+		Deferred.from.Promise((() => {
+			const len = tasks.length;
+			const promises = new Array<Promise<Result<E, A>>>(len);
+			for (let i = 0; i < len; i++) {
+				promises[i] = Deferred.to.Promise(tasks[i](signal));
+			}
+			return Promise.all(promises);
+		})()),
 
 	/**
 	 * Narrows the Ok value with a predicate. If the predicate returns false,

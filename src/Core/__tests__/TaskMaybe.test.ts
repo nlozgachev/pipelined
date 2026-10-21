@@ -79,10 +79,17 @@ test("map: transforms Some value", async () => {
 	});
 });
 
-test("map: passes through None unchanged", async () => {
-	await expect(pipe(Task.Maybe.make.none<number>(), Task.Maybe.map((n: number) => n * 2))()).resolves.toStrictEqual({
-		kind: "None",
-	});
+test("map: passes through None unchanged without calling transform", async () => {
+	let called = false;
+	const res = await pipe(
+		Task.Maybe.make.none<number>(),
+		Task.Maybe.map((n: number) => {
+			called = true;
+			return n * 2;
+		}),
+	)();
+	expect(called).toBe(false);
+	expect(res).toStrictEqual({ kind: "None" });
 });
 
 test("map: can change value type", async () => {
@@ -429,4 +436,14 @@ test("memoize: executes task only once across multiple calls", async () => {
 	expect(r1).toStrictEqual(Maybe.make.some(99));
 	expect(r2).toStrictEqual(Maybe.make.some(99));
 	expect(calls).toBe(1);
+});
+
+// ---------------------------------------------------------------------------
+// run
+// ---------------------------------------------------------------------------
+
+test("run: executes Task.Maybe in a pipeline", async () => {
+	const controller = new AbortController();
+	const res = await pipe(Task.Maybe.make.some(42), Task.Maybe.run(controller.signal));
+	expect(res).toStrictEqual(Maybe.make.some(42));
 });

@@ -217,25 +217,32 @@ export const Task = {
 		fromPromise((signal) => {
 			type Results = { [K in keyof T]: T[K] extends Task<infer A> ? A : never; };
 			const concurrency = options?.concurrency;
-			if (concurrency === undefined || concurrency <= 0 || tasks.length <= concurrency) {
-				return Promise.all(tasks.map((t) => toPromise(t, signal))) as Promise<Results>;
+			const len = tasks.length;
+			if (concurrency === undefined || concurrency <= 0 || len <= concurrency) {
+				const promises = new Array<Promise<unknown>>(len);
+				for (let i = 0; i < len; i++) {
+					promises[i] = toPromise(tasks[i], signal);
+				}
+				return Promise.all(promises) as Promise<Results>;
 			}
 
-			const len = tasks.length;
 			const results = new Array(len);
 			let nextIndex = 0;
 
 			const worker = async () => {
 				while (nextIndex < len) {
+					if (signal?.aborted) {
+						break;
+					}
 					const currentIndex = nextIndex++;
 					results[currentIndex] = await toPromise(tasks[currentIndex], signal);
 				}
 			};
 
 			const workerCount = Math.min(concurrency, len);
-			const workers: Promise<void>[] = [];
+			const workers = new Array<Promise<void>>(workerCount);
 			for (let i = 0; i < workerCount; i++) {
-				workers.push(worker());
+				workers[i] = worker();
 			}
 
 			return Promise.all(workers).then(() => results as unknown as Results);
@@ -389,13 +396,19 @@ export const Task = {
 	 * ```
 	 */
 	race: <A>(tasks: ReadonlyArray<Task<A>>): Task<A> => {
-		if (tasks.length === 0) {
+		const len = tasks.length;
+		if (len === 0) {
 			return () => Deferred.from.Promise(new Promise(() => {}));
 		}
 		return fromPromise((outerSignal) => {
-			const controllers = tasks.map(() => new AbortController());
+			const controllers = new Array<AbortController>(len);
+			for (let i = 0; i < len; i++) {
+				controllers[i] = new AbortController();
+			}
 			const onOuterAbort = () => {
-				for (const ctrl of controllers) { ctrl.abort(); }
+				for (let i = 0; i < len; i++) {
+					controllers[i].abort();
+				}
 			};
 			if (outerSignal) {
 				if (outerSignal.aborted) {
@@ -404,18 +417,19 @@ export const Task = {
 					outerSignal.addEventListener("abort", onOuterAbort, { once: true });
 				}
 			}
-			const promises = tasks.map((task, idx) => {
-				const ctrl = controllers[idx];
-				return toPromise(task, ctrl.signal).then((result) => {
-					for (let i = 0; i < controllers.length; i++) {
-						if (i !== idx) {
-							controllers[i].abort();
+			const promises = new Array<Promise<A>>(len);
+			for (let i = 0; i < len; i++) {
+				const ctrl = controllers[i];
+				promises[i] = toPromise(tasks[i], ctrl.signal).then((result) => {
+					for (let j = 0; j < len; j++) {
+						if (j !== i) {
+							controllers[j].abort();
 						}
 					}
 					outerSignal?.removeEventListener("abort", onOuterAbort);
 					return result;
 				});
-			});
+			}
 			return Promise.race(promises);
 		});
 	},
@@ -434,7 +448,14 @@ export const Task = {
 	 * ```
 	 */
 	sequence: <A>(tasks: ReadonlyArray<Task<A>>): Task<ReadonlyArray<A>> =>
-		fromPromise((signal) => Promise.all(tasks.map((t) => toPromise(t, signal)))),
+		fromPromise((signal) => {
+			const len = tasks.length;
+			const promises = new Array<Promise<A>>(len);
+			for (let i = 0; i < len; i++) {
+				promises[i] = toPromise(tasks[i], signal);
+			}
+			return Promise.all(promises);
+		}),
 
 	/**
 	 * Runs an array of Tasks one at a time in order, collecting all results.
@@ -453,12 +474,13 @@ export const Task = {
 	 */
 	sequential: <A>(tasks: ReadonlyArray<Task<A>>): Task<ReadonlyArray<A>> =>
 		fromPromise(async (signal) => {
+			const len = tasks.length;
 			const results: A[] = [];
-			for (const task of tasks) {
+			for (let i = 0; i < len; i++) {
 				if (signal?.aborted) {
 					break;
 				}
-				results.push(await toPromise(task, signal));
+				results.push(await toPromise(tasks[i], signal));
 			}
 			return results;
 		}),
@@ -640,7 +662,7 @@ export const Task = {
 	 * );
 	 * ```
 	 */
-	withProgress: <A>(onProgress: (ratio: number) => void) => (task: Task<A>): Task<A> => (signal?: AbortSignal) => {
+	withProgress: (onProgress: (ratio: number) => void) => <A>(task: Task<A>): Task<A> => (signal?: AbortSignal) => {
 		onProgress(0);
 		const d = task(signal);
 		return Deferred.from.Promise(
