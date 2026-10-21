@@ -1,5 +1,6 @@
 import fc from "fast-check";
 import { expect, expectTypeOf, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
 import { Maybe } from "../Maybe.ts";
 
 // ---------------------------------------------------------------------------
@@ -25,6 +26,12 @@ test("map: satisfies composition law", () => {
 		const f = (x: number) => x + a;
 		const g = (x: number) => x * b;
 		expect(Maybe.map(f)(Maybe.map(g)(m))).toStrictEqual(Maybe.map((x: number) => f(g(x)))(m));
+	}));
+});
+
+test("map: short-circuits on None", () => {
+	fc.assert(fc.property(fc.integer(), (a) => {
+		expect(Maybe.map((x: number) => x + a)(Maybe.make.none())).toStrictEqual(Maybe.make.none());
 	}));
 });
 
@@ -84,6 +91,26 @@ test("match: handles all variants without throwing", () => {
 	fc.assert(fc.property(arbMaybe, (m) => {
 		const result = Maybe.match({ none: () => "none", some: (x: number) => `some:${x}` })(m);
 		expectTypeOf(result).toBeString();
+		expect(result).toBeTypeOf("string");
+	}));
+});
+
+// ---------------------------------------------------------------------------
+// apply
+// ---------------------------------------------------------------------------
+
+test("apply: satisfies homomorphism", () => {
+	fc.assert(fc.property(fc.integer(), fc.integer(), (a, b) => {
+		const f = (x: number) => x + b;
+		expect(pipe(Maybe.make.some(f), Maybe.apply(Maybe.make.some(a)))).toStrictEqual(Maybe.make.some(f(a)));
+	}));
+});
+
+test("apply: short-circuits if either function or arg is None", () => {
+	fc.assert(fc.property(fc.integer(), (a) => {
+		const f = (x: number) => x * 2;
+		expect(pipe(Maybe.make.some(f), Maybe.apply(Maybe.make.none()))).toStrictEqual(Maybe.make.none());
+		expect(pipe(Maybe.make.none(), Maybe.apply(Maybe.make.some(a)))).toStrictEqual(Maybe.make.none());
 	}));
 });
 
@@ -104,6 +131,12 @@ test("tap: always returns identical reference", () => {
 test("recover: identity on Some", () => {
 	fc.assert(fc.property(arbSome, (m) => {
 		expect(Maybe.recover(() => Maybe.make.some(-999))(m)).toBe(m);
+	}));
+});
+
+test("recover: returns fallback on None", () => {
+	fc.assert(fc.property(fc.integer(), (n) => {
+		expect(Maybe.recover(() => Maybe.make.some(n))(Maybe.make.none())).toStrictEqual(Maybe.make.some(n));
 	}));
 });
 

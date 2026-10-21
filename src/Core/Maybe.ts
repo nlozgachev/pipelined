@@ -1,8 +1,9 @@
 // =============================================================================
 // Imports
 // =============================================================================
-import { type Result, Result as CoreResult, type Validation, Validation as CoreValidation } from "#core";
-import { WithKind, WithValue } from "#internal";
+import type { WithKind, WithValue } from "#internal";
+import { type Result, Result as CoreResult } from "./Result.ts";
+import { type Validation, Validation as CoreValidation } from "./Validation.ts";
 
 // =============================================================================
 // Types
@@ -22,7 +23,7 @@ import { WithKind, WithValue } from "#internal";
  * ); // "ALICE@EXAMPLE.COM"
  * ```
  */
-export type Maybe<T> = Maybe.Some<T> | Maybe.None;
+export type Maybe<A> = Maybe.Some<A> | Maybe.None;
 
 export namespace Maybe {
 	export type Some<A> = WithKind<"Some"> & WithValue<A>;
@@ -37,8 +38,8 @@ const _none: Maybe.None = { kind: "None" };
 const makeSome = <A>(value: A): Maybe.Some<A> => ({ kind: "Some", value });
 const makeNone = (): Maybe.None => _none;
 
-const isSome = <A>(data: Maybe<A>): data is Maybe.Some<A> => data.kind === "Some";
-const isNone = <A>(data: Maybe<A>): data is Maybe.None => data.kind === "None";
+const isSome = <A>(maybe: Maybe<A>): maybe is Maybe.Some<A> => maybe.kind === "Some";
+const isNone = <A>(maybe: Maybe<A>): maybe is Maybe.None => maybe.kind === "None";
 
 // =============================================================================
 // Public Export
@@ -103,16 +104,21 @@ export const Maybe = {
 		/**
 		 * Extracts the value from a Maybe, returning null if None.
 		 *
+		 * @see {@link Maybe.to.undefined}
+		 * @see {@link Maybe.from.nullable}
+		 *
 		 * @example
 		 * ```ts
 		 * Maybe.to.nullable(Maybe.make.some(42)); // 42
 		 * Maybe.to.nullable(Maybe.make.none());   // null
 		 * ```
 		 */
-		nullable: <A>(data: Maybe<A>): A | null => (isSome(data) ? data.value : null),
+		nullable: <A>(maybe: Maybe<A>): A | null => (isSome(maybe) ? maybe.value : null),
 
 		/**
 		 * Extracts the value from a Maybe, returning undefined if None.
+		 *
+		 * @see {@link Maybe.to.nullable}
 		 *
 		 * @example
 		 * ```ts
@@ -120,11 +126,13 @@ export const Maybe = {
 		 * Maybe.to.undefined(Maybe.make.none());   // undefined
 		 * ```
 		 */
-		undefined: <A>(data: Maybe<A>): A | undefined => (isSome(data) ? data.value : globalThis.undefined),
+		undefined: <A>(maybe: Maybe<A>): A | undefined => (isSome(maybe) ? maybe.value : globalThis.undefined),
 
 		/**
 		 * Converts a Maybe to a Result.
 		 * Some becomes Ok, None becomes Err with the provided error.
+		 *
+		 * @see {@link Maybe.from.Result}
 		 *
 		 * @example
 		 * ```ts
@@ -139,12 +147,14 @@ export const Maybe = {
 		 * ); // Err("Value was missing")
 		 * ```
 		 */
-		Result: <E>(onNone: () => E) => <A>(data: Maybe<A>): Result<E, A> =>
-			isSome(data) ? CoreResult.make.ok(data.value) : CoreResult.make.err(onNone()),
+		Result: <E>(onNone: () => E) => <A>(maybe: Maybe<A>): Result<E, A> =>
+			isSome(maybe) ? CoreResult.make.ok(maybe.value) : CoreResult.make.err(onNone()),
 
 		/**
 		 * Converts a Maybe to a Validation.
 		 * Some becomes Passed, None becomes Failed with error produced by `onNone`.
+		 *
+		 * @see {@link Maybe.from.Validation}
 		 *
 		 * @example
 		 * ```ts
@@ -152,8 +162,8 @@ export const Maybe = {
 		 * pipe(Maybe.make.none(), Maybe.to.Validation(() => "missing"));   // Failed(["missing"])
 		 * ```
 		 */
-		Validation: <E>(onNone: () => E) => <A>(data: Maybe<A>): Validation<E, A> =>
-			isSome(data) ? CoreValidation.make.passed(data.value) : CoreValidation.make.failed(onNone()),
+		Validation: <E>(onNone: () => E) => <A>(maybe: Maybe<A>): Validation<E, A> =>
+			isSome(maybe) ? CoreValidation.make.passed(maybe.value) : CoreValidation.make.failed(onNone()),
 	},
 
 	// --- from ---
@@ -161,6 +171,8 @@ export const Maybe = {
 		/**
 		 * Creates a Maybe from a nullable value.
 		 * Returns None if the value is null or undefined, Some otherwise.
+		 *
+		 * @see {@link Maybe.to.nullable}
 		 *
 		 * @example
 		 * ```ts
@@ -172,8 +184,10 @@ export const Maybe = {
 			value === null || value === undefined ? makeNone() : makeSome(value),
 
 		/**
-		 * Creates a Maybe from a predicate applied to a value.
+		 * Creates a Maybe from a predicate or type guard applied to a value.
 		 * Returns Some if the predicate passes, None otherwise.
+		 *
+		 * @see {@link Maybe.filter}
 		 *
 		 * @example
 		 * ```ts
@@ -184,11 +198,18 @@ export const Maybe = {
 		 * pipe("", Maybe.from.Predicate((s: string) => s.length > 0));      // None
 		 * ```
 		 */
-		Predicate: <A>(pred: (a: A) => boolean) => (a: A): Maybe<A> => (pred(a) ? makeSome(a) : makeNone()),
+		Predicate:
+			(<A, B extends A>(predicate: (value: A) => boolean) => (value: A): Maybe<B> =>
+				predicate(value) ? makeSome(value as unknown as B) : makeNone()) as {
+					<A, B extends A>(refinement: (value: A) => value is B): (value: A) => Maybe<B>;
+					<A>(predicate: (value: A) => boolean): (value: A) => Maybe<A>;
+				},
 
 		/**
 		 * Creates a Maybe from a Result.
 		 * Ok becomes Some, Err becomes None (the error is discarded).
+		 *
+		 * @see {@link Maybe.to.Result}
 		 *
 		 * @example
 		 * ```ts
@@ -196,7 +217,22 @@ export const Maybe = {
 		 * Maybe.from.Result(Result.make.err("oops")); // None
 		 * ```
 		 */
-		Result: <E, A>(data: Result<E, A>): Maybe<A> => (CoreResult.is.ok(data) ? makeSome(data.value) : makeNone()),
+		Result: <E, A>(result: Result<E, A>): Maybe<A> => (CoreResult.is.ok(result) ? makeSome(result.value) : makeNone()),
+
+		/**
+		 * Creates a Maybe from a Validation.
+		 * Passed becomes Some, Failed becomes None (the errors are discarded).
+		 *
+		 * @see {@link Maybe.to.Validation}
+		 *
+		 * @example
+		 * ```ts
+		 * Maybe.from.Validation(Validation.make.passed(42)); // Some(42)
+		 * Maybe.from.Validation(Validation.make.failed("oops")); // None
+		 * ```
+		 */
+		Validation: <E, A>(validation: Validation<E, A>): Maybe<A> =>
+			CoreValidation.is.passed(validation) ? makeSome(validation.value) : makeNone(),
 	},
 
 	/**
@@ -210,9 +246,9 @@ export const Maybe = {
 	 * safeParse('invalid');   // None
 	 * ```
 	 */
-	tryCatch: <A>(f: () => A): Maybe<A> => {
+	tryCatch: <A>(operation: () => A): Maybe<A> => {
 		try {
-			return makeSome(f());
+			return makeSome(operation());
 		} catch {
 			return makeNone();
 		}
@@ -254,6 +290,8 @@ export const Maybe = {
 
 	/**
 	 * Pattern matches on a Maybe, returning the result of the matching case.
+	 *
+	 * @see {@link Maybe.getOrElse} to extract the value with a fallback.
 	 *
 	 * @example
 	 * ```ts
@@ -377,8 +415,8 @@ export const Maybe = {
 	 * ); // Some(8)
 	 * ```
 	 */
-	apply: <A>(arg: Maybe<A>) => <B>(data: Maybe<(a: A) => B>): Maybe<B> =>
-		isSome(data) && isSome(arg) ? makeSome(data.value(arg.value)) : makeNone(),
+	apply: <A>(arg: Maybe<A>) => <B>(maybe: Maybe<(value: A) => B>): Maybe<B> =>
+		isSome(maybe) && isSome(arg) ? makeSome(maybe.value(arg.value)) : makeNone(),
 
 	/**
 	 * Converts a Maybe value into an object containing a single property.
@@ -389,8 +427,8 @@ export const Maybe = {
 	 * pipe(Maybe.make.some(42), Maybe.bindTo("value")); // Some({ value: 42 })
 	 * ```
 	 */
-	bindTo: <K extends string>(key: K) => <A>(data: Maybe<A>): Maybe<{ [P in K]: A; }> =>
-		isSome(data) ? makeSome({ [key]: data.value } as { [P in K]: A; }) : data,
+	bindTo: <K extends string>(key: K) => <A>(maybe: Maybe<A>): Maybe<{ [P in K]: A; }> =>
+		isSome(maybe) ? makeSome({ [key]: maybe.value } as { [P in K]: A; }) : maybe,
 
 	/**
 	 * Evaluates a new Maybe using the current accumulator and attaches the output to a new key.
@@ -403,13 +441,17 @@ export const Maybe = {
 	 * ); // Some({ a: 1, b: 2 })
 	 * ```
 	 */
-	bind: <K extends string, A, B>(key: K, f: (a: A) => Maybe<B>) => (data: Maybe<A>): Maybe<A & { [P in K]: B; }> => {
-		if (!isSome(data)) {
-			return data;
-		}
-		const mb = f(data.value);
-		return isSome(mb) ? makeSome({ ...(data.value as any), [key]: mb.value } as A & { [P in K]: B; }) : mb;
-	},
+	bind:
+		<K extends string, A, B>(key: K, transform: (value: A) => Maybe<B>) =>
+		(maybe: Maybe<A>): Maybe<A & { [P in K]: B; }> => {
+			if (!isSome(maybe)) {
+				return maybe;
+			}
+			const res = transform(maybe.value);
+			return isSome(res)
+				? makeSome({ ...(maybe.value as unknown as Record<string, unknown>), [key]: res.value } as A & { [P in K]: B; })
+				: res;
+		},
 
 	/**
 	 * Combines a record of Maybes into a single Maybe of a record.
@@ -423,7 +465,7 @@ export const Maybe = {
 	 * }); // Some({ name: "Alice", age: 30 })
 	 * ```
 	 */
-	struct: <R extends Record<string, any>>(fields: { [K in keyof R]: Maybe<R[K]>; }): Maybe<R> => {
+	struct: <R extends Record<string, unknown>>(fields: { [K in keyof R]: Maybe<R[K]>; }): Maybe<R> => {
 		const result = {} as R;
 		for (const key in fields) {
 			if (Object.hasOwn(fields, key)) {
@@ -450,11 +492,11 @@ export const Maybe = {
 		 * Maybe.sequence.Result(Maybe.make.none());                     // Ok(None)
 		 * ```
 		 */
-		Result: <E, A>(data: Maybe<Result<E, A>>): Result<E, Maybe<A>> =>
-			isNone(data)
+		Result: <E, A>(maybe: Maybe<Result<E, A>>): Result<E, Maybe<A>> =>
+			isNone(maybe)
 				? CoreResult.make.ok(makeNone())
-				: CoreResult.is.ok(data.value)
-				? CoreResult.make.ok(makeSome(data.value.value))
-				: CoreResult.make.err(data.value.error),
+				: CoreResult.is.ok(maybe.value)
+				? CoreResult.make.ok(makeSome(maybe.value.value))
+				: CoreResult.make.err(maybe.value.error),
 	},
 };

@@ -52,7 +52,7 @@ We decouple the *what* from the *if*.
 import { pipe } from "@nlozgachev/pipelined/composition";
 import { Maybe } from "@nlozgachev/pipelined/core";
 
-export type Maybe<A> = Some<A> | None;
+export type Maybe<A> = Maybe.Some<A> | Maybe.None;
 ```
 
 ---
@@ -354,6 +354,13 @@ Conversely, if we have a `Result` and want to discard the error context, we can 
 const maybeValue = Maybe.from.Result(Result.make.err("An error occurred")); // None
 ```
 
+Similarly, we can convert a `Validation` to a `Maybe`, discarding failure errors:
+
+```ts
+const maybeValid = Maybe.from.Validation(Validation.make.failed("An error occurred")); // None
+const maybeSuccess = Maybe.from.Validation(Validation.make.passed(42)); // Some(42)
+```
+
 ### Swapping container contexts: sequence.Result
 
 When working with optional operations that return fallible results (such as `Maybe<Result<E, A>>`),
@@ -490,8 +497,8 @@ const failed = Maybe.struct({
   `endDate`, and `regionId`) to all be present before executing a query. `Maybe.struct` combines an
   object of individual `Maybe` fields into a single `Maybe<Record>`, resolving to `Some` only if
   every required field is present and short-circuiting on the first `None`.
-- **Filtering missing entries from collection streams (`Maybe.compact`)**: When resolving an array
-  of identifiers against a local cache or search index, some IDs match while others yield `None`.
+- **Filtering missing entries from collection streams (`Arr.compact`)**: When resolving an array of
+  identifiers against a local cache or search index, some IDs match while others yield `None`.
   `Arr.compact` and `Maybe` combinators filter out all absent entries and unwrap the present values
   into a dense array in a single point-free step.
 - **Explicit public module contracts**: In shared domain services and library interfaces, returning

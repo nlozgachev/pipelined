@@ -2,6 +2,7 @@ import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Maybe } from "../Maybe.ts";
 import { Result } from "../Result.ts";
+import { Validation } from "../Validation.ts";
 
 // ---------------------------------------------------------------------------
 // of / some
@@ -178,6 +179,20 @@ test("from.Result: converts Err to None", () => {
 });
 
 // ---------------------------------------------------------------------------
+// fromValidation
+// ---------------------------------------------------------------------------
+
+test("from.Validation: converts Passed to Some", () => {
+	const result = Maybe.from.Validation(Validation.make.passed(42));
+	expect(result).toStrictEqual({ kind: "Some", value: 42 });
+});
+
+test("from.Validation: converts Failed to None", () => {
+	const result = Maybe.from.Validation(Validation.make.failed("x"));
+	expect(result).toStrictEqual({ kind: "None" });
+});
+
+// ---------------------------------------------------------------------------
 // tryCatch
 // ---------------------------------------------------------------------------
 
@@ -208,6 +223,19 @@ test("map: passes through None unchanged", () => {
 test("map: can change the type", () => {
 	const result = pipe(Maybe.make.some(5), Maybe.map((n: number) => String(n)));
 	expect(result).toStrictEqual({ kind: "Some", value: "5" });
+});
+
+test("map: does not invoke transform on None", () => {
+	let called = false;
+	const result = pipe(
+		Maybe.make.none(),
+		Maybe.map((n: number) => {
+			called = true;
+			return n * 2;
+		}),
+	);
+	expect(called).toBe(false);
+	expect(result).toStrictEqual({ kind: "None" });
 });
 
 // ---------------------------------------------------------------------------
@@ -286,6 +314,19 @@ test("getOrElse: widens return type to A | B when default is a different type", 
 test("getOrElse: returns Some value typed as A | B when Some", () => {
 	const result = pipe(Maybe.make.some("hello"), Maybe.getOrElse(() => null));
 	expect(result).toBe("hello");
+});
+
+test("getOrElse: does not invoke defaultValue callback on Some", () => {
+	let called = false;
+	const result = pipe(
+		Maybe.make.some(42),
+		Maybe.getOrElse(() => {
+			called = true;
+			return 0;
+		}),
+	);
+	expect(called).toBe(false);
+	expect(result).toBe(42);
 });
 
 // ---------------------------------------------------------------------------
@@ -369,6 +410,19 @@ test("filter: narrows type when passed a type guard refinement", () => {
 
 test("filter: returns None when input is None", () => {
 	const result = pipe(Maybe.make.none(), Maybe.filter((n: number) => n > 3));
+	expect(result).toStrictEqual({ kind: "None" });
+});
+
+test("filter: does not invoke predicate on None", () => {
+	let called = false;
+	const result = pipe(
+		Maybe.make.none(),
+		Maybe.filter((n: number) => {
+			called = true;
+			return n > 3;
+		}),
+	);
+	expect(called).toBe(false);
 	expect(result).toStrictEqual({ kind: "None" });
 });
 
@@ -497,6 +551,17 @@ test("from.Predicate: composes in pipe", () => {
 	expect(pipe(17, Maybe.from.Predicate((n: number) => n >= 18))).toStrictEqual(Maybe.make.none());
 });
 
+test("from.Predicate: narrows type when passed a type guard refinement", () => {
+	const isString = (val: unknown): val is string => typeof val === "string";
+	const res = Maybe.from.Predicate(isString)("hello");
+	expectTypeOf(res).toEqualTypeOf<Maybe<string>>();
+	expect(res).toStrictEqual(Maybe.make.some("hello"));
+
+	const resFail = Maybe.from.Predicate(isString)(42);
+	expectTypeOf(resFail).toEqualTypeOf<Maybe<string>>();
+	expect(resFail).toStrictEqual(Maybe.make.none());
+});
+
 // ---------------------------------------------------------------------------
 // Type inference
 // ---------------------------------------------------------------------------
@@ -505,17 +570,20 @@ test("map: return type reflects mapped function output", () => {
 	const r: Maybe<number> = Maybe.make.some(42);
 	const mapped = Maybe.map((n: number) => String(n))(r);
 	expectTypeOf(mapped).toEqualTypeOf<Maybe<string>>();
+	expect(mapped).toStrictEqual(Maybe.make.some("42"));
 });
 
 test("chain: collapses nested Maybe", () => {
 	const r: Maybe<number> = Maybe.make.some(42);
 	const chained = Maybe.chain((n: number) => Maybe.make.some(String(n)))(r);
 	expectTypeOf(chained).toEqualTypeOf<Maybe<string>>();
+	expect(chained).toStrictEqual(Maybe.make.some("42"));
 });
 
 test("getOrElse: widens return type to union", () => {
 	const val = pipe(Maybe.make.some("hello"), Maybe.getOrElse((): null => null));
 	expectTypeOf(val).toEqualTypeOf<string | null>();
+	expect(val).toBe("hello");
 });
 
 // --- bindTo ---
