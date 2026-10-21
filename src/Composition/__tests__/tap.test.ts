@@ -125,6 +125,15 @@ test("log: uses custom formatter when provided", () => {
 	expect(logged).toBe("value is 10");
 });
 
+test("log: logs to console.log by default when no options provided", () => {
+	const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+	const res = pipe(42, tapLog());
+
+	expect(res).toBe(42);
+	expect(spy).toHaveBeenCalledWith("42");
+	spy.mockRestore();
+});
+
 // --- tapInspect ---
 
 test("inspect: prints deep object structure using node inspect", () => {
@@ -288,33 +297,17 @@ test("log: handles circular objects gracefully", () => {
 	expect(logged).toBe("[object Object]");
 });
 
-test("inspect: handles circular objects with fallback formatting", async () => {
-	vi.resetModules();
-	// oxlint-disable-next-line vitest/prefer-import-in-mock
-	vi.doMock("node:util", () => ({ inspect: undefined }));
-	const {
-		tap: dynamicTap,
-		tapLog: dynamicTapLog,
-		tapAsync: dynamicTapAsync,
-		tapTime: dynamicTapTime,
-		tapInspect: dynamicTapInspect,
-	} = await import("../tap");
+test("inspect: handles circular objects with fallback formatting", () => {
+	const builtinSpy = vi.spyOn(process, "getBuiltinModule").mockReturnValue(undefined as any);
 	const spy = vi.spyOn(console, "log").mockImplementation(() => {});
 	const circular: any = {};
 	circular.self = circular;
 
-	// Satisfy code coverage for the dynamically imported module instance
-	dynamicTap(() => {})(10);
-	dynamicTapLog({ label: "test" })(10);
-	dynamicTapAsync(async () => {})(10);
-	dynamicTapTime(() => {}, { label: "test" })(10);
-
-	dynamicTapInspect()(circular);
+	tapInspect()(circular);
 
 	expect(spy).toHaveBeenCalledWith("[object Object]");
 	spy.mockRestore();
-	vi.doUnmock("node:util");
-	vi.resetModules();
+	builtinSpy.mockRestore();
 });
 
 test("time: triggers onFinish callback when async function rejects", async () => {

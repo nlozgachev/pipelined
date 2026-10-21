@@ -2,8 +2,15 @@
 // Imports
 // =============================================================================
 import type { Thenable } from "#internal";
-import { inspect as nodeInspect } from "node:util";
 import { Duration } from "../Types/Duration";
+
+// =============================================================================
+// Internal Helpers
+// =============================================================================
+type InspectFn = (value: unknown, options?: { depth?: number | null; colors?: boolean; }) => string;
+
+const getNodeInspect = (): InspectFn | undefined =>
+	(globalThis as any).process?.getBuiltinModule?.("node:util")?.inspect;
 
 // =============================================================================
 // Public Export & Implementations
@@ -76,7 +83,8 @@ export const tapLog = <A>(options?: tapLog.Options<A>) => (a: A): A => {
 
 /**
  * Performs a deep structured inspect formatting on the piped value, returning it unchanged.
- * In Node.js environments, this utilizes Node's `node:util` `inspect` utility.
+ * In Node.js environments, this utilizes Node's `node:util` `inspect` utility dynamically without static imports.
+ * In non-Node environments, it falls back to structured JSON formatting.
  *
  * @example
  * ```ts
@@ -91,9 +99,10 @@ export const tapInspect = <A>(options?: tapInspect.Options) => (a: A): A => {
 	const depth = options?.depth ?? null;
 	const colors = options?.colors ?? true;
 
+	const inspectFn = getNodeInspect();
 	let formatted: string;
-	if (typeof nodeInspect === "function") {
-		formatted = nodeInspect(a, { depth, colors });
+	if (typeof inspectFn === "function") {
+		formatted = inspectFn(a, { depth, colors });
 	} else {
 		try {
 			formatted = JSON.stringify(a, null, 2);

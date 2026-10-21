@@ -4,13 +4,17 @@ import { expect, test } from "vitest";
 
 const projectRoot = path.resolve(__dirname, "../../");
 
-async function bundleCode(inputCode: string, minify = false): Promise<string> {
+async function bundleCode(
+	inputCode: string,
+	minify = false,
+	platform: "node" | "browser" | "neutral" = "node",
+): Promise<string> {
 	const result = await build({
 		stdin: { contents: inputCode, resolveDir: projectRoot, loader: "ts" },
 		bundle: true,
 		treeShaking: true,
 		minify,
-		platform: "node",
+		platform,
 		format: "esm",
 		target: "es2024",
 		write: false,
@@ -116,4 +120,16 @@ test("bundle: minified size using pipe and Maybe combinators is under 6 KB", asy
 	`;
 	const minified = await bundleCode(code, true);
 	expect(minified.length).toBeLessThan(6000);
+});
+
+test("composition: bundles cleanly for browser platform without node builtins", async () => {
+	const code = `
+		import { pipe, tapInspect } from "#composition";
+		const res = pipe({ a: 1 }, tapInspect());
+		console.log(res);
+	`;
+	const output = await bundleCode(code, false, "browser");
+	expect(output).not.toMatch(/from\s+["']node:util["']/);
+	expect(output).not.toMatch(/require\(["']node:util["']\)/);
+	expect(output).toContain("getBuiltinModule");
 });
