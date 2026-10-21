@@ -93,6 +93,17 @@ test("cancellableWait: resolves immediately when signal is already aborted", asy
 	expect(done).toBe(true);
 });
 
+test("cancellableWait: resolves immediately when signal is already aborted even with positive duration", async () => {
+	const c = new AbortController();
+	c.abort();
+	let done = false;
+	cancellableWait(Duration.milliseconds(5000), c.signal).then(() => {
+		done = true;
+	});
+	await Promise.resolve();
+	expect(done).toBe(true);
+});
+
 // ---------------------------------------------------------------------------
 // runWithRetry
 // ---------------------------------------------------------------------------

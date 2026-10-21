@@ -1,4 +1,4 @@
-import { Duration } from "#types";
+import { Duration, type RetryPolicy } from "#types";
 import type { Deferred } from "../Core/Deferred";
 
 /**
@@ -34,19 +34,19 @@ export type WithLog<T> = { readonly log: ReadonlyArray<T>; };
 // ---------------------------------------------------------------------------
 
 /** Retry policy for `Op.interpret`. */
-export type RetryOptions<E> = {
+export type RetryOptions<E = unknown> = {
 	readonly attempts: number;
-	readonly backoff?: Duration | ((attempt: number) => Duration);
+	readonly backoff?: Duration | ((attempt: number) => Duration) | RetryPolicy;
 	readonly when?: (error: E) => boolean;
 };
 
 /** Timeout policy for `Op.interpret`. Wraps the entire retry sequence. */
-export type TimeoutOptions<E> = { readonly duration: Duration; readonly onTimeout: () => E; };
+export type TimeoutOptions<E = unknown> = { readonly duration: Duration; readonly onTimeout: () => E; };
 
 // Cross-cutting option wrappers
 
-export type WithRetry<E> = { readonly retry: RetryOptions<E>; };
-export type WithTimeout<E> = { readonly timeout?: TimeoutOptions<E>; };
+export type WithRetry<E = unknown> = { readonly retry: RetryOptions<E>; };
+export type WithTimeout<E = unknown> = { readonly timeout?: TimeoutOptions<E>; };
 
 // Throttled / debounced options
 

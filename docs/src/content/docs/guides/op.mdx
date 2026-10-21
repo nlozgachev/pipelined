@@ -10,7 +10,7 @@ Rapid asynchronous operations—such as search autocomplete—can result in out-
 `Op<I, E, A>` decouples the asynchronous operation from its execution strategy:
 
 *   **Task Definition**: The core asynchronous work is defined once using `Op.make`.
-*   **Execution Strategy**: Concurrency models (`restartable`, `exclusive`, `parallel`), retries with backoff, and timeouts are configured via `Op.interpret`.
+*   **Execution Strategy**: Concurrency models (`restartable`, `exclusive`, `concurrent`), retries with backoff, and timeouts are configured via `Op.interpret`.
 
 ---
 
@@ -189,7 +189,7 @@ Use this simple breakdown to select a strategy:
 `throttled` fires immediately on the first leading-edge call and locks out subsequent executions for a cooldown window. By adding `trailing: true`, you can ensure that the last call made during the cooldown period fires once at the trailing edge of the window:
 
 ```ts
-import { Duration } from "@nlozgachev/pipelined/composition";
+import { Duration } from "@nlozgachev/pipelined/types";
 
 const handleResize = Op.interpret(computeLayoutOp, {
   strategy: "throttled",

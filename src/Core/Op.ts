@@ -1,18 +1,15 @@
-import { Deferred, Maybe as CoreMaybe, Result as CoreResult } from "#core";
-import { Duration } from "#types";
+import { Duration, type RetryPolicy } from "#types";
 import {
-	type RetryOptions as InternalRetryOptions,
 	type WithConcurrency,
 	type WithCooldown,
 	type WithDuration,
 	type WithError,
 	type WithKind,
 	type WithMinInterval,
-	type WithN,
 	type WithSize,
 	type WithTimeout,
 	type WithValue,
-} from "../internal/InternalTypes";
+} from "../internal/InternalTypes.ts";
 import {
 	makeBuffered,
 	makeConcurrent,
@@ -24,9 +21,20 @@ import {
 	makeRestartable,
 	makeThrottled,
 	OP_FACTORY,
-} from "../internal/Op.util";
+} from "../internal/Op.util.ts";
+import { Deferred } from "./Deferred.ts";
+import { Maybe as CoreMaybe } from "./Maybe.ts";
+import { Result as CoreResult } from "./Result.ts";
 
 declare const _opBrand: unique symbol;
+
+type RetryOptionsInternal<E = unknown> = {
+	readonly attempts: number;
+	readonly backoff?: Duration | ((attempt: number) => Duration) | RetryPolicy;
+	readonly when?: (error: E) => boolean;
+};
+
+type TimeoutOptionsInternal<E = unknown> = { readonly duration: Duration; readonly onTimeout: () => E; };
 
 // ---------------------------------------------------------------------------
 // Op<I, E, A>
@@ -72,34 +80,50 @@ export type Op<Args extends readonly unknown[] = readonly unknown[], E = unknown
 // ---------------------------------------------------------------------------
 
 // `Retrying<E>` is only added to the state union when retry options are present.
-type MaybeRetry<E, O> = O extends { retry: InternalRetryOptions<E>; } ? Op.Retrying<E> : never;
+type MaybeRetry<E, O> = O extends { retry: RetryOptionsInternal<E>; } ? Op.Retrying<E> : never;
+
+type TimeoutErrorOf<O> = O extends { timeout: { onTimeout: () => infer ET; }; } ? ET : never;
+type CombinedError<E, O> = E | TimeoutErrorOf<O>;
 
 // Union of all valid option shapes — exposed as a single type so the TS language service
 // can show all strategy literals in autocomplete (overload aggregation is unreliable).
 type AllInterpretOptions<Args extends readonly unknown[], E> =
-	| ({ strategy: "once"; retry?: InternalRetryOptions<E>; } & WithTimeout<E>)
-	| ({ strategy: "restartable"; retry?: InternalRetryOptions<E>; } & WithMinInterval & WithTimeout<E>)
-	| ({ strategy: "exclusive"; retry?: InternalRetryOptions<E>; } & WithCooldown & WithTimeout<E>)
+	| ({ strategy: "once"; retry?: RetryOptionsInternal<E>; } & WithTimeout<unknown>)
+	| ({ strategy: "restartable"; retry?: RetryOptionsInternal<E>; } & WithMinInterval & WithTimeout<unknown>)
+	| ({ strategy: "exclusive"; retry?: RetryOptionsInternal<E>; } & WithCooldown & WithTimeout<unknown>)
 	| (
 		& {
 			strategy: "queue";
-			retry?: InternalRetryOptions<E>;
+			retry?: RetryOptionsInternal<E>;
 			maxSize?: number;
 			overflow?: "drop" | "replace-last";
 			dedupe?: (a: Args, b: Args) => boolean;
 		}
 		& WithConcurrency
-		& WithTimeout<E>
+		& WithTimeout<unknown>
 	)
-	| ({ strategy: "buffered"; retry?: InternalRetryOptions<E>; } & WithSize & WithTimeout<E>)
+	| ({ strategy: "buffered"; retry?: RetryOptionsInternal<E>; } & WithSize & WithTimeout<unknown>)
 	| (
-		& { strategy: "debounced"; retry?: InternalRetryOptions<E>; leading?: true; maxWait?: Duration; }
+		& { strategy: "debounced"; retry?: RetryOptionsInternal<E>; leading?: boolean; maxWait?: Duration; }
 		& WithDuration
-		& WithTimeout<E>
+		& WithTimeout<unknown>
 	)
-	| ({ strategy: "throttled"; retry?: InternalRetryOptions<E>; trailing?: true; } & WithDuration & WithTimeout<E>)
-	| ({ strategy: "concurrent"; retry?: InternalRetryOptions<E>; overflow?: "queue" | "drop"; } & WithN & WithTimeout<E>)
-	| ({ strategy: "keyed"; perKey?: "exclusive" | "restartable"; key: (...args: Args) => unknown; } & WithTimeout<E>);
+	| (
+		& { strategy: "throttled"; retry?: RetryOptionsInternal<E>; trailing?: boolean; }
+		& WithDuration
+		& WithTimeout<unknown>
+	)
+	| ({
+		strategy: "concurrent";
+		retry?: RetryOptionsInternal<E>;
+		overflow?: "queue" | "drop";
+		concurrency?: number;
+		n?: number;
+	} & WithTimeout<unknown>)
+	| (
+		& { strategy: "keyed"; perKey?: "exclusive" | "restartable"; key?: (...args: Args) => unknown; }
+		& WithTimeout<unknown>
+	);
 
 // Extracts the key type from the `keyed` strategy's `key` function.
 type KeyType<Args extends readonly unknown[], O> = O extends { key: (...args: Args) => infer K; } ? K : unknown;
@@ -109,28 +133,37 @@ type KeyType<Args extends readonly unknown[], O> = O extends { key: (...args: Ar
 // Tuple form `[O] extends [...]` prevents distribution over unions.
 type InterpretResult<Args extends readonly unknown[], E, A, O> = [O] extends
 	[{ strategy: "throttled"; trailing: true; }]
-	? Op.Manager<Args, E, A, Op.ThrottledTrailingState<E, A> | MaybeRetry<E, O>>
-	: [O] extends [{ strategy: "throttled"; }] ? Op.Manager<Args, E, A, Op.ThrottledState<E, A> | MaybeRetry<E, O>>
-	: [O] extends [{ strategy: "debounced"; }] ? Op.Manager<Args, E, A, Op.DebouncedState<E, A> | MaybeRetry<E, O>>
+	? Op.Manager<Args, CombinedError<E, O>, A, Op.ThrottledTrailingState<CombinedError<E, O>, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "throttled"; }]
+		? Op.Manager<Args, CombinedError<E, O>, A, Op.ThrottledState<CombinedError<E, O>, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "debounced"; }]
+		? Op.Manager<Args, CombinedError<E, O>, A, Op.DebouncedState<CombinedError<E, O>, A> | MaybeRetry<E, O>>
 	: [O] extends [{ strategy: "concurrent"; overflow: "queue"; }]
-		? Op.Manager<Args, E, A, Op.ConcurrentQueueState<E, A> | MaybeRetry<E, O>>
-	: [O] extends [{ strategy: "concurrent"; }] ? Op.Manager<Args, E, A, Op.ConcurrentDropState<E, A> | MaybeRetry<E, O>>
+		? Op.Manager<Args, CombinedError<E, O>, A, Op.ConcurrentQueueState<CombinedError<E, O>, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "concurrent"; }]
+		? Op.Manager<Args, CombinedError<E, O>, A, Op.ConcurrentDropState<CombinedError<E, O>, A> | MaybeRetry<E, O>>
 	: [O] extends [{ strategy: "keyed"; perKey: "restartable"; }]
-		? Op.KeyedManager<Args, KeyType<Args, O>, E, Op.KeyedRestartablePerKey<E, A>>
-	: [O] extends [{ strategy: "keyed"; }] ? Op.KeyedManager<Args, KeyType<Args, O>, E, Op.KeyedExclusivePerKey<E, A>>
-	: [O] extends [{ strategy: "once"; }] ? Op.Manager<Args, E, A, Op.OnceState<E, A> | MaybeRetry<E, O>>
-	: [O] extends [{ strategy: "restartable"; }] ? Op.Manager<Args, E, A, Op.RestartableState<E, A> | MaybeRetry<E, O>>
-	: [O] extends [{ strategy: "exclusive"; }] ? Op.Manager<Args, E, A, Op.ExclusiveState<E, A> | MaybeRetry<E, O>>
+		? Op.KeyedManager<Args, KeyType<Args, O>, CombinedError<E, O>, Op.KeyedRestartablePerKey<CombinedError<E, O>, A>>
+	: [O] extends [{ strategy: "keyed"; }]
+		? Op.KeyedManager<Args, KeyType<Args, O>, CombinedError<E, O>, Op.KeyedExclusivePerKey<CombinedError<E, O>, A>>
+	: [O] extends [{ strategy: "once"; }]
+		? Op.Manager<Args, CombinedError<E, O>, A, Op.OnceState<CombinedError<E, O>, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "restartable"; }]
+		? Op.Manager<Args, CombinedError<E, O>, A, Op.RestartableState<CombinedError<E, O>, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "exclusive"; }]
+		? Op.Manager<Args, CombinedError<E, O>, A, Op.ExclusiveState<CombinedError<E, O>, A> | MaybeRetry<E, O>>
 	: [O] extends [{ strategy: "queue"; overflow: "replace-last"; dedupe: (a: Args, b: Args) => boolean; }]
-		? Op.Manager<Args, E, A, Op.QueueDropAndReplaceState<E, A> | MaybeRetry<E, O>>
+		? Op.Manager<Args, CombinedError<E, O>, A, Op.QueueDropAndReplaceState<CombinedError<E, O>, A> | MaybeRetry<E, O>>
 	: [O] extends [{ strategy: "queue"; overflow: "replace-last"; }]
-		? Op.Manager<Args, E, A, Op.QueueReplaceState<E, A> | MaybeRetry<E, O>>
+		? Op.Manager<Args, CombinedError<E, O>, A, Op.QueueReplaceState<CombinedError<E, O>, A> | MaybeRetry<E, O>>
 	: [O] extends [{ strategy: "queue"; maxSize: number; }]
-		? Op.Manager<Args, E, A, Op.QueueDropState<E, A> | MaybeRetry<E, O>>
+		? Op.Manager<Args, CombinedError<E, O>, A, Op.QueueDropState<CombinedError<E, O>, A> | MaybeRetry<E, O>>
 	: [O] extends [{ strategy: "queue"; dedupe: (a: Args, b: Args) => boolean; }]
-		? Op.Manager<Args, E, A, Op.QueueDropState<E, A> | MaybeRetry<E, O>>
-	: [O] extends [{ strategy: "queue"; }] ? Op.Manager<Args, E, A, Op.QueueState<E, A> | MaybeRetry<E, O>>
-	: [O] extends [{ strategy: "buffered"; }] ? Op.Manager<Args, E, A, Op.BufferedState<E, A> | MaybeRetry<E, O>>
+		? Op.Manager<Args, CombinedError<E, O>, A, Op.QueueDropState<CombinedError<E, O>, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "queue"; }]
+		? Op.Manager<Args, CombinedError<E, O>, A, Op.QueueState<CombinedError<E, O>, A> | MaybeRetry<E, O>>
+	: [O] extends [{ strategy: "buffered"; }]
+		? Op.Manager<Args, CombinedError<E, O>, A, Op.BufferedState<CombinedError<E, O>, A> | MaybeRetry<E, O>>
 	: never;
 
 // Helpers for implementation
@@ -167,18 +200,18 @@ function interpretFn<Args extends readonly unknown[], E, A>(
 		trailing?: boolean;
 		leading?: boolean;
 		maxWait?: Duration;
+		concurrency?: number;
 		n?: number;
 		overflow?: "queue" | "drop" | "replace-last";
 		key?: (...args: Args) => unknown;
 		perKey?: "exclusive" | "restartable";
 		maxSize?: number;
-		concurrency?: number;
 		dedupe?: (a: Args, b: Args) => boolean;
 		size?: number;
 		cooldown?: Duration;
 		minInterval?: Duration;
-		retry?: InternalRetryOptions<E>;
-		timeout?: Op.TimeoutOptions<E>;
+		retry?: RetryOptionsInternal<E>;
+		timeout?: TimeoutOptionsInternal<any>;
 	},
 ): unknown {
 	const { strategy, retry: retryOptions, timeout: timeoutOptions } = options;
@@ -215,7 +248,7 @@ function interpretFn<Args extends readonly unknown[], E, A>(
 		case "concurrent": {
 			return makeConcurrent(
 				op,
-				options.n ?? 1,
+				options.concurrency ?? options.n ?? 1,
 				options.overflow as "queue" | "drop" ?? "drop",
 				retryOptions,
 				timeoutOptions,
@@ -541,9 +574,16 @@ function makeFn(
 				(async () => {
 					const fn = factory(signal);
 					return await fn(...args);
-				})().then((value): CoreResult<unknown, unknown> => CoreResult.make.ok(value)).catch((
-					error,
-				): CoreResult<unknown, unknown> | null => signal.aborted ? null : CoreResult.make.err(options.onError(error))),
+				})().then((value): CoreResult<unknown, unknown> => CoreResult.make.ok(value)).catch(
+					(error): CoreResult<unknown, unknown> | null => {
+						if (signal.aborted) { return null; }
+						try {
+							return CoreResult.make.err(options.onError(error));
+						} catch (handlerError) {
+							return CoreResult.make.err(handlerError);
+						}
+					},
+				),
 			),
 	};
 }
@@ -846,6 +886,62 @@ export namespace Op {
 		| DroppedNil;
 	export type KeyedExclusivePerKey<E, A> = Pending | Ok<A> | Err<E> | AbortedNil | DroppedNil;
 	export type KeyedRestartablePerKey<E, A> = Pending | Ok<A> | Err<E> | AbortedNil | ReplacedNil;
-	export type RetryOptions<E> = import("#internal").RetryOptions<E>;
-	export type TimeoutOptions<E> = import("#internal").TimeoutOptions<E>;
+
+	/**
+	 * Execution strategy for `Op.interpret`.
+	 */
+	export type Strategy =
+		| "once"
+		| "restartable"
+		| "exclusive"
+		| "queue"
+		| "buffered"
+		| "debounced"
+		| "throttled"
+		| "concurrent"
+		| "keyed";
+
+	/**
+	 * Overflow behavior when a queue or concurrency capacity is exceeded.
+	 */
+	export type Overflow = "queue" | "drop" | "replace-last";
+
+	/**
+	 * Concurrency policy per key for `strategy: "keyed"`.
+	 */
+	export type PerKey = "exclusive" | "restartable";
+
+	/**
+	 * Configuration options for operation retry policies in `Op.interpret`.
+	 *
+	 * @example
+	 * ```ts
+	 * const retry: Op.RetryOptions = {
+	 *   attempts: 3,
+	 *   backoff: Duration.seconds(1),
+	 * };
+	 * ```
+	 */
+	export type RetryOptions<E = unknown> = RetryOptionsInternal<E>;
+
+	/**
+	 * Configuration options for operation timeout deadlines in `Op.interpret`.
+	 *
+	 * @example
+	 * ```ts
+	 * const timeout: Op.TimeoutOptions<string> = {
+	 *   duration: Duration.seconds(5),
+	 *   onTimeout: () => "Request timed out",
+	 * };
+	 * ```
+	 */
+	export type TimeoutOptions<E = unknown> = TimeoutOptionsInternal<E>;
+
+	/**
+	 * Union of all valid option shapes accepted by `Op.interpret`.
+	 */
+	export type InterpretOptions<Args extends readonly unknown[] = readonly unknown[], E = unknown> = AllInterpretOptions<
+		Args,
+		E
+	>;
 }

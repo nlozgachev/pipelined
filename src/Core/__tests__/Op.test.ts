@@ -1,6 +1,7 @@
 import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Duration } from "../../Types/Duration.ts";
+import { RetryPolicy } from "../../Types/RetryPolicy.ts";
 import { Deferred } from "../Deferred.ts";
 import { Maybe } from "../Maybe.ts";
 import { Op } from "../Op.ts";
@@ -2151,6 +2152,7 @@ test("reset: resets debounced strategy to Idle", async () => {
 test("reset: resets throttled strategy to Idle", async () => {
 	const manager = Op.interpret(delayedOp(), { strategy: "throttled", duration: Duration.milliseconds(10) });
 	await manager.run(1);
+	await new Promise((r) => setTimeout(r, 20));
 	manager.reset();
 	expect(Op.is.idle(manager.state)).toBe(true);
 });
@@ -2435,4 +2437,348 @@ test("pipe: composes outcome with mapError and to.Result", () => {
 	const outcome = Op.Outcome.make.err("fail") as Op.Outcome<string, number>;
 	const res = pipe(outcome, Op.Outcome.mapError((e) => `error: ${e}`), Op.Outcome.to.Result(() => "nil"));
 	expect(res).toStrictEqual(Result.make.err("error: fail"));
+});
+
+// --- Op.RetryOptions & Op.TimeoutOptions type and runtime tests ---
+
+test("RetryOptions: supports default unknown error type and typed error predicate", () => {
+	const defaultRetry: Op.RetryOptions = { attempts: 3 };
+	expect(defaultRetry.attempts).toBe(3);
+
+	const typedRetry: Op.RetryOptions<string> = {
+		attempts: 2,
+		when: (e) => e.length > 0,
+		backoff: RetryPolicy.constant({ attempts: 2, delay: Duration.milliseconds(50) }),
+	};
+	expectTypeOf(typedRetry).toEqualTypeOf<Op.RetryOptions<string>>();
+	expect(typedRetry.attempts).toBe(2);
+});
+
+test("TimeoutOptions: supports default unknown error type and typed onTimeout callback", () => {
+	const defaultTimeout: Op.TimeoutOptions = { duration: Duration.seconds(1), onTimeout: () => "timed out" };
+	expect(defaultTimeout.duration).toStrictEqual(Duration.seconds(1));
+
+	const typedTimeout: Op.TimeoutOptions<Error> = {
+		duration: Duration.milliseconds(500),
+		onTimeout: () => new Error("timeout error"),
+	};
+	expectTypeOf(typedTimeout).toEqualTypeOf<Op.TimeoutOptions<Error>>();
+	expect(typedTimeout.onTimeout().message).toBe("timeout error");
+});
+
+test("interpret: widens outcome error type when timeout option is present", async () => {
+	const op = Op.make((_signal: AbortSignal) => (_input: number) => Promise.resolve(42), {
+		onError: (_err) => "op_error" as const,
+	});
+	const manager = Op.interpret(op, {
+		strategy: "restartable",
+		timeout: { duration: Duration.milliseconds(10), onTimeout: () => "timeout_error" as const },
+	});
+	const outcome = await manager.run(1);
+	expectTypeOf(outcome).toMatchTypeOf<Op.Outcome<"op_error" | "timeout_error", number>>();
+	expectTypeOf(manager.state).toEqualTypeOf<Op.RestartableState<"op_error" | "timeout_error", number>>();
+	expect(outcome).toStrictEqual(Op.Outcome.make.ok(42));
+});
+
+test("interpret: accepts explicit boolean for leading and trailing options", () => {
+	const debounced = Op.interpret(delayedOp(), {
+		strategy: "debounced",
+		duration: Duration.milliseconds(10),
+		leading: false,
+	});
+	expect(debounced.state).toStrictEqual({ kind: "Idle" });
+
+	const throttled = Op.interpret(delayedOp(), {
+		strategy: "throttled",
+		duration: Duration.milliseconds(10),
+		trailing: false,
+	});
+	expect(throttled.state).toStrictEqual({ kind: "Idle" });
+});
+
+test("interpret: keyed defaults key function to identity when omitted", async () => {
+	const manager = Op.interpret(delayedOp(), { strategy: "keyed" });
+	const res = await manager.run(42);
+	expect(res).toStrictEqual(Op.Outcome.make.ok(42));
+	expect(manager.state.get(42)).toStrictEqual(Op.Outcome.make.ok(42));
+});
+
+test("interpret: concurrent accepts concurrency option name and runs up to limit", async () => {
+	const manager = Op.interpret(delayedOp(15), { strategy: "concurrent", concurrency: 3 });
+	const [p1, p2, p3] = await Promise.all([manager.run(1), manager.run(2), manager.run(3)]);
+	expect(p1).toStrictEqual(Op.Outcome.make.ok(1));
+	expect(p2).toStrictEqual(Op.Outcome.make.ok(2));
+	expect(p3).toStrictEqual(Op.Outcome.make.ok(3));
+});
+
+test("interpret: throttled slow leading call resolves both leading and trailing caller promises", async () => {
+	const op = Op.make((_signal: AbortSignal) => (id: number) =>
+		new Promise<number>((resolve) => {
+			setTimeout(() => resolve(id), 50);
+		}), { onError: String });
+	const manager = Op.interpret(op, { strategy: "throttled", duration: Duration.milliseconds(15), trailing: true });
+	const p1 = manager.run(1);
+	await new Promise((r) => setTimeout(r, 5));
+	const p2 = manager.run(2);
+	const res1 = await p1;
+	const res2 = await p2;
+	expect(res1).toStrictEqual(Op.Outcome.make.ok(1));
+	expect(res2).toStrictEqual(Op.Outcome.make.ok(2));
+});
+
+test("interpret: debounced overlapping trailing executions resolve all caller promises", async () => {
+	const op = Op.make((_signal: AbortSignal) => (id: number) =>
+		new Promise<number>((resolve) => {
+			setTimeout(() => resolve(id), 50);
+		}), { onError: String });
+	const manager = Op.interpret(op, { strategy: "debounced", duration: Duration.milliseconds(15) });
+	const p1 = manager.run(1);
+	await new Promise((r) => setTimeout(r, 25));
+	const p2 = manager.run(2);
+	const [res1, res2] = await Promise.all([p1, p2]);
+	expect(res1).toStrictEqual(Op.Outcome.make.ok(1));
+	expect(res2).toStrictEqual(Op.Outcome.make.ok(2));
+});
+
+test("reset: during in-flight call cancels background execution and prevents overwriting Idle", async () => {
+	const manager = Op.interpret(delayedOp(40), { strategy: "restartable" });
+	const p = manager.run(1);
+	await new Promise((r) => setTimeout(r, 10));
+	manager.reset();
+	expect(manager.state).toStrictEqual({ kind: "Idle" });
+	const outcome = await p;
+	expect(outcome).toStrictEqual({ kind: "OpNil", reason: "aborted" });
+	await new Promise((r) => setTimeout(r, 50));
+	expect(manager.state).toStrictEqual({ kind: "Idle" });
+});
+
+test("abort: on settled manager preserves settled Ok state", async () => {
+	const manager = Op.interpret(delayedOp(5), { strategy: "restartable" });
+	const res = await manager.run(42);
+	expect(res).toStrictEqual(Op.Outcome.make.ok(42));
+	expect(manager.state).toStrictEqual(Op.Outcome.make.ok(42));
+	manager.abort();
+	expect(manager.state).toStrictEqual(Op.Outcome.make.ok(42));
+});
+
+test("make: catches error thrown inside onError callback and returns Err outcome", async () => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => Promise.reject(new Error("initial")), {
+		onError: () => {
+			throw new Error("handler_failed");
+		},
+	});
+	const manager = Op.interpret(op, { strategy: "restartable" });
+	const res = await manager.run(1);
+	expect(Op.Outcome.is.err(res)).toBe(true);
+	expect((res as Op.Err<Error>).error.message).toBe("handler_failed");
+});
+
+test("interpret: retries with RetryPolicy backoff object", async () => {
+	let attempts = 0;
+	const op = Op.make((_signal: AbortSignal) => (_input: number) => {
+		attempts++;
+		if (attempts < 2) { return Promise.reject(new Error("transient")); }
+		return Promise.resolve(42);
+	}, { onError: (e) => (e as Error).message });
+	const manager = Op.interpret(op, {
+		strategy: "restartable",
+		retry: { attempts: 2, backoff: RetryPolicy.constant({ attempts: 2, delay: Duration.milliseconds(5) }) },
+	});
+	const res = await manager.run(1);
+	expect(res).toStrictEqual(Op.Outcome.make.ok(42));
+	expect(attempts).toBe(2);
+});
+
+test("reset: clears active cooldown timer on exclusive manager", async () => {
+	const manager = Op.interpret(delayedOp(5), { strategy: "exclusive", cooldown: Duration.milliseconds(100) });
+	await manager.run(1);
+	manager.reset();
+	expect(manager.state).toStrictEqual({ kind: "Idle" });
+	const res2 = await manager.run(2);
+	expect(res2).toStrictEqual(Op.Outcome.make.ok(2));
+});
+
+test("reset: clears active timer and aborts in-flight trailing on debounced manager", async () => {
+	const op = Op.make((_signal: AbortSignal) => (n: number) => new Promise<number>((r) => setTimeout(() => r(n), 40)), {
+		onError: String,
+	});
+	const manager = Op.interpret(op, { strategy: "debounced", duration: Duration.milliseconds(50) });
+	const p1 = manager.run(1);
+	manager.reset();
+	expect(manager.state).toStrictEqual({ kind: "Idle" });
+	const res1 = await p1;
+	expect(res1).toStrictEqual({ kind: "OpNil", reason: "aborted" });
+
+	const p2 = manager.run(2);
+	await new Promise((r) => setTimeout(r, 60));
+	manager.reset();
+	expect(manager.state).toStrictEqual({ kind: "Idle" });
+	const res2 = await p2;
+	expect(res2).toStrictEqual({ kind: "OpNil", reason: "aborted" });
+});
+
+test("reset: aborts in-flight execution and clears cooldown on throttled manager", async () => {
+	const op = Op.make((_signal: AbortSignal) => (n: number) => new Promise<number>((r) => setTimeout(() => r(n), 40)), {
+		onError: String,
+	});
+	const manager = Op.interpret(op, { strategy: "throttled", duration: Duration.milliseconds(100) });
+	const p = manager.run(1);
+	await new Promise((r) => setTimeout(r, 10));
+	manager.reset();
+	expect(manager.state).toStrictEqual({ kind: "Idle" });
+	const res = await p;
+	expect(res).toStrictEqual({ kind: "OpNil", reason: "aborted" });
+});
+
+test("reset: aborts in-flight slots on keyed manager", async () => {
+	const manager = Op.interpret(delayedOp(40), { strategy: "keyed" });
+	const p = manager.run(1);
+	await new Promise((r) => setTimeout(r, 10));
+	manager.reset();
+	expect(manager.state.size).toBe(0);
+	const res = await p;
+	expect(res).toStrictEqual({ kind: "OpNil", reason: "aborted" });
+});
+
+test("reset: aborts in-flight and queued items on queue manager", async () => {
+	const manager = Op.interpret(delayedOp(40), { strategy: "queue", maxSize: 5 });
+	const p1 = manager.run(1);
+	const p2 = manager.run(2);
+	await new Promise((r) => setTimeout(r, 10));
+	manager.reset();
+	expect(manager.state).toStrictEqual({ kind: "Idle" });
+	const [res1, res2] = await Promise.all([p1, p2]);
+	expect(res1).toStrictEqual({ kind: "OpNil", reason: "aborted" });
+	expect(res2).toStrictEqual({ kind: "OpNil", reason: "aborted" });
+});
+
+test("reset: aborts in-flight and buffered items on buffered manager", async () => {
+	const manager = Op.interpret(delayedOp(40), { strategy: "buffered", size: 2 });
+	const p1 = manager.run(1);
+	const p2 = manager.run(2);
+	await new Promise((r) => setTimeout(r, 10));
+	manager.reset();
+	expect(manager.state).toStrictEqual({ kind: "Idle" });
+	const [res1, res2] = await Promise.all([p1, p2]);
+	expect(res1).toStrictEqual({ kind: "OpNil", reason: "aborted" });
+	expect(res2).toStrictEqual({ kind: "OpNil", reason: "aborted" });
+});
+
+test("reset: aborts in-flight and queued items on concurrent manager", async () => {
+	const manager = Op.interpret(delayedOp(40), { strategy: "concurrent", concurrency: 1, overflow: "queue" });
+	const p1 = manager.run(1);
+	const p2 = manager.run(2);
+	await new Promise((r) => setTimeout(r, 10));
+	manager.reset();
+	expect(manager.state).toStrictEqual({ kind: "Idle" });
+	const [res1, res2] = await Promise.all([p1, p2]);
+	expect(res1).toStrictEqual({ kind: "OpNil", reason: "aborted" });
+	expect(res2).toStrictEqual({ kind: "OpNil", reason: "aborted" });
+});
+
+test("reset: aborts in-flight item on once manager", async () => {
+	const manager = Op.interpret(delayedOp(40), { strategy: "once" });
+	const p = manager.run(1);
+	await new Promise((r) => setTimeout(r, 10));
+	manager.reset();
+	expect(manager.state).toStrictEqual({ kind: "Idle" });
+	const res = await p;
+	expect(res).toStrictEqual({ kind: "OpNil", reason: "aborted" });
+});
+
+test("abort: on settled exclusive manager preserves settled Ok state during cooldown", async () => {
+	const manager = Op.interpret(delayedOp(5), { strategy: "exclusive", cooldown: Duration.milliseconds(100) });
+	const res = await manager.run(42);
+	expect(res).toStrictEqual(Op.Outcome.make.ok(42));
+	expect(manager.state).toStrictEqual(Op.Outcome.make.ok(42));
+	manager.abort();
+	expect(manager.state).toStrictEqual(Op.Outcome.make.ok(42));
+});
+
+test("abort: on settled throttled manager preserves settled Ok state during cooldown", async () => {
+	const manager = Op.interpret(delayedOp(5), {
+		strategy: "throttled",
+		duration: Duration.milliseconds(100),
+		trailing: false,
+	});
+	const res = await manager.run(42);
+	expect(res).toStrictEqual(Op.Outcome.make.ok(42));
+	expect(manager.state).toStrictEqual(Op.Outcome.make.ok(42));
+	manager.abort();
+	expect(manager.state).toStrictEqual(Op.Outcome.make.ok(42));
+});
+
+test("abort: on debounced manager with pending trailing call resolves caller promise with AbortedNil while keeping state Idle", async () => {
+	const manager = Op.interpret(delayedOp(5), {
+		strategy: "debounced",
+		duration: Duration.milliseconds(50),
+		leading: false,
+	});
+	const p = manager.run(42);
+	await new Promise((r) => setTimeout(r, 10));
+	manager.abort();
+	expect(manager.state).toStrictEqual({ kind: "Idle" });
+	const res = await p;
+	expect(res).toStrictEqual({ kind: "OpNil", reason: "aborted" });
+});
+
+test("retry: when predicate throwing error converts to Err outcome", async () => {
+	const op = Op.make((_signal: AbortSignal) => (_input: number) => Promise.reject(new Error("fail")), {
+		onError: (e) => (e as Error).message,
+	});
+	const manager = Op.interpret(op, {
+		strategy: "restartable",
+		retry: {
+			attempts: 3,
+			when: () => {
+				throw new Error("predicate_crashed");
+			},
+		},
+	});
+	const res = await manager.run(1);
+	expect(Op.Outcome.is.err(res)).toBe(true);
+	expect((res as unknown as Op.Err<Error>).error.message).toBe("predicate_crashed");
+});
+
+test("timeout: onTimeout callback throwing error converts to Err outcome", async () => {
+	const manager = Op.interpret(delayedOp(100), {
+		strategy: "restartable",
+		timeout: {
+			duration: Duration.milliseconds(10),
+			onTimeout: () => {
+				throw new Error("timeout_callback_failed");
+			},
+		},
+	});
+	const res = await manager.run(1);
+	expect(Op.Outcome.is.err(res)).toBe(true);
+	expect((res as unknown as Op.Err<Error>).error.message).toBe("timeout_callback_failed");
+});
+
+test("interpret: keyed strategy catches keyFn exception and returns Err outcome", async () => {
+	const manager = Op.interpret(delayedOp(5), {
+		strategy: "keyed",
+		key: () => {
+			throw new Error("bad_key");
+		},
+	});
+	const res = await manager.run(1);
+	expect(Op.Outcome.is.err(res)).toBe(true);
+	expect((res as unknown as Op.Err<Error>).error.message).toBe("bad_key");
+});
+
+test("interpret: queue dedupe predicate throwing error is treated as false", async () => {
+	const manager = Op.interpret(delayedOp(30), {
+		strategy: "queue",
+		dedupe: () => {
+			throw new Error("dedupe_failed");
+		},
+	});
+	const p1 = manager.run(1);
+	const p2 = manager.run(2);
+	const p3 = manager.run(3);
+	const [res1, res2, res3] = await Promise.all([p1, p2, p3]);
+	expect(res1).toStrictEqual(Op.Outcome.make.ok(1));
+	expect(res2).toStrictEqual(Op.Outcome.make.ok(2));
+	expect(res3).toStrictEqual(Op.Outcome.make.ok(3));
 });
