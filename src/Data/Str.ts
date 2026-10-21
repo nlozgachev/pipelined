@@ -1,9 +1,9 @@
 // =============================================================================
 // Imports
 // =============================================================================
-import { Maybe } from "#core";
 import { type NonEmpty as InternalNonEmpty } from "#internal";
-import type { Brand } from "#types";
+import { Maybe } from "../Core/Maybe.ts";
+import type { Brand } from "../Types/Brand.ts";
 
 // =============================================================================
 // Types

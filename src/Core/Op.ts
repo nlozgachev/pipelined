@@ -1,4 +1,3 @@
-import { Duration, type RetryPolicy } from "#types";
 import {
 	type WithConcurrency,
 	type WithCooldown,
@@ -22,6 +21,8 @@ import {
 	makeThrottled,
 	OP_FACTORY,
 } from "../internal/Op.util.ts";
+import { Duration } from "../Types/Duration.ts";
+import type { RetryPolicy } from "../Types/RetryPolicy.ts";
 import { Deferred } from "./Deferred.ts";
 import { Maybe as CoreMaybe } from "./Maybe.ts";
 import { Result as CoreResult } from "./Result.ts";

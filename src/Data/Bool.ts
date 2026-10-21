@@ -1,7 +1,8 @@
 // =============================================================================
 // Imports
 // =============================================================================
-import { Maybe, Result } from "#core";
+import { Maybe } from "../Core/Maybe.ts";
+import { Result } from "../Core/Result.ts";
 
 // =============================================================================
 // Private Helpers & Combinator Implementations

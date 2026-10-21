@@ -1,4 +1,4 @@
-import { Refinement } from "#core";
+import { Refinement } from "./Refinement.ts";
 
 /**
  * A boolean-valued function over a type `A`.

@@ -1,4 +1,4 @@
-import { Maybe } from "#core";
+import { Maybe } from "../Core/Maybe.ts";
 
 /**
  * Safe conversion and arithmetic utilities for arbitrary-precision integers (`bigint`).

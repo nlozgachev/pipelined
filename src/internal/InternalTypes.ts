@@ -1,5 +1,6 @@
-import { Duration, type RetryPolicy } from "#types";
 import type { Deferred } from "../Core/Deferred";
+import { Duration } from "../Types/Duration.ts";
+import type { RetryPolicy } from "../Types/RetryPolicy.ts";
 
 /**
  * Represents a promise-like object or a deferred value that can be resolved with `.then()`.

@@ -1,4 +1,5 @@
-import { Lens, Maybe } from "#core";
+import { Lens } from "./Lens.ts";
+import { Maybe } from "./Maybe.ts";
 
 /** Keys of T for which undefined is assignable (i.e. optional fields). */
 type OptionalKeys<T> = { [K in keyof T]-?: undefined extends T[K] ? K : never; }[keyof T];

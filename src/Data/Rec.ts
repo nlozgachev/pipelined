@@ -1,9 +1,10 @@
 // =============================================================================
 // Imports
 // =============================================================================
-import { Maybe as CoreMaybe, Result as CoreResult } from "#core";
 import { type NonEmpty as InternalNonEmpty, type NonEmptyArr } from "#internal";
-import type { Brand } from "#types";
+import { Maybe as CoreMaybe } from "../Core/Maybe.ts";
+import { Result as CoreResult } from "../Core/Result.ts";
+import type { Brand } from "../Types/Brand.ts";
 
 // =============================================================================
 // Types

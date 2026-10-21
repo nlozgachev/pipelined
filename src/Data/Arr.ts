@@ -1,9 +1,10 @@
 // =============================================================================
 // Imports
 // =============================================================================
-import { Equality, Ordering } from "#core";
 import { isNonEmptyArr, type NonEmptyArr } from "#internal";
+import { Equality } from "../Core/Equality.ts";
 import { Maybe as CoreMaybe } from "../Core/Maybe.ts";
+import { Ordering } from "../Core/Ordering.ts";
 import { Result as CoreResult } from "../Core/Result.ts";
 import { Task as CoreTask } from "../Core/Task.ts";
 import { Validation as CoreValidation } from "../Core/Validation.ts";

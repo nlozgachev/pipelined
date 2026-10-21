@@ -1,4 +1,4 @@
-import { Result } from "#core";
+import { Result } from "../Core/Result.ts";
 
 const isSyntaxError = (err: unknown): err is SyntaxError =>
 	typeof err === "object" && err !== null && "name" in err && (err as Error).name === "SyntaxError";

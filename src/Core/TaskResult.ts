@@ -1,5 +1,6 @@
 import type { Thenable } from "#internal";
-import { Duration, type RetryPolicy } from "#types";
+import { Duration } from "../Types/Duration.ts";
+import type { RetryPolicy } from "../Types/RetryPolicy.ts";
 import { Deferred } from "./Deferred.ts";
 import { type Maybe, Maybe as CoreMaybe } from "./Maybe.ts";
 import { type Result, Result as CoreResult } from "./Result.ts";

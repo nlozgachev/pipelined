@@ -1,8 +1,9 @@
 // =============================================================================
 // Imports
 // =============================================================================
-import { type Maybe, Maybe as CoreMaybe, type Result, Result as CoreResult } from "#core";
 import type { WithError, WithKind, WithValue } from "#internal";
+import { type Maybe, Maybe as CoreMaybe } from "./Maybe.ts";
+import { type Result, Result as CoreResult } from "./Result.ts";
 
 // =============================================================================
 // Types

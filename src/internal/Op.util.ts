@@ -3,10 +3,10 @@
  * Not part of the public API.
  */
 
-import { Duration } from "#types";
 import { Deferred } from "../Core/Deferred.ts";
 import type { Op } from "../Core/Op.ts";
 import { Result } from "../Core/Result.ts";
+import { Duration } from "../Types/Duration.ts";
 
 // ---------------------------------------------------------------------------
 // Internal singletons & helpers

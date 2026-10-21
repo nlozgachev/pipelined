@@ -1,4 +1,5 @@
-import { Maybe as CoreMaybe, Result as CoreResult } from "#core";
+import { Maybe as CoreMaybe } from "./Maybe.ts";
+import { Result as CoreResult } from "./Result.ts";
 
 /**
  * A function from `A` to `A is B` — a type predicate paired with a runtime check.
