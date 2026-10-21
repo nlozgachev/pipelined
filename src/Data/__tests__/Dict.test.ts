@@ -432,6 +432,14 @@ test("to.record: returns empty object for empty map", () => {
 	expect(Dict.to.record(Dict.empty<string, unknown>())).toStrictEqual({});
 });
 
+test("to.record: safely handles __proto__ without prototype pollution", () => {
+	const map = Dict.from.entries([["__proto__", "polluted" as unknown]]);
+	const rec = Dict.to.record(map);
+	expect(Object.hasOwn(rec, "__proto__")).toBe(true);
+	expect((rec as any)["__proto__"]).toBe("polluted");
+	expect(({} as any)["polluted"]).toBeUndefined();
+});
+
 // ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
@@ -504,6 +512,11 @@ test("NonEmpty.reduce: reduces non-empty map values without seed", () => {
 	const m = Dict.NonEmpty.singleton("a", 10);
 	const result = pipe(m, Dict.NonEmpty.reduce((a, b) => a + b));
 	expect(result).toBe(10);
+
+	const multi = Dict.NonEmpty.from.map(new Map([["a", 10], ["b", 20]]));
+	expect(multi.kind).toBe("Some");
+	const multiVal = (multi as { value: Dict.NonEmpty<string, number>; }).value;
+	expect(pipe(multiVal, Dict.NonEmpty.reduce((a, b) => a + b))).toBe(30);
 });
 
 test("map: returns standard ReadonlyMap when called on NonEmpty", () => {

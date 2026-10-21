@@ -7,7 +7,7 @@ const arrMap = Arr.map;
 const numRange = Num.range;
 const numMultiply = Num.multiply;
 const numClamp = Num.clamp;
-const numParse = Num.parse;
+const numFromString = Num.from.string;
 
 const data100 = Array.from({ length: 100 }, (_, i) => i);
 const data10k = Array.from({ length: 10_000 }, (_, i) => i);
@@ -126,8 +126,8 @@ test("clamp-10k", async ({ bench }) => {
 
 test("parse-100-valid", async ({ bench }) => {
 	await bench.compare(
-		bench("1. (current) Num.parse 100 (all valid)", () => {
-			numStrings100.map(numParse);
+		bench("1. (current) Num.from.string 100 (all valid)", () => {
+			numStrings100.map(numFromString);
 		}),
 		bench("2. native parse 100 (all valid)", () => {
 			numStrings100.map((s) => {
@@ -141,8 +141,8 @@ test("parse-100-valid", async ({ bench }) => {
 
 test("parse-100-mixed", async ({ bench }) => {
 	await bench.compare(
-		bench("1. (current) Num.parse 100 (mixed)", () => {
-			mixedStrings100.map(numParse);
+		bench("1. (current) Num.from.string 100 (mixed)", () => {
+			mixedStrings100.map(numFromString);
 		}),
 		bench("2. native parse 100 (mixed)", () => {
 			mixedStrings100.map((s) => {
@@ -156,8 +156,8 @@ test("parse-100-mixed", async ({ bench }) => {
 
 test("parse-10k-valid", async ({ bench }) => {
 	await bench.compare(
-		bench("1. (current) Num.parse 10k (all valid)", () => {
-			numStrings10k.map(numParse);
+		bench("1. (current) Num.from.string 10k (all valid)", () => {
+			numStrings10k.map(numFromString);
 		}),
 		bench("2. native parse 10k (all valid)", () => {
 			numStrings10k.map((s) => {
@@ -171,8 +171,8 @@ test("parse-10k-valid", async ({ bench }) => {
 
 test("parse-10k-mixed", async ({ bench }) => {
 	await bench.compare(
-		bench("1. (current) Num.parse 10k (mixed)", () => {
-			mixedStrings10k.map(numParse);
+		bench("1. (current) Num.from.string 10k (mixed)", () => {
+			mixedStrings10k.map(numFromString);
 		}),
 		bench("2. native parse 10k (mixed)", () => {
 			mixedStrings10k.map((s) => {

@@ -17,13 +17,64 @@ type NonEmptySet<A> = Brand<InternalNonEmpty<"Uniq">, ReadonlySet<A>>;
 // Private Helpers & Combinator Implementations
 // =============================================================================
 
+/**
+ * Returns `true` when the set contains zero elements.
+ *
+ * @see {@link isNonEmpty} to check if a set has elements.
+ *
+ * @example
+ * ```ts
+ * Uniq.is.empty(Uniq.empty()); // true
+ * Uniq.is.empty(Uniq.singleton(1)); // false
+ * ```
+ */
 const isEmpty = <A>(set: ReadonlySet<A>): boolean => set.size === 0;
+
+/**
+ * Type guard — checks if a set contains at least one element.
+ *
+ * @see {@link isEmpty} to check if a set is empty.
+ *
+ * @example
+ * ```ts
+ * Uniq.is.nonEmpty(Uniq.singleton(1)); // true
+ * Uniq.is.nonEmpty(Uniq.empty());      // false
+ * ```
+ */
 const isNonEmpty = <A>(set: ReadonlySet<A>): set is NonEmptySet<A> => set.size > 0;
 
+/**
+ * Creates an empty unique set.
+ *
+ * @see {@link singleton} to create a set with one element.
+ *
+ * @example
+ * ```ts
+ * const set = Uniq.empty<number>(); // Set(0) {}
+ * ```
+ */
 const empty = <A>(): ReadonlySet<A> => new globalThis.Set<A>();
 
+/**
+ * Creates a unique set with a single element.
+ *
+ * @see {@link empty} to create an empty set.
+ *
+ * @example
+ * ```ts
+ * Uniq.singleton(42); // Set(1) { 42 }
+ * ```
+ */
 const singleton = <A>(item: A): ReadonlySet<A> => new globalThis.Set([item]);
 
+/**
+ * Creates a unique set from an array of elements.
+ *
+ * @example
+ * ```ts
+ * Uniq.from.array([1, 2, 2, 3]); // Set(3) { 1, 2, 3 }
+ * ```
+ */
 const fromArray = <A>(items: readonly A[]): ReadonlySet<A> => new globalThis.Set(items);
 
 /**
@@ -34,6 +85,14 @@ const fromArray = <A>(items: readonly A[]): ReadonlySet<A> => new globalThis.Set
  */
 const has = <A>(item: A) => (set: ReadonlySet<A>): boolean => set.has(item);
 
+/**
+ * Returns the number of elements in the set.
+ *
+ * @example
+ * ```ts
+ * Uniq.size(Uniq.from.array([1, 2, 3])); // 3
+ * ```
+ */
 const size = <A>(set: ReadonlySet<A>): number => set.size;
 
 /**
@@ -68,7 +127,7 @@ const remove = <A>(item: A) => (set: ReadonlySet<A>): ReadonlySet<A> => {
 /**
  * Toggles presence of an element in a set.
  *
- * @see {@link add} for unconditionally adding an element.
+ * @see {@link insert} for unconditionally adding an element.
  * @see {@link remove} for unconditionally removing an element.
  */
 const toggle = <A>(item: A) => (set: ReadonlySet<A>): ReadonlySet<A> => {
@@ -184,6 +243,14 @@ const difference = <A>(other: ReadonlySet<A>) => (set: ReadonlySet<A>): Readonly
 	return result;
 };
 
+/**
+ * Returns `true` if `set` is a subset of `other`.
+ *
+ * @example
+ * ```ts
+ * pipe(Uniq.from.array([1, 2]), Uniq.is.subsetOf(Uniq.from.array([1, 2, 3]))); // true
+ * ```
+ */
 const isSubsetOf = <A>(other: ReadonlySet<A>) => (set: ReadonlySet<A>): boolean => {
 	const s = set as Set<A>;
 	if (typeof s.isSubsetOf === "function") {
@@ -197,6 +264,14 @@ const isSubsetOf = <A>(other: ReadonlySet<A>) => (set: ReadonlySet<A>): boolean 
 	return true;
 };
 
+/**
+ * Reduces elements of a set from an initial value.
+ *
+ * @example
+ * ```ts
+ * pipe(Uniq.from.array([1, 2, 3]), Uniq.reduce(0, (acc, n) => acc + n)); // 6
+ * ```
+ */
 const reduce = <A, B>(initial: B, reducer: (accumulator: B, item: A) => B) => (set: ReadonlySet<A>): B => {
 	let acc = initial;
 	for (const item of set) {
@@ -205,20 +280,75 @@ const reduce = <A, B>(initial: B, reducer: (accumulator: B, item: A) => B) => (s
 	return acc;
 };
 
+/**
+ * Converts a unique set to a readonly array.
+ *
+ * @example
+ * ```ts
+ * Uniq.to.array(Uniq.from.array([1, 2, 3])); // [1, 2, 3]
+ * ```
+ */
 const toArray = <A>(set: ReadonlySet<A>): readonly A[] => [...set];
 
 // --- NonEmpty helpers ---
 const UniqNonEmptyConst = {
+	/**
+	 * Creates a NonEmptySet containing a single element.
+	 *
+	 * @example
+	 * ```ts
+	 * Uniq.NonEmpty.singleton(42); // NonEmptySet(1) { 42 }
+	 * ```
+	 */
 	singleton: <A>(item: A): NonEmptySet<A> => new globalThis.Set([item]) as unknown as NonEmptySet<A>,
+
 	from: {
+		/**
+		 * Refines a standard Set to a NonEmptySet, returning `Some` if size > 0, `None` otherwise.
+		 *
+		 * @example
+		 * ```ts
+		 * Uniq.NonEmpty.from.set(new Set([1, 2])); // Some(NonEmptySet)
+		 * Uniq.NonEmpty.from.set(new Set());        // None
+		 * ```
+		 */
 		set: <A>(set: ReadonlySet<A>): Maybe<NonEmptySet<A>> =>
 			set.size > 0 ? Maybe.make.some(set as NonEmptySet<A>) : Maybe.make.none(),
 	},
+
+	/**
+	 * Reduces a non-empty set using the first element as the initial accumulator.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Uniq.NonEmpty.singleton(5), Uniq.NonEmpty.reduce((a, b) => a + b)); // 5
+	 * ```
+	 */
 	reduce: <A>(reducer: (accumulator: A, item: A) => A) => (set: NonEmptySet<A>): A =>
 		(toArray(set) as readonly A[]).reduce(reducer),
+
+	/**
+	 * Transforms each element of a non-empty set, preserving non-emptiness.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Uniq.NonEmpty.singleton(5), Uniq.NonEmpty.map(n => n * 2)); // NonEmptySet { 10 }
+	 * ```
+	 */
 	map: <A, B>(transform: (item: A) => B) => (set: NonEmptySet<A>): NonEmptySet<B> =>
 		map(transform)(set) as unknown as NonEmptySet<B>,
-	to: { array: <A>(set: NonEmptySet<A>): NonEmptyArr<A> => toArray(set) as unknown as NonEmptyArr<A> },
+
+	to: {
+		/**
+		 * Converts a NonEmptySet to a NonEmptyArr.
+		 *
+		 * @example
+		 * ```ts
+		 * Uniq.NonEmpty.to.array(Uniq.NonEmpty.singleton(42)); // [42]
+		 * ```
+		 */
+		array: <A>(set: NonEmptySet<A>): NonEmptyArr<A> => toArray(set) as unknown as NonEmptyArr<A>,
+	},
 };
 
 // =============================================================================

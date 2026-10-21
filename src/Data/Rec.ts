@@ -28,7 +28,7 @@ const _setKey = <A>(record: Record<string, A>, key: string, value: A): void => {
 	}
 };
 
-namespace RecMaybe {
+const RecMaybe = {
 	/**
 	 * Map a function that returns a `Maybe` over each value of a record,
 	 * and combine the results into a single `Maybe` containing the updated record.
@@ -43,7 +43,7 @@ namespace RecMaybe {
 	 * pipe({ a: "1", b: "NaN" }, Rec.traverse.Maybe(parseNum)); // None
 	 * ```
 	 */
-	export const traverse =
+	traverse:
 		<A, B>(transform: (value: A) => CoreMaybe<B>) =>
 		(record: Readonly<Record<string, A>>): CoreMaybe<Readonly<Record<string, B>>> => {
 			const recordKeys = Object.keys(record);
@@ -60,7 +60,7 @@ namespace RecMaybe {
 				_setKey(result, key, maybeVal.value);
 			}
 			return { kind: "Some", value: result };
-		};
+		},
 
 	/**
 	 * Sequence a record of `Maybe` values into a `Maybe` of a record.
@@ -74,11 +74,11 @@ namespace RecMaybe {
 	 * Rec.sequence.Maybe({ a: Maybe.make.some(1), b: Maybe.make.none() }); // None
 	 * ```
 	 */
-	export const sequence = <A>(record: Readonly<Record<string, CoreMaybe<A>>>): CoreMaybe<Readonly<Record<string, A>>> =>
-		traverse<CoreMaybe<A>, A>((value) => value)(record);
-}
+	sequence: <A>(record: Readonly<Record<string, CoreMaybe<A>>>): CoreMaybe<Readonly<Record<string, A>>> =>
+		RecMaybe.traverse<CoreMaybe<A>, A>((value) => value)(record),
+};
 
-namespace RecResult {
+const RecResult = {
 	/**
 	 * Map a function that returns a `Result` over each value of a record,
 	 * and combine the results into a single `Result` containing the updated record.
@@ -93,7 +93,7 @@ namespace RecResult {
 	 * pipe({ a: 1, b: -2 }, Rec.traverse.Result(checkPositive)); // Err("negative")
 	 * ```
 	 */
-	export const traverse =
+	traverse:
 		<E, A, B>(transform: (value: A) => CoreResult<E, B>) =>
 		(record: Readonly<Record<string, A>>): CoreResult<E, Readonly<Record<string, B>>> => {
 			const recordKeys = Object.keys(record);
@@ -107,7 +107,7 @@ namespace RecResult {
 				_setKey(result, key, res.value);
 			}
 			return { kind: "Ok", value: result };
-		};
+		},
 
 	/**
 	 * Sequence a record of `Result` values into a `Result` of a record.
@@ -121,10 +121,9 @@ namespace RecResult {
 	 * Rec.sequence.Result({ a: Result.make.ok(1), b: Result.make.err("oops") }); // Err("oops")
 	 * ```
 	 */
-	export const sequence = <E, A>(
-		record: Readonly<Record<string, CoreResult<E, A>>>,
-	): CoreResult<E, Readonly<Record<string, A>>> => traverse<E, CoreResult<E, A>, A>((value) => value)(record);
-}
+	sequence: <E, A>(record: Readonly<Record<string, CoreResult<E, A>>>): CoreResult<E, Readonly<Record<string, A>>> =>
+		RecResult.traverse<E, CoreResult<E, A>, A>((value) => value)(record),
+};
 
 /**
  * Functional record/object utilities that compose well with pipe.
@@ -618,38 +617,120 @@ const mapEntries =
 const updateIn =
 	<T>(path: readonly [string, ...string[]], transform: (value: T) => T) =>
 	(record: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> => {
-		const updateNode = (obj: any, pathKeys: readonly string[]): any => {
+		const updateNode = (obj: unknown, pathKeys: readonly string[]): unknown => {
 			const [head, ...tail] = pathKeys;
+			const current = (obj && typeof obj === "object" ? obj : {}) as Record<string, unknown>;
 			if (tail.length === 0) {
-				return { ...obj, [head]: transform(obj?.[head]) };
+				return { ...current, [head]: transform(current[head] as T) };
 			}
-			const child = obj && typeof obj === "object" && head in obj ? obj[head] : {};
-			return { ...obj, [head]: updateNode(child, tail) };
+			const child = current[head];
+			return { ...current, [head]: updateNode(child, tail) };
 		};
-		return updateNode(record, path);
+		return updateNode(record, path) as Readonly<Record<string, unknown>>;
 	};
 
 const RecTo = {
+	/**
+	 * Converts a record to a ReadonlyMap.
+	 *
+	 * @example
+	 * ```ts
+	 * Rec.to.Dict({ a: 1, b: 2 }); // ReadonlyMap { "a" => 1, "b" => 2 }
+	 * ```
+	 */
 	Dict: <A, K extends string = string>(record: Readonly<Record<K, A>>): ReadonlyMap<K, A> =>
 		new globalThis.Map<K, A>(Object.entries(record) as unknown as (readonly [K, A])[]),
 };
 
 const RecNonEmpty = {
+	/**
+	 * Creates a NonEmptyRecord containing a single key-value entry.
+	 *
+	 * @example
+	 * ```ts
+	 * Rec.NonEmpty.singleton("key", 42); // { key: 42 }
+	 * ```
+	 */
 	singleton: <K extends string, A>(key: K, value: A): NonEmptyRecord<A, K> =>
 		({ [key]: value }) as unknown as NonEmptyRecord<A, K>,
+
 	from: {
+		/**
+		 * Refines a standard record to a NonEmptyRecord, returning `Some` if it has keys, `None` otherwise.
+		 *
+		 * @example
+		 * ```ts
+		 * Rec.NonEmpty.from.record({ a: 1 }); // Some({ a: 1 })
+		 * Rec.NonEmpty.from.record({});       // None
+		 * ```
+		 */
 		record: <K extends string, A>(record: Readonly<Record<K, A>>): CoreMaybe<NonEmptyRecord<A, K>> =>
 			_isNonEmpty(record) ? CoreMaybe.make.some(record) : CoreMaybe.make.none(),
 	},
+
+	/**
+	 * Returns all keys of a non-empty record as a NonEmptyArr.
+	 *
+	 * @example
+	 * ```ts
+	 * Rec.NonEmpty.keys({ a: 1, b: 2 } as Rec.NonEmpty<number>); // ["a", "b"]
+	 * ```
+	 */
 	keys: <K extends string, A>(record: NonEmptyRecord<A, K>): NonEmptyArr<K> => keys(record) as unknown as NonEmptyArr<K>,
+
+	/**
+	 * Returns all values of a non-empty record as a NonEmptyArr.
+	 *
+	 * @example
+	 * ```ts
+	 * Rec.NonEmpty.values({ a: 1, b: 2 } as Rec.NonEmpty<number>); // [1, 2]
+	 * ```
+	 */
 	values: <K extends string, A>(record: NonEmptyRecord<A, K>): NonEmptyArr<A> =>
 		values(record) as unknown as NonEmptyArr<A>,
+
+	/**
+	 * Returns all entries of a non-empty record as a NonEmptyArr.
+	 *
+	 * @example
+	 * ```ts
+	 * Rec.NonEmpty.entries({ a: 1, b: 2 } as Rec.NonEmpty<number>); // [["a", 1], ["b", 2]]
+	 * ```
+	 */
 	entries: <K extends string, A>(record: NonEmptyRecord<A, K>): NonEmptyArr<readonly [K, A]> =>
 		entries(record) as unknown as NonEmptyArr<readonly [K, A]>,
+
+	/**
+	 * Reduces the values of a non-empty record using the first value as the initial accumulator.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe({ a: 1, b: 2 } as Rec.NonEmpty<number>, Rec.NonEmpty.reduce((x, y) => x + y)); // 3
+	 * ```
+	 */
 	reduce: <A>(reducer: (accumulator: A, value: A) => A) => <K extends string>(record: NonEmptyRecord<A, K>): A =>
 		(values(record) as readonly A[]).reduce(reducer),
+
+	/**
+	 * Transforms each value of a non-empty record, preserving non-emptiness.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe({ a: 1, b: 2 } as Rec.NonEmpty<number>, Rec.NonEmpty.map(n => n * 2)); // { a: 2, b: 4 }
+	 * ```
+	 */
 	map: <A, B>(transform: (value: A) => B) => <K extends string>(record: NonEmptyRecord<A, K>): NonEmptyRecord<B, K> =>
 		map(transform)(record) as unknown as NonEmptyRecord<B, K>,
+
+	/**
+	 * Transforms each value of a non-empty record with key access, preserving non-emptiness.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe({ a: 1, b: 2 } as Rec.NonEmpty<number>, Rec.NonEmpty.mapWithKey((k, v) => `${k}:${v}`));
+	 * // { a: "a:1", b: "b:2" }
+	 * ```
+	 */
 	mapWithKey:
 		<A, B>(transform: (key: string, value: A) => B) =>
 		<K extends string>(record: NonEmptyRecord<A, K>): NonEmptyRecord<B, K> =>

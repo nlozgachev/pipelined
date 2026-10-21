@@ -48,6 +48,25 @@ const total = pipe(
 
 ---
 
+## Statistical Collections
+
+`BigNum` provides safe collection aggregations that explicitly model empty inputs:
+
+```ts
+// Summing values (evaluates to 0n for empty arrays)
+BigNum.sum([10n, 20n, 30n]); // 60n
+BigNum.sum([]);              // 0n
+
+// Finding bounds safely
+BigNum.min([5n, 12n, 3n]); // Some(3n)
+BigNum.min([]);            // None
+
+BigNum.max([5n, 12n, 3n]); // Some(12n)
+BigNum.max([]);            // None
+```
+
+---
+
 ## Problems it solves
 
 - **Financial ledger arithmetic without precision drift**: In billing systems, crypto ledgers, and

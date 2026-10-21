@@ -52,16 +52,16 @@ designed for pipelines.
 
 ## Safe numeric parsing
 
-To convert a string into a number without encountering the `NaN` trap, we use `Num.parse`. It
+To convert a string into a number without encountering the `NaN` trap, we use `Num.from.string`. It
 returns a `Maybe<number>` context which explicitly models potential parsing failure:
 
 ```ts
 import { Num } from "@nlozgachev/pipelined/data";
 
-Num.parse("42");    // Some(42)
-Num.parse("3.14");  // Some(3.14)
-Num.parse("abc");   // None
-Num.parse("");      // None
+Num.from.string("42");    // Some(42)
+Num.from.string("3.14");  // Some(3.14)
+Num.from.string("abc");   // None
+Num.from.string("");      // None
 ```
 
 ## Curried arithmetic
@@ -196,7 +196,7 @@ const rawInputs = ["120", "invalid", "85", "40", "0"];
 
 const averageValidScore = pipe(
   rawInputs,
-  Arr.filterMap(Num.parse),          // [120, 85, 40, 0] (skips "invalid")
+  Arr.filterMap(Num.from.string),    // [120, 85, 40, 0] (skips "invalid")
   Arr.map(Num.clamp(0, 100)),       // [100, 85, 40, 0] (clamps 120 to 100)
   Num.mean,                         // Some(56.25)
   Maybe.getOrElse(() => 0)          // 56.25 (defaults to 0 if no valid inputs)
@@ -207,7 +207,7 @@ const averageValidScore = pipe(
 
 - **Sanitizing and clamping untrusted numeric inputs**: When extracting pagination offsets, page
   limits, or price filter boundaries from query strings, numbers can fall outside permitted domain
-  ranges. `Num.parse` and `Num.clamp` sanitize and constrain values point-free in pipeline
+  ranges. `Num.from.string` and `Num.clamp` sanitize and constrain values point-free in pipeline
   workflows.
 - **Safe statistical computations without `Infinity` or `NaN`**: Calling standard functions like
   `Math.min()` on an empty collection returns `Infinity`, while dividing by an empty list length

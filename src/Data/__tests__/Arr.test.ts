@@ -239,6 +239,13 @@ test("groupBy: places each element in separate group when keys differ", () => {
 	expect(result).toStrictEqual({ "1": [1], "2": [2], "3": [3] });
 });
 
+test("groupBy: safely handles prototype property keys like toString and __proto__", () => {
+	const result = pipe(["toString", "valueOf", "__proto__"], Arr.groupBy((s) => s));
+	expect(result.toString).toStrictEqual(["toString"]);
+	expect(result.valueOf).toStrictEqual(["valueOf"]);
+	expect(Object.hasOwn(result, "__proto__")).toBe(true);
+});
+
 test("uniq: removes duplicate elements", () => {
 	const result = Arr.uniq([1, 2, 2, 3, 1, 3, 4]);
 	expect(result).toStrictEqual([1, 2, 3, 4]);

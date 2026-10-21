@@ -395,6 +395,11 @@ test("NonEmpty.reduce: reduces non-empty set without initial seed", () => {
 	const s = Uniq.NonEmpty.singleton(10);
 	const result = pipe(s, Uniq.NonEmpty.reduce((a, b) => a + b));
 	expect(result).toBe(10);
+
+	const multi = Uniq.NonEmpty.from.set(new Set([10, 20, 30]));
+	expect(multi.kind).toBe("Some");
+	const multiVal = (multi as { value: Uniq.NonEmpty<number>; }).value;
+	expect(pipe(multiVal, Uniq.NonEmpty.reduce((a, b) => a + b))).toBe(60);
 });
 
 test("NonEmpty.to.array: returns non-empty array of elements", () => {

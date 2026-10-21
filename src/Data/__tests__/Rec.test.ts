@@ -639,6 +639,11 @@ test("NonEmpty.reduce: reduces non-empty record without initial seed", () => {
 	const r = Rec.NonEmpty.singleton("a", 10);
 	const result = pipe(r, Rec.NonEmpty.reduce((a, b) => a + b));
 	expect(result).toBe(10);
+
+	const multi = Rec.NonEmpty.from.record({ a: 10, b: 20 });
+	expect(multi.kind).toBe("Some");
+	const multiVal = (multi as { value: Rec.NonEmpty<number>; }).value;
+	expect(pipe(multiVal, Rec.NonEmpty.reduce((a, b) => a + b))).toBe(30);
 });
 
 test("map: returns standard Record when called on NonEmpty", () => {

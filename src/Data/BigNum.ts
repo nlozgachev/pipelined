@@ -250,26 +250,59 @@ export const BigNum = {
 	abs: (value: bigint): bigint => (value < 0n ? -value : value),
 
 	/**
-	 * Returns the minimum of `value` and `other`.
+	 * Computes the minimum of a list of bigints. Returns `None` if the list is empty.
 	 *
-	 * @see {@link BigNum.max} to determine the maximum value.
+	 * @see {@link BigNum.max} to compute the maximum value.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(10n, BigNum.min(5n)); // 5n
+	 * BigNum.min([5n, 1n, 3n]); // Some(1n)
+	 * BigNum.min([]);           // None
 	 * ```
 	 */
-	min: (other: bigint) => (value: bigint): bigint => (value < other ? value : other),
+	min: (values: readonly bigint[]): Maybe<bigint> => {
+		if (values.length === 0) { return Maybe.make.none(); }
+		let [result] = values;
+		for (let i = 1; i < values.length; i++) {
+			if (values[i] < result) { result = values[i]; }
+		}
+		return Maybe.make.some(result);
+	},
 
 	/**
-	 * Returns the maximum of `value` and `other`.
+	 * Computes the maximum of a list of bigints. Returns `None` if the list is empty.
 	 *
-	 * @see {@link BigNum.min} to determine the minimum value.
+	 * @see {@link BigNum.min} to compute the minimum value.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(10n, BigNum.max(5n)); // 10n
+	 * BigNum.max([1n, 5n, 3n]); // Some(5n)
+	 * BigNum.max([]);           // None
 	 * ```
 	 */
-	max: (other: bigint) => (value: bigint): bigint => (value > other ? value : other),
+	max: (values: readonly bigint[]): Maybe<bigint> => {
+		if (values.length === 0) { return Maybe.make.none(); }
+		let [result] = values;
+		for (let i = 1; i < values.length; i++) {
+			if (values[i] > result) { result = values[i]; }
+		}
+		return Maybe.make.some(result);
+	},
+
+	/**
+	 * Computes the sum of a list of bigints. Returns `0n` if the list is empty.
+	 *
+	 * @example
+	 * ```ts
+	 * BigNum.sum([1n, 2n, 3n]); // 6n
+	 * BigNum.sum([]);           // 0n
+	 * ```
+	 */
+	sum: (values: readonly bigint[]): bigint => {
+		let result = 0n;
+		for (let i = 0; i < values.length; i++) {
+			result += values[i];
+		}
+		return result;
+	},
 };

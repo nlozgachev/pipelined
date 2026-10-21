@@ -164,24 +164,24 @@ test("inRange: returns false when value is outside range or on upper boundary", 
 // parse
 // ---------------------------------------------------------------------------
 
-test("parse: returns Some for valid integer string", () => {
-	expect(Num.parse("42")).toStrictEqual(Maybe.make.some(42));
+test("from.string: returns Some for valid integer string", () => {
+	expect(Num.from.string("42")).toStrictEqual(Maybe.make.some(42));
 });
 
-test("parse: returns Some for valid float string", () => {
-	expect(Num.parse("3.14")).toStrictEqual(Maybe.make.some(3.14));
+test("from.string: returns Some for valid float string", () => {
+	expect(Num.from.string("3.14")).toStrictEqual(Maybe.make.some(3.14));
 });
 
-test("parse: returns None for non-numeric string", () => {
-	expect(Num.parse("abc")).toStrictEqual(Maybe.make.none());
+test("from.string: returns None for non-numeric string", () => {
+	expect(Num.from.string("abc")).toStrictEqual(Maybe.make.none());
 });
 
-test("parse: returns None for empty string", () => {
-	expect(Num.parse("")).toStrictEqual(Maybe.make.none());
+test("from.string: returns None for empty string", () => {
+	expect(Num.from.string("")).toStrictEqual(Maybe.make.none());
 });
 
-test("parse: returns None for whitespace-only string", () => {
-	expect(Num.parse("   ")).toStrictEqual(Maybe.make.none());
+test("from.string: returns None for whitespace-only string", () => {
+	expect(Num.from.string("   ")).toStrictEqual(Maybe.make.none());
 });
 
 // ---------------------------------------------------------------------------

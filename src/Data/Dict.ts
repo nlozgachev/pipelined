@@ -33,31 +33,95 @@ const DictIs = {
 	nonEmpty: <K, V>(dict: ReadonlyMap<K, V>): dict is NonEmptyMap<K, V> => dict.size > 0,
 };
 
+/**
+ * Creates an empty dictionary.
+ *
+ * @example
+ * ```ts
+ * const dict = Dict.empty<string, number>(); // ReadonlyMap {}
+ * ```
+ */
 const empty = <K, V>(): ReadonlyMap<K, V> => new globalThis.Map<K, V>();
 
+/**
+ * Creates a dictionary with a single key-value entry.
+ *
+ * @example
+ * ```ts
+ * Dict.singleton("key", 42); // ReadonlyMap { "key" => 42 }
+ * ```
+ */
 const singleton = <K, V>(key: K, value: V): ReadonlyMap<K, V> => new globalThis.Map<K, V>([[key, value]]);
 
 const DictFrom = {
+	/**
+	 * Creates a dictionary from an array of key-value tuples.
+	 *
+	 * @example
+	 * ```ts
+	 * Dict.from.entries([["a", 1], ["b", 2]]); // ReadonlyMap { "a" => 1, "b" => 2 }
+	 * ```
+	 */
 	entries: <K, V>(entries: readonly (readonly [K, V])[]): ReadonlyMap<K, V> =>
 		new globalThis.Map<K, V>(entries as (readonly [K, V])[]),
 
+	/**
+	 * Creates a dictionary from a plain record.
+	 *
+	 * @example
+	 * ```ts
+	 * Dict.from.record({ a: 1, b: 2 }); // ReadonlyMap { "a" => 1, "b" => 2 }
+	 * ```
+	 */
 	record: <K extends string, V>(record: Readonly<Record<K, V>>): ReadonlyMap<K, V> =>
 		new globalThis.Map<K, V>(Object.entries(record) as unknown as (readonly [K, V])[]),
 
+	/**
+	 * Lifts a nullable dictionary into a `Maybe`. Returns `None` if null or undefined.
+	 *
+	 * @example
+	 * ```ts
+	 * Dict.from.nullable(new Map([["a", 1]])); // Some(ReadonlyMap)
+	 * Dict.from.nullable(null);                 // None
+	 * ```
+	 */
 	nullable: <K, V>(dict: ReadonlyMap<K, V> | null | undefined): Maybe<ReadonlyMap<K, V>> =>
 		dict === null || dict === undefined ? Maybe.make.none() : Maybe.make.some(dict),
 };
 
 const DictTo = {
+	/**
+	 * Converts a dictionary to a plain record.
+	 * Protects against prototype pollution when keys equal `__proto__`.
+	 *
+	 * @example
+	 * ```ts
+	 * Dict.to.record(Dict.from.entries([["a", 1], ["b", 2]])); // { a: 1, b: 2 }
+	 * ```
+	 */
 	record: <K extends string, V>(dict: ReadonlyMap<K, V>): Readonly<Record<K, V>> => {
 		const result = {} as Record<K, V>;
 		for (const [k, v] of dict) {
-			result[k] = v;
+			if (k === "__proto__") {
+				Object.defineProperty(result, k, { value: v, writable: true, enumerable: true, configurable: true });
+			} else {
+				result[k] = v;
+			}
 		}
 		return result;
 	},
 };
 
+/**
+ * Groups elements of an array into a dictionary using a key selector function.
+ * Each key maps to a non-empty array of items that produced it.
+ *
+ * @example
+ * ```ts
+ * pipe(["apple", "avocado", "banana"], Dict.groupBy(s => s[0]));
+ * // ReadonlyMap { "a" => ["apple", "avocado"], "b" => ["banana"] }
+ * ```
+ */
 const groupBy = <A, K>(keySelector: (item: A) => K) => (items: readonly A[]): ReadonlyMap<K, NonEmptyArr<A>> => {
 	const result = new globalThis.Map<K, A[]>();
 	for (const item of items) {
@@ -89,6 +153,14 @@ const lookup = <K, V>(key: K) => (dict: ReadonlyMap<K, V>): Maybe<V> => {
 	return val !== undefined || dict.has(key) ? Maybe.make.some(val as V) : Maybe.make.none();
 };
 
+/**
+ * Returns the number of entries in the dictionary.
+ *
+ * @example
+ * ```ts
+ * Dict.size(Dict.singleton("a", 1)); // 1
+ * ```
+ */
 const size = <K, V>(dict: ReadonlyMap<K, V>): number => dict.size;
 
 /**
@@ -294,6 +366,14 @@ const difference = <K, V>(other: ReadonlyMap<K, V>) => (dict: ReadonlyMap<K, V>)
 	return res;
 };
 
+/**
+ * Reduces dictionary values from an initial value.
+ *
+ * @example
+ * ```ts
+ * pipe(Dict.from.entries([["a", 1], ["b", 2]]), Dict.reduce(0, (acc, n) => acc + n)); // 3
+ * ```
+ */
 const reduce = <B, V>(initial: B, reducer: (accumulator: B, value: V) => B) => <K>(dict: ReadonlyMap<K, V>): B => {
 	let acc = initial;
 	for (const [, v] of dict) {
@@ -302,6 +382,14 @@ const reduce = <B, V>(initial: B, reducer: (accumulator: B, value: V) => B) => <
 	return acc;
 };
 
+/**
+ * Reduces dictionary entries from an initial value, passing value and key to the reducer.
+ *
+ * @example
+ * ```ts
+ * pipe(Dict.from.entries([["a", 1], ["b", 2]]), Dict.reduceWithKey("", (acc, v, k) => `${acc}${k}${v}`)); // "a1b2"
+ * ```
+ */
 const reduceWithKey =
 	<B, K, V>(initial: B, reducer: (accumulator: B, value: V, key: K) => B) => (dict: ReadonlyMap<K, V>): B => {
 		let acc = initial;
@@ -313,6 +401,16 @@ const reduceWithKey =
 
 /**
  * Merges two dictionaries using a combination function on collisions.
+ * Supports both uncurried `(first, second)` and curried `(second)(first)` invocation.
+ *
+ * @example
+ * ```ts
+ * const mergeAdd = Dict.mergeWith((a: number, b: number) => a + b);
+ * const d1 = Dict.from.entries([["a", 1], ["b", 2]]);
+ * const d2 = Dict.from.entries([["b", 3], ["c", 4]]);
+ * mergeAdd(d1, d2); // ReadonlyMap { "a" => 1, "b" => 5, "c" => 4 }
+ * pipe(d1, mergeAdd(d2)); // ReadonlyMap { "a" => 1, "b" => 5, "c" => 4 }
+ * ```
  */
 function mergeWith<V>(
 	combine: (first: V, second: V) => V,
@@ -320,33 +418,41 @@ function mergeWith<V>(
 	<K>(first: ReadonlyMap<K, V>, second: ReadonlyMap<K, V>): ReadonlyMap<K, V>;
 	<K>(second: ReadonlyMap<K, V>): (first: ReadonlyMap<K, V>) => ReadonlyMap<K, V>;
 } {
-	return ((arg1: any, arg2?: any): any => {
+	return (<K>(arg1: ReadonlyMap<K, V>, arg2?: ReadonlyMap<K, V>) => {
 		if (arg2 !== undefined) {
-			const res = new globalThis.Map<any, V>(arg1);
+			const res = new globalThis.Map<K, V>(arg1);
 			for (const [k, v] of arg2) {
-				if (res.has(k)) {
-					res.set(k, combine(res.get(k)!, v));
-				} else {
-					res.set(k, v);
-				}
+				const existing = res.get(k);
+				res.set(k, res.has(k) ? combine(existing as V, v) : v);
 			}
 			return res;
 		}
-		return (first: ReadonlyMap<any, V>): ReadonlyMap<any, V> => {
+		return (first: ReadonlyMap<K, V>): ReadonlyMap<K, V> => {
 			const second = arg1;
-			const res = new globalThis.Map<any, V>(first);
+			const res = new globalThis.Map<K, V>(first);
 			for (const [k, v] of second) {
-				if (res.has(k)) {
-					res.set(k, combine(res.get(k)!, v));
-				} else {
-					res.set(k, v);
-				}
+				const existing = res.get(k);
+				res.set(k, res.has(k) ? combine(existing as V, v) : v);
 			}
 			return res;
 		};
-	}) as any;
+	}) as {
+		<K>(first: ReadonlyMap<K, V>, second: ReadonlyMap<K, V>): ReadonlyMap<K, V>;
+		<K>(second: ReadonlyMap<K, V>): (first: ReadonlyMap<K, V>) => ReadonlyMap<K, V>;
+	};
 }
 
+/**
+ * Transforms key and value pairs simultaneously into a new dictionary.
+ *
+ * @example
+ * ```ts
+ * pipe(
+ *   Dict.from.entries([["a", 1]]),
+ *   Dict.mapEntries((k, v) => [k.toUpperCase(), v * 10])
+ * ); // ReadonlyMap { "A" => 10 }
+ * ```
+ */
 const mapEntries =
 	<K1, V1, K2, V2>(transform: (key: K1, value: V1) => readonly [K2, V2]) =>
 	(dict: ReadonlyMap<K1, V1>): ReadonlyMap<K2, V2> => {
@@ -358,6 +464,17 @@ const mapEntries =
 		return res;
 	};
 
+/**
+ * Transforms dictionary keys while preserving values.
+ *
+ * @example
+ * ```ts
+ * pipe(
+ *   Dict.from.entries([["a", 1]]),
+ *   Dict.mapKeys(k => k.toUpperCase())
+ * ); // ReadonlyMap { "A" => 1 }
+ * ```
+ */
 const mapKeys = <K1, K2, V>(transform: (key: K1) => K2) => (dict: ReadonlyMap<K1, V>): ReadonlyMap<K2, V> => {
 	const res = new globalThis.Map<K2, V>();
 	for (const [k, v] of dict) {
@@ -391,13 +508,88 @@ const _nonEmptyMapWithKey =
 		mapWithKey(transform)(dict) as unknown as NonEmptyMap<K, B>;
 
 const DictNonEmptyConst = {
+	/**
+	 * Creates a NonEmptyMap containing a single entry.
+	 *
+	 * @example
+	 * ```ts
+	 * Dict.NonEmpty.singleton("a", 1); // NonEmptyMap { "a" => 1 }
+	 * ```
+	 */
 	singleton: _nonEmptySingleton,
-	from: { map: _nonEmptyFromMap },
+
+	from: {
+		/**
+		 * Refines a standard Map to a NonEmptyMap, returning `Some` if size > 0, `None` otherwise.
+		 *
+		 * @example
+		 * ```ts
+		 * Dict.NonEmpty.from.map(new Map([["a", 1]])); // Some(NonEmptyMap)
+		 * Dict.NonEmpty.from.map(new Map());           // None
+		 * ```
+		 */
+		map: _nonEmptyFromMap,
+	},
+
+	/**
+	 * Returns all keys of a non-empty dictionary as a NonEmptyArr.
+	 *
+	 * @example
+	 * ```ts
+	 * Dict.NonEmpty.keys(Dict.NonEmpty.singleton("a", 1)); // ["a"]
+	 * ```
+	 */
 	keys: _nonEmptyKeys,
+
+	/**
+	 * Returns all values of a non-empty dictionary as a NonEmptyArr.
+	 *
+	 * @example
+	 * ```ts
+	 * Dict.NonEmpty.values(Dict.NonEmpty.singleton("a", 1)); // [1]
+	 * ```
+	 */
 	values: _nonEmptyValues,
+
+	/**
+	 * Returns all entries of a non-empty dictionary as a NonEmptyArr.
+	 *
+	 * @example
+	 * ```ts
+	 * Dict.NonEmpty.entries(Dict.NonEmpty.singleton("a", 1)); // [["a", 1]]
+	 * ```
+	 */
 	entries: _nonEmptyEntries,
+
+	/**
+	 * Reduces values of a non-empty dictionary using the first value as initial accumulator.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Dict.NonEmpty.singleton("a", 5), Dict.NonEmpty.reduce((a, b) => a + b)); // 5
+	 * ```
+	 */
 	reduce: _nonEmptyReduce,
+
+	/**
+	 * Transforms each value of a non-empty dictionary, preserving non-emptiness.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Dict.NonEmpty.singleton("a", 1), Dict.NonEmpty.map(n => n * 2)); // NonEmptyMap { "a" => 2 }
+	 * ```
+	 */
 	map: _nonEmptyMap,
+
+	/**
+	 * Transforms each value with key access, preserving non-emptiness.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(Dict.NonEmpty.singleton("a", 1), Dict.NonEmpty.mapWithKey((k, v) => `${k}:${v}`));
+	 * // NonEmptyMap { "a" => "a:1" }
+	 * ```
+	 */
 	mapWithKey: _nonEmptyMapWithKey,
 };
 

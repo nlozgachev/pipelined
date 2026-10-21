@@ -12,7 +12,7 @@ import { Validation as CoreValidation } from "../Core/Validation.ts";
 // =============================================================================
 // Private Helpers & Traverse/Sequence Implementations
 // =============================================================================
-namespace ArrMaybe {
+const ArrMaybe = {
 	/**
 	 * Maps each element to a Maybe and collects the results.
 	 * Returns None if any mapping returns None.
@@ -30,17 +30,16 @@ namespace ArrMaybe {
 	 * pipe(["1", "x", "3"], Arr.traverse.Maybe(parseNum)); // None
 	 * ```
 	 */
-	export const traverse =
-		<A, B>(transform: (item: A) => CoreMaybe<B>) => (items: readonly A[]): CoreMaybe<readonly B[]> => {
-			const n = items.length;
-			const result = new Array<B>(n);
-			for (let i = 0; i < n; i++) {
-				const mapped = transform(items[i]);
-				if (mapped.kind === "None") { return CoreMaybe.make.none(); }
-				result[i] = mapped.value;
-			}
-			return CoreMaybe.make.some(result);
-		};
+	traverse: <A, B>(transform: (item: A) => CoreMaybe<B>) => (items: readonly A[]): CoreMaybe<readonly B[]> => {
+		const n = items.length;
+		const result = new Array<B>(n);
+		for (let i = 0; i < n; i++) {
+			const mapped = transform(items[i]);
+			if (mapped.kind === "None") { return CoreMaybe.make.none(); }
+			result[i] = mapped.value;
+		}
+		return CoreMaybe.make.some(result);
+	},
 
 	/**
 	 * Collects an array of Maybe instances into a Maybe of array.
@@ -54,11 +53,11 @@ namespace ArrMaybe {
 	 * Arr.sequence.Maybe([Maybe.make.some(1), Maybe.make.none()]); // None
 	 * ```
 	 */
-	export const sequence = <A>(items: readonly CoreMaybe<A>[]): CoreMaybe<readonly A[]> =>
-		traverse<CoreMaybe<A>, A>((item) => item)(items);
-}
+	sequence: <A>(items: readonly CoreMaybe<A>[]): CoreMaybe<readonly A[]> =>
+		ArrMaybe.traverse<CoreMaybe<A>, A>((item) => item)(items),
+};
 
-namespace ArrResult {
+const ArrResult = {
 	/**
 	 * Maps each element to a Result and collects the results.
 	 * Returns the first Err if any mapping fails.
@@ -73,7 +72,7 @@ namespace ArrResult {
 	 * ); // Ok([1, 2, 3])
 	 * ```
 	 */
-	export const traverse =
+	traverse:
 		<E, A, B>(transform: (item: A) => CoreResult<E, B>) => (items: readonly A[]): CoreResult<E, readonly B[]> => {
 			const n = items.length;
 			const result = new Array<B>(n);
@@ -83,7 +82,7 @@ namespace ArrResult {
 				result[i] = mapped.value;
 			}
 			return CoreResult.make.ok(result);
-		};
+		},
 
 	/**
 	 * Collects an array of Results into a Result of array.
@@ -97,11 +96,11 @@ namespace ArrResult {
 	 * Arr.sequence.Result([Result.make.ok(1), Result.make.err("bad")]); // Err("bad")
 	 * ```
 	 */
-	export const sequence = <E, A>(items: readonly CoreResult<E, A>[]): CoreResult<E, readonly A[]> =>
-		traverse<E, CoreResult<E, A>, A>((item) => item)(items);
-}
+	sequence: <E, A>(items: readonly CoreResult<E, A>[]): CoreResult<E, readonly A[]> =>
+		ArrResult.traverse<E, CoreResult<E, A>, A>((item) => item)(items),
+};
 
-namespace ArrValidation {
+const ArrValidation = {
 	/**
 	 * Maps each element to a Validation and collects the results into Passed of array,
 	 * or accumulates all errors from all Failed items into Failed.
@@ -117,7 +116,7 @@ namespace ArrValidation {
 	 * pipe([1, -2, -3], Arr.traverse.Validation(checkPositive)); // Failed(["Non-positive: -2", "Non-positive: -3"])
 	 * ```
 	 */
-	export const traverse =
+	traverse:
 		<E, A, B>(transform: (item: A) => CoreValidation<E, B>) => (items: readonly A[]): CoreValidation<E, readonly B[]> => {
 			const n = items.length;
 			const result = new Array<B>(n);
@@ -131,7 +130,7 @@ namespace ArrValidation {
 				}
 			}
 			return isNonEmptyArr(errors) ? CoreValidation.make.failedAll(errors) : CoreValidation.make.passed(result);
-		};
+		},
 
 	/**
 	 * Collects an array of Validation instances into a Validation of array.
@@ -145,11 +144,11 @@ namespace ArrValidation {
 	 * Arr.sequence.Validation([Validation.make.failed("err1"), Validation.make.failed("err2")]); // Failed(["err1", "err2"])
 	 * ```
 	 */
-	export const sequence = <E, A>(items: readonly CoreValidation<E, A>[]): CoreValidation<E, readonly A[]> =>
-		traverse<E, CoreValidation<E, A>, A>((item) => item)(items);
-}
+	sequence: <E, A>(items: readonly CoreValidation<E, A>[]): CoreValidation<E, readonly A[]> =>
+		ArrValidation.traverse<E, CoreValidation<E, A>, A>((item) => item)(items),
+};
 
-namespace ArrTask {
+const ArrTask = {
 	/**
 	 * Maps each element to a Task and collects their results into an array.
 	 * An optional `concurrency` option limits how many Tasks run concurrently.
@@ -164,9 +163,9 @@ namespace ArrTask {
 	 * )(); // Promise<[2, 4, 6]>
 	 * ```
 	 */
-	export const traverse =
+	traverse:
 		<A, B>(transform: (item: A) => CoreTask<B>, options?: { concurrency?: number; }) =>
-		(items: readonly A[]): CoreTask<readonly B[]> => CoreTask.all(items.map(transform), options);
+		(items: readonly A[]): CoreTask<readonly B[]> => CoreTask.all(items.map(transform), options),
 
 	/**
 	 * Collects an array of Tasks into a Task of array. Runs in parallel.
@@ -181,9 +180,9 @@ namespace ArrTask {
 	 * )(); // Deferred<[1, 2]>
 	 * ```
 	 */
-	export const sequence = <A>(items: readonly CoreTask<A>[]): CoreTask<readonly A[]> =>
-		traverse<CoreTask<A>, A>((item) => item)(items);
-}
+	sequence: <A>(items: readonly CoreTask<A>[]): CoreTask<readonly A[]> =>
+		ArrTask.traverse<CoreTask<A>, A>((item) => item)(items),
+};
 
 /**
  * Functional array utilities that compose well with pipe.
@@ -519,10 +518,17 @@ const partitionMap =
  */
 const groupBy = <A>(keySelector: (item: A) => string) => (items: readonly A[]): Record<string, NonEmptyArr<A>> => {
 	const result: Record<string, A[]> = {};
-	for (const item of items) {
+	const n = items.length;
+	for (let i = 0; i < n; i++) {
+		const item = items[i];
 		const key = keySelector(item);
-		if (!result[key]) { result[key] = []; }
-		result[key].push(item);
+		if (Object.hasOwn(result, key)) {
+			result[key].push(item);
+		} else if (key === "__proto__") {
+			Object.defineProperty(result, key, { value: [item], writable: true, enumerable: true, configurable: true });
+		} else {
+			result[key] = [item];
+		}
 	}
 	return result as unknown as Record<string, NonEmptyArr<A>>;
 };
@@ -1241,23 +1247,128 @@ const ArrIs = {
 };
 
 const ArrNonEmpty = {
+	/**
+	 * Creates a NonEmptyArr containing a single element.
+	 *
+	 * @example
+	 * ```ts
+	 * Arr.NonEmpty.singleton(42); // [42]
+	 * ```
+	 */
 	singleton: <A>(item: A): NonEmptyArr<A> => [item],
+
 	from: {
+		/**
+		 * Refines a standard array to a NonEmptyArr, returning `Some` if length > 0, `None` otherwise.
+		 *
+		 * @example
+		 * ```ts
+		 * Arr.NonEmpty.from.array([1, 2]); // Some([1, 2])
+		 * Arr.NonEmpty.from.array([]);     // None
+		 * ```
+		 */
 		array: <A>(items: readonly A[]): CoreMaybe<NonEmptyArr<A>> =>
 			isNonEmptyArr(items) ? CoreMaybe.make.some(items) : CoreMaybe.make.none(),
 	},
+
+	/**
+	 * Returns the first element of a non-empty array without wrapping in `Maybe`.
+	 *
+	 * @see {@link last} for accessing the last element.
+	 *
+	 * @example
+	 * ```ts
+	 * Arr.NonEmpty.head([1, 2, 3]); // 1
+	 * ```
+	 */
 	head: <A>(items: NonEmptyArr<A>): A => items[0],
+
+	/**
+	 * Returns the last element of a non-empty array without wrapping in `Maybe`.
+	 *
+	 * @see {@link head} for accessing the first element.
+	 *
+	 * @example
+	 * ```ts
+	 * Arr.NonEmpty.last([1, 2, 3]); // 3
+	 * ```
+	 */
 	last: <A>(items: NonEmptyArr<A>): A => items[items.length - 1],
+
+	/**
+	 * Returns all elements except the first.
+	 *
+	 * @example
+	 * ```ts
+	 * Arr.NonEmpty.tail([1, 2, 3]); // [2, 3]
+	 * Arr.NonEmpty.tail([1]);       // []
+	 * ```
+	 */
 	tail: <A>(items: NonEmptyArr<A>): readonly A[] => items.slice(1),
+
+	/**
+	 * Reduces a non-empty array using its first element as the initial accumulator.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe([1, 2, 3] as Arr.NonEmpty<number>, Arr.NonEmpty.reduce((a, b) => a + b)); // 6
+	 * ```
+	 */
 	reduce: <A>(reducer: (accumulator: A, item: A) => A) => (items: NonEmptyArr<A>): A => items.reduce(reducer),
+
+	/**
+	 * Transforms each element of a non-empty array, preserving non-emptiness.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe([1, 2, 3] as Arr.NonEmpty<number>, Arr.NonEmpty.map(n => n * 2)); // [2, 4, 6]
+	 * ```
+	 */
 	map: <A, B>(transform: (item: A) => B) => (items: NonEmptyArr<A>): NonEmptyArr<B> =>
 		map(transform)(items) as unknown as NonEmptyArr<B>,
+
+	/**
+	 * Transforms each element with its index, preserving non-emptiness.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(["a", "b"] as Arr.NonEmpty<string>, Arr.NonEmpty.mapWithIndex((i, s) => `${i}:${s}`));
+	 * // ["0:a", "1:b"]
+	 * ```
+	 */
 	mapWithIndex: <A, B>(transform: (index: number, item: A) => B) => (items: NonEmptyArr<A>): NonEmptyArr<B> =>
 		mapWithIndex(transform)(items) as unknown as NonEmptyArr<B>,
+
+	/**
+	 * Inserts a separator between every element, preserving non-emptiness.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe([1, 2, 3] as Arr.NonEmpty<number>, Arr.NonEmpty.intersperse(0)); // [1, 0, 2, 0, 3]
+	 * ```
+	 */
 	intersperse: <A>(separator: A) => (items: NonEmptyArr<A>): NonEmptyArr<A> =>
 		intersperse(separator)(items) as unknown as NonEmptyArr<A>,
+
+	/**
+	 * Concatenates a non-empty array with another array, preserving non-emptiness.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe([1, 2] as Arr.NonEmpty<number>, Arr.NonEmpty.concat([3, 4])); // [1, 2, 3, 4]
+	 * ```
+	 */
 	concat: <A>(other: readonly A[]) => (items: NonEmptyArr<A>): NonEmptyArr<A> =>
 		concat(other)(items) as unknown as NonEmptyArr<A>,
+
+	/**
+	 * Reverses a non-empty array, preserving non-emptiness.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe([1, 2, 3] as Arr.NonEmpty<number>, Arr.NonEmpty.reverse); // [3, 2, 1]
+	 * ```
+	 */
 	reverse: <A>(items: NonEmptyArr<A>): NonEmptyArr<A> => reverse(items) as unknown as NonEmptyArr<A>,
 };
 

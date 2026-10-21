@@ -113,9 +113,20 @@ test("abs: returns absolute value", () => {
 	expect(BigNum.abs(42n)).toBe(42n);
 });
 
-test("min: compares two bigints alongside max", () => {
-	expect(pipe(10n, BigNum.min(5n))).toBe(5n);
-	expect(pipe(2n, BigNum.min(5n))).toBe(2n);
-	expect(pipe(10n, BigNum.max(20n))).toBe(20n);
-	expect(pipe(30n, BigNum.max(20n))).toBe(30n);
+test("min: computes minimum of bigint collection or None if empty", () => {
+	expect(BigNum.min([5n, 1n, 3n])).toStrictEqual({ kind: "Some", value: 1n });
+	expect(BigNum.min([42n])).toStrictEqual({ kind: "Some", value: 42n });
+	expect(BigNum.min([])).toStrictEqual({ kind: "None" });
+});
+
+test("max: computes maximum of bigint collection or None if empty", () => {
+	expect(BigNum.max([1n, 5n, 3n])).toStrictEqual({ kind: "Some", value: 5n });
+	expect(BigNum.max([42n])).toStrictEqual({ kind: "Some", value: 42n });
+	expect(BigNum.max([])).toStrictEqual({ kind: "None" });
+});
+
+test("sum: sums a list of bigints or returns 0n if empty", () => {
+	expect(BigNum.sum([1n, 2n, 3n])).toBe(6n);
+	expect(BigNum.sum([100n])).toBe(100n);
+	expect(BigNum.sum([])).toBe(0n);
 });

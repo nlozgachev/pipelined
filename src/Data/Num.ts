@@ -200,21 +200,23 @@ export const Num = {
 	 */
 	inRange: (start: number, end: number) => (value: number): boolean => value >= start && value < end,
 
-	/**
-	 * Parses a string as a number. Returns `None` when the result is `NaN`.
-	 *
-	 * @example
-	 * ```ts
-	 * Num.parse("42");   // Some(42)
-	 * Num.parse("3.14"); // Some(3.14)
-	 * Num.parse("abc");  // None
-	 * Num.parse("");     // None
-	 * ```
-	 */
-	parse: (text: string): Maybe<number> => {
-		if (text.trim() === "") { return Maybe.make.none(); }
-		const n = Number(text);
-		return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
+	from: {
+		/**
+		 * Parses a string as a number. Returns `None` when parsing produces `NaN` or text is blank.
+		 *
+		 * @example
+		 * ```ts
+		 * Num.from.string("42");   // Some(42)
+		 * Num.from.string("3.14"); // Some(3.14)
+		 * Num.from.string("abc");  // None
+		 * Num.from.string("");     // None
+		 * ```
+		 */
+		string: (text: string): Maybe<number> => {
+			if (text.trim() === "") { return Maybe.make.none(); }
+			const n = Number(text);
+			return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
+		},
 	},
 
 	/**

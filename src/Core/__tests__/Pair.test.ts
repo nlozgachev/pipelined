@@ -61,3 +61,16 @@ test("tap: runs side effect with both values and returns pair unchanged", () => 
 	expect(res).toStrictEqual(["Paris", 2000]);
 	expect(seen).toBe("Paris:2000");
 });
+
+test("tap: preserves exact pair type when callback omits second argument", () => {
+	let seen: string | null = null;
+	const res = pipe(
+		Pair.make("Paris", 2000),
+		Pair.tap((city) => {
+			seen = city;
+		}),
+	);
+	expectTypeOf(res).toEqualTypeOf<Pair<string, number>>();
+	expect(res).toStrictEqual(["Paris", 2000]);
+	expect(seen).toBe("Paris");
+});
