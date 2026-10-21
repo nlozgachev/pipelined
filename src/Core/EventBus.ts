@@ -42,53 +42,63 @@ const makeEventBus = <S extends Record<string, unknown>>(options?: EventBus.Opti
 		[EVENT_BUS_STATE]: { options, listeners: new Set(), listenerArray: null, queue: [], isEmitting: false },
 	}) as unknown as EventBus<S>;
 
+const emitSingleBus = (
+	bus: EventBus<Record<string, unknown>>,
+	msg: EventBus.Message<Record<string, unknown>>,
+): void => {
+	const internal = toInternalEventBus(bus)[EVENT_BUS_STATE];
+	internal.queue.push(msg);
+	if (internal.isEmitting) {
+		return;
+	}
+	internal.isEmitting = true;
+	try {
+		let queueHead = 0;
+		while (queueHead < internal.queue.length) {
+			const nextMsg = internal.queue[queueHead++];
+			internal.listenerArray ??= Array.from(internal.listeners);
+			const listeners = internal.listenerArray;
+			for (let i = 0; i < listeners.length; i++) {
+				try {
+					listeners[i](nextMsg);
+				} catch (err) {
+					if (internal.options?.onError) {
+						internal.options.onError(err);
+					} else {
+						throw err;
+					}
+				}
+			}
+		}
+	} finally {
+		internal.queue.length = 0;
+		internal.isEmitting = false;
+	}
+};
+
 const emitEventBus = <S extends Record<string, unknown>, K extends keyof S & string>(
 	target: EventBus<S> | ReadonlyArray<EventBus<S>>,
 	message: WithKind<K> & WithValue<S[K]>,
 ): void => {
-	const targets = Array.isArray(target) ? target : [target];
-	const msg = message as EventBus.Message<S>;
-
-	for (const bus of targets) {
-		const internal = toInternalEventBus(bus)[EVENT_BUS_STATE];
-		internal.queue.push(msg);
-		if (!internal.isEmitting) {
-			internal.isEmitting = true;
-			try {
-				while (internal.queue.length > 0) {
-					const nextMsg = internal.queue.shift()!;
-					internal.listenerArray ??= Array.from(internal.listeners);
-					const listeners = internal.listenerArray;
-					for (const listener of listeners) {
-						try {
-							listener(nextMsg);
-						} catch (err) {
-							if (internal.options?.onError) {
-								internal.options.onError(err);
-							} else {
-								throw err;
-							}
-						}
-					}
-				}
-			} finally {
-				internal.isEmitting = false;
-			}
+	const msg = message as unknown as EventBus.Message<Record<string, unknown>>;
+	if (Array.isArray(target)) {
+		for (let i = 0; i < target.length; i++) {
+			emitSingleBus(target[i] as unknown as EventBus<Record<string, unknown>>, msg);
 		}
+	} else {
+		emitSingleBus(target as unknown as EventBus<Record<string, unknown>>, msg);
 	}
 };
 
 const forwardEventBus = <S extends Record<string, unknown>>(options: EventBus.ForwardOptions<S>): () => void => {
-	const targets = Array.isArray(options.to) ? options.to : [options.to];
 	const filterSet = options.only ? new Set<string>(options.only) : null;
 
-	const handler = (msg: EventBus.Message<S>) => {
-		if (filterSet !== null && !filterSet.has(msg.kind)) {
+	const handler = (msg: unknown) => {
+		const typedMsg = msg as EventBus.Message<S>;
+		if (filterSet !== null && !filterSet.has(typedMsg.kind)) {
 			return;
 		}
-		for (const target of targets) {
-			emitEventBus(target, msg);
-		}
+		emitEventBus(options.to, typedMsg);
 	};
 
 	const internalFrom = toInternalEventBus(options.from)[EVENT_BUS_STATE];
@@ -125,7 +135,7 @@ const listenEventBus = <
 	const createMatcher = (onMatch: (msg: EventBus.Message<S, K>) => void) => {
 		let sequenceIndex = 0;
 
-		return (rawMsg: EventBus.Message<S>) => {
+		return (rawMsg: unknown) => {
 			const msg = rawMsg as EventBus.Message<S, K>;
 			if (resetKinds !== null && resetKinds.has(msg.kind)) {
 				sequenceIndex = 0;
@@ -178,11 +188,11 @@ const listenEventBus = <
 			let currentState = initialState;
 
 			const listenerFn = createMatcher((msg) => {
-				currentState = reducer(msg, currentState);
 				if (isOnce) {
 					internal.listeners.delete(listenerFn);
 					internal.listenerArray = null;
 				}
+				currentState = reducer(msg, currentState);
 			});
 
 			const unsubscribe = () => {
@@ -198,11 +208,11 @@ const listenEventBus = <
 
 		tap: (effect: (msg: EventBus.Message<S, K>) => void): () => void => {
 			const listenerFn = createMatcher((msg) => {
-				effect(msg);
 				if (isOnce) {
 					internal.listeners.delete(listenerFn);
 					internal.listenerArray = null;
 				}
+				effect(msg);
 			});
 
 			const unsubscribe = () => {
@@ -220,7 +230,7 @@ const listenEventBus = <
 			let sequenceIndex = 0;
 			let collected: Record<string, unknown> = {};
 
-			const listenerFn = (rawMsg: EventBus.Message<S>) => {
+			const listenerFn = (rawMsg: unknown) => {
 				const msg = rawMsg as EventBus.Message<S, K>;
 
 				if (resetKinds !== null && resetKinds.has(msg.kind)) {
@@ -232,15 +242,22 @@ const listenEventBus = <
 				if (!isOrdered) {
 					if (eventList.includes(msg.kind)) {
 						collected[msg.kind] = msg.value;
-						const hasAll = eventList.every((k) => k in collected || (optionalKinds !== null && optionalKinds.has(k)));
+						let hasAll = true;
+						for (let i = 0; i < eventList.length; i++) {
+							const k = eventList[i];
+							if (!(k in collected) && (optionalKinds === null || !optionalKinds.has(k))) {
+								hasAll = false;
+								break;
+							}
+						}
 						if (hasAll) {
 							const result = { ...collected } as unknown as EventBus.CollectedPayloads<S, K, Opt>;
 							collected = {};
-							effect(result);
 							if (isOnce) {
 								internal.listeners.delete(listenerFn);
 								internal.listenerArray = null;
 							}
+							effect(result);
 						}
 					}
 					return;
@@ -270,11 +287,11 @@ const listenEventBus = <
 						sequenceIndex = 0;
 						const result = { ...collected } as unknown as EventBus.CollectedPayloads<S, K, Opt>;
 						collected = {};
-						effect(result);
 						if (isOnce) {
 							internal.listeners.delete(listenerFn);
 							internal.listenerArray = null;
 						}
+						effect(result);
 					}
 				} else if (isStrict) {
 					if (msg.kind === eventList[0]) {
@@ -324,6 +341,9 @@ export const EventBus = {
 	 *
 	 * Uses a synchronous breadth-first trampoline queue to handle re-entrant emissions deterministically.
 	 *
+	 * @see {@link EventBus.listen} for subscribing to emitted messages.
+	 * @see {@link EventBus.forward} for routing messages between event buses.
+	 *
 	 * @example
 	 * ```ts
 	 * EventBus.emit(busA, {
@@ -342,6 +362,9 @@ export const EventBus = {
 	/**
 	 * Forwards messages from one event bus to another (or multiple).
 	 *
+	 * @see {@link EventBus.emit} for publishing messages directly.
+	 * @see {@link EventBus.listen} for consuming events on a bus.
+	 *
 	 * @example
 	 * ```ts
 	 * const stop = EventBus.forward({
@@ -355,6 +378,9 @@ export const EventBus = {
 
 	/**
 	 * Initiates listener registration on an event bus for specific event kind(s) or sequence.
+	 *
+	 * @see {@link EventBus.emit} for dispatching messages to listeners.
+	 * @see {@link EventBus.forward} for bridging events across buses.
 	 *
 	 * @example
 	 * ```ts
@@ -371,6 +397,12 @@ export const EventBus = {
 };
 
 export namespace EventBus {
+	/**
+	 * A discriminated union of all message types defined in an event schema `S`,
+	 * optionally restricted to specific message keys `K`.
+	 *
+	 * Each variant conforms to `{ kind: Key, value: S[Key] }`.
+	 */
 	export type Message<S extends Record<string, unknown>, K extends keyof S & string = keyof S & string> = {
 		[Key in K]: WithKind<Key> & WithValue<S[Key]>;
 	}[K];
@@ -450,6 +482,11 @@ export namespace EventBus {
 		readonly optional?: Opt | ReadonlyArray<Opt>;
 	};
 
+	/**
+	 * An active subscription handle returned by `EventBus.listen(...).reduce(...)`.
+	 *
+	 * Provides a getter for current accumulated state and an `unsubscribe` disposal function.
+	 */
 	export type Subscription<State> = { readonly unsubscribe: () => void; readonly getState: () => State; };
 
 	/**
@@ -482,6 +519,9 @@ export namespace EventBus {
 		/**
 		 * Accumulates state over incoming matching events using a pure reducer function.
 		 *
+		 * @see {@link tap} for stateless side-effects without accumulating values.
+		 * @see {@link collect} for aggregating sequence payloads into a typed object.
+		 *
 		 * @example
 		 * ```ts
 		 * const sub = EventBus.listen(cartBus, ["itemAdded", "itemRemoved"]).reduce(
@@ -497,6 +537,9 @@ export namespace EventBus {
 
 		/**
 		 * Registers a side-effect callback invoked when a matching event or completed sequence arrives.
+		 *
+		 * @see {@link reduce} for accumulating state over time.
+		 * @see {@link collect} for aggregating sequence payloads into a typed object.
 		 *
 		 * @example
 		 * ```ts
@@ -516,6 +559,9 @@ export namespace EventBus {
 		 * In unordered mode, the callback fires each time all required events have been emitted at least once.
 		 *
 		 * Optional events that were skipped during sequence matching evaluate to `undefined`.
+		 *
+		 * @see {@link reduce} for continuous state reduction.
+		 * @see {@link tap} for firing on individual matching events.
 		 *
 		 * @example
 		 * ```ts

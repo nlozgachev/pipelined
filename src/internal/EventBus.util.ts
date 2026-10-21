@@ -1,14 +1,16 @@
 import type { EventBus } from "../Core/EventBus.ts";
 
-export const EVENT_BUS_STATE: unique symbol = Symbol.for("@nlozgachev/pipelined/EventBus.state") as any;
+export const EVENT_BUS_STATE: unique symbol = Symbol.for(
+	"@nlozgachev/pipelined/EventBus.state",
+) as typeof EVENT_BUS_STATE;
 
 export type EventBusOptions = { readonly name?: string; readonly onError?: (error: unknown) => void; };
 
 export type EventBusInternalState = {
 	readonly options?: EventBusOptions;
-	readonly listeners: Set<(msg: any) => void>;
-	listenerArray: Array<(msg: any) => void> | null;
-	readonly queue: Array<any>;
+	readonly listeners: Set<(msg: unknown) => void>;
+	listenerArray: Array<(msg: unknown) => void> | null;
+	readonly queue: Array<unknown>;
 	isEmitting: boolean;
 };
 

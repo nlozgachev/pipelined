@@ -1,4 +1,5 @@
 import { expect, expectTypeOf, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
 import { EventBus } from "../EventBus.ts";
 
 type TestSchema = {
@@ -770,4 +771,119 @@ test("collect: returns an unsubscribe function that removes the listener", () =>
 	EventBus.emit(s, { kind: "A", value: { value: 2 } });
 	EventBus.emit(s, { kind: "B", value: { text: "2" } });
 	expect(count).toBe(1);
+});
+
+// --- Once Lifecycle, Concurrency & Edge Cases ---
+
+test("listen: ensures once listener stays unsubscribed when callback throws under onError", () => {
+	let caught = 0;
+	const s = EventBus.make<TestSchema>({
+		onError: () => {
+			caught++;
+		},
+	});
+	let executions = 0;
+
+	EventBus.listen(s, "A", { once: true }).tap(() => {
+		executions++;
+		throw new Error("once error");
+	});
+
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	expect(caught).toBe(1);
+	expect(executions).toBe(1);
+
+	// Second emission must NOT trigger the once listener again
+	EventBus.emit(s, { kind: "A", value: { value: 2 } });
+	expect(caught).toBe(1);
+	expect(executions).toBe(1);
+});
+
+test("listen: unsubscribes once listener before executing callback to prevent re-entrant loops", () => {
+	const s = EventBus.make<TestSchema>();
+	let executions = 0;
+
+	EventBus.listen(s, "A", { once: true }).tap(() => {
+		executions++;
+		EventBus.emit(s, { kind: "A", value: { value: 99 } });
+	});
+
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	expect(executions).toBe(1);
+});
+
+test("emit: discards pending queue when listener throws uncaught error", () => {
+	const s = EventBus.make<TestSchema>();
+	let secondaryReceived = false;
+
+	EventBus.listen(s, "A").tap(() => {
+		EventBus.emit(s, { kind: "B", value: { text: "queued" } });
+		throw new Error("uncaught in emit");
+	});
+
+	EventBus.listen(s, "B").tap(() => {
+		secondaryReceived = true;
+	});
+
+	expect(() => EventBus.emit(s, { kind: "A", value: { value: 1 } })).toThrow("uncaught in emit");
+
+	// A new emission should not run stale queued events from the crashed emission
+	EventBus.emit(s, { kind: "C", value: { flag: true } });
+	expect(secondaryReceived).toBe(false);
+});
+
+test("listen: skips multiple consecutive optional steps in ordered sequence", () => {
+	const s = EventBus.make<TestSchema>();
+	let fired = 0;
+
+	EventBus.listen(s, ["A", "B", "C", "ResetEvent"], { ordered: true, optional: ["B", "C"] }).tap(() => {
+		fired++;
+	});
+
+	// Emit A then ResetEvent directly (skipping consecutive optional B and C)
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	EventBus.emit(s, { kind: "ResetEvent", value: { reason: "skip-both" } });
+
+	expect(fired).toBe(1);
+});
+
+test("emit: handles empty target array as safe no-op", () => {
+	expect(() => {
+		EventBus.emit([], { kind: "A", value: { value: 1 } });
+	}).not.toThrow();
+});
+
+test("listen: unsubscribe is idempotent and safe when invoked repeatedly", () => {
+	const s = EventBus.make<TestSchema>();
+	let count = 0;
+	const unsubTap = EventBus.listen(s, "A").tap(() => {
+		count++;
+	});
+	const subReduce = EventBus.listen(s, "A").reduce((_, n) => n + 1, 0);
+
+	unsubTap();
+	unsubTap();
+	subReduce.unsubscribe();
+	subReduce.unsubscribe();
+
+	EventBus.emit(s, { kind: "A", value: { value: 1 } });
+	expect(count).toBe(0);
+	expect(subReduce.getState()).toBe(0);
+});
+
+test("composition: integrates with pipe to process messages", () => {
+	const s = EventBus.make<TestSchema>();
+	const states: number[] = [];
+
+	const sub = EventBus.listen(s, "A").reduce((msg, current) => current + msg.value.value, 0);
+
+	pipe([10, 20, 30], (nums) => nums.map((n) => ({ kind: "A" as const, value: { value: n } })), (messages) => {
+		for (let i = 0; i < messages.length; i++) {
+			EventBus.emit(s, messages[i]);
+			states.push(sub.getState());
+		}
+	});
+
+	expect(states).toStrictEqual([10, 30, 60]);
+	sub.unsubscribe();
 });
