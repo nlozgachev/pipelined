@@ -275,7 +275,7 @@ Both operators always return the original, unaltered `Result` to the next step o
 
 ---
 
-## Recovering from None
+## Recovering from errors
 
 When an operation fails, you don't always want to settle for a static default. Often, you want to
 attempt an alternative strategy that could also fail. For this, we use `recover`:

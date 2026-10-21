@@ -130,6 +130,48 @@ test("recover: identity on Ok", () => {
 	}));
 });
 
+test("recover: replaces Err with fallback value", () => {
+	fc.assert(fc.property(arbErr, fc.integer(), (r, fallback) => {
+		const res = Result.recover((_e: string) => Result.make.ok(fallback))(r);
+		expect(res).toStrictEqual(Result.make.ok(fallback));
+	}));
+});
+
+// ---------------------------------------------------------------------------
+// bimap — bifunctor laws
+// ---------------------------------------------------------------------------
+
+test("bimap: satisfies identity law", () => {
+	fc.assert(fc.property(arbResult, (r) => {
+		expect(Result.bimap((e: string) => e, (x: number) => x)(r)).toStrictEqual(r);
+	}));
+});
+
+test("bimap: satisfies composition law", () => {
+	fc.assert(fc.property(arbResult, fc.integer(), fc.string(), (r, a, s) => {
+		const f1 = (x: string) => x + s;
+		const f2 = (x: string) => `[${x}]`;
+		const g1 = (x: number) => x + a;
+		const g2 = (x: number) => x * 2;
+
+		const composed = Result.bimap((e: string) => f2(f1(e)), (v: number) => g2(g1(v)))(r);
+		const stepped = Result.bimap(f2, g2)(Result.bimap(f1, g1)(r));
+		expect(stepped).toStrictEqual(composed);
+	}));
+});
+
+// ---------------------------------------------------------------------------
+// apply — applicative functor laws
+// ---------------------------------------------------------------------------
+
+test("apply: satisfies homomorphism law", () => {
+	fc.assert(fc.property(fc.integer(), fc.integer(), (x, factor) => {
+		const f = (n: number) => n * factor;
+		const applied = Result.apply(Result.make.ok(x))(Result.make.ok(f));
+		expect(applied).toStrictEqual(Result.make.ok(f(x)));
+	}));
+});
+
 // ---------------------------------------------------------------------------
 // from.Predicate
 // ---------------------------------------------------------------------------

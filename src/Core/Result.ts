@@ -1,8 +1,9 @@
 // =============================================================================
 // Imports
 // =============================================================================
-import { type Maybe, Maybe as CoreMaybe, type Validation, Validation as CoreValidation } from "#core";
 import type { NonEmptyArr, WithError, WithKind, WithValue } from "#internal";
+import { type Maybe, Maybe as CoreMaybe } from "./Maybe.ts";
+import { type Validation, Validation as CoreValidation } from "./Validation.ts";
 
 // =============================================================================
 // Types
@@ -26,13 +27,23 @@ import type { NonEmptyArr, WithError, WithKind, WithValue } from "#internal";
 export type Result<E, A> = Result.Ok<A> | Result.Err<E>;
 
 export namespace Result {
+	/** Represents a successful outcome holding a value. */
 	export type Ok<A> = WithKind<"Ok"> & WithValue<A>;
+	/** Represents a failed outcome holding an error. */
 	export type Err<E> = WithKind<"Err"> & WithError<E>;
 }
 
 // =============================================================================
 // Private Helpers & Variant Constructors
 // =============================================================================
+const setProperty = <T extends Record<string, unknown>>(target: T, key: string, value: unknown): void => {
+	if (key === "__proto__") {
+		Object.defineProperty(target, key, { value, enumerable: true, writable: true, configurable: true });
+	} else {
+		(target as Record<string, unknown>)[key] = value;
+	}
+};
+
 const makeOk = <A>(value: A): Result.Ok<A> => ({ kind: "Ok", value });
 const makeErr = <E>(error: E): Result.Err<E> => ({ kind: "Err", error });
 
@@ -109,9 +120,9 @@ export const Result = {
 	 * );
 	 * ```
 	 */
-	tryCatch: <E, A>(fn: () => A, options: { onError: (error: unknown) => E; }): Result<E, A> => {
+	tryCatch: <E, A>(operation: () => A, options: { onError: (error: unknown) => E; }): Result<E, A> => {
 		try {
-			return makeOk(fn());
+			return makeOk(operation());
 		} catch (error) {
 			return makeErr(options.onError(error));
 		}
@@ -129,7 +140,7 @@ export const Result = {
 	 * pipe(Result.make.err("error"), Result.map(n => n * 2)); // Err("error")
 	 * ```
 	 */
-	map: <E, A, B>(transform: (value: A) => B) => (result: Result<E, A>): Result<E, B> =>
+	map: <A, B>(transform: (value: A) => B) => <E>(result: Result<E, A>): Result<E, B> =>
 		isOk(result) ? makeOk(transform(result.value)) : result,
 
 	/**
@@ -142,7 +153,7 @@ export const Result = {
 	 * pipe(Result.make.err("oops"), Result.mapError(e => e.toUpperCase())); // Err("OOPS")
 	 * ```
 	 */
-	mapError: <E, F, A>(transform: (error: E) => F) => (result: Result<E, A>): Result<F, A> =>
+	mapError: <E, F>(transform: (error: E) => F) => <A>(result: Result<E, A>): Result<F, A> =>
 		isErr(result) ? makeErr(transform(result.error)) : result,
 
 	/**
@@ -166,6 +177,8 @@ export const Result = {
 	/**
 	 * Pattern matches on a Result, returning the result of the matching case.
 	 *
+	 * @see {@link Result.getOrElse} to extract the success value with a default fallback.
+	 *
 	 * @example
 	 * ```ts
 	 * pipe(
@@ -178,7 +191,7 @@ export const Result = {
 	 * ```
 	 */
 	match: <E, A, B>(cases: { ok: (value: A) => B; err: (error: E) => B; }) => (result: Result<E, A>): B =>
-		isOk(result) ? cases.ok(result.value) : cases.err((result as Result.Err<E>).error),
+		isOk(result) ? cases.ok(result.value) : cases.err(result.error),
 
 	/**
 	 * Returns the success value or a default value if the Result is an error.
@@ -211,7 +224,7 @@ export const Result = {
 	 * );
 	 * ```
 	 */
-	tap: <E, A>(sideEffect: (value: A) => void) => (result: Result<E, A>): Result<E, A> => {
+	tap: <A>(sideEffect: (value: A) => void) => <E = never>(result: Result<E, A>): Result<E, A> => {
 		if (isOk(result)) { sideEffect(result.value); }
 		return result;
 	},
@@ -231,7 +244,7 @@ export const Result = {
 	 * )
 	 * ```
 	 */
-	tapError: <E, A>(sideEffect: (error: E) => void) => (result: Result<E, A>): Result<E, A> => {
+	tapError: <E>(sideEffect: (error: E) => void) => <A = never>(result: Result<E, A>): Result<E, A> => {
 		if (isErr(result)) { sideEffect(result.error); }
 		return result;
 	},
@@ -239,8 +252,10 @@ export const Result = {
 	// --- from ---
 	from: {
 		/**
-		 * Creates a Result from a predicate applied to a value.
+		 * Creates a Result from a predicate or type guard applied to a value.
 		 * Returns Ok if the predicate passes, Err from onFalse otherwise.
+		 *
+		 * @see {@link Result.ensure} to validate and filter an existing Result.
 		 *
 		 * @example
 		 * ```ts
@@ -249,12 +264,18 @@ export const Result = {
 		 * pipe("", Result.from.Predicate(s => s.length > 0, () => "empty string")); // Err("empty string")
 		 * ```
 		 */
-		Predicate: <E, A>(predicate: (value: A) => boolean, onFalse: (value: A) => E) => (value: A): Result<E, A> =>
-			predicate(value) ? makeOk(value) : makeErr(onFalse(value)),
+		Predicate:
+			(<A, B extends A, E>(predicate: (value: A) => boolean, onFalse: (value: A) => E) => (value: A): Result<E, B> =>
+				predicate(value) ? makeOk(value as unknown as B) : makeErr(onFalse(value))) as {
+					<A, B extends A, E>(refinement: (value: A) => value is B, onFalse: (value: A) => E): (value: A) => Result<E, B>;
+					<A, E>(predicate: (value: A) => boolean, onFalse: (value: A) => E): (value: A) => Result<E, A>;
+				},
 
 		/**
 		 * Creates a Result from a nullable value.
 		 * Returns Ok if the value is not null or undefined, error from onNull otherwise.
+		 *
+		 * @see {@link Result.from.Maybe} to convert an optional Maybe into a Result.
 		 *
 		 * @example
 		 * ```ts
@@ -269,6 +290,8 @@ export const Result = {
 		 * Creates a Result from a Maybe.
 		 * Some becomes Ok, None becomes error from onNone.
 		 *
+		 * @see {@link Result.to.Maybe} to convert a Result back into a Maybe.
+		 *
 		 * @example
 		 * ```ts
 		 * pipe(Maybe.make.none(), Result.from.Maybe(() => "is none")); // Err("is none")
@@ -281,6 +304,8 @@ export const Result = {
 		/**
 		 * Converts a `Validation` to a `Result`, combining accumulated errors using `combineErrors`.
 		 * `Passed(a)` becomes `Ok(a)`; `Failed(errors)` becomes `Err(combineErrors(errors))`.
+		 *
+		 * @see {@link Result.to.Validation} to convert a Result into a Validation.
 		 *
 		 * @example
 		 * ```ts
@@ -297,9 +322,17 @@ export const Result = {
 	 * The fallback can produce a different success type or resolve with a different error type.
 	 *
 	 * @see {@link Result.recoverUnless} to conditionally recover based on the error value.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   Result.make.err("not found"),
+	 *   Result.recover((e) => Result.make.ok(`default for ${e}`))
+	 * ); // Ok("default for not found")
+	 * ```
 	 */
 	recover: <E1, E2, B>(fallback: (error: E1) => Result<E2, B>) => <A>(result: Result<E1, A>): Result<E2, A | B> =>
-		isOk(result) ? result : fallback((result as Result.Err<E1>).error),
+		isOk(result) ? result : fallback(result.error),
 
 	/**
 	 * Recovers from an error unless the predicate `isBlocked` returns true for that error.
@@ -326,6 +359,8 @@ export const Result = {
 		 * Converts a Result to a Maybe.
 		 * Ok becomes Some, Err becomes None (the error is discarded).
 		 *
+		 * @see {@link Result.from.Maybe} to convert a Maybe into a Result.
+		 *
 		 * @example
 		 * ```ts
 		 * Result.to.Maybe(Result.make.ok(42)); // Some(42)
@@ -336,6 +371,8 @@ export const Result = {
 			isOk(result) ? CoreMaybe.make.some(result.value) : CoreMaybe.make.none(),
 		/**
 		 * Converts a `Result` to a `Validation`. `Ok(a)` becomes `Passed(a)`; `Err(e)` becomes `Failed([e])`.
+		 *
+		 * @see {@link Result.from.Validation} to convert a Validation into a Result.
 		 *
 		 * @example
 		 * ```ts
@@ -409,7 +446,10 @@ export const Result = {
 		<E1 = never>(result: Result<E1, A>): Result<E1 | E2, A & { [P in K]: B; }> => {
 			if (!isOk(result)) { return result; }
 			const res = transform(result.value);
-			return isOk(res) ? makeOk({ ...(result.value as any), [key]: res.value } as A & { [P in K]: B; }) : res;
+			if (!isOk(res)) { return res; }
+			const accumulator = { ...(result.value as unknown as Record<string, unknown>) } as A & { [P in K]: B; };
+			setProperty(accumulator as Record<string, unknown>, key, res.value);
+			return makeOk(accumulator);
 		},
 
 	/**
@@ -424,7 +464,7 @@ export const Result = {
 	 * }); // Ok({ name: "Alice", age: 30 })
 	 * ```
 	 */
-	struct: <E, R extends Record<string, any>>(fields: { [K in keyof R]: Result<E, R[K]>; }): Result<E, R> => {
+	struct: <E, R extends Record<string, unknown>>(fields: { [K in keyof R]: Result<E, R[K]>; }): Result<E, R> => {
 		const result = {} as R;
 		for (const key in fields) {
 			if (Object.hasOwn(fields, key)) {
@@ -432,7 +472,7 @@ export const Result = {
 				if (isErr(res)) {
 					return res;
 				}
-				result[key] = res.value;
+				setProperty(result as Record<string, unknown>, key, res.value);
 			}
 		}
 		return makeOk(result);
@@ -440,6 +480,8 @@ export const Result = {
 
 	/**
 	 * Narrows an `Ok` value with a predicate, converting to `Err(onFail(value))` if the predicate returns false.
+	 *
+	 * @see {@link Result.from.Predicate} to lift a value into a Result based on a predicate.
 	 *
 	 * @example
 	 * ```ts
@@ -450,13 +492,27 @@ export const Result = {
 	 * ```
 	 */
 	ensure:
-		<A, E2>(predicate: (value: A) => boolean, onFail: (value: A) => E2) =>
-		<E1 = never>(result: Result<E1, A>): Result<E1 | E2, A> =>
-			isErr(result) ? result : (predicate(result.value) ? result : makeErr(onFail(result.value))),
+		(<A, B extends A, E2>(predicate: (value: A) => boolean, onFail: (value: A) => E2) =>
+		<E1 = never>(result: Result<E1, A>): Result<E1 | E2, B> =>
+			isErr(result)
+				? result
+				: (predicate(result.value) ? (result as unknown as Result<E1 | E2, B>) : makeErr(onFail(result.value)))) as {
+				<A, B extends A, E2>(
+					refinement: (value: A) => value is B,
+					onFail: (value: A) => E2,
+				): <E1 = never>(result: Result<E1, A>) => Result<E1 | E2, B>;
+				<A, E2>(
+					predicate: (value: A) => boolean,
+					onFail: (value: A) => E2,
+				): <E1 = never>(result: Result<E1, A>) => Result<E1 | E2, A>;
+			},
 
 	/**
 	 * Transforms both branches of a Result simultaneously.
 	 * Applies `onErr` to `Err` values and `onOk` to `Ok` values.
+	 *
+	 * @see {@link Result.map} to transform only the success value.
+	 * @see {@link Result.mapError} to transform only the error value.
 	 *
 	 * @example
 	 * ```ts

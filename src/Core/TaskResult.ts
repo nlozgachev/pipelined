@@ -9,7 +9,7 @@ const makeOk = <E = never, A = unknown>(value: A): Task.Result<E, A> => Task.mak
 const makeErr = <E, A = never>(error: E): Task.Result<E, A> => Task.make(CoreResult.make.err(error));
 
 const mapTaskResult = <A, B>(transform: (value: A) => B) => <E = never>(task: Task.Result<E, A>): Task.Result<E, B> =>
-	Task.map(CoreResult.map<E, A, B>(transform))(task);
+	Task.map(CoreResult.map<A, B>(transform))(task);
 
 const chainTaskResult =
 	<E2, A, B>(transform: (value: A) => Task.Result<E2, B>) =>
@@ -151,7 +151,7 @@ export const TaskResult = {
 	 * ```
 	 */
 	mapError: <E, F>(transform: (error: E) => F) => <A = never>(task: Task.Result<E, A>): Task.Result<F, A> =>
-		Task.map(CoreResult.mapError<E, F, A>(transform))(task),
+		Task.map(CoreResult.mapError<E, F>(transform))(task),
 
 	/**
 	 * Chains Task.Result computations. If the first succeeds, passes the value to transform.
@@ -266,7 +266,7 @@ export const TaskResult = {
 	 * ```
 	 */
 	tap: <A>(sideEffect: (value: A) => void) => <E = never>(task: Task.Result<E, A>): Task.Result<E, A> =>
-		Task.map(CoreResult.tap<E, A>(sideEffect))(task),
+		Task.map(CoreResult.tap<A>(sideEffect))(task),
 
 	/**
 	 * Executes a side effect on the error value without changing the Task.Result.
@@ -284,7 +284,7 @@ export const TaskResult = {
 	 * ```
 	 */
 	tapError: <E>(sideEffect: (error: E) => void) => <A = never>(task: Task.Result<E, A>): Task.Result<E, A> =>
-		Task.map(CoreResult.tapError<E, A>(sideEffect))(task),
+		Task.map(CoreResult.tapError<E>(sideEffect))(task),
 
 	/**
 	 * Applies a function wrapped in a Task.Result to a value wrapped in a Task.Result.

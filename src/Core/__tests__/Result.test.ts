@@ -89,6 +89,19 @@ test("map: passes through Err unchanged", () => {
 	expect(result).toStrictEqual({ kind: "Err", error: "error" });
 });
 
+test("map: does not invoke transform on Err", () => {
+	let called = false;
+	const result = pipe(
+		Result.make.err("error"),
+		Result.map(() => {
+			called = true;
+			return 0;
+		}),
+	);
+	expect(called).toBe(false);
+	expect(result).toStrictEqual({ kind: "Err", error: "error" });
+});
+
 test("map: can change the value type", () => {
 	const result = pipe(Result.make.ok(42), Result.map((n: number) => `num: ${n}`));
 	expect(result).toStrictEqual({ kind: "Ok", value: "num: 42" });
@@ -105,6 +118,18 @@ test("mapError: transforms Err value", () => {
 
 test("mapError: passes through Ok unchanged", () => {
 	const result = pipe(Result.make.ok(5), Result.mapError((e: string) => e.toUpperCase()));
+	expect(result).toStrictEqual({ kind: "Ok", value: 5 });
+});
+
+test("mapError: does not invoke transform on Ok", () => {
+	let called = false;
+	const result = pipe(
+		Result.make.ok(5),
+		Result.mapError(() => {
+			called = true;
+		}),
+	);
+	expect(called).toBe(false);
 	expect(result).toStrictEqual({ kind: "Ok", value: 5 });
 });
 
@@ -195,6 +220,19 @@ test("match: is data-last (returns a function first)", () => {
 
 test("getOrElse: returns value for Ok", () => {
 	const result = pipe(Result.make.ok(5), Result.getOrElse(() => 0));
+	expect(result).toBe(5);
+});
+
+test("getOrElse: does not invoke fallback on Ok", () => {
+	let called = false;
+	const result = pipe(
+		Result.make.ok(5),
+		Result.getOrElse(() => {
+			called = true;
+			return 0;
+		}),
+	);
+	expect(called).toBe(false);
 	expect(result).toBe(5);
 });
 
@@ -472,15 +510,57 @@ test("from.Predicate: composes in pipe with chain", () => {
 // ---------------------------------------------------------------------------
 
 test("map: type-safe return type on mapped function output", () => {
-	const r: Result<string, number> = Result.make.ok(42);
-	const mapped = Result.map<string, number, string>((n: number) => String(n))(r);
+	const r = Result.make.ok(42) as Result<string, number>;
+	const double = Result.map((n: number) => String(n));
+	const mapped = double(r);
+	expectTypeOf(mapped).toEqualTypeOf<Result<string, string>>();
 	expect(mapped).toStrictEqual({ kind: "Ok", value: "42" });
 });
 
 test("mapError: type-safe return type on mapped error output", () => {
-	const r: Result<string, number> = Result.make.err("oops");
-	const mapped = Result.mapError<string, number, number>((e: string) => e.length)(r);
+	const r = Result.make.err("oops") as Result<string, number>;
+	const formatErr = Result.mapError((e: string) => e.length);
+	const mapped = formatErr(r);
+	expectTypeOf(mapped).toEqualTypeOf<Result<number, number>>();
 	expect(mapped).toStrictEqual({ kind: "Err", error: 4 });
+});
+
+test("tap: type-safe return type on tap partial application", () => {
+	const r = Result.make.ok(42) as Result<string, number>;
+	const logVal = Result.tap((_n: number) => {});
+	const res = logVal(r);
+	expectTypeOf(res).toEqualTypeOf<Result<string, number>>();
+	expect(res).toStrictEqual(r);
+});
+
+test("tapError: type-safe return type on tapError partial application", () => {
+	const r = Result.make.err("oops") as Result<string, number>;
+	const logErr = Result.tapError((_e: string) => {});
+	const res = logErr(r);
+	expectTypeOf(res).toEqualTypeOf<Result<string, number>>();
+	expect(res).toStrictEqual(r);
+});
+
+test("from.Predicate: narrows type when passed a type guard refinement", () => {
+	const isString = (val: unknown): val is string => typeof val === "string";
+	const lifted = Result.from.Predicate(isString, () => "not a string");
+
+	const resOk = lifted("hello");
+	expectTypeOf(resOk).toEqualTypeOf<Result<string, string>>();
+	expect(resOk).toStrictEqual(Result.make.ok("hello"));
+
+	const resErr = lifted(123);
+	expectTypeOf(resErr).toEqualTypeOf<Result<string, string>>();
+	expect(resErr).toStrictEqual(Result.make.err("not a string"));
+});
+
+test("ensure: narrows type when passed a type guard refinement", () => {
+	const isString = (val: unknown): val is string => typeof val === "string";
+	const input = Result.make.ok("hello") as Result<"ERR_INIT", unknown>;
+	const narrowed = pipe(input, Result.ensure(isString, () => "NOT_A_STRING" as const));
+
+	expectTypeOf(narrowed).toEqualTypeOf<Result<"ERR_INIT" | "NOT_A_STRING", string>>();
+	expect(narrowed).toStrictEqual(Result.make.ok("hello"));
 });
 
 test("getOrElse: type-safe widening to union", () => {
@@ -657,6 +737,24 @@ test("ensure: passes through Err unchanged", () => {
 	expect(res).toStrictEqual(Result.make.err("initial_error"));
 });
 
+test("ensure: does not invoke predicate or onFail on Err", () => {
+	let predicateCalled = false;
+	let onFailCalled = false;
+	const res = pipe(
+		Result.make.err("initial_error"),
+		Result.ensure(() => {
+			predicateCalled = true;
+			return true;
+		}, () => {
+			onFailCalled = true;
+			return "failed";
+		}),
+	);
+	expect(predicateCalled).toBe(false);
+	expect(onFailCalled).toBe(false);
+	expect(res).toStrictEqual(Result.make.err("initial_error"));
+});
+
 // --- bimap ---
 
 test("bimap: applies onOk to Ok values", () => {
@@ -667,4 +765,57 @@ test("bimap: applies onOk to Ok values", () => {
 test("bimap: applies onErr to Err values", () => {
 	const res = pipe(Result.make.err("oops"), Result.bimap((e) => `Err: ${e}`, (n: number) => n * 2));
 	expect(res).toStrictEqual(Result.make.err("Err: oops"));
+});
+
+test("bimap: does not invoke onErr on Ok", () => {
+	let onErrCalled = false;
+	const res = pipe(
+		Result.make.ok(5),
+		Result.bimap(() => {
+			onErrCalled = true;
+			return "err";
+		}, (n) => n * 2),
+	);
+	expect(onErrCalled).toBe(false);
+	expect(res).toStrictEqual(Result.make.ok(10));
+});
+
+test("bimap: does not invoke onOk on Err", () => {
+	let onOkCalled = false;
+	const res = pipe(
+		Result.make.err("error"),
+		Result.bimap((e) => `mapped: ${e}`, () => {
+			onOkCalled = true;
+			return 0;
+		}),
+	);
+	expect(onOkCalled).toBe(false);
+	expect(res).toStrictEqual(Result.make.err("mapped: error"));
+});
+
+// --- prototype pollution shielding ---
+
+test("bind: safely handles __proto__ property without prototype pollution", () => {
+	const res = pipe(Result.make.ok({ a: 1 }), Result.bind("__proto__", () => Result.make.ok({ polluted: true })));
+	expect(Result.is.ok(res)).toBe(true);
+	const { value } = res as Result.Ok<Record<string, unknown>>;
+	expect(Object.hasOwn(value, "__proto__")).toBe(true);
+	expect(({} as any).polluted).toBeUndefined();
+});
+
+test("struct: safely handles __proto__ property without prototype pollution", () => {
+	const protoFields: Record<string, Result<string, unknown>> = {};
+	Object.defineProperty(protoFields, "__proto__", {
+		value: Result.make.ok({ polluted: true }),
+		enumerable: true,
+		configurable: true,
+		writable: true,
+	});
+	protoFields.a = Result.make.ok(1);
+
+	const res = Result.struct(protoFields);
+	expect(Result.is.ok(res)).toBe(true);
+	const { value } = res as Result.Ok<Record<string, unknown>>;
+	expect(Object.hasOwn(value, "__proto__")).toBe(true);
+	expect(({} as any).polluted).toBeUndefined();
 });
