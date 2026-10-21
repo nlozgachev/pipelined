@@ -22,7 +22,7 @@ propagation, unhandled async rejections, race conditions, and verbose nested spr
 `Task.Result` for lazy infallible async, `Op` for declarative request concurrency, and `EventBus`
 for typed event dispatching and sequence funnels.
 
-The library has zero external dependencies, <11 KB core gzipped (<18 KB total), and compiles to dual
+The library has zero external dependencies, <12 KB core gzipped (<18 KB total), and compiles to dual
 ESM and CommonJS distributions.
 
 ## Documentation
@@ -487,7 +487,6 @@ into a `UserId` slot). `Brand` creates nominal types with smart constructor vali
 runtime cost:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
 import { Result } from "@nlozgachev/pipelined/core";
 import { Brand } from "@nlozgachev/pipelined/types";
 
@@ -564,7 +563,7 @@ if (Result.is.ok(email)) {
 `pipelined` is structured into 4 isolated, tree-shakeable entry points:
 
 - **`@nlozgachev/pipelined/core`**: Core context containers, async runtimes, optics, and logic
-  abstractions (<11 KB gzipped).
+  abstractions (<12 KB gzipped).
 - **`@nlozgachev/pipelined/data`**: Curried, data-last utilities for collections, numbers, strings,
   and JSON (<10 KB gzipped).
 - **`@nlozgachev/pipelined/composition`**: Pure higher-order function combinators (`pipe`,

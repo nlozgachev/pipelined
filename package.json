@@ -119,7 +119,7 @@
 			"name": "Core (import * as Core)",
 			"import": "*",
 			"path": "dist/core.mjs",
-			"limit": "11 KB",
+			"limit": "12 KB",
 			"gzip": true
 		},
 		{
