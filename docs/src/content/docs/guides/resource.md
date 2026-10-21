@@ -47,13 +47,13 @@ succeeds or fails.
 
 ## Creating a Resource
 
-We define a resource by supplying the actions to open and close it.
+We define a resource by supplying the actions to open and close it using `Resource.make`.
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 import { Resource, Task } from "@nlozgachev/pipelined/core";
 
-const dbResource = Resource.from.handlers(
+const dbResource = Resource.make(
   Task.Result.tryCatch(
     () => openConnection({ host: "db.local" }),
     { onError: (error) => new Error(`DB connection failed: ${error}`) },
@@ -68,16 +68,16 @@ fails midway, the manager will execute `connection.close()` automatically.
 ### Resources that cannot fail
 
 If acquiring the resource is guaranteed to succeed — such as acquiring an in-memory lock or starting
-a local timer — we can use `fromTask` to skip error mapping:
+a local timer — we can use `Resource.from.Task` to skip error mapping:
 
 ```ts
-const lockResource = Resource.from.Task<never, Lock>(
+const lockResource = Resource.from.Task(
   Task.tryCatch(() => Promise.resolve(acquireLock("process_orders")), { onError: () => defaultLock }),
   (lock) => Task.tryCatch(() => Promise.resolve(lock.release()), { onError: () => {} }),
 );
 ```
 
-The error parameter is typed as `never` to formally declare to the compiler that this resource is
+The error parameter defaults to `never` to formally declare to the compiler that this resource is
 structurally incapable of failing to acquire.
 
 ---
