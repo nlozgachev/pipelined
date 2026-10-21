@@ -71,25 +71,25 @@ code.
 
 ---
 
-## Folding Collections point-free: fold
+## Combining collections point-free: combineAll
 
-`Combinable.fold` accepts a `Combinable<A>` and returns a clean, single-argument function
-`(as: A[]) => A` that collapses an array into a single value:
+`Combinable.combineAll` accepts a `Combinable<A>` and returns a clean, single-argument function
+`(items: readonly A[]) => A` that combines an array into a single value:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 
 // Collapsing strings
-pipe(["hello", ", ", "world"], Combinable.fold(Combinable.string)); // "hello, world"
+pipe(["hello", ", ", "world"], Combinable.combineAll(Combinable.string)); // "hello, world"
 
 // Summing numbers
-pipe([1, 2, 3, 4, 5], Combinable.fold(Combinable.sum)); // 15
+pipe([1, 2, 3, 4, 5], Combinable.combineAll(Combinable.sum)); // 15
 
 // Multiplying numbers
-pipe([2, 3, 4], Combinable.fold(Combinable.product)); // 24
+pipe([2, 3, 4], Combinable.combineAll(Combinable.product)); // 24
 
-// Folding an empty array returns the baseline "empty" value:
-pipe([], Combinable.fold(Combinable.sum)); // 0
+// Combining an empty array returns the baseline "empty" value:
+pipe([], Combinable.combineAll(Combinable.sum)); // 0
 ```
 
 ---
@@ -110,12 +110,12 @@ maybeSum.combine(Maybe.make.none())(Maybe.make.some(5));  // Some(5)
 maybeSum.combine(Maybe.make.some(5))(Maybe.make.none());  // Some(5)
 ```
 
-This makes folding collections of optional domain fields extremely elegant:
+This makes combining collections of optional domain fields extremely elegant:
 
 ```ts
 const totalScores = pipe(
   [Maybe.make.some(10), Maybe.make.none(), Maybe.make.some(20)],
-  Combinable.fold(Combinable.maybe(Combinable.sum)),
+  Combinable.combineAll(Combinable.maybe(Combinable.sum)),
 ); // Some(30)
 ```
 
@@ -135,5 +135,5 @@ const totalScores = pipe(
   ignored while valid numbers are accumulated.
 - **Reusable collection reduction strategies**: Instead of re-writing `Array.prototype.reduce`
   callbacks with manual initial values across multiple call sites, `Combinable` provides named,
-  reusable aggregation strategies (`Combinable.sum`, `Combinable.concat`, `Combinable.maybe`) for
-  point-free list folding.
+  reusable aggregation strategies (`Combinable.sum`, `Combinable.array`, `Combinable.maybe`) for
+  point-free list reduction via `Combinable.combineAll`.

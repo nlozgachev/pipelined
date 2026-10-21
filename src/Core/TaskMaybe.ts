@@ -164,28 +164,7 @@ export const TaskMaybe = {
 		),
 
 	/**
-	 * Extracts a value from a Task.Maybe by providing handlers for both cases.
-	 *
-	 * @see {@link Task.Maybe.match} for named-case pattern matching with an object literal.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   Task.Maybe.make.some(42),
-	 *   Task.Maybe.fold(
-	 *     () => "no value",
-	 *     n => `value is ${n}`,
-	 *   ),
-	 * ); // Task resolving to "value is 42"
-	 * ```
-	 */
-	fold: <A, B>(onNone: () => B, onSome: (value: A) => B) => (task: Task.Maybe<A>): Task<B> =>
-		Task.map(CoreMaybe.fold(onNone, onSome))(task),
-
-	/**
 	 * Pattern matches on a Task.Maybe, returning a Task of the result.
-	 *
-	 * @see {@link Task.Maybe.fold} for positional argument pattern matching.
 	 *
 	 * @example
 	 * ```ts

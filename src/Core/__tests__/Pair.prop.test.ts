@@ -71,11 +71,11 @@ test("tap: returns identical reference", () => {
 	}));
 });
 
-// --- Fold property test ---
+// --- Merge property test ---
 
-test("fold: combines both elements", () => {
+test("merge: combines both elements", () => {
 	fc.assert(fc.property(fc.string(), fc.integer(), (a, b) => {
-		const result = Pair.fold((s: string, n: number) => `${s}:${n}`)(Pair.make(a, b));
+		const result = Pair.merge((s: string, n: number) => `${s}:${n}`)(Pair.make(a, b));
 		expect(result).toBe(`${a}:${b}`);
 	}));
 });

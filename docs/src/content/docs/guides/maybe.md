@@ -234,28 +234,17 @@ deliberate design choice. If computing the fallback is expensive or triggers a s
 writing to a log or generating a token), that computation is deferred. It is only executed if the
 value is actually absent.
 
-### Case analysis with `match` and `fold`
+### Case analysis with `match`
 
-When you need to perform different logic for both the success and failure cases, you can use `match`
-for a named object syntax, or `fold` for a positional, error-first syntax.
+When you need to perform different logic for both the presence and absence cases, use `match`:
 
 ```ts
-// Using match with named handlers
 const welcomeMessage = pipe(
   maybeUser,
   Maybe.match({
     some: (user) => `Welcome back, ${user.name}`,
     none: () => "Please log in to continue",
   }),
-);
-
-// Using fold with positional arguments (none handler first)
-const statusString = pipe(
-  maybeUser,
-  Maybe.fold(
-    () => "Inactive",
-    (user) => `Active since ${user.createdAt}`,
-  ),
 );
 ```
 

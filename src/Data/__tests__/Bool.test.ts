@@ -198,46 +198,6 @@ test("any: returns false for empty array", () => {
 });
 
 // ---------------------------------------------------------------------------
-// fold
-// ---------------------------------------------------------------------------
-
-test("fold: evaluates onTrue when true", () => {
-	let falseCalled = false;
-	let trueCalled = false;
-	const result = pipe(
-		true,
-		Bool.fold(() => {
-			falseCalled = true;
-			return "false-branch";
-		}, () => {
-			trueCalled = true;
-			return "true-branch";
-		}),
-	);
-	expect(result).toBe("true-branch");
-	expect(trueCalled).toBe(true);
-	expect(falseCalled).toBe(false);
-});
-
-test("fold: evaluates onFalse when false", () => {
-	let falseCalled = false;
-	let trueCalled = false;
-	const result = pipe(
-		false,
-		Bool.fold(() => {
-			falseCalled = true;
-			return "false-branch";
-		}, () => {
-			trueCalled = true;
-			return "true-branch";
-		}),
-	);
-	expect(result).toBe("false-branch");
-	expect(falseCalled).toBe(true);
-	expect(trueCalled).toBe(false);
-});
-
-// ---------------------------------------------------------------------------
 // match
 // ---------------------------------------------------------------------------
 

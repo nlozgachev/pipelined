@@ -387,15 +387,6 @@ test("match: handles Nil", () => {
 	expect(Op.Outcome.match(matchCases)(Op.Outcome.make.nil("aborted"))).toBe("nil");
 });
 
-// --- fold ---
-
-test("fold: handles all three cases", () => {
-	const fold = Op.Outcome.fold((e: string) => `err:${e}`, () => "nil", (v: number) => `ok:${v}`);
-	expect(fold(Op.Outcome.make.ok(3))).toBe("ok:3");
-	expect(fold(Op.Outcome.make.err("x"))).toBe("err:x");
-	expect(fold(Op.Outcome.make.nil("aborted"))).toBe("nil");
-});
-
 // --- getOrElse ---
 
 test("getOrElse: returns value for Ok", () => {

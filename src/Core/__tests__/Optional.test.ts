@@ -154,22 +154,6 @@ test("getOrElse: returns default when focus is absent", () => {
 });
 
 // ---------------------------------------------------------------------------
-// fold
-// ---------------------------------------------------------------------------
-
-test("fold: calls onSome when focus is present", () => {
-	const bioOpt = Optional.from.property<Profile>()("bio");
-	expect(pipe({ username: "alice", bio: "hi" }, Optional.fold(bioOpt)(() => "none", (bio) => `bio:${bio}`))).toBe(
-		"bio:hi",
-	);
-});
-
-test("fold: calls onNone when focus is absent", () => {
-	const bioOpt = Optional.from.property<Profile>()("bio");
-	expect(pipe({ username: "alice" }, Optional.fold(bioOpt)(() => "none", (bio) => `bio:${bio}`))).toBe("none");
-});
-
-// ---------------------------------------------------------------------------
 // match
 // ---------------------------------------------------------------------------
 

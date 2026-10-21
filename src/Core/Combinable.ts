@@ -7,8 +7,8 @@ import { Maybe } from "#core";
  *
  * @example
  * ```ts
- * pipe(["hello", ", ", "world"], Combinable.fold(Combinable.string)); // "hello, world"
- * pipe([1, 2, 3, 4, 5], Combinable.fold(Combinable.sum));            // 15
+ * pipe(["hello", ", ", "world"], Combinable.combineAll(Combinable.string)); // "hello, world"
+ * pipe([1, 2, 3, 4, 5], Combinable.combineAll(Combinable.sum));            // 15
  * ```
  */
 export type Combinable<A> = { readonly empty: A; readonly combine: (b: A) => (a: A) => A; };
@@ -25,7 +25,7 @@ export const Combinable = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(["a", "b", "c"], Combinable.fold(Combinable.string)); // "abc"
+	 * pipe(["a", "b", "c"], Combinable.combineAll(Combinable.string)); // "abc"
 	 * ```
 	 */
 	string: stringCombinable,
@@ -35,7 +35,7 @@ export const Combinable = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe([1, 2, 3], Combinable.fold(Combinable.sum)); // 6
+	 * pipe([1, 2, 3], Combinable.combineAll(Combinable.sum)); // 6
 	 * ```
 	 */
 	sum: sumCombinable,
@@ -45,7 +45,7 @@ export const Combinable = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe([2, 3, 4], Combinable.fold(Combinable.product)); // 24
+	 * pipe([2, 3, 4], Combinable.combineAll(Combinable.product)); // 24
 	 * ```
 	 */
 	product: productCombinable,
@@ -55,7 +55,7 @@ export const Combinable = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe([true, true, false], Combinable.fold(Combinable.all)); // false
+	 * pipe([true, true, false], Combinable.combineAll(Combinable.all)); // false
 	 * ```
 	 */
 	all: allCombinable,
@@ -65,7 +65,7 @@ export const Combinable = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe([false, false, true], Combinable.fold(Combinable.any)); // true
+	 * pipe([false, false, true], Combinable.combineAll(Combinable.any)); // true
 	 * ```
 	 */
 	any: anyCombinable,
@@ -75,7 +75,7 @@ export const Combinable = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe([[1, 2], [3], [4, 5]], Combinable.fold(Combinable.array<number>())); // [1, 2, 3, 4, 5]
+	 * pipe([[1, 2], [3], [4, 5]], Combinable.combineAll(Combinable.array<number>())); // [1, 2, 3, 4, 5]
 	 * ```
 	 */
 	array: <A>(): Combinable<readonly A[]> => ({ empty: [], combine: (b) => (a) => [...a, ...b] }),
@@ -99,15 +99,16 @@ export const Combinable = {
 	}),
 
 	/**
-	 * Folds an array into a single value using the `Combinable`'s `empty` as the starting point.
+	 * Combines an array of elements into a single value using the `Combinable`'s `empty` as the starting point.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe([1, 2, 3, 4, 5], Combinable.fold(Combinable.sum)); // 15
-	 * pipe([], Combinable.fold(Combinable.sum));               // 0
+	 * pipe([1, 2, 3, 4, 5], Combinable.combineAll(Combinable.sum)); // 15
+	 * pipe([], Combinable.combineAll(Combinable.sum));               // 0
 	 * ```
 	 */
-	fold: <A>(c: Combinable<A>) => (data: readonly A[]): A => data.reduce((acc, x) => c.combine(x)(acc), c.empty),
+	combineAll: <A>(combinable: Combinable<A>) => (items: readonly A[]): A =>
+		items.reduce((acc, x) => combinable.combine(x)(acc), combinable.empty),
 
 	/**
 	 * Derives a `Combinable` for a record of fields from field-level `Combinable` instances.

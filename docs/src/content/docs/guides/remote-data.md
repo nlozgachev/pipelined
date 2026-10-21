@@ -73,9 +73,6 @@ const uiMessage = pipe(
 Because the compiler enforces that every branch is defined, you can never accidentally skip the
 loading spinner or forget to handle a network failure.
 
-If you prefer positional callbacks rather than named object fields, you can use `fold`. The
-arguments are positional in the order: `failure`, `notAsked`, `loading`, `success`.
-
 ---
 
 ## Transforming States in Flight
@@ -234,8 +231,8 @@ setDataState(RemoteData.from.Result(result)); // Success(user) or Failure(error)
   guaranteeing impossible states cannot be represented.
 - **Exhaustive view branch rendering**: Interactive components in frontend frameworks require
   distinct presentations for idle states, loading skeletons, error recovery cards, and populated
-  content. `RemoteData.match` and `RemoteData.fold` enforce exhaustive handling of each lifecycle
-  stage at compile time, eliminating blank screens caused by unhandled loading or error conditions.
+  content. `RemoteData.match` enforces exhaustive handling of each lifecycle stage at compile time,
+  eliminating blank screens caused by unhandled loading or error conditions.
 - **Coordinating multi-resource dashboard widgets**: When a dashboard widget depends on multiple
   asynchronous queries (such as user permissions, account metrics, and activity logs),
   `RemoteData.struct` and `RemoteData.all` merge their lifecycles cleanly, ensuring data views

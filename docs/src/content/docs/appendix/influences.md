@@ -12,8 +12,8 @@ across modules, and the prior work in functional programming that shaped `pipeli
 
 Most core types in this library descend from Haskell. `Either` inspired `Result`, and the `IO`
 type—a lazy, composable representation of side effects—inspired `Task`. Combinators like `map` and
-`chain` adapt Haskell's `fmap` and `>>=` into names describing concrete operations. `fold` collapses
-a type by requiring a handler for each case, corresponding to Haskell's `maybe` and `either`
+`chain` adapt Haskell's `fmap` and `>>=` into names describing concrete operations. `match` performs
+exhaustive pattern matching on named cases, corresponding to Haskell's `maybe` and `either`
 eliminators.
 
 `These` comes from the Haskell library of the same name, representing inclusive-OR: a value carrying
@@ -144,7 +144,7 @@ export const Maybe = {
     none: <A = never>(): None => ({ kind: "None" }),
   },
   map: <A, B>(f: (a: A) => B) => (data: Maybe<A>): Maybe<B> => ...,
-  fold: ...,
+  match: ...,
 };
 ```
 

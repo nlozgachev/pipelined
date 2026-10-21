@@ -140,7 +140,7 @@ const backendOnly = pipe(backendRoles, Uniq.difference(frontendRoles));
 
 ## Folding and converting to standard types
 
-When it is time to leave the immutable context — either to serialize data for an API or to interface with a library that requires standard arrays — we can fold or convert our collection:
+When it is time to leave the immutable context — either to serialize data for an API or to interface with a library that requires standard arrays — we can reduce or convert our collection:
 
 ```ts
 const activeFlags = Uniq.from.array(["logging", "analytics"]);

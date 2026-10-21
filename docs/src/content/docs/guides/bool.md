@@ -121,27 +121,12 @@ Bool.any([user.isOwner, user.isAdmin, user.isEditor]);
 
 ## Branching and pattern matching
 
-Rather than relying on nested ternaries, `Bool` offers declarative catamorphic branching via `fold`
-and exhaustive pattern matching via `match`.
-
-### Positional branching with `fold`
-
-Following Pipelined's standard catamorphism convention (falsy/err case first, truthy/ok case
-second), `Bool.fold` takes `(onFalse, onTrue)`:
-
-```ts
-const themeClass = pipe(
-  isDarkMode,
-  Bool.fold(
-    () => "theme-light",
-    () => "theme-dark"
-  )
-);
-```
+Rather than relying on nested ternaries, `Bool` offers declarative exhaustive pattern matching via
+`match`.
 
 ### Named-case matching with `match`
 
-`Bool.match` matches on `{ true, false }` cases, making branching explicit and readable:
+`Bool.match` matches on `{ true, false }` cases, making branching explicit, type-safe, and readable:
 
 ```ts
 const statusBadge = pipe(
@@ -249,7 +234,7 @@ function authorizeRequest(ctx: RequestContext): Result<string, string> {
 ## Problems it solves
 
 - **Eliminating nested ternary chains**: Replaces complex `a ? (b ? c : d) : e` expressions with
-  readable `Bool.and`, `Bool.or`, `Bool.fold`, and `Bool.match` combinators.
+  readable `Bool.and`, `Bool.or`, and `Bool.match` combinators.
 - **Preventing JavaScript boolean parsing bugs**: Using standard `Boolean("false")` evaluates to
   `true` in JavaScript. `Bool.from.string` reliably parses `"true"` and `"false"` into
   `Maybe<boolean>`, returning `None` for invalid strings.

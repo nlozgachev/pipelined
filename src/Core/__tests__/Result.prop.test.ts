@@ -94,12 +94,12 @@ test("getOrElse: returns fallback on Error", () => {
 });
 
 // ---------------------------------------------------------------------------
-// fold
+// match
 // ---------------------------------------------------------------------------
 
-test("fold: handles all variants without throwing", () => {
+test("match: handles all variants without throwing", () => {
 	fc.assert(fc.property(arbResult, (r) => {
-		const result = Result.fold((e: string) => `err:${e}`, (v: number) => `ok:${v}`)(r);
+		const result = Result.match({ err: (e: string) => `err:${e}`, ok: (v: number) => `ok:${v}` })(r);
 		expectTypeOf(result).toBeString();
 	}));
 });

@@ -130,20 +130,6 @@ export const Optional = {
 	},
 
 	/**
-	 * Extracts a value from an Optional focus using handlers for the present
-	 * and absent cases.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(profile, Optional.fold(bioOpt)(() => "no bio", (bio) => bio.toUpperCase()));
-	 * ```
-	 */
-	fold: <S, A>(opt: Optional<S, A>) => <B>(onNone: () => B, onSome: (a: A) => B) => (s: S): B => {
-		const val = opt.get(s);
-		return val.kind === "Some" ? onSome(val.value) : onNone();
-	},
-
-	/**
 	 * Pattern matches on an Optional focus using a named-case object.
 	 *
 	 * @example

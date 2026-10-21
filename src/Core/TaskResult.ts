@@ -174,28 +174,7 @@ export const TaskResult = {
 	chain: chainTaskResult,
 
 	/**
-	 * Extracts the value from a Task.Result by providing handlers for both cases.
-	 *
-	 * @see {@link Task.Result.match} for named-case pattern matching with an object literal.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   Task.Result.make.ok(42),
-	 *   Task.Result.fold(
-	 *     err => `Failed: ${err}`,
-	 *     val => `Value: ${val}`,
-	 *   ),
-	 * ); // Task resolving to "Value: 42"
-	 * ```
-	 */
-	fold: <E, A, B>(onErr: (error: E) => B, onOk: (value: A) => B) => (task: Task.Result<E, A>): Task<B> =>
-		Task.map(CoreResult.fold(onErr, onOk))(task),
-
-	/**
 	 * Pattern matches on a Task.Result, returning a Task of the result.
-	 *
-	 * @see {@link Task.Result.fold} for positional argument pattern matching.
 	 *
 	 * @example
 	 * ```ts

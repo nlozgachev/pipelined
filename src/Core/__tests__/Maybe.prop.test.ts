@@ -77,12 +77,12 @@ test("getOrElse: returns fallback on None", () => {
 });
 
 // ---------------------------------------------------------------------------
-// fold
+// match
 // ---------------------------------------------------------------------------
 
-test("fold: handles all variants without throwing", () => {
+test("match: handles all variants without throwing", () => {
 	fc.assert(fc.property(arbMaybe, (m) => {
-		const result = Maybe.fold(() => "none", (x: number) => `some:${x}`)(m);
+		const result = Maybe.match({ none: () => "none", some: (x: number) => `some:${x}` })(m);
 		expectTypeOf(result).toBeString();
 	}));
 });

@@ -151,7 +151,7 @@ const validatePhone = (phone: string): These<EmailAddress, PhoneMeta> => ...
 When you reach the boundary of your pipeline, you must unpack `These` into standard TypeScript
 primitives.
 
-### Exhaustive matching with `match` and `fold`
+### Exhaustive matching with `match`
 
 `match` requires you to handle all three possible variants explicitly, ensuring that coexisting
 values are never accidentally lost:
@@ -166,8 +166,6 @@ const notificationTarget = pipe(
   }),
 );
 ```
-
-For positional callbacks, `fold` provides an un-named positional mapping alternative.
 
 ### Safe fallbacks with `getFirstOrElse` and `getSecondOrElse`
 
@@ -237,8 +235,8 @@ pipe(
   collected warnings, avoiding the need to either fail the entire operation or discard diagnostic
   details.
 - **Reconciling diff patches with custom strategies**: When calculating database differences between
-  two snapshot versions, `These.fold` and `These.match` handle additions (`This`), deletions
-  (`That`), and modifications (`Both`) with clean, case-specific logic.
+  two snapshot versions, `These.match` handles additions (`This`), deletions (`That`), and
+  modifications (`Both`) with clean, case-specific logic.
 - **Multi-channel communication delivery**: In notification systems where alerts can be dispatched
   via Email, SMS, or both channels simultaneously, `These` models valid communication options and
   tracks per-channel delivery statuses cleanly.

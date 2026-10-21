@@ -73,16 +73,16 @@ test("is.second: implies hasSecond and not hasFirst", () => {
 });
 
 // ---------------------------------------------------------------------------
-// fold
+// match
 // ---------------------------------------------------------------------------
 
-test("fold: handles all three variants without throwing", () => {
+test("match: handles all three variants without throwing", () => {
 	fc.assert(fc.property(arbThese, (t) => {
-		const result = These.fold(
-			(a: string) => `first:${a}`,
-			(b: number) => `second:${b}`,
-			(a: string, b: number) => `both:${a}:${b}`,
-		)(t);
+		const result = These.match({
+			first: (a: string) => `first:${a}`,
+			second: (b: number) => `second:${b}`,
+			both: (a: string, b: number) => `both:${a}:${b}`,
+		})(t);
 		expectTypeOf(result).toBeString();
 	}));
 });

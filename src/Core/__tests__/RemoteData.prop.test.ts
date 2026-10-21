@@ -64,17 +64,17 @@ test("getOrElse: returns fallback on non-Success", () => {
 });
 
 // ---------------------------------------------------------------------------
-// fold
+// match
 // ---------------------------------------------------------------------------
 
-test("fold: handles all four variants without throwing", () => {
+test("match: handles all four variants without throwing", () => {
 	fc.assert(fc.property(arbRemoteData, (rd) => {
-		const result = RemoteData.fold(
-			(e: string) => `failure:${e}`,
-			() => "notAsked",
-			() => "loading",
-			(v: number) => `success:${v}`,
-		)(rd);
+		const result = RemoteData.match({
+			failure: (e: string) => `failure:${e}`,
+			notAsked: () => "notAsked",
+			loading: () => "loading",
+			success: (v: number) => `success:${v}`,
+		})(rd);
 		expectTypeOf(result).toBeString();
 	}));
 });

@@ -232,46 +232,7 @@ export const RemoteData = {
 		},
 
 	/**
-	 * Extracts the value from a RemoteData by providing handlers for all four cases.
-	 *
-	 * @see {@link RemoteData.match} for named-case pattern matching with an object literal.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   userData,
-	 *   RemoteData.fold(
-	 *     error => `Error: ${error}`,
-	 *     () => "Not asked",
-	 *     () => "Loading...",
-	 *     value => `Got: ${value}`
-	 *   )
-	 * );
-	 * ```
-	 */
-	fold:
-		<E, A, B>(onFailure: (error: E) => B, onNotAsked: () => B, onLoading: () => B, onSuccess: (value: A) => B) =>
-		(remoteData: RemoteData<E, A>): B => {
-			switch (remoteData.kind) {
-				case "Failure": {
-					return onFailure(remoteData.error);
-				}
-				case "NotAsked": {
-					return onNotAsked();
-				}
-				case "Loading": {
-					return onLoading();
-				}
-				case "Success": {
-					return onSuccess(remoteData.value);
-				}
-			}
-		},
-
-	/**
 	 * Pattern matches on a RemoteData, returning the result of the matching case.
-	 *
-	 * @see {@link RemoteData.fold} for positional argument pattern matching.
 	 *
 	 * @example
 	 * ```ts
@@ -309,7 +270,7 @@ export const RemoteData = {
 	 * Returns the success value or a default value if the RemoteData is not Success.
 	 * The default can be a different type, widening the result to `A | B`.
 	 *
-	 * @see {@link RemoteData.fold} to handle all four lifecycle states.
+	 * @see {@link RemoteData.match} to handle all four lifecycle states.
 	 *
 	 * @example
 	 * ```ts

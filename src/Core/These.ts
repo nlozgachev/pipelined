@@ -245,34 +245,7 @@ export const These = {
 	},
 
 	/**
-	 * Extracts a value from a These by providing handlers for all three cases.
-	 *
-	 * @see {@link These.match} for named-case pattern matching with an object literal.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   these,
-	 *   These.fold(
-	 *     a => `First: ${a}`,
-	 *     b => `Second: ${b}`,
-	 *     (a, b) => `Both: ${a} / ${b}`
-	 *   )
-	 * );
-	 * ```
-	 */
-	fold:
-		<A, B, C>(onFirst: (first: A) => C, onSecond: (second: B) => C, onBoth: (first: A, second: B) => C) =>
-		(these: These<A, B>): C => {
-			if (isSecond(these)) { return onSecond(these.second); }
-			if (isFirst(these)) { return onFirst(these.first); }
-			return onBoth(these.first, these.second);
-		},
-
-	/**
 	 * Pattern matches on a These, returning the result of the matching case.
-	 *
-	 * @see {@link These.fold} for positional argument pattern matching.
 	 *
 	 * @example
 	 * ```ts

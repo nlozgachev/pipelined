@@ -193,7 +193,6 @@ Every data container in `pipelined` shares a consistent, predictable set of comb
 | **`chain`** | Sequences a function returning another container, flattening nested layers. | `Maybe.chain((user) => lookup(user.id))` |
 | **`getOrElse`** | Unwraps the value, falling back to a default thunk if absent or failed. | `Maybe.getOrElse(() => DEFAULT_USER)` |
 | **`match`** | Exhaustively unwraps all variants using a named-case object. | `RemoteData.match({ loading, success, failure, notAsked })` |
-| **`fold`** | Exhaustively unwraps all variants using positional callbacks. | `Result.fold(onErr, onOk)` |
 | **`tap`** | Intercepts the success value for side effects without modifying the data. | `Task.Result.tap((u) => log(u.id))` |
 | **`recover`** | Catches a failure variant and substitutes a fallback container. | `Result.recover((err) => Result.make.ok(cached))` |
 

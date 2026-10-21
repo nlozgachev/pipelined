@@ -119,16 +119,16 @@ const updatedPair = pipe(
 
 ---
 
-## Collapsing and Converting Pairs
+## Merging and Converting Pairs
 
 When we reach the end of a transformation pipeline and need to merge the pair into a single value,
-we use `Pair.fold`. It applies a binary function that merges the two elements:
+we use `Pair.merge`. It applies a binary function that merges the two elements:
 
 ```ts
 const formatted = pipe(
   Pair.make("fr-FR", 1299),
   Pair.mapSecond((cents) => cents / 100), // convert to Euros
-  Pair.fold((locale, euros) => `${locale}: €${euros.toFixed(2)}`),
+  Pair.merge((locale, euros) => `${locale}: €${euros.toFixed(2)}`),
 ); // "fr-FR: €12.99"
 ```
 
@@ -154,5 +154,5 @@ const arr = pipe(
 - **Key-value pair swapping for inverted indexes (`Pair.swap`)**: When building inverse lookup
   indexes (such as converting map entries from IDs to usernames into usernames to IDs), `Pair.swap`
   flips pair positions cleanly inside array pipelines.
-- **Collapsing paired data with `Pair.fold`**: Merging two values into a single formatted string or
+- **Merging paired data with `Pair.merge`**: Merging two values into a single formatted string or
   combined result without manual index accesses.

@@ -6,7 +6,7 @@ const pipeFn = pipe;
 const outcomeMake = Op.Outcome.make;
 const outcomeMap = Op.Outcome.map;
 const outcomeChain = Op.Outcome.chain;
-const outcomeFold = Op.Outcome.fold;
+const outcomeMatch = Op.Outcome.match;
 const opMake = Op.make;
 const opInterpret = Op.interpret;
 
@@ -16,14 +16,17 @@ const opInterpret = Op.interpret;
 
 test("op-sync-transformations", async ({ bench }) => {
 	await bench.compare(
-		bench("1. (current) Op.Outcome.map + Op.Outcome.chain + Op.Outcome.fold", () => {
+		bench("1. (current) Op.Outcome.map + Op.Outcome.chain + Op.Outcome.match", () => {
 			const outcome = outcomeMake.ok(42);
 			void pipeFn(
 				outcome,
 				outcomeMap((x: number) => x * 2),
 				outcomeChain((x: number) => outcomeMake.ok(x + 1)),
-				outcomeFold((err: unknown) => `err:${String(err)}`, () => "nil", (val: number) =>
-					`ok:${val}`),
+				outcomeMatch({
+					err: (err: unknown) => `err:${String(err)}`,
+					nil: () => "nil",
+					ok: (val: number) => `ok:${val}`,
+				}),
 			);
 		}),
 		bench("2. manual inline outcome checks", () => {

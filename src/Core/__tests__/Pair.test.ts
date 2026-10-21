@@ -32,8 +32,8 @@ test("mapBoth: transforms both elements independently", () => {
 	expect(res).toStrictEqual(["ALICE", 84]);
 });
 
-test("fold: collapses pair using binary function", () => {
-	const res = pipe(Pair.make("Alice", 100), Pair.fold((name, score) => `${name}: ${score}`));
+test("merge: merges pair using binary function", () => {
+	const res = pipe(Pair.make("Alice", 100), Pair.merge((name, score) => `${name}: ${score}`));
 	expectTypeOf(res).toEqualTypeOf<string>();
 	expect(res).toBe("Alice: 100");
 });

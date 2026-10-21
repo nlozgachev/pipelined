@@ -118,34 +118,34 @@ test("maybe: has None as empty element", () => {
 });
 
 // ---------------------------------------------------------------------------
-// fold
+// combineAll
 // ---------------------------------------------------------------------------
 
-test("fold: concatenates string array", () => {
-	expect(pipe(["hello", ", ", "world"], Combinable.fold(Combinable.string))).toBe("hello, world");
+test("combineAll: concatenates string array", () => {
+	expect(pipe(["hello", ", ", "world"], Combinable.combineAll(Combinable.string))).toBe("hello, world");
 });
 
-test("fold: sums number array", () => {
-	expect(pipe([1, 2, 3, 4, 5], Combinable.fold(Combinable.sum))).toBe(15);
+test("combineAll: sums number array", () => {
+	expect(pipe([1, 2, 3, 4, 5], Combinable.combineAll(Combinable.sum))).toBe(15);
 });
 
-test("fold: computes product of number array", () => {
-	expect(pipe([2, 3, 4], Combinable.fold(Combinable.product))).toBe(24);
+test("combineAll: computes product of number array", () => {
+	expect(pipe([2, 3, 4], Combinable.combineAll(Combinable.product))).toBe(24);
 });
 
-test("fold: returns empty element for empty array", () => {
-	expect(pipe([] as number[], Combinable.fold(Combinable.sum))).toBe(0);
-	expect(pipe([] as number[], Combinable.fold(Combinable.product))).toBe(1);
+test("combineAll: returns empty element for empty array", () => {
+	expect(pipe([] as number[], Combinable.combineAll(Combinable.sum))).toBe(0);
+	expect(pipe([] as number[], Combinable.combineAll(Combinable.product))).toBe(1);
 });
 
 // ---------------------------------------------------------------------------
 // pipe composition
 // ---------------------------------------------------------------------------
 
-test("fold: works in pipe with Maybe values", () => {
+test("combineAll: works in pipe with Maybe values", () => {
 	const result = pipe(
 		[Maybe.make.some(1), Maybe.make.some(2), Maybe.make.some(3)],
-		Combinable.fold(Combinable.maybe(Combinable.sum)),
+		Combinable.combineAll(Combinable.maybe(Combinable.sum)),
 	);
 	expect(result).toStrictEqual(Maybe.make.some(6));
 });
@@ -171,7 +171,7 @@ test("struct: ignores prototype properties on fields definition", () => {
 
 // --- side-effect isolation ---
 
-test("fold: executes side effects during combination", () => {
+test("combineAll: executes side effects during combination", () => {
 	let called = false;
 	const custom: Combinable<number> = {
 		empty: 0,
@@ -180,11 +180,11 @@ test("fold: executes side effects during combination", () => {
 			return a + b;
 		},
 	};
-	pipe([1, 2], Combinable.fold(custom));
+	pipe([1, 2], Combinable.combineAll(custom));
 	expect(called).toBe(true);
 });
 
-test("fold: does not execute side effects on empty array", () => {
+test("combineAll: does not execute side effects on empty array", () => {
 	let called = false;
 	const custom: Combinable<number> = {
 		empty: 0,
@@ -193,6 +193,6 @@ test("fold: does not execute side effects on empty array", () => {
 			return a + b;
 		},
 	};
-	pipe([], Combinable.fold(custom));
+	pipe([], Combinable.combineAll(custom));
 	expect(called).toBe(false);
 });

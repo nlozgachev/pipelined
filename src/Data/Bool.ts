@@ -38,9 +38,6 @@ const any = (conditions: readonly boolean[]): boolean => {
 	return false;
 };
 
-const fold =
-	<A, B>(onFalse: () => A, onTrue: () => B) => (condition: boolean): A | B => (condition ? onTrue() : onFalse());
-
 const match = <A, B>(cases: { readonly true: () => A; readonly false: () => B; }) => (condition: boolean): A | B =>
 	condition ? cases.true() : cases.false();
 
@@ -278,30 +275,7 @@ export const Bool = {
 	any,
 
 	/**
-	 * Catamorphism for boolean: evaluates `onFalse()` when `false` and `onTrue()` when `true`.
-	 *
-	 * Positional ordering: `onFalse` first, `onTrue` second.
-	 * Aligned with `Result.fold(onErr, onOk)` and `Maybe.fold(onNone, onSome)`.
-	 *
-	 * @see {@link Bool.match} for named-case pattern matching with an object literal.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   isDarkMode,
-	 *   Bool.fold(
-	 *     () => "light-theme",
-	 *     () => "dark-theme"
-	 *   )
-	 * );
-	 * ```
-	 */
-	fold,
-
-	/**
 	 * Pattern matching on boolean using named cases `{ true, false }`.
-	 *
-	 * @see {@link Bool.fold} for positional argument pattern matching.
 	 *
 	 * @example
 	 * ```ts

@@ -164,20 +164,6 @@ test("ensure: infers exact error union without collapsing to unknown", () => {
 });
 
 // ---------------------------------------------------------------------------
-// fold
-// ---------------------------------------------------------------------------
-
-test("fold: calls onOk for Ok", () => {
-	const result = pipe(Result.make.ok(5), Result.fold((e: string) => `Error: ${e}`, (n: number) => `Value: ${n}`));
-	expect(result).toBe("Value: 5");
-});
-
-test("fold: calls onErr for Err", () => {
-	const result = pipe(Result.make.err("bad"), Result.fold((e: string) => `Error: ${e}`, (n: number) => `Value: ${n}`));
-	expect(result).toBe("Error: bad");
-});
-
-// ---------------------------------------------------------------------------
 // match (data-last)
 // ---------------------------------------------------------------------------
 
@@ -502,15 +488,6 @@ test("getOrElse: type-safe widening to union", () => {
 	const fn = Result.getOrElse<null>((): null => null);
 	const result = fn(r);
 	expect(result).toBeNull();
-});
-
-test("fold: type-safe return type from both branches", () => {
-	const r: Result<string, number> = Result.make.ok(1);
-	const result = Result.fold<string, number, string>(
-		(e: string): string => `err:${e}`,
-		(n: number): string => `ok:${n}`,
-	)(r);
-	expect(result).toBe("ok:1");
 });
 
 // --- from.nullable ---

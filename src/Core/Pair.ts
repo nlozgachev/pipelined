@@ -16,7 +16,7 @@
  *   entry,
  *   Pair.mapFirst((name) => name.toUpperCase()),
  *   Pair.mapSecond((score) => score * 2),
- *   Pair.fold((name, score) => `${name}: ${score}`),
+ *   Pair.merge((name, score) => `${name}: ${score}`),
  * ); // "ALICE: 84"
  * ```
  */
@@ -105,16 +105,16 @@ export const Pair = {
 		],
 
 	/**
-	 * Applies a binary function to both values, collapsing the pair into a single value.
+	 * Applies a binary function to both values, merging the pair into a single value.
 	 * Useful as the final step when consuming a pair in a pipeline.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Pair.make("Alice", 100), Pair.fold((name, score) => `${name}: ${score}`));
+	 * pipe(Pair.make("Alice", 100), Pair.merge((name, score) => `${name}: ${score}`));
 	 * // "Alice: 100"
 	 * ```
 	 */
-	fold: <A, B, C>(reducer: (first: A, second: B) => C) => (pair: Pair<A, B>): C => reducer(pair[0], pair[1]),
+	merge: <A, B, C>(transform: (first: A, second: B) => C) => (pair: Pair<A, B>): C => transform(pair[0], pair[1]),
 
 	/**
 	 * Swaps the two values: `[A, B]` becomes `[B, A]`.

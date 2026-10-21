@@ -143,26 +143,6 @@ test("chain: composes multiple async steps", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// fold
-// ---------------------------------------------------------------------------
-
-test("fold: calls onOk for Ok", async () => {
-	const result = await pipe(
-		Task.Result.make.ok<string, number>(5),
-		Task.Result.fold((e: string) => `Error: ${e}`, (n: number) => `Value: ${n}`),
-	)();
-	expect(result).toBe("Value: 5");
-});
-
-test("fold: calls onErr for Err", async () => {
-	const result = await pipe(
-		Task.Result.make.err<string, number>("bad"),
-		Task.Result.fold((e: string) => `Error: ${e}`, (n: number) => `Value: ${n}`),
-	)();
-	expect(result).toBe("Error: bad");
-});
-
-// ---------------------------------------------------------------------------
 // match (data-last)
 // ---------------------------------------------------------------------------
 
@@ -408,11 +388,11 @@ test("match: handles err path at end of composed chain", async () => {
 	expect(result).toBe("err:too small");
 });
 
-test("fold: receives transformed error from prior mapError", async () => {
+test("mapError: transformed error received by match", async () => {
 	const result = await pipe(
 		Task.Result.tryCatch(() => Promise.reject(new Error("boom")), { onError: (e: unknown) => (e as Error).message }),
 		Task.Result.mapError((msg: string) => msg.toUpperCase()),
-		Task.Result.fold((e: string) => `error: ${e}`, (_: number) => "ok"),
+		Task.Result.match({ err: (e: string) => `error: ${e}`, ok: (_: number) => "ok" }),
 	)();
 	expect(result).toBe("error: BOOM");
 });

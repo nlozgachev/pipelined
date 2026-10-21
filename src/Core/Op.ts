@@ -357,8 +357,6 @@ const OpOutcome = {
 	/**
 	 * Matches on an Op outcome by providing handlers for each variant.
 	 *
-	 * @see {@link Op.Outcome.fold} for positional argument folding.
-	 *
 	 * @example
 	 * ```ts
 	 * pipe(
@@ -381,35 +379,6 @@ const OpOutcome = {
 				return cases.err(outcome.error);
 			}
 			return cases.nil(outcome.reason);
-		},
-
-	/**
-	 * Extracts the value from an Op outcome by providing positional handlers for each variant.
-	 *
-	 * @see {@link Op.Outcome.match} for named-case pattern matching with an object literal.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   outcome,
-	 *   Op.Outcome.fold(
-	 *     (error) => `Error: ${error}`,
-	 *     (reason) => `Cancelled: ${reason}`,
-	 *     (value) => `Value: ${value}`,
-	 *   ),
-	 * );
-	 * ```
-	 */
-	fold:
-		<E, A, B>(onErr: (error: E) => B, onNil: (reason: Op.NilReason) => B, onOk: (value: A) => B) =>
-		(outcome: Op.Outcome<E, A>): B => {
-			if (outcome.kind === "OpOk") {
-				return onOk(outcome.value);
-			}
-			if (outcome.kind === "OpErr") {
-				return onErr(outcome.error);
-			}
-			return onNil(outcome.reason);
 		},
 
 	/**

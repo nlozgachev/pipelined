@@ -240,37 +240,6 @@ test("chainSecond: changes second value type", () => {
 });
 
 // ---------------------------------------------------------------------------
-// fold
-// ---------------------------------------------------------------------------
-
-test("fold: calls onFirst for First", () => {
-	expect(
-		pipe(
-			These.make.first(5),
-			These.fold((a: number) => `first:${a}`, (b: string) => `second:${b}`, (a: number, b: string) => `both:${a}/${b}`),
-		),
-	).toBe("first:5");
-});
-
-test("fold: calls onSecond for Second", () => {
-	expect(
-		pipe(
-			These.make.second("e"),
-			These.fold((a: number) => `first:${a}`, (b: string) => `second:${b}`, (a: number, b: string) => `both:${a}/${b}`),
-		),
-	).toBe("second:e");
-});
-
-test("fold: calls onBoth for Both", () => {
-	expect(
-		pipe(
-			These.make.both(5, "w"),
-			These.fold((a: number) => `first:${a}`, (b: string) => `second:${b}`, (a: number, b: string) => `both:${a}/${b}`),
-		),
-	).toBe("both:5/w");
-});
-
-// ---------------------------------------------------------------------------
 // match
 // ---------------------------------------------------------------------------
 

@@ -164,28 +164,7 @@ export const Result = {
 		isOk(result) ? transform(result.value) : result,
 
 	/**
-	 * Extracts the value from a Result by providing handlers for both cases.
-	 *
-	 * @see {@link Result.match} for named-case pattern matching with an object literal.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   Result.make.ok(5),
-	 *   Result.fold(
-	 *     error => `Error: ${error}`,
-	 *     value => `Value: ${value}`
-	 *   )
-	 * ); // "Value: 5"
-	 * ```
-	 */
-	fold: <E, A, B>(onErr: (error: E) => B, onOk: (value: A) => B) => (result: Result<E, A>): B =>
-		isOk(result) ? onOk(result.value) : onErr((result as Result.Err<E>).error),
-
-	/**
 	 * Pattern matches on a Result, returning the result of the matching case.
-	 *
-	 * @see {@link Result.fold} for positional argument pattern matching.
 	 *
 	 * @example
 	 * ```ts
@@ -206,7 +185,7 @@ export const Result = {
 	 * The default is a thunk `() => B` — evaluated only when the Result is Err.
 	 * The default can be a different type, widening the result to `A | B`.
 	 *
-	 * @see {@link Result.fold} to handle both the Ok and Err cases.
+	 * @see {@link Result.match} to handle both the Ok and Err cases.
 	 *
 	 * @example
 	 * ```ts

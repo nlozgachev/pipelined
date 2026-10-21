@@ -253,28 +253,7 @@ export const Maybe = {
 		isSome(maybe) ? transform(maybe.value) : maybe,
 
 	/**
-	 * Extracts the value from a Maybe by providing handlers for both cases.
-	 *
-	 * @see {@link Maybe.match} for named-case handling using an object.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   Maybe.make.some(5),
-	 *   Maybe.fold(
-	 *     () => "No value",
-	 *     n => `Value: ${n}`
-	 *   )
-	 * ); // "Value: 5"
-	 * ```
-	 */
-	fold: <A, B>(onNone: () => B, onSome: (value: A) => B) => (maybe: Maybe<A>): B =>
-		isSome(maybe) ? onSome(maybe.value) : onNone(),
-
-	/**
 	 * Pattern matches on a Maybe, returning the result of the matching case.
-	 *
-	 * @see {@link Maybe.fold} for positional arguments (onNone, onSome).
 	 *
 	 * @example
 	 * ```ts

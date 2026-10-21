@@ -150,10 +150,10 @@ const formatResponse = (result: Result<string, ApiPayload>): ApiResponse =>
       (err) => ({ error: `Request rejected: ${err}` }),
       (user) => ({ data: { user: user.email.toLowerCase() } }),
     ),
-    Result.fold(
-      (errPayload) => errPayload,
-      (okPayload) => okPayload,
-    ),
+    Result.match({
+      err: (errPayload) => errPayload,
+      ok: (okPayload) => okPayload,
+    }),
   );
 ```
 
@@ -232,28 +232,17 @@ pipe(
 expensive operations, like reading a default value from a config file or instantiating a fallback
 cache, are only executed if a failure actually occurred.
 
-### Case analysis with `match` and `fold`
+### Case analysis with `match`
 
-To perform distinct business logic on both the success and failure branches, you can use `match` for
-a named object mapping, or `fold` for an error-first positional callback:
+To perform distinct business logic on both the success and failure branches, use `match`:
 
 ```ts
-// Using match with named branches
 const message = pipe(
   userProfile,
   Result.match({
     ok: (user) => `Welcome back, ${user.name}`,
     err: (error) => `Login failed: ${error}`,
   }),
-);
-
-// Using fold (error-first positional convention)
-const status = pipe(
-  userProfile,
-  Result.fold(
-    (error) => `Failure: ${error}`,
-    (user) => `Success: ${user.id}`,
-  ),
 );
 ```
 

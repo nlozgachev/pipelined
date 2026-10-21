@@ -86,9 +86,13 @@ test("tap: returns identical outcome reference", () => {
 	}));
 });
 
-test("fold: handles all outcome kinds without throwing", () => {
+test("match: handles all outcome kinds without throwing", () => {
 	fc.assert(fc.property(arbOutcome, (o) => {
-		const result = Op.Outcome.fold((e: string) => `err:${e}`, (r) => `nil:${r}`, (v: number) => `ok:${v}`)(o);
+		const result = Op.Outcome.match({
+			err: (e: string) => `err:${e}`,
+			nil: (r) => `nil:${r}`,
+			ok: (v: number) => `ok:${v}`,
+		})(o);
 		expectTypeOf(result).toBeString();
 	}));
 });

@@ -76,7 +76,6 @@ Many functional programming libraries use terminology derived from abstract alge
 - **`map`**: Transforms the value inside a container.
 - **`chain`**: Transforms the value using a function that returns another container, flattening the
   result.
-- **`fold`**: Collapses a container into a plain value by providing handlers for every variant.
 - **`match`**: Pattern matches against named cases (`{ ok, err }` or `{ some, none }`).
 
 This keeps the API readable for TypeScript developers without requiring background in functional

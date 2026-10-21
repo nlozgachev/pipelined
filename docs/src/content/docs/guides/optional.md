@@ -113,7 +113,7 @@ const firstCharOptional = Optional.from.accessors(
 ## Reading values safely
 
 When reading a value through an `Optional`, we receive a `Maybe` context. We then use standard
-functional helpers to extract or fold the value:
+functional helpers to extract or match on the value:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -124,13 +124,13 @@ const slackOptional = Optional.from.property<UserSettings["notifications"]>()("s
 const slackSettings = pipe(settings.notifications, Optional.get(slackOptional));
 // Returns: None (since 'slack' is undefined in our settings)
 
-// Fold the result with a fallback value using positional ordering (none handler first)
+// Match on the result with named handlers
 const hasWebhook = pipe(
   settings.notifications,
-  Optional.fold(slackOptional)(
-    () => false,                // Handle None
-    (slack) => !!slack.webhookUrl // Handle Some
-  )
+  Optional.match(slackOptional)({
+    none: () => false,
+    some: (slack) => Boolean(slack.webhookUrl),
+  }),
 );
 ```
 

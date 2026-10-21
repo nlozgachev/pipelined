@@ -230,11 +230,11 @@ const aggregated = pipe(
 
 ---
 
-## Compacting and Folds
+## Compacting and Reductions
 
 - `compact` collapses a dictionary of optional values `ReadonlyMap<K, Maybe<V>>` into a clean
   dictionary of values `ReadonlyMap<K, V>`, discarding `None` states.
-- `reduce` folds the dictionary values from the left into a single accumulator.
+- `reduce` reduces the dictionary values from the left into a single accumulator.
 - `to.record` exports a string-keyed dictionary back into a plain JavaScript object.
 
 ```ts

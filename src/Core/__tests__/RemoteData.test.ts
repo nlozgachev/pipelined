@@ -211,24 +211,6 @@ test("apply: widens error types from function and argument", () => {
 });
 
 // ---------------------------------------------------------------------------
-// fold
-// ---------------------------------------------------------------------------
-
-test("fold: handles all four cases", () => {
-	const handler = RemoteData.fold<string, number, string>(
-		(e) => `error: ${e}`,
-		() => "not asked",
-		() => "loading",
-		(v) => `value: ${v}`,
-	);
-
-	expect(handler(RemoteData.make.notAsked())).toBe("not asked");
-	expect(handler(RemoteData.make.loading())).toBe("loading");
-	expect(handler(RemoteData.make.failure("bad"))).toBe("error: bad");
-	expect(handler(RemoteData.make.success(42))).toBe("value: 42");
-});
-
-// ---------------------------------------------------------------------------
 // match
 // ---------------------------------------------------------------------------
 

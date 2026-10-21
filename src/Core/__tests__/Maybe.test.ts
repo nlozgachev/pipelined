@@ -245,20 +245,6 @@ test("chain: propagates None without calling function", () => {
 });
 
 // ---------------------------------------------------------------------------
-// fold
-// ---------------------------------------------------------------------------
-
-test("fold: calls onSome for Some", () => {
-	const result = pipe(Maybe.make.some(5), Maybe.fold(() => "none", (n: number) => `value: ${n}`));
-	expect(result).toBe("value: 5");
-});
-
-test("fold: calls onNone for None", () => {
-	const result = pipe(Maybe.make.none(), Maybe.fold(() => "none", (n: number) => `value: ${n}`));
-	expect(result).toBe("none");
-});
-
-// ---------------------------------------------------------------------------
 // match (data-last)
 // ---------------------------------------------------------------------------
 
@@ -530,12 +516,6 @@ test("chain: collapses nested Maybe", () => {
 test("getOrElse: widens return type to union", () => {
 	const val = pipe(Maybe.make.some("hello"), Maybe.getOrElse((): null => null));
 	expectTypeOf(val).toEqualTypeOf<string | null>();
-});
-
-test("fold: return type matches branch return types", () => {
-	const r: Maybe<number> = Maybe.make.some(42);
-	const folded = Maybe.fold((): string => "none", (n: number): string => String(n))(r);
-	expectTypeOf(folded).toBeString();
 });
 
 // --- bindTo ---

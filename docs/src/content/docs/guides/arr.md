@@ -200,7 +200,7 @@ pipe([1, 2, 3], Arr.removeAt(1));     // [1, 3]
 - `zipWith` combines elements using a custom function.
 - `intersperse` injects a separator between every element.
 - `chunksOf` splits an array into fixed-size chunks.
-- `reduce` folds a collection from the left.
+- `reduce` reduces a collection from the left into a single value.
 
 ```ts
 pipe([1, 2], Arr.zip(["a", "b"]));          // [[1, "a"], [2, "b"]]

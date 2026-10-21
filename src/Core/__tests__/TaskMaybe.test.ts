@@ -181,22 +181,6 @@ test("apply: propagates AbortSignal to both sides", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// fold
-// ---------------------------------------------------------------------------
-
-test("fold: calls onSome for Some", async () => {
-	await expect(pipe(Task.Maybe.make.some(5), Task.Maybe.fold(() => "none", (n: number) => `some:${n}`))()).resolves.toBe(
-		"some:5",
-	);
-});
-
-test("fold: calls onNone for None", async () => {
-	await expect(pipe(Task.Maybe.make.none(), Task.Maybe.fold(() => "none", (n: number) => `some:${n}`))()).resolves.toBe(
-		"none",
-	);
-});
-
-// ---------------------------------------------------------------------------
 // match
 // ---------------------------------------------------------------------------
 

@@ -13,7 +13,7 @@ const maybeGetOrElse = Maybe.getOrElse;
 const resultOk = Result.make.ok;
 const resultMap = Result.map;
 const resultChain = Result.chain;
-const resultFold = Result.fold;
+const resultMatch = Result.match;
 
 type MaybeVal = { kind: "Some"; value: number; } | { kind: "None"; };
 
@@ -82,7 +82,7 @@ test("pipeline-result-ok", async ({ bench }) => {
 				resultOk(42),
 				resultMap((x) => x * 2),
 				resultChain((x) => resultOk(x + 1)),
-				resultFold(() => -1, (x) => x),
+				resultMatch({ ok: (x) => x, err: () => -1 }),
 			);
 		}),
 		bench("2. manual inline", () => {
