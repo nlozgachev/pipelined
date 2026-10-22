@@ -86,7 +86,7 @@ flowchart TD
 ## Creating optional paths
 
 We can target optional object properties using `Optional.from.property`, and array elements by index
-using `Optional.index`:
+using `Optional.from.index`:
 
 ```ts
 import { Optional } from "@nlozgachev/pipelined/core";
@@ -95,7 +95,7 @@ import { Optional } from "@nlozgachev/pipelined/core";
 const notificationsOptional = Optional.from.property<UserSettings>()("notifications");
 
 // Focus on a specific element of an array by index
-const firstItemOptional = Optional.index<string>(0); // Optional<string[], string>
+const firstItemOptional = Optional.from.index<string>(0); // Optional<readonly string[], string>
 ```
 
 If we need a custom optional path — such as parsing a string value that might be empty or invalid —
@@ -224,7 +224,7 @@ const sslCertOptional = pipe(
   targets without creating unwanted default properties.
 - **Modifying specific items in nested array state**: Updating an element at an index inside an
   array nested inside state (such as `cart.items[index].quantity`) requires cloning the array,
-  checking bounds, and spreading parent objects. `Optional.index` allows direct, boundary-safe
+  checking bounds, and spreading parent objects. `Optional.from.index` allows direct, boundary-safe
   updates to indexed collection elements.
 - **Composing guaranteed and optional paths**: Real-world domain models mix required structural
   wrappers with optional fields. `Optional` connects guaranteed paths (`Lens`) with optional leaves

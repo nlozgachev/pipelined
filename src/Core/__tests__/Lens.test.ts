@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Lens } from "../Lens.ts";
 import { Optional } from "../Optional.ts";
@@ -14,6 +14,7 @@ const alice: User = { name: "Alice", age: 30, address: { city: "Berlin", zip: "1
 
 test("from.accessors: constructs a lens from getter and setter", () => {
 	const nameLens = Lens.from.accessors((u: User) => u.name, (name) => (u) => ({ ...u, name }));
+	expectTypeOf(nameLens).toEqualTypeOf<Lens<User, string>>();
 	expect(nameLens.get(alice)).toBe("Alice");
 	expect(nameLens.set("Bob")(alice)).toStrictEqual({ ...alice, name: "Bob" });
 });
@@ -24,7 +25,18 @@ test("from.accessors: constructs a lens from getter and setter", () => {
 
 test("from.property: focuses on a top-level property", () => {
 	const nameLens = Lens.from.property<User>()("name");
+	expectTypeOf(nameLens).toEqualTypeOf<Lens<User, string>>();
 	expect(nameLens.get(alice)).toBe("Alice");
+});
+
+test("from.property: focuses on symbol keys", () => {
+	const idKey = Symbol("id");
+	type Account = { [idKey]: string; balance: number; };
+	const account: Account = { [idKey]: "acc-123", balance: 500 };
+	const idLens = Lens.from.property<Account>()(idKey);
+	expectTypeOf(idLens).toEqualTypeOf<Lens<Account, string>>();
+	expect(idLens.get(account)).toBe("acc-123");
+	expect(idLens.set("acc-456")(account)).toStrictEqual({ [idKey]: "acc-456", balance: 500 });
 });
 
 test("set: returns a new object with the property replaced", () => {
@@ -45,7 +57,9 @@ test("set: does not mutate the original", () => {
 
 test("get: extracts the focused value", () => {
 	const ageLens = Lens.from.property<User>()("age");
-	expect(pipe(alice, Lens.get(ageLens))).toBe(30);
+	const age = pipe(alice, Lens.get(ageLens));
+	expectTypeOf(age).toEqualTypeOf<number>();
+	expect(age).toBe(30);
 });
 
 // ---------------------------------------------------------------------------
@@ -54,7 +68,9 @@ test("get: extracts the focused value", () => {
 
 test("set: replaces the focused value", () => {
 	const ageLens = Lens.from.property<User>()("age");
-	expect(pipe(alice, Lens.set(ageLens)(31))).toStrictEqual({ ...alice, age: 31 });
+	const setAge = Lens.set(ageLens)(31);
+	expectTypeOf(setAge).toEqualTypeOf<(structure: User) => User>();
+	expect(pipe(alice, setAge)).toStrictEqual({ ...alice, age: 31 });
 });
 
 // ---------------------------------------------------------------------------
@@ -63,12 +79,14 @@ test("set: replaces the focused value", () => {
 
 test("modify: applies a function to the focused value", () => {
 	const ageLens = Lens.from.property<User>()("age");
-	expect(pipe(alice, Lens.modify(ageLens)((n) => n + 1))).toStrictEqual({ ...alice, age: 31 });
+	const incAge = Lens.modify(ageLens)((n) => n + 1);
+	expectTypeOf(incAge).toEqualTypeOf<(structure: User) => User>();
+	expect(pipe(alice, incAge)).toStrictEqual({ ...alice, age: 31 });
 });
 
-test("modify: does not change the structure when function is identity", () => {
+test("modify: preserves reference when transform returns identical value", () => {
 	const nameLens = Lens.from.property<User>()("name");
-	expect(pipe(alice, Lens.modify(nameLens)((n) => n))).toStrictEqual(alice);
+	expect(pipe(alice, Lens.modify(nameLens)((n) => n))).toBe(alice);
 });
 
 // ---------------------------------------------------------------------------
@@ -79,7 +97,7 @@ test("andThen: composes two lenses", () => {
 	const addressLens = Lens.from.property<User>()("address");
 	const cityLens = Lens.from.property<Address>()("city");
 	const userCityLens = pipe(addressLens, Lens.andThen(cityLens));
-
+	expectTypeOf(userCityLens).toEqualTypeOf<Lens<User, string>>();
 	expect(pipe(alice, Lens.get(userCityLens))).toBe("Berlin");
 });
 
@@ -117,7 +135,7 @@ test("andThenOptional: returns Some when inner focus present", () => {
 	const profileLens = Lens.from.property<UserWithProfile>()("profile");
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	const userBioOpt = pipe(profileLens, Lens.andThenOptional(bioOpt));
-
+	expectTypeOf(userBioOpt).toEqualTypeOf<Optional<UserWithProfile, string>>();
 	expect(pipe(userWithBio, Optional.get(userBioOpt))).toStrictEqual({ kind: "Some", value: "hi" });
 });
 
@@ -145,7 +163,7 @@ test("andThenOptional: updates inner value on set", () => {
 test("to.Optional: get always returns Some", () => {
 	const nameLens = Lens.from.property<User>()("name");
 	const nameOpt = Lens.to.Optional(nameLens);
-
+	expectTypeOf(nameOpt).toEqualTypeOf<Optional<User, string>>();
 	expect(nameOpt.get(alice)).toStrictEqual({ kind: "Some", value: "Alice" });
 });
 
