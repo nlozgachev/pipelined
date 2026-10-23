@@ -80,7 +80,7 @@ export function pipeAsync<A, B, C, D, E, F, G, H, I, J>(
 	fg: (f: F) => Awaitable<G>,
 	gh: (g: G) => Awaitable<H>,
 	hi: (h: H) => Awaitable<I>,
-	ij: (i: I) => J,
+	ij: (i: I) => Awaitable<J>,
 ): Promise<J>;
 export function pipeAsync<A, B, C, D, E, F, G, H, I, J, K>(
 	a: Awaitable<A>,

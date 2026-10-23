@@ -125,7 +125,14 @@ export const Predicate = {
 	 * Predicate.all([])("anything");   // true
 	 * ```
 	 */
-	all: <A>(predicates: ReadonlyArray<Predicate<A>>): Predicate<A> => (a) => predicates.every((p) => p(a)),
+	all: <A>(predicates: ReadonlyArray<Predicate<A>>): Predicate<A> => (a) => {
+		for (let i = 0; i < predicates.length; i++) {
+			if (!predicates[i](a)) {
+				return false;
+			}
+		}
+		return true;
+	},
 
 	/**
 	 * Combines an array of predicates with OR: passes when at least one holds.
@@ -144,7 +151,14 @@ export const Predicate = {
 	 * Predicate.any([])("anything");                 // false
 	 * ```
 	 */
-	any: <A>(predicates: ReadonlyArray<Predicate<A>>): Predicate<A> => (a) => predicates.some((p) => p(a)),
+	any: <A>(predicates: ReadonlyArray<Predicate<A>>): Predicate<A> => (a) => {
+		for (let i = 0; i < predicates.length; i++) {
+			if (predicates[i](a)) {
+				return true;
+			}
+		}
+		return false;
+	},
 
 	// --- from ---
 	from: {

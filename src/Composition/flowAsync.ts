@@ -74,7 +74,7 @@ export function flowAsync<A, B, C, D, E, F, G, H, I, J>(
 	fg: (f: F) => Awaitable<G>,
 	gh: (g: G) => Awaitable<H>,
 	hi: (h: H) => Awaitable<I>,
-	ij: (i: I) => J,
+	ij: (i: I) => Awaitable<J>,
 ): (a: Awaitable<A>) => Promise<J>;
 export function flowAsync<A, B, C, D, E, F, G, H, I, J, K>(
 	ab: (a: A) => Awaitable<B>,

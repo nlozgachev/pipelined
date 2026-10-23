@@ -2,7 +2,7 @@
 // Imports
 // =============================================================================
 import type { Thenable } from "#internal";
-import { Duration } from "../Types/Duration";
+import { Duration } from "../Types/Duration.ts";
 
 // =============================================================================
 // Internal Helpers

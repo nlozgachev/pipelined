@@ -16,5 +16,7 @@
  *
  * @see {@link when} for executing when a predicate is met
  */
-export const unless = <A>(predicate: (value: A) => boolean, onFalse: (value: A) => A) => (value: A): A =>
-	predicate(value) ? value : onFalse(value);
+export const unless =
+	<A, B = A>(predicate: (value: A) => boolean, onFalse: (value: A) => B) => (
+		value: A,
+	): A | B => (predicate(value) ? value : onFalse(value));

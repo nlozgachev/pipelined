@@ -15,14 +15,17 @@
  * toNameRecord("  Alice Bob  "); // { trimmed: "Alice Bob", initials: "AB" }
  * ```
  */
-export function converge<A, B, C, R>(f: (b: B, c: C) => R, transformers: [(a: A) => B, (a: A) => C]): (a: A) => R;
+export function converge<A, B, C, R>(
+	f: (b: B, c: C) => R,
+	transformers: readonly [(a: A) => B, (a: A) => C],
+): (a: A) => R;
 export function converge<A, B, C, D, R>(
 	f: (b: B, c: C, d: D) => R,
-	transformers: [(a: A) => B, (a: A) => C, (a: A) => D],
+	transformers: readonly [(a: A) => B, (a: A) => C, (a: A) => D],
 ): (a: A) => R;
 export function converge<A, B, C, D, E, R>(
 	f: (b: B, c: C, d: D, e: E) => R,
-	transformers: [(a: A) => B, (a: A) => C, (a: A) => D, (a: A) => E],
+	transformers: readonly [(a: A) => B, (a: A) => C, (a: A) => D, (a: A) => E],
 ): (a: A) => R;
 export function converge<A>(
 	f: (...args: unknown[]) => unknown,

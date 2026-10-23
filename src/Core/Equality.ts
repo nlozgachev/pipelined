@@ -69,8 +69,17 @@ export const Equality = {
 	 * Equality.array(Equality.number)([1, 2, 3], [1, 2, 3]); // true
 	 * ```
 	 */
-	array: <A>(eq: Equality<A>): Equality<readonly A[]> => (a, b) =>
-		a.length === b.length && a.every((x, i) => eq(x, b[i])),
+	array: <A>(eq: Equality<A>): Equality<readonly A[]> => (a, b) => {
+		if (a.length !== b.length) {
+			return false;
+		}
+		for (let i = 0; i < a.length; i++) {
+			if (!eq(a[i], b[i])) {
+				return false;
+			}
+		}
+		return true;
+	},
 
 	/**
 	 * Adapts an equality for type `A` into an equality for type `B` by extracting a field.

@@ -30,12 +30,12 @@ export type Logged<L, A> = WithValue<A> & WithLog<L>;
 
 const makeEntry = <W>(logEntry: W): Logged<W, undefined> => ({ value: undefined, log: [logEntry] });
 
-const mapLogged = <W, A, B>(f: (a: A) => B) => (data: Logged<W, A>): Logged<W, B> => ({
+const mapLogged = <A, B>(f: (a: A) => B) => <W = never>(data: Logged<W, A>): Logged<W, B> => ({
 	value: f(data.value),
 	log: data.log,
 });
 
-const chainLogged = <W, A, B>(f: (a: A) => Logged<W, B>) => (data: Logged<W, A>): Logged<W, B> => {
+const chainLogged = <A, W2, B>(f: (a: A) => Logged<W2, B>) => <W1 = never>(data: Logged<W1, A>): Logged<W1 | W2, B> => {
 	const next = f(data.value);
 	return { value: next.value, log: [...data.log, ...next.log] };
 };
@@ -115,10 +115,11 @@ export const Logged = {
 	 * Logged.run(result); // [10, ["fn-loaded", "arg-loaded"]]
 	 * ```
 	 */
-	apply: <W, A>(arg: Logged<W, A>) => <B>(data: Logged<W, (a: A) => B>): Logged<W, B> => ({
-		value: data.value(arg.value),
-		log: [...data.log, ...arg.log],
-	}),
+	apply:
+		<W2, A>(arg: Logged<W2, A>) => <W1 = never, B = unknown>(data: Logged<W1, (a: A) => B>): Logged<W1 | W2, B> => ({
+			value: data.value(arg.value),
+			log: [...data.log, ...arg.log],
+		}),
 
 	/**
 	 * Runs a side effect on the value without changing the `Logged`.
@@ -132,7 +133,7 @@ export const Logged = {
 	 * );
 	 * ```
 	 */
-	tap: <W, A>(f: (a: A) => void) => (data: Logged<W, A>): Logged<W, A> => {
+	tap: <A>(f: (a: A) => void) => <W = never>(data: Logged<W, A>): Logged<W, A> => {
 		f(data.value);
 		return data;
 	},
@@ -162,8 +163,8 @@ export const Logged = {
 	 * pipe(Logged.make<string, number>(42), Logged.bindTo("value")); // Logged({ value: 42 })
 	 * ```
 	 */
-	bindTo: <K extends string>(key: K) => <W, A>(data: Logged<W, A>): Logged<W, { [P in K]: A; }> =>
-		mapLogged<W, A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data),
+	bindTo: <K extends string>(key: K) => <W = never, A = unknown>(data: Logged<W, A>): Logged<W, { [P in K]: A; }> =>
+		mapLogged<A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data),
 
 	/**
 	 * Evaluates a new Logged using the current accumulator and attaches the output to a new key.
@@ -177,10 +178,10 @@ export const Logged = {
 	 * ```
 	 */
 	bind:
-		<K extends string, W, A, B>(key: K, f: (a: A) => Logged<W, B>) =>
-		(data: Logged<W, A>): Logged<W, A & { [P in K]: B; }> =>
-			chainLogged<W, A, A & { [P in K]: B; }>((a) =>
-				mapLogged<W, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
+		<K extends string, W2, A, B>(key: K, f: (a: A) => Logged<W2, B>) =>
+		<W1 = never>(data: Logged<W1, A>): Logged<W1 | W2, A & { [P in K]: B; }> =>
+			chainLogged<A, W2, A & { [P in K]: B; }>((a) =>
+				mapLogged<B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
 			)(data),
 
 	/**
@@ -193,7 +194,7 @@ export const Logged = {
 	 * pipe(logged, Logged.focus(nameLens)(s => s.toUpperCase()));
 	 * ```
 	 */
-	focus: <S, A>(lens: Lens<S, A>) => <W>(f: (a: A) => A) => (data: Logged<W, S>): Logged<W, S> => ({
+	focus: <S, A>(lens: Lens<S, A>) => (f: (a: A) => A) => <W = never>(data: Logged<W, S>): Logged<W, S> => ({
 		value: lens.set(f(lens.get(data.value)))(data.value),
 		log: data.log,
 	}),

@@ -107,8 +107,13 @@ export const Combinable = {
 	 * pipe([], Combinable.combineAll(Combinable.sum));               // 0
 	 * ```
 	 */
-	combineAll: <A>(combinable: Combinable<A>) => (items: readonly A[]): A =>
-		items.reduce((acc, x) => combinable.combine(x)(acc), combinable.empty),
+	combineAll: <A>(combinable: Combinable<A>) => (items: readonly A[]): A => {
+		let acc = combinable.empty;
+		for (let i = 0; i < items.length; i++) {
+			acc = combinable.combine(items[i])(acc);
+		}
+		return acc;
+	},
 
 	/**
 	 * Derives a `Combinable` for a record of fields from field-level `Combinable` instances.
