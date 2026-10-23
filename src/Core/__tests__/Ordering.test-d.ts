@@ -1,37 +1,46 @@
-import { describe, expectTypeOf, it } from "vitest";
+import { expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Ordering } from "../Ordering.ts";
 
-describe("Ordering type-level tests", () => {
-	it("inspects primitive orderings and composition combinators", () => {
-		expectTypeOf(Ordering.string).toEqualTypeOf<Ordering<string>>();
-		expectTypeOf(Ordering.number).toEqualTypeOf<Ordering<number>>();
-		expectTypeOf(Ordering.date).toEqualTypeOf<Ordering<Date>>();
+test("primitive instances and reverse: infers exact Ordering types", () => {
+	expectTypeOf(Ordering.string).toEqualTypeOf<Ordering<string>>();
+	expectTypeOf(Ordering.number).toEqualTypeOf<Ordering<number>>();
+	expectTypeOf(Ordering.date).toEqualTypeOf<Ordering<Date>>();
 
-		expectTypeOf(Ordering.reverse(Ordering.number)).toEqualTypeOf<Ordering<number>>();
+	expectTypeOf(Ordering.reverse(Ordering.number)).toEqualTypeOf<Ordering<number>>();
+});
 
-		type Employee = { name: string; salary: number; };
-		const byName = pipe(Ordering.string, Ordering.by((e: Employee) => e.name));
-		const bySalary = pipe(Ordering.number, Ordering.by((e: Employee) => e.salary));
+test("by and thenBy: preserves and adapts ordering types in pipelines", () => {
+	type Employee = { name: string; salary: number; };
+	const byName = pipe(Ordering.string, Ordering.by((e: Employee) => e.name));
+	const bySalary = pipe(Ordering.number, Ordering.by((e: Employee) => e.salary));
 
-		expectTypeOf(byName).toEqualTypeOf<Ordering<Employee>>();
-		expectTypeOf(bySalary).toEqualTypeOf<Ordering<Employee>>();
+	expectTypeOf(byName).toEqualTypeOf<Ordering<Employee>>();
+	expectTypeOf(bySalary).toEqualTypeOf<Ordering<Employee>>();
 
-		const composite = pipe(byName, Ordering.thenBy(bySalary));
-		expectTypeOf(composite).toEqualTypeOf<Ordering<Employee>>();
+	const composite = pipe(byName, Ordering.thenBy(bySalary));
+	expectTypeOf(composite).toEqualTypeOf<Ordering<Employee>>();
+});
 
-		const byFields = Ordering.byFields([byName, bySalary]);
-		expectTypeOf(byFields).toEqualTypeOf<Ordering<Employee>>();
+test("byFields and tuple: infers composite ordering types", () => {
+	type Employee = { name: string; salary: number; };
+	const byName = pipe(Ordering.string, Ordering.by((e: Employee) => e.name));
+	const bySalary = pipe(Ordering.number, Ordering.by((e: Employee) => e.salary));
 
-		const tupleOrd = Ordering.tuple(Ordering.string, Ordering.number);
-		expectTypeOf(tupleOrd).toEqualTypeOf<Ordering<[string, number]>>();
-	});
+	const byFields = Ordering.byFields([byName, bySalary]);
+	expectTypeOf(byFields).toEqualTypeOf<Ordering<Employee>>();
 
-	it("rejects mismatched types in comparison and combinators", () => {
-		// @ts-expect-error cannot order string and number
-		Ordering.number(1, "2");
+	const tupleOrd = Ordering.tuple(Ordering.string, Ordering.number);
+	expectTypeOf(tupleOrd).toEqualTypeOf<Ordering<[string, number]>>();
+});
 
-		// @ts-expect-error field extractor returns mismatched type
-		expectTypeOf(pipe(Ordering.number, Ordering.by((s: string) => s.trim()))).toBeFunction();
-	});
+test("type errors: rejects invalid types in comparison and combinators", () => {
+	// @ts-expect-error cannot order string and number
+	expectTypeOf(Ordering.number(1, "2")).toBeNumber();
+
+	// @ts-expect-error field extractor returns mismatched type
+	expectTypeOf(pipe(Ordering.number, Ordering.by((s: string) => s.trim()))).toBeFunction();
+
+	// @ts-expect-error thenBy requires matching element type
+	expectTypeOf(pipe(Ordering.number, Ordering.thenBy(Ordering.string))).toBeFunction();
 });

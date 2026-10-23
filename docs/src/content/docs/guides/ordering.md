@@ -178,7 +178,7 @@ const sortedUsers = pipe(
 - **Multi-column table sorting with tiebreakers**: In data grids and table views, users frequently
   sort records by multiple criteria (such as status first, then created date descending, then name
   ascending). Writing chained ternary comparator callbacks manually is error-prone. `Ordering.by`
-  and `Ordering.then` combine atomic sorting rules into readable tiebreaker pipelines.
+  and `Ordering.thenBy` combine atomic sorting rules into readable tiebreaker pipelines.
 - **Preventing in-place array mutation**: Native `Array.prototype.sort()` mutates the source array
   in place, causing race conditions and UI state bugs in reactive stores. Pairing `Ordering`
   comparators with `Arr.sortWith` produces a new sorted array while preserving the original dataset

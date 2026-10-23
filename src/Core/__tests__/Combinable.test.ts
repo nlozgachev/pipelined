@@ -134,8 +134,9 @@ test("combineAll: computes product of number array", () => {
 });
 
 test("combineAll: returns empty element for empty array", () => {
-	expect(pipe([] as number[], Combinable.combineAll(Combinable.sum))).toBe(0);
-	expect(pipe([] as number[], Combinable.combineAll(Combinable.product))).toBe(1);
+	const emptyNumbers: readonly number[] = [];
+	expect(pipe(emptyNumbers, Combinable.combineAll(Combinable.sum))).toBe(0);
+	expect(pipe(emptyNumbers, Combinable.combineAll(Combinable.product))).toBe(1);
 });
 
 // ---------------------------------------------------------------------------

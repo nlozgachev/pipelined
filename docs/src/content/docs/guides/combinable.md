@@ -129,7 +129,7 @@ const totalScores = pipe(
   combines complex metric records automatically based on field-level rules.
 - **Hierarchical configuration merging**: In applications loading layered configurations (such as
   default settings overlaid with environment variables and tenant-specific overrides),
-  `Combinable.record` merges configuration layers cleanly while preserving immutability.
+  `Combinable.struct` merges configuration layers cleanly while preserving immutability.
 - **Aggregating sparse or optional metrics (`Combinable.maybe`)**: Folding streams of optional data
   (such as user ratings or partial session durations) where missing values (`None`) are safely
   ignored while valid numbers are accumulated.

@@ -34,6 +34,13 @@ test("number: returns 0 for equal numbers", () => {
 	expect(Ordering.number(5, 5)).toBe(0);
 });
 
+test("number: handles infinity and preserves total order", () => {
+	expect(Ordering.number(Infinity, Infinity)).toBe(0);
+	expect(Ordering.number(-Infinity, -Infinity)).toBe(0);
+	expect(Ordering.number(-Infinity, Infinity)).toBe(-1);
+	expect(Ordering.number(Infinity, -Infinity)).toBe(1);
+});
+
 // ---------------------------------------------------------------------------
 // date
 // ---------------------------------------------------------------------------
@@ -139,6 +146,18 @@ test("tuple: orders tuples lexicographically", () => {
 	expect(pairOrd(["a", 1], ["a", 2])).toBeLessThan(0);
 	expect(pairOrd(["b", 1], ["a", 2])).toBeGreaterThan(0);
 	expect(pairOrd(["a", 1], ["a", 1])).toBe(0);
+
+	type OptionalTuple = readonly [string, number, (string | undefined)?];
+	const tupleWithOptional = Ordering.tuple<OptionalTuple>(
+		Ordering.string,
+		Ordering.number,
+		(first, second) =>
+			first === second ? 0 : (first === undefined ? -1 : (second === undefined ? 1 : (first < second ? -1 : 1))),
+	);
+	const shorter: OptionalTuple = ["a", 1];
+	const longer: OptionalTuple = ["a", 1, "extra"];
+	expect(tupleWithOptional(shorter, longer)).toBeLessThan(0);
+	expect(tupleWithOptional(longer, shorter)).toBeGreaterThan(0);
 });
 
 // --- side-effect isolation ---

@@ -123,17 +123,26 @@ test("struct: compares objects field-by-field", () => {
 });
 
 test("struct: ignores inherited prototype properties in fields definition", () => {
-	const proto = { inherited: Equality.string };
-	const fields = Object.assign(Object.create(proto), { id: Equality.string });
+	const proto: Record<string, Equality<string>> = { inherited: Equality.string };
+	const fields: { id: Equality<string>; } = Object.assign(Object.create(proto), { id: Equality.string });
 	const eq = Equality.struct(fields);
-	expect(eq({ id: "1" } as any, { id: "1" } as any)).toBe(true);
+	expect(eq({ id: "1" }, { id: "1" })).toBe(true);
 });
 
 test("tuple: compares tuples element-by-element", () => {
 	const pairEq = Equality.tuple(Equality.string, Equality.number);
 	expect(pairEq(["a", 1], ["a", 1])).toBe(true);
 	expect(pairEq(["a", 1], ["a", 2])).toBe(false);
-	expect(pairEq(["a", 1] as any, ["a", 1, "extra"] as any)).toBe(false);
+
+	type OptionalTuple = readonly [string, number, (string | undefined)?];
+	const tupleWithOptional = Equality.tuple<OptionalTuple>(
+		Equality.string,
+		Equality.number,
+		(first, second) => first === second,
+	);
+	const shorter: OptionalTuple = ["a", 1];
+	const longer: OptionalTuple = ["a", 1, "extra"];
+	expect(tupleWithOptional(shorter, longer)).toBe(false);
 });
 
 // --- side-effect isolation ---

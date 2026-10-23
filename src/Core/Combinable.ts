@@ -3,7 +3,7 @@ import { Maybe } from "./Maybe.ts";
 /**
  * A type that can combine two values of type `A` into one, with a neutral starting value.
  * `empty` is the identity: `combine(empty)(a) === a` and `combine(a)(empty) === a`.
- * `combine(b)(a)` appends `b` onto `a` — `a` is the accumulated value, `b` is the new element.
+ * `combine(next)(accumulated)` appends `next` onto `accumulated`.
  *
  * @example
  * ```ts
@@ -11,17 +11,19 @@ import { Maybe } from "./Maybe.ts";
  * pipe([1, 2, 3, 4, 5], Combinable.combineAll(Combinable.sum));            // 15
  * ```
  */
-export type Combinable<A> = { readonly empty: A; readonly combine: (b: A) => (a: A) => A; };
+export type Combinable<A> = { readonly empty: A; readonly combine: (next: A) => (accumulated: A) => A; };
 
-const stringCombinable: Combinable<string> = { empty: "", combine: (b) => (a) => a + b };
-const sumCombinable: Combinable<number> = { empty: 0, combine: (b) => (a) => a + b };
-const productCombinable: Combinable<number> = { empty: 1, combine: (b) => (a) => a * b };
-const allCombinable: Combinable<boolean> = { empty: true, combine: (b) => (a) => a && b };
-const anyCombinable: Combinable<boolean> = { empty: false, combine: (b) => (a) => a || b };
+const stringCombinable: Combinable<string> = { empty: "", combine: (next) => (accumulated) => accumulated + next };
+const sumCombinable: Combinable<number> = { empty: 0, combine: (next) => (accumulated) => accumulated + next };
+const productCombinable: Combinable<number> = { empty: 1, combine: (next) => (accumulated) => accumulated * next };
+const allCombinable: Combinable<boolean> = { empty: true, combine: (next) => (accumulated) => accumulated && next };
+const anyCombinable: Combinable<boolean> = { empty: false, combine: (next) => (accumulated) => accumulated || next };
 
 export const Combinable = {
 	/**
 	 * Combines strings by concatenation. Empty string is the neutral element.
+	 *
+	 * @see {@link Combinable.combineAll} to concatenate arrays of strings.
 	 *
 	 * @example
 	 * ```ts
@@ -33,6 +35,8 @@ export const Combinable = {
 	/**
 	 * Combines numbers by addition. `0` is the neutral element.
 	 *
+	 * @see {@link Combinable.product} for multiplicative numeric accumulation.
+	 *
 	 * @example
 	 * ```ts
 	 * pipe([1, 2, 3], Combinable.combineAll(Combinable.sum)); // 6
@@ -42,6 +46,8 @@ export const Combinable = {
 
 	/**
 	 * Combines numbers by multiplication. `1` is the neutral element.
+	 *
+	 * @see {@link Combinable.sum} for additive numeric accumulation.
 	 *
 	 * @example
 	 * ```ts
@@ -53,6 +59,8 @@ export const Combinable = {
 	/**
 	 * Combines booleans with logical AND. `true` is the neutral element.
 	 *
+	 * @see {@link Combinable.any} for logical OR disjunction.
+	 *
 	 * @example
 	 * ```ts
 	 * pipe([true, true, false], Combinable.combineAll(Combinable.all)); // false
@@ -62,6 +70,8 @@ export const Combinable = {
 
 	/**
 	 * Combines booleans with logical OR. `false` is the neutral element.
+	 *
+	 * @see {@link Combinable.all} for logical AND conjunction.
 	 *
 	 * @example
 	 * ```ts
@@ -73,17 +83,24 @@ export const Combinable = {
 	/**
 	 * Combines arrays by concatenation. Empty array is the neutral element.
 	 *
+	 * @see {@link Combinable.combineAll} to flatten and concatenate nested collections.
+	 *
 	 * @example
 	 * ```ts
 	 * pipe([[1, 2], [3], [4, 5]], Combinable.combineAll(Combinable.array<number>())); // [1, 2, 3, 4, 5]
 	 * ```
 	 */
-	array: <A>(): Combinable<readonly A[]> => ({ empty: [], combine: (b) => (a) => [...a, ...b] }),
+	array: <A>(): Combinable<readonly A[]> => ({
+		empty: [],
+		combine: (next) => (accumulated) => [...accumulated, ...next],
+	}),
 
 	/**
 	 * Lifts a `Combinable<A>` to `Combinable<Maybe<A>>`. `None` is the neutral element —
 	 * combining with `None` on either side returns the other value unchanged.
 	 * Two `Some` values combine their inner values using the inner `Combinable`.
+	 *
+	 * @see {@link Combinable.combineAll} to reduce collections of optional values.
 	 *
 	 * @example
 	 * ```ts
@@ -94,12 +111,16 @@ export const Combinable = {
 	 */
 	maybe: <A>(inner: Combinable<A>): Combinable<Maybe<A>> => ({
 		empty: Maybe.make.none(),
-		combine: (b) => (a): Maybe<A> =>
-			Maybe.is.none(a) ? b : (Maybe.is.none(b) ? a : Maybe.make.some(inner.combine(b.value)(a.value))),
+		combine: (next) => (accumulated): Maybe<A> =>
+			Maybe.is.none(accumulated)
+				? next
+				: (Maybe.is.none(next) ? accumulated : Maybe.make.some(inner.combine(next.value)(accumulated.value))),
 	}),
 
 	/**
 	 * Combines an array of elements into a single value using the `Combinable`'s `empty` as the starting point.
+	 *
+	 * @see {@link Combinable.struct} to combine structured records.
 	 *
 	 * @example
 	 * ```ts
@@ -108,15 +129,17 @@ export const Combinable = {
 	 * ```
 	 */
 	combineAll: <A>(combinable: Combinable<A>) => (items: readonly A[]): A => {
-		let acc = combinable.empty;
+		let accumulated = combinable.empty;
 		for (let i = 0; i < items.length; i++) {
-			acc = combinable.combine(items[i])(acc);
+			accumulated = combinable.combine(items[i])(accumulated);
 		}
-		return acc;
+		return accumulated;
 	},
 
 	/**
 	 * Derives a `Combinable` for a record of fields from field-level `Combinable` instances.
+	 *
+	 * @see {@link Combinable.combineAll} to fold arrays of structured records.
 	 *
 	 * @example
 	 * ```ts
@@ -127,20 +150,20 @@ export const Combinable = {
 	 * ```
 	 */
 	struct: <R extends Record<string, unknown>>(fields: { [K in keyof R]: Combinable<R[K]>; }): Combinable<R> => {
+		const keys = Object.keys(fields) as (keyof R)[];
+		const len = keys.length;
 		const empty = {} as R;
-		for (const key in fields) {
-			if (Object.hasOwn(fields, key)) {
-				empty[key] = fields[key].empty;
-			}
+		for (let i = 0; i < len; i++) {
+			const key = keys[i];
+			empty[key] = fields[key].empty;
 		}
 		return {
 			empty,
-			combine: (b) => (a) => {
+			combine: (next) => (accumulated) => {
 				const result = {} as R;
-				for (const key in fields) {
-					if (Object.hasOwn(fields, key)) {
-						result[key] = fields[key].combine(b[key])(a[key]);
-					}
+				for (let i = 0; i < len; i++) {
+					const key = keys[i];
+					result[key] = fields[key].combine(next[key])(accumulated[key]);
 				}
 				return result;
 			},
