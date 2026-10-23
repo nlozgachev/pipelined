@@ -284,8 +284,8 @@ export const Result = {
 		 * pipe(42, Result.from.nullable(() => "is null"));   // Ok(42)
 		 * ```
 		 */
-		nullable: <E>(onNull: () => E) => <A>(value: A | null | undefined): Result<E, A> =>
-			value === null || value === undefined ? makeErr(onNull()) : makeOk(value),
+		nullable: <E>(onNull: () => E) => <A>(value: A): Result<E, NonNullable<A>> =>
+			value === null || value === undefined ? makeErr(onNull()) : makeOk(value as NonNullable<A>),
 
 		/**
 		 * Creates a Result from a Maybe.
@@ -314,7 +314,8 @@ export const Result = {
 		 * ```
 		 */
 		Validation:
-			<E1, E2, A>(combineErrors: (errors: NonEmptyArr<E1>) => E2) => (validation: Validation<E1, A>): Result<E2, A> =>
+			<E1, E2>(combineErrors: (errors: NonEmptyArr<E1>) => E2) =>
+			<A = never>(validation: Validation<E1, A>): Result<E2, A> =>
 				CoreValidation.is.passed(validation) ? makeOk(validation.value) : makeErr(combineErrors(validation.errors)),
 	},
 
@@ -333,8 +334,8 @@ export const Result = {
 	 * ```
 	 */
 	recover:
-		<E1, E2, B>(fallback: (error: E1) => Result<E2, B>) => <A = never>(result: Result<E1, A>): Result<E2, A | B> =>
-			isOk(result) ? result : fallback(result.error),
+		<E1, B, E2 = never>(fallback: (error: E1) => Result<E2, B>) =>
+		<A = never>(result: Result<E1, A>): Result<E2, A | B> => isOk(result) ? result : fallback(result.error),
 
 	/**
 	 * Recovers from an error unless the predicate `isBlocked` returns true for that error.
@@ -351,7 +352,7 @@ export const Result = {
 	 * ```
 	 */
 	recoverUnless:
-		<E1, E2, B>(isBlocked: (error: E1) => boolean, fallback: (error: E1) => Result<E2, B>) =>
+		<E1, B, E2 = never>(isBlocked: (error: E1) => boolean, fallback: (error: E1) => Result<E2, B>) =>
 		<A = never>(result: Result<E1, A>): Result<E1 | E2, A | B> =>
 			isErr(result) && !isBlocked(result.error) ? fallback(result.error) : result,
 
