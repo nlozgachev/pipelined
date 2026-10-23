@@ -53,10 +53,12 @@ test("emit: broadcasts to multiple target event buses", () => {
 });
 
 test("emit: passes errors to onError option handler if provided", () => {
-	let caughtError: unknown = null;
+	let caughtError: Error | null = null;
 	const s = EventBus.make<TestSchema>({
 		onError: (err) => {
-			caughtError = err;
+			if (err instanceof Error) {
+				caughtError = err;
+			}
 		},
 	});
 
@@ -66,7 +68,31 @@ test("emit: passes errors to onError option handler if provided", () => {
 
 	EventBus.emit(s, { kind: "A", value: { value: 1 } });
 	expect(caughtError).toBeInstanceOf(Error);
-	expect((caughtError as Error).message).toBe("listener error");
+	expect(caughtError?.message).toBe("listener error");
+});
+
+test("emit: subscriber isolation ensures throwing listener does not prevent sibling listeners from receiving events", () => {
+	const errors: unknown[] = [];
+	const s = EventBus.make<TestSchema>({
+		onError: (err) => {
+			errors.push(err);
+		},
+	});
+
+	let siblingReceived = false;
+
+	EventBus.listen(s, "A").tap(() => {
+		throw new Error("faulty subscriber");
+	});
+
+	EventBus.listen(s, "A").tap(() => {
+		siblingReceived = true;
+	});
+
+	EventBus.emit(s, { kind: "A", value: { value: 42 } });
+
+	expect(errors).toHaveLength(1);
+	expect(siblingReceived).toBe(true);
 });
 
 test("emit: throws error if listener throws and no onError handler is provided", () => {
@@ -123,6 +149,9 @@ test("emit: processes deep re-entrant emission cascades without stack overflow",
 test("listen: accumulates state over matching events with reduce", () => {
 	const s = EventBus.make<TestSchema>();
 
+	type State = { readonly sum: number; readonly texts: readonly string[]; };
+	const initialState: State = { sum: 0, texts: [] };
+
 	const sub = EventBus.listen(s, ["A", "B"]).reduce((msg, state) => {
 		if (msg.kind === "A") {
 			return { ...state, sum: state.sum + msg.value.value };
@@ -131,7 +160,7 @@ test("listen: accumulates state over matching events with reduce", () => {
 			return { ...state, texts: [...state.texts, msg.value.text] };
 		}
 		return state;
-	}, { sum: 0, texts: [] as string[] });
+	}, initialState);
 
 	expect(sub.getState()).toStrictEqual({ sum: 0, texts: [] });
 
@@ -582,43 +611,60 @@ test("collect: resets buffer when reset event arrives", () => {
 
 test("collect: skips optional step and sets its value to undefined", () => {
 	const s = EventBus.make<TestSchema>();
-	let captured: { A: { value: number; }; C: { flag: boolean; }; B?: { text: string; }; } | null = null;
+	const snapshots: Array<EventBus.CollectedPayloads<TestSchema, "A" | "B" | "C", "B">> = [];
 
 	EventBus.listen(s, ["A", "B", "C"], { ordered: true, optional: ["B"] }).collect((payloads) => {
-		captured = payloads;
+		snapshots.push(payloads);
 	});
 
 	// A -> C (skipping optional B)
 	EventBus.emit(s, { kind: "A", value: { value: 1 } });
 	EventBus.emit(s, { kind: "C", value: { flag: true } });
 
-	expect(captured).toStrictEqual({ A: { value: 1 }, C: { flag: true } });
-	expect((captured as any)?.B).toBeUndefined();
+	expect(snapshots).toHaveLength(1);
+	expect(snapshots[0].B).toBeUndefined();
+	expect(snapshots[0]).toStrictEqual({ A: { value: 1 }, C: { flag: true } });
 });
 
 test("collect: safely handles __proto__ event kind without prototype pollution", () => {
 	type ProtoSchema = { __proto__: { injected: string; }; normal: { data: number; }; };
 	const s = EventBus.make<ProtoSchema>();
-	let received: unknown = null;
+	const snapshots: Array<EventBus.CollectedPayloads<ProtoSchema, "__proto__" | "normal">> = [];
 
-	EventBus.listen(s, ["__proto__", "normal"] as any).collect((payloads) => {
-		received = payloads;
+	EventBus.listen(s, ["__proto__", "normal"]).collect((payloads) => {
+		snapshots.push(payloads);
 	});
 
-	EventBus.emit(s, { kind: "__proto__", value: { injected: "polluted" } } as any);
+	EventBus.emit(s, { kind: "__proto__", value: { injected: "polluted" } });
 	EventBus.emit(s, { kind: "normal", value: { data: 123 } });
 
-	expect(received).toBeDefined();
-	expect(({} as any).injected).toBeUndefined();
-	expect(Object.hasOwn(received as object, "__proto__")).toBe(true);
+	expect(snapshots).toHaveLength(1);
+	const cleanObject: Record<string, unknown> = {};
+	expect(cleanObject["injected"]).toBeUndefined();
+	expect(Object.hasOwn(snapshots[0], "__proto__")).toBe(true);
+});
+
+test("collect: preserves falsy payloads (0, false, empty string) without conflating them with skipped optional steps", () => {
+	const s = EventBus.make<TestSchema>();
+	const snapshots: Array<EventBus.CollectedPayloads<TestSchema, "A" | "B" | "C">> = [];
+
+	EventBus.listen(s, ["A", "B", "C"], { ordered: true }).collect((payloads) => {
+		snapshots.push(payloads);
+	});
+
+	EventBus.emit(s, { kind: "A", value: { value: 0 } });
+	EventBus.emit(s, { kind: "B", value: { text: "" } });
+	EventBus.emit(s, { kind: "C", value: { flag: false } });
+
+	expect(snapshots).toStrictEqual([{ A: { value: 0 }, B: { text: "" }, C: { flag: false } }]);
 });
 
 test("collect: captures optional step when present in sequence", () => {
 	const s = EventBus.make<TestSchema>();
-	let captured: { A: { value: number; }; C: { flag: boolean; }; B?: { text: string; }; } | null = null;
+	const snapshots: Array<EventBus.CollectedPayloads<TestSchema, "A" | "B" | "C", "B">> = [];
 
 	EventBus.listen(s, ["A", "B", "C"], { ordered: true, optional: "B" }).collect((payloads) => {
-		captured = payloads;
+		snapshots.push(payloads);
 	});
 
 	// A -> B -> C (optional B is present)
@@ -626,7 +672,7 @@ test("collect: captures optional step when present in sequence", () => {
 	EventBus.emit(s, { kind: "B", value: { text: "present" } });
 	EventBus.emit(s, { kind: "C", value: { flag: true } });
 
-	expect(captured).toStrictEqual({ A: { value: 1 }, B: { text: "present" }, C: { flag: true } });
+	expect(snapshots).toStrictEqual([{ A: { value: 1 }, B: { text: "present" }, C: { flag: true } }]);
 });
 
 test("collect: unsubscribes after first completion with once option", () => {
@@ -886,12 +932,16 @@ test("composition: integrates with pipe to process messages", () => {
 
 	const sub = EventBus.listen(s, "A").reduce((msg, current) => current + msg.value.value, 0);
 
-	pipe([10, 20, 30], (nums) => nums.map((n) => ({ kind: "A" as const, value: { value: n } })), (messages) => {
-		for (let i = 0; i < messages.length; i++) {
-			EventBus.emit(s, messages[i]);
-			states.push(sub.getState());
-		}
-	});
+	pipe(
+		[10, 20, 30],
+		(nums) => nums.map((n): EventBus.Message<TestSchema, "A"> => ({ kind: "A", value: { value: n } })),
+		(messages) => {
+			for (let i = 0; i < messages.length; i++) {
+				EventBus.emit(s, messages[i]);
+				states.push(sub.getState());
+			}
+		},
+	);
 
 	expect(states).toStrictEqual([10, 30, 60]);
 	sub.unsubscribe();
