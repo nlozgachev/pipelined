@@ -118,7 +118,25 @@ test("listen: sequence options with optional steps types skipped events as undef
 
 	// @ts-expect-error — reset event must be a valid key in schema
 	EventBus.listen(bus, ["A"], { reset: "INVALID_RESET" });
+
+	// Array of reset events
+	EventBus.listen(bus, ["A", "B"], { ordered: true, strict: true, reset: ["ResetEvent", "C"] }).collect((payloads) => {
+		expectTypeOf(payloads).toEqualTypeOf<EventBus.CollectedPayloads<TestSchema, "A" | "B">>();
+		expectTypeOf(payloads.A).toEqualTypeOf<{ value: number; }>();
+		expectTypeOf(payloads.B).toEqualTypeOf<{ text: string; }>();
+	});
+
+	// @ts-expect-error — reset array contains invalid event key
+	EventBus.listen(bus, ["A", "B"], { reset: ["NONEXISTENT"] });
 });
+
+type AuthSchema = { userLoggedIn: { userId: string; }; sessionExpired: { at: number; }; };
+
+type AnalyticsSchema = { userLoggedIn: { userId: string; }; pageView: { url: string; }; };
+
+type SpecificSchema = { A: { value: number; }; };
+
+type IncompatiblePayloadSchema = { userLoggedIn: { userId: number; }; };
 
 test("forward: validates compatibility between bus schemas and filters", () => {
 	const busA = EventBus.make<TestSchema>();
@@ -132,9 +150,30 @@ test("forward: validates compatibility between bus schemas and filters", () => {
 	const stop2 = EventBus.forward({ from: busA, to: [busB, busC], only: ["A", "B"] });
 	expectTypeOf(stop2).toEqualTypeOf<() => void>();
 
-	// @ts-expect-error — target bus has incompatible schema
+	// Cross-schema forwarding via `only` with shared event key
+	const authBus = EventBus.make<AuthSchema>();
+	const analyticsBus = EventBus.make<AnalyticsSchema>();
+	const stopCross = EventBus.forward({ from: authBus, to: analyticsBus, only: ["userLoggedIn"] });
+	expectTypeOf(stopCross).toEqualTypeOf<() => void>();
+
+	// Subset schema forwarding without `only` (target has superset of source events)
+	const specificBus = EventBus.make<SpecificSchema>();
+	const stopSubset = EventBus.forward({ from: specificBus, to: busA });
+	expectTypeOf(stopSubset).toEqualTypeOf<() => void>();
+
+	// @ts-expect-error — target bus has incompatible schema without only
 	EventBus.forward({ from: busA, to: busIncompatible });
 
-	// @ts-expect-error — only filter contains event key not present in schema
-	EventBus.forward({ from: busA, to: busB, only: ["NONEXISTENT"] });
+	// @ts-expect-error — broad bus cannot forward to specific bus without `only` (missing B, C, ResetEvent)
+	EventBus.forward({ from: busA, to: specificBus });
+
+	// @ts-expect-error — only filter contains event key not present in target schema
+	EventBus.forward({ from: authBus, to: analyticsBus, only: ["sessionExpired"] });
+
+	// @ts-expect-error — only filter contains event key not present in source schema
+	EventBus.forward({ from: authBus, to: analyticsBus, only: ["pageView"] });
+
+	const incompatiblePayloadBus = EventBus.make<IncompatiblePayloadSchema>();
+	// @ts-expect-error — only filter contains event key with incompatible payload type
+	EventBus.forward({ from: authBus, to: incompatiblePayloadBus, only: ["userLoggedIn"] });
 });

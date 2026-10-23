@@ -35,7 +35,7 @@ declare const _eventBusBrand: unique symbol;
  * });
  * ```
  */
-export type EventBus<S extends Record<string, unknown>> = { readonly [_eventBusBrand]: (schema: S) => void; };
+export type EventBus<S extends Record<string, unknown>> = { readonly [_eventBusBrand]: (schema: S) => S; };
 
 export namespace EventBus {
 	/**
@@ -132,11 +132,23 @@ export namespace EventBus {
 
 	/**
 	 * Configuration options for forwarding events from one bus to another.
+	 *
+	 * When `only` is specified, allows forwarding between different event schemas as long as
+	 * the selected event keys exist in both buses and their payload types are compatible.
+	 * When `only` is omitted, the target bus schema must accept all events defined in the source bus.
 	 */
-	export type ForwardOptions<S extends Record<string, unknown>> = {
-		readonly from: EventBus<S>;
-		readonly to: EventBus<S> | ReadonlyArray<EventBus<S>>;
-		readonly only?: ReadonlyArray<keyof S & string>;
+	export type ForwardOptions<
+		FromSchema extends Record<string, unknown>,
+		ToSchema extends Record<string, unknown> = FromSchema,
+		K extends keyof FromSchema & string = keyof FromSchema & string,
+	> = {
+		readonly from: EventBus<FromSchema>;
+		readonly to: EventBus<ToSchema> | ReadonlyArray<EventBus<ToSchema>>;
+		readonly only: ReadonlyArray<K>;
+	} | {
+		readonly from: EventBus<FromSchema>;
+		readonly to: EventBus<ToSchema> | ReadonlyArray<EventBus<ToSchema>>;
+		readonly only?: undefined;
 	};
 
 	/**
@@ -281,15 +293,42 @@ const emitEventBus = <S extends Record<string, unknown>, K extends keyof S & str
 	}
 };
 
-const forwardEventBus = <S extends Record<string, unknown>>(options: EventBus.ForwardOptions<S>): () => void => {
+function forwardEventBus<
+	FromSchema extends Record<string, unknown>,
+	ToSchema extends { [P in K]: FromSchema[P]; },
+	const K extends keyof FromSchema & string,
+>(
+	options: {
+		readonly from: EventBus<FromSchema>;
+		readonly to: EventBus<ToSchema> | ReadonlyArray<EventBus<ToSchema>>;
+		readonly only: ReadonlyArray<K>;
+	},
+): () => void;
+function forwardEventBus<
+	FromSchema extends Record<string, unknown>,
+	ToSchema extends { [P in keyof FromSchema]: FromSchema[P]; },
+>(
+	options: {
+		readonly from: EventBus<FromSchema>;
+		readonly to: EventBus<ToSchema> | ReadonlyArray<EventBus<ToSchema>>;
+		readonly only?: undefined;
+	},
+): () => void;
+function forwardEventBus(
+	options: {
+		readonly from: EventBus<Record<string, unknown>>;
+		readonly to: EventBus<Record<string, unknown>> | ReadonlyArray<EventBus<Record<string, unknown>>>;
+		readonly only?: ReadonlyArray<string>;
+	},
+): () => void {
 	const filterSet = options.only ? new Set<string>(options.only) : null;
 
 	const handler = (msg: unknown) => {
-		const typedMsg = msg as EventBus.Message<S>;
+		const typedMsg = msg as EventBus.Message<Record<string, unknown>>;
 		if (filterSet !== null && !filterSet.has(typedMsg.kind)) {
 			return;
 		}
-		emitEventBus(options.to, typedMsg);
+		emitEventBus(options.to, typedMsg as any);
 	};
 
 	const internalFrom = toInternalEventBus(options.from)[EVENT_BUS_STATE];
@@ -300,7 +339,7 @@ const forwardEventBus = <S extends Record<string, unknown>>(options: EventBus.Fo
 		internalFrom.listeners.delete(handler);
 		internalFrom.listenerArray = null;
 	};
-};
+}
 
 const listenEventBus = <
 	S extends Record<string, unknown>,
