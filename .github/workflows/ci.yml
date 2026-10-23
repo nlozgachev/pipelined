@@ -20,7 +20,7 @@ jobs:
         run: pnpm format:check
 
   typecheck:
-    name: Typecheck (TS latest & TS 5.5)
+    name: Typecheck (TS latest, TS 5.5 & .test-d.ts)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -28,6 +28,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Typecheck default (TS 6.x)
         run: pnpm typecheck
+      - name: Type-level tests (.test-d.ts)
+        run: pnpm test:types
       - name: Typecheck min (TS 5.5)
         run: pnpm typecheck:min
 
