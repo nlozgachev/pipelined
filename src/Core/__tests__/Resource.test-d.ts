@@ -12,6 +12,12 @@ test("make & from.Task: constructs resource objects with acquire and release", (
 	const infallibleAcquire = Task.make(42);
 	const resInfallible = Resource.from.Task(infallibleAcquire, (_n) => Task.make(undefined));
 	expectTypeOf(resInfallible).toEqualTypeOf<Resource<never, number>>();
+
+	// @ts-expect-error — acquire must be a Task.Result, not a plain number
+	Resource.make(42, () => Task.make(undefined));
+
+	// @ts-expect-error — release must return a Task<void>, not undefined
+	Resource.make(fallibleAcquire, () => undefined);
 });
 
 test("use: passes acquired value to consume and unifies error channels", () => {
@@ -25,6 +31,9 @@ test("use: passes acquired value to consume and unifies error channels", () => {
 		Resource.use((n) => constTruthyBool() ? Task.Result.make.ok(n.toString()) : Task.Result.make.err(500)),
 	);
 	expectTypeOf(program).toEqualTypeOf<Task.Result<string | number, string>>();
+
+	// @ts-expect-error — consume callback must return Task.Result, not a primitive
+	pipe(resFallible, Resource.use((n) => n * 2));
 });
 
 test("combine: sequences two resources and combines values and error channels", () => {
@@ -39,4 +48,7 @@ test("combine: sequences two resources and combines values and error channels", 
 
 	const combined = Resource.combine(resA, resB);
 	expectTypeOf(combined).toEqualTypeOf<Resource<string | boolean, readonly [number, string]>>();
+
+	// @ts-expect-error — combine requires Resource instances
+	Resource.combine(resA, "not a resource");
 });

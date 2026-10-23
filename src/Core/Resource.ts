@@ -49,7 +49,7 @@ const use =
 		Deferred.from.Promise(
 			Deferred.to.Promise(resource.acquire(signal)).then(async (acquired) => {
 				if (Result.is.err(acquired)) {
-					return acquired as Result<E1 | E2, B>;
+					return acquired;
 				}
 				const resourceValue = acquired.value;
 				try {
@@ -68,14 +68,14 @@ const combine = <E1, A, E2, B>(
 		Deferred.from.Promise(
 			Deferred.to.Promise(resourceA.acquire(signal)).then(async (acquiredA) => {
 				if (Result.is.err(acquiredA)) {
-					return acquiredA as Result<E1 | E2, readonly [A, B]>;
+					return acquiredA;
 				}
 				const valueA = acquiredA.value;
 
 				const acquiredB = await Deferred.to.Promise(resourceB.acquire(signal));
 				if (Result.is.err(acquiredB)) {
 					await Deferred.to.Promise(resourceA.release(valueA)(signal));
-					return acquiredB as Result<E1 | E2, readonly [A, B]>;
+					return acquiredB;
 				}
 
 				return Result.make.ok([valueA, acquiredB.value] as const);
