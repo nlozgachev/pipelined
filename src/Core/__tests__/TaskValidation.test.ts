@@ -54,7 +54,9 @@ test("tryCatch: returns Valid when Promise resolves", async () => {
 
 test("tryCatch: returns Invalid when Promise rejects", async () => {
 	await expect(
-		Task.Validation.tryCatch(() => Promise.reject(new Error("boom")), { onError: (e) => (e as Error).message })(),
+		Task.Validation.tryCatch(() => Promise.reject(new Error("boom")), {
+			onError: (e) => (e instanceof Error ? e.message : String(e)),
+		})(),
 	).resolves.toStrictEqual({ kind: "Failed", errors: ["boom"] });
 });
 
@@ -65,7 +67,7 @@ test("tryCatch: catches async throws", async () => {
 			async () => {
 				throw new Error("bang");
 			},
-			{ onError: (e) => (e as Error).message },
+			{ onError: (e) => (e instanceof Error ? e.message : String(e)) },
 		)(),
 	).resolves.toStrictEqual({ kind: "Failed", errors: ["bang"] });
 });
@@ -527,7 +529,7 @@ test("struct: safely handles __proto__ property without prototype pollution", as
 
 	const res = await Task.Validation.struct(protoFields)();
 	expect(Validation.is.passed(res)).toBe(true);
-	const value = Validation.getOrElse(() => ({}) as Record<string, unknown>)(res);
+	const value = Validation.getOrElse((): Record<string, unknown> => ({}))(res);
 	expect(Object.hasOwn(value, "__proto__")).toBe(true);
-	expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+	expect("polluted" in {}).toBe(false);
 });

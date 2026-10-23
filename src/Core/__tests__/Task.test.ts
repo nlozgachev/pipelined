@@ -1028,5 +1028,5 @@ test("poll: exits wait immediately if signal is already aborted", async () => {
 test("bind: safely handles __proto__ property without prototype pollution", async () => {
 	const res = await pipe(Task.make({ a: 1 }), Task.bind("__proto__", () => Task.make({ polluted: true })))();
 	expect(Object.hasOwn(res, "__proto__")).toBe(true);
-	expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+	expect("polluted" in {}).toBe(false);
 });

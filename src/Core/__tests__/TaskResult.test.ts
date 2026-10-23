@@ -34,7 +34,7 @@ test("tryCatch: returns Ok when Promise resolves", async () => {
 
 test("tryCatch: returns Err when Promise rejects", async () => {
 	const result = await Task.Result.tryCatch(() => Promise.reject(new Error("boom")), {
-		onError: (e: unknown) => (e as Error).message,
+		onError: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 	})();
 	expect(result).toStrictEqual({ kind: "Err", error: "boom" });
 });
@@ -45,7 +45,7 @@ test("tryCatch: catches synchronous throws in async functions", async () => {
 		async () => {
 			throw new Error("sync throw");
 		},
-		{ onError: (e) => (e as Error).message },
+		{ onError: (e) => (e instanceof Error ? e.message : String(e)) },
 	)();
 	expect(result).toStrictEqual({ kind: "Err", error: "sync throw" });
 });
@@ -336,7 +336,7 @@ test("mapError: normalizes error type before recover acts on it", async () => {
 	type ApiError = { code: number; msg: string; };
 	const result = await pipe(
 		Task.Result.tryCatch(() => Promise.reject(new Error("service unavailable")), {
-			onError: (e) => (e as Error).message,
+			onError: (e) => (e instanceof Error ? e.message : String(e)),
 		}),
 		Task.Result.mapError((msg: string): ApiError => ({ code: 503, msg })),
 		Task.Result.recover((e: ApiError) => e.code >= 500 ? Task.Result.make.ok("cached") : Task.Result.make.err(e)),
@@ -379,7 +379,9 @@ test("match: handles err path at end of composed chain", async () => {
 
 test("mapError: transformed error received by match", async () => {
 	const result = await pipe(
-		Task.Result.tryCatch(() => Promise.reject(new Error("boom")), { onError: (e: unknown) => (e as Error).message }),
+		Task.Result.tryCatch(() => Promise.reject(new Error("boom")), {
+			onError: (e: unknown) => (e instanceof Error ? e.message : String(e)),
+		}),
 		Task.Result.mapError((msg: string) => msg.toUpperCase()),
 		Task.Result.match({ err: (e: string) => `error: ${e}`, ok: (_: number) => "ok" }),
 	)();
@@ -1106,9 +1108,9 @@ test("bind: safely handles __proto__ property without prototype pollution", asyn
 		Task.Result.bind("__proto__", () => Task.Result.make.ok({ polluted: true })),
 	)();
 	expect(Result.is.ok(res)).toBe(true);
-	const value = Result.getOrElse(() => ({}) as Record<string, unknown>)(res);
+	const value = Result.getOrElse((): Record<string, unknown> => ({}))(res);
 	expect(Object.hasOwn(value, "__proto__")).toBe(true);
-	expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+	expect("polluted" in {}).toBe(false);
 });
 
 test("struct: safely handles __proto__ property without prototype pollution", async () => {
@@ -1123,7 +1125,7 @@ test("struct: safely handles __proto__ property without prototype pollution", as
 
 	const res = await Task.Result.struct(protoFields)();
 	expect(Result.is.ok(res)).toBe(true);
-	const value = Result.getOrElse(() => ({}) as Record<string, unknown>)(res);
+	const value = Result.getOrElse((): Record<string, unknown> => ({}))(res);
 	expect(Object.hasOwn(value, "__proto__")).toBe(true);
-	expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+	expect("polluted" in {}).toBe(false);
 });

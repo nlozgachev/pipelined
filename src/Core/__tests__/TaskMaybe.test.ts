@@ -456,9 +456,9 @@ test("bind: safely handles __proto__ property without prototype pollution", asyn
 		Task.Maybe.bind("__proto__", () => Task.Maybe.make.some({ polluted: true })),
 	)();
 	expect(Maybe.is.some(res)).toBe(true);
-	const value = Maybe.getOrElse(() => ({}) as Record<string, unknown>)(res);
+	const value = Maybe.getOrElse((): Record<string, unknown> => ({}))(res);
 	expect(Object.hasOwn(value, "__proto__")).toBe(true);
-	expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+	expect("polluted" in {}).toBe(false);
 });
 
 test("struct: safely handles __proto__ property without prototype pollution", async () => {
@@ -473,7 +473,7 @@ test("struct: safely handles __proto__ property without prototype pollution", as
 
 	const res = await Task.Maybe.struct(protoFields)();
 	expect(Maybe.is.some(res)).toBe(true);
-	const value = Maybe.getOrElse(() => ({}) as Record<string, unknown>)(res);
+	const value = Maybe.getOrElse((): Record<string, unknown> => ({}))(res);
 	expect(Object.hasOwn(value, "__proto__")).toBe(true);
-	expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+	expect("polluted" in {}).toBe(false);
 });
