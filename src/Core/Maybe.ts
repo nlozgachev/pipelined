@@ -188,8 +188,8 @@ export const Maybe = {
 		 * Maybe.from.nullable(42); // Some(42)
 		 * ```
 		 */
-		nullable: <A>(value: A | null | undefined): Maybe<A> =>
-			value === null || value === undefined ? makeNone() : makeSome(value),
+		nullable: <A>(value: A): Maybe<NonNullable<A>> =>
+			value === null || value === undefined ? makeNone() : makeSome(value as NonNullable<A>),
 
 		/**
 		 * Creates a Maybe from a predicate or type guard applied to a value.
