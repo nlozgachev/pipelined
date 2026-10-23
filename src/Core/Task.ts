@@ -58,11 +58,15 @@ import { Validation as CoreValidation } from "./Validation.ts";
  */
 export type Task<A> = (signal?: AbortSignal) => Deferred<A>;
 
+type _TaskMaybe<A> = Task<CoreMaybe<A>>;
+type _TaskResult<E, A> = Task<CoreResult<E, A>>;
+type _TaskValidation<E, A> = Task<CoreValidation<E, A>>;
+
 export namespace Task {
 	export type LabeledTask<L extends string, A> = Task<A> & { readonly label: L; };
-	export type Maybe<A> = Task<CoreMaybe<A>>;
-	export type Result<E, A> = Task<CoreResult<E, A>>;
-	export type Validation<E, A> = Task<CoreValidation<E, A>>;
+	export type Maybe<A> = _TaskMaybe<A>;
+	export type Result<E, A> = _TaskResult<E, A>;
+	export type Validation<E, A> = _TaskValidation<E, A>;
 }
 
 // =============================================================================
