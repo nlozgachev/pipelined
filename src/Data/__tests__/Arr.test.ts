@@ -526,7 +526,8 @@ test("sequence.Maybe: returns None when any is None", () => {
 });
 
 test("sequence.Maybe: returns Some of empty array for empty input", () => {
-	const result = Arr.sequence.Maybe([] as Maybe<number>[]);
+	const emptyMaybes: Maybe<number>[] = [];
+	const result = Arr.sequence.Maybe(emptyMaybes);
 	expect(result).toStrictEqual(Maybe.make.some([]));
 });
 
@@ -546,7 +547,8 @@ test("traverse.Result: returns first Err when failure occurs", () => {
 });
 
 test("traverse.Result: returns Ok of empty array for empty input", () => {
-	const result = pipe([] as number[], Arr.traverse.Result((n) => Result.make.ok(n)));
+	const emptyNums: number[] = [];
+	const result = pipe(emptyNums, Arr.traverse.Result((n) => Result.make.ok(n)));
 	expect(result).toStrictEqual(Result.make.ok([]));
 });
 
@@ -571,7 +573,8 @@ test("sequence.Result: returns first Err when failure occurs", () => {
 });
 
 test("sequence.Result: returns Ok of empty array for empty input", () => {
-	const result = Arr.sequence.Result([] as Result<string, number>[]);
+	const emptyResults: Result<string, number>[] = [];
+	const result = Arr.sequence.Result(emptyResults);
 	expect(result).toStrictEqual(Result.make.ok([]));
 });
 
@@ -592,7 +595,8 @@ test("traverse.Validation: accumulates all errors from Failed elements", () => {
 });
 
 test("traverse.Validation: returns Passed of empty array for empty input", () => {
-	const result = pipe([] as number[], Arr.traverse.Validation((n) => Validation.make.passed(n)));
+	const emptyNums: number[] = [];
+	const result = pipe(emptyNums, Arr.traverse.Validation((n) => Validation.make.passed(n)));
 	expect(result).toStrictEqual(Validation.make.passed([]));
 });
 
@@ -625,7 +629,8 @@ test("sequence.Validation: accumulates errors from all Failed validations", () =
 });
 
 test("sequence.Validation: returns Passed of empty array for empty input", () => {
-	const result = Arr.sequence.Validation([] as Validation<string, number>[]);
+	const emptyValidations: Validation<string, number>[] = [];
+	const result = Arr.sequence.Validation(emptyValidations);
 	expect(result).toStrictEqual(Validation.make.passed([]));
 });
 
@@ -637,7 +642,8 @@ test("traverse.Task: maps elements to tasks and runs in parallel", async () => {
 });
 
 test("traverse.Task: resolves to empty array for empty input", async () => {
-	const result = await pipe([] as number[], Arr.traverse.Task((n) => Task.make(n)))();
+	const emptyNums: number[] = [];
+	const result = await pipe(emptyNums, Arr.traverse.Task((n) => Task.make(n)))();
 	expect(result).toStrictEqual([]);
 });
 
@@ -678,7 +684,8 @@ test("sequence.Task: runs all tasks in parallel and collects results", async () 
 });
 
 test("sequence.Task: resolves to empty array for empty input", async () => {
-	const result = await Arr.sequence.Task([] as Task<number>[])();
+	const emptyTasks: Task<number>[] = [];
+	const result = await Arr.sequence.Task(emptyTasks)();
 	expect(result).toStrictEqual([]);
 });
 
@@ -717,7 +724,8 @@ test("some: returns false when no element matches", () => {
 });
 
 test("some: returns false for empty array", () => {
-	const result = pipe([] as number[], Arr.some((_) => true));
+	const emptyNums: number[] = [];
+	const result = pipe(emptyNums, Arr.some((_) => true));
 	expect(result).toBe(false);
 });
 
@@ -732,7 +740,8 @@ test("every: returns false when any element does not match", () => {
 });
 
 test("every: returns true for empty array", () => {
-	const result = pipe([] as number[], Arr.every((_) => false));
+	const emptyNums: number[] = [];
+	const result = pipe(emptyNums, Arr.every((_) => false));
 	expect(result).toBe(true);
 });
 
@@ -780,7 +789,15 @@ test("insertAt: clamps index beyond length to end", () => {
 });
 
 test("insertAt: inserts into empty array", () => {
-	expect(pipe([] as number[], Arr.insertAt(0, 99))).toStrictEqual([99]);
+	const emptyNums: number[] = [];
+	expect(pipe(emptyNums, Arr.insertAt(0, 99))).toStrictEqual([99]);
+});
+
+test("insertAt: returns original array when index is not an integer", () => {
+	const original = [1, 2, 3];
+	expect(pipe(original, Arr.insertAt(1.5, 99))).toBe(original);
+	expect(pipe(original, Arr.insertAt(Number.NaN, 99))).toBe(original);
+	expect(pipe(original, Arr.insertAt(Number.POSITIVE_INFINITY, 99))).toBe(original);
 });
 
 test("insertAt: does not mutate original array", () => {
@@ -816,6 +833,13 @@ test("removeAt: returns original array for negative index", () => {
 test("removeAt: returns original array for out-of-bounds index", () => {
 	const original = [1, 2, 3];
 	expect(pipe(original, Arr.removeAt(5))).toBe(original);
+});
+
+test("removeAt: returns original array when index is not an integer", () => {
+	const original = [1, 2, 3];
+	expect(pipe(original, Arr.removeAt(1.5))).toBe(original);
+	expect(pipe(original, Arr.removeAt(Number.NaN))).toBe(original);
+	expect(pipe(original, Arr.removeAt(Number.POSITIVE_INFINITY))).toBe(original);
 });
 
 test("removeAt: returns empty array for single-element array", () => {
@@ -884,7 +908,8 @@ test("takeWhile: takes all elements when all pass predicate", () => {
 });
 
 test("takeWhile: returns empty array for empty input", () => {
-	const result = pipe([] as number[], Arr.takeWhile((_) => true));
+	const emptyNums: number[] = [];
+	const result = pipe(emptyNums, Arr.takeWhile((_) => true));
 	expect(result).toStrictEqual([]);
 });
 
@@ -904,7 +929,8 @@ test("dropWhile: drops all elements when all pass predicate", () => {
 });
 
 test("dropWhile: returns empty array for empty input", () => {
-	const result = pipe([] as number[], Arr.dropWhile((_) => true));
+	const emptyNums: number[] = [];
+	const result = pipe(emptyNums, Arr.dropWhile((_) => true));
 	expect(result).toStrictEqual([]);
 });
 
@@ -998,10 +1024,8 @@ test("pipe: composes flatMap uniq and sortBy", () => {
 test("uniqWith: removes duplicates using custom equality", () => {
 	type Point = { x: number; y: number; };
 	const eqPoint: Equality<Point> = (a, b) => a.x === b.x && a.y === b.y;
-	const result = pipe(
-		[{ x: 1, y: 1 }, { x: 2, y: 2 }, { x: 1, y: 1 }, { x: 3, y: 3 }] as Point[],
-		Arr.uniqWith(eqPoint),
-	);
+	const points: Point[] = [{ x: 1, y: 1 }, { x: 2, y: 2 }, { x: 1, y: 1 }, { x: 3, y: 3 }];
+	const result = pipe(points, Arr.uniqWith(eqPoint));
 	expect(result).toStrictEqual([{ x: 1, y: 1 }, { x: 2, y: 2 }, { x: 3, y: 3 }]);
 });
 
@@ -1011,7 +1035,8 @@ test("uniqWith: preserves order of first occurrences", () => {
 });
 
 test("uniqWith: returns empty array for empty input", () => {
-	expect(pipe([] as number[], Arr.uniqWith(Equality.number))).toStrictEqual([]);
+	const emptyNums: number[] = [];
+	expect(pipe(emptyNums, Arr.uniqWith(Equality.number))).toStrictEqual([]);
 });
 
 // --- sortWith ---
@@ -1031,7 +1056,8 @@ test("sortWith: does not mutate original array", () => {
 });
 
 test("sortWith: returns empty array for empty input", () => {
-	expect(pipe([] as number[], Arr.sortWith(Ordering.number))).toStrictEqual([]);
+	const emptyNums: number[] = [];
+	expect(pipe(emptyNums, Arr.sortWith(Ordering.number))).toStrictEqual([]);
 });
 
 test("sortWith: falls back to sort when toSorted is unavailable", () => {
@@ -1097,7 +1123,8 @@ test("partitionMap: maps and separates in one pass", () => {
 });
 
 test("partitionMap: returns empty arrays for empty input", () => {
-	const result = pipe([] as number[], Arr.partitionMap((n) => Result.make.ok(n)));
+	const emptyNums: number[] = [];
+	const result = pipe(emptyNums, Arr.partitionMap((n) => Result.make.ok(n)));
 	expect(result).toStrictEqual([[], []]);
 });
 
@@ -1206,7 +1233,8 @@ test("NonEmpty.tail: returns all elements except first", () => {
 });
 
 test("NonEmpty.reduce: reduces elements from left without initial value", () => {
-	const result = pipe([1, 2, 3, 4] as Arr.NonEmpty<number>, Arr.NonEmpty.reduce((a, b) => a + b));
+	const input: Arr.NonEmpty<number> = [1, 2, 3, 4];
+	const result = pipe(input, Arr.NonEmpty.reduce((a, b) => a + b));
 	expect(result).toBe(10);
 });
 
@@ -1223,13 +1251,15 @@ test("NonEmpty.mapWithIndex: maps elements with index and preserves NonEmpty typ
 });
 
 test("NonEmpty.intersperse: inserts separator between elements", () => {
-	const result = pipe([1, 2, 3] as Arr.NonEmpty<number>, Arr.NonEmpty.intersperse(0));
+	const input: Arr.NonEmpty<number> = [1, 2, 3];
+	const result = pipe(input, Arr.NonEmpty.intersperse(0));
 	expect(result).toStrictEqual([1, 0, 2, 0, 3]);
 	expectTypeOf(result).toEqualTypeOf<readonly [number, ...number[]]>();
 });
 
 test("NonEmpty.intersperse: returns original array when length is 1", () => {
-	const result = pipe([42] as Arr.NonEmpty<number>, Arr.NonEmpty.intersperse(0));
+	const single: Arr.NonEmpty<number> = [42];
+	const result = pipe(single, Arr.NonEmpty.intersperse(0));
 	expect(result).toStrictEqual([42]);
 });
 
@@ -1240,7 +1270,8 @@ test("NonEmpty.concat: concatenates with standard array", () => {
 });
 
 test("NonEmpty.reverse: reverses non-empty array", () => {
-	const result = pipe([1, 2, 3] as Arr.NonEmpty<number>, Arr.NonEmpty.reverse);
+	const input: Arr.NonEmpty<number> = [1, 2, 3];
+	const result = pipe(input, Arr.NonEmpty.reverse);
 	expect(result).toStrictEqual([3, 2, 1]);
 	expectTypeOf(result).toEqualTypeOf<readonly [number, ...number[]]>();
 });
@@ -1274,6 +1305,12 @@ test("at: looks up elements by positive and negative index", () => {
 	expect(pipe([10, 20, 30], Arr.at(-1))).toStrictEqual(Maybe.make.some(30));
 	expect(pipe([10, 20, 30], Arr.at(5))).toStrictEqual(Maybe.make.none());
 	expect(pipe([10, 20, 30], Arr.at(-5))).toStrictEqual(Maybe.make.none());
+});
+
+test("at: returns None for non-integer float, NaN, and Infinity indices", () => {
+	expect(pipe([10, 20, 30], Arr.at(1.5))).toStrictEqual(Maybe.make.none());
+	expect(pipe([10, 20, 30], Arr.at(Number.NaN))).toStrictEqual(Maybe.make.none());
+	expect(pipe([10, 20, 30], Arr.at(Number.POSITIVE_INFINITY))).toStrictEqual(Maybe.make.none());
 });
 
 // --- findMap ---

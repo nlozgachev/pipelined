@@ -151,7 +151,9 @@ export const Num = {
 	 * ```
 	 */
 	range: (from: number, to: number, step = 1): readonly number[] => {
-		if (step <= 0 || from > to) { return []; }
+		if (!Number.isFinite(from) || !Number.isFinite(to) || !Number.isFinite(step) || step <= 0 || from > to) {
+			return [];
+		}
 		const count = Math.floor((to - from) / step) + 1;
 		const result = new Array<number>(count);
 		for (let i = 0; i < count; i++) {

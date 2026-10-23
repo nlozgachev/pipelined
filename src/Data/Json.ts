@@ -23,8 +23,8 @@ const isTypeError = (err: unknown): err is TypeError =>
  */
 export const Json = {
 	/**
-	 * Safely parses a JSON string into `unknown`.
-	 * Converts thrown exceptions into a `Result<SyntaxError, unknown>`.
+	 * Safely parses a JSON string into `unknown` (or a designated type `T`).
+	 * Converts thrown exceptions into a `Result<SyntaxError, T>`.
 	 *
 	 * @example
 	 * ```ts
@@ -32,26 +32,34 @@ export const Json = {
 	 * Json.parse('{invalid}'); // Err(SyntaxError)
 	 * ```
 	 */
-	parse: (text: string): Result<SyntaxError, unknown> =>
-		Result.tryCatch(() => JSON.parse(text), {
+	parse: <T = unknown>(text: string): Result<SyntaxError, T> =>
+		Result.tryCatch(() => JSON.parse(text) as T, {
 			onError: (err) => (isSyntaxError(err) ? err : new SyntaxError(String(err))),
 		}),
 
 	/**
 	 * Safely stringifies a value into a JSON string.
-	 * Converts thrown exceptions (e.g. circular references) into a `Result<TypeError, string>`.
+	 * Converts thrown exceptions (e.g. circular references) or un-serializable values (e.g. `undefined`, functions) into a `Result<TypeError, string>`.
 	 *
 	 * @example
 	 * ```ts
 	 * Json.stringify({ a: 1 }); // Ok('{"a":1}')
+	 * Json.stringify(undefined); // Err(TypeError)
 	 * ```
 	 */
 	stringify: (
 		value: unknown,
 		replacer?: (this: any, key: string, value: any) => any,
 		space?: string | number,
-	): Result<TypeError, string> =>
-		Result.tryCatch(() => JSON.stringify(value, replacer, space), {
-			onError: (err) => (isTypeError(err) ? err : new TypeError(String(err))),
-		}),
+	): Result<TypeError, string> => {
+		try {
+			const text = JSON.stringify(value, replacer as any, space);
+			if (text === undefined) {
+				return Result.make.err(new TypeError("Value is not JSON serializable"));
+			}
+			return Result.make.ok(text);
+		} catch (err) {
+			return Result.make.err(isTypeError(err) ? err : new TypeError(String(err)));
+		}
+	},
 };

@@ -14,7 +14,8 @@ test("map: transforms each value in record", () => {
 });
 
 test("map: returns empty record for empty input", () => {
-	const result = pipe({} as Record<string, number>, Rec.map((n) => n * 2));
+	const emptyNums: Record<string, number> = {};
+	const result = pipe(emptyNums, Rec.map((n) => n * 2));
 	expect(result).toStrictEqual({});
 });
 
@@ -24,7 +25,7 @@ test("map: transforms value types", () => {
 });
 
 test("map: handles prototype pollution key", () => {
-	const obj = JSON.parse('{"__proto__": 123}') as Record<string, number>;
+	const obj: Record<string, number> = JSON.parse('{"__proto__": 123}');
 	const result = pipe(obj, Rec.map((n) => n * 2));
 	expect(result.__proto__).toBe(246);
 });
@@ -35,7 +36,8 @@ test("filterMap: keeps Some values and drops None", () => {
 });
 
 test("filterMap: returns empty record for empty input", () => {
-	const result = pipe({} as Record<string, number>, Rec.filterMap((n) => Maybe.make.some(n)));
+	const emptyNums: Record<string, number> = {};
+	const result = pipe(emptyNums, Rec.filterMap((n) => Maybe.make.some(n)));
 	expect(result).toStrictEqual({});
 });
 
@@ -66,7 +68,8 @@ test("mapWithKey: transforms values with access to key", () => {
 });
 
 test("mapWithKey: returns empty record for empty input", () => {
-	const result = pipe({} as Record<string, number>, Rec.mapWithKey((k, v) => `${k}=${v}`));
+	const emptyNums: Record<string, number> = {};
+	const result = pipe(emptyNums, Rec.mapWithKey((k, v) => `${k}=${v}`));
 	expect(result).toStrictEqual({});
 });
 
@@ -76,7 +79,7 @@ test("mapWithKey: makes key available for transformation logic", () => {
 });
 
 test("mapWithKey: handles prototype pollution key", () => {
-	const obj = JSON.parse('{"__proto__": 123}') as Record<string, number>;
+	const obj: Record<string, number> = JSON.parse('{"__proto__": 123}');
 	const result = pipe(obj, Rec.mapWithKey((k, v) => `${k}:${v}`));
 	expect(result.__proto__).toBe("__proto__:123");
 });
@@ -92,7 +95,8 @@ test("filter: returns empty record when nothing matches", () => {
 });
 
 test("filter: returns empty record for empty input", () => {
-	const result = pipe({} as Record<string, number>, Rec.filter((_) => true));
+	const emptyNums: Record<string, number> = {};
+	const result = pipe(emptyNums, Rec.filter((_) => true));
 	expect(result).toStrictEqual({});
 });
 
@@ -112,7 +116,8 @@ test("filterWithKey: filters by key only", () => {
 });
 
 test("filterWithKey: returns empty record for empty input", () => {
-	const result = pipe({} as Record<string, number>, Rec.filterWithKey((_k, _v) => true));
+	const emptyNums: Record<string, number> = {};
+	const result = pipe(emptyNums, Rec.filterWithKey((_k, _v) => true));
 	expect(result).toStrictEqual({});
 });
 
@@ -131,7 +136,8 @@ test("lookup: returns None for missing key", () => {
 });
 
 test("lookup: returns None for empty record", () => {
-	const result = pipe({} as Record<string, number>, Rec.lookup("a"));
+	const emptyNums: Record<string, number> = {};
+	const result = pipe(emptyNums, Rec.lookup("a"));
 	expect(result).toStrictEqual(Maybe.make.none());
 });
 
@@ -197,7 +203,8 @@ test("from.entries: creates record from key-value pairs", () => {
 });
 
 test("from.entries: returns empty record for empty array", () => {
-	const result = Rec.from.entries([] as [string, number][]);
+	const emptyPairs: (readonly [string, number])[] = [];
+	const result = Rec.from.entries(emptyPairs);
 	expect(result).toStrictEqual({});
 });
 
@@ -217,48 +224,48 @@ test("from.entries: round-trips with entries as inverse", () => {
 // =============================================================================
 
 test("pick: selects specified keys", () => {
-	const result = pipe({ a: 1, b: 2, c: 3 } as Record<string, number>, Rec.pick("a", "c"));
+	const result = pipe({ a: 1, b: 2, c: 3 }, Rec.pick("a", "c"));
 	expect(result).toStrictEqual({ a: 1, c: 3 });
 });
 
 test("pick: ignores keys not in record", () => {
-	// @ts-expect-error 'x' does not exist on the record
 	const result = pipe({ a: 1, b: 2 }, Rec.pick("x", "a"));
 	expect(result).toStrictEqual({ a: 1 });
 });
 
 test("pick: returns empty record when no keys match", () => {
-	const result = pipe({ a: 1, b: 2 } as Record<string, number>, Rec.pick("x", "y"));
-	expect(result).toStrictEqual({} as typeof result);
+	const result = pipe({ a: 1, b: 2 }, Rec.pick("x", "y"));
+	expect(result).toStrictEqual({});
 });
 
 test("pick: selects single key", () => {
-	const result = pipe({ a: 1, b: 2, c: 3 } as Record<string, number>, Rec.pick("b"));
+	const result = pipe({ a: 1, b: 2, c: 3 }, Rec.pick("b"));
 	expect(result).toStrictEqual({ b: 2 });
 });
 
 test("omit: removes specified keys", () => {
-	const result = pipe({ a: 1, b: 2, c: 3 } as Record<string, number>, Rec.omit("b"));
+	const result = pipe({ a: 1, b: 2, c: 3 }, Rec.omit("b"));
 	expect(result).toStrictEqual({ a: 1, c: 3 });
 });
 
 test("omit: ignores keys not in record", () => {
-	const result = pipe({ a: 1, b: 2 } as Record<string, number>, Rec.omit("z"));
+	const result = pipe({ a: 1, b: 2 }, Rec.omit("z"));
 	expect(result).toStrictEqual({ a: 1, b: 2 });
 });
 
 test("omit: removes multiple keys", () => {
-	const result = pipe({ a: 1, b: 2, c: 3, d: 4 } as Record<string, number>, Rec.omit("a", "c"));
+	const result = pipe({ a: 1, b: 2, c: 3, d: 4 }, Rec.omit("a", "c"));
 	expect(result).toStrictEqual({ b: 2, d: 4 });
 });
 
 test("omit: returns empty record when all keys are omitted", () => {
-	const result = pipe({ a: 1, b: 2 } as Record<string, number>, Rec.omit("a", "b"));
+	const result = pipe({ a: 1, b: 2 }, Rec.omit("a", "b"));
 	expect(result).toStrictEqual({});
 });
 
 test("omit: returns empty record for empty input", () => {
-	const result = pipe({} as Record<string, number>, Rec.omit("a"));
+	const emptyNums: Record<string, number> = {};
+	const result = pipe(emptyNums, Rec.omit("a"));
 	expect(result).toStrictEqual({});
 });
 
@@ -282,12 +289,14 @@ test("merge: returns original record when merging with empty record", () => {
 });
 
 test("merge: returns second record when merging empty record with non-empty", () => {
-	const result = pipe({} as Record<string, number>, Rec.merge({ a: 1 }));
+	const emptyNums: Record<string, number> = {};
+	const result = pipe(emptyNums, Rec.merge({ a: 1 }));
 	expect(result).toStrictEqual({ a: 1 });
 });
 
 test("merge: returns empty record when both inputs are empty", () => {
-	const result = pipe({} as Record<string, number>, Rec.merge({}));
+	const emptyNums: Record<string, number> = {};
+	const result = pipe(emptyNums, Rec.merge({}));
 	expect(result).toStrictEqual({});
 });
 
@@ -330,7 +339,8 @@ test("mapKeys: transforms keys while preserving values", () => {
 });
 
 test("mapKeys: returns empty record for empty input", () => {
-	const result = pipe({} as Record<string, number>, Rec.mapKeys((k) => `prefix_${k}`));
+	const emptyNums: Record<string, number> = {};
+	const result = pipe(emptyNums, Rec.mapKeys((k) => `prefix_${k}`));
 	expect(result).toStrictEqual({});
 });
 
@@ -374,7 +384,7 @@ test("prototype: safely handles proto keys without prototype pollution", () => {
 	const input = JSON.parse('{"__proto__": {"polluted": true}}');
 	const mapped = pipe(input, Rec.mapKeys((k) => k));
 	expect(Object.keys(mapped)).toStrictEqual(["__proto__"]);
-	expect((mapped as any).polluted).toBeUndefined();
+	expect(Object.hasOwn(mapped, "polluted")).toBe(false);
 
 	const compactInput: Record<string, Maybe<any>> = {};
 	Object.defineProperty(compactInput, "__proto__", {
@@ -385,7 +395,7 @@ test("prototype: safely handles proto keys without prototype pollution", () => {
 	});
 	const compacted = Rec.compact(compactInput);
 	expect(Object.keys(compacted)).toStrictEqual(["__proto__"]);
-	expect((compacted as any).polluted).toBeUndefined();
+	expect(Object.hasOwn(compacted, "polluted")).toBe(false);
 
 	const filtered = pipe(input, Rec.filter(() => true));
 	expect(Object.keys(filtered)).toStrictEqual(["__proto__"]);
@@ -437,7 +447,8 @@ test("mapEntries: transforms key and value pairs simultaneously", () => {
 });
 
 test("mapEntries: returns empty record for empty input", () => {
-	const res = pipe({} as Record<string, number>, Rec.mapEntries((k, v) => [k.toUpperCase(), v * 10]));
+	const emptyNums: Record<string, number> = {};
+	const res = pipe(emptyNums, Rec.mapEntries((k, v) => [k.toUpperCase(), v * 10]));
 	expect(res).toStrictEqual({});
 });
 
@@ -484,7 +495,7 @@ test("pipe: composes entries transform and from.entries round trip", () => {
 });
 
 test("pipe: composes pick then merge", () => {
-	const result = pipe({ a: 1, b: 2, c: 3 } as Record<string, number>, Rec.pick("a", "b"), Rec.merge({ d: 4 }));
+	const result = pipe({ a: 1, b: 2, c: 3 }, Rec.pick("a", "b"), Rec.merge({ d: 4 }));
 	expect(result).toStrictEqual({ a: 1, b: 2, d: 4 });
 });
 
@@ -541,7 +552,8 @@ test("traverse.Maybe: short-circuits at first None", () => {
 });
 
 test("traverse.Maybe: returns Some of empty record for empty input", () => {
-	const result = pipe({} as Record<string, string>, Rec.traverse.Maybe((s) => Maybe.make.some(s)));
+	const emptyStrings: Record<string, string> = {};
+	const result = pipe(emptyStrings, Rec.traverse.Maybe((s) => Maybe.make.some(s)));
 	expect(result).toStrictEqual(Maybe.make.some({}));
 });
 
@@ -572,7 +584,8 @@ test("traverse.Result: short-circuits at first Err", () => {
 });
 
 test("traverse.Result: returns Ok of empty record for empty input", () => {
-	const result = pipe({} as Record<string, number>, Rec.traverse.Result((n) => Result.make.ok(n)));
+	const emptyNums: Record<string, number> = {};
+	const result = pipe(emptyNums, Rec.traverse.Result((n) => Result.make.ok(n)));
 	expect(result).toStrictEqual(Result.make.ok({}));
 });
 
@@ -642,8 +655,10 @@ test("NonEmpty.reduce: reduces non-empty record without initial seed", () => {
 
 	const multi = Rec.NonEmpty.from.record({ a: 10, b: 20 });
 	expect(multi.kind).toBe("Some");
-	const multiVal = (multi as { value: Rec.NonEmpty<number>; }).value;
-	expect(pipe(multiVal, Rec.NonEmpty.reduce((a, b) => a + b))).toBe(30);
+	if (!Maybe.is.some(multi)) {
+		throw new Error("Expected some");
+	}
+	expect(pipe(multi.value, Rec.NonEmpty.reduce((a, b) => a + b))).toBe(30);
 });
 
 test("map: returns standard Record when called on NonEmpty", () => {

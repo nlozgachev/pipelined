@@ -180,3 +180,25 @@ test("partition: preserves all elements across partitions", () => {
 		expect(combined).toStrictEqual(original);
 	}));
 });
+
+// ---------------------------------------------------------------------------
+// at / insertAt / removeAt: non-integer index handling
+// ---------------------------------------------------------------------------
+
+test("at: non-integer float indices always return None", () => {
+	fc.assert(fc.property(fc.array(fc.integer()), fc.double({ noInteger: true }), (xs, idx) => {
+		expect(Arr.at(idx)(xs)).toStrictEqual(Maybe.make.none());
+	}));
+});
+
+test("removeAt: non-integer float indices return original array reference", () => {
+	fc.assert(fc.property(fc.array(fc.integer()), fc.double({ noInteger: true }), (xs, idx) => {
+		expect(Arr.removeAt(idx)(xs)).toBe(xs);
+	}));
+});
+
+test("insertAt: non-integer float indices return original array reference", () => {
+	fc.assert(fc.property(fc.array(fc.integer()), fc.double({ noInteger: true }), fc.integer(), (xs, idx, val) => {
+		expect(Arr.insertAt(idx, val)(xs)).toBe(xs);
+	}));
+});

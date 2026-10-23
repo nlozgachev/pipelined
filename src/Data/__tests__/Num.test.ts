@@ -106,6 +106,15 @@ test("range: returns empty array for non-positive step", () => {
 	expect(Num.range(0, 5, -1)).toStrictEqual([]);
 });
 
+test("range: returns empty array for NaN and Infinity boundary inputs", () => {
+	expect(Num.range(0, 5, NaN)).toStrictEqual([]);
+	expect(Num.range(NaN, 5)).toStrictEqual([]);
+	expect(Num.range(0, NaN)).toStrictEqual([]);
+	expect(Num.range(-Infinity, 5)).toStrictEqual([]);
+	expect(Num.range(0, Infinity)).toStrictEqual([]);
+	expect(Num.range(0, 5, Infinity)).toStrictEqual([]);
+});
+
 test("range: matches default behavior when step is 1", () => {
 	expect(Num.range(1, 4, 1)).toStrictEqual(Num.range(1, 4));
 });

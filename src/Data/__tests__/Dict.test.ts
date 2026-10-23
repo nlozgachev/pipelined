@@ -294,7 +294,7 @@ test("filterMap: keeps entries where predicate returns Some", () => {
 			return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 		}),
 	);
-	expect(Dict.to.record(result as ReadonlyMap<string, number>)).toStrictEqual({ a: 1, c: 3 });
+	expect(Dict.to.record(result)).toStrictEqual({ a: 1, c: 3 });
 });
 
 test("filterMap: returns empty map when all entries return None", () => {
@@ -515,8 +515,10 @@ test("NonEmpty.reduce: reduces non-empty map values without seed", () => {
 
 	const multi = Dict.NonEmpty.from.map(new Map([["a", 10], ["b", 20]]));
 	expect(multi.kind).toBe("Some");
-	const multiVal = (multi as { value: Dict.NonEmpty<string, number>; }).value;
-	expect(pipe(multiVal, Dict.NonEmpty.reduce((a, b) => a + b))).toBe(30);
+	if (!Maybe.is.some(multi)) {
+		throw new Error("Expected some");
+	}
+	expect(pipe(multi.value, Dict.NonEmpty.reduce((a, b) => a + b))).toBe(30);
 });
 
 test("map: returns standard ReadonlyMap when called on NonEmpty", () => {

@@ -295,8 +295,11 @@ const filter =
 const filterWithKey =
 	<A>(predicate: (key: string, value: A) => boolean) =>
 	(record: Readonly<Record<string, A>>): Readonly<Record<string, A>> => {
-		const result: Record<string, A> = {};
-		for (const [k, v] of Object.entries(record)) {
+		const recordKeys = Object.keys(record);
+		const result: Record<string, A> = Object.create(Object.getPrototypeOf(record));
+		for (let i = 0; i < recordKeys.length; i++) {
+			const k = recordKeys[i];
+			const v = record[k];
 			if (predicate(k, v)) {
 				_setKey(result, k, v);
 			}
@@ -313,10 +316,8 @@ const filterWithKey =
  * pipe({ a: 1, b: 2 }, Rec.lookup("c")); // None
  * ```
  */
-const lookup = <K extends string>(key: K) => <V>(record: Record<string, V>): CoreMaybe<V> =>
-	Object.hasOwn(record, key)
-		? { kind: "Some", value: record[key] } as CoreMaybe.Some<V>
-		: { kind: "None" } as CoreMaybe.None;
+const lookup = <K extends string>(key: K) => <V = unknown>(record: Readonly<Record<string, V>>): CoreMaybe<V> =>
+	Object.hasOwn(record, key) ? CoreMaybe.make.some(record[key]) : CoreMaybe.make.none();
 
 /**
  * Returns all keys of a record.
@@ -412,15 +413,18 @@ const groupBy =
  * pipe({ a: 1, b: 2, c: 3 }, Rec.pick("a", "c")); // { a: 1, c: 3 }
  * ```
  */
-const pick = <K extends string>(...pickedKeys: K[]) => <A extends Record<K, unknown>>(record: A): Pick<A, K> => {
-	const result = {} as Pick<A, K>;
-	for (const key of pickedKeys) {
-		if (Object.hasOwn(record, key)) {
-			_setKey(result, key, record[key]);
+const pick =
+	<K extends string>(...pickedKeys: readonly K[]) =>
+	<A extends Readonly<Record<string, unknown>>>(record: A): Pick<A, K & keyof A> => {
+		const result = {} as Pick<A, K & keyof A>;
+		for (let i = 0; i < pickedKeys.length; i++) {
+			const key = pickedKeys[i];
+			if (Object.hasOwn(record, key)) {
+				_setKey(result as Record<string, unknown>, key, (record as Record<string, unknown>)[key]);
+			}
 		}
-	}
-	return result;
-};
+		return result;
+	};
 
 /**
  * Omits specific keys from a record.
@@ -432,16 +436,20 @@ const pick = <K extends string>(...pickedKeys: K[]) => <A extends Record<K, unkn
  * pipe({ a: 1, b: 2, c: 3 }, Rec.omit("b")); // { a: 1, c: 3 }
  * ```
  */
-const omit = <K extends string>(...omittedKeys: K[]) => <A extends Record<K, unknown>>(record: A): Omit<A, K> => {
-	const omitSet = new Set<string>(omittedKeys);
-	const result = {} as Record<string, unknown>;
-	for (const key of Object.keys(record)) {
-		if (!omitSet.has(key)) {
-			_setKey(result, key, (record as Record<string, unknown>)[key]);
+const omit =
+	<K extends string>(...omittedKeys: readonly K[]) =>
+	<A extends Readonly<Record<string, unknown>>>(record: A): Omit<A, K> => {
+		const omitSet = new Set<string>(omittedKeys);
+		const result = {} as Record<string, unknown>;
+		const recKeys = Object.keys(record);
+		for (let i = 0; i < recKeys.length; i++) {
+			const key = recKeys[i];
+			if (!omitSet.has(key)) {
+				_setKey(result, key, (record as Record<string, unknown>)[key]);
+			}
 		}
-	}
-	return result as Omit<A, K>;
-};
+		return result as Omit<A, K>;
+	};
 
 /**
  * Merges two records. Values from the second record take precedence.
@@ -620,11 +628,13 @@ const updateIn =
 		const updateNode = (obj: unknown, pathKeys: readonly string[]): unknown => {
 			const [head, ...tail] = pathKeys;
 			const current = (obj && typeof obj === "object" ? obj : {}) as Record<string, unknown>;
+			const result: Record<string, unknown> = { ...current };
 			if (tail.length === 0) {
-				return { ...current, [head]: transform(current[head] as T) };
+				_setKey(result, head, transform(current[head] as T));
+				return result;
 			}
-			const child = current[head];
-			return { ...current, [head]: updateNode(child, tail) };
+			_setKey(result, head, updateNode(current[head], tail));
+			return result;
 		};
 		return updateNode(record, path) as Readonly<Record<string, unknown>>;
 	};
@@ -708,8 +718,14 @@ const RecNonEmpty = {
 	 * pipe({ a: 1, b: 2 } as Rec.NonEmpty<number>, Rec.NonEmpty.reduce((x, y) => x + y)); // 3
 	 * ```
 	 */
-	reduce: <A>(reducer: (accumulator: A, value: A) => A) => <K extends string>(record: NonEmptyRecord<A, K>): A =>
-		(values(record) as readonly A[]).reduce(reducer),
+	reduce: <A>(reducer: (accumulator: A, value: A) => A) => <K extends string>(record: NonEmptyRecord<A, K>): A => {
+		const vals = Object.values(record) as readonly A[];
+		let [acc] = vals;
+		for (let i = 1; i < vals.length; i++) {
+			acc = reducer(acc, vals[i]);
+		}
+		return acc;
+	},
 
 	/**
 	 * Transforms each value of a non-empty record, preserving non-emptiness.

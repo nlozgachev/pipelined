@@ -234,18 +234,14 @@ test("difference: returns equivalent set when other is empty", () => {
 // ---------------------------------------------------------------------------
 
 test("is.subsetOf: handles polyfill path when all items in other", () => {
-	const s = Object.defineProperty(Uniq.from.array([1, 2]) as Set<number>, "isSubsetOf", {
-		value: undefined,
-		configurable: true,
-	});
+	const s = new Set([1, 2]);
+	Object.defineProperty(s, "isSubsetOf", { value: undefined, configurable: true });
 	expect(pipe(s, Uniq.is.subsetOf(Uniq.from.array([1, 2, 3])))).toBe(true);
 });
 
 test("is.subsetOf: handles polyfill path when item missing from other", () => {
-	const s = Object.defineProperty(Uniq.from.array([1, 4]) as Set<number>, "isSubsetOf", {
-		value: undefined,
-		configurable: true,
-	});
+	const s = new Set([1, 4]);
+	Object.defineProperty(s, "isSubsetOf", { value: undefined, configurable: true });
 	expect(pipe(s, Uniq.is.subsetOf(Uniq.from.array([1, 2, 3])))).toBe(false);
 });
 
@@ -254,10 +250,8 @@ test("is.subsetOf: handles polyfill path when item missing from other", () => {
 // ---------------------------------------------------------------------------
 
 test("union: handles polyfill path to combine items from both sets", () => {
-	const data = Object.defineProperty(Uniq.from.array([1, 2, 3]) as Set<number>, "union", {
-		value: undefined,
-		configurable: true,
-	});
+	const data = new Set([1, 2, 3]);
+	Object.defineProperty(data, "union", { value: undefined, configurable: true });
 	const s = pipe(data, Uniq.union(Uniq.from.array([2, 3, 4])));
 	expect(s.size).toBe(4);
 	expect(s.has(1)).toBe(true);
@@ -269,10 +263,8 @@ test("union: handles polyfill path to combine items from both sets", () => {
 // ---------------------------------------------------------------------------
 
 test("intersection: handles polyfill path to keep items in both sets", () => {
-	const data = Object.defineProperty(Uniq.from.array([1, 2, 3]) as Set<number>, "intersection", {
-		value: undefined,
-		configurable: true,
-	});
+	const data = new Set([1, 2, 3]);
+	Object.defineProperty(data, "intersection", { value: undefined, configurable: true });
 	const s = pipe(data, Uniq.intersection(Uniq.from.array([2, 3, 4])));
 	expect(s.size).toBe(2);
 	expect(s.has(2)).toBe(true);
@@ -281,10 +273,8 @@ test("intersection: handles polyfill path to keep items in both sets", () => {
 });
 
 test("intersection: handles polyfill path when no common items", () => {
-	const data = Object.defineProperty(Uniq.from.array([1, 2]) as Set<number>, "intersection", {
-		value: undefined,
-		configurable: true,
-	});
+	const data = new Set([1, 2]);
+	Object.defineProperty(data, "intersection", { value: undefined, configurable: true });
 	const s = pipe(data, Uniq.intersection(Uniq.from.array([3, 4])));
 	expect(s.size).toBe(0);
 });
@@ -294,10 +284,8 @@ test("intersection: handles polyfill path when no common items", () => {
 // ---------------------------------------------------------------------------
 
 test("difference: handles polyfill path to keep items not in other", () => {
-	const data = Object.defineProperty(Uniq.from.array([1, 2, 3, 4]) as Set<number>, "difference", {
-		value: undefined,
-		configurable: true,
-	});
+	const data = new Set([1, 2, 3, 4]);
+	Object.defineProperty(data, "difference", { value: undefined, configurable: true });
 	const s = pipe(data, Uniq.difference(Uniq.from.array([2, 4])));
 	expect(s.size).toBe(2);
 	expect(s.has(1)).toBe(true);
@@ -398,8 +386,10 @@ test("NonEmpty.reduce: reduces non-empty set without initial seed", () => {
 
 	const multi = Uniq.NonEmpty.from.set(new Set([10, 20, 30]));
 	expect(multi.kind).toBe("Some");
-	const multiVal = (multi as { value: Uniq.NonEmpty<number>; }).value;
-	expect(pipe(multiVal, Uniq.NonEmpty.reduce((a, b) => a + b))).toBe(60);
+	if (!Maybe.is.some(multi)) {
+		throw new Error("Expected some");
+	}
+	expect(pipe(multi.value, Uniq.NonEmpty.reduce((a, b) => a + b))).toBe(60);
 });
 
 test("NonEmpty.to.array: returns non-empty array of elements", () => {

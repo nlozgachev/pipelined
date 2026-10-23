@@ -165,7 +165,14 @@ const ArrTask = {
 	 */
 	traverse:
 		<A, B>(transform: (item: A) => CoreTask<B>, options?: { concurrency?: number; }) =>
-		(items: readonly A[]): CoreTask<readonly B[]> => CoreTask.all(items.map(transform), options),
+		(items: readonly A[]): CoreTask<readonly B[]> => {
+			const n = items.length;
+			const tasks = new Array<CoreTask<B>>(n);
+			for (let i = 0; i < n; i++) {
+				tasks[i] = transform(items[i]);
+			}
+			return CoreTask.all(tasks, options);
+		},
 
 	/**
 	 * Collects an array of Tasks into a Task of array. Runs in parallel.
@@ -284,10 +291,14 @@ const init = <A>(items: readonly A[]): CoreMaybe<readonly A[]> =>
  * pipe([1, 2, 3, 4], Arr.findFirst(n => n > 2)); // Some(3)
  * ```
  */
-const findFirst = <A>(predicate: (item: A) => boolean) => (items: readonly A[]): CoreMaybe<A> => {
-	const idx = items.findIndex(predicate);
-	return idx !== -1 ? CoreMaybe.make.some(items[idx]) : CoreMaybe.make.none();
-};
+function findFirst<A, B extends A>(predicate: (item: A) => item is B): (items: readonly A[]) => CoreMaybe<B>;
+function findFirst<A>(predicate: (item: A) => boolean): (items: readonly A[]) => CoreMaybe<A>;
+function findFirst<A>(predicate: (item: A) => boolean): (items: readonly A[]) => CoreMaybe<A> {
+	return (items: readonly A[]): CoreMaybe<A> => {
+		const idx = items.findIndex(predicate);
+		return idx !== -1 ? CoreMaybe.make.some(items[idx]) : CoreMaybe.make.none();
+	};
+}
 
 /**
  * Returns the last element matching the predicate, or None.
@@ -299,12 +310,16 @@ const findFirst = <A>(predicate: (item: A) => boolean) => (items: readonly A[]):
  * pipe([1, 2, 3, 4], Arr.findLast(n => n > 2)); // Some(4)
  * ```
  */
-const findLast = <A>(predicate: (item: A) => boolean) => (items: readonly A[]): CoreMaybe<A> => {
-	for (let i = items.length - 1; i >= 0; i--) {
-		if (predicate(items[i])) { return CoreMaybe.make.some(items[i]); }
-	}
-	return CoreMaybe.make.none();
-};
+function findLast<A, B extends A>(predicate: (item: A) => item is B): (items: readonly A[]) => CoreMaybe<B>;
+function findLast<A>(predicate: (item: A) => boolean): (items: readonly A[]) => CoreMaybe<A>;
+function findLast<A>(predicate: (item: A) => boolean): (items: readonly A[]) => CoreMaybe<A> {
+	return (items: readonly A[]): CoreMaybe<A> => {
+		for (let i = items.length - 1; i >= 0; i--) {
+			if (predicate(items[i])) { return CoreMaybe.make.some(items[i]); }
+		}
+		return CoreMaybe.make.none();
+	};
+}
 
 /**
  * Returns the index of the first element matching the predicate, or None.
@@ -371,14 +386,18 @@ const mapWithIndex = <A, B>(transform: (index: number, item: A) => B) => (items:
  * pipe([1, 2, 3, 4], Arr.filter(n => n % 2 === 0)); // [2, 4]
  * ```
  */
-const filter = <A>(predicate: (item: A) => boolean) => (items: readonly A[]): readonly A[] => {
-	const n = items.length;
-	const result: A[] = [];
-	for (let i = 0; i < n; i++) {
-		if (predicate(items[i])) { result.push(items[i]); }
-	}
-	return result;
-};
+function filter<A, B extends A>(predicate: (item: A) => item is B): (items: readonly A[]) => readonly B[];
+function filter<A>(predicate: (item: A) => boolean): (items: readonly A[]) => readonly A[];
+function filter<A>(predicate: (item: A) => boolean): (items: readonly A[]) => readonly A[] {
+	return (items: readonly A[]): readonly A[] => {
+		const n = items.length;
+		const result: A[] = [];
+		for (let i = 0; i < n; i++) {
+			if (predicate(items[i])) { result.push(items[i]); }
+		}
+		return result;
+	};
+}
 
 /**
  * Maps each element to a Maybe and collects only the Some values.
@@ -417,8 +436,12 @@ const filterMap = <A, B>(transform: (item: A) => CoreMaybe<B>) => (items: readon
  * pipe([1, 2, 3, 4], Arr.partition(n => n % 2 === 0)); // [[2, 4], [1, 3]]
  * ```
  */
-const partition =
-	<A>(predicate: (item: A) => boolean) => (items: readonly A[]): readonly [readonly A[], readonly A[]] => {
+function partition<A, B extends A>(
+	predicate: (item: A) => item is B,
+): (items: readonly A[]) => readonly [readonly B[], readonly Exclude<A, B>[]];
+function partition<A>(predicate: (item: A) => boolean): (items: readonly A[]) => readonly [readonly A[], readonly A[]];
+function partition<A>(predicate: (item: A) => boolean): (items: readonly A[]) => readonly [readonly A[], readonly A[]] {
+	return (items: readonly A[]): readonly [readonly A[], readonly A[]] => {
 		const pass: A[] = [];
 		const fail: A[] = [];
 		for (const item of items) {
@@ -426,6 +449,7 @@ const partition =
 		}
 		return [pass, fail];
 	};
+}
 
 /**
  * Narrows a list of Maybe values down to a list of their underlying values,
@@ -881,6 +905,7 @@ const reverse = <A>(items: readonly A[]): readonly A[] => [...items].toReversed(
  * ```
  */
 const insertAt = <A>(index: number, item: A) => (items: readonly A[]): readonly A[] => {
+	if (!Number.isInteger(index)) { return items; }
 	const i = Math.max(0, Math.min(index, items.length));
 	const arr = items as A[];
 	if (typeof arr.toSpliced === "function") { return arr.toSpliced(i, 0, item); }
@@ -903,7 +928,7 @@ const insertAt = <A>(index: number, item: A) => (items: readonly A[]): readonly 
  * ```
  */
 const removeAt = (index: number) => <A>(items: readonly A[]): readonly A[] => {
-	if (index < 0 || index >= items.length) { return items; }
+	if (!Number.isInteger(index) || index < 0 || index >= items.length) { return items; }
 	const arr = items as A[];
 	if (typeof arr.toSpliced === "function") { return arr.toSpliced(index, 1); }
 	const result = [...items];
@@ -1054,6 +1079,9 @@ const partitionMaybe =
  * ```
  */
 const at = (index: number) => <A>(items: readonly A[]): CoreMaybe<A> => {
+	if (!Number.isInteger(index)) {
+		return CoreMaybe.make.none();
+	}
 	const targetIndex = index < 0 ? items.length + index : index;
 	if (targetIndex < 0 || targetIndex >= items.length) {
 		return CoreMaybe.make.none();

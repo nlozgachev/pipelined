@@ -324,8 +324,19 @@ const UniqNonEmptyConst = {
 	 * pipe(Uniq.NonEmpty.singleton(5), Uniq.NonEmpty.reduce((a, b) => a + b)); // 5
 	 * ```
 	 */
-	reduce: <A>(reducer: (accumulator: A, item: A) => A) => (set: NonEmptySet<A>): A =>
-		(toArray(set) as readonly A[]).reduce(reducer),
+	reduce: <A>(reducer: (accumulator: A, item: A) => A) => (set: NonEmptySet<A>): A => {
+		let acc: A | undefined;
+		let isFirst = true;
+		for (const item of set) {
+			if (isFirst) {
+				acc = item;
+				isFirst = false;
+			} else {
+				acc = reducer(acc as A, item);
+			}
+		}
+		return acc as A;
+	},
 
 	/**
 	 * Transforms each element of a non-empty set, preserving non-emptiness.

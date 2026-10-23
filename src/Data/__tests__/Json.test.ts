@@ -39,6 +39,20 @@ test("stringify: returns Err(TypeError) for circular references", () => {
 	expect(result.kind === "Err" ? result.error : undefined).toBeInstanceOf(TypeError);
 });
 
+test("stringify: returns Err(TypeError) for undefined or un-serializable root values", () => {
+	const undefResult = Json.stringify(undefined);
+	expect(undefResult.kind).toBe("Err");
+	expect(undefResult.kind === "Err" ? undefResult.error : undefined).toBeInstanceOf(TypeError);
+
+	const fnResult = Json.stringify(() => {});
+	expect(fnResult.kind).toBe("Err");
+	expect(fnResult.kind === "Err" ? fnResult.error : undefined).toBeInstanceOf(TypeError);
+
+	const symResult = Json.stringify(Symbol("test"));
+	expect(symResult.kind).toBe("Err");
+	expect(symResult.kind === "Err" ? symResult.error : undefined).toBeInstanceOf(TypeError);
+});
+
 test("stringify: wraps non-TypeError exception into TypeError", () => {
 	const badReplacer = () => {
 		throw new Error("custom error");

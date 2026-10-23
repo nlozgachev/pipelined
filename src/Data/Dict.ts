@@ -141,14 +141,14 @@ const groupBy = <A, K>(keySelector: (item: A) => K) => (items: readonly A[]): Re
  *
  * @see {@link lookup} for retrieving the value associated with a key.
  */
-const has = <K, V>(key: K) => (dict: ReadonlyMap<K, V>): boolean => dict.has(key);
+const has = <K>(key: K) => <V = unknown>(dict: ReadonlyMap<K, V>): boolean => dict.has(key);
 
 /**
  * Retrieves the value associated with a key wrapped in a `Maybe`.
  *
  * @see {@link has} for checking key existence without retrieving the value.
  */
-const lookup = <K, V>(key: K) => (dict: ReadonlyMap<K, V>): Maybe<V> => {
+const lookup = <K>(key: K) => <V = unknown>(dict: ReadonlyMap<K, V>): Maybe<V> => {
 	const val = dict.get(key);
 	return val !== undefined || dict.has(key) ? Maybe.make.some(val as V) : Maybe.make.none();
 };
@@ -204,7 +204,7 @@ const insert = <K, V>(key: K, value: V) => (dict: ReadonlyMap<K, V>): ReadonlyMa
  *
  * @see {@link insert} for adding or replacing a key in a dictionary.
  */
-const remove = <K, V>(key: K) => (dict: ReadonlyMap<K, V>): ReadonlyMap<K, V> => {
+const remove = <K>(key: K) => <V = unknown>(dict: ReadonlyMap<K, V>): ReadonlyMap<K, V> => {
 	if (!dict.has(key)) {
 		return dict;
 	}
@@ -230,7 +230,7 @@ const upsert = <K, V>(key: K, update: (existing: Maybe<V>) => V) => (dict: Reado
  *
  * @see {@link mapWithKey} for transforming values with key access.
  */
-const map = <A, B>(transform: (value: A) => B) => <K>(dict: ReadonlyMap<K, A>): ReadonlyMap<K, B> => {
+const map = <A, B>(transform: (value: A) => B) => <K = unknown>(dict: ReadonlyMap<K, A>): ReadonlyMap<K, B> => {
 	const res = new globalThis.Map<K, B>();
 	for (const [k, v] of dict) {
 		res.set(k, transform(v));
@@ -256,7 +256,7 @@ const mapWithKey = <K, A, B>(transform: (key: K, value: A) => B) => (dict: Reado
  *
  * @see {@link filterWithKey} for filtering with key access.
  */
-const filter = <A>(predicate: (value: A) => boolean) => <K>(dict: ReadonlyMap<K, A>): ReadonlyMap<K, A> => {
+const filter = <A>(predicate: (value: A) => boolean) => <K = unknown>(dict: ReadonlyMap<K, A>): ReadonlyMap<K, A> => {
 	const res = new globalThis.Map<K, A>();
 	for (const [k, v] of dict) {
 		if (predicate(v)) {
@@ -300,16 +300,17 @@ const compact = <K, A>(dict: ReadonlyMap<K, Maybe<A>>): ReadonlyMap<K, A> => {
  *
  * @see {@link filter} for filtering without transformation.
  */
-const filterMap = <A, B>(transform: (value: A) => Maybe<B>) => <K>(dict: ReadonlyMap<K, A>): ReadonlyMap<K, B> => {
-	const res = new globalThis.Map<K, B>();
-	for (const [k, v] of dict) {
-		const mb = transform(v);
-		if (mb.kind === "Some") {
-			res.set(k, mb.value);
+const filterMap =
+	<A, B>(transform: (value: A) => Maybe<B>) => <K = unknown>(dict: ReadonlyMap<K, A>): ReadonlyMap<K, B> => {
+		const res = new globalThis.Map<K, B>();
+		for (const [k, v] of dict) {
+			const mb = transform(v);
+			if (mb.kind === "Some") {
+				res.set(k, mb.value);
+			}
 		}
-	}
-	return res;
-};
+		return res;
+	};
 
 /**
  * Combines two dictionaries, preferring entries from `other` on key collisions.
@@ -374,13 +375,14 @@ const difference = <K, V>(other: ReadonlyMap<K, V>) => (dict: ReadonlyMap<K, V>)
  * pipe(Dict.from.entries([["a", 1], ["b", 2]]), Dict.reduce(0, (acc, n) => acc + n)); // 3
  * ```
  */
-const reduce = <B, V>(initial: B, reducer: (accumulator: B, value: V) => B) => <K>(dict: ReadonlyMap<K, V>): B => {
-	let acc = initial;
-	for (const [, v] of dict) {
-		acc = reducer(acc, v);
-	}
-	return acc;
-};
+const reduce =
+	<B, V>(initial: B, reducer: (accumulator: B, value: V) => B) => <K = unknown>(dict: ReadonlyMap<K, V>): B => {
+		let acc = initial;
+		for (const [, v] of dict) {
+			acc = reducer(acc, v);
+		}
+		return acc;
+	};
 
 /**
  * Reduces dictionary entries from an initial value, passing value and key to the reducer.
@@ -497,8 +499,14 @@ const _nonEmptyValues = <K, V>(dict: NonEmptyMap<K, V>): NonEmptyArr<V> => value
 const _nonEmptyEntries = <K, V>(dict: NonEmptyMap<K, V>): NonEmptyArr<readonly [K, V]> =>
 	entries(dict) as unknown as NonEmptyArr<readonly [K, V]>;
 
-const _nonEmptyReduce = <V>(reducer: (accumulator: V, value: V) => V) => <K>(dict: NonEmptyMap<K, V>): V =>
-	_nonEmptyValues(dict).reduce(reducer);
+const _nonEmptyReduce = <V>(reducer: (accumulator: V, value: V) => V) => <K>(dict: NonEmptyMap<K, V>): V => {
+	const vals = Array.from(dict.values());
+	let [acc] = vals;
+	for (let i = 1; i < vals.length; i++) {
+		acc = reducer(acc, vals[i]);
+	}
+	return acc;
+};
 
 const _nonEmptyMap = <A, B>(transform: (value: A) => B) => <K>(dict: NonEmptyMap<K, A>): NonEmptyMap<K, B> =>
 	map(transform)(dict) as unknown as NonEmptyMap<K, B>;
