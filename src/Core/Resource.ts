@@ -30,14 +30,14 @@ import { type Task, Task as CoreTask } from "./Task.ts";
  * // conn.close() is called whether queryUser succeeds or fails
  * ```
  */
-export type Resource<E, A> = { readonly acquire: Task.Result<E, A>; readonly release: (value: A) => Task<void>; };
+export type Resource<E, A> = { readonly acquire: Task.Result<E, A>; readonly release: (value: A) => Task<unknown>; };
 
-const makeResource = <E, A>(acquire: Task.Result<E, A>, release: (value: A) => Task<void>): Resource<E, A> => ({
+const makeResource = <E, A>(acquire: Task.Result<E, A>, release: (value: A) => Task<unknown>): Resource<E, A> => ({
 	acquire,
 	release,
 });
 
-const makeTask = <A, E = never>(acquire: Task<A>, release: (value: A) => Task<void>): Resource<E, A> => ({
+const makeTask = <A, E = never>(acquire: Task<A>, release: (value: A) => Task<unknown>): Resource<E, A> => ({
 	acquire: CoreTask.map((value: A): Result<E, A> => Result.make.ok(value))(acquire),
 	release,
 });

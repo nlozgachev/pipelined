@@ -126,8 +126,7 @@ test("or: returns false when both refinements fail", () => {
 
 test("to.Maybe: returns Some when refinement passes", () => {
 	const result = pipe("hello", Refinement.to.Maybe(isNonEmpty));
-	expect(result.kind).toBe("Some");
-	expect(result.kind === "Some" ? result.value as string : null).toBe("hello");
+	expect(result).toStrictEqual({ kind: "Some", value: "hello" });
 });
 
 test("to.Maybe: returns None when refinement fails", () => {
@@ -147,8 +146,7 @@ test("to.Maybe: works in pipe chain with composed refinements", () => {
 
 test("to.Result: returns Ok when refinement passes", () => {
 	const result = pipe("hello", Refinement.to.Result(isNonEmpty, (s) => `"${s}" is empty`));
-	expect(result.kind).toBe("Ok");
-	expect(result.kind === "Ok" ? result.value as string : null).toBe("hello");
+	expect(result).toStrictEqual({ kind: "Ok", value: "hello" });
 });
 
 test("to.Result: returns Err with onFail value when refinement fails", () => {

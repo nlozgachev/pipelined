@@ -66,7 +66,8 @@ export const Pair = {
 	 * pipe(Pair.make("alice", 42), Pair.mapFirst((s) => s.toUpperCase())); // ["ALICE", 42]
 	 * ```
 	 */
-	mapFirst: <A, C>(transform: (first: A) => C) => <B>(pair: Pair<A, B>): Pair<C, B> => [transform(pair[0]), pair[1]],
+	mapFirst:
+		<A, C>(transform: (first: A) => C) => <B = never>(pair: Pair<A, B>): Pair<C, B> => [transform(pair[0]), pair[1]],
 
 	/**
 	 * Transforms the second value, leaving the first unchanged.
@@ -79,7 +80,8 @@ export const Pair = {
 	 * pipe(Pair.make("alice", 42), Pair.mapSecond((n) => n * 2)); // ["alice", 84]
 	 * ```
 	 */
-	mapSecond: <B, D>(transform: (second: B) => D) => <A>(pair: Pair<A, B>): Pair<A, D> => [pair[0], transform(pair[1])],
+	mapSecond:
+		<B, D>(transform: (second: B) => D) => <A = never>(pair: Pair<A, B>): Pair<A, D> => [pair[0], transform(pair[1])],
 
 	/**
 	 * Transforms both values independently in a single step.

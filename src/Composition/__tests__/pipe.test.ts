@@ -62,7 +62,8 @@ test("pipe: integrates with Maybe.map on Some", () => {
 });
 
 test("pipe: integrates with Maybe.map on None", () => {
-	const result = pipe(Maybe.make.none() as Maybe<number>, Maybe.map((n: number) => n * 2), Maybe.getOrElse(() => 0));
+	const noneVal: Maybe<number> = Maybe.make.none();
+	const result = pipe(noneVal, Maybe.map((n: number) => n * 2), Maybe.getOrElse(() => 0));
 	expect(result).toBe(0);
 });
 
@@ -72,11 +73,8 @@ test("pipe: integrates with Result.map on Ok", () => {
 });
 
 test("pipe: integrates with Result.map on Err", () => {
-	const result = pipe(
-		Result.make.err("oops") as Result<string, number>,
-		Result.map((n: number) => n * 3),
-		Result.getOrElse(() => 0),
-	);
+	const errVal: Result<string, number> = Result.make.err("oops");
+	const result = pipe(errVal, Result.map((n: number) => n * 3), Result.getOrElse(() => 0));
 	expect(result).toBe(0);
 });
 

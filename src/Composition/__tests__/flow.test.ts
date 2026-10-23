@@ -66,9 +66,9 @@ test("flow: supports multi-argument first function with three arguments", () => 
 
 test("flow: integrates with Maybe in pipeline", () => {
 	const safeParseAndDouble = flow(
-		(s: string) => {
+		(s: string): Maybe<number> => {
 			const n = parseInt(s, 10);
-			return isNaN(n) ? (Maybe.make.none() as Maybe<number>) : Maybe.make.some(n);
+			return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
 		},
 		Maybe.map((n: number) => n * 2),
 		Maybe.getOrElse(() => 0),

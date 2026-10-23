@@ -26,14 +26,14 @@ import type { Lens } from "./Lens.ts";
  */
 export type State<S, A> = (s: S) => readonly [A, S];
 
-const mapState = <S, A, B>(f: (a: A) => B) => (st: State<S, A>): State<S, B> => (s) => {
-	const [a, s1] = st(s);
-	return [f(a), s1];
+const mapState = <A, B>(transform: (value: A) => B) => <S = never>(state: State<S, A>): State<S, B> => (s) => {
+	const [a, s1] = state(s);
+	return [transform(a), s1];
 };
 
-const chainState = <S, A, B>(f: (a: A) => State<S, B>) => (st: State<S, A>): State<S, B> => (s) => {
-	const [a, s1] = st(s);
-	return f(a)(s1);
+const chainState = <A, S, B>(transform: (value: A) => State<S, B>) => (state: State<S, A>): State<S, B> => (s) => {
+	const [a, s1] = state(s);
+	return transform(a)(s1);
 };
 
 export const State = {
@@ -81,7 +81,7 @@ export const State = {
 	 * State.run(["a"])(push("b")); // [undefined, ["a", "b"]]
 	 * ```
 	 */
-	modify: <S>(f: (s: S) => S): State<S, undefined> => (s) => [undefined, f(s)],
+	modify: <S>(transform: (state: S) => S): State<S, undefined> => (s) => [undefined, transform(s)],
 
 	/**
 	 * Transforms the value produced by a State computation.
@@ -156,9 +156,9 @@ export const State = {
 	 * );
 	 * ```
 	 */
-	tap: <S, A>(f: (a: A) => void) => (st: State<S, A>): State<S, A> => (s) => {
-		const [a, s1] = st(s);
-		f(a);
+	tap: <A>(sideEffect: (value: A) => void) => <S = never>(state: State<S, A>): State<S, A> => (s) => {
+		const [a, s1] = state(s);
+		sideEffect(a);
 		return [a, s1];
 	},
 
@@ -217,7 +217,7 @@ export const State = {
 	 * ```
 	 */
 	bindTo: <K extends string>(key: K) => <S, A>(data: State<S, A>): State<S, { [P in K]: A; }> =>
-		mapState<S, A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data),
+		mapState<A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data),
 
 	/**
 	 * Evaluates a new State using the current accumulator and attaches the output to a new key.
@@ -231,10 +231,12 @@ export const State = {
 	 * ```
 	 */
 	bind:
-		<K extends string, S, A, B>(key: K, f: (a: A) => State<S, B>) =>
+		<K extends string, S, A, B>(key: K, transform: (value: A) => State<S, B>) =>
 		(data: State<S, A>): State<S, A & { [P in K]: B; }> =>
-			chainState<S, A, A & { [P in K]: B; }>((a) =>
-				mapState<S, B, A & { [P in K]: B; }>((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))(f(a))
+			chainState<A, S, A & { [P in K]: B; }>((a) =>
+				mapState<B, A & { [P in K]: B; }>((
+					b,
+				) => ({ ...(a as unknown as Record<string, unknown>), [key]: b } as A & { [P in K]: B; }))(transform(a))
 			)(data),
 
 	/**

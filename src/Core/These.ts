@@ -160,7 +160,7 @@ export const These = {
 	 * pipe(These.make.second("warn"), These.mapFirst(n => n * 2));     // Second("warn")
 	 * ```
 	 */
-	mapFirst: <A, C>(transform: (first: A) => C) => <B>(these: These<A, B>): These<C, B> => {
+	mapFirst: <A, C>(transform: (first: A) => C) => <B = never>(these: These<A, B>): These<C, B> => {
 		if (isSecond(these)) { return these; }
 		if (isFirst(these)) { return makeFirst(transform(these.first)); }
 		return makeBoth(transform(these.first), these.second);
@@ -178,7 +178,7 @@ export const These = {
 	 * pipe(These.make.both(5, "warn"), These.mapSecond(e => e.toUpperCase()));    // Both(5, "WARN")
 	 * ```
 	 */
-	mapSecond: <B, D>(transform: (second: B) => D) => <A>(these: These<A, B>): These<A, D> => {
+	mapSecond: <B, D>(transform: (second: B) => D) => <A = never>(these: These<A, B>): These<A, D> => {
 		if (isFirst(these)) { return these; }
 		if (isSecond(these)) { return makeSecond(transform(these.second)); }
 		return makeBoth(these.first, transform(these.second));
@@ -219,10 +219,11 @@ export const These = {
 	 * pipe(These.make.second("warn"), These.chainFirst(double));      // Second("warn")
 	 * ```
 	 */
-	chainFirst: <A, B, C>(transform: (first: A) => These<C, B>) => (these: These<A, B>): These<C, B> => {
-		if (isSecond(these)) { return these; }
-		return transform(these.first);
-	},
+	chainFirst:
+		<A, C, B2 = never>(transform: (first: A) => These<C, B2>) => <B1 = never>(these: These<A, B1>): These<C, B1 | B2> => {
+			if (isSecond(these)) { return these; }
+			return transform(these.first);
+		},
 
 	/**
 	 * Chains These computations by passing the second value to transform.
@@ -239,10 +240,13 @@ export const These = {
 	 * pipe(These.make.first(5), These.chainSecond(shout));            // First(5)
 	 * ```
 	 */
-	chainSecond: <A, B, D>(transform: (second: B) => These<A, D>) => (these: These<A, B>): These<A, D> => {
-		if (isFirst(these)) { return these; }
-		return transform(these.second);
-	},
+	chainSecond:
+		<B, D, A2 = never>(transform: (second: B) => These<A2, D>) => <A1 = never>(
+			these: These<A1, B>,
+		): These<A1 | A2, D> => {
+			if (isFirst(these)) { return these; }
+			return transform(these.second);
+		},
 
 	/**
 	 * Pattern matches on a These, returning the result of the matching case.
@@ -281,7 +285,7 @@ export const These = {
 	 * pipe(These.make.second("warn"), These.getFirstOrElse(() => null));   // null — typed as number | null
 	 * ```
 	 */
-	getFirstOrElse: <A, C>(fallback: () => C) => <B>(these: These<A, B>): A | C =>
+	getFirstOrElse: <C>(fallback: () => C) => <A, B = never>(these: These<A, B>): A | C =>
 		hasFirst(these) ? these.first : fallback(),
 
 	/**
@@ -298,7 +302,7 @@ export const These = {
 	 * pipe(These.make.first(5), These.getSecondOrElse(() => null));         // null — typed as string | null
 	 * ```
 	 */
-	getSecondOrElse: <B, D>(fallback: () => D) => <A>(these: These<A, B>): B | D =>
+	getSecondOrElse: <D>(fallback: () => D) => <B, A = never>(these: These<A, B>): B | D =>
 		hasSecond(these) ? these.second : fallback(),
 
 	/**
@@ -310,7 +314,7 @@ export const These = {
 	 * pipe(These.make.first(5), These.tap(console.log)); // logs 5, returns First(5)
 	 * ```
 	 */
-	tap: <A>(sideEffect: (first: A) => void) => <B>(these: These<A, B>): These<A, B> => {
+	tap: <A>(sideEffect: (first: A) => void) => <B = never>(these: These<A, B>): These<A, B> => {
 		if (hasFirst(these)) { sideEffect(these.first); }
 		return these;
 	},

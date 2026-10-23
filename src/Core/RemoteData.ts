@@ -173,7 +173,7 @@ export const RemoteData = {
 	 * pipe(RemoteData.make.loading(), RemoteData.map(n => n * 2)); // Loading
 	 * ```
 	 */
-	map: <A, B>(transform: (value: A) => B) => <E>(remoteData: RemoteData<E, A>): RemoteData<E, B> =>
+	map: <A, B>(transform: (value: A) => B) => <E = never>(remoteData: RemoteData<E, A>): RemoteData<E, B> =>
 		isSuccess(remoteData) ? makeSuccess(transform(remoteData.value)) : (remoteData as RemoteData<E, B>),
 
 	/**
@@ -186,7 +186,7 @@ export const RemoteData = {
 	 * pipe(RemoteData.make.failure("oops"), RemoteData.mapError(e => e.toUpperCase())); // Failure("OOPS")
 	 * ```
 	 */
-	mapError: <E, F>(transform: (error: E) => F) => <A>(remoteData: RemoteData<E, A>): RemoteData<F, A> =>
+	mapError: <E, F>(transform: (error: E) => F) => <A = never>(remoteData: RemoteData<E, A>): RemoteData<F, A> =>
 		isFailure(remoteData) ? makeFailure(transform(remoteData.error)) : (remoteData as RemoteData<F, A>),
 
 	/**
@@ -297,7 +297,7 @@ export const RemoteData = {
 	 * );
 	 * ```
 	 */
-	tap: <E, A>(sideEffect: (value: A) => void) => (remoteData: RemoteData<E, A>): RemoteData<E, A> => {
+	tap: <A>(sideEffect: (value: A) => void) => <E = never>(remoteData: RemoteData<E, A>): RemoteData<E, A> => {
 		if (isSuccess(remoteData)) { sideEffect(remoteData.value); }
 		return remoteData;
 	},
@@ -317,7 +317,7 @@ export const RemoteData = {
 	 * );
 	 * ```
 	 */
-	tapError: <E, A>(sideEffect: (error: E) => void) => (remoteData: RemoteData<E, A>): RemoteData<E, A> => {
+	tapError: <E>(sideEffect: (error: E) => void) => <A = never>(remoteData: RemoteData<E, A>): RemoteData<E, A> => {
 		if (isFailure(remoteData)) { sideEffect(remoteData.error); }
 		return remoteData;
 	},
@@ -327,8 +327,8 @@ export const RemoteData = {
 	 * The fallback can produce a different success type or resolve with a different error type.
 	 */
 	recover:
-		<E1, E2, B>(fallback: (error: E1) => RemoteData<E2, B>) =>
-		<A>(remoteData: RemoteData<E1, A>): RemoteData<E2, A | B> =>
+		<E1, B = never, E2 = never>(fallback: (error: E1) => RemoteData<E2, B>) =>
+		<A = never>(remoteData: RemoteData<E1, A>): RemoteData<E2, A | B> =>
 			isFailure(remoteData) ? fallback(remoteData.error) : (remoteData as unknown as RemoteData<E2, A | B>),
 
 	// --- to ---
@@ -353,7 +353,7 @@ export const RemoteData = {
 		 * ); // Ok(42)
 		 * ```
 		 */
-		Result: <E>(onNotReady: () => E) => <A>(remoteData: RemoteData<E, A>): Result<E, A> =>
+		Result: <E2>(onNotReady: () => E2) => <E1 = never, A = never>(remoteData: RemoteData<E1, A>): Result<E1 | E2, A> =>
 			isSuccess(remoteData)
 				? CoreResult.make.ok(remoteData.value)
 				: CoreResult.make.err(isFailure(remoteData) ? remoteData.error : onNotReady()),
@@ -402,9 +402,18 @@ export const RemoteData = {
 	 * ```
 	 */
 	filter:
-		<E, A>(predicate: (value: A) => boolean, onFalse: (value: A) => E) =>
-		(remoteData: RemoteData<E, A>): RemoteData<E, A> =>
+		(<A, E2>(predicate: (value: A) => boolean, onFalse: (value: A) => E2) =>
+		<E1 = never>(remoteData: RemoteData<E1, A>): RemoteData<E1 | E2, A> =>
 			isSuccess(remoteData)
 				? (predicate(remoteData.value) ? remoteData : makeFailure(onFalse(remoteData.value)))
-				: remoteData,
+				: remoteData) as {
+				<A, B extends A, E2>(
+					predicate: (value: A) => value is B,
+					onFalse: (value: A) => E2,
+				): <E1 = never>(remoteData: RemoteData<E1, A>) => RemoteData<E1 | E2, B>;
+				<A, E2>(
+					predicate: (value: A) => boolean,
+					onFalse: (value: A) => E2,
+				): <E1 = never>(remoteData: RemoteData<E1, A>) => RemoteData<E1 | E2, A>;
+			},
 };
