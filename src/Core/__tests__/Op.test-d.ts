@@ -327,6 +327,12 @@ test("Outcome combinators: transforms channels and unifies errors", () => {
 
 	const matched = pipe(outcome, Op.Outcome.match({ ok: (v) => v > 0, err: (e) => e.length > 0, nil: (_r) => false }));
 	expectTypeOf(matched).toEqualTypeOf<boolean>();
+
+	const infallibleChained = pipe(outcome, Op.Outcome.chain((n) => Op.Outcome.make.ok(n.toString())));
+	expectTypeOf(infallibleChained).toEqualTypeOf<Op.Outcome<"ERR_A", string>>();
+
+	const infallibleRecovered = pipe(outcome, Op.Outcome.recover((_e) => Op.Outcome.make.ok("fallback")));
+	expectTypeOf(infallibleRecovered).toEqualTypeOf<Op.Outcome<never, number | string>>();
 });
 
 test("converters: transforms between Op.Outcome and Result / Maybe", () => {
@@ -395,4 +401,39 @@ test("Nil reasons: maintains discrimination and mutual exclusivity", () => {
 
 	// @ts-expect-error — DroppedNil is not assignable to ReplacedNil
 	const _invalidNil: Op.ReplacedNil = { kind: "OpNil", reason: "dropped" } as Op.DroppedNil;
+});
+
+test("negative: flags missing cases, illegal property access, and variant incompatibilities", () => {
+	const outcome: Op.Outcome<string, number> = constTruthyBool()
+		? Op.Outcome.make.ok(42)
+		: constTruthyBool()
+		? Op.Outcome.make.err("err")
+		: Op.Outcome.make.nil("aborted");
+
+	// @ts-expect-error Missing 'nil' handler in match cases
+	expectTypeOf(Op.Outcome.match({ ok: (n: number) => n, err: (_e: string) => 0 })).toBeFunction();
+
+	// @ts-expect-error Missing 'ok' handler in fold arguments
+	expectTypeOf(Op.Outcome.fold((_e: string) => 0, (_r) => 0)).toBeFunction();
+
+	// @ts-expect-error Map transform must be a function
+	expectTypeOf(Op.Outcome.map(123)(outcome)).toBeObject();
+
+	// @ts-expect-error Ok variant does not expose an 'error' property
+	expectTypeOf(Op.Outcome.make.ok(42).error).toBeUndefined();
+
+	// @ts-expect-error Err variant does not expose a 'value' property
+	expectTypeOf(Op.Outcome.make.err("err").value).toBeUndefined();
+
+	// @ts-expect-error Nil variant does not expose a 'value' property
+	expectTypeOf(Op.Outcome.make.nil("aborted").value).toBeUndefined();
+
+	// @ts-expect-error Ok cannot be assigned to Err
+	const _okAsErr: Op.Err<string> = Op.Outcome.make.ok(42);
+
+	// @ts-expect-error Err cannot be assigned to Ok
+	const _errAsOk: Op.Ok<number> = Op.Outcome.make.err("err");
+
+	// @ts-expect-error Nil cannot be assigned to Ok
+	const _nilAsOk: Op.Ok<number> = Op.Outcome.make.nil("aborted");
 });

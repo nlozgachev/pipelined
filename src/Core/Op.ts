@@ -643,7 +643,7 @@ const OpOutcome = {
 	 * ```
 	 */
 	chain:
-		<E2, A, B>(transform: (value: A) => Op.Outcome<E2, B>) =>
+		<A, B, E2 = never>(transform: (value: A) => Op.Outcome<E2, B>) =>
 		<E1 = never>(outcome: Op.Outcome<E1, A>): Op.Outcome<E1 | E2, B> =>
 			outcome.kind === "OpOk" ? transform(outcome.value) : outcome as Op.Outcome<E1 | E2, B>,
 
@@ -690,7 +690,7 @@ const OpOutcome = {
 	 * ```
 	 */
 	recover:
-		<E1, E2, B>(handler: (error: E1) => Op.Outcome<E2, B>) =>
+		<E1, B, E2 = never>(handler: (error: E1) => Op.Outcome<E2, B>) =>
 		<A = never>(outcome: Op.Outcome<E1, A>): Op.Outcome<E2, A | B> =>
 			outcome.kind === "OpErr" ? handler(outcome.error) : outcome as Op.Outcome<E2, A | B>,
 
