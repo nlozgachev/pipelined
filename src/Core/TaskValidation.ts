@@ -79,9 +79,11 @@ export const TaskValidation = {
 		 * Task.Validation.from.nullable(() => "missing")(null); // resolves to Failed(["missing"])
 		 * ```
 		 */
-		nullable: <E>(onNull: () => E) => <A>(value: A | null | undefined): Task.Validation<E, A> =>
+		nullable: <E>(onNull: () => E) => <A>(value: A): Task.Validation<E, NonNullable<A>> =>
 			Task.make(
-				value === null || value === undefined ? CoreValidation.make.failed(onNull()) : CoreValidation.make.passed(value),
+				value === null || value === undefined
+					? CoreValidation.make.failed(onNull())
+					: CoreValidation.make.passed(value as NonNullable<A>),
 			),
 
 		/**
@@ -273,7 +275,7 @@ export const TaskValidation = {
 	 * ```
 	 */
 	recover:
-		<E1, E2, B>(fallback: (errors: NonEmptyArr<E1>) => Task.Validation<E2, B>) =>
+		<E1, B, E2 = never>(fallback: (errors: NonEmptyArr<E1>) => Task.Validation<E2, B>) =>
 		<A = never>(task: Task.Validation<E1, A>): Task.Validation<E2, A | B> =>
 			Task.chain((validation: Validation<E1, A>) =>
 				CoreValidation.is.passed(validation) ? Task.make(validation as Validation<E2, A | B>) : fallback(validation.errors)
@@ -297,7 +299,7 @@ export const TaskValidation = {
 	 * ```
 	 */
 	recoverUnless:
-		<E1, E2, B>(
+		<E1, B, E2 = never>(
 			isBlocked: (errors: NonEmptyArr<E1>) => boolean,
 			fallback: (errors: NonEmptyArr<E1>) => Task.Validation<E2, B>,
 		) =>

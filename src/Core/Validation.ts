@@ -73,9 +73,8 @@ function toResult<E1, E2, A>(
 	arg: ((errors: NonEmptyArr<E1>) => E2) | Validation<E1, A>,
 ): ((validation: Validation<E1, A>) => CoreResult<E2, A>) | CoreResult<NonEmptyArr<E1>, A> {
 	if (typeof arg === "function") {
-		const combine = arg;
 		return (validation: Validation<E1, A>): CoreResult<E2, A> =>
-			isPassed(validation) ? CoreResult.make.ok(validation.value) : CoreResult.make.err(combine(validation.errors));
+			isPassed(validation) ? CoreResult.make.ok(validation.value) : CoreResult.make.err(arg(validation.errors));
 	}
 	return isPassed(arg) ? CoreResult.make.ok(arg.value) : CoreResult.make.err(arg.errors);
 }
@@ -97,15 +96,16 @@ function apply<E2 = never, A = unknown, E3 = never>(
 		if (isPassed(validation)) {
 			return isPassed(arg)
 				? makePassed(validation.value(arg.value))
-				: makeFailedAll(arg.errors as unknown as NonEmptyArr<[E3] extends [never] ? E1 | E2 : E3>);
+				: (arg as unknown as Validation<[E3] extends [never] ? E1 | E2 : E3, B>);
 		}
 		if (isPassed(arg)) {
-			return makeFailedAll(validation.errors as unknown as NonEmptyArr<[E3] extends [never] ? E1 | E2 : E3>);
+			return validation as unknown as Validation<[E3] extends [never] ? E1 | E2 : E3, B>;
 		}
-		const combined = options?.combineErrors
-			? options.combineErrors(validation.errors as unknown as NonEmptyArr<unknown>, arg.errors)
-			: ([...validation.errors, ...arg.errors] as unknown as NonEmptyArr<[E3] extends [never] ? E1 | E2 : E3>);
-		return makeFailedAll(combined as NonEmptyArr<[E3] extends [never] ? E1 | E2 : E3>);
+		return makeFailedAll(
+			(options?.combineErrors
+				? options.combineErrors(validation.errors as unknown as NonEmptyArr<unknown>, arg.errors)
+				: [...validation.errors, ...arg.errors]) as unknown as NonEmptyArr<[E3] extends [never] ? E1 | E2 : E3>,
+		);
 	};
 }
 
@@ -235,8 +235,8 @@ export const Validation = {
 		 * pipe(42, Validation.from.nullable(() => "is null"));   // Passed(42)
 		 * ```
 		 */
-		nullable: <E>(onNull: () => E) => <A>(value: A | null | undefined): Validation<E, A> =>
-			value === null || value === undefined ? makeFailed(onNull()) : makePassed(value),
+		nullable: <E>(onNull: () => E) => <A>(value: A): Validation<E, NonNullable<A>> =>
+			value === null || value === undefined ? makeFailed(onNull()) : makePassed(value as NonNullable<A>),
 
 		/**
 		 * Creates a Validation from a Maybe.
@@ -424,7 +424,7 @@ export const Validation = {
 	 * @see {@link Validation.recoverUnless} to conditionally recover based on accumulated errors.
 	 */
 	recover:
-		<E1, E2, B>(fallback: (errors: NonEmptyArr<E1>) => Validation<E2, B>) =>
+		<E1, B, E2 = never>(fallback: (errors: NonEmptyArr<E1>) => Validation<E2, B>) =>
 		<A = never>(validation: Validation<E1, A>): Validation<E2, A | B> =>
 			isPassed(validation) ? validation : fallback(validation.errors),
 
@@ -443,7 +443,7 @@ export const Validation = {
 	 * ```
 	 */
 	recoverUnless:
-		<E1, E2, B>(isBlocked: (error: E1) => boolean, fallback: (errors: NonEmptyArr<E1>) => Validation<E2, B>) =>
+		<E1, B, E2 = never>(isBlocked: (error: E1) => boolean, fallback: (errors: NonEmptyArr<E1>) => Validation<E2, B>) =>
 		<A = never>(validation: Validation<E1, A>): Validation<E1 | E2, A | B> => {
 			if (isFailed(validation)) {
 				const { errors } = validation;
@@ -655,17 +655,23 @@ export const Validation = {
 		 * // Some({ name: ["Name required"] }) or None
 		 * ```
 		 */
-		getErrors: <T extends Record<string, unknown>, E>(
-			keyed: { readonly [K in keyof T]: Validation<E, T[K]>; },
-		): Maybe<Validation.KeyedErrors<T, E>> => {
+		getErrors: <T extends Record<string, Validation<unknown, unknown>>>(
+			keyed: T,
+		): Maybe<
+			Validation.KeyedErrors<
+				{ [K in keyof T]: T[K] extends Validation<unknown, infer A> ? A : never; },
+				T[keyof T] extends Validation<infer E, unknown> ? E : never
+			>
+		> => {
+			type ErrUnion = T[keyof T] extends Validation<infer E, unknown> ? E : never;
 			let hasFailed = false;
-			const out: { [K in keyof T]?: NonEmptyArr<E>; } = {};
+			const out: { [K in keyof T]?: NonEmptyArr<ErrUnion>; } = {};
 			for (const key in keyed) {
 				if (Object.hasOwn(keyed, key)) {
 					const v = keyed[key];
 					if (v.kind === "Failed") {
 						hasFailed = true;
-						out[key] = v.errors;
+						out[key] = v.errors as NonEmptyArr<ErrUnion>;
 					}
 				}
 			}

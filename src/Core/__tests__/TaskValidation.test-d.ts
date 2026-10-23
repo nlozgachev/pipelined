@@ -39,6 +39,43 @@ test("tap & tapError: preserve channel types through side effects", () => {
 	expectTypeOf(tappedErr).toEqualTypeOf<Task.Validation<"ERR", number>>();
 });
 
+test("recover & recoverUnless: preserves or widens recovery error and value types", () => {
+	const initial: Task.Validation<"INIT_ERR", number> = constTruthyBool()
+		? Task.Validation.make.passed(42)
+		: Task.Validation.make.failed("INIT_ERR");
+
+	const recovered = pipe(
+		initial,
+		Task.Validation.recover((_errors) =>
+			constTruthyBool() ? Task.Validation.make.passed("fallback") : Task.Validation.make.failed("RECOVER_ERR" as const)
+		),
+	);
+	expectTypeOf(recovered).toEqualTypeOf<Task.Validation<"RECOVER_ERR", number | string>>();
+
+	const recoveredInfallible = pipe(
+		initial,
+		Task.Validation.recover((_errors) => Task.Validation.make.passed("fallback")),
+	);
+	expectTypeOf(recoveredInfallible).toEqualTypeOf<Task.Validation<never, number | string>>();
+
+	const recoveredUnless = pipe(
+		initial,
+		Task.Validation.recoverUnless((_errors) => true, () => Task.Validation.make.passed("fallback")),
+	);
+	expectTypeOf(recoveredUnless).toEqualTypeOf<Task.Validation<"INIT_ERR", number | string>>();
+});
+
+test("from converters: converts nullable, Predicate, Maybe, Result, and Validation to Task.Validation", () => {
+	// from.nullable
+	const nullableVal: string | null = "abc";
+	const resNullable = Task.Validation.from.nullable(() => "is_null" as const)(nullableVal);
+	expectTypeOf(resNullable).toEqualTypeOf<Task.Validation<"is_null", string>>();
+
+	const nullLiteral = null;
+	const resNull = Task.Validation.from.nullable(() => "is_null" as const)(nullLiteral);
+	expectTypeOf(resNull).toEqualTypeOf<Task.Validation<"is_null", never>>();
+});
+
 test("struct: preserves heterogeneous error unions and object shapes", () => {
 	const taskA: Task.Validation<"ERR_A", number> = constTruthyBool()
 		? Task.Validation.make.passed(1)
