@@ -53,7 +53,7 @@ test("emit: broadcasts to multiple target event buses", () => {
 });
 
 test("emit: passes errors to onError option handler if provided", () => {
-	let caughtError: Error | null = null;
+	let caughtError: Error | undefined;
 	const s = EventBus.make<TestSchema>({
 		onError: (err) => {
 			if (err instanceof Error) {
