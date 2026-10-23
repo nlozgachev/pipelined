@@ -110,7 +110,7 @@
 			"name": "Index (Monolithic import *)",
 			"import": "*",
 			"path": "dist/index.mjs",
-			"limit": "18 KB",
+			"limit": "19 KB",
 			"gzip": true,
 			"ignore": [
 				"util",

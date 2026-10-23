@@ -22,7 +22,7 @@ propagation, unhandled async rejections, race conditions, and verbose nested spr
 `Task.Result` for lazy infallible async, `Op` for declarative request concurrency, and `EventBus`
 for typed event dispatching and sequence funnels.
 
-The library has zero external dependencies, <12 KB core gzipped (<18 KB total), and compiles to dual
+The library has zero external dependencies, <12 KB core gzipped (<19 KB total), and compiles to dual
 ESM and CommonJS distributions.
 
 ## Documentation
