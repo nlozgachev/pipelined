@@ -37,6 +37,197 @@ declare const _eventBusBrand: unique symbol;
  */
 export type EventBus<S extends Record<string, unknown>> = { readonly [_eventBusBrand]: (schema: S) => void; };
 
+export namespace EventBus {
+	/**
+	 * A discriminated union of all message types defined in an event schema `S`,
+	 * optionally restricted to specific message keys `K`.
+	 *
+	 * Each variant conforms to `{ kind: Key, value: S[Key] }`.
+	 */
+	export type Message<S extends Record<string, unknown>, K extends keyof S & string = keyof S & string> = {
+		[Key in K]: WithKind<Key> & WithValue<S[Key]>;
+	}[K];
+
+	/**
+	 * Configuration options for creating an `EventBus`.
+	 */
+	export type Options = {
+		/**
+		 * An optional diagnostic label for debugging, logging, and inspection.
+		 */
+		readonly name?: string;
+
+		/**
+		 * An optional error handler invoked when a listener callback throws an unhandled error during event emission.
+		 * If omitted, listener exceptions propagate synchronously to the caller of `EventBus.emit`.
+		 */
+		readonly onError?: (error: unknown) => void;
+	};
+
+	/**
+	 * Configuration options controlling event sequence matching, strictness, and lifecycle for `EventBus.listen`.
+	 *
+	 * @example
+	 * ```ts
+	 * const sub = EventBus.listen(
+	 *   authBus,
+	 *   ["credentialsSubmitted", "mfaPrompted", "sessionCreated"],
+	 *   {
+	 *     ordered: true,
+	 *     strict: true,
+	 *     reset: "authCancelled",
+	 *     optional: ["mfaPrompted"],
+	 *   },
+	 * ).collect((payloads) => {
+	 *   console.log("Onboarding complete", payloads);
+	 * });
+	 * ```
+	 */
+	export type SequenceOptions<S extends Record<string, unknown>, Opt extends keyof S & string = never> = {
+		/**
+		 * When `true`, events must be emitted in the exact order specified in the array.
+		 * Intermediate out-of-order events are ignored (in relaxed mode) or reset the sequence (in strict mode).
+		 *
+		 * Defaults to `false` (events match independently or in any order).
+		 */
+		readonly ordered?: boolean;
+
+		/**
+		 * When `true` (and `ordered` is `true`), requires events in the sequence to be emitted consecutively
+		 * without any intervening events. An unexpected event immediately resets sequence tracking to index 0.
+		 *
+		 * Defaults to `false` (events from outside the sequence are ignored while the sequence is in progress).
+		 */
+		readonly strict?: boolean;
+
+		/**
+		 * When `true`, automatically unsubscribes the listener immediately after the first successful
+		 * match or sequence completion.
+		 *
+		 * Defaults to `false` (listener remains active for future emissions).
+		 */
+		readonly once?: boolean;
+
+		/**
+		 * One or more event kinds that, when emitted, immediately reset sequence progress back to index 0
+		 * and clear any partially collected payloads.
+		 */
+		readonly reset?: (keyof S & string) | ReadonlyArray<keyof S & string>;
+
+		/**
+		 * One or more event kinds in the sequence that may be skipped. If the subsequent expected event
+		 * arrives before an optional event, the optional step is bypassed without breaking the sequence.
+		 *
+		 * In `.collect()`, skipped optional events evaluate to `undefined` in the returned payloads.
+		 */
+		readonly optional?: Opt | ReadonlyArray<Opt>;
+	};
+
+	/**
+	 * An active subscription handle returned by `EventBus.listen(...).reduce(...)`.
+	 *
+	 * Provides a getter for current accumulated state and an `unsubscribe` disposal function.
+	 */
+	export type Subscription<State> = { readonly unsubscribe: () => void; readonly getState: () => State; };
+
+	/**
+	 * Configuration options for forwarding events from one bus to another.
+	 */
+	export type ForwardOptions<S extends Record<string, unknown>> = {
+		readonly from: EventBus<S>;
+		readonly to: EventBus<S> | ReadonlyArray<EventBus<S>>;
+		readonly only?: ReadonlyArray<keyof S & string>;
+	};
+
+	/**
+	 * Typed record of aggregated sequence payloads. Required sequence steps are strictly typed
+	 * as non-nullable values, while steps configured in `optional` evaluate to optional properties (`T | undefined`).
+	 */
+	export type CollectedPayloads<
+		S extends Record<string, unknown>,
+		K extends keyof S & string,
+		Opt extends keyof S & string = never,
+	> = { readonly [Key in Exclude<K, Opt>]: S[Key]; } & { readonly [Key in Extract<K, Opt>]?: S[Key]; };
+
+	/**
+	 * Builder for registering listeners, reducers, and sequence collectors on an `EventBus`.
+	 */
+	export type ListenerBuilder<
+		S extends Record<string, unknown>,
+		K extends keyof S & string = keyof S & string,
+		Opt extends keyof S & string = never,
+	> = {
+		/**
+		 * Accumulates state over incoming matching events using a pure reducer function.
+		 *
+		 * @see {@link tap} for stateless side-effects without accumulating values.
+		 * @see {@link collect} for aggregating sequence payloads into a typed object.
+		 *
+		 * @example
+		 * ```ts
+		 * const sub = EventBus.listen(cartBus, ["itemAdded", "itemRemoved"]).reduce(
+		 *   (msg, count) => msg.kind === "itemAdded" ? count + 1 : count - 1,
+		 *   0,
+		 * );
+		 * ```
+		 */
+		readonly reduce: <State>(
+			reducer: (msg: Message<S, K>, state: State) => State,
+			initialState: State,
+		) => Subscription<State>;
+
+		/**
+		 * Registers a side-effect callback invoked when a matching event or completed sequence arrives.
+		 *
+		 * @see {@link reduce} for accumulating state over time.
+		 * @see {@link collect} for aggregating sequence payloads into a typed object.
+		 *
+		 * @example
+		 * ```ts
+		 * const unsubscribe = EventBus.listen(authBus, "userLoggedIn").tap((msg) => {
+		 *   analytics.track("login", msg.value);
+		 * });
+		 * ```
+		 */
+		readonly tap: (effect: (msg: Message<S, K>) => void) => () => void;
+
+		/**
+		 * Aggregates all payloads from the specified events or sequence into a single typed dictionary,
+		 * returning an unsubscribe disposer function.
+		 *
+		 * In ordered mode (`{ ordered: true }`), the callback fires each time the sequence completes in order
+		 * (recurring on every completed sequence unless `{ once: true }` is set).
+		 * In unordered mode, the callback fires each time all required events have been emitted at least once.
+		 *
+		 * Optional events that were skipped during sequence matching evaluate to `undefined`.
+		 *
+		 * @see {@link reduce} for continuous state reduction.
+		 * @see {@link tap} for firing on individual matching events.
+		 *
+		 * @example
+		 * ```ts
+		 * EventBus.listen(
+		 *   checkoutBus,
+		 *   ["addressEntered", "paymentSubmitted"],
+		 *   { ordered: true },
+		 * ).collect((payloads) => {
+		 *   completeCheckout(payloads.addressEntered, payloads.paymentSubmitted);
+		 * });
+		 * ```
+		 */
+		readonly collect: (effect: (payloads: CollectedPayloads<S, K, Opt>) => void) => () => void;
+	};
+}
+
+const setProperty = <O extends object, K extends PropertyKey, V>(target: O, key: K, value: V): O => {
+	if (key === "__proto__") {
+		Object.defineProperty(target, key, { value, writable: true, enumerable: true, configurable: true });
+	} else {
+		(target as Record<PropertyKey, unknown>)[key] = value;
+	}
+	return target;
+};
+
 const makeEventBus = <S extends Record<string, unknown>>(options?: EventBus.Options): EventBus<S> =>
 	({
 		[EVENT_BUS_STATE]: { options, listeners: new Set(), listenerArray: null, queue: [], isEmitting: false },
@@ -241,7 +432,7 @@ const listenEventBus = <
 
 				if (!isOrdered) {
 					if (eventList.includes(msg.kind)) {
-						collected[msg.kind] = msg.value;
+						setProperty(collected, msg.kind, msg.value);
 						let hasAll = true;
 						for (let i = 0; i < eventList.length; i++) {
 							const k = eventList[i];
@@ -281,7 +472,7 @@ const listenEventBus = <
 				}
 
 				if (msg.kind === expectedKind) {
-					collected[msg.kind] = msg.value;
+					setProperty(collected, msg.kind, msg.value);
 					sequenceIndex++;
 					if (sequenceIndex === eventList.length) {
 						sequenceIndex = 0;
@@ -296,7 +487,7 @@ const listenEventBus = <
 				} else if (isStrict) {
 					if (msg.kind === eventList[0]) {
 						sequenceIndex = 1;
-						collected = { [msg.kind]: msg.value };
+						collected = setProperty({}, msg.kind, msg.value);
 					} else {
 						sequenceIndex = 0;
 						collected = {};
@@ -304,7 +495,7 @@ const listenEventBus = <
 				} else if (eventList.includes(msg.kind)) {
 					if (msg.kind === eventList[0]) {
 						sequenceIndex = 1;
-						collected = { [msg.kind]: msg.value };
+						collected = setProperty({}, msg.kind, msg.value);
 					} else {
 						sequenceIndex = 0;
 						collected = {};
@@ -395,185 +586,3 @@ export const EventBus = {
 	 */
 	listen: listenEventBus,
 };
-
-export namespace EventBus {
-	/**
-	 * A discriminated union of all message types defined in an event schema `S`,
-	 * optionally restricted to specific message keys `K`.
-	 *
-	 * Each variant conforms to `{ kind: Key, value: S[Key] }`.
-	 */
-	export type Message<S extends Record<string, unknown>, K extends keyof S & string = keyof S & string> = {
-		[Key in K]: WithKind<Key> & WithValue<S[Key]>;
-	}[K];
-
-	/**
-	 * Configuration options for creating an `EventBus`.
-	 */
-	export type Options = {
-		/**
-		 * An optional diagnostic label for debugging, logging, and inspection.
-		 */
-		readonly name?: string;
-
-		/**
-		 * An optional error handler invoked when a listener callback throws an unhandled error during event emission.
-		 * If omitted, listener exceptions propagate synchronously to the caller of `EventBus.emit`.
-		 */
-		readonly onError?: (error: unknown) => void;
-	};
-
-	/**
-	 * Configuration options controlling event sequence matching, strictness, and lifecycle for `EventBus.listen`.
-	 *
-	 * @example
-	 * ```ts
-	 * const sub = EventBus.listen(
-	 *   authBus,
-	 *   ["credentialsSubmitted", "mfaPrompted", "sessionCreated"],
-	 *   {
-	 *     ordered: true,
-	 *     strict: true,
-	 *     reset: "authCancelled",
-	 *     optional: ["mfaPrompted"],
-	 *   },
-	 * ).collect((payloads) => {
-	 *   console.log("Onboarding complete", payloads);
-	 * });
-	 * ```
-	 */
-	export type SequenceOptions<S extends Record<string, unknown>, Opt extends keyof S & string = never> = {
-		/**
-		 * When `true`, events must be emitted in the exact order specified in the array.
-		 * Intermediate out-of-order events are ignored (in relaxed mode) or reset the sequence (in strict mode).
-		 *
-		 * Defaults to `false` (events match independently or in any order).
-		 */
-		readonly ordered?: boolean;
-
-		/**
-		 * When `true` (and `ordered` is `true`), requires events in the sequence to be emitted consecutively
-		 * without any intervening events. An unexpected event immediately resets sequence tracking to index 0.
-		 *
-		 * Defaults to `false` (events from outside the sequence are ignored while the sequence is in progress).
-		 */
-		readonly strict?: boolean;
-
-		/**
-		 * When `true`, automatically unsubscribes the listener immediately after the first successful
-		 * match or sequence completion.
-		 *
-		 * Defaults to `false` (listener remains active for future emissions).
-		 */
-		readonly once?: boolean;
-
-		/**
-		 * One or more event kinds that, when emitted, immediately reset sequence progress back to index 0
-		 * and clear any partially collected payloads.
-		 */
-		readonly reset?: (keyof S & string) | ReadonlyArray<keyof S & string>;
-
-		/**
-		 * One or more event kinds in the sequence that may be skipped. If the subsequent expected event
-		 * arrives before an optional event, the optional step is bypassed without breaking the sequence.
-		 *
-		 * In `.collect()`, skipped optional events evaluate to `undefined` in the returned payloads.
-		 */
-		readonly optional?: Opt | ReadonlyArray<Opt>;
-	};
-
-	/**
-	 * An active subscription handle returned by `EventBus.listen(...).reduce(...)`.
-	 *
-	 * Provides a getter for current accumulated state and an `unsubscribe` disposal function.
-	 */
-	export type Subscription<State> = { readonly unsubscribe: () => void; readonly getState: () => State; };
-
-	/**
-	 * Configuration options for forwarding events from one bus to another.
-	 */
-	export type ForwardOptions<S extends Record<string, unknown>> = {
-		readonly from: EventBus<S>;
-		readonly to: EventBus<S> | ReadonlyArray<EventBus<S>>;
-		readonly only?: ReadonlyArray<keyof S & string>;
-	};
-
-	/**
-	 * Typed record of aggregated sequence payloads. Required sequence steps are strictly typed
-	 * as non-nullable values, while steps configured in `optional` evaluate to optional properties (`T | undefined`).
-	 */
-	export type CollectedPayloads<
-		S extends Record<string, unknown>,
-		K extends keyof S & string,
-		Opt extends keyof S & string = never,
-	> = { readonly [Key in Exclude<K, Opt>]: S[Key]; } & { readonly [Key in Extract<K, Opt>]?: S[Key]; };
-
-	/**
-	 * Builder for registering listeners, reducers, and sequence collectors on an `EventBus`.
-	 */
-	export type ListenerBuilder<
-		S extends Record<string, unknown>,
-		K extends keyof S & string = keyof S & string,
-		Opt extends keyof S & string = never,
-	> = {
-		/**
-		 * Accumulates state over incoming matching events using a pure reducer function.
-		 *
-		 * @see {@link tap} for stateless side-effects without accumulating values.
-		 * @see {@link collect} for aggregating sequence payloads into a typed object.
-		 *
-		 * @example
-		 * ```ts
-		 * const sub = EventBus.listen(cartBus, ["itemAdded", "itemRemoved"]).reduce(
-		 *   (msg, count) => msg.kind === "itemAdded" ? count + 1 : count - 1,
-		 *   0,
-		 * );
-		 * ```
-		 */
-		readonly reduce: <State>(
-			reducer: (msg: Message<S, K>, state: State) => State,
-			initialState: State,
-		) => Subscription<State>;
-
-		/**
-		 * Registers a side-effect callback invoked when a matching event or completed sequence arrives.
-		 *
-		 * @see {@link reduce} for accumulating state over time.
-		 * @see {@link collect} for aggregating sequence payloads into a typed object.
-		 *
-		 * @example
-		 * ```ts
-		 * const unsubscribe = EventBus.listen(authBus, "userLoggedIn").tap((msg) => {
-		 *   analytics.track("login", msg.value);
-		 * });
-		 * ```
-		 */
-		readonly tap: (effect: (msg: Message<S, K>) => void) => () => void;
-
-		/**
-		 * Aggregates all payloads from the specified events or sequence into a single typed dictionary,
-		 * returning an unsubscribe disposer function.
-		 *
-		 * In ordered mode (`{ ordered: true }`), the callback fires each time the sequence completes in order
-		 * (recurring on every completed sequence unless `{ once: true }` is set).
-		 * In unordered mode, the callback fires each time all required events have been emitted at least once.
-		 *
-		 * Optional events that were skipped during sequence matching evaluate to `undefined`.
-		 *
-		 * @see {@link reduce} for continuous state reduction.
-		 * @see {@link tap} for firing on individual matching events.
-		 *
-		 * @example
-		 * ```ts
-		 * EventBus.listen(
-		 *   checkoutBus,
-		 *   ["addressEntered", "paymentSubmitted"],
-		 *   { ordered: true },
-		 * ).collect((payloads) => {
-		 *   completeCheckout(payloads.addressEntered, payloads.paymentSubmitted);
-		 * });
-		 * ```
-		 */
-		readonly collect: (effect: (payloads: CollectedPayloads<S, K, Opt>) => void) => () => void;
-	};
-}
