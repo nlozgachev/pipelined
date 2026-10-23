@@ -72,7 +72,7 @@ test("tryCatch: returns Err when function throws", () => {
 test("tryCatch: passes the thrown error to onError", () => {
 	const result = Result.tryCatch(() => {
 		throw new Error("boom");
-	}, { onError: (e) => (e as Error).message });
+	}, { onError: (e) => (e instanceof Error ? e.message : String(e)) });
 	expect(result).toStrictEqual({ kind: "Err", error: "boom" });
 });
 
@@ -185,7 +185,7 @@ test("ensure: infers exact error union without collapsing to unknown", () => {
 	const step1 = constTruthyBool() ? Result.make.ok(15) : Result.make.err("ERR_A" as const);
 	const res = pipe(step1, Result.ensure((n) => n >= 18, (n) => `Underage: ${n}` as const));
 
-	expect(res).toBeDefined();
+	expect(res).toStrictEqual(Result.make.err("Underage: 15"));
 });
 
 // ---------------------------------------------------------------------------
@@ -381,13 +381,13 @@ test("apply: widens error types from function and argument", () => {
 	const fnResult = constTruthyBool() ? Result.make.ok((n: number) => String(n)) : Result.make.err("ERR_FN" as const);
 	const argResult = constTruthyBool() ? Result.make.ok(123) : Result.make.err("ERR_ARG" as const);
 	const result = pipe(fnResult, Result.apply(argResult));
-	expect(result).toBeDefined();
+	expect(result).toStrictEqual(Result.make.ok("123"));
 });
 
 test("recover: widens error types when fallback can fail with different error", () => {
 	const initial = constTruthyBool() ? Result.make.ok(42) : Result.make.err("INIT_ERR" as const);
 	const result = pipe(initial, Result.recover((_e): Result<"FALLBACK_ERR", number> => Result.make.err("FALLBACK_ERR")));
-	expect(result).toBeDefined();
+	expect(result).toStrictEqual(Result.make.ok(42));
 });
 
 test("bindTo: returns Err when given Err", () => {
@@ -511,7 +511,7 @@ test("map: type-safe return type on mapped function output", () => {
 	const r = constTruthyBool() ? Result.make.ok(42) : Result.make.err("oops");
 	const double = Result.map((n: number) => String(n));
 	const mapped = double(r);
-	expect(mapped).toBeDefined();
+	expect(mapped).toStrictEqual(Result.make.ok("42"));
 
 	const pure = Result.make.ok(42);
 	const pureMapped = double(pure);
@@ -522,7 +522,7 @@ test("mapError: type-safe return type on mapped error output", () => {
 	const r = constTruthyBool() ? Result.make.ok(42) : Result.make.err("oops");
 	const formatErr = Result.mapError((e: string) => e.length);
 	const mapped = formatErr(r);
-	expect(mapped).toBeDefined();
+	expect(mapped).toStrictEqual(Result.make.ok(42));
 
 	const pureErr = Result.make.err("oops");
 	const pureMapped = formatErr(pureErr);
@@ -530,10 +530,14 @@ test("mapError: type-safe return type on mapped error output", () => {
 });
 
 test("tap: type-safe return type on tap partial application", () => {
+	let sideEffectCalled = false;
 	const r = constTruthyBool() ? Result.make.ok(42) : Result.make.err("oops");
-	const logVal = Result.tap((_n: number) => {});
+	const logVal = Result.tap((_n: number) => {
+		sideEffectCalled = true;
+	});
 	const res = logVal(r);
-	expect(res).toBeDefined();
+	expect(sideEffectCalled).toBe(true);
+	expect(res).toStrictEqual(Result.make.ok(42));
 
 	const pure = Result.make.ok(42);
 	const resPure = logVal(pure);
@@ -541,13 +545,18 @@ test("tap: type-safe return type on tap partial application", () => {
 });
 
 test("tapError: type-safe return type on tapError partial application", () => {
+	let sideEffectCalled = false;
 	const r = constTruthyBool() ? Result.make.ok(42) : Result.make.err("oops");
-	const logErr = Result.tapError((_e: string) => {});
+	const logErr = Result.tapError((_e: string) => {
+		sideEffectCalled = true;
+	});
 	const res = logErr(r);
-	expect(res).toBeDefined();
+	expect(sideEffectCalled).toBe(false);
+	expect(res).toStrictEqual(Result.make.ok(42));
 
 	const pureErr = Result.make.err("oops");
 	const resPureErr = logErr(pureErr);
+	expect(sideEffectCalled).toBe(true);
 	expect(resPureErr).toStrictEqual(pureErr);
 });
 
@@ -564,17 +573,18 @@ test("from.Predicate: narrows type when passed a type guard refinement", () => {
 
 test("ensure: narrows type when passed a type guard refinement", () => {
 	const isString = (val: unknown): val is string => typeof val === "string";
-	const input = constTruthyBool() ? Result.make.ok("hello" as unknown) : Result.make.err("ERR_INIT" as const);
+	const rawInput: unknown = "hello";
+	const input = constTruthyBool() ? Result.make.ok(rawInput) : Result.make.err("ERR_INIT" as const);
 	const narrowed = pipe(input, Result.ensure(isString, () => "NOT_A_STRING" as const));
 
-	expect(narrowed).toBeDefined();
+	expect(narrowed).toStrictEqual(Result.make.ok("hello"));
 });
 
 test("getOrElse: type-safe widening to union", () => {
 	const r = constTruthyBool() ? Result.make.ok(42) : Result.make.err("e");
 	const fn = Result.getOrElse<null>((): null => null);
 	const result = fn(r);
-	expect(result).toBeDefined();
+	expect(result).toBe(42);
 });
 
 // --- from.nullable ---
@@ -592,6 +602,15 @@ test("from.nullable: returns Err for null", () => {
 test("from.nullable: returns Err for undefined", () => {
 	const result = Result.from.nullable(() => "is null")(undefined);
 	expect(result).toStrictEqual(Result.make.err("is null"));
+});
+
+test("from.nullable: preserves falsy values without conflating with null/undefined", () => {
+	expect(Result.from.nullable(() => "err")(0)).toStrictEqual(Result.make.ok(0));
+	expect(Result.from.nullable(() => "err")(false)).toStrictEqual(Result.make.ok(false));
+	expect(Result.from.nullable(() => "err")("")).toStrictEqual(Result.make.ok(""));
+	const nanRes = Result.from.nullable(() => "err")(Number.NaN);
+	expect(Result.is.ok(nanRes)).toBe(true);
+	expect(Number.isNaN(Result.getOrElse(() => 0)(nanRes))).toBe(true);
 });
 
 // --- fromMaybe ---
@@ -805,9 +824,11 @@ test("bimap: does not invoke onOk on Err", () => {
 test("bind: safely handles __proto__ property without prototype pollution", () => {
 	const res = pipe(Result.make.ok({ a: 1 }), Result.bind("__proto__", () => Result.make.ok({ polluted: true })));
 	expect(Result.is.ok(res)).toBe(true);
-	const value = Result.getOrElse(() => ({}) as Record<string, unknown>)(res);
+	const emptyFallback: Record<string, unknown> = {};
+	const value = Result.getOrElse(() => emptyFallback)(res);
 	expect(Object.hasOwn(value, "__proto__")).toBe(true);
-	expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+	const target: Record<string, unknown> = {};
+	expect(target.polluted).toBeUndefined();
 });
 
 test("struct: safely handles __proto__ property without prototype pollution", () => {
@@ -822,7 +843,9 @@ test("struct: safely handles __proto__ property without prototype pollution", ()
 
 	const res = Result.struct(protoFields);
 	expect(Result.is.ok(res)).toBe(true);
-	const value = Result.getOrElse(() => ({}) as Record<string, unknown>)(res);
+	const emptyFallback: Record<string, unknown> = {};
+	const value = Result.getOrElse(() => emptyFallback)(res);
 	expect(Object.hasOwn(value, "__proto__")).toBe(true);
-	expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+	const target: Record<string, unknown> = {};
+	expect(target.polluted).toBeUndefined();
 });

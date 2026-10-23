@@ -188,6 +188,23 @@ test("from.Predicate: always-false gives Err via onFalse", () => {
 });
 
 // ---------------------------------------------------------------------------
+// from.nullable
+// ---------------------------------------------------------------------------
+
+test("from.nullable: non-nullish primitives wrap into Ok", () => {
+	const arbPrimitive = fc.oneof(
+		fc.integer(),
+		fc.double({ noInteger: true }),
+		fc.string(),
+		fc.boolean(),
+		fc.constantFrom(0, false, "", Number.NaN),
+	);
+	fc.assert(fc.property(arbPrimitive, (val) => {
+		expect(Result.from.nullable(() => "is_null")(val)).toStrictEqual(Result.make.ok(val));
+	}));
+});
+
+// ---------------------------------------------------------------------------
 // toMaybe
 // ---------------------------------------------------------------------------
 

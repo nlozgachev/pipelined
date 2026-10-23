@@ -1,4 +1,4 @@
-import { constFalseBool } from "#test-utils";
+import { constFalseBool, constTruthyBool } from "#test-utils";
 import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Maybe } from "../Maybe.ts";
@@ -239,6 +239,14 @@ test("map: does not invoke transform on None", () => {
 	expect(result).toStrictEqual({ kind: "None" });
 });
 
+test("map: operates on un-narrowed union type without CFA narrowing", () => {
+	const naturalSome: Maybe<number> = constTruthyBool() ? Maybe.make.some(5) : Maybe.make.none();
+	expect(pipe(naturalSome, Maybe.map((n) => n * 2))).toStrictEqual(Maybe.make.some(10));
+
+	const naturalNone: Maybe<number> = constFalseBool() ? Maybe.make.some(5) : Maybe.make.none();
+	expect(pipe(naturalNone, Maybe.map((n) => n * 2))).toStrictEqual(Maybe.make.none());
+});
+
 // ---------------------------------------------------------------------------
 // chain
 // ---------------------------------------------------------------------------
@@ -273,6 +281,14 @@ test("chain: propagates None without calling function", () => {
 	expect(called).toBe(false);
 });
 
+test("chain: operates on un-narrowed union type without CFA narrowing", () => {
+	const naturalSome: Maybe<number> = constTruthyBool() ? Maybe.make.some(5) : Maybe.make.none();
+	expect(pipe(naturalSome, Maybe.chain((n) => Maybe.make.some(n * 2)))).toStrictEqual(Maybe.make.some(10));
+
+	const naturalNone: Maybe<number> = constFalseBool() ? Maybe.make.some(5) : Maybe.make.none();
+	expect(pipe(naturalNone, Maybe.chain((n) => Maybe.make.some(n * 2)))).toStrictEqual(Maybe.make.none());
+});
+
 // ---------------------------------------------------------------------------
 // match (data-last)
 // ---------------------------------------------------------------------------
@@ -291,6 +307,14 @@ test("match: is data-last (returns a function first)", () => {
 	const handler = Maybe.match({ some: (n) => `val: ${n}`, none: () => "empty" });
 	expect(handler(Maybe.make.some(3))).toBe("val: 3");
 	expect(handler(Maybe.make.none())).toBe("empty");
+});
+
+test("match: operates on un-narrowed union type without CFA narrowing", () => {
+	const naturalSome: Maybe<number> = constTruthyBool() ? Maybe.make.some(5) : Maybe.make.none();
+	expect(pipe(naturalSome, Maybe.match({ some: (n) => `val: ${n}`, none: () => "empty" }))).toBe("val: 5");
+
+	const naturalNone: Maybe<number> = constFalseBool() ? Maybe.make.some(5) : Maybe.make.none();
+	expect(pipe(naturalNone, Maybe.match({ some: (n) => `val: ${n}`, none: () => "empty" }))).toBe("empty");
 });
 
 // ---------------------------------------------------------------------------
@@ -432,6 +456,12 @@ test("filter: returns same None reference", () => {
 	expect(result).toBe(none);
 });
 
+test("filter: preserves falsy values that satisfy the predicate", () => {
+	expect(pipe(Maybe.make.some(0), Maybe.filter((n) => n === 0))).toStrictEqual(Maybe.make.some(0));
+	expect(pipe(Maybe.make.some(false), Maybe.filter((b) => b === false))).toStrictEqual(Maybe.make.some(false));
+	expect(pipe(Maybe.make.some(""), Maybe.filter((s) => s === ""))).toStrictEqual(Maybe.make.some(""));
+});
+
 // ---------------------------------------------------------------------------
 // recover
 // ---------------------------------------------------------------------------
@@ -474,6 +504,14 @@ test("recover: preserves Some value and type", () => {
 	expect(result).toStrictEqual({ kind: "Some", value: 42 });
 });
 
+test("recover: operates on un-narrowed union type without CFA narrowing", () => {
+	const naturalSome: Maybe<number> = constTruthyBool() ? Maybe.make.some(5) : Maybe.make.none();
+	expect(pipe(naturalSome, Maybe.recover(() => Maybe.make.some(99)))).toStrictEqual(Maybe.make.some(5));
+
+	const naturalNone: Maybe<number> = constFalseBool() ? Maybe.make.some(5) : Maybe.make.none();
+	expect(pipe(naturalNone, Maybe.recover(() => Maybe.make.some(99)))).toStrictEqual(Maybe.make.some(99));
+});
+
 // ---------------------------------------------------------------------------
 // apply
 // ---------------------------------------------------------------------------
@@ -504,8 +542,9 @@ test("apply: returns None when both are None", () => {
 // ---------------------------------------------------------------------------
 
 test("pipe: composes well in pipeline", () => {
+	const rawValue: string | null = "42";
 	const result = pipe(
-		Maybe.from.nullable("42" as string | null),
+		Maybe.from.nullable(rawValue),
 		Maybe.map((s) => parseInt(s, 10)),
 		Maybe.filter((n) => n > 0),
 		Maybe.map((n) => n * 2),
@@ -515,8 +554,9 @@ test("pipe: composes well in pipeline", () => {
 });
 
 test("pipe: short-circuits on None", () => {
+	const rawNull: string | null = null;
 	const result = pipe(
-		Maybe.from.nullable(null as string | null),
+		Maybe.from.nullable(rawNull),
 		Maybe.map((s) => parseInt(s, 10)),
 		Maybe.filter((n) => n > 0),
 		Maybe.map((n) => n * 2),
@@ -671,9 +711,10 @@ test("sequence.Result: swaps None to Ok(None)", () => {
 test("bind: safely handles __proto__ property without prototype pollution", () => {
 	const res = pipe(Maybe.make.some({ a: 1 }), Maybe.bind("__proto__", () => Maybe.make.some({ polluted: true })));
 	expect(Maybe.is.some(res)).toBe(true);
-	const value = Maybe.getOrElse(() => ({}) as Record<string, unknown>)(res);
+	const value = Maybe.getOrElse(() => ({ a: 0 }))(res);
 	expect(Object.hasOwn(value, "__proto__")).toBe(true);
-	expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+	const emptyTarget: Record<string, unknown> = {};
+	expect(emptyTarget.polluted).toBeUndefined();
 });
 
 test("struct: safely handles __proto__ property without prototype pollution", () => {
@@ -688,7 +729,8 @@ test("struct: safely handles __proto__ property without prototype pollution", ()
 
 	const res = Maybe.struct(protoFields);
 	expect(Maybe.is.some(res)).toBe(true);
-	const value = Maybe.getOrElse(() => ({}) as Record<string, unknown>)(res);
+	const value = Maybe.getOrElse(() => ({ a: 0 }))(res);
 	expect(Object.hasOwn(value, "__proto__")).toBe(true);
-	expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+	const emptyTarget: Record<string, unknown> = {};
+	expect(emptyTarget.polluted).toBeUndefined();
 });
