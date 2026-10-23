@@ -63,6 +63,20 @@ test("from.property: handles required non-nullable fields", () => {
 	expect(nameOpt.get({ username: "alice" })).toStrictEqual({ kind: "Some", value: "alice" });
 });
 
+test("from.property: handles falsy values (0, false, empty string) as present", () => {
+	type Settings = { count: number; active: boolean; label: string; };
+	const countOpt = Optional.from.property<Settings>()("count");
+	const activeOpt = Optional.from.property<Settings>()("active");
+	const labelOpt = Optional.from.property<Settings>()("label");
+
+	const settings: Settings = { count: 0, active: false, label: "" };
+	expect(countOpt.get(settings)).toStrictEqual({ kind: "Some", value: 0 });
+	expect(activeOpt.get(settings)).toStrictEqual({ kind: "Some", value: false });
+	expect(labelOpt.get(settings)).toStrictEqual({ kind: "Some", value: "" });
+
+	expect(countOpt.set(1)(settings)).toStrictEqual({ count: 1, active: false, label: "" });
+});
+
 test("set: inserts field when absent via from.property", () => {
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	const profile: Profile = { username: "alice" };
@@ -138,6 +152,24 @@ test("from.index: no-op on set for negative index", () => {
 	expect(negOpt.set("z")(arr)).toStrictEqual(arr);
 });
 
+test("from.index: returns None and identity set for non-integer float indices", () => {
+	const floatOpt = Optional.from.index<string>(1.5);
+	const arr = ["a", "b", "c"];
+	expect(floatOpt.get(arr)).toStrictEqual({ kind: "None" });
+	expect(floatOpt.set("z")(arr)).toStrictEqual(arr);
+	expect(floatOpt.set("z")(arr)).toBe(arr);
+});
+
+test("from.index: returns None and identity set for NaN and Infinity indices", () => {
+	const nanOpt = Optional.from.index<string>(Number.NaN);
+	const infOpt = Optional.from.index<string>(Number.POSITIVE_INFINITY);
+	const arr = ["a", "b"];
+	expect(nanOpt.get(arr)).toStrictEqual({ kind: "None" });
+	expect(nanOpt.set("z")(arr)).toBe(arr);
+	expect(infOpt.get(arr)).toStrictEqual({ kind: "None" });
+	expect(infOpt.set("z")(arr)).toBe(arr);
+});
+
 // ---------------------------------------------------------------------------
 // get
 // ---------------------------------------------------------------------------
@@ -203,6 +235,17 @@ test("getOrElse: returns focused value when present", () => {
 test("getOrElse: returns default when focus is absent", () => {
 	const bioOpt = Optional.from.property<Profile>()("bio");
 	expect(pipe({ username: "alice" }, Optional.getOrElse(bioOpt)(() => "none"))).toBe("none");
+});
+
+test("getOrElse: widens return type with alternative fallback types", () => {
+	const bioOpt = Optional.from.property<Profile>()("bio");
+	const withNull = pipe({ username: "alice" }, Optional.getOrElse(bioOpt)((): null => null));
+	expectTypeOf(withNull).toEqualTypeOf<string | null>();
+	expect(withNull).toBeNull();
+
+	const withDefaultNumber = pipe({ username: "alice" }, Optional.getOrElse(bioOpt)(() => 42));
+	expectTypeOf(withDefaultNumber).toEqualTypeOf<string | number>();
+	expect(withDefaultNumber).toBe(42);
 });
 
 // ---------------------------------------------------------------------------

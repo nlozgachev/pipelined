@@ -113,6 +113,18 @@ test("from.index: returns None and identity set on out-of-bounds index", () => {
 	}));
 });
 
+test("from.index: returns None and identity set on non-integer float indices", () => {
+	const arbNonInteger = fc.array(fc.string()).chain((items) =>
+		fc.record({ items: fc.constant(items), index: fc.double({ noInteger: true }) })
+	);
+
+	fc.assert(fc.property(arbNonInteger, fc.string(), ({ items, index }, value) => {
+		const opt = Optional.from.index<string>(index);
+		expect(Optional.get(opt)(items)).toStrictEqual({ kind: "None" });
+		expect(Optional.set(opt)(value)(items)).toBe(items);
+	}));
+});
+
 // ---------------------------------------------------------------------------
 // Composition Laws (andThen & andThenLens)
 // ---------------------------------------------------------------------------

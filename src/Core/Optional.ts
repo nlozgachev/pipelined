@@ -37,9 +37,12 @@ const makeProperty = <S>() => <K extends keyof S>(key: K): Optional<S, NonNullab
 
 const makeIndex = <A>(index: number): Optional<readonly A[], A> =>
 	makeAccessors<readonly A[], A>(
-		(items) => index >= 0 && index < items.length ? Maybe.make.some(items[index] as A) : Maybe.make.none(),
+		(items) =>
+			Number.isInteger(index) && index >= 0 && index < items.length
+				? Maybe.make.some(items[index] as A)
+				: Maybe.make.none(),
 		(value) => (items) => {
-			if (index < 0 || index >= items.length) { return items; }
+			if (!Number.isInteger(index) || index < 0 || index >= items.length) { return items; }
 			if (items[index] === value) { return items; }
 			const copy = items.slice();
 			copy[index] = value;
@@ -153,7 +156,7 @@ export const Optional = {
 	 * pipe(profile, Optional.getOrElse(bioOpt)(() => "no bio"));
 	 * ```
 	 */
-	getOrElse: <S, A>(opt: Optional<S, A>) => (fallback: () => A) => (structure: S): A => {
+	getOrElse: <S, A>(opt: Optional<S, A>) => <B>(fallback: () => B) => (structure: S): A | B => {
 		const target = opt.get(structure);
 		return target.kind === "Some" ? target.value : fallback();
 	},

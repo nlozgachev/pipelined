@@ -175,15 +175,15 @@ test("to.Optional: set behaves identically to the original lens", () => {
 });
 
 test("to.Optional: composes with Optional.andThen", () => {
-	const addressLens = Lens.from.property<User>()("address");
-	const landmarkOpt = Optional.from.property<Address & { landmark?: string; }>()("landmark");
+	type LandmarkAddress = Address & { landmark?: string; };
+	type LandmarkUser = { name: string; age: number; address: LandmarkAddress; };
+	const landmarkAlice: LandmarkUser = { name: "Alice", age: 30, address: { city: "Berlin", zip: "10115" } };
+	const addressLens = Lens.from.property<LandmarkUser>()("address");
+	const landmarkOpt = Optional.from.property<LandmarkAddress>()("landmark");
 
-	const userLandmarkOpt = pipe(
-		Lens.to.Optional(addressLens),
-		Optional.andThen(landmarkOpt as Optional<Address, string>),
-	);
+	const userLandmarkOpt = pipe(Lens.to.Optional(addressLens), Optional.andThen(landmarkOpt));
 
-	expect(userLandmarkOpt.get(alice)).toStrictEqual({ kind: "None" });
+	expect(userLandmarkOpt.get(landmarkAlice)).toStrictEqual({ kind: "None" });
 });
 
 // --- side-effect isolation ---
