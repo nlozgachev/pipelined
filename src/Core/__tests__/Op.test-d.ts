@@ -100,12 +100,19 @@ test("interpret: infers strategy-specific state unions and manager run return ty
 
 	const queueManager = Op.interpret(delayedOp, { strategy: "queue" });
 	expectTypeOf(queueManager.state).toEqualTypeOf<Op.QueueState<string, number>>();
+	expectTypeOf(queueManager.run).returns.toEqualTypeOf<Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil>>();
 
 	const queueDropManager = Op.interpret(delayedOp, { strategy: "queue", maxSize: 5 });
 	expectTypeOf(queueDropManager.state).toEqualTypeOf<Op.QueueDropState<string, number>>();
+	expectTypeOf(queueDropManager.run).returns.toEqualTypeOf<
+		Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.DroppedNil>
+	>();
 
 	const queueReplaceManager = Op.interpret(delayedOp, { strategy: "queue", overflow: "replace-last" });
 	expectTypeOf(queueReplaceManager.state).toEqualTypeOf<Op.QueueReplaceState<string, number>>();
+	expectTypeOf(queueReplaceManager.run).returns.toEqualTypeOf<
+		Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.EvictedNil>
+	>();
 
 	const queueDropAndReplace = Op.interpret(delayedOp, {
 		strategy: "queue",
@@ -113,15 +120,27 @@ test("interpret: infers strategy-specific state unions and manager run return ty
 		dedupe: (a, b) => a[0] === b[0],
 	});
 	expectTypeOf(queueDropAndReplace.state).toEqualTypeOf<Op.QueueDropAndReplaceState<string, number>>();
+	expectTypeOf(queueDropAndReplace.run).returns.toEqualTypeOf<
+		Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.DroppedNil | Op.EvictedNil>
+	>();
 
 	const bufferedManager = Op.interpret(delayedOp, { strategy: "buffered", size: 3 });
 	expectTypeOf(bufferedManager.state).toEqualTypeOf<Op.BufferedState<string, number>>();
+	expectTypeOf(bufferedManager.run).returns.toEqualTypeOf<
+		Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.EvictedNil>
+	>();
 
 	const debouncedManager = Op.interpret(delayedOp, { strategy: "debounced", duration: Duration.milliseconds(100) });
 	expectTypeOf(debouncedManager.state).toEqualTypeOf<Op.DebouncedState<string, number>>();
+	expectTypeOf(debouncedManager.run).returns.toEqualTypeOf<
+		Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.EvictedNil>
+	>();
 
 	const throttledManager = Op.interpret(delayedOp, { strategy: "throttled", duration: Duration.milliseconds(100) });
 	expectTypeOf(throttledManager.state).toEqualTypeOf<Op.ThrottledState<string, number>>();
+	expectTypeOf(throttledManager.run).returns.toEqualTypeOf<
+		Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.DroppedNil>
+	>();
 
 	const throttledTrailingManager = Op.interpret(delayedOp, {
 		strategy: "throttled",
@@ -129,12 +148,29 @@ test("interpret: infers strategy-specific state unions and manager run return ty
 		trailing: true,
 	});
 	expectTypeOf(throttledTrailingManager.state).toEqualTypeOf<Op.ThrottledTrailingState<string, number>>();
+	expectTypeOf(throttledTrailingManager.run).returns.toEqualTypeOf<
+		Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.EvictedNil>
+	>();
 
 	const concurrentDropManager = Op.interpret(delayedOp, { strategy: "concurrent", concurrency: 2 });
 	expectTypeOf(concurrentDropManager.state).toEqualTypeOf<Op.ConcurrentDropState<string, number>>();
+	expectTypeOf(concurrentDropManager.run).returns.toEqualTypeOf<
+		Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.DroppedNil>
+	>();
 
 	const concurrentQueueManager = Op.interpret(delayedOp, { strategy: "concurrent", concurrency: 2, overflow: "queue" });
 	expectTypeOf(concurrentQueueManager.state).toEqualTypeOf<Op.ConcurrentQueueState<string, number>>();
+	expectTypeOf(concurrentQueueManager.run).returns.toEqualTypeOf<
+		Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil>
+	>();
+
+	const keyedImplicit = Op.interpret(delayedOp, { strategy: "keyed", perKey: "exclusive" });
+	expectTypeOf(keyedImplicit).toEqualTypeOf<
+		Op.KeyedManager<[n: number], number, string, Op.KeyedExclusivePerKey<string, number>>
+	>();
+	expectTypeOf(keyedImplicit.run).returns.toEqualTypeOf<
+		Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.DroppedNil>
+	>();
 
 	const keyedExclusive = Op.interpret(delayedOp, { strategy: "keyed", key: (n: number) => n, perKey: "exclusive" });
 	expectTypeOf(keyedExclusive).toEqualTypeOf<
@@ -316,4 +352,47 @@ test("converters: transforms between Op.Outcome and Result / Maybe", () => {
 
 	const fromMaybeWithReason = Op.Outcome.from.Maybe(naturalMaybe, () => "aborted");
 	expectTypeOf(fromMaybeWithReason).toEqualTypeOf<Op.Outcome<never, number>>();
+});
+
+test("wire: wires manager Ok outcome to a side effect callback", () => {
+	const manager = Op.interpret(delayedOp, { strategy: "restartable" });
+	const stop = Op.wire(manager, (value) => {
+		expectTypeOf(value).toEqualTypeOf<number>();
+	});
+	expectTypeOf(stop).toEqualTypeOf<() => void>();
+
+	// @ts-expect-error — sideEffect callback argument type mismatch
+	Op.wire(manager, (_value: string) => {});
+
+	// @ts-expect-error — source must be a valid Op.Manager
+	Op.wire("not_a_manager", () => {});
+});
+
+test("manager arity: enforces zero-argument and multi-argument signatures at compile time", () => {
+	const zeroArgOp = Op.lift((_signal) => () => Promise.resolve(42));
+	const zeroArgManager = Op.interpret(zeroArgOp, { strategy: "once" });
+	expectTypeOf(zeroArgManager.run).parameters.toEqualTypeOf<[]>();
+
+	// @ts-expect-error — zero-arg manager rejects arguments
+	zeroArgManager.run(123);
+
+	const multiArgOp = Op.lift((_signal) => (name: string, count: number) => Promise.resolve(`${name}:${count}`));
+	const multiArgManager = Op.interpret(multiArgOp, { strategy: "restartable" });
+	expectTypeOf(multiArgManager.run).parameters.toEqualTypeOf<[name: string, count: number]>();
+
+	// @ts-expect-error — multi-arg manager requires both arguments
+	multiArgManager.run("test");
+
+	// @ts-expect-error — multi-arg manager argument type mismatch
+	multiArgManager.run("test", "not_a_number");
+});
+
+test("Nil reasons: maintains discrimination and mutual exclusivity", () => {
+	expectTypeOf<Op.AbortedNil["reason"]>().toEqualTypeOf<"aborted">();
+	expectTypeOf<Op.DroppedNil["reason"]>().toEqualTypeOf<"dropped">();
+	expectTypeOf<Op.ReplacedNil["reason"]>().toEqualTypeOf<"replaced">();
+	expectTypeOf<Op.EvictedNil["reason"]>().toEqualTypeOf<"evicted">();
+
+	// @ts-expect-error — DroppedNil is not assignable to ReplacedNil
+	const _invalidNil: Op.ReplacedNil = { kind: "OpNil", reason: "dropped" } as Op.DroppedNil;
 });

@@ -67,13 +67,10 @@ type AllInterpretOptions<Args extends readonly unknown[], E> =
 		& WithDuration
 		& WithTimeout<unknown>
 	)
-	| ({
-		strategy: "concurrent";
-		retry?: RetryOptionsInternal<E>;
-		overflow?: "queue" | "drop";
-		concurrency?: number;
-		n?: number;
-	} & WithTimeout<unknown>)
+	| (
+		& { strategy: "concurrent"; retry?: RetryOptionsInternal<E>; overflow?: "queue" | "drop"; concurrency?: number; }
+		& WithTimeout<unknown>
+	)
 	| (
 		& { strategy: "keyed"; perKey?: "exclusive" | "restartable"; key?: (...args: Args) => unknown; }
 		& WithTimeout<unknown>
@@ -338,8 +335,10 @@ type MaybeRetry<E, O> = O extends { retry: RetryOptionsInternal<E>; } ? Op.Retry
 type TimeoutErrorOf<O> = O extends { timeout: { onTimeout: () => infer ET; }; } ? ET : never;
 type CombinedError<E, O> = E | TimeoutErrorOf<O>;
 
-// Extracts the key type from the `keyed` strategy's `key` function.
-type KeyType<Args extends readonly unknown[], O> = O extends { key: (...args: Args) => infer K; } ? K : unknown;
+// Extracts the key type from the `keyed` strategy's `key` function, defaulting to the first argument type.
+type KeyType<Args extends readonly unknown[], O> = O extends { key: (...args: Args) => infer K; } ? K
+	: Args extends readonly [infer First, ...unknown[]] ? First
+	: unknown;
 
 // Conditional return type — dispatches on strategy (and variant flags) to preserve
 // precise state-union typing without needing per-strategy overloads.
@@ -416,7 +415,6 @@ function interpretFn<Args extends readonly unknown[], E, A>(
 		leading?: boolean;
 		maxWait?: Duration;
 		concurrency?: number;
-		n?: number;
 		overflow?: "queue" | "drop" | "replace-last";
 		key?: (...args: Args) => unknown;
 		perKey?: "exclusive" | "restartable";
@@ -463,7 +461,7 @@ function interpretFn<Args extends readonly unknown[], E, A>(
 		case "concurrent": {
 			return makeConcurrent(
 				op,
-				options.concurrency ?? options.n ?? 1,
+				options.concurrency ?? 1,
 				options.overflow as "queue" | "drop" ?? "drop",
 				retryOptions,
 				timeoutOptions,

@@ -202,13 +202,13 @@ This guarantees an immediate initial visual response and a final layout calculat
 
 ### Parallelism with `concurrent`
 
-`concurrent` runs up to `n` operations simultaneously. When the capacity is exhausted, the `overflow` policy determines what happens:
+`concurrent` runs up to `concurrency` operations simultaneously. When the capacity is exhausted, the `overflow` policy determines what happens:
 
 ```ts
 // Queue up to 10 file uploads in order
 const uploadManager = Op.interpret(uploadFileOp, {
   strategy: "concurrent",
-  n: 3,
+  concurrency: 3,
   overflow: "queue",
 });
 ```

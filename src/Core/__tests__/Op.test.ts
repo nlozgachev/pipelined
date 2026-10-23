@@ -1302,14 +1302,14 @@ test("interpret: throttled trailing abort clears in-flight and buffered", async 
 // --- Op.interpret — concurrent ---
 
 test("interpret: concurrent runs operations in parallel up to limit", async () => {
-	const manager = Op.interpret(delayedOp(20), { strategy: "concurrent", n: 2, overflow: "drop" });
+	const manager = Op.interpret(delayedOp(20), { strategy: "concurrent", concurrency: 2, overflow: "drop" });
 	const [r1, r2] = await Promise.all([manager.run(1), manager.run(2)]);
 	expect(r1).toStrictEqual({ kind: "OpOk", value: 1 });
 	expect(r2).toStrictEqual({ kind: "OpOk", value: 2 });
 });
 
 test("interpret: concurrent overflow drop returns DroppedNil when slots are full", async () => {
-	const manager = Op.interpret(delayedOp(30), { strategy: "concurrent", n: 2, overflow: "drop" });
+	const manager = Op.interpret(delayedOp(30), { strategy: "concurrent", concurrency: 2, overflow: "drop" });
 	const p1 = manager.run(1);
 	const p2 = manager.run(2);
 	const p3 = manager.run(3); // dropped — both slots full
@@ -1318,7 +1318,7 @@ test("interpret: concurrent overflow drop returns DroppedNil when slots are full
 });
 
 test("interpret: concurrent overflow queue waits for available slot", async () => {
-	const manager = Op.interpret(delayedOp(20), { strategy: "concurrent", n: 2, overflow: "queue" });
+	const manager = Op.interpret(delayedOp(20), { strategy: "concurrent", concurrency: 2, overflow: "queue" });
 	const [r1, r2, r3] = await Promise.all([manager.run(1), manager.run(2), manager.run(3)]);
 	expect(r1).toStrictEqual({ kind: "OpOk", value: 1 });
 	expect(r2).toStrictEqual({ kind: "OpOk", value: 2 });
@@ -1326,7 +1326,7 @@ test("interpret: concurrent overflow queue waits for available slot", async () =
 });
 
 test("interpret: concurrent abort resolves all in-flight and queued Deferreds with AbortedNil", async () => {
-	const manager = Op.interpret(delayedOp(100), { strategy: "concurrent", n: 2, overflow: "queue" });
+	const manager = Op.interpret(delayedOp(100), { strategy: "concurrent", concurrency: 2, overflow: "queue" });
 	const p1 = manager.run(1);
 	const p2 = manager.run(2);
 	const p3 = manager.run(3); // queued
@@ -1338,7 +1338,7 @@ test("interpret: concurrent abort resolves all in-flight and queued Deferreds wi
 });
 
 test("interpret: concurrent overflow queue emits Queued state for waiting run", async () => {
-	const manager = Op.interpret(delayedOp(30), { strategy: "concurrent", n: 1, overflow: "queue" });
+	const manager = Op.interpret(delayedOp(30), { strategy: "concurrent", concurrency: 1, overflow: "queue" });
 	const states: Op.ConcurrentQueueState<string, number>[] = [];
 	manager.subscribe((s) => states.push(s));
 	await Promise.all([manager.run(1), manager.run(2)]);
@@ -1787,7 +1787,7 @@ test("interpret: concurrent with retry emits Retrying states between attempts", 
 		calls++;
 		return Promise.reject(new Error("fail"));
 	}, { onError: (e) => (e as Error).message });
-	const manager = Op.interpret(op, { strategy: "concurrent", n: 1, overflow: "drop", retry: { attempts: 3 } });
+	const manager = Op.interpret(op, { strategy: "concurrent", concurrency: 1, overflow: "drop", retry: { attempts: 3 } });
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(3);
 	expect(states[0]).toStrictEqual({ kind: "Pending" });
@@ -1808,7 +1808,7 @@ test("interpret: exclusive manager.state returns current state", async () => {
 });
 
 test("interpret: concurrent manager.state returns current state", async () => {
-	const manager = Op.interpret(delayedOp(20), { strategy: "concurrent", n: 1, overflow: "drop" });
+	const manager = Op.interpret(delayedOp(20), { strategy: "concurrent", concurrency: 1, overflow: "drop" });
 	expect(manager.state).toStrictEqual({ kind: "Idle" });
 	const p = manager.run(1);
 	expect(manager.state).toStrictEqual({ kind: "Pending" });
@@ -1817,14 +1817,14 @@ test("interpret: concurrent manager.state returns current state", async () => {
 });
 
 test("interpret: concurrent abort on idle manager does nothing", () => {
-	const manager = Op.interpret(delayedOp(), { strategy: "concurrent", n: 2, overflow: "drop" });
+	const manager = Op.interpret(delayedOp(), { strategy: "concurrent", concurrency: 2, overflow: "drop" });
 	expect(manager.state).toStrictEqual({ kind: "Idle" });
 	manager.abort(); // no in-flight ops — no emit
 	expect(manager.state).toStrictEqual({ kind: "Idle" });
 });
 
 test("interpret: concurrent subscribe after run started fires immediately with current state", () => {
-	const manager = Op.interpret(delayedOp(50), { strategy: "concurrent", n: 1, overflow: "drop" });
+	const manager = Op.interpret(delayedOp(50), { strategy: "concurrent", concurrency: 1, overflow: "drop" });
 	manager.run(1);
 	const received: Op.State<string, number>[] = [];
 	manager.subscribe((s) => received.push(s));
@@ -2143,7 +2143,7 @@ test("reset: resets throttled strategy to Idle", async () => {
 });
 
 test("reset: resets concurrent strategy to Idle", async () => {
-	const manager = Op.interpret(delayedOp(), { strategy: "concurrent", n: 2 });
+	const manager = Op.interpret(delayedOp(), { strategy: "concurrent", concurrency: 2 });
 	await manager.run(1);
 	manager.reset();
 	expect(Op.is.idle(manager.state)).toBe(true);
@@ -2232,7 +2232,7 @@ test("poll: works for debounced strategy", async () => {
 });
 
 test("poll: works for concurrent strategy", async () => {
-	const manager = Op.interpret(delayedOp(), { strategy: "concurrent", n: 2 });
+	const manager = Op.interpret(delayedOp(), { strategy: "concurrent", concurrency: 2 });
 	const stop = manager.poll({ interval: Duration.milliseconds(10_000) })(1);
 	await new Promise<void>((resolve) => {
 		const unsub = manager.subscribe((s) => {
