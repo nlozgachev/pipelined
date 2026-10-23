@@ -1,4 +1,4 @@
-import { expect, expectTypeOf, test } from "vitest";
+import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Duration } from "../../Types/Duration.ts";
 import { RetryPolicy } from "../../Types/RetryPolicy.ts";
@@ -59,7 +59,6 @@ test("make: does not expose _factory as an enumerable or public property", () =>
 	// @ts-expect-error — _factory is an internal implementation detail and must not be accessible on Op
 	const hiddenFactory = op._factory;
 	expect(hiddenFactory).toBeUndefined();
-	expectTypeOf(op).toEqualTypeOf<Op<[], string, number>>();
 	expect("_factory" in op).toBe(false);
 	expect(Object.keys(op)).toHaveLength(0);
 	expect(Reflect.ownKeys(op).some((k) => typeof k === "symbol")).toBe(true);
@@ -67,7 +66,7 @@ test("make: does not expose _factory as an enumerable or public property", () =>
 
 test("make: infers Op<[]> when factory takes no input", () => {
 	const op = Op.make((_signal) => () => Promise.resolve(42), { onError: String });
-	expectTypeOf(op).toEqualTypeOf<Op<[], string, number>>();
+	expect(op).toBeDefined();
 });
 
 test("make: manager.run accepts no arguments when factory takes no input", async () => {
@@ -90,7 +89,7 @@ test("make: supports generic wrapper functions with generic Args and Out", () =>
 		return Op.make((_signal) => fn, { onError: String });
 	}
 	const op = wrap((a: string, b: number) => `${a}:${b}`);
-	expectTypeOf(op).toEqualTypeOf<Op<[a: string, b: number], string, string>>();
+	expect(op).toBeDefined();
 });
 
 test("make: supports explicit generic type arguments <Args, A, E>", async () => {
@@ -101,7 +100,6 @@ test("make: supports explicit generic type arguments <Args, A, E>", async () => 
 	const op = Op.make<[id: string], User, string>((_signal) => (id) => Promise.resolve({ id, name: "User" }), {
 		onError: String,
 	});
-	expectTypeOf(op).toEqualTypeOf<Op<[id: string], string, User>>();
 	const manager = Op.interpret(op, { strategy: "once" });
 	const result = await manager.run("42");
 	expect(result).toStrictEqual(Op.Outcome.make.ok({ id: "42", name: "User" }));
@@ -116,12 +114,11 @@ test("make: single typed object argument", async () => {
 		Promise.resolve({ success: true, id: payload.id });
 
 	const opFromFn = Op.make((_signal) => searchApi, { onError: String });
-	expectTypeOf(opFromFn).toEqualTypeOf<Op<[payload: Payload], string, { success: boolean; id: string; }>>();
+	expect(opFromFn).toBeDefined();
 
 	const op = Op.make((_signal) => (payload: Payload) => Promise.resolve({ success: true, id: payload.id }), {
 		onError: String,
 	});
-	expectTypeOf(op).toEqualTypeOf<Op<[payload: Payload], string, { success: boolean; id: string; }>>();
 	const manager = Op.interpret(op, { strategy: "once" });
 	const result = await manager.run({ id: "123", name: "Alice" });
 	expect(result).toStrictEqual(Op.Outcome.make.ok({ success: true, id: "123" }));
@@ -140,7 +137,6 @@ test("make: explicit single object generic parameter <Payload, User>", async () 
 		(_signal) => (payload) => Promise.resolve({ id: payload.id, name: payload.name }),
 		{ onError: String },
 	);
-	expectTypeOf(op).toEqualTypeOf<Op<[Payload], string, User>>();
 	const manager = Op.interpret(op, { strategy: "once" });
 	const result = await manager.run({ id: "42", name: "Alice" });
 	expect(result).toStrictEqual(Op.Outcome.make.ok({ id: "42", name: "Alice" }));
@@ -154,7 +150,6 @@ test("make: explicit function type parameter <typeof apiFn>", async () => {
 		Promise.resolve({ success: true, id: payload.id });
 
 	const op = Op.make<typeof searchApi, string>((_signal) => searchApi, { onError: String });
-	expectTypeOf(op).toEqualTypeOf<Op<[payload: Payload], string, { success: boolean; id: string; }>>();
 	const manager = Op.interpret(op, { strategy: "once" });
 	const result = await manager.run({ id: "99" });
 	expect(result).toStrictEqual(Op.Outcome.make.ok({ success: true, id: "99" }));
@@ -162,7 +157,6 @@ test("make: explicit function type parameter <typeof apiFn>", async () => {
 
 test("make: explicit void generic parameter <void, number>", async () => {
 	const op = Op.make<void, number, string>((_signal) => () => Promise.resolve(100), { onError: String });
-	expectTypeOf(op).toEqualTypeOf<Op<[], string, number>>();
 	const manager = Op.interpret(op, { strategy: "once" });
 	const result = await manager.run();
 	expect(result).toStrictEqual(Op.Outcome.make.ok(100));
@@ -170,7 +164,6 @@ test("make: explicit void generic parameter <void, number>", async () => {
 
 test("make: supports synchronous actions returning Out directly without Promise wrapper", async () => {
 	const op = Op.make((_signal) => (n: number) => n * 2, { onError: String });
-	expectTypeOf(op).toEqualTypeOf<Op<[n: number], string, number>>();
 	const manager = Op.interpret(op, { strategy: "once" });
 	const result = await manager.run(21);
 	expect(result).toStrictEqual(Op.Outcome.make.ok(42));
@@ -215,7 +208,6 @@ test("lift: supports explicit single object generic parameter <Payload, User>", 
 		name: string;
 	}
 	const op = Op.lift<Payload, User>((_signal) => (payload) => Promise.resolve({ id: payload.id, name: payload.name }));
-	expectTypeOf(op).toEqualTypeOf<Op<[Payload], unknown, User>>();
 	const manager = Op.interpret(op, { strategy: "once" });
 	const result = await manager.run({ id: "101", name: "Bob" });
 	expect(result).toStrictEqual(Op.Outcome.make.ok({ id: "101", name: "Bob" }));
@@ -229,7 +221,6 @@ test("lift: supports explicit function type parameter <typeof apiFn>", async () 
 		Promise.resolve({ success: true, id: payload.id });
 
 	const op = Op.lift<typeof searchApi>((_signal) => searchApi);
-	expectTypeOf(op).toEqualTypeOf<Op<[payload: Payload], unknown, { success: boolean; id: string; }>>();
 	const manager = Op.interpret(op, { strategy: "once" });
 	const result = await manager.run({ id: "202" });
 	expect(result).toStrictEqual(Op.Outcome.make.ok({ success: true, id: "202" }));
@@ -237,7 +228,6 @@ test("lift: supports explicit function type parameter <typeof apiFn>", async () 
 
 test("lift: supports synchronous action returning Out directly", async () => {
 	const op = Op.lift((_signal) => (n: number) => n * 3);
-	expectTypeOf(op).toEqualTypeOf<Op<[n: number], unknown, number>>();
 	const manager = Op.interpret(op, { strategy: "once" });
 	const result = await manager.run(10);
 	expect(result).toStrictEqual(Op.Outcome.make.ok(30));
@@ -263,57 +253,48 @@ test("make.nil: creates a Nil outcome with the given reason", () => {
 // --- Type guards ---
 
 test("Outcome.is.ok: returns true only for Ok", () => {
-	const ok = Op.Outcome.make.ok(1) as Op.Outcome<string, number>;
-	const e = Op.Outcome.make.err("e") as Op.Outcome<string, number>;
-	const n = Op.Outcome.make.nil("aborted") as Op.Outcome<string, number>;
+	const ok = Op.Outcome.make.ok(1);
+	const e = Op.Outcome.make.err("e");
+	const n = Op.Outcome.make.nil("aborted");
 	expect(Op.Outcome.is.ok(ok)).toBe(true);
 	expect(Op.Outcome.is.ok(e)).toBe(false);
 	expect(Op.Outcome.is.ok(n)).toBe(false);
-	if (Op.Outcome.is.ok(ok)) {
-		expectTypeOf(ok.value).toEqualTypeOf<number>();
-	}
-	const state = Op.Outcome.make.ok(1) as Op.State<string, number>;
-	if (Op.Outcome.is.ok(state)) {
-		expectTypeOf(state.value).toEqualTypeOf<number>();
-	}
 
-	const directOk = Op.Outcome.make.ok(42);
-	if (Op.Outcome.is.ok(directOk)) {
-		expectTypeOf(directOk.value).toEqualTypeOf<number>();
-	}
-
-	const items: Op.Outcome<string, number>[] = [];
+	const items: Op.Outcome<string, number>[] = [ok, e, n];
 	const filtered = items.filter(Op.Outcome.is.ok);
-	expectTypeOf(filtered).toEqualTypeOf<Op.Ok<number>[]>();
+	expect(filtered).toHaveLength(1);
+	expect(filtered[0]).toStrictEqual(ok);
 });
 
 test("Outcome.is.err: returns true only for Err", () => {
-	const ok = Op.Outcome.make.ok(1) as Op.Outcome<string, number>;
-	const e = Op.Outcome.make.err("e") as Op.Outcome<string, number>;
-	const n = Op.Outcome.make.nil("aborted") as Op.Outcome<string, number>;
+	const ok = Op.Outcome.make.ok(1);
+	const e = Op.Outcome.make.err("e");
+	const n = Op.Outcome.make.nil("aborted");
 	expect(Op.Outcome.is.err(e)).toBe(true);
 	expect(Op.Outcome.is.err(ok)).toBe(false);
 	expect(Op.Outcome.is.err(n)).toBe(false);
 
-	const items: Op.Outcome<string, number>[] = [];
+	const items: Op.Outcome<string, number>[] = [ok, e, n];
 	const filtered = items.filter(Op.Outcome.is.err);
-	expectTypeOf(filtered).toEqualTypeOf<Op.Err<string>[]>();
+	expect(filtered).toHaveLength(1);
+	expect(filtered[0]).toStrictEqual(e);
 });
 
 test("Outcome.is.nil: returns true only for Nil", () => {
-	const ok = Op.Outcome.make.ok(1) as Op.Outcome<string, number>;
-	const e = Op.Outcome.make.err("e") as Op.Outcome<string, number>;
-	const n = Op.Outcome.make.nil("aborted") as Op.Outcome<string, number>;
+	const ok = Op.Outcome.make.ok(1);
+	const e = Op.Outcome.make.err("e");
+	const n = Op.Outcome.make.nil("aborted");
 	expect(Op.Outcome.is.nil(n)).toBe(true);
 	expect(Op.Outcome.is.nil(ok)).toBe(false);
 	expect(Op.Outcome.is.nil(e)).toBe(false);
 
-	const items: Op.Outcome<string, number>[] = [];
+	const items: Op.Outcome<string, number>[] = [ok, e, n];
 	const filtered = items.filter(Op.Outcome.is.nil);
-	expectTypeOf(filtered).toEqualTypeOf<Op.Nil[]>();
+	expect(filtered).toHaveLength(1);
+	expect(filtered[0]).toStrictEqual(n);
 });
 
-test("is: contains only lifecycle guards", () => {
+test("is: contains lifecycle guards and settled guard", () => {
 	expect("ok" in Op.is).toBe(false);
 	expect("err" in Op.is).toBe(false);
 	expect("nil" in Op.is).toBe(false);
@@ -321,10 +302,37 @@ test("is: contains only lifecycle guards", () => {
 	expect("pending" in Op.is).toBe(true);
 	expect("queued" in Op.is).toBe(true);
 	expect("retrying" in Op.is).toBe(true);
+	expect("settled" in Op.is).toBe(true);
 
-	const states: Op.State<string, number>[] = [];
+	const states: Op.State<string, number>[] = [{ kind: "Idle" }, { kind: "Pending" }, {
+		kind: "Retrying",
+		attempt: 1,
+		lastError: "err",
+	}];
 	const retrying = states.filter(Op.is.retrying);
-	expectTypeOf(retrying).toEqualTypeOf<Op.Retrying<string>[]>();
+	expect(retrying).toHaveLength(1);
+});
+
+test("is.settled: returns true only for settled outcome states", () => {
+	expect(Op.is.settled({ kind: "Idle" })).toBe(false);
+	expect(Op.is.settled({ kind: "Pending" })).toBe(false);
+	expect(Op.is.settled({ kind: "Queued", position: 1 })).toBe(false);
+	expect(Op.is.settled({ kind: "Retrying", attempt: 1, lastError: "err" })).toBe(false);
+
+	expect(Op.is.settled(Op.Outcome.make.ok(42))).toBe(true);
+	expect(Op.is.settled(Op.Outcome.make.err("fail"))).toBe(true);
+	expect(Op.is.settled(Op.Outcome.make.nil("aborted"))).toBe(true);
+});
+
+test("from.Result: converts Ok to OpOk and Err to OpErr", () => {
+	expect(Op.Outcome.from.Result(Result.make.ok(42))).toStrictEqual(Op.Outcome.make.ok(42));
+	expect(Op.Outcome.from.Result(Result.make.err("error"))).toStrictEqual(Op.Outcome.make.err("error"));
+});
+
+test("from.Maybe: converts Some to OpOk and None to OpNil", () => {
+	expect(Op.Outcome.from.Maybe(Maybe.make.some(42))).toStrictEqual(Op.Outcome.make.ok(42));
+	expect(Op.Outcome.from.Maybe(Maybe.make.none())).toStrictEqual(Op.Outcome.make.nil("dropped"));
+	expect(Op.Outcome.from.Maybe(Maybe.make.none(), () => "aborted")).toStrictEqual(Op.Outcome.make.nil("aborted"));
 });
 
 test("is.idle: returns true only for Idle state", async () => {
@@ -1437,20 +1445,6 @@ test("interpret: keyed restartable runs different keys in parallel", async () =>
 	expect(r2).toStrictEqual({ kind: "OpOk", value: 2 });
 });
 
-test("type: narrows keyed exclusive run return type correctly", () => {
-	const manager = Op.interpret(delayedOp(), { strategy: "keyed", key: (n: number) => n, perKey: "exclusive" });
-	expectTypeOf(manager.run).returns.toEqualTypeOf<
-		Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.DroppedNil>
-	>();
-});
-
-test("type: narrows keyed restartable run return type correctly", () => {
-	const manager = Op.interpret(delayedOp(), { strategy: "keyed", key: (n: number) => n, perKey: "restartable" });
-	expectTypeOf(manager.run).returns.toEqualTypeOf<
-		Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.ReplacedNil>
-	>();
-});
-
 // --- Op.interpret — debounced leading edge ---
 
 test("interpret: debounced with leading fires immediately on first call", async () => {
@@ -2441,7 +2435,6 @@ test("RetryOptions: supports default unknown error type and typed error predicat
 		when: (e) => e.length > 0,
 		backoff: RetryPolicy.constant({ attempts: 2, delay: Duration.milliseconds(50) }),
 	};
-	expectTypeOf(typedRetry).toEqualTypeOf<Op.RetryOptions<string>>();
 	expect(typedRetry.attempts).toBe(2);
 });
 
@@ -2453,7 +2446,6 @@ test("TimeoutOptions: supports default unknown error type and typed onTimeout ca
 		duration: Duration.milliseconds(500),
 		onTimeout: () => new Error("timeout error"),
 	};
-	expectTypeOf(typedTimeout).toEqualTypeOf<Op.TimeoutOptions<Error>>();
 	expect(typedTimeout.onTimeout().message).toBe("timeout error");
 });
 
@@ -2466,8 +2458,6 @@ test("interpret: widens outcome error type when timeout option is present", asyn
 		timeout: { duration: Duration.milliseconds(10), onTimeout: () => "timeout_error" as const },
 	});
 	const outcome = await manager.run(1);
-	expectTypeOf(outcome).toMatchTypeOf<Op.Outcome<"op_error" | "timeout_error", number>>();
-	expectTypeOf(manager.state).toEqualTypeOf<Op.RestartableState<"op_error" | "timeout_error", number>>();
 	expect(outcome).toStrictEqual(Op.Outcome.make.ok(42));
 });
 

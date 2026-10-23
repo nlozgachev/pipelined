@@ -29,6 +29,8 @@ import { Result as CoreResult } from "./Result.ts";
 
 declare const _opBrand: unique symbol;
 
+type NormalizeArgs<T> = [T] extends [void] ? [] : T extends readonly unknown[] ? T : [T];
+
 type RetryOptionsInternal<E = unknown> = {
 	readonly attempts: number;
 	readonly backoff?: Duration | ((attempt: number) => Duration) | RetryPolicy;
@@ -36,55 +38,6 @@ type RetryOptionsInternal<E = unknown> = {
 };
 
 type TimeoutOptionsInternal<E = unknown> = { readonly duration: Duration; readonly onTimeout: () => E; };
-
-// ---------------------------------------------------------------------------
-// Op<I, E, A>
-// ---------------------------------------------------------------------------
-
-/**
- * A reusable description of async work — decoupled from execution strategy and lifetime.
- *
- * Separate concerns:
- * - **What** to do: encoded in the `Op` via `Op.make`
- * - **How** to execute: chosen at `Op.interpret` time (restartable, exclusive, queue, etc.)
- *
- * An `Op` never runs on its own. It only executes when passed to `Op.interpret`, which
- * attaches a concurrency strategy and returns a `Manager` that owns the execution.
- *
- * @example
- * ```ts
- * const fetchUser = Op.make(
- *   (signal) => (id: string) =>
- *     fetch(`/users/${id}`, { signal }).then(r => {
- *       if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
- *       return r.json() as Promise<User>;
- *     }),
- *   { onError: (e) => new ApiError(e) },
- * );
- *
- * const manager = Op.interpret(fetchUser, { strategy: "restartable" });
- * manager.subscribe(state => {
- *   if (Op.is.pending(state)) showSpinner();
- *   if (Op.Outcome.is.ok(state)) render(state.value);
- *   if (Op.Outcome.is.err(state)) showError(state.error);
- *   if (Op.Outcome.is.nil(state)) resetUI();
- * });
- * manager.run(userId);
- * ```
- */
-export type Op<Args extends readonly unknown[] = readonly unknown[], E = unknown, A = unknown> = {
-	readonly [_opBrand]: { readonly _args: (...args: Args) => void; readonly _error: () => E; readonly _value: () => A; };
-};
-
-// ---------------------------------------------------------------------------
-// Op.interpret — internal helpers (not part of the public Op namespace)
-// ---------------------------------------------------------------------------
-
-// `Retrying<E>` is only added to the state union when retry options are present.
-type MaybeRetry<E, O> = O extends { retry: RetryOptionsInternal<E>; } ? Op.Retrying<E> : never;
-
-type TimeoutErrorOf<O> = O extends { timeout: { onTimeout: () => infer ET; }; } ? ET : never;
-type CombinedError<E, O> = E | TimeoutErrorOf<O>;
 
 // Union of all valid option shapes — exposed as a single type so the TS language service
 // can show all strategy literals in autocomplete (overload aggregation is unreliable).
@@ -125,6 +78,265 @@ type AllInterpretOptions<Args extends readonly unknown[], E> =
 		& { strategy: "keyed"; perKey?: "exclusive" | "restartable"; key?: (...args: Args) => unknown; }
 		& WithTimeout<unknown>
 	);
+
+// ---------------------------------------------------------------------------
+// Op<Args, E, A>
+// ---------------------------------------------------------------------------
+
+/**
+ * A reusable description of async work — decoupled from execution strategy and lifetime.
+ *
+ * Separate concerns:
+ * - **What** to do: encoded in the `Op` via `Op.make`
+ * - **How** to execute: chosen at `Op.interpret` time (restartable, exclusive, queue, etc.)
+ *
+ * An `Op` never runs on its own. It only executes when passed to `Op.interpret`, which
+ * attaches a concurrency strategy and returns a `Manager` that owns the execution.
+ *
+ * @example
+ * ```ts
+ * const fetchUser = Op.make(
+ *   (signal) => (id: string) =>
+ *     fetch(`/users/${id}`, { signal }).then(r => {
+ *       if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+ *       return r.json() as Promise<User>;
+ *     }),
+ *   { onError: (e) => new ApiError(e) },
+ * );
+ *
+ * const manager = Op.interpret(fetchUser, { strategy: "restartable" });
+ * manager.subscribe(state => {
+ *   if (Op.is.pending(state)) showSpinner();
+ *   if (Op.Outcome.is.ok(state)) render(state.value);
+ *   if (Op.Outcome.is.err(state)) showError(state.error);
+ *   if (Op.Outcome.is.nil(state)) resetUI();
+ * });
+ * manager.run(userId);
+ * ```
+ */
+export type Op<Args extends readonly unknown[] = readonly unknown[], E = unknown, A = unknown> = {
+	readonly [_opBrand]: { readonly _args: (...args: Args) => void; readonly _error: () => E; readonly _value: () => A; };
+};
+
+export namespace Op {
+	export type ToArgs<T> = NormalizeArgs<T>;
+	export type Outcome<E, A> = Ok<A> | Err<E> | Nil;
+	export type Ok<A> = WithKind<"OpOk"> & WithValue<A>;
+	export type Err<E> = WithKind<"OpErr"> & WithError<E>;
+	export type Nil = WithKind<"OpNil"> & { readonly reason: NilReason; };
+	export type NilReason = "aborted" | "dropped" | "replaced" | "evicted";
+	export type AbortedNil = Nil & { readonly reason: "aborted"; };
+	export type DroppedNil = Nil & { readonly reason: "dropped"; };
+	export type ReplacedNil = Nil & { readonly reason: "replaced"; };
+	export type EvictedNil = Nil & { readonly reason: "evicted"; };
+	export type State<E, A> = Idle | Pending | Queued | Retrying<E> | Outcome<E, A>;
+	export type Idle = WithKind<"Idle">;
+	export type Pending = WithKind<"Pending">;
+	export type Queued = WithKind<"Queued"> & { readonly position: number; };
+	export type Retrying<E> = WithKind<"Retrying"> & {
+		readonly attempt: number;
+		readonly lastError: E;
+		readonly nextRetryIn?: number;
+	};
+	export type Manager<Args extends readonly unknown[], E, A, S extends State<E, A>> = {
+		readonly state: S;
+		/**
+		 * Triggers execution of the operation with the given arguments.
+		 * Resolves with the settled `Op.Outcome` wrapped in a `Deferred`.
+		 *
+		 * Coordinate concurrent runs using `Deferred.all` or `Deferred.race`.
+		 *
+		 * @example
+		 * ```ts
+		 * const outcome = await manager.run("user_123");
+		 *
+		 * // Coordinate concurrent runs:
+		 * const [user, settings] = await Deferred.all([
+		 *   userManager.run("user_123"),
+		 *   settingsManager.run(),
+		 * ]);
+		 * ```
+		 */
+		run: (...args: Args) => Deferred<Exclude<S, Idle | Pending | Queued | Retrying<E>>>;
+		abort: () => void;
+		subscribe: (cb: (state: S) => void) => () => void;
+		reset: () => void;
+		poll: (options: { interval: Duration; }) => (...args: Args) => () => void;
+	};
+	export type KeyedManager<Args extends readonly unknown[], K, E, PerKeyS> = {
+		readonly state: ReadonlyMap<K, PerKeyS>;
+		/**
+		 * Triggers execution for the specific keyed item with the given arguments.
+		 * Resolves with the settled `Op.Outcome` wrapped in a `Deferred`.
+		 *
+		 * Coordinate concurrent runs across keys using `Deferred.all` or `Deferred.race`.
+		 *
+		 * @example
+		 * ```ts
+		 * const [item1, item2] = await Deferred.all([
+		 *   keyedManager.run("item_1"),
+		 *   keyedManager.run("item_2"),
+		 * ]);
+		 * ```
+		 */
+		run: (...args: Args) => Deferred<Exclude<PerKeyS, Pending | Retrying<E>>>;
+		abort: (key?: K) => void;
+		subscribe: (cb: (state: ReadonlyMap<K, PerKeyS>) => void) => () => void;
+		reset: () => void;
+		poll: (options: { interval: Duration; }) => (...args: Args) => () => void;
+	};
+	export type OnceState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type RetryableOnceState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type RestartableState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | ReplacedNil;
+	export type RetryableRestartableState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Err<E> | AbortedNil | ReplacedNil;
+	export type ExclusiveState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type RetryableExclusiveState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type QueueState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil;
+	export type RetryableQueueState<E, A> = Idle | Pending | Queued | Retrying<E> | Ok<A> | Err<E> | AbortedNil;
+	export type QueueDropState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type RetryableQueueDropState<E, A> =
+		| Idle
+		| Pending
+		| Queued
+		| Retrying<E>
+		| Ok<A>
+		| Err<E>
+		| AbortedNil
+		| DroppedNil;
+	export type QueueReplaceState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil | EvictedNil;
+	export type RetryableQueueReplaceState<E, A> =
+		| Idle
+		| Pending
+		| Queued
+		| Retrying<E>
+		| Ok<A>
+		| Err<E>
+		| AbortedNil
+		| EvictedNil;
+	export type QueueDropAndReplaceState<E, A> =
+		| Idle
+		| Pending
+		| Queued
+		| Ok<A>
+		| Err<E>
+		| AbortedNil
+		| DroppedNil
+		| EvictedNil;
+	export type RetryableQueueDropAndReplaceState<E, A> =
+		| Idle
+		| Pending
+		| Queued
+		| Retrying<E>
+		| Ok<A>
+		| Err<E>
+		| AbortedNil
+		| DroppedNil
+		| EvictedNil;
+	export type BufferedState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil | EvictedNil;
+	export type RetryableBufferedState<E, A> =
+		| Idle
+		| Pending
+		| Queued
+		| Retrying<E>
+		| Ok<A>
+		| Err<E>
+		| AbortedNil
+		| EvictedNil;
+	export type DebouncedState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | EvictedNil;
+	export type RetryableDebouncedState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Err<E> | AbortedNil | EvictedNil;
+	export type ThrottledState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type RetryableThrottledState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type ThrottledTrailingState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | EvictedNil;
+	export type RetryableThrottledTrailingState<E, A> =
+		| Idle
+		| Pending
+		| Retrying<E>
+		| Ok<A>
+		| Err<E>
+		| AbortedNil
+		| EvictedNil;
+	export type ConcurrentQueueState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil;
+	export type RetryableConcurrentQueueState<E, A> = Idle | Pending | Queued | Retrying<E> | Ok<A> | Err<E> | AbortedNil;
+	export type ConcurrentDropState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type RetryableConcurrentDropState<E, A> =
+		| Idle
+		| Pending
+		| Retrying<E>
+		| Ok<A>
+		| Err<E>
+		| AbortedNil
+		| DroppedNil;
+	export type KeyedExclusivePerKey<E, A> = Pending | Ok<A> | Err<E> | AbortedNil | DroppedNil;
+	export type KeyedRestartablePerKey<E, A> = Pending | Ok<A> | Err<E> | AbortedNil | ReplacedNil;
+
+	/**
+	 * Execution strategy for `Op.interpret`.
+	 */
+	export type Strategy =
+		| "once"
+		| "restartable"
+		| "exclusive"
+		| "queue"
+		| "buffered"
+		| "debounced"
+		| "throttled"
+		| "concurrent"
+		| "keyed";
+
+	/**
+	 * Overflow behavior when a queue or concurrency capacity is exceeded.
+	 */
+	export type Overflow = "queue" | "drop" | "replace-last";
+
+	/**
+	 * Concurrency policy per key for `strategy: "keyed"`.
+	 */
+	export type PerKey = "exclusive" | "restartable";
+
+	/**
+	 * Configuration options for operation retry policies in `Op.interpret`.
+	 *
+	 * @example
+	 * ```ts
+	 * const retry: Op.RetryOptions = {
+	 *   attempts: 3,
+	 *   backoff: Duration.seconds(1),
+	 * };
+	 * ```
+	 */
+	export type RetryOptions<E = unknown> = RetryOptionsInternal<E>;
+
+	/**
+	 * Configuration options for operation timeout deadlines in `Op.interpret`.
+	 *
+	 * @example
+	 * ```ts
+	 * const timeout: Op.TimeoutOptions<string> = {
+	 *   duration: Duration.seconds(5),
+	 *   onTimeout: () => "Request timed out",
+	 * };
+	 * ```
+	 */
+	export type TimeoutOptions<E = unknown> = TimeoutOptionsInternal<E>;
+
+	/**
+	 * Union of all valid option shapes accepted by `Op.interpret`.
+	 */
+	export type InterpretOptions<Args extends readonly unknown[] = readonly unknown[], E = unknown> = AllInterpretOptions<
+		Args,
+		E
+	>;
+}
+
+// ---------------------------------------------------------------------------
+// Op.interpret — internal helpers (not part of the public Op namespace)
+// ---------------------------------------------------------------------------
+
+// `Retrying<E>` is only added to the state union when retry options are present.
+type MaybeRetry<E, O> = O extends { retry: RetryOptionsInternal<E>; } ? Op.Retrying<E> : never;
+
+type TimeoutErrorOf<O> = O extends { timeout: { onTimeout: () => infer ET; }; } ? ET : never;
+type CombinedError<E, O> = E | TimeoutErrorOf<O>;
 
 // Extracts the key type from the `keyed` strategy's `key` function.
 type KeyType<Args extends readonly unknown[], O> = O extends { key: (...args: Args) => infer K; } ? K : unknown;
@@ -176,6 +388,8 @@ const isIdle = <E = unknown, A = unknown>(state: Op.State<E, A>): state is Op.Id
 const isPending = <E = unknown, A = unknown>(state: Op.State<E, A>): state is Op.Pending => state.kind === "Pending";
 const isQueued = <E = unknown, A = unknown>(state: Op.State<E, A>): state is Op.Queued => state.kind === "Queued";
 const isRetrying = <E, A>(state: Op.State<E, A>): state is Op.Retrying<E> => state.kind === "Retrying";
+const isSettled = <E, A>(state: Op.State<E, A>): state is Op.Outcome<E, A> =>
+	state.kind === "OpOk" || state.kind === "OpErr" || state.kind === "OpNil";
 const isOk = <E, A>(stateOrOutcome: Op.State<E, A>): stateOrOutcome is Op.Ok<A> => stateOrOutcome.kind === "OpOk";
 const isErr = <E, A>(stateOrOutcome: Op.State<E, A>): stateOrOutcome is Op.Err<E> => stateOrOutcome.kind === "OpErr";
 const isNil = <E, A>(stateOrOutcome: Op.State<E, A>): stateOrOutcome is Op.Nil => stateOrOutcome.kind === "OpNil";
@@ -487,6 +701,7 @@ const OpOutcome = {
 		 * Converts an Op.Outcome to a Result.
 		 *
 		 * @see {@link Op.Outcome.to.Maybe} to convert an outcome to a Maybe.
+		 * @see {@link Op.Outcome.from.Result} to create an outcome from a Result.
 		 *
 		 * @example
 		 * ```ts
@@ -509,6 +724,7 @@ const OpOutcome = {
 		 * Converts an Op.Outcome to a Maybe, mapping Ok to Some and both Err and Nil to None.
 		 *
 		 * @see {@link Op.Outcome.to.Result} to convert an outcome to a Result.
+		 * @see {@link Op.Outcome.from.Maybe} to create an outcome from a Maybe.
 		 *
 		 * @example
 		 * ```ts
@@ -518,9 +734,43 @@ const OpOutcome = {
 		Maybe: <E = never, A = never>(outcome: Op.Outcome<E, A>): CoreMaybe<A> =>
 			outcome.kind === "OpOk" ? CoreMaybe.make.some(outcome.value) : CoreMaybe.make.none(),
 	},
-};
 
-type NormalizeArgs<T> = [T] extends [void] ? [] : T extends readonly unknown[] ? T : [T];
+	from: {
+		/**
+		 * Creates an Op.Outcome from a Result, mapping Ok to OpOk and Err to OpErr.
+		 *
+		 * @see {@link Op.Outcome.to.Result} to convert an outcome to a Result.
+		 *
+		 * @example
+		 * ```ts
+		 * const outcome = Op.Outcome.from.Result(Result.make.ok(42));
+		 * // { kind: "OpOk", value: 42 }
+		 * ```
+		 */
+		Result: <E, A>(result: CoreResult<E, A>): Op.Outcome<E, A> =>
+			result.kind === "Ok" ? makeOk(result.value) : makeErr(result.error),
+
+		/**
+		 * Creates an Op.Outcome from a Maybe, mapping Some to OpOk and None to OpNil.
+		 *
+		 * @param maybe The Maybe to convert.
+		 * @param onNone Optional callback returning the cancellation or drop reason (defaults to "dropped").
+		 *
+		 * @see {@link Op.Outcome.to.Maybe} to convert an outcome to a Maybe.
+		 *
+		 * @example
+		 * ```ts
+		 * const outcome = Op.Outcome.from.Maybe(Maybe.make.some(42));
+		 * // { kind: "OpOk", value: 42 }
+		 *
+		 * const dropped = Op.Outcome.from.Maybe(Maybe.make.none(), () => "aborted");
+		 * // { kind: "OpNil", reason: "aborted" }
+		 * ```
+		 */
+		Maybe: <A>(maybe: CoreMaybe<A>, onNone?: () => Op.NilReason): Op.Outcome<never, A> =>
+			maybe.kind === "Some" ? makeOk(maybe.value) : makeNil(onNone ? onNone() : "dropped"),
+	},
+};
 
 function makeFn<Fn extends (...args: never[]) => unknown, E = unknown>(
 	factory: (signal: AbortSignal) => Fn,
@@ -577,6 +827,7 @@ export const Op = {
 		 * Type guard that checks if an Op state is Idle.
 		 *
 		 * @see {@link Op.is.pending} to check if an Op is actively executing.
+		 * @see {@link Op.is.settled} to check if an Op has completed execution.
 		 *
 		 * @example
 		 * ```ts
@@ -591,6 +842,7 @@ export const Op = {
 		 * Type guard that checks if an Op state is Pending (actively executing).
 		 *
 		 * @see {@link Op.is.idle} to check if an Op is waiting to execute.
+		 * @see {@link Op.is.settled} to check if an Op has completed execution.
 		 *
 		 * @example
 		 * ```ts
@@ -628,6 +880,21 @@ export const Op = {
 		 * ```
 		 */
 		retrying: isRetrying,
+
+		/**
+		 * Type guard that checks if an Op state has settled into an outcome (Ok, Err, or Nil).
+		 *
+		 * @see {@link Op.is.pending} to check if an Op is actively executing.
+		 * @see {@link Op.is.idle} to check if an Op has not yet run.
+		 *
+		 * @example
+		 * ```ts
+		 * if (Op.is.settled(manager.state)) {
+		 *   console.log("Operation completed with outcome:", manager.state.kind);
+		 * }
+		 * ```
+		 */
+		settled: isSettled,
 	},
 
 	/**
@@ -705,213 +972,3 @@ export const Op = {
 	 */
 	Outcome: OpOutcome,
 };
-
-export namespace Op {
-	export type ToArgs<T> = NormalizeArgs<T>;
-	export type Outcome<E, A> = Ok<A> | Err<E> | Nil;
-	export type Ok<A> = WithKind<"OpOk"> & WithValue<A>;
-	export type Err<E> = WithKind<"OpErr"> & WithError<E>;
-	export type Nil = WithKind<"OpNil"> & { readonly reason: NilReason; };
-	export type NilReason = "aborted" | "dropped" | "replaced" | "evicted";
-	export type AbortedNil = Nil & { readonly reason: "aborted"; };
-	export type DroppedNil = Nil & { readonly reason: "dropped"; };
-	export type ReplacedNil = Nil & { readonly reason: "replaced"; };
-	export type EvictedNil = Nil & { readonly reason: "evicted"; };
-	export type State<E, A> = Idle | Pending | Queued | Retrying<E> | Outcome<E, A>;
-	export type Idle = WithKind<"Idle">;
-	export type Pending = WithKind<"Pending">;
-	export type Queued = WithKind<"Queued"> & { readonly position: number; };
-	export type Retrying<E> = WithKind<"Retrying"> & {
-		readonly attempt: number;
-		readonly lastError: E;
-		readonly nextRetryIn?: number;
-	};
-	export type Manager<Args extends readonly unknown[], E, A, S extends State<E, A>> = {
-		readonly state: S;
-		/**
-		 * Triggers execution of the operation with the given arguments.
-		 * Resolves with the settled `Op.Outcome` wrapped in a `Deferred`.
-		 *
-		 * Coordinate concurrent runs using `Deferred.all` or `Deferred.race`.
-		 *
-		 * @example
-		 * ```ts
-		 * const outcome = await manager.run("user_123");
-		 *
-		 * // Coordinate concurrent runs:
-		 * const [user, settings] = await Deferred.all([
-		 *   userManager.run("user_123"),
-		 *   settingsManager.run(),
-		 * ]);
-		 * ```
-		 */
-		run: (...args: Args) => Deferred<Exclude<S, Idle | Pending | Queued | Retrying<E>>>;
-		abort: () => void;
-		subscribe: (cb: (state: S) => void) => () => void;
-		reset: () => void;
-		poll: (options: { interval: Duration; }) => (...args: Args) => () => void;
-	};
-	export type KeyedManager<Args extends readonly unknown[], K, E, PerKeyS> = {
-		readonly state: ReadonlyMap<K, PerKeyS>;
-		/**
-		 * Triggers execution for the specific keyed item with the given arguments.
-		 * Resolves with the settled `Op.Outcome` wrapped in a `Deferred`.
-		 *
-		 * Coordinate concurrent runs across keys using `Deferred.all` or `Deferred.race`.
-		 *
-		 * @example
-		 * ```ts
-		 * const [item1, item2] = await Deferred.all([
-		 *   keyedManager.run("item_1"),
-		 *   keyedManager.run("item_2"),
-		 * ]);
-		 * ```
-		 */
-		run: (...args: Args) => Deferred<Exclude<PerKeyS, Pending | Retrying<E>>>;
-		abort: (key?: K) => void;
-		subscribe: (cb: (state: ReadonlyMap<K, PerKeyS>) => void) => () => void;
-		reset: () => void;
-		poll: (options: { interval: Duration; }) => (...args: Args) => () => void;
-	};
-	export type OnceState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | DroppedNil;
-	export type RetryableOnceState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Err<E> | AbortedNil | DroppedNil;
-	export type RestartableState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | ReplacedNil;
-	export type RetryableRestartableState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Err<E> | AbortedNil | ReplacedNil;
-	export type ExclusiveState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | DroppedNil;
-	export type RetryableExclusiveState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Err<E> | AbortedNil | DroppedNil;
-	export type QueueState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil;
-	export type RetryableQueueState<E, A> = Idle | Pending | Queued | Retrying<E> | Ok<A> | Err<E> | AbortedNil;
-	export type QueueDropState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil | DroppedNil;
-	export type RetryableQueueDropState<E, A> =
-		| Idle
-		| Pending
-		| Queued
-		| Retrying<E>
-		| Ok<A>
-		| Err<E>
-		| AbortedNil
-		| DroppedNil;
-	export type QueueReplaceState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil | EvictedNil;
-	export type RetryableQueueReplaceState<E, A> =
-		| Idle
-		| Pending
-		| Queued
-		| Retrying<E>
-		| Ok<A>
-		| Err<E>
-		| AbortedNil
-		| EvictedNil;
-	export type QueueDropAndReplaceState<E, A> =
-		| Idle
-		| Pending
-		| Queued
-		| Ok<A>
-		| Err<E>
-		| AbortedNil
-		| DroppedNil
-		| EvictedNil;
-	export type RetryableQueueDropAndReplaceState<E, A> =
-		| Idle
-		| Pending
-		| Queued
-		| Retrying<E>
-		| Ok<A>
-		| Err<E>
-		| AbortedNil
-		| DroppedNil
-		| EvictedNil;
-	export type BufferedState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil | EvictedNil;
-	export type RetryableBufferedState<E, A> =
-		| Idle
-		| Pending
-		| Queued
-		| Retrying<E>
-		| Ok<A>
-		| Err<E>
-		| AbortedNil
-		| EvictedNil;
-	export type DebouncedState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | EvictedNil;
-	export type RetryableDebouncedState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Err<E> | AbortedNil | EvictedNil;
-	export type ThrottledState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | DroppedNil;
-	export type RetryableThrottledState<E, A> = Idle | Pending | Retrying<E> | Ok<A> | Err<E> | AbortedNil | DroppedNil;
-	export type ThrottledTrailingState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | EvictedNil;
-	export type RetryableThrottledTrailingState<E, A> =
-		| Idle
-		| Pending
-		| Retrying<E>
-		| Ok<A>
-		| Err<E>
-		| AbortedNil
-		| EvictedNil;
-	export type ConcurrentQueueState<E, A> = Idle | Pending | Queued | Ok<A> | Err<E> | AbortedNil;
-	export type RetryableConcurrentQueueState<E, A> = Idle | Pending | Queued | Retrying<E> | Ok<A> | Err<E> | AbortedNil;
-	export type ConcurrentDropState<E, A> = Idle | Pending | Ok<A> | Err<E> | AbortedNil | DroppedNil;
-	export type RetryableConcurrentDropState<E, A> =
-		| Idle
-		| Pending
-		| Retrying<E>
-		| Ok<A>
-		| Err<E>
-		| AbortedNil
-		| DroppedNil;
-	export type KeyedExclusivePerKey<E, A> = Pending | Ok<A> | Err<E> | AbortedNil | DroppedNil;
-	export type KeyedRestartablePerKey<E, A> = Pending | Ok<A> | Err<E> | AbortedNil | ReplacedNil;
-
-	/**
-	 * Execution strategy for `Op.interpret`.
-	 */
-	export type Strategy =
-		| "once"
-		| "restartable"
-		| "exclusive"
-		| "queue"
-		| "buffered"
-		| "debounced"
-		| "throttled"
-		| "concurrent"
-		| "keyed";
-
-	/**
-	 * Overflow behavior when a queue or concurrency capacity is exceeded.
-	 */
-	export type Overflow = "queue" | "drop" | "replace-last";
-
-	/**
-	 * Concurrency policy per key for `strategy: "keyed"`.
-	 */
-	export type PerKey = "exclusive" | "restartable";
-
-	/**
-	 * Configuration options for operation retry policies in `Op.interpret`.
-	 *
-	 * @example
-	 * ```ts
-	 * const retry: Op.RetryOptions = {
-	 *   attempts: 3,
-	 *   backoff: Duration.seconds(1),
-	 * };
-	 * ```
-	 */
-	export type RetryOptions<E = unknown> = RetryOptionsInternal<E>;
-
-	/**
-	 * Configuration options for operation timeout deadlines in `Op.interpret`.
-	 *
-	 * @example
-	 * ```ts
-	 * const timeout: Op.TimeoutOptions<string> = {
-	 *   duration: Duration.seconds(5),
-	 *   onTimeout: () => "Request timed out",
-	 * };
-	 * ```
-	 */
-	export type TimeoutOptions<E = unknown> = TimeoutOptionsInternal<E>;
-
-	/**
-	 * Union of all valid option shapes accepted by `Op.interpret`.
-	 */
-	export type InterpretOptions<Args extends readonly unknown[] = readonly unknown[], E = unknown> = AllInterpretOptions<
-		Args,
-		E
-	>;
-}

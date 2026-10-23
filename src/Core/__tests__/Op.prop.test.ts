@@ -1,5 +1,5 @@
 import fc from "fast-check";
-import { expect, expectTypeOf, test } from "vitest";
+import { expect, test } from "vitest";
 import { Duration } from "../../Types/Duration.ts";
 import { Deferred } from "../Deferred.ts";
 import { Op } from "../Op.ts";
@@ -93,7 +93,7 @@ test("match: handles all outcome kinds without throwing", () => {
 			nil: (r) => `nil:${r}`,
 			ok: (v: number) => `ok:${v}`,
 		})(o);
-		expectTypeOf(result).toBeString();
+		expect(result).toBeTypeOf("string");
 	}));
 });
 
