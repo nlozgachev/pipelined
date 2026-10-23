@@ -1,0 +1,37 @@
+name: Verify
+
+on:
+  workflow_call:
+
+jobs:
+  all:
+    name: Verification Suite
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v5
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (oxlint)
+        run: pnpm lint
+
+      - name: Format (dprint)
+        run: pnpm format:check
+
+      - name: Typecheck (tsc)
+        run: pnpm typecheck
+
+      - name: Typecheck (TS 5.5)
+        run: pnpm typecheck:min
+
+      - name: Test types (.test-d.ts)
+        run: pnpm test:types
+
+      - name: Test runtime & coverage
+        run: pnpm test:coverage
+
+      - name: Upload coverage (Codecov)
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage/lcov.info
