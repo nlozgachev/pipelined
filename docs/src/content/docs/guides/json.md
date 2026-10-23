@@ -10,9 +10,9 @@ around runtime exceptions and untyped return values that undermine TypeScript pi
 1. **`JSON.parse` throws `SyntaxError` and returns `any`**: Passing a truncated payload or an HTML
    `502 Bad Gateway` error page to `JSON.parse` throws an unhandled `SyntaxError`. Even when parsing
    succeeds, its return type is `any`, which silently disables TypeScript type checking downstream.
-2. **`JSON.stringify` throws `TypeError` on `BigInt` and circular references**: If an object contains
-   a `bigint` field (such as a 64-bit database ID or cent balance) or a circular object reference,
-   `JSON.stringify` throws a runtime `TypeError` and crashes the request.
+2. **`JSON.stringify` throws `TypeError` on `BigInt` and circular references**: If an object
+   contains a `bigint` field (such as a 64-bit database ID or cent balance) or a circular object
+   reference, `JSON.stringify` throws a runtime `TypeError` and crashes the request.
 3. **`JSON.stringify` silently returns `undefined` on un-serializable inputs**: Passing `undefined`,
    a function, or a `Symbol` directly to `JSON.stringify` does not return a `string`—it returns
    `undefined`, which can corrupt storage writes or message queues expecting valid JSON text.
@@ -204,11 +204,11 @@ processChargeWebhook("{corrupted");
   `JSON.parse()` on malformed HTTP request bodies or corrupted cache entries throws runtime
   exceptions and returns untyped `any`. `Json.parse<T>` returns `Result<SyntaxError, T>` (defaulting
   `T` to `unknown`), turning syntax errors into explicit failure values.
-- **Resilient serialization without runtime crashes (`Json.stringify`)**: Serializing dynamic objects
-  to `localStorage`, message queues, or HTTP responses throws `TypeError` when objects contain
-  circular references or `BigInt` values, and silently returns `undefined` when given `undefined` or
-  functions. `Json.stringify` returns `Result<TypeError, string>`, guaranteeing that every `Ok`
-  contains a valid JSON string and every failure is captured as an `Err(TypeError)`.
+- **Resilient serialization without runtime crashes (`Json.stringify`)**: Serializing dynamic
+  objects to `localStorage`, message queues, or HTTP responses throws `TypeError` when objects
+  contain circular references or `BigInt` values, and silently returns `undefined` when given
+  `undefined` or functions. `Json.stringify` returns `Result<TypeError, string>`, guaranteeing that
+  every `Ok` contains a valid JSON string and every failure is captured as an `Err(TypeError)`.
 - **Linear pipeline composition**: Raw JSON text can be parsed, validated with `Result.chain`,
   transformed, and re-serialized inside a single `pipe` flow without `try/catch` blocks or mutable
   `let` variables.

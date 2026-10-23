@@ -201,9 +201,9 @@ const syncInventoryRunner = Op.interpret(syncInventoryOp, {
   the function expects seconds or milliseconds. Passing `5` instead of `5000` leads to premature
   timeout failures in production. `Duration` makes time units explicit (`Duration.seconds(5)`,
   `Duration.minutes(10)`).
-- **Safe duration arithmetic**: Calculating total timeout budgets or subtracting safety margins using
-  raw numbers risks mixing millisecond and second units. `Duration` provides unit-safe arithmetic
-  (`Duration.add`, `Duration.subtract`).
+- **Safe duration arithmetic**: Calculating total timeout budgets or subtracting safety margins
+  using raw numbers risks mixing millisecond and second units. `Duration` provides unit-safe
+  arithmetic (`Duration.add`, `Duration.subtract`).
 - **Declarative retry and backoff strategies (`RetryPolicy`)**: Expressing constant or exponential
   backoff with jitter and maximum delay caps via `RetryPolicy` eliminates manual exponentiation math
   and integrates directly with `Task.Result.retry` and `Op.interpret`.

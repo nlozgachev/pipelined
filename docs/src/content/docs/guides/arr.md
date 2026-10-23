@@ -3,8 +3,8 @@ title: Arr — Array Utilities
 description: Work with collections linearly, replacing data-first array method chains and unsafe undefined values with pipeline-ready, type-safe array helpers.
 ---
 
-JavaScript arrays feature a rich built-in set of methods, yet building structured data pipelines with
-native array operations exposes two major sources of bugs and boilerplate:
+JavaScript arrays feature a rich built-in set of methods, yet building structured data pipelines
+with native array operations exposes two major sources of bugs and boilerplate:
 
 1. **Prototype methods are data-first**: Because `.map()`, `.filter()`, and `.slice()` live on the
    array instance, combining them with standalone functions inside a pipeline requires wrapping
@@ -291,7 +291,8 @@ const transitions = pipe(statusStream, Arr.dedupeAdjacent());
 ```
 
 For immutable sorting, `Arr.sortBy` accepts a standard comparator function `(a, b) => number`, while
-`Arr.sortWith` integrates directly with composable `Ordering<A>` instances from `@nlozgachev/pipelined/core`:
+`Arr.sortWith` integrates directly with composable `Ordering<A>` instances from
+`@nlozgachev/pipelined/core`:
 
 ```ts
 import { Ordering } from "@nlozgachev/pipelined/core";

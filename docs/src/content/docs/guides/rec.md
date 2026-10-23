@@ -58,8 +58,7 @@ const serverTimeout = pipe(
 ); // 30000
 ```
 
-To inspect the size or emptiness of a record, use `Rec.size`, `Rec.is.empty`, and
-`Rec.is.nonEmpty`:
+To inspect the size or emptiness of a record, use `Rec.size`, `Rec.is.empty`, and `Rec.is.nonEmpty`:
 
 ```ts
 Rec.is.empty({});          // true

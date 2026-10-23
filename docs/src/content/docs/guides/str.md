@@ -14,8 +14,8 @@ pipelines introduces three recurring problems:
    on the string instance, mixing them with standalone validators or array combinators inside `pipe`
    forces you to wrap every step in an inline arrow function (`s => s.trim()`).
 2. **Unsafe numeric parsing**: Built-in functions like `Number.parseInt()` and `Number.parseFloat()`
-   return `NaN` when given malformed text, which silently propagates through calculations as a
-   valid `number` type.
+   return `NaN` when given malformed text, which silently propagates through calculations as a valid
+   `number` type.
 3. **Stateful regular expressions and UTF-16 length traps**: Global `/g` regular expressions mutate
    their internal `lastIndex` cursor between calls, causing intermittent match failures, while
    `.length` counts UTF-16 code units rather than visible characters, miscounting emojis and
@@ -89,8 +89,8 @@ const missingKey = Str.NonEmpty.from.string("");           // None
 
 ## Transforming Case and Cleaning Input
 
-Basic formatting operations are curried and data-last, allowing you to pass them directly to
-`pipe` or `Arr.map` without inline lambdas. Alongside `Str.toUpperCase` and `Str.toLowerCase`,
+Basic formatting operations are curried and data-last, allowing you to pass them directly to `pipe`
+or `Arr.map` without inline lambdas. Alongside `Str.toUpperCase` and `Str.toLowerCase`,
 `Str.capitalize` uppercases only the first character while `Str.uncapitalize` lowercases only the
 first character (useful when converting `PascalCase` identifiers to `camelCase`):
 

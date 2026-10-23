@@ -203,8 +203,8 @@ and `chain` as a tool for transformations that can themselves return `None`.
 ### Combining independent values with `apply`
 
 When you have a curried function and multiple independent `Maybe` values to feed into it,
-`Maybe.apply` applies each optional argument step-by-step. If all inputs are `Some`, the function
-is evaluated; if any input is `None`, the result is `None`:
+`Maybe.apply` applies each optional argument step-by-step. If all inputs are `Some`, the function is
+evaluated; if any input is `None`, the result is `None`:
 
 ```ts
 const buildConnectionUrl = (host: string) => (port: number) => (dbName: string) =>
@@ -480,8 +480,8 @@ immediately.
 
 ## Combining records: struct
 
-While `bind` is ideal for sequential steps where a later step depends on the output of a prior
-step, sometimes you have a set of independent `Maybe` values that you want to combine into a single
+While `bind` is ideal for sequential steps where a later step depends on the output of a prior step,
+sometimes you have a set of independent `Maybe` values that you want to combine into a single
 object. For this, you can use `Maybe.struct`.
 
 It combines a record of `Maybe` values into a single `Maybe` holding a record of success values. If

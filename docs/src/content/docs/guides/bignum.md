@@ -38,8 +38,9 @@ exceptions, and every arithmetic helper is curried for direct use in `pipe`.
 
 `BigNum` does not wrap `bigint` in a custom object or class; values remain native JavaScript
 `bigint` primitives (`100n`, `0n`, `-42n`) with zero memory overhead. `BigNum` provides the safe
-boundary converters (`BigNum.from.*`, `BigNum.to.*`), predicates (`BigNum.is.*`), curried arithmetic,
-and collection aggregations needed to manipulate `bigint` values cleanly inside functional pipelines.
+boundary converters (`BigNum.from.*`, `BigNum.to.*`), predicates (`BigNum.is.*`), curried
+arithmetic, and collection aggregations needed to manipulate `bigint` values cleanly inside
+functional pipelines.
 
 ---
 
@@ -179,8 +180,8 @@ BigNum.max([]);           // None
 ## Pipeline Composition
 
 Here is an end-to-end financial settlement pipeline that parses raw string line items (in cents),
-filters for positive charges, applies a minimum charge floor of `100n` cents (`$1.00`), sums the batch
-total, and computes an equal split across `recipientCount` payout accounts:
+filters for positive charges, applies a minimum charge floor of `100n` cents (`$1.00`), sums the
+batch total, and computes an equal split across `recipientCount` payout accounts:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";

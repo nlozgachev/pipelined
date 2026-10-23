@@ -18,8 +18,8 @@ event buses without manual callback management.
   they arrive.
 - **Event-Driven Sequence Matching**: Matching ordered or unordered multi-event sequences with
   optional steps and automatic reset rules.
-- **Typed Pub/Sub Messaging**: Strongly-typed payload schemas, multi-bus broadcasting, and
-  cross-bus event forwarding.
+- **Typed Pub/Sub Messaging**: Strongly-typed payload schemas, multi-bus broadcasting, and cross-bus
+  event forwarding.
 
 ---
 
@@ -95,8 +95,8 @@ EventBus.emit([authBus, analyticsBus], {
 ## Listening & Sequence Matching
 
 `EventBus.listen` registers subscribers on an event bus for a single message kind or a sequence of
-message kinds. Matching options control sequence ordering, strictness, and auto-resetting. Each
-call to `.reduce()`, `.tap()`, or `.collect()` registers an independent subscription with its own
+message kinds. Matching options control sequence ordering, strictness, and auto-resetting. Each call
+to `.reduce()`, `.tap()`, or `.collect()` registers an independent subscription with its own
 sequence tracking state and disposal function.
 
 ```ts

@@ -3,8 +3,8 @@ title: Num — Number Utilities
 description: Curried arithmetic, safe parsing, rounding, formatting, clamping, range generation, and array aggregations designed for pipelines.
 ---
 
-Working with numbers in standard JavaScript or TypeScript often leads to code cluttered with
-inline arrow functions, manual `Number.isNaN` checks, and silent runtime traps:
+Working with numbers in standard JavaScript or TypeScript often leads to code cluttered with inline
+arrow functions, manual `Number.isNaN` checks, and silent runtime traps:
 
 1. **Silent `NaN` and `Infinity` propagation**: Parsing an invalid string with `Number("abc")`
    produces `NaN`, and dividing `100 / 0` produces `Infinity`. Both values have the TypeScript type
@@ -13,7 +13,8 @@ inline arrow functions, manual `Number.isNaN` checks, and silent runtime traps:
    to `Infinity`, `Math.max(...items)` evaluates to `-Infinity`, and computing an average via
    `sum / items.length` produces `NaN` when `items` is empty.
 3. **Verbose inline math in pipelines**: Applying arithmetic, clamping bounds, or formatting
-   currencies inside a `pipe` requires repetitive inline functions like `n => Math.max(0, Math.min(100, n))`.
+   currencies inside a `pipe` requires repetitive inline functions like
+   `n => Math.max(0, Math.min(100, n))`.
 
 ```ts
 function parseSliderValue(rawInput: string | undefined): number {
@@ -169,9 +170,9 @@ const validQuantities = pipe(
 
 ## Generating Sequences
 
-To generate an inclusive sequence of numbers without manual `for` loops, `Num.range(from, to, step?)`
-builds a readonly array stepping by `step` (default `1`). If `from > to`, `step <= 0`, or any
-argument is non-finite, it safely returns an empty array `[]`:
+To generate an inclusive sequence of numbers without manual `for` loops,
+`Num.range(from, to, step?)` builds a readonly array stepping by `step` (default `1`). If
+`from > to`, `step <= 0`, or any argument is non-finite, it safely returns an empty array `[]`:
 
 ```ts
 Num.range(1, 5);     // [1, 2, 3, 4, 5]

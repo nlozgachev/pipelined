@@ -479,9 +479,9 @@ If any step fails, the entire pipeline short-circuits and propagates the failure
 
 ## Combining records: struct
 
-While `bind` is ideal for sequential steps where a later step depends on the output of a prior
-step, sometimes you have a set of independent `Result`s that you want to combine into a single
-object. For this, you can use `Result.struct`.
+While `bind` is ideal for sequential steps where a later step depends on the output of a prior step,
+sometimes you have a set of independent `Result`s that you want to combine into a single object. For
+this, you can use `Result.struct`.
 
 It combines a record of `Result`s into a single `Result` holding a record of success values. If any
 individual field is an `Err`, the entire struct short-circuits to that error immediately:

@@ -61,8 +61,8 @@ state = RemoteData.make.success(activeUser);
 
 ### Inspecting states with type guards: `is.*`
 
-When checking a specific lifecycle state in imperative code or UI conditionals, use the `RemoteData.is`
-type guards (`notAsked`, `loading`, `failure`, `success`):
+When checking a specific lifecycle state in imperative code or UI conditionals, use the
+`RemoteData.is` type guards (`notAsked`, `loading`, `failure`, `success`):
 
 ```ts
 if (RemoteData.is.notAsked(state)) {

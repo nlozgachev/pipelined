@@ -13,8 +13,8 @@ problems:
 
 1. **Mutation in place**: Calling `.set()` or `.delete()` mutates the underlying `Map` instance,
    creating shared-state bugs across components and breaking change detection in UI frameworks.
-2. **Data-first prototype methods**: Native `Map` has no `.map()` or `.filter()` methods, forcing you
-   to spread entries into arrays (`new Map([...map].filter(...))`) for every transformation.
+2. **Data-first prototype methods**: Native `Map` has no `.map()` or `.filter()` methods, forcing
+   you to spread entries into arrays (`new Map([...map].filter(...))`) for every transformation.
 3. **Unsafe `.get()` lookups**: Calling `map.get(key)` returns `V | undefined`, shifting the burden
    of null-checking onto every caller and conflating missing keys with keys whose value is
    `undefined`.
@@ -97,9 +97,8 @@ pipe(timeouts, Dict.lookup("billing")); // None
 ```
 
 When you only need to check whether a key exists without wrapping its value in a `Maybe`, use
-`Dict.has`. To inspect entry counts, emptiness, or extract arrays of keys, values, and entries,
-use `Dict.size`, `Dict.is.empty`, `Dict.is.nonEmpty`, `Dict.keys`, `Dict.values`, and
-`Dict.entries`:
+`Dict.has`. To inspect entry counts, emptiness, or extract arrays of keys, values, and entries, use
+`Dict.size`, `Dict.is.empty`, `Dict.is.nonEmpty`, `Dict.keys`, `Dict.values`, and `Dict.entries`:
 
 ```ts
 pipe(timeouts, Dict.has("webhook")); // true

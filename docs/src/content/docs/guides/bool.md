@@ -29,8 +29,8 @@ repeatedly:
 3. **Eager evaluation of expensive checks**: Passing `Bool.and(checkPermissions())` evaluates
    `checkPermissions()` immediately, even when the upstream boolean is already `false`.
 4. **Manual ternaries to enter `Maybe` or `Result`**: Turning a boolean validation check into a
-   `Maybe<A>` or `Result<E, A>` requires writing `isValid ? Result.make.ok(val) : Result.make.err(err)`
-   by hand.
+   `Maybe<A>` or `Result<E, A>` requires writing
+   `isValid ? Result.make.ok(val) : Result.make.err(err)` by hand.
 
 `Bool` solves these challenges by providing curried, **data-last** boolean algebra, lazy
 short-circuiting operators, exhaustive named-case matching, and direct conversion bridges to `Maybe`
@@ -177,7 +177,8 @@ Bool.to.string(false); // "false"
 ```
 
 When a boolean check gates access to a value or decides whether a pipeline succeeds or fails,
-`Bool.to.Maybe` and `Bool.to.Result` lift the boolean directly into a container using lazy callbacks:
+`Bool.to.Maybe` and `Bool.to.Result` lift the boolean directly into a container using lazy
+callbacks:
 
 ```ts
 import { Result } from "@nlozgachev/pipelined/core";
@@ -243,8 +244,8 @@ function authorizeRequest(ctx: RequestContext): Result<string, string> {
 - **Eliminating nested ternary chains**: Replaces `a ? (b ? c : d) : e` expressions with readable
   `Bool.and`, `Bool.or`, `Bool.xor`, and `Bool.match` combinators.
 - **Preventing JavaScript boolean parsing bugs**: Using standard `Boolean("false")` evaluates to
-  `true` in JavaScript. `Bool.from.string` and `Bool.from.number` strictly parse `"true"` / `"false"`
-  and `1` / `0` into `Maybe<boolean>`, returning `None` for unexpected inputs.
+  `true` in JavaScript. `Bool.from.string` and `Bool.from.number` strictly parse `"true"` /
+  `"false"` and `1` / `0` into `Maybe<boolean>`, returning `None` for unexpected inputs.
 - **Short-circuiting in pipelines without imperative `if` blocks**: `Bool.andLazy` and `Bool.orLazy`
   avoid executing secondary expensive checks unless the upstream boolean requires it.
 - **Lazy bridges to `Maybe` and `Result`**: `Bool.to.Maybe` and `Bool.to.Result` turn boolean
