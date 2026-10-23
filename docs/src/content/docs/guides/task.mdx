@@ -80,7 +80,7 @@ When a transformation itself returns another `Task`, we use `chain` to execute t
 ```ts
 const getSessionUserId = (): Task<string> => Task.make("user_abc");
 
-const fetchUserPreferences = (userId: string): Task<Preferences> =>
+const loadUserPreferences = (userId: string): Task<Preferences> =>
   Task.tryCatch(
     () => preferencesService.get(userId),
     { onError: () => DEFAULT_PREFERENCES },
@@ -88,10 +88,10 @@ const fetchUserPreferences = (userId: string): Task<Preferences> =>
 
 const userPrefs = pipe(
   getSessionUserId(),
-  Task.chain(fetchUserPreferences),
+  Task.chain(loadUserPreferences),
 ); // Task<Preferences>
 
-const prefs = await userPrefs(); // Fetches userId first, then fetches preferences
+const prefs = await userPrefs(); // Loads userId first, then loads preferences
 ```
 
 ---
@@ -107,7 +107,7 @@ Unlike raw Promises, which require manual coordination using `Promise.all` or `P
 ```ts
 const [config, user] = await Task.all([
   loadConfigTask,
-  fetchUserTask,
+  loadUserTask,
 ])();
 ```
 
@@ -116,10 +116,10 @@ The return type is structurally matched to your input: passing `[Task<Config>, T
 To prevent overwhelming sockets or triggering external rate limits, provide `{ concurrency }` to constrain how many tasks execute at any given moment:
 
 ```ts
-const fetchTasks = userIds.map((id) => fetchUserTask(id));
+const userTasks = userIds.map((id) => loadUserTask(id));
 
 // Executes at most 3 tasks concurrently using an internal worker pool:
-const users = await Task.all(fetchTasks, { concurrency: 3 })();
+const users = await Task.all(userTasks, { concurrency: 3 })();
 ```
 
 ### Raced execution with `race`
@@ -127,12 +127,12 @@ const users = await Task.all(fetchTasks, { concurrency: 3 })();
 `Task.race` starts multiple Tasks simultaneously and resolves with the outcome of whichever Task completes first, abandoning the remaining in-flight tasks:
 
 ```ts
-const fastestFetch = Task.race([
-  fetchFromPrimaryRegion,
-  fetchFromSecondaryRegion,
+const fastestSource = Task.race([
+  loadFromPrimaryRegion,
+  loadFromSecondaryRegion,
 ]);
 
-const data = await fastestFetch(); // Whichever region responds first
+const data = await fastestSource(); // Whichever region responds first
 ```
 
 ### Sequential queueing with `sequential`
@@ -170,7 +170,7 @@ const delayedGreeting = pipe(
 
 ```ts
 const { task: searchIndex, abort } = Task.abortable(
-  (signal) => fetchSearchResults(query, signal),
+  (signal) => searchLocalIndex(query, signal),
 );
 
 // If user types rapidly:
@@ -380,18 +380,18 @@ Because `Task` blueprints are lazy thunks, calling a task multiple times will re
 `Task.memoize` (as well as `Task.Result.memoize`, `Task.Maybe.memoize`, and `Task.Validation.memoize`) creates a memoized task that executes the operation at most once on the first call and caches the resolved result for all subsequent calls:
 
 ```ts
-const fetchToken = Task.memoize(
+const loadToken = Task.memoize(
   Task.tryCatch(
-    () => fetchAuthToken(),
+    () => readAuthToken(),
     { onError: () => "ANONYMOUS_TOKEN" },
   )
 );
 
-// First invocation triggers the network request:
-const token1 = await fetchToken();
+// First invocation triggers token resolution:
+const token1 = await loadToken();
 
-// Subsequent invocations return the cached result instantly without re-fetching:
-const token2 = await fetchToken();
+// Subsequent invocations return the cached result instantly without re-evaluating:
+const token2 = await loadToken();
 ```
 
 ### Task.Maybe
@@ -410,8 +410,8 @@ When an asynchronous operation resolves to `None` (representing an absent resour
 ```ts
 const loadConfig = (userId: string): Task.Maybe<Config> =>
   pipe(
-    fetchUserConfig(userId),
-    Task.Maybe.recover(() => fetchDefaultConfig())
+    loadUserConfig(userId),
+    Task.Maybe.recover(() => loadDefaultConfig())
   );
 ```
 

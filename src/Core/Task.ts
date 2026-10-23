@@ -58,6 +58,13 @@ import { Validation as CoreValidation } from "./Validation.ts";
  */
 export type Task<A> = (signal?: AbortSignal) => Deferred<A>;
 
+export namespace Task {
+	export type LabeledTask<L extends string, A> = Task<A> & { readonly label: L; };
+	export type Maybe<A> = Task<CoreMaybe<A>>;
+	export type Result<E, A> = Task<CoreResult<E, A>>;
+	export type Validation<E, A> = Task<CoreValidation<E, A>>;
+}
+
 // =============================================================================
 // Public Export
 // =============================================================================
@@ -683,14 +690,3 @@ export const Task = {
 	Result: TaskResult,
 	Validation: TaskValidation,
 };
-
-type _CoreMaybe<A> = CoreMaybe<A>;
-type _CoreResult<E, A> = CoreResult<E, A>;
-type _CoreValidation<E, A> = CoreValidation<E, A>;
-
-export namespace Task {
-	export type LabeledTask<L extends string, A> = Task<A> & { readonly label: L; };
-	export type Maybe<A> = Task<_CoreMaybe<A>>;
-	export type Result<E, A> = Task<_CoreResult<E, A>>;
-	export type Validation<E, A> = Task<_CoreValidation<E, A>>;
-}
