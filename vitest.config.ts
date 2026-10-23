@@ -10,11 +10,13 @@ export default defineConfig({
 			"#data/": `${r("src/Data")}/`,
 			"#types/": `${r("src/Types")}/`,
 			"#composition/": `${r("src/Composition")}/`,
+			"#test-utils": r("test-utils.ts"),
 		},
 	},
 	test: {
 		include: ["src/**/*.test.ts"],
 		benchmark: { include: ["src/**/__bench__/**/*.bench.ts"] },
+		typecheck: { include: ["src/**/*.test-d.ts"] },
 		coverage: {
 			provider: "v8",
 			reporter: ["lcov", "text", "html"],

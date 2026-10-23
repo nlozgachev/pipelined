@@ -74,6 +74,14 @@ const getMs = (duration: Duration): number => Duration.to.milliseconds(duration)
 const makeTask = <A>(value: A): Task<A> => () => Deferred.from.Promise(globalThis.Promise.resolve(value));
 const syncTask = <A>(fn: () => A): Task<A> => () => Deferred.from.Promise(globalThis.Promise.resolve(fn()));
 
+const setProperty = <T extends Record<string, unknown>>(target: T, key: string, value: unknown): void => {
+	if (key === "__proto__") {
+		Object.defineProperty(target, key, { value, enumerable: true, writable: true, configurable: true });
+	} else {
+		(target as Record<string, unknown>)[key] = value;
+	}
+};
+
 export const Task = {
 	/**
 	 * Creates a Task that immediately resolves to the given value.
@@ -113,11 +121,11 @@ export const Task = {
 	 * );
 	 * ```
 	 */
-	tryCatch: <A>(
-		fn: (signal?: AbortSignal) => globalThis.Promise<A>,
-		options: { onError: (error: unknown) => A; },
-	): Task<A> =>
-		fromPromise((signal) => globalThis.Promise.resolve().then(() => fn(signal)).catch((err) => options.onError(err))),
+	tryCatch: <A>(fn: (signal?: AbortSignal) => Thenable<A>, options: { onError: (error: unknown) => A; }): Task<A> =>
+		fromPromise((signal) =>
+			// oxlint-disable-next-line require-await
+			globalThis.Promise.resolve().then(async () => fn(signal)).catch((err) => options.onError(err))
+		),
 
 	/**
 	 * Transforms the value inside a Task.
@@ -199,7 +207,6 @@ export const Task = {
 	 * Runs multiple Tasks in parallel and collects their results.
 	 * An optional `concurrency` option limits the number of tasks executing at any given time.
 	 *
-	 * @see {@link Task.sequence} to run an array of Tasks concurrently.
 	 * @see {@link Task.sequential} to run an array of Tasks one after another in order.
 	 *
 	 * @example
@@ -211,7 +218,7 @@ export const Task = {
 	 * ```
 	 */
 	all: <T extends readonly Task<unknown>[]>(
-		tasks: T,
+		tasks: readonly [...T],
 		options?: { concurrency?: number; },
 	): Task<{ [K in keyof T]: T[K] extends Task<infer A> ? A : never; }> =>
 		fromPromise((signal) => {
@@ -435,33 +442,10 @@ export const Task = {
 	},
 
 	/**
-	 * Runs an array of Tasks concurrently and collects their results in an array.
-	 * Forward-propagates the call site's AbortSignal to all subtasks concurrently.
-	 *
-	 * @see {@link Task.sequential} to run an array of tasks one after another in order.
-	 * @see {@link Task.all} to run an array or tuple of tasks in parallel with optional concurrency limit.
-	 *
-	 * @example
-	 * ```ts
-	 * Task.sequence([loadConfig, detectLocale, loadTheme])();
-	 * // Deferred<[Config, string, Theme]>
-	 * ```
-	 */
-	sequence: <A>(tasks: ReadonlyArray<Task<A>>): Task<ReadonlyArray<A>> =>
-		fromPromise((signal) => {
-			const len = tasks.length;
-			const promises = new Array<Promise<A>>(len);
-			for (let i = 0; i < len; i++) {
-				promises[i] = toPromise(tasks[i], signal);
-			}
-			return Promise.all(promises);
-		}),
-
-	/**
-	 * Runs an array of Tasks one at a time in order, collecting all results.
+	 * Runs an array or tuple of Tasks one at a time in order, collecting all results.
 	 * Each Task starts only after the previous one resolves.
 	 *
-	 * @see {@link Task.sequence} to run an array of tasks concurrently.
+	 * @see {@link Task.all} to run an array or tuple of tasks in parallel.
 	 *
 	 * @example
 	 * ```ts
@@ -472,17 +456,20 @@ export const Task = {
 	 * // log = [1, 2, 3] — tasks ran in order
 	 * ```
 	 */
-	sequential: <A>(tasks: ReadonlyArray<Task<A>>): Task<ReadonlyArray<A>> =>
+	sequential: <T extends readonly Task<unknown>[]>(
+		tasks: readonly [...T],
+	): Task<{ [K in keyof T]: T[K] extends Task<infer A> ? A : never; }> =>
 		fromPromise(async (signal) => {
+			type Results = { [K in keyof T]: T[K] extends Task<infer A> ? A : never; };
 			const len = tasks.length;
-			const results: A[] = [];
+			const results: unknown[] = [];
 			for (let i = 0; i < len; i++) {
 				if (signal?.aborted) {
 					break;
 				}
 				results.push(await toPromise(tasks[i], signal));
 			}
-			return results;
+			return results as unknown as Results;
 		}),
 
 	/**
@@ -626,7 +613,11 @@ export const Task = {
 		<K extends string, A, B>(key: K, transform: (value: A) => Task<B>) => (task: Task<A>): Task<A & { [P in K]: B; }> =>
 			fromPromise((signal) =>
 				toPromise(task, signal).then((a) =>
-					toPromise(transform(a), signal).then((b) => ({ ...(a as any), [key]: b } as A & { [P in K]: B; }))
+					toPromise(transform(a), signal).then((b) => {
+						const accumulator = { ...(a as unknown as Record<string, unknown>) } as A & { [P in K]: B; };
+						setProperty(accumulator as Record<string, unknown>, key, b);
+						return accumulator;
+					})
 				)
 			),
 

@@ -72,7 +72,7 @@ test("chain: satisfies monad associativity", async () => {
 
 test("Result.map: satisfies functor identity law", async () => {
 	await fc.assert(fc.asyncProperty(fc.boolean(), arbValue, arbError, async (isOk, val, err) => {
-		const task = isOk ? Task.Result.make.ok<string, number>(val) : Task.Result.make.err<string, number>(err);
+		const task: Task.Result<string, number> = isOk ? Task.Result.make.ok(val) : Task.Result.make.err(err);
 		const mapped = Task.Result.map((x: number) => x)(task);
 
 		await expect(mapped()).resolves.toStrictEqual(await task());
@@ -84,7 +84,7 @@ test("Result.map: satisfies functor composition law", async () => {
 		fc.asyncProperty(fc.boolean(), arbValue, arbError, fc.integer(), fc.integer(), async (isOk, val, err, a, b) => {
 			const f = (x: number) => x + a;
 			const g = (x: number) => x * b;
-			const task = isOk ? Task.Result.make.ok<string, number>(val) : Task.Result.make.err<string, number>(err);
+			const task: Task.Result<string, number> = isOk ? Task.Result.make.ok(val) : Task.Result.make.err(err);
 
 			const lhs = await Task.Result.map(f)(Task.Result.map(g)(task))();
 			const rhs = await Task.Result.map((x: number) => f(g(x)))(task)();
@@ -106,7 +106,7 @@ test("Result.chain: satisfies monad left identity", async () => {
 
 test("Result.chain: satisfies monad right identity", async () => {
 	await fc.assert(fc.asyncProperty(fc.boolean(), arbValue, arbError, async (isOk, val, err) => {
-		const task = isOk ? Task.Result.make.ok<string, number>(val) : Task.Result.make.err<string, number>(err);
+		const task: Task.Result<string, number> = isOk ? Task.Result.make.ok(val) : Task.Result.make.err(err);
 		const chained = Task.Result.chain((v: number) => Task.Result.make.ok(v))(task);
 
 		await expect(chained()).resolves.toStrictEqual(await task());
@@ -115,7 +115,7 @@ test("Result.chain: satisfies monad right identity", async () => {
 
 test("Result.bimap: satisfies identity law", async () => {
 	await fc.assert(fc.asyncProperty(fc.boolean(), arbValue, arbError, async (isOk, val, err) => {
-		const task = isOk ? Task.Result.make.ok<string, number>(val) : Task.Result.make.err<string, number>(err);
+		const task: Task.Result<string, number> = isOk ? Task.Result.make.ok(val) : Task.Result.make.err(err);
 		const mapped = Task.Result.bimap((e: string) => e, (v: number) => v)(task);
 
 		await expect(mapped()).resolves.toStrictEqual(await task());
@@ -160,9 +160,9 @@ test("Maybe.chain: satisfies monad right identity", async () => {
 
 test("Validation.map: satisfies functor identity law", async () => {
 	await fc.assert(fc.asyncProperty(fc.boolean(), arbValue, arbError, async (isPassed, val, err) => {
-		const task = isPassed
-			? Task.Validation.make.passed<string, number>(val)
-			: Task.Validation.make.failed<string, number>(err);
+		const task: Task.Validation<string, number> = isPassed
+			? Task.Validation.make.passed(val)
+			: Task.Validation.make.failed(err);
 		const mapped = Task.Validation.map((x: number) => x)(task);
 
 		await expect(mapped()).resolves.toStrictEqual(await task());
@@ -171,8 +171,8 @@ test("Validation.map: satisfies functor identity law", async () => {
 
 test("Validation.apply: accumulates errors from both sides", async () => {
 	await fc.assert(fc.asyncProperty(arbError, arbError, async (err1, err2) => {
-		const fnTask = Task.Validation.make.failed<string, (n: number) => number>(err1);
-		const argTask = Task.Validation.make.failed<string, number>(err2);
+		const fnTask = Task.Validation.make.failed(err1);
+		const argTask = Task.Validation.make.failed(err2);
 		const combined = Task.Validation.apply(argTask)(fnTask);
 
 		const result = await combined();

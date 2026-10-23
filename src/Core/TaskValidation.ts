@@ -5,13 +5,20 @@ import { type Result } from "./Result.ts";
 import { Task } from "./Task.ts";
 import { type Validation, Validation as CoreValidation } from "./Validation.ts";
 
-const makePassed = <E = never, A = unknown>(value: A): Task.Validation<E, A> =>
-	Task.make(CoreValidation.make.passed(value));
+const makePassed = <A>(value: A): Task.Validation<never, A> => Task.make(CoreValidation.make.passed(value));
 
-const makeFailed = <E, A = never>(error: E): Task.Validation<E, A> => Task.make(CoreValidation.make.failed(error));
+const makeFailed = <E>(error: E): Task.Validation<E, never> => Task.make(CoreValidation.make.failed(error));
 
-const makeFailedAll = <E, A = never>(errors: NonEmptyArr<E>): Task.Validation<E, A> =>
+const makeFailedAll = <E>(errors: NonEmptyArr<E>): Task.Validation<E, never> =>
 	Task.make(CoreValidation.make.failedAll(errors));
+
+const setProperty = <T extends Record<string, unknown>>(target: T, key: string, value: unknown): void => {
+	if (key === "__proto__") {
+		Object.defineProperty(target, key, { value, enumerable: true, writable: true, configurable: true });
+	} else {
+		(target as Record<string, unknown>)[key] = value;
+	}
+};
 
 export const TaskValidation = {
 	make: {
@@ -152,7 +159,7 @@ export const TaskValidation = {
 		(signal) =>
 			Deferred.from.Promise(
 				// oxlint-disable-next-line require-await
-				globalThis.Promise.resolve().then(async () => fn(signal)).then(CoreValidation.make.passed<E, A>).catch((error) =>
+				globalThis.Promise.resolve().then(async () => fn(signal)).then(CoreValidation.make.passed).catch((error) =>
 					CoreValidation.make.failed<E>(options.onError(error))
 				),
 			),
@@ -191,7 +198,7 @@ export const TaskValidation = {
 	 * ```
 	 */
 	apply:
-		<E2, A>(arg: Task.Validation<E2, A>) =>
+		<E2 = never, A = unknown>(arg: Task.Validation<E2, A>) =>
 		<B, E1 = never>(task: Task.Validation<E1, (value: A) => B>): Task.Validation<E1 | E2, B> =>
 		(signal) =>
 			Deferred.from.Promise(
@@ -230,7 +237,7 @@ export const TaskValidation = {
 	 * ); // Task resolving to 0
 	 * ```
 	 */
-	getOrElse: <B>(fallback: () => B) => <E, A>(task: Task.Validation<E, A>): Task<A | B> =>
+	getOrElse: <B>(fallback: () => B) => <A, E = never>(task: Task.Validation<E, A>): Task<A | B> =>
 		Task.map(CoreValidation.getOrElse<B>(fallback))(task),
 
 	/**
@@ -267,7 +274,7 @@ export const TaskValidation = {
 	 */
 	recover:
 		<E1, E2, B>(fallback: (errors: NonEmptyArr<E1>) => Task.Validation<E2, B>) =>
-		<A>(task: Task.Validation<E1, A>): Task.Validation<E2, A | B> =>
+		<A = never>(task: Task.Validation<E1, A>): Task.Validation<E2, A | B> =>
 			Task.chain((validation: Validation<E1, A>) =>
 				CoreValidation.is.passed(validation) ? Task.make(validation as Validation<E2, A | B>) : fallback(validation.errors)
 			)(task as Task<Validation<E1, A>>),
@@ -294,7 +301,7 @@ export const TaskValidation = {
 			isBlocked: (errors: NonEmptyArr<E1>) => boolean,
 			fallback: (errors: NonEmptyArr<E1>) => Task.Validation<E2, B>,
 		) =>
-		<A>(task: Task.Validation<E1, A>): Task.Validation<E1 | E2, A | B> =>
+		<A = never>(task: Task.Validation<E1, A>): Task.Validation<E1 | E2, A | B> =>
 			Task.chain((validation: Validation<E1, A>) =>
 				CoreValidation.is.passed(validation)
 					? Task.make(validation as Validation<E1 | E2, A | B>)
@@ -317,7 +324,7 @@ export const TaskValidation = {
 	 * ```
 	 */
 	mapError: <E, F>(transform: (error: E) => F) => <A = never>(task: Task.Validation<E, A>): Task.Validation<F, A> =>
-		Task.map(CoreValidation.mapError<E, F, A>(transform))(task),
+		Task.map(CoreValidation.mapError<E, F>(transform))(task),
 
 	/**
 	 * Executes a side effect on the accumulated errors without changing the Task.Validation.
@@ -350,14 +357,19 @@ export const TaskValidation = {
 	 * ```
 	 */
 	struct:
-		<E, R extends Record<string, unknown>>(
-			fields: { [K in keyof R]: Task.Validation<E, R[K]>; },
-		): Task.Validation<E, R> =>
+		<T extends Record<string, Task.Validation<unknown, unknown>>>(
+			fields: T,
+		): Task.Validation<
+			T[keyof T] extends Task.Validation<infer E, unknown> ? E : never,
+			{ [K in keyof T]: T[K] extends Task.Validation<unknown, infer A> ? A : never; }
+		> =>
 		(signal) =>
 			Deferred.from.Promise((() => {
+				type E = T[keyof T] extends Task.Validation<infer Err, unknown> ? Err : never;
+				type R = { [K in keyof T]: T[K] extends Task.Validation<unknown, infer A> ? A : never; };
 				const keys = Object.keys(fields);
 				const len = keys.length;
-				const promises = new Array<Promise<Validation<E, unknown>>>(len);
+				const promises = new Array<Promise<Validation<unknown, unknown>>>(len);
 				for (let i = 0; i < len; i++) {
 					promises[i] = Deferred.to.Promise(fields[keys[i]](signal));
 				}
@@ -365,14 +377,18 @@ export const TaskValidation = {
 					const record = {} as R;
 					const errors: E[] = [];
 					for (let i = 0; i < len; i++) {
-						const res = results[i] as Validation<E, unknown>;
+						const res = results[i];
 						if (CoreValidation.is.passed(res)) {
-							record[keys[i] as keyof R] = res.value as R[keyof R];
+							setProperty(record as Record<string, unknown>, keys[i], res.value);
 						} else {
-							errors.push(...res.errors);
+							for (let j = 0; j < res.errors.length; j++) {
+								errors.push(res.errors[j] as E);
+							}
 						}
 					}
-					return isNonEmptyArr(errors) ? CoreValidation.make.failedAll(errors) : CoreValidation.make.passed(record);
+					return (isNonEmptyArr(errors)
+						? CoreValidation.make.failedAll(errors)
+						: CoreValidation.make.passed(record)) as Validation<E, R>;
 				});
 			})()),
 

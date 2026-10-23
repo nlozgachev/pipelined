@@ -6,8 +6,16 @@ import { type Maybe, Maybe as CoreMaybe } from "./Maybe.ts";
 import { type Result, Result as CoreResult } from "./Result.ts";
 import { Task } from "./Task.ts";
 
-const makeOk = <E = never, A = unknown>(value: A): Task.Result<E, A> => Task.make(CoreResult.make.ok(value));
-const makeErr = <E, A = never>(error: E): Task.Result<E, A> => Task.make(CoreResult.make.err(error));
+const makeOk = <A>(value: A): Task.Result<never, A> => Task.make(CoreResult.make.ok(value));
+const makeErr = <E>(error: E): Task.Result<E, never> => Task.make(CoreResult.make.err(error));
+
+const setProperty = <T extends Record<string, unknown>>(target: T, key: string, value: unknown): void => {
+	if (key === "__proto__") {
+		Object.defineProperty(target, key, { value, enumerable: true, writable: true, configurable: true });
+	} else {
+		(target as Record<string, unknown>)[key] = value;
+	}
+};
 
 const mapTaskResult = <A, B>(transform: (value: A) => B) => <E = never>(task: Task.Result<E, A>): Task.Result<E, B> =>
 	Task.map(CoreResult.map<A, B>(transform))(task);
@@ -206,7 +214,8 @@ export const TaskResult = {
 	 * ```
 	 */
 	recover:
-		<E1, E2, B>(fallback: (error: E1) => Task.Result<E2, B>) => <A>(task: Task.Result<E1, A>): Task.Result<E2, A | B> =>
+		<E1, E2, B>(fallback: (error: E1) => Task.Result<E2, B>) =>
+		<A = never>(task: Task.Result<E1, A>): Task.Result<E2, A | B> =>
 			Task.chain((result: Result<E1, A>) =>
 				CoreResult.is.err(result) ? fallback(result.error) : Task.make(result as Result<E2, A | B>)
 			)(task as Task<Result<E1, A>>),
@@ -230,7 +239,7 @@ export const TaskResult = {
 	 */
 	recoverUnless:
 		<E1, E2, B>(isBlocked: (error: E1) => boolean, fallback: (error: E1) => Task.Result<E2, B>) =>
-		<A>(task: Task.Result<E1, A>): Task.Result<E1 | E2, A | B> =>
+		<A = never>(task: Task.Result<E1, A>): Task.Result<E1 | E2, A | B> =>
 			Task.chain((result: Result<E1, A>) =>
 				CoreResult.is.err(result) && !isBlocked(result.error)
 					? fallback(result.error)
@@ -249,7 +258,7 @@ export const TaskResult = {
 	 * ); // Task resolving to 0
 	 * ```
 	 */
-	getOrElse: <B>(fallback: () => B) => <E, A>(task: Task.Result<E, A>): Task<A | B> =>
+	getOrElse: <B>(fallback: () => B) => <A, E = never>(task: Task.Result<E, A>): Task<A | B> =>
 		Task.map(CoreResult.getOrElse<B>(fallback))(task),
 
 	/**
@@ -302,7 +311,7 @@ export const TaskResult = {
 	 * ```
 	 */
 	apply:
-		<E2, A>(arg: Task.Result<E2, A>) =>
+		<E2 = never, A = unknown>(arg: Task.Result<E2, A>) =>
 		<B, E1 = never>(task: Task.Result<E1, (value: A) => B>): Task.Result<E1 | E2, B> =>
 		(signal) =>
 			Deferred.from.Promise(
@@ -337,8 +346,9 @@ export const TaskResult = {
 	 * pipe(Task.Result.make.ok(42), Task.Result.bindTo("value")); // Task.Result({ value: 42 })
 	 * ```
 	 */
-	bindTo: <K extends string>(key: K) => <E, A>(task: Task.Result<E, A>): Task.Result<E, { [P in K]: A; }> =>
-		mapTaskResult<A, { [P in K]: A; }>((value) => ({ [key]: value } as { [P in K]: A; }))(task),
+	bindTo:
+		<K extends string>(key: K) => <E = never, A = unknown>(task: Task.Result<E, A>): Task.Result<E, { [P in K]: A; }> =>
+			mapTaskResult<A, { [P in K]: A; }>((value) => ({ [key]: value } as { [P in K]: A; }))(task),
 
 	/**
 	 * Evaluates a new Task.Result using the current accumulator and attaches the output to a new key.
@@ -355,9 +365,11 @@ export const TaskResult = {
 		<K extends string, E2, A, B>(key: K, transform: (value: A) => Task.Result<E2, B>) =>
 		<E1 = never>(task: Task.Result<E1, A>): Task.Result<E1 | E2, A & { [P in K]: B; }> =>
 			chainTaskResult<E2, A, A & { [P in K]: B; }>((acc) =>
-				mapTaskResult<B, A & { [P in K]: B; }>((val) => ({ ...(acc as any), [key]: val } as A & { [P in K]: B; }))(
-					transform(acc),
-				)
+				mapTaskResult<B, A & { [P in K]: B; }>((val) => {
+					const accumulator = { ...(acc as unknown as Record<string, unknown>) } as A & { [P in K]: B; };
+					setProperty(accumulator as Record<string, unknown>, key, val);
+					return accumulator;
+				})(transform(acc))
 			)(task),
 
 	/**
@@ -374,12 +386,20 @@ export const TaskResult = {
 	 * ```
 	 */
 	struct:
-		<E, R extends Record<string, unknown>>(fields: { [K in keyof R]: Task.Result<E, R[K]>; }): Task.Result<E, R> =>
+		<T extends Record<string, Task.Result<unknown, unknown>>>(
+			fields: T,
+		): Task.Result<
+			T[keyof T] extends Task.Result<infer E, unknown> ? E : never,
+			{ [K in keyof T]: T[K] extends Task.Result<unknown, infer A> ? A : never; }
+		> =>
 		(signal) =>
 			Deferred.from.Promise((() => {
+				type E = T[keyof T] extends Task.Result<infer Err, unknown> ? Err : never;
+				type R = { [K in keyof T]: T[K] extends Task.Result<unknown, infer A> ? A : never; };
+				type StructResult = Result<E, R>;
 				const keys = Object.keys(fields);
 				const len = keys.length;
-				const promises = new Array<Promise<Result<E, unknown>>>(len);
+				const promises = new Array<Promise<Result<unknown, unknown>>>(len);
 				for (let i = 0; i < len; i++) {
 					promises[i] = Deferred.to.Promise(fields[keys[i]](signal));
 				}
@@ -388,11 +408,11 @@ export const TaskResult = {
 					for (let i = 0; i < len; i++) {
 						const res = results[i];
 						if (CoreResult.is.err(res)) {
-							return res;
+							return res as unknown as StructResult;
 						}
-						record[keys[i] as keyof R] = res.value as R[keyof R];
+						setProperty(record as Record<string, unknown>, keys[i], res.value);
 					}
-					return CoreResult.make.ok(record);
+					return CoreResult.make.ok(record) as StructResult;
 				});
 			})()),
 
@@ -538,18 +558,23 @@ export const TaskResult = {
 	 * // [Ok(val1), Err(err2), Ok(val3)]
 	 * ```
 	 */
-	allSettled: <E, A>(tasks: ReadonlyArray<Task.Result<E, A>>): Task<ReadonlyArray<Result<E, A>>> => (signal) =>
-		Deferred.from.Promise((() => {
-			const len = tasks.length;
-			const promises = new Array<Promise<Result<E, A>>>(len);
-			for (let i = 0; i < len; i++) {
-				promises[i] = Deferred.to.Promise(tasks[i](signal));
-			}
-			return Promise.all(promises);
-		})()),
+	allSettled:
+		<T extends readonly Task.Result<any, any>[]>(
+			tasks: readonly [...T],
+		): Task<{ [K in keyof T]: T[K] extends Task.Result<infer E, infer A> ? Result<E, A> : never; }> =>
+		(signal) =>
+			Deferred.from.Promise((() => {
+				type Results = { [K in keyof T]: T[K] extends Task.Result<infer E, infer A> ? Result<E, A> : never; };
+				const len = tasks.length;
+				const promises = new Array<Promise<Result<unknown, unknown>>>(len);
+				for (let i = 0; i < len; i++) {
+					promises[i] = Deferred.to.Promise(tasks[i](signal));
+				}
+				return Promise.all(promises) as Promise<Results>;
+			})()),
 
 	/**
-	 * Narrows the Ok value with a predicate. If the predicate returns false,
+	 * Narrows the Ok value with a predicate or type guard. If the predicate returns false,
 	 * converts the value to an Err using onFail.
 	 *
 	 * @example
@@ -561,10 +586,19 @@ export const TaskResult = {
 	 * ```
 	 */
 	ensure:
-		<A, E2>(predicate: (value: A) => boolean, onFail: (value: A) => E2) =>
+		(<A, E2>(predicate: (value: A) => boolean, onFail: (value: A) => E2) =>
 		<E1 = never>(task: Task.Result<E1, A>): Task.Result<E1 | E2, A> =>
 		(signal) =>
-			Deferred.from.Promise(Deferred.to.Promise(task(signal)).then(CoreResult.ensure<A, E2>(predicate, onFail))),
+			Deferred.from.Promise(Deferred.to.Promise(task(signal)).then(CoreResult.ensure<A, E2>(predicate, onFail)))) as {
+				<A, B extends A, E2>(
+					refinement: (value: A) => value is B,
+					onFail: (value: A) => E2,
+				): <E1 = never>(task: Task.Result<E1, A>) => Task.Result<E1 | E2, B>;
+				<A, E2>(
+					predicate: (value: A) => boolean,
+					onFail: (value: A) => E2,
+				): <E1 = never>(task: Task.Result<E1, A>) => Task.Result<E1 | E2, A>;
+			},
 
 	/**
 	 * Maps both the Err and Ok channels simultaneously.

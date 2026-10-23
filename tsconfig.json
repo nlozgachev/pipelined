@@ -9,6 +9,6 @@
 		"lib": ["ESNext", "DOM"],
 		"types": ["node"]
 	},
-	"include": ["src"],
+	"include": ["src", "test-utils.ts"],
 	"exclude": ["node_modules", "dist", "docs", "src/**/__bench__/**"]
 }

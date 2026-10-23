@@ -7,6 +7,14 @@ import { Task } from "./Task.ts";
 const makeSome = <A>(value: A): Task.Maybe<A> => Task.make(CoreMaybe.make.some(value));
 const makeNone = <A = never>(): Task.Maybe<A> => Task.make(CoreMaybe.make.none());
 
+const setProperty = <T extends Record<string, unknown>>(target: T, key: string, value: unknown): void => {
+	if (key === "__proto__") {
+		Object.defineProperty(target, key, { value, enumerable: true, writable: true, configurable: true });
+	} else {
+		(target as Record<string, unknown>)[key] = value;
+	}
+};
+
 const mapTaskMaybe = <A, B>(transform: (value: A) => B) => (task: Task.Maybe<A>): Task.Maybe<B> =>
 	Task.map(CoreMaybe.map(transform))(task);
 
@@ -221,8 +229,12 @@ export const TaskMaybe = {
 	 * ); // Task.Maybe resolving to None
 	 * ```
 	 */
-	filter: <A>(predicate: (value: A) => boolean) => (task: Task.Maybe<A>): Task.Maybe<A> =>
-		Task.map(CoreMaybe.filter(predicate))(task),
+	filter:
+		(<A>(predicate: (value: A) => boolean) => (task: Task.Maybe<A>): Task.Maybe<A> =>
+			Task.map(CoreMaybe.filter(predicate))(task)) as {
+				<A, B extends A>(refinement: (value: A) => value is B): (task: Task.Maybe<A>) => Task.Maybe<B>;
+				<A>(predicate: (value: A) => boolean): (task: Task.Maybe<A>) => Task.Maybe<A>;
+			},
 
 	/**
 	 * Executes a `Task.Maybe` with an optional signal, returning `Deferred<Maybe<A>>`.
@@ -281,9 +293,11 @@ export const TaskMaybe = {
 		<K extends string, A, B>(key: K, transform: (value: A) => Task.Maybe<B>) =>
 		(task: Task.Maybe<A>): Task.Maybe<A & { [P in K]: B; }> =>
 			chainTaskMaybe<A, A & { [P in K]: B; }>((acc) =>
-				mapTaskMaybe<B, A & { [P in K]: B; }>((val) => ({ ...(acc as any), [key]: val } as A & { [P in K]: B; }))(
-					transform(acc),
-				)
+				mapTaskMaybe<B, A & { [P in K]: B; }>((val) => {
+					const accumulator = { ...(acc as unknown as Record<string, unknown>) } as A & { [P in K]: B; };
+					setProperty(accumulator as Record<string, unknown>, key, val);
+					return accumulator;
+				})(transform(acc))
 			)(task),
 
 	/**
@@ -313,8 +327,12 @@ export const TaskMaybe = {
 	 * ```
 	 */
 	struct:
-		<R extends Record<string, unknown>>(fields: { [K in keyof R]: Task.Maybe<R[K]>; }): Task.Maybe<R> => (signal) =>
+		<T extends Record<string, Task.Maybe<unknown>>>(
+			fields: T,
+		): Task.Maybe<{ [K in keyof T]: T[K] extends Task.Maybe<infer A> ? A : never; }> =>
+		(signal) =>
 			Deferred.from.Promise((() => {
+				type R = { [K in keyof T]: T[K] extends Task.Maybe<infer A> ? A : never; };
 				const keys = Object.keys(fields);
 				const len = keys.length;
 				const promises = new Array<Promise<Maybe<unknown>>>(len);
@@ -328,7 +346,7 @@ export const TaskMaybe = {
 						if (CoreMaybe.is.none(res)) {
 							return res;
 						}
-						record[keys[i] as keyof R] = res.value as R[keyof R];
+						setProperty(record as Record<string, unknown>, keys[i], res.value);
 					}
 					return CoreMaybe.make.some(record);
 				});

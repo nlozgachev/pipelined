@@ -41,6 +41,14 @@ const makeNone = (): Maybe.None => _none;
 const isSome = <A>(maybe: Maybe<A>): maybe is Maybe.Some<A> => maybe.kind === "Some";
 const isNone = <A>(maybe: Maybe<A>): maybe is Maybe.None => maybe.kind === "None";
 
+const setProperty = <T extends Record<string, unknown>>(target: T, key: string, value: unknown): void => {
+	if (key === "__proto__") {
+		Object.defineProperty(target, key, { value, enumerable: true, writable: true, configurable: true });
+	} else {
+		(target as Record<string, unknown>)[key] = value;
+	}
+};
+
 // =============================================================================
 // Public Export
 // =============================================================================
@@ -427,7 +435,7 @@ export const Maybe = {
 	 * pipe(Maybe.make.some(42), Maybe.bindTo("value")); // Some({ value: 42 })
 	 * ```
 	 */
-	bindTo: <K extends string>(key: K) => <A>(maybe: Maybe<A>): Maybe<{ [P in K]: A; }> =>
+	bindTo: <K extends string>(key: K) => <A = unknown>(maybe: Maybe<A>): Maybe<{ [P in K]: A; }> =>
 		isSome(maybe) ? makeSome({ [key]: maybe.value } as { [P in K]: A; }) : maybe,
 
 	/**
@@ -448,9 +456,12 @@ export const Maybe = {
 				return maybe;
 			}
 			const res = transform(maybe.value);
-			return isSome(res)
-				? makeSome({ ...(maybe.value as unknown as Record<string, unknown>), [key]: res.value } as A & { [P in K]: B; })
-				: res;
+			if (!isSome(res)) {
+				return res;
+			}
+			const accumulator = { ...(maybe.value as unknown as Record<string, unknown>) } as A & { [P in K]: B; };
+			setProperty(accumulator as Record<string, unknown>, key, res.value);
+			return makeSome(accumulator);
 		},
 
 	/**
@@ -465,15 +476,17 @@ export const Maybe = {
 	 * }); // Some({ name: "Alice", age: 30 })
 	 * ```
 	 */
-	struct: <R extends Record<string, unknown>>(fields: { [K in keyof R]: Maybe<R[K]>; }): Maybe<R> => {
-		const result = {} as R;
+	struct: <T extends Record<string, Maybe<unknown>>>(
+		fields: T,
+	): Maybe<{ [K in keyof T]: T[K] extends Maybe<infer A> ? A : never; }> => {
+		const result = {} as { [K in keyof T]: T[K] extends Maybe<infer A> ? A : never; };
 		for (const key in fields) {
 			if (Object.hasOwn(fields, key)) {
 				const res = fields[key];
 				if (isNone(res)) {
 					return res;
 				}
-				result[key] = res.value;
+				setProperty(result as Record<string, unknown>, key, res.value);
 			}
 		}
 		return makeSome(result);

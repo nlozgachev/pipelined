@@ -2,7 +2,7 @@ import fc from "fast-check";
 import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Lens } from "../Lens.ts";
-import type { Maybe } from "../Maybe.ts";
+import { Maybe } from "../Maybe.ts";
 import { Optional } from "../Optional.ts";
 
 type Profile = { username: string; bio?: string; age: number | null; };
@@ -27,8 +27,9 @@ const bioOpt = Optional.from.property<Profile>()("bio");
 
 test("law: Get-Set (setting what was just extracted leaves structure unchanged when present)", () => {
 	fc.assert(fc.property(arbProfileWithBio, (profile) => {
-		const extracted = Optional.get(bioOpt)(profile) as Maybe.Some<string>;
-		expect(Optional.set(bioOpt)(extracted.value)(profile)).toStrictEqual(profile);
+		const extracted = Optional.get(bioOpt)(profile);
+		const bio = Maybe.getOrElse(() => "")(extracted);
+		expect(Optional.set(bioOpt)(bio)(profile)).toStrictEqual(profile);
 	}));
 });
 
@@ -60,9 +61,10 @@ test("modify: no-op when focus is absent", () => {
 test("modify: transforms present value matching set(f(get))", () => {
 	fc.assert(fc.property(arbProfileWithBio, fc.string(), (profile, prefix) => {
 		const transform = (s: string) => prefix + s;
-		const extracted = Optional.get(bioOpt)(profile) as Maybe.Some<string>;
+		const extracted = Optional.get(bioOpt)(profile);
+		const bio = Maybe.getOrElse(() => "")(extracted);
 		const modified = Optional.modify(bioOpt)(transform)(profile);
-		expect(modified).toStrictEqual(Optional.set(bioOpt)(transform(extracted.value))(profile));
+		expect(modified).toStrictEqual(Optional.set(bioOpt)(transform(bio))(profile));
 	}));
 });
 

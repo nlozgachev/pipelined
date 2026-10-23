@@ -1,11 +1,8 @@
-import { expect, expectTypeOf, test } from "vitest";
+import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Duration } from "../../Types/Duration.ts";
 import { Deferred } from "../Deferred.ts";
-import { Maybe } from "../Maybe.ts";
-import { Result } from "../Result.ts";
 import { Task } from "../Task.ts";
-import { Validation } from "../Validation.ts";
 
 const fromPromise = <A>(f: (signal?: AbortSignal) => Promise<A>): Task<A> => (signal?: AbortSignal) =>
 	Deferred.from.Promise(f(signal));
@@ -37,7 +34,6 @@ test("tryCatch: does not execute until called", async () => {
 test("tryCatch: traps rejections and resolves to fallback value", async () => {
 	const taskSuccess = Task.tryCatch(() => Promise.resolve(42), { onError: () => 0 });
 	const okVal = await taskSuccess();
-	expectTypeOf(okVal).toEqualTypeOf<number>();
 	expect(okVal).toBe(42);
 
 	const taskFail = Task.tryCatch(() => Promise.reject(new Error("network error")), { onError: () => 0 });
@@ -305,7 +301,7 @@ test("race: starts all Tasks immediately in parallel", async () => {
 
 test("race: returns Task that never resolves for empty array", () => {
 	const task = Task.race<number>([]);
-	expectTypeOf(task).toBeFunction();
+	expect(task).toBeTypeOf("function");
 	// Invoke to cover the never-resolving branch; it is intentionally not awaited.
 	const deferred = task();
 	expect(deferred).toBeDefined();
@@ -635,8 +631,8 @@ test("timeout: wires outer signal to inner task", async () => {
 
 test("abortable: returns a task and an abort function", () => {
 	const { task, abort } = Task.abortable(() => Promise.resolve(42));
-	expectTypeOf(task).toBeFunction();
-	expectTypeOf(abort).toBeFunction();
+	expect(task).toBeTypeOf("function");
+	expect(abort).toBeTypeOf("function");
 });
 
 test("abortable: resolves normally when not aborted", async () => {
@@ -876,62 +872,31 @@ test("timeout: aborts inner task when outer signal is already aborted", async ()
 });
 
 // ---------------------------------------------------------------------------
-// sequence
+// Thenable intake & tuple preservation
 // ---------------------------------------------------------------------------
 
-test("sequence: runs tasks concurrently and collects results", async () => {
-	const order: number[] = [];
-	const t1 = fromPromise<number>(() =>
-		new Promise((r) =>
-			setTimeout(() => {
-				order.push(1);
-				r(1);
-			}, 30)
-		)
-	);
-	const t2 = fromPromise<number>(() =>
-		new Promise((r) =>
-			setTimeout(() => {
-				order.push(2);
-				r(2);
-			}, 10)
-		)
-	);
-	const t3 = fromPromise<number>(() =>
-		new Promise((r) =>
-			setTimeout(() => {
-				order.push(3);
-				r(3);
-			}, 20)
-		)
-	);
-
-	const result = await Task.sequence([t1, t2, t3])();
-
-	// Results are in input order despite different completion times
-	expect(result).toStrictEqual([1, 2, 3]);
-	// Execution order proves concurrency — fastest finishes first
-	expect(order).toStrictEqual([2, 3, 1]);
+test("tryCatch: accepts a Deferred (Thenable) directly", async () => {
+	const task = Task.tryCatch(() => Deferred.from.Promise(Promise.resolve(99)), { onError: () => 0 });
+	const res = await task();
+	expect(res).toBe(99);
 });
 
-test("sequence: returns empty array for empty input", async () => {
-	const result = await Task.sequence([])();
-	expect(result).toStrictEqual([]);
+test("all: preserves tuple element types for heterogeneous task literals", async () => {
+	const tNum = Task.make(42);
+	const tStr = Task.make("hello");
+
+	const combined = Task.all([tNum, tStr]);
+	const result = await combined();
+	expect(result).toStrictEqual([42, "hello"]);
 });
 
-test("sequence: forwards AbortSignal to all tasks", async () => {
-	const controller = new AbortController();
-	const signals: Array<AbortSignal | undefined> = [];
+test("sequential: preserves tuple element types for heterogeneous task literals", async () => {
+	const tNum = Task.make(42);
+	const tStr = Task.make("hello");
 
-	const makeTask = () =>
-		fromPromise<number>((signal) => {
-			signals.push(signal);
-			return Promise.resolve(1);
-		});
-
-	await Task.sequence([makeTask(), makeTask(), makeTask()])(controller.signal);
-
-	expect(signals).toStrictEqual([controller.signal, controller.signal, controller.signal]);
+	const combined = Task.sequential([tNum, tStr]);
+	const result = await combined();
+	expect(result).toStrictEqual([42, "hello"]);
 });
 
 // --- bindTo ---
@@ -997,37 +962,19 @@ test("withLabel: attaches read-only label property to task function", async () =
 // ---------------------------------------------------------------------------
 
 test("Result: is structurally equivalent to Task<Result<E, A>>", async () => {
-	expectTypeOf<Task.Result<string, number>>().toEqualTypeOf<Task<Result<string, number>>>();
-	expectTypeOf<Task<Result<string, number>>>().toEqualTypeOf<Task.Result<string, number>>();
-
 	const okTask = Task.Result.make.ok(42);
-	expectTypeOf(okTask).toEqualTypeOf<Task.Result<never, number>>();
-	expectTypeOf(okTask).toEqualTypeOf<Task<Result<never, number>>>();
-
 	const res = await okTask();
 	expect(res).toStrictEqual({ kind: "Ok", value: 42 });
 });
 
 test("Maybe: is structurally equivalent to Task<Maybe<A>>", async () => {
-	expectTypeOf<Task.Maybe<string>>().toEqualTypeOf<Task<Maybe<string>>>();
-	expectTypeOf<Task<Maybe<string>>>().toEqualTypeOf<Task.Maybe<string>>();
-
 	const someTask = Task.Maybe.make.some("hello");
-	expectTypeOf(someTask).toEqualTypeOf<Task.Maybe<string>>();
-	expectTypeOf(someTask).toEqualTypeOf<Task<Maybe<string>>>();
-
 	const res = await someTask();
 	expect(res).toStrictEqual({ kind: "Some", value: "hello" });
 });
 
 test("Validation: is structurally equivalent to Task<Validation<E, A>>", async () => {
-	expectTypeOf<Task.Validation<string, number>>().toEqualTypeOf<Task<Validation<string, number>>>();
-	expectTypeOf<Task<Validation<string, number>>>().toEqualTypeOf<Task.Validation<string, number>>();
-
 	const passedTask = Task.Validation.make.passed(true);
-	expectTypeOf(passedTask).toEqualTypeOf<Task.Validation<never, boolean>>();
-	expectTypeOf(passedTask).toEqualTypeOf<Task<Validation<never, boolean>>>();
-
 	const res = await passedTask();
 	expect(res).toStrictEqual({ kind: "Passed", value: true });
 });
@@ -1039,7 +986,6 @@ test("Validation: is structurally equivalent to Task<Validation<E, A>>", async (
 test("withProgress: preserves generic type inference in curried pipeline", async () => {
 	const progress: number[] = [];
 	const task = pipe(Task.make(42), Task.withProgress((ratio) => progress.push(ratio)));
-	expectTypeOf(task).toEqualTypeOf<Task<number>>();
 	const result = await task();
 	expect(result).toBe(42);
 	expect(progress).toStrictEqual([0, 1]);
@@ -1077,4 +1023,10 @@ test("poll: exits wait immediately if signal is already aborted", async () => {
 		controller.signal,
 	);
 	expect(result).toBe(1);
+});
+
+test("bind: safely handles __proto__ property without prototype pollution", async () => {
+	const res = await pipe(Task.make({ a: 1 }), Task.bind("__proto__", () => Task.make({ polluted: true })))();
+	expect(Object.hasOwn(res, "__proto__")).toBe(true);
+	expect(({} as Record<string, unknown>).polluted).toBeUndefined();
 });

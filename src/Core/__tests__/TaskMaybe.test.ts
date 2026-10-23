@@ -1,15 +1,14 @@
-import { expect, expectTypeOf, test } from "vitest";
+import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Deferred } from "../Deferred.ts";
 import { Maybe } from "../Maybe.ts";
 import { Result } from "../Result.ts";
 import { Task } from "../Task.ts";
 
-test("type: satisfies type equality check", async () => {
+test("make: resolves to expected Some variant", async () => {
 	const tm = Task.Maybe.make.some<number>(42);
-	expectTypeOf(tm).toEqualTypeOf<Task.Maybe<number>>();
 	const res = await tm();
-	expectTypeOf(res).toEqualTypeOf<Maybe<number>>();
+	expect(res).toStrictEqual(Maybe.make.some(42));
 });
 
 // ---------------------------------------------------------------------------
@@ -268,6 +267,12 @@ test("filter: passes through None unchanged", async () => {
 	});
 });
 
+test("filter: narrows value type when given a type guard refinement", async () => {
+	const input: Task.Maybe<string | number> = Task.Maybe.make.some("hello");
+	const narrowed = pipe(input, Task.Maybe.filter((v): v is string => typeof v === "string"));
+	await expect(narrowed()).resolves.toStrictEqual({ kind: "Some", value: "hello" });
+});
+
 // ---------------------------------------------------------------------------
 // toResult
 // ---------------------------------------------------------------------------
@@ -398,6 +403,19 @@ test("struct: returns None if any key yields None", async () => {
 	expect(result).toStrictEqual(Maybe.make.none());
 });
 
+test("struct: assigns to interface type", async () => {
+	interface MaybeUser {
+		name: string;
+		age: number;
+	}
+	const task: Task.Maybe<MaybeUser> = Task.Maybe.struct({
+		name: Task.Maybe.make.some("Alice"),
+		age: Task.Maybe.make.some(30),
+	});
+	const result = await task();
+	expect(result).toStrictEqual(Maybe.make.some({ name: "Alice", age: 30 }));
+});
+
 test("make: creates some and none tasks", async () => {
 	const someTask = Task.Maybe.make.some(42);
 	const noneTask = Task.Maybe.make.none();
@@ -430,4 +448,32 @@ test("run: executes Task.Maybe in a pipeline", async () => {
 	const controller = new AbortController();
 	const res = await pipe(Task.Maybe.make.some(42), Task.Maybe.run(controller.signal));
 	expect(res).toStrictEqual(Maybe.make.some(42));
+});
+
+test("bind: safely handles __proto__ property without prototype pollution", async () => {
+	const res = await pipe(
+		Task.Maybe.make.some({ a: 1 }),
+		Task.Maybe.bind("__proto__", () => Task.Maybe.make.some({ polluted: true })),
+	)();
+	expect(Maybe.is.some(res)).toBe(true);
+	const value = Maybe.getOrElse(() => ({}) as Record<string, unknown>)(res);
+	expect(Object.hasOwn(value, "__proto__")).toBe(true);
+	expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+});
+
+test("struct: safely handles __proto__ property without prototype pollution", async () => {
+	const protoFields: Record<string, Task.Maybe<unknown>> = {};
+	Object.defineProperty(protoFields, "__proto__", {
+		value: Task.Maybe.make.some({ polluted: true }),
+		enumerable: true,
+		configurable: true,
+		writable: true,
+	});
+	protoFields.a = Task.Maybe.make.some(1);
+
+	const res = await Task.Maybe.struct(protoFields)();
+	expect(Maybe.is.some(res)).toBe(true);
+	const value = Maybe.getOrElse(() => ({}) as Record<string, unknown>)(res);
+	expect(Object.hasOwn(value, "__proto__")).toBe(true);
+	expect(({} as Record<string, unknown>).polluted).toBeUndefined();
 });

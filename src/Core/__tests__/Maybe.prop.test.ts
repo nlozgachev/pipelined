@@ -72,8 +72,7 @@ test("chain: short-circuits on None", () => {
 
 test("getOrElse: returns value on Some", () => {
 	fc.assert(fc.property(arbSome, (m) => {
-		const s = m as Maybe.Some<number>;
-		expect(Maybe.getOrElse(() => -1)(m)).toBe(s.value);
+		expect(Maybe.getOrElse(() => -1)(m)).toBe(m.value);
 	}));
 });
 

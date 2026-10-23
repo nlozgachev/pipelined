@@ -26,7 +26,8 @@
 		"#data": "./src/Data/index.ts",
 		"#types": "./src/Types/index.ts",
 		"#composition": "./src/Composition/index.ts",
-		"#internal": "./src/internal/index.ts"
+		"#internal": "./src/internal/index.ts",
+		"#test-utils": "./test-utils.ts"
 	},
 	"exports": {
 		"./composition": {
@@ -73,6 +74,7 @@
 	"scripts": {
 		"build": "tsdown",
 		"test": "vitest run",
+		"test:types": "vitest run --typecheck.only",
 		"test:coverage": "vitest run --coverage",
 		"bench": "vitest bench",
 		"size": "size-limit",
@@ -85,7 +87,7 @@
 		"format:check": "dprint check && dprint check --config dprint.md.json \"docs/**/*.md\" \"docs/**/*.mdx\" \"README.md\"",
 		"docs:dev": "pnpm --filter pipelined-docs dev",
 		"docs:build": "pnpm --filter pipelined-docs build",
-		"check": "pnpm typecheck && pnpm lint && pnpm format:check"
+		"check": "pnpm typecheck && pnpm test:types && pnpm lint && pnpm format:check"
 	},
 	"devDependencies": {
 		"@arethetypeswrong/core": "0.18.5",

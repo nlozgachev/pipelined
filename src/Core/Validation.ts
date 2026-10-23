@@ -35,10 +35,17 @@ import { type Result, Result as CoreResult } from "./Result.ts";
  */
 export type Validation<E, A> = Validation.Passed<A> | Validation.Failed<E>;
 
+export namespace Validation {
+	export type Passed<A> = WithKind<"Passed"> & WithValue<A>;
+	export type Failed<E> = WithKind<"Failed"> & WithErrors<E>;
+	export type KeyedErrors<T, E = unknown> = { readonly [K in keyof T]?: NonEmptyArr<E>; };
+	export type KeyedResult<T, E> = { readonly [K in keyof T]: Validation<E, T[K]>; };
+}
+
 // =============================================================================
 // Private Helpers & Variant Constructors
 // =============================================================================
-const makePassed = <E, A>(value: A): Validation<E, A> => ({ kind: "Passed", value });
+const makePassed = <A>(value: A): Validation.Passed<A> => ({ kind: "Passed", value });
 const makeFailed = <E>(error: E): Validation.Failed<E> => ({ kind: "Failed", errors: [error] });
 const makeFailedAll = <E>(errors: NonEmptyArr<E>): Validation.Failed<E> => ({ kind: "Failed", errors });
 
@@ -46,6 +53,14 @@ const isPassed = <E, A>(validation: Validation<E, A>): validation is Validation.
 	validation.kind === "Passed";
 const isFailed = <E, A>(validation: Validation<E, A>): validation is Validation.Failed<E> =>
 	validation.kind === "Failed";
+
+const setProperty = <T extends Record<string, unknown>>(target: T, key: string, value: unknown): void => {
+	if (key === "__proto__") {
+		Object.defineProperty(target, key, { value, enumerable: true, writable: true, configurable: true });
+	} else {
+		(target as Record<string, unknown>)[key] = value;
+	}
+};
 
 // =============================================================================
 // Combinators
@@ -65,14 +80,14 @@ function toResult<E1, E2, A>(
 	return isPassed(arg) ? CoreResult.make.ok(arg.value) : CoreResult.make.err(arg.errors);
 }
 
-function apply<E2, A>(
+function apply<E2 = never, A = unknown>(
 	arg: Validation<E2, A>,
 ): <B, E1 = never>(validation: Validation<E1, (value: A) => B>) => Validation<E1 | E2, B>;
 function apply<E1, E2, A, E3>(
 	arg: Validation<E2, A>,
 	options: { combineErrors: (e1: NonEmptyArr<E1>, e2: NonEmptyArr<E2>) => NonEmptyArr<E3>; },
 ): <B>(validation: Validation<E1, (value: A) => B>) => Validation<E3, B>;
-function apply<E2, A, E3 = never>(
+function apply<E2 = never, A = unknown, E3 = never>(
 	arg: Validation<E2, A>,
 	options?: { combineErrors?: (e1: NonEmptyArr<unknown>, e2: NonEmptyArr<E2>) => NonEmptyArr<E3>; },
 ): <B, E1 = never>(validation: Validation<E1, (value: A) => B>) => Validation<[E3] extends [never] ? E1 | E2 : E3, B> {
@@ -199,8 +214,15 @@ export const Validation = {
 		 * validateName("");      // Failed(["Name is required"])
 		 * ```
 		 */
-		Predicate: <E, A>(predicate: (value: A) => boolean, onFalse: (value: A) => E) => (value: A): Validation<E, A> =>
-			predicate(value) ? makePassed(value) : makeFailed(onFalse(value)),
+		Predicate:
+			(<A, B extends A, E>(predicate: (value: A) => boolean, onFalse: (value: A) => E) => (value: A): Validation<E, B> =>
+				predicate(value) ? makePassed(value as unknown as B) : makeFailed(onFalse(value))) as {
+					<A, B extends A, E>(
+						refinement: (value: A) => value is B,
+						onFalse: (value: A) => E,
+					): (value: A) => Validation<E, B>;
+					<A, E>(predicate: (value: A) => boolean, onFalse: (value: A) => E): (value: A) => Validation<E, A>;
+				},
 
 		/**
 		 * Creates a Validation from a nullable value.
@@ -258,7 +280,7 @@ export const Validation = {
 	 * pipe(Validation.make.failed("oops"), Validation.map(n => n * 2)); // Failed(["oops"])
 	 * ```
 	 */
-	map: <A, B>(transform: (value: A) => B) => <E>(validation: Validation<E, A>): Validation<E, B> =>
+	map: <A, B>(transform: (value: A) => B) => <E = never>(validation: Validation<E, A>): Validation<E, B> =>
 		isPassed(validation) ? makePassed(transform(validation.value)) : validation,
 
 	/**
@@ -271,7 +293,7 @@ export const Validation = {
 	 * pipe(Validation.make.failed("oops"), Validation.mapError(e => e.toUpperCase())); // Failed(["OOPS"])
 	 * ```
 	 */
-	mapError: <E, F, A>(transform: (error: E) => F) => (validation: Validation<E, A>): Validation<F, A> => {
+	mapError: <E, F>(transform: (error: E) => F) => <A = never>(validation: Validation<E, A>): Validation<F, A> => {
 		if (isFailed(validation)) {
 			const { errors } = validation;
 			const len = errors.length;
@@ -351,7 +373,7 @@ export const Validation = {
 	 * pipe(Validation.make.failed("oops"), Validation.getOrElse(() => null)); // null — typed as number | null
 	 * ```
 	 */
-	getOrElse: <B>(fallback: () => B) => <E, A>(validation: Validation<E, A>): A | B =>
+	getOrElse: <B>(fallback: () => B) => <A, E = never>(validation: Validation<E, A>): A | B =>
 		isPassed(validation) ? validation.value : fallback(),
 
 	/**
@@ -403,7 +425,7 @@ export const Validation = {
 	 */
 	recover:
 		<E1, E2, B>(fallback: (errors: NonEmptyArr<E1>) => Validation<E2, B>) =>
-		<A>(validation: Validation<E1, A>): Validation<E2, A | B> =>
+		<A = never>(validation: Validation<E1, A>): Validation<E2, A | B> =>
 			isPassed(validation) ? validation : fallback(validation.errors),
 
 	/**
@@ -422,7 +444,7 @@ export const Validation = {
 	 */
 	recoverUnless:
 		<E1, E2, B>(isBlocked: (error: E1) => boolean, fallback: (errors: NonEmptyArr<E1>) => Validation<E2, B>) =>
-		<A>(validation: Validation<E1, A>): Validation<E1 | E2, A | B> => {
+		<A = never>(validation: Validation<E1, A>): Validation<E1 | E2, A | B> => {
 			if (isFailed(validation)) {
 				const { errors } = validation;
 				const len = errors.length;
@@ -488,17 +510,24 @@ export const Validation = {
 	 * }); // Failed(["Name required", "Age must be >= 0"])
 	 * ```
 	 */
-	struct: <E, R extends Record<string, unknown>>(fields: { [K in keyof R]: Validation<E, R[K]>; }): Validation<E, R> => {
-		const record = {} as R;
-		const errors: E[] = [];
+	struct: <T extends Record<string, Validation<unknown, unknown>>>(
+		fields: T,
+	): Validation<
+		T[keyof T] extends Validation<infer E, unknown> ? E : never,
+		{ [K in keyof T]: T[K] extends Validation<unknown, infer A> ? A : never; }
+	> => {
+		type ErrUnion = T[keyof T] extends Validation<infer Err, unknown> ? Err : never;
+		type Out = { [K in keyof T]: T[K] extends Validation<unknown, infer Val> ? Val : never; };
+		const record = {} as Out;
+		const errors: ErrUnion[] = [];
 		for (const key in fields) {
 			if (Object.hasOwn(fields, key)) {
 				const val = fields[key];
 				if (isPassed(val)) {
-					record[key] = val.value;
+					setProperty(record as Record<string, unknown>, key, val.value);
 				} else {
 					for (let i = 0; i < val.errors.length; i++) {
-						errors.push(val.errors[i]);
+						errors.push(val.errors[i] as ErrUnion);
 					}
 				}
 			}
@@ -644,10 +673,3 @@ export const Validation = {
 		},
 	},
 };
-
-export namespace Validation {
-	export type Passed<A> = WithKind<"Passed"> & WithValue<A>;
-	export type Failed<E> = WithKind<"Failed"> & WithErrors<E>;
-	export type KeyedErrors<T, E = unknown> = { readonly [K in keyof T]?: NonEmptyArr<E>; };
-	export type KeyedResult<T, E> = { readonly [K in keyof T]: Validation<E, T[K]>; };
-}

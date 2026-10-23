@@ -82,8 +82,7 @@ test("chain: short-circuits on Error", () => {
 
 test("getOrElse: returns value on Ok", () => {
 	fc.assert(fc.property(arbOk, (r) => {
-		const o = r as Result.Ok<number>;
-		expect(Result.getOrElse(() => -1)(r)).toBe(o.value);
+		expect(Result.getOrElse(() => -1)(r)).toBe(r.value);
 	}));
 });
 
@@ -194,8 +193,7 @@ test("from.Predicate: always-false gives Err via onFalse", () => {
 
 test("to.Maybe: maps Ok to Some", () => {
 	fc.assert(fc.property(arbOk, (r) => {
-		const o = r as Result.Ok<number>;
-		expect(Result.to.Maybe(r)).toStrictEqual(Maybe.make.some(o.value));
+		expect(Result.to.Maybe(r)).toStrictEqual(Maybe.make.some(r.value));
 	}));
 });
 

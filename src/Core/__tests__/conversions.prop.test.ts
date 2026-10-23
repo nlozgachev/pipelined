@@ -15,8 +15,8 @@ const arbNone = fc.constant(Maybe.make.none());
 const arbOk = fc.integer().map(Result.make.ok);
 const arbErr = fc.string().map(Result.make.err);
 
-const arbValid = fc.integer().map((n) => Validation.make.passed<string, number>(n));
-const arbInvalid = fc.string().map((s): Validation<string, number> => Validation.make.failed(s));
+const arbValid = fc.integer().map(Validation.make.passed);
+const arbInvalid = fc.string().map(Validation.make.failed);
 
 // ---------------------------------------------------------------------------
 // Maybe <-> Result
@@ -36,9 +36,8 @@ test("to.Result: round-trip with Result.to.Maybe preserves None", () => {
 
 test("to.Maybe: round-trip with Maybe.to.Result preserves Ok value", () => {
 	fc.assert(fc.property(arbOk, (r) => {
-		const o = r as Result.Ok<number>;
 		const asResult = Maybe.to.Result(() => "missing")(Result.to.Maybe(r));
-		expect(asResult).toStrictEqual(Result.make.ok(o.value));
+		expect(asResult).toStrictEqual(Result.make.ok(r.value));
 	}));
 });
 

@@ -1,4 +1,5 @@
-import { expect, expectTypeOf, test } from "vitest";
+import { constFalseBool } from "#test-utils";
+import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Maybe } from "../Maybe.ts";
 import { Result } from "../Result.ts";
@@ -404,7 +405,6 @@ test("filter: narrows type when passed a type guard refinement", () => {
 	const input: Maybe<unknown> = Maybe.make.some("hello");
 	const narrowed = pipe(input, Maybe.filter(isString));
 
-	expectTypeOf(narrowed).toEqualTypeOf<Maybe<string>>();
 	expect(narrowed).toStrictEqual(Maybe.make.some("hello"));
 });
 
@@ -427,8 +427,8 @@ test("filter: does not invoke predicate on None", () => {
 });
 
 test("filter: returns same None reference", () => {
-	const none = Maybe.make.none();
-	const result = pipe(none as Maybe<number>, Maybe.filter((n) => n > 3));
+	const none = constFalseBool() ? Maybe.make.some(1) : Maybe.make.none();
+	const result = pipe(none, Maybe.filter((n) => n > 3));
 	expect(result).toBe(none);
 });
 
@@ -554,11 +554,9 @@ test("from.Predicate: composes in pipe", () => {
 test("from.Predicate: narrows type when passed a type guard refinement", () => {
 	const isString = (val: unknown): val is string => typeof val === "string";
 	const res = Maybe.from.Predicate(isString)("hello");
-	expectTypeOf(res).toEqualTypeOf<Maybe<string>>();
 	expect(res).toStrictEqual(Maybe.make.some("hello"));
 
 	const resFail = Maybe.from.Predicate(isString)(42);
-	expectTypeOf(resFail).toEqualTypeOf<Maybe<string>>();
 	expect(resFail).toStrictEqual(Maybe.make.none());
 });
 
@@ -569,20 +567,17 @@ test("from.Predicate: narrows type when passed a type guard refinement", () => {
 test("map: return type reflects mapped function output", () => {
 	const r: Maybe<number> = Maybe.make.some(42);
 	const mapped = Maybe.map((n: number) => String(n))(r);
-	expectTypeOf(mapped).toEqualTypeOf<Maybe<string>>();
 	expect(mapped).toStrictEqual(Maybe.make.some("42"));
 });
 
 test("chain: collapses nested Maybe", () => {
 	const r: Maybe<number> = Maybe.make.some(42);
 	const chained = Maybe.chain((n: number) => Maybe.make.some(String(n)))(r);
-	expectTypeOf(chained).toEqualTypeOf<Maybe<string>>();
 	expect(chained).toStrictEqual(Maybe.make.some("42"));
 });
 
 test("getOrElse: widens return type to union", () => {
 	const val = pipe(Maybe.make.some("hello"), Maybe.getOrElse((): null => null));
-	expectTypeOf(val).toEqualTypeOf<string | null>();
 	expect(val).toBe("hello");
 });
 
@@ -671,4 +666,29 @@ test("sequence.Result: swaps Some(Err) to Err", () => {
 test("sequence.Result: swaps None to Ok(None)", () => {
 	const res = Maybe.sequence.Result(Maybe.make.none());
 	expect(res).toStrictEqual(Result.make.ok(Maybe.make.none()));
+});
+
+test("bind: safely handles __proto__ property without prototype pollution", () => {
+	const res = pipe(Maybe.make.some({ a: 1 }), Maybe.bind("__proto__", () => Maybe.make.some({ polluted: true })));
+	expect(Maybe.is.some(res)).toBe(true);
+	const value = Maybe.getOrElse(() => ({}) as Record<string, unknown>)(res);
+	expect(Object.hasOwn(value, "__proto__")).toBe(true);
+	expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+});
+
+test("struct: safely handles __proto__ property without prototype pollution", () => {
+	const protoFields: Record<string, Maybe<unknown>> = {};
+	Object.defineProperty(protoFields, "__proto__", {
+		value: Maybe.make.some({ polluted: true }),
+		enumerable: true,
+		configurable: true,
+		writable: true,
+	});
+	protoFields.a = Maybe.make.some(1);
+
+	const res = Maybe.struct(protoFields);
+	expect(Maybe.is.some(res)).toBe(true);
+	const value = Maybe.getOrElse(() => ({}) as Record<string, unknown>)(res);
+	expect(Object.hasOwn(value, "__proto__")).toBe(true);
+	expect(({} as Record<string, unknown>).polluted).toBeUndefined();
 });

@@ -140,7 +140,7 @@ export const Result = {
 	 * pipe(Result.make.err("error"), Result.map(n => n * 2)); // Err("error")
 	 * ```
 	 */
-	map: <A, B>(transform: (value: A) => B) => <E>(result: Result<E, A>): Result<E, B> =>
+	map: <A, B>(transform: (value: A) => B) => <E = never>(result: Result<E, A>): Result<E, B> =>
 		isOk(result) ? makeOk(transform(result.value)) : result,
 
 	/**
@@ -153,7 +153,7 @@ export const Result = {
 	 * pipe(Result.make.err("oops"), Result.mapError(e => e.toUpperCase())); // Err("OOPS")
 	 * ```
 	 */
-	mapError: <E, F>(transform: (error: E) => F) => <A>(result: Result<E, A>): Result<F, A> =>
+	mapError: <E, F>(transform: (error: E) => F) => <A = never>(result: Result<E, A>): Result<F, A> =>
 		isErr(result) ? makeErr(transform(result.error)) : result,
 
 	/**
@@ -207,7 +207,8 @@ export const Result = {
 	 * pipe(Result.make.err("error"), Result.getOrElse(() => null)); // null — typed as number | null
 	 * ```
 	 */
-	getOrElse: <B>(fallback: () => B) => <E, A>(result: Result<E, A>): A | B => isOk(result) ? result.value : fallback(),
+	getOrElse: <B>(fallback: () => B) => <A, E = never>(result: Result<E, A>): A | B =>
+		isOk(result) ? result.value : fallback(),
 
 	/**
 	 * Executes a side effect on the success value without changing the Result.
@@ -331,8 +332,9 @@ export const Result = {
 	 * ); // Ok("default for not found")
 	 * ```
 	 */
-	recover: <E1, E2, B>(fallback: (error: E1) => Result<E2, B>) => <A>(result: Result<E1, A>): Result<E2, A | B> =>
-		isOk(result) ? result : fallback(result.error),
+	recover:
+		<E1, E2, B>(fallback: (error: E1) => Result<E2, B>) => <A = never>(result: Result<E1, A>): Result<E2, A | B> =>
+			isOk(result) ? result : fallback(result.error),
 
 	/**
 	 * Recovers from an error unless the predicate `isBlocked` returns true for that error.
@@ -350,7 +352,7 @@ export const Result = {
 	 */
 	recoverUnless:
 		<E1, E2, B>(isBlocked: (error: E1) => boolean, fallback: (error: E1) => Result<E2, B>) =>
-		<A>(result: Result<E1, A>): Result<E1 | E2, A | B> =>
+		<A = never>(result: Result<E1, A>): Result<E1 | E2, A | B> =>
 			isErr(result) && !isBlocked(result.error) ? fallback(result.error) : result,
 
 	// --- to ---
@@ -415,8 +417,10 @@ export const Result = {
 	 * ); // Ok(8)
 	 * ```
 	 */
-	apply: <E2, A>(arg: Result<E2, A>) => <E1, B>(result: Result<E1, (value: A) => B>): Result<E1 | E2, B> =>
-		isOk(result) && isOk(arg) ? makeOk(result.value(arg.value)) : (isErr(result) ? result : (arg as Result.Err<E2>)),
+	apply:
+		<E2 = never, A = unknown>(arg: Result<E2, A>) =>
+		<B, E1 = never>(result: Result<E1, (value: A) => B>): Result<E1 | E2, B> =>
+			isOk(result) && isOk(arg) ? makeOk(result.value(arg.value)) : (isErr(result) ? result : (arg as Result.Err<E2>)),
 
 	/**
 	 * Converts a Result value into an object containing a single property.
@@ -427,7 +431,7 @@ export const Result = {
 	 * pipe(Result.make.ok(42), Result.bindTo("value")); // Ok({ value: 42 })
 	 * ```
 	 */
-	bindTo: <K extends string>(key: K) => <E, A>(result: Result<E, A>): Result<E, { [P in K]: A; }> =>
+	bindTo: <K extends string>(key: K) => <E = never, A = unknown>(result: Result<E, A>): Result<E, { [P in K]: A; }> =>
 		isOk(result) ? makeOk({ [key]: result.value } as { [P in K]: A; }) : result,
 
 	/**
@@ -464,13 +468,22 @@ export const Result = {
 	 * }); // Ok({ name: "Alice", age: 30 })
 	 * ```
 	 */
-	struct: <E, R extends Record<string, unknown>>(fields: { [K in keyof R]: Result<E, R[K]>; }): Result<E, R> => {
-		const result = {} as R;
+	struct: <T extends Record<string, Result<unknown, unknown>>>(
+		fields: T,
+	): Result<
+		T[keyof T] extends Result<infer E, unknown> ? E : never,
+		{ [K in keyof T]: T[K] extends Result<unknown, infer A> ? A : never; }
+	> => {
+		type StructResult = Result<
+			T[keyof T] extends Result<infer E, unknown> ? E : never,
+			{ [K in keyof T]: T[K] extends Result<unknown, infer A> ? A : never; }
+		>;
+		const result = {} as { [K in keyof T]: T[K] extends Result<unknown, infer A> ? A : never; };
 		for (const key in fields) {
 			if (Object.hasOwn(fields, key)) {
 				const res = fields[key];
 				if (isErr(res)) {
-					return res;
+					return res as unknown as StructResult;
 				}
 				setProperty(result as Record<string, unknown>, key, res.value);
 			}

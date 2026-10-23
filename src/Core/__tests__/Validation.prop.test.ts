@@ -6,8 +6,8 @@ import { Validation } from "../Validation.ts";
 // Arbitraries
 // ---------------------------------------------------------------------------
 
-const arbValid = fc.integer().map((n) => Validation.make.passed<string, number>(n));
-const arbInvalid = fc.string().map((s): Validation<string, number> => Validation.make.failed(s));
+const arbValid = fc.integer().map(Validation.make.passed);
+const arbInvalid = fc.string().map(Validation.make.failed);
 const arbValidation = fc.oneof(arbValid, arbInvalid);
 
 // ---------------------------------------------------------------------------
@@ -41,7 +41,7 @@ test("map: identity on Invalid", () => {
 test("apply: satisfies applicative identity law", () => {
 	const id = (x: number) => x;
 	fc.assert(fc.property(arbValidation, (v) => {
-		const res = Validation.apply(v)(Validation.make.passed<string, typeof id>(id));
+		const res = Validation.apply(v)(Validation.make.passed(id));
 		expect(res).toStrictEqual(v);
 	}));
 });
@@ -49,39 +49,41 @@ test("apply: satisfies applicative identity law", () => {
 test("apply: satisfies applicative homomorphism law", () => {
 	fc.assert(fc.property(fc.integer(), fc.integer(), (x, c) => {
 		const f = (n: number) => n + c;
-		const lhs = Validation.apply(Validation.make.passed<string, number>(x))(Validation.make.passed<string, typeof f>(f));
-		const rhs = Validation.make.passed<string, number>(f(x));
+		const lhs = Validation.apply(Validation.make.passed(x))(Validation.make.passed(f));
+		const rhs = Validation.make.passed(f(x));
 		expect(lhs).toStrictEqual(rhs);
 	}));
 });
 
 test("apply: satisfies applicative interchange law", () => {
 	fc.assert(fc.property(fc.integer(), fc.integer(), (y, c) => {
-		const u = Validation.make.passed<string, (n: number) => number>((n) => n * c);
-		const lhs = Validation.apply(Validation.make.passed<string, number>(y))(u);
+		const u = Validation.make.passed((n: number) => n * c);
+		const lhs = Validation.apply(Validation.make.passed(y))(u);
 		const evalY = (f: (n: number) => number) => f(y);
-		const rhs = Validation.apply(u)(Validation.make.passed<string, typeof evalY>(evalY));
+		const rhs = Validation.apply(u)(Validation.make.passed(evalY));
 		expect(lhs).toStrictEqual(rhs);
 	}));
 });
 
 test("apply: combines Valid function and Valid argument", () => {
 	fc.assert(fc.property(fc.integer(), fc.integer(), (n, delta) => {
-		const vf = Validation.make.passed<string, (x: number) => number>((x: number) => x + delta);
-		const va = Validation.make.passed<string, number>(n);
+		const vf = Validation.make.passed((x: number) => x + delta);
+		const va = Validation.make.passed(n);
 		expect(Validation.apply(va)(vf)).toStrictEqual(Validation.make.passed(n + delta));
 	}));
 });
 
 test("apply: accumulates errors from both Invalid sides", () => {
 	fc.assert(fc.property(fc.string(), fc.string(), (e1, e2) => {
-		const vf: Validation<string, (x: number) => number> = Validation.make.failed(e1);
-		const va: Validation<string, number> = Validation.make.failed(e2);
+		const vf = Validation.make.failed(e1);
+		const va = Validation.make.failed(e2);
 		const result = Validation.apply(va)(vf);
 		expect(Validation.is.failed(result)).toBe(true);
-		const invalid = result as unknown as { errors: string[]; };
-		expect(invalid.errors).toContain(e1);
-		expect(invalid.errors).toContain(e2);
+		const errors = Validation.match({ passed: (): readonly unknown[] => [], failed: (errs): readonly unknown[] => errs })(
+			result,
+		);
+		expect(errors).toContain(e1);
+		expect(errors).toContain(e2);
 	}));
 });
 
@@ -91,8 +93,7 @@ test("apply: accumulates errors from both Invalid sides", () => {
 
 test("getOrElse: returns value on Valid", () => {
 	fc.assert(fc.property(arbValid, (v) => {
-		const vv = v as Validation.Passed<number>;
-		expect(Validation.getOrElse(() => -1)(v)).toBe(vv.value);
+		expect(Validation.getOrElse(() => -1)(v)).toBe(v.value);
 	}));
 });
 
@@ -167,18 +168,15 @@ test("from.Predicate: always-false gives Invalid via onFalse", () => {
 
 test("struct: combines Valid instances into Valid record", () => {
 	fc.assert(fc.property(fc.integer(), fc.string(), (n, s) => {
-		expect(
-			Validation.struct({ n: Validation.make.passed<string, number>(n), s: Validation.make.passed<string, string>(s) }),
-		).toStrictEqual(Validation.make.passed({ n, s }));
+		expect(Validation.struct({ n: Validation.make.passed(n), s: Validation.make.passed(s) })).toStrictEqual(
+			Validation.make.passed({ n, s }),
+		);
 	}));
 });
 
 test("struct: accumulates errors when Invalid instances provided", () => {
 	fc.assert(fc.property(fc.string(), fc.string(), (e1, e2) => {
-		const result = Validation.struct({
-			a: Validation.make.failed(e1) as Validation<string, number>,
-			b: Validation.make.failed(e2) as Validation<string, string>,
-		});
+		const result = Validation.struct({ a: Validation.make.failed(e1), b: Validation.make.failed(e2) });
 		expect(Validation.is.failed(result)).toBe(true);
 		const invalid = result as unknown as { errors: string[]; };
 		expect(invalid.errors).toHaveLength(2);
