@@ -1,0 +1,34 @@
+name: Feature Request
+description: Propose a new feature, API addition, or ergonomics improvement.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please describe the concrete developer workflow or problem in everyday TypeScript code you are trying to solve.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What concrete developer workflow, async coordination, or error handling problem is awkward, verbose, or unsafe today?
+      placeholder: "When coordinating concurrent async operations or managing state transitions, I currently have to..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-api
+    attributes:
+      label: Proposed API & Usage Example
+      description: What should the proposed API look like and how would developers use it?
+      placeholder: |
+        ```ts
+        // Show how the proposed API is defined, called, or consumed
+        ```
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Existing Workarounds
+      description: How are you solving this today using existing `pipelined` APIs or standard TypeScript, and why is it insufficient?
+    validations:
+      required: false

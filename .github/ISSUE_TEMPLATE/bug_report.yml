@@ -1,0 +1,49 @@
+name: Bug Report
+description: Report a runtime defect, incorrect type inference, or compiler error.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please provide a clear description and a minimal self-contained code snippet reproducing the issue.
+  - type: input
+    id: version
+    attributes:
+      label: Pipelined Version
+      placeholder: e.g. 0.82.0
+    validations:
+      required: true
+  - type: input
+    id: ts-version
+    attributes:
+      label: TypeScript & Node Version
+      placeholder: e.g. TypeScript 5.8, Node 24.19
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal Reproduction Code
+      description: Provide a minimal, self-contained snippet reproducing the issue (using pipe and combinators).
+      placeholder: |
+        import { pipe } from "@nlozgachev/pipelined/composition";
+        import { Result } from "@nlozgachev/pipelined/core";
+
+        // code reproducing the unexpected type or runtime behavior
+      render: typescript
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect TypeScript or the runtime to do?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened (compiler error message, runtime throw, or type collapse to `unknown`)?
+    validations:
+      required: true

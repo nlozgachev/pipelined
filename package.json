@@ -83,8 +83,8 @@
 		"typecheck:min": "pnpm dlx --package typescript@5.5 tsc --noEmit --skipLibCheck",
 		"publish:npm": "pnpm build && npm publish --access public",
 		"lint": "oxlint src/",
-		"format": "dprint fmt && dprint fmt --config dprint.md.json \"docs/**/*.md\" \"docs/**/*.mdx\" \"README.md\"",
-		"format:check": "dprint check && dprint check --config dprint.md.json \"docs/**/*.md\" \"docs/**/*.mdx\" \"README.md\"",
+		"format": "dprint fmt && dprint fmt --config dprint.md.json \"docs/**/*.md\" \"docs/**/*.mdx\" \"README.md\" \"CODE_OF_CONDUCT.md\" \"CONTRIBUTING.md\" \".github/**/*.md\"",
+		"format:check": "dprint check && dprint check --config dprint.md.json \"docs/**/*.md\" \"docs/**/*.mdx\" \"README.md\" \"CODE_OF_CONDUCT.md\" \"CONTRIBUTING.md\" \".github/**/*.md\"",
 		"docs:dev": "pnpm --filter pipelined-docs dev",
 		"docs:build": "pnpm --filter pipelined-docs build",
 		"check": "pnpm typecheck && pnpm test:types && pnpm lint && pnpm format:check"
