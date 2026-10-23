@@ -18,7 +18,40 @@ test("make: infers EventBus<S> from schema type and accepts valid options", () =
 	expectTypeOf(namedBus).toEqualTypeOf<EventBus<TestSchema>>();
 
 	// @ts-expect-error — schema must be a Record<string, unknown>
-	EventBus.make<string>();
+	expectTypeOf(EventBus.make<string>).toBeFunction();
+
+	// @ts-expect-error — name option must be a string
+	expectTypeOf(EventBus.make<TestSchema>({ name: 123 })).toBeObject();
+
+	// @ts-expect-error — onError handler parameter cannot be restricted to number
+	expectTypeOf(EventBus.make<TestSchema>({ onError: (_err: number) => {} })).toBeObject();
+});
+
+test("nominal brand: prevents unbranded plain objects from satisfying EventBus", () => {
+	// @ts-expect-error — plain object is missing phantom event bus brand symbol
+	const _fakeBus: EventBus<TestSchema> = {};
+	expectTypeOf(_fakeBus).toBeObject();
+});
+
+test("Message: extracts discriminated union across schema or narrow event subset", () => {
+	type AllMessages = EventBus.Message<TestSchema>;
+	expectTypeOf<AllMessages>().toEqualTypeOf<
+		{ kind: "A"; value: { value: number; }; } | { kind: "B"; value: { text: string; }; } | {
+			kind: "C";
+			value: { flag: boolean; };
+		} | { kind: "ResetEvent"; value: { reason: string; }; }
+	>();
+
+	type SingleMessage = EventBus.Message<TestSchema, "A">;
+	expectTypeOf<SingleMessage>().toEqualTypeOf<{ kind: "A"; value: { value: number; }; }>();
+
+	type SubsetMessages = EventBus.Message<TestSchema, "A" | "B">;
+	expectTypeOf<SubsetMessages>().toEqualTypeOf<
+		{ kind: "A"; value: { value: number; }; } | { kind: "B"; value: { text: string; }; }
+	>();
+
+	// @ts-expect-error — nonexistent event key in Message subset
+	type _Invalid = EventBus.Message<TestSchema, "NONEXISTENT">;
 });
 
 test("emit: validates message kind and payload matching schema", () => {
@@ -33,13 +66,13 @@ test("emit: validates message kind and payload matching schema", () => {
 	EventBus.emit([bus, bus2], { kind: "B", value: { text: "broadcast" } });
 
 	// @ts-expect-error — unknown event kind
-	EventBus.emit(bus, { kind: "UNKNOWN", value: {} });
+	expectTypeOf(EventBus.emit(bus, { kind: "UNKNOWN", value: {} })).toBeVoid();
 
 	// @ts-expect-error — wrong payload type for event kind "A"
-	EventBus.emit(bus, { kind: "A", value: { value: "not-a-number" } });
+	expectTypeOf(EventBus.emit(bus, { kind: "A", value: { value: "not-a-number" } })).toBeVoid();
 
 	// @ts-expect-error — missing payload property
-	EventBus.emit(bus, { kind: "B", value: {} });
+	expectTypeOf(EventBus.emit(bus, { kind: "B", value: {} })).toBeVoid();
 });
 
 test("listen: single event listener narrows message kind and payload", () => {
@@ -66,7 +99,7 @@ test("listen: single event listener narrows message kind and payload", () => {
 	});
 
 	// @ts-expect-error — listening to nonexistent event kind
-	EventBus.listen(bus, "NONEXISTENT");
+	expectTypeOf(EventBus.listen(bus, "NONEXISTENT")).toBeObject();
 });
 
 test("listen: multiple events array narrows message kind and union payload", () => {
@@ -113,11 +146,19 @@ test("listen: sequence options with optional steps types skipped events as undef
 		>();
 	});
 
+	// Multiple optional steps in sequence
+	EventBus.listen(bus, ["A", "B", "C"], { ordered: true, optional: ["B", "C"] }).collect((payloads) => {
+		expectTypeOf(payloads).toEqualTypeOf<EventBus.CollectedPayloads<TestSchema, "A" | "B" | "C", "B" | "C">>();
+		expectTypeOf(payloads.A).toEqualTypeOf<{ value: number; }>();
+		expectTypeOf(payloads.B).toEqualTypeOf<{ text: string; } | undefined>();
+		expectTypeOf(payloads.C).toEqualTypeOf<{ flag: boolean; } | undefined>();
+	});
+
 	// @ts-expect-error — optional event must be a valid key in schema
-	EventBus.listen(bus, ["A", "C"], { optional: ["NONEXISTENT"] });
+	expectTypeOf(EventBus.listen(bus, ["A", "C"], { optional: ["NONEXISTENT"] })).toBeObject();
 
 	// @ts-expect-error — reset event must be a valid key in schema
-	EventBus.listen(bus, ["A"], { reset: "INVALID_RESET" });
+	expectTypeOf(EventBus.listen(bus, ["A"], { reset: "INVALID_RESET" })).toBeObject();
 
 	// Array of reset events
 	EventBus.listen(bus, ["A", "B"], { ordered: true, strict: true, reset: ["ResetEvent", "C"] }).collect((payloads) => {
@@ -127,7 +168,7 @@ test("listen: sequence options with optional steps types skipped events as undef
 	});
 
 	// @ts-expect-error — reset array contains invalid event key
-	EventBus.listen(bus, ["A", "B"], { reset: ["NONEXISTENT"] });
+	expectTypeOf(EventBus.listen(bus, ["A", "B"], { reset: ["NONEXISTENT"] })).toBeObject();
 });
 
 type AuthSchema = { userLoggedIn: { userId: string; }; sessionExpired: { at: number; }; };
@@ -162,18 +203,18 @@ test("forward: validates compatibility between bus schemas and filters", () => {
 	expectTypeOf(stopSubset).toEqualTypeOf<() => void>();
 
 	// @ts-expect-error — target bus has incompatible schema without only
-	EventBus.forward({ from: busA, to: busIncompatible });
+	expectTypeOf(EventBus.forward({ from: busA, to: busIncompatible })).toBeFunction();
 
 	// @ts-expect-error — broad bus cannot forward to specific bus without `only` (missing B, C, ResetEvent)
-	EventBus.forward({ from: busA, to: specificBus });
+	expectTypeOf(EventBus.forward({ from: busA, to: specificBus })).toBeFunction();
 
 	// @ts-expect-error — only filter contains event key not present in target schema
-	EventBus.forward({ from: authBus, to: analyticsBus, only: ["sessionExpired"] });
+	expectTypeOf(EventBus.forward({ from: authBus, to: analyticsBus, only: ["sessionExpired"] })).toBeFunction();
 
 	// @ts-expect-error — only filter contains event key not present in source schema
-	EventBus.forward({ from: authBus, to: analyticsBus, only: ["pageView"] });
+	expectTypeOf(EventBus.forward({ from: authBus, to: analyticsBus, only: ["pageView"] })).toBeFunction();
 
 	const incompatiblePayloadBus = EventBus.make<IncompatiblePayloadSchema>();
 	// @ts-expect-error — only filter contains event key with incompatible payload type
-	EventBus.forward({ from: authBus, to: incompatiblePayloadBus, only: ["userLoggedIn"] });
+	expectTypeOf(EventBus.forward({ from: authBus, to: incompatiblePayloadBus, only: ["userLoggedIn"] })).toBeFunction();
 });

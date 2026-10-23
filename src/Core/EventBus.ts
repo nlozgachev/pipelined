@@ -1,4 +1,4 @@
-import { EVENT_BUS_STATE, toInternalEventBus, WithKind, WithValue } from "#internal";
+import { EVENT_BUS_STATE, toInternalEventBus } from "#internal";
 
 // ---------------------------------------------------------------------------
 // EventBus<S>
@@ -45,7 +45,7 @@ export namespace EventBus {
 	 * Each variant conforms to `{ kind: Key, value: S[Key] }`.
 	 */
 	export type Message<S extends Record<string, unknown>, K extends keyof S & string = keyof S & string> = {
-		[Key in K]: WithKind<Key> & WithValue<S[Key]>;
+		[Key in K]: { kind: Key; value: S[Key]; };
 	}[K];
 
 	/**
@@ -281,7 +281,7 @@ const emitSingleBus = (
 
 const emitEventBus = <S extends Record<string, unknown>, K extends keyof S & string>(
 	target: EventBus<S> | ReadonlyArray<EventBus<S>>,
-	message: WithKind<K> & WithValue<S[K]>,
+	message: EventBus.Message<S, K>,
 ): void => {
 	const msg = message as unknown as EventBus.Message<Record<string, unknown>>;
 	if (Array.isArray(target)) {
