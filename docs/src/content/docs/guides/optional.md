@@ -118,15 +118,23 @@ functional helpers to extract or match on the value:
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 
-const slackOptional = Optional.from.property<UserSettings["notifications"]>()("slack");
+type NotificationSettings = NonNullable<UserSettings["notifications"]>;
+const slackOptional = Optional.from.property<NotificationSettings>()("slack");
 
-// Extract the Slack settings as a Maybe context
-const slackSettings = pipe(settings.notifications, Optional.get(slackOptional));
+// 1. Extract the Slack settings as a Maybe context
+const slackSettings = pipe(settings.notifications ?? {}, Optional.get(slackOptional));
 // Returns: None (since 'slack' is undefined in our settings)
 
-// Match on the result with named handlers
+// 2. Extract the focused value with a fallback default using getOrElse
+const activeSlackConfig = pipe(
+  settings.notifications ?? {},
+  Optional.getOrElse(slackOptional)(() => ({ enabled: false })),
+);
+// Returns: { enabled: false }
+
+// 3. Match on the result with named handlers
 const hasWebhook = pipe(
-  settings.notifications,
+  settings.notifications ?? {},
   Optional.match(slackOptional)({
     none: () => false,
     some: (slack) => Boolean(slack.webhookUrl),
@@ -145,12 +153,12 @@ const slackEnabledOptional = Optional.from.property<{ webhookUrl?: string; enabl
 
 // Safely modify a value if it exists, otherwise do nothing
 const updatedNotifications = pipe(
-  settings.notifications,
+  settings.notifications ?? {},
   Optional.modify(slackOptional)(
-    slack => ({ ...slack, enabled: true })
-  )
+    (slack) => ({ ...slack, enabled: true }),
+  ),
 );
-// Returns the original 'notifications' reference because 'slack' was undefined.
+// Returns the original object reference unchanged because 'slack' was undefined.
 ```
 
 ## Composing deep optional paths
@@ -190,25 +198,33 @@ or compose a lens directly using `Optional.andThenLens` or `Lens.andThenOptional
 ```ts
 import { Lens } from "@nlozgachev/pipelined/core";
 
+type SslConfig = {
+  certPath: string;
+};
+
+type ServerConfig = {
+  host: string;
+  port: number;
+  ssl?: SslConfig;
+};
+
 type Config = {
-  server: {
-    host: string;
-    port: number;
-    ssl?: {
-      certPath: string;
-    };
-  };
+  server: ServerConfig;
 };
 
 const serverLens = Lens.from.property<Config>()("server");
-const sslOptional = Optional.from.property<Config["server"]>()("ssl");
+const sslOptional = Optional.from.property<ServerConfig>()("ssl");
+const certPathLens = Lens.from.property<SslConfig>()("certPath");
 
-// Compose a guaranteed path with an optional path
+// Compose a guaranteed Lens with an Optional, then with an inner Lens:
 const sslCertOptional = pipe(
   serverLens,
-  Lens.to.Optional,
-  Optional.andThen(sslOptional)
+  Lens.andThenOptional(sslOptional),
+  Optional.andThenLens(certPathLens),
 );
+
+// You can also convert any Lens into an Optional directly with Lens.to.Optional:
+const serverOptional = Lens.to.Optional(serverLens);
 ```
 
 ## Problems it solves

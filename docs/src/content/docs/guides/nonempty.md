@@ -7,9 +7,9 @@ Functions that operate on collections often assume at least one element exists (
 `min`, `max`, or bulk database inserts). Because standard arrays (`readonly T[]`) can be empty,
 functions must either return `undefined`, throw runtime errors, or require defensive length checks.
 
-`NonEmpty` provides compile-time branded types—`NonEmptyArr<A>`, `NonEmptyStr`, `NonEmptySet<A>`,
-`NonEmptyMap<K, V>`, `NonEmptyRec<K, V>`, and `NonEmptyDict<V>`—guaranteeing that a collection
-contains at least one element:
+`NonEmpty` provides compile-time branded types—`Arr.NonEmpty<A>`, `Str.NonEmpty`,
+`Uniq.NonEmpty<A>`, `Dict.NonEmpty<K, V>`, and `Rec.NonEmpty<A, K>`—guaranteeing that a collection
+or string contains at least one element:
 
 ```ts
 function getFirstItem<T>(items: readonly T[]): T {
@@ -108,33 +108,46 @@ if (Str.is.nonEmpty(nameInput)) {
 ### Safe Conversions (Maybe)
 
 To safely convert potentially empty collections or strings into optional values, use the
-module-specific `from*` helpers. They return `Some` if the collection/string contains
-elements/characters, and `None` if it is empty:
+module-specific `from.*` helpers. They return `Some` if the collection or string contains at least
+one item, and `None` if it is empty:
 
 ```ts
 import { Arr, Rec, Uniq, Dict, Str } from "@nlozgachev/pipelined/data";
 
-const maybeArr = Arr.NonEmpty.from.array([]); // None
-const maybeRec = Rec.NonEmpty.from.record({ a: 1 }); // Some(Rec.NonEmpty<number, "a">)
-const maybeSet = Uniq.NonEmpty.from.set(new Set([1, 2])); // Some(Uniq.NonEmpty<number>)
-const maybeMap = Dict.NonEmpty.from.map(new Map()); // None
-const maybeStr = Str.NonEmpty.from.string("hello"); // Some(Str.NonEmpty)
+const maybeRoles = Arr.NonEmpty.from.array<string>([]); // None
+const maybeQuotas = Rec.NonEmpty.from.record({ apiCalls: 1000, storageGb: 50 }); // Some(Rec.NonEmpty<number, "apiCalls" | "storageGb">)
+const maybeRegions = Uniq.NonEmpty.from.set(new Set(["us-east-1", "eu-west-1"])); // Some(Uniq.NonEmpty<string>)
+const maybeLatencies = Dict.NonEmpty.from.map(new Map<string, number>()); // None
+const maybeSubject = Str.NonEmpty.from.string("Invoice #1042"); // Some(Str.NonEmpty)
 ```
 
 ---
 
-## Modifying Non-Empty Arrays
+## Modifying and Combining Non-Empty Arrays
 
 Adding elements to standard arrays naturally guarantees a non-empty result. The module helpers
 `Arr.prepend` and `Arr.append` accept standard, potentially empty arrays and return a guaranteed
-`Arr.NonEmpty`:
+`Arr.NonEmpty`. Once you have a `Arr.NonEmpty`, you can also concatenate additional items with
+`Arr.NonEmpty.concat` or insert separators between elements with `Arr.NonEmpty.intersperse` while
+preserving the non-empty guarantee:
 
 ```ts
 import { Arr } from "@nlozgachev/pipelined/data";
 import { pipe } from "@nlozgachev/pipelined/composition";
 
-const list1 = pipe([1, 2], Arr.prepend(0)); // Arr.NonEmpty<number>: [0, 1, 2]
-const list2 = pipe([1, 2], Arr.append(3));  // Arr.NonEmpty<number>: [1, 2, 3]
+const baseSteps = ["validate", "charge"];
+
+const withInit = pipe(baseSteps, Arr.prepend("authenticate"));
+// Arr.NonEmpty<string>: ["authenticate", "validate", "charge"]
+
+const fullPipeline = pipe(withInit, Arr.NonEmpty.concat(["notify", "archive"]));
+// Arr.NonEmpty<string>: ["authenticate", "validate", "charge", "notify", "archive"]
+
+const breadcrumbSteps = pipe(withInit, Arr.NonEmpty.intersperse("->"));
+// Arr.NonEmpty<string>: ["authenticate", "->", "validate", "->", "charge"]
+
+const withAudit = pipe(baseSteps, Arr.append("audit"));
+// Arr.NonEmpty<string>: ["validate", "charge", "audit"]
 ```
 
 ---
@@ -146,75 +159,98 @@ Standard library mapping functions operating on standard collections (such as `A
 non-empty.
 
 To transform the elements of a non-empty collection while preserving its non-empty type guarantee,
-always use the dedicated mapping helpers under the `NonEmpty` drawer of the module (e.g.,
-`Arr.NonEmpty.map`, `Rec.NonEmpty.map`):
+use the dedicated mapping helpers under the `NonEmpty` drawer (`Arr.NonEmpty.map`,
+`Arr.NonEmpty.mapWithIndex`, `Rec.NonEmpty.map`, `Rec.NonEmpty.mapWithKey`, `Dict.NonEmpty.map`,
+`Dict.NonEmpty.mapWithKey`, and `Uniq.NonEmpty.map`):
 
 ```ts
 import { Arr, Rec, Uniq, Dict } from "@nlozgachev/pipelined/data";
 import { pipe } from "@nlozgachev/pipelined/composition";
 
-// Direct mapping
-const doubledList = Arr.NonEmpty.map((n: number) => n * 2)(list1); 
-// typed as Arr.NonEmpty<number>
+const lineItemPrices: Arr.NonEmpty<number> = [120, 80, 50];
 
-// Pipeline transformation
-const result = pipe(
-	list1,
-	Arr.NonEmpty.map((n) => n * 2),
-	Arr.NonEmpty.reverse,
-);
-// typed as Arr.NonEmpty<number>
+// Direct mapping and indexed mapping on Arr.NonEmpty
+const taxedPrices = pipe(
+  lineItemPrices,
+  Arr.NonEmpty.map((price) => price * 1.1),
+  Arr.NonEmpty.reverse,
+); // Arr.NonEmpty<number>
 
-const updatedSet = pipe(
-	maybeSet.value,
-	Uniq.NonEmpty.map((n) => n.toString()),
-);
-// typed as Uniq.NonEmpty<string>
+const labeledLineItems = pipe(
+  lineItemPrices,
+  Arr.NonEmpty.mapWithIndex((index, price) => `Item #${index + 1}: $${price}`),
+); // Arr.NonEmpty<string>
 
-const updatedMap = pipe(
-	maybeMap.value,
-	Dict.NonEmpty.map((v) => v * 100),
-);
-// typed as Dict.NonEmpty<string, number>
+// Transforming non-empty records with value and key access
+const regionalTaxRates = Rec.NonEmpty.singleton("us", 0.08);
+const formattedRates = pipe(
+  regionalTaxRates,
+  Rec.NonEmpty.map((rate) => Math.round(rate * 100)),
+  Rec.NonEmpty.mapWithKey((region, pct) => `${region.toUpperCase()}: ${pct}%`),
+); // Rec.NonEmpty<string, "us">
+
+// Transforming non-empty sets and dictionaries
+const activeRegions = Uniq.NonEmpty.singleton("us-east-1");
+const upperRegions = pipe(
+  activeRegions,
+  Uniq.NonEmpty.map((region) => region.toUpperCase()),
+); // Uniq.NonEmpty<string>
+
+const serviceScores = Dict.NonEmpty.singleton("payments", 0.99);
+const scaledScores = pipe(
+  serviceScores,
+  Dict.NonEmpty.map((score) => score * 100),
+); // Dict.NonEmpty<string, number>
+
+const formattedScores = pipe(
+  scaledScores,
+  Dict.NonEmpty.mapWithKey((service, score) => `${service}: ${score}%`),
+); // Dict.NonEmpty<string, string>
 ```
 
-When reducing collections down to a single value, you can use the `NonEmpty.reduce` helpers. Unlike
-standard reductions, these do not require an initial accumulator seed value because the collections
-are guaranteed to contain at least one element:
+When reducing collections down to a single value, use the `NonEmpty.reduce` helpers. Unlike standard
+reductions, these do not require an initial accumulator seed value because the collections are
+guaranteed to contain at least one element:
 
 ```ts
 import { Arr, Rec, Uniq, Dict } from "@nlozgachev/pipelined/data";
 
-const sumOfArray = Arr.NonEmpty.reduce((a: number, b: number) => a + b)(list1); // number
-const sumOfRecord = Rec.NonEmpty.reduce((a: number, b: number) => a + b)(updatedRecord); // number
-const sumOfSet = Uniq.NonEmpty.reduce((a: number, b: number) => a + b)(maybeSet.value); // number
-const sumOfMap = Dict.NonEmpty.reduce((a: number, b: number) => a + b)(updatedMap); // number
+const totalOrderCents = Arr.NonEmpty.reduce((sum: number, price: number) => sum + price)(lineItemPrices);
+const totalTaxRate = Rec.NonEmpty.reduce((sum: number, rate: number) => sum + rate)(regionalTaxRates);
+const combinedRegions = Uniq.NonEmpty.reduce((acc: string, r: string) => `${acc}, ${r}`)(upperRegions);
+const totalScore = Dict.NonEmpty.reduce((sum: number, s: number) => sum + s)(scaledScores);
 ```
 
-````
 ---
 
 ## Destructuring and Extracting Elements
 
 Operating on non-empty collections guarantees safe extraction of members:
 
-- **Arrays (`Arr.NonEmpty`)**: `head` and `last` return values directly (not `undefined` unions),
-  and `tail` returns standard read-only arrays.
-- **Records (`Rec.NonEmpty`) and Maps (`Dict.NonEmpty`)**: Extracting `keys`, `values`, or `entries` returns a guaranteed
-  `Arr.NonEmpty` array of those elements:
+- **Arrays (`Arr.NonEmpty`)**: `head` and `last` return values directly (never `undefined`), and
+  `tail` returns a standard read-only array of the remaining elements.
+- **Records (`Rec.NonEmpty`) and Maps (`Dict.NonEmpty`)**: Extracting `keys`, `values`, or `entries`
+  returns a guaranteed `Arr.NonEmpty` array of those elements.
+- **Sets (`Uniq.NonEmpty`)**: Converting to an array via `Uniq.NonEmpty.to.array` returns a
+  guaranteed `Arr.NonEmpty<A>`.
 
 ```ts
-import { Arr, Rec, Dict } from "@nlozgachev/pipelined/data";
+import { Arr, Rec, Dict, Uniq } from "@nlozgachev/pipelined/data";
 
-const firstElement = Arr.NonEmpty.head(list1); // number (safe)
-const remainingList = Arr.NonEmpty.tail(list1); // readonly number[]
+const firstStep = Arr.NonEmpty.head(fullPipeline); // "authenticate" (string)
+const finalStep = Arr.NonEmpty.last(fullPipeline); // "archive" (string)
+const remainingSteps = Arr.NonEmpty.tail(fullPipeline); // readonly string[]
 
-const recordKeys = Rec.NonEmpty.keys(updatedRecord); // Arr.NonEmpty<"a">
-const recordValues = Rec.NonEmpty.values(updatedRecord); // Arr.NonEmpty<number>
+const recordKeys = Rec.NonEmpty.keys(regionalTaxRates); // Arr.NonEmpty<"us">
+const recordValues = Rec.NonEmpty.values(regionalTaxRates); // Arr.NonEmpty<number>
+const recordEntries = Rec.NonEmpty.entries(regionalTaxRates); // Arr.NonEmpty<readonly ["us", number]>
 
-const mapKeys = Dict.NonEmpty.keys(updatedMap); // Arr.NonEmpty<string>
-const mapValues = Dict.NonEmpty.values(updatedMap); // Arr.NonEmpty<number>
-````
+const mapKeys = Dict.NonEmpty.keys(scaledScores); // Arr.NonEmpty<string>
+const mapValues = Dict.NonEmpty.values(scaledScores); // Arr.NonEmpty<number>
+const mapEntries = Dict.NonEmpty.entries(scaledScores); // Arr.NonEmpty<readonly [string, number]>
+
+const regionList = Uniq.NonEmpty.to.array(upperRegions); // Arr.NonEmpty<string>
+```
 
 ---
 

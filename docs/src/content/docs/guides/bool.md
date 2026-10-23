@@ -1,132 +1,131 @@
 ---
 title: Bool — Boolean Utilities
-description: Curried boolean algebra, lazy short-circuiting, truthiness narrowing, catamorphic branching, and type-safe Maybe and Result bridges.
+description: Curried boolean algebra, lazy short-circuiting, truthiness narrowing, exhaustive branching, and type-safe Maybe and Result bridges.
 ---
 
 Working with boolean logic in standard JavaScript and TypeScript frequently leads to nested ternary
-expressions, repetitive inline arrow functions inside pipelines, and awkward conversions between
-boolean flags and structured data types like `Maybe` and `Result`.
-
-Simple pipeline steps — such as combining feature flags, evaluating permissions, parsing query
-parameter flags, or conditionally lifting a value into a safe container — often force developers to
-write imperative `if/else` statements or inline lambdas like `b => !b` and
-`condition ? Maybe.make.some(data) : Maybe.make.none()`.
-
-`Bool` provides curried, data-last boolean algebra, lazy short-circuiting operators, exhaustive
-pattern matching, and type-safe conversion bridges designed specifically for pipelines.
-
-## The problem with boolean handling in pipelines
-
-Consider a service verifying whether a user is allowed to access a protected workspace feature:
+expressions, repetitive inline arrow functions inside pipelines, and subtle coercion bugs:
 
 ```ts
-function checkFeatureAccess(user: User, isFlagEnabled: boolean): string {
-  const isEligible = user.isActive && user.isEmailVerified && !user.isSuspended;
+function checkFeatureAccess(user: User, rawDebugFlag: string): string {
+  // Bug 1: Boolean("false") evaluates to true in JavaScript!
+  const isDebug = Boolean(rawDebugFlag);
 
-  if (isEligible && isFlagEnabled) {
+  const isEligible = user.isActive && user.isEmailVerified && !user.isSuspended;
+  if (isEligible || isDebug) {
     return "Access Granted";
-  } else {
-    return "Access Denied";
   }
+  return "Access Denied";
 }
 ```
 
-While simple, this imperative pattern breaks down when integrated into linear pipelines:
+When integrating boolean conditions into functional pipelines, four friction points appear
+repeatedly:
 
-1. Combining multiple boolean conditions requires temporary variables or inline closures.
-2. In-line ternaries like `condition ? computeExpensive() : fallback` cannot easily be composed or
-   reused across pipe steps.
-3. Parsing string flags from query parameters (e.g. `"?debug=true"`) using `Boolean("false")`
-   produces `true` — a classic JavaScript coercion trap.
-4. Converting a truthy condition into a `Maybe<T>` or `Result<E, T>` requires manual ternaries that
-   obscure business logic.
+1. **JavaScript string coercion traps**: Passing `"false"` or `"0"` to `Boolean(...)` evaluates to
+   `true` because any non-empty string is truthy.
+2. **Inline negation and combinator noise**: Negating or combining flags inside `pipe` requires
+   inline lambdas like `b => !b` or `b => b && isEnabled`.
+3. **Eager evaluation of expensive checks**: Passing `Bool.and(checkPermissions())` evaluates
+   `checkPermissions()` immediately, even when the upstream boolean is already `false`.
+4. **Manual ternaries to enter `Maybe` or `Result`**: Turning a boolean validation check into a
+   `Maybe<A>` or `Result<E, A>` requires writing `isValid ? Result.make.ok(val) : Result.make.err(err)`
+   by hand.
 
-`Bool` solves these challenges by treating booleans as first-class values with composable algebra
-and safe boundaries.
+`Bool` solves these challenges by providing curried, **data-last** boolean algebra, lazy
+short-circuiting operators, exhaustive named-case matching, and direct conversion bridges to `Maybe`
+and `Result`.
 
-## Type guards and truthiness narrowing
+---
 
-The `Bool.is` namespace provides type guards for runtime verification and compile-time narrowing:
+## Type Guards and Truthiness Narrowing
 
-```ts
-import { Bool } from "@nlozgachev/pipelined/data";
-
-// Type verification
-Bool.is.boolean(true);      // true
-Bool.is.boolean("true");    // false
-
-// Literal narrowing
-Bool.is.true(true);         // true
-Bool.is.false(false);       // true
-
-// Truthiness filtering
-const rawValues = ["Alice", "", 42, 0, null, "Bob", undefined];
-const activeItems = rawValues.filter(Bool.is.truthy);
-// ["Alice", 42, "Bob"] — correctly narrowed without falsy primitives
-```
-
-`Bool.is.truthy` excludes `false`, `0`, `-0`, `0n`, `""`, `null`, `undefined`, and `NaN`, giving
-TypeScript a reliable filter predicate for arrays and streams.
-
-## Curried boolean algebra
-
-All logical operators in `Bool` are data-last, meaning the data being evaluated is placed last. This
-enables clean, point-free composition inside `pipe`:
+The `Bool.is` namespace provides type guards for runtime checks and compile-time type narrowing:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Arr, Bool } from "@nlozgachev/pipelined/data";
 
-// Unary negation
+// Type verification:
+Bool.is.boolean(true);   // true
+Bool.is.boolean("true"); // false
+
+// Literal narrowing:
+Bool.is.true(true);      // true (narrows to literal true)
+Bool.is.false(false);    // true (narrows to literal false)
+
+// Truthiness and falsiness narrowing:
+const rawValues = ["Alice", "", 42, 0, null, "Bob", undefined] as const;
+
+const presentValues = pipe(rawValues, Arr.filter(Bool.is.truthy));
+// ["Alice", 42, "Bob"] — narrowed to exclude "", 0, false, 0n, null, undefined
+
+const emptyValues = pipe(rawValues, Arr.filter(Bool.is.falsy));
+// ["", 0, null, undefined]
+```
+
+`Bool.is.truthy` narrows a type `T` by excluding `false`, `0`, `0n`, `""`, `null`, and `undefined`,
+while `Bool.is.falsy` narrows unknown inputs to those falsy primitive values.
+
+---
+
+## Curried Boolean Algebra
+
+All logical operators in `Bool` are data-last, placing the boolean condition being piped as the
+final argument:
+
+```ts
+// Unary negation:
 pipe(true, Bool.not);  // false
 pipe(false, Bool.not); // true
 
-// Binary combinators
-pipe(true, Bool.and(false)); // false
-pipe(true, Bool.or(false));  // true
-pipe(true, Bool.xor(false)); // true
+// Binary combinators:
+pipe(true, Bool.and(false)); // false (true && false)
+pipe(true, Bool.or(false));  // true  (true || false)
+pipe(true, Bool.xor(false)); // true  (true !== false: exactly one is true)
 pipe(true, Bool.xor(true));  // false
 ```
 
 ### Lazy evaluation and short-circuiting
 
-When combining conditions where the second evaluation is computationally expensive, use
-`Bool.andLazy` and `Bool.orLazy`. The secondary thunk will only run if required:
+When the second condition in an `AND` or `OR` check involves an expensive computation, use
+`Bool.andLazy` and `Bool.orLazy`. The callback thunk is only invoked if the upstream boolean cannot
+decide the outcome on its own:
 
 ```ts
-// If user.isActive is false, checkRemotePermissions() is NEVER evaluated
-const canProceed = pipe(
+// If user.isActive is false, hasValidLicense() is never called:
+const canLaunchApp = pipe(
   user.isActive,
-  Bool.andLazy(() => checkRemotePermissions(user.id))
+  Bool.andLazy(() => hasValidLicense(user.id)),
 );
 
-// If user.isSuperAdmin is true, verifyGroupMembership() is NEVER evaluated
-const hasAdminAccess = pipe(
+// If user.isSuperAdmin is true, hasWorkspaceRole() is never called:
+const canManageBilling = pipe(
   user.isSuperAdmin,
-  Bool.orLazy(() => verifyGroupMembership(user.id, "admins"))
+  Bool.orLazy(() => hasWorkspaceRole(user.id, "billing_admin")),
 );
 ```
 
-### Array aggregations
+### Array aggregations (`all` and `any`)
 
-To aggregate collections of booleans, `Bool.all` and `Bool.any` evaluate an array with
-short-circuiting:
+To combine an array of booleans into a single result, `Bool.all` and `Bool.any` evaluate the list
+from left to right and short-circuit as soon as the answer is known:
 
 ```ts
-// Passes only when every condition is true (vacuous truth returns true for empty arrays)
+// Returns true only when every condition is true.
+// For an empty array [], Bool.all([]) returns true because no condition failed (just like Array.prototype.every):
 Bool.all([user.isActive, user.isEmailVerified, user.hasAcceptedTerms]);
 
-// Passes if any condition is true (returns false for empty arrays)
+// Returns true as soon as at least one condition is true (returns false for an empty array []):
 Bool.any([user.isOwner, user.isAdmin, user.isEditor]);
 ```
 
-## Branching and pattern matching
+---
 
-Rather than relying on nested ternaries, `Bool` offers declarative exhaustive pattern matching via
-`match`.
+## Exhaustive Branching with `match`
 
-### Named-case matching with `match`
-
-`Bool.match` matches on `{ true, false }` cases, making branching explicit, type-safe, and readable:
+Instead of writing ternary expressions inside a pipeline, `Bool.match` branches on named
+`{ true, false }` handlers:
 
 ```ts
 const statusBadge = pipe(
@@ -134,37 +133,40 @@ const statusBadge = pipe(
   Bool.match({
     true: () => ({ label: "Operational", color: "green" }),
     false: () => ({ label: "Degraded", color: "red" }),
-  })
+  }),
 );
 ```
 
-## Safe parsing and conversions
+---
 
-### Intake with `Bool.from`
+## Safe Parsing and Conversions
 
-JavaScript coercion quirks are avoided through explicit parsing functions:
+### Parsing with `Bool.from`
+
+To parse environment variables, query flags, or numeric bit flags without falling victim to
+JavaScript's truthiness coercion, `Bool.from.string` and `Bool.from.number` return `Maybe<boolean>`:
 
 ```ts
 import { Maybe } from "@nlozgachev/pipelined/core";
 
-// Safe string parsing (case-insensitive & trimmed)
-Bool.from.string("true");     // Some(true)
-Bool.from.string("FALSE");    // Some(false)
-Bool.from.string("yes");      // None (strict parsing avoids unexpected truthiness)
+// Case-insensitive, whitespace-trimmed string parsing:
+Bool.from.string("true");    // Some(true)
+Bool.from.string(" FALSE "); // Some(false)
+Bool.from.string("yes");     // None (unrecognized strings return None, never true)
 
-// Strict numeric parsing (1 and 0 only)
-Bool.from.number(1);          // Some(true)
-Bool.from.number(0);          // Some(false)
-Bool.from.number(42);         // None
+// Strict numeric bit parsing (1 and 0 only):
+Bool.from.number(1);         // Some(true)
+Bool.from.number(0);         // Some(false)
+Bool.from.number(42);        // None
 
-// Standard boolean coercion
-Bool.from.truthy("content");  // true
-Bool.from.truthy(0);          // false
+// Explicit JavaScript truthiness coercion when intended:
+Bool.from.truthy("content"); // true
+Bool.from.truthy(0);         // false
 ```
 
-### Exporting with `Bool.to`
+### Formatting and lifting with `Bool.to`
 
-Convert boolean values into primitive representations:
+`Bool.to.number` and `Bool.to.string` convert booleans to literal `1 | 0` or `"true" | "false"`:
 
 ```ts
 Bool.to.number(true);  // 1
@@ -174,73 +176,79 @@ Bool.to.string(true);  // "true"
 Bool.to.string(false); // "false"
 ```
 
-## Lifting booleans into Maybe and Result
-
-One of the most frequent patterns in functional TypeScript is converting a boolean check into a
-container:
+When a boolean check gates access to a value or decides whether a pipeline succeeds or fails,
+`Bool.to.Maybe` and `Bool.to.Result` lift the boolean directly into a container using lazy callbacks:
 
 ```ts
 import { Result } from "@nlozgachev/pipelined/core";
 
-// Lift to Maybe (Some on true, None on false)
-const optionalToken: Maybe<string> = pipe(
-  session.isValid,
-  Bool.to.Maybe(() => session.token)
-);
+// Lift to Maybe (Some on true, None on false):
+const activeDiscountCode = pipe(
+  cart.qualifiesForPromo,
+  Bool.to.Maybe(() => "SAVE20"),
+); // Some("SAVE20") or None
 
-// Lift to Result (Ok on true, Err on false)
-const authResult: Result<string, UserProfile> = pipe(
-  user.hasSubscription,
+// Lift to Result (Ok on true, Err on false):
+const accessResult = pipe(
+  user.hasActiveSubscription,
   Bool.to.Result(
-    () => "Active subscription required",
-    () => user.profile
-  )
-);
+    () => ({ code: "SUBSCRIPTION_REQUIRED", userId: user.id }),
+    () => user.workspaceConfig,
+  ),
+); // Ok(workspaceConfig) or Err({ code: "SUBSCRIPTION_REQUIRED", ... })
 ```
 
-Both `Bool.to.Maybe` and `Bool.to.Result` evaluate their value thunks lazily, ensuring expensive
-object constructions or string interpolations only execute when the condition holds.
+---
 
-## Composing boolean pipelines
+## Pipeline Composition
 
-Combining these primitives allows complex access-control and validation logic to be modeled as a
-single, readable pipeline:
+Combining parsing, boolean algebra, and container lifting lets you express feature-flag and
+authorization checks as a linear pipeline:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Maybe, Result } from "@nlozgachev/pipelined/core";
 import { Bool } from "@nlozgachev/pipelined/data";
-import { Result } from "@nlozgachev/pipelined/core";
 
 type RequestContext = {
-  isAuthenticated: boolean;
-  isAccountActive: boolean;
-  isRateLimited: boolean;
-  apiKey: string;
+  readonly rawMaintenanceHeader: string;
+  readonly isAuthenticated: boolean;
+  readonly isAccountActive: boolean;
+  readonly sessionToken: string;
 };
 
 function authorizeRequest(ctx: RequestContext): Result<string, string> {
+  const isMaintenanceMode = pipe(
+    ctx.rawMaintenanceHeader,
+    Bool.from.string,
+    Maybe.getOrElse(() => false),
+  );
+
   return pipe(
     ctx.isAuthenticated,
     Bool.and(ctx.isAccountActive),
-    Bool.and(Bool.not(ctx.isRateLimited)),
+    Bool.and(Bool.not(isMaintenanceMode)),
     Bool.to.Result(
-      () => "Access unauthorized or rate limit exceeded",
-      () => ctx.apiKey
-    )
+      () => "Request rejected: unauthenticated, inactive, or service in maintenance",
+      () => ctx.sessionToken,
+    ),
   );
 }
 ```
 
+---
+
 ## Problems it solves
 
-- **Eliminating nested ternary chains**: Replaces complex `a ? (b ? c : d) : e` expressions with
-  readable `Bool.and`, `Bool.or`, and `Bool.match` combinators.
+- **Eliminating nested ternary chains**: Replaces `a ? (b ? c : d) : e` expressions with readable
+  `Bool.and`, `Bool.or`, `Bool.xor`, and `Bool.match` combinators.
 - **Preventing JavaScript boolean parsing bugs**: Using standard `Boolean("false")` evaluates to
-  `true` in JavaScript. `Bool.from.string` reliably parses `"true"` and `"false"` into
-  `Maybe<boolean>`, returning `None` for invalid strings.
+  `true` in JavaScript. `Bool.from.string` and `Bool.from.number` strictly parse `"true"` / `"false"`
+  and `1` / `0` into `Maybe<boolean>`, returning `None` for unexpected inputs.
 - **Short-circuiting in pipelines without imperative `if` blocks**: `Bool.andLazy` and `Bool.orLazy`
-  prevent executing secondary expensive operations unless the prior condition warrants it.
-- **Streamlined bridges to `Maybe` and `Result`**: `Bool.to.Maybe` and `Bool.to.Result` turn
-  validation flags into structured error-handling types point-free and lazily.
-- **Reliable truthiness array filtering**: `Bool.is.truthy` provides a type-safe narrowing guard for
-  removing falsy values from collections without manual type assertions.
+  avoid executing secondary expensive checks unless the upstream boolean requires it.
+- **Lazy bridges to `Maybe` and `Result`**: `Bool.to.Maybe` and `Bool.to.Result` turn boolean
+  conditions into structured containers point-free while only evaluating their value or error thunks
+  when needed.
+- **Type-safe truthiness and falsiness filtering**: `Bool.is.truthy` and `Bool.is.falsy` provide
+  narrowing type guards for filtering collections without manual type assertions.

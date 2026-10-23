@@ -122,7 +122,7 @@ pipe(
 Because `pipelined` is built data-last, the configuration is provided first, and the resulting function is ready to receive the data:
 
 ```ts
-// Data-last: clean and point-free
+// Data-last: pass functions directly without extra wrapper arrows (often called "point-free" style)
 pipe(
   option,
   Maybe.map((u) => u.name),

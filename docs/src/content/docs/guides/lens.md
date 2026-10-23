@@ -7,7 +7,7 @@ Updating deeply nested properties immutably in standard TypeScript requires nest
 syntax (`{ ...a, b: { ...a.b, c: ... } }`), which becomes verbose and error-prone.
 
 `Lens<S, A>` models a bidirectional path to a required property `A` inside a parent structure `S`,
-enabling immutable reads, writes, and modifications with a single reusable optic.
+enabling immutable reads, writes, and modifications with a single reusable path descriptor.
 
 ## The problem with deep nesting and object spreads
 
@@ -90,8 +90,8 @@ target field across our application.
 ## Creating lenses
 
 The simplest way to create a lens is with `Lens.from.property`, which focuses on a single property
-of an object. The double-parenthesis syntax (`prop<Source>()("key")`) allows TypeScript to
-autocomplete keys and enforce type safety:
+of an object. The double-parenthesis syntax (`Lens.from.property<Source>()("key")`) allows
+TypeScript to autocomplete keys and enforce type safety:
 
 ```ts
 import { Lens } from "@nlozgachev/pipelined/core";
@@ -182,22 +182,26 @@ entirely with `Lens.to.Optional`:
 ```ts
 import { Optional } from "@nlozgachev/pipelined/core";
 
-type UserProfile = {
-  name: string;
-  preferences?: {
-    theme?: string;
-  };
+type UserPreferences = {
+  theme?: string;
 };
 
-const profileLens = Lens.from.property<UserProfile>()("name");
-const preferencesOptional = Optional.from.property<UserProfile>()("preferences");
+type UserProfile = {
+  name: string;
+  preferences: UserPreferences;
+};
 
-// Transition from guaranteed path (Lens) to optional path (Optional)
-const themeOptional = pipe(
-  Lens.from.property<UserProfile>()("preferences"),
-  Lens.to.Optional,
-  Optional.andThen(Optional.from.property<{ theme?: string }>()("theme"))
+const preferencesLens = Lens.from.property<UserProfile>()("preferences");
+const themeOptional = Optional.from.property<UserPreferences>()("theme");
+
+// Compose a guaranteed path (Lens) directly with an optional path (Optional)
+const profileThemeOptional = pipe(
+  preferencesLens,
+  Lens.andThenOptional(themeOptional),
 );
+
+// Or convert a Lens into an Optional explicitly with Lens.to.Optional
+const preferencesAsOptional = Lens.to.Optional(preferencesLens);
 ```
 
 See the [Optional guide](/guides/optional) for details on navigating optional paths.

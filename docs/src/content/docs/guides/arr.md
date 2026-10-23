@@ -3,428 +3,656 @@ title: Arr — Array Utilities
 description: Work with collections linearly, replacing data-first array method chains and unsafe undefined values with pipeline-ready, type-safe array helpers.
 ---
 
-JavaScript arrays feature an exceptionally rich, built-in set of methods. However, when we build
-structured pipelines, native array methods introduce two notable friction points:
+JavaScript arrays feature a rich built-in set of methods, yet building structured data pipelines with
+native array operations exposes two major sources of bugs and boilerplate:
 
-1. **They are data-first**: Native methods reside directly on the array prototype. To sequence them
-   inside a `pipe` or `flow`, we must wrap them in noisy inline arrow functions:
-   `(items) => items.map(f)`.
-2. **They are unsafe**: Native lookup methods (like accessing index `[0]` or `.find()`) silently
-   return `undefined` when an element is absent or a search misses, shifting the burden of checking
-   back to our code.
+1. **Prototype methods are data-first**: Because `.map()`, `.filter()`, and `.slice()` live on the
+   array instance, combining them with standalone functions inside a pipeline requires wrapping
+   every step in an inline arrow function such as `(items) => items.map(transform)`.
+2. **Lookups and bounds accesses are unsafe**: Indexing an array directly (`items[0]`) or calling
+   `.find()` silently produces `undefined` when an array is empty or a search misses. TypeScript's
+   default array indexing does not force you to handle that missing case before accessing properties
+   on the result.
 
-`Arr` solves both structural limitations. It is a comprehensive collection of **data-last**, curried
-utilities designed to slot directly into pipelines, returning explicit `Maybe` values the moment a
-search could result in absence.
+```ts
+// Native array access can crash at runtime when activeUsers is empty:
+const leadEmail = activeUsers[0].email.toLowerCase();
+```
+
+`Arr` addresses both problems by providing pure, curried, **data-last** functions over immutable
+`readonly A[]` collections. Every operation that can fail to find an element returns an explicit
+`Maybe<A>` container, and every transformation returns a new array without mutating the input.
 
 ---
 
 ## Safe Access: Bypassing Undefined
 
-Accessing indices directly in JavaScript can crash our programs or introduce silent, propagating
-`undefined` bugs. `Arr` provides safe, explicit boundary boundaries:
+Accessing array boundaries directly in JavaScript can crash your program or introduce silent,
+propagating `undefined` values. `Arr` provides explicit boundary accessors that return `Maybe`:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 import { Maybe } from "@nlozgachev/pipelined/core";
 import { Arr } from "@nlozgachev/pipelined/data";
 
-Arr.head([1, 2, 3]); // Some(1)
-Arr.head([]);        // None
+Arr.head(["ord_101", "ord_102", "ord_103"]); // Some("ord_101")
+Arr.head([]);                                // None
 
-Arr.last([1, 2, 3]); // Some(3)
-Arr.last([]);        // None
+Arr.last(["ord_101", "ord_102", "ord_103"]); // Some("ord_103")
+Arr.last([]);                                // None
 
-Arr.tail([1, 2, 3]); // Some([2, 3]) (all elements except the first)
-Arr.init([1, 2, 3]); // Some([1, 2]) (all elements except the last)
+Arr.tail(["ord_101", "ord_102", "ord_103"]); // Some(["ord_102", "ord_103"]) (all except first)
+Arr.init(["ord_101", "ord_102", "ord_103"]); // Some(["ord_101", "ord_102"]) (all except last)
 ```
 
-Because these returns are standard `Maybe` containers, they compose linearly without a single
-conditional guard:
+Because these functions return standard `Maybe` values, you can chain transformations and fallback
+defaults linearly without writing defensive `if (items.length > 0)` guards:
 
 ```ts
 const leadUserName = pipe(
   activeUsers,
   Arr.head,
-  Maybe.map((u) => u.displayName),
+  Maybe.map((user) => user.displayName),
   Maybe.getOrElse(() => "No active users found"),
 );
 ```
 
----
-
-## Searching and Filtering
-
-Searches are guaranteed to return safe optional values:
+To check array length or emptiness inside a pipeline, `Arr.size`, `Arr.is.empty`, and
+`Arr.is.nonEmpty` inspect the collection directly. Furthermore, `Arr.is.nonEmpty` acts as a
+TypeScript type guard that narrows `readonly A[]` to `Arr.NonEmpty<A>`:
 
 ```ts
-const numbers = [1, 2, 3, 4];
+const pendingOrders: readonly string[] = ["ord_101", "ord_102"];
 
-pipe(numbers, Arr.findFirst((n) => n > 2)); // Some(3)
-pipe(numbers, Arr.findLast((n) => n > 2));  // Some(4)
-pipe(numbers, Arr.findIndex((n) => n > 2)); // Some(2)
-pipe(numbers, Arr.findFirst((n) => n > 10)); // None
+Arr.size(pendingOrders);        // 2
+Arr.is.empty(pendingOrders);    // false
+Arr.is.nonEmpty(pendingOrders); // true (narrows to Arr.NonEmpty<string>)
+```
+
+---
+
+## Searching and Predicates
+
+When searching for elements or indices, `Arr.findFirst`, `Arr.findLast`, `Arr.findIndex`, and
+`Arr.at` return `Maybe` rather than `-1` or `undefined`. `Arr.at` also supports negative indices to
+count backward from the end of the array:
+
+```ts
+const latencies = [45, 120, 250, 80];
+
+pipe(latencies, Arr.findFirst((ms) => ms > 100));  // Some(120)
+pipe(latencies, Arr.findLast((ms) => ms > 100));   // Some(250)
+pipe(latencies, Arr.findIndex((ms) => ms > 100));  // Some(1)
+pipe(latencies, Arr.findFirst((ms) => ms > 1000)); // None
 
 // Safe index lookup supporting negative offsets counting back from the end:
-pipe(numbers, Arr.at(1));  // Some(2)
-pipe(numbers, Arr.at(-1)); // Some(4)
-pipe(numbers, Arr.at(10)); // None
+pipe(latencies, Arr.at(1));  // Some(120)
+pipe(latencies, Arr.at(-1)); // Some(80)
+pipe(latencies, Arr.at(10)); // None
+```
 
-// Find and transform in a single pass:
+When you need to search an array and transform the matching element at the same time, `Arr.findMap`
+evaluates a `Maybe`-returning callback on each element and stops as soon as it receives the first
+`Some`:
+
+```ts
+const parseDiscountCode = (raw: string): Maybe<number> =>
+  raw.startsWith("PROMO_") ? Maybe.make.some(Number(raw.slice(6))) : Maybe.make.none();
+
 pipe(
-  ["invalid", "42", "100"],
-  Arr.findMap((s) => isNaN(Number(s)) ? Maybe.make.none() : Maybe.make.some(Number(s))),
-); // Some(42)
+  ["WELCOME", "PROMO_15", "PROMO_25"],
+  Arr.findMap(parseDiscountCode),
+); // Some(15)
 ```
 
-Standard transformation steps are curried and ready for pipe composition:
+To test whether any or all elements in a collection satisfy a condition, `Arr.some` and `Arr.every`
+provide curried boolean predicates that short-circuit as soon as the outcome is decided:
 
 ```ts
-pipe([1, 2, 3], Arr.map((n) => n * 2));     // [2, 4, 6]
-pipe([1, 2, 3, 4], Arr.filter((n) => n % 2 === 0)); // [2, 4]
-pipe([1, 2, 3], Arr.reverse);               // [3, 2, 1]
-```
+const cartPrices = [25, 40, 110];
 
-### Partitioning and grouping
-
-- `partition` divides a collection into two groups: those that pass a predicate and those that fail.
-- `partitionMaybe` maps with a `Maybe`-returning function, gathering `None` inputs into failures and
-  `Some` unpacked values into successes.
-- `groupBy` maps elements into a record of non-empty lists grouped by a key function:
-
-```ts
-// Splits into: [ [evens...], [odds...] ]
-const [evens, odds] = pipe(
-  [1, 2, 3, 4, 5],
-  Arr.partition((n) => n % 2 === 0),
-);
-
-// Partition raw inputs by parser success:
-const [rejectedStrings, validNumbers] = pipe(
-  ["1", "foo", "2", "bar"],
-  Arr.partitionMaybe((s) => isNaN(Number(s)) ? Maybe.make.none() : Maybe.make.some(Number(s))),
-); // rejectedStrings: ["foo", "bar"], validNumbers: [1, 2]
-
-// Grouping by starting letter:
-const grouped = pipe(
-  ["apple", "avocado", "banana"],
-  Arr.groupBy((word) => word[0]),
-); // { a: ["apple", "avocado"], b: ["banana"] }
-```
-
-### Deduplication and sorting
-
-- `uniq` filters duplicates using strict equality (`===`).
-- `uniqBy` filters duplicates by projecting a key.
-- `dedupeAdjacent` removes consecutive identical elements, with an optional custom `Equality<A>`.
-- `sortBy` sorts values immutably without mutating the source array:
-
-```ts
-const unique = Arr.uniq([1, 2, 2, 3, 1]); // [1, 2, 3]
-
-// Drops only consecutive duplicate values:
-const deduplicated = Arr.dedupeAdjacent()([1, 1, 2, 2, 1, 3]); // [1, 2, 1, 3]
-
-const sorted = pipe(
-  [3, 1, 4],
-  Arr.sortBy((a, b) => a - b),
-); // [1, 3, 4]
-```
-
-### FlatMap and Flatten
-
-For nested collections:
-
-```ts
-pipe([1, 2, 3], Arr.flatMap((n) => [n, n * 10])); // [1, 10, 2, 20, 3, 30]
-Arr.flatten([[1, 2], [3], [4, 5]]);              // [1, 2, 3, 4, 5]
+pipe(cartPrices, Arr.some((price) => price >= 100)); // true
+pipe(cartPrices, Arr.every((price) => price > 0));   // true
 ```
 
 ---
 
-## The Map-Filter Superpower: filterMap
+## Transformations, Filtering, and Unwrapping
 
-We frequently need to map over a collection and filter out invalid or empty results. Writing this
-natively requires two complete array iterations:
+Standard array transformations are curried and data-last. Use `Arr.map` to transform values,
+`Arr.mapWithIndex` when your callback also needs the zero-based element index, `Arr.filter` to keep
+matching elements, and `Arr.reverse` to produce a reversed copy without mutating the source array:
 
 ```ts
-// Native multi-pass approach:
-const ids = rawStrings.map(parseId).filter(isSome).map(unwrap);
+pipe([10, 20, 30], Arr.map((price) => price * 2)); // [20, 40, 60]
+
+pipe(
+  ["Bronze", "Silver", "Gold"],
+  Arr.mapWithIndex((index, tier) => `${index + 1}. ${tier}`),
+); // ["1. Bronze", "2. Silver", "3. Gold"]
+
+pipe([15, 42, 8, 99], Arr.filter((score) => score >= 20)); // [42, 99]
+pipe(["first", "second", "third"], Arr.reverse);           // ["third", "second", "first"]
 ```
 
-`filterMap` performs both mapping and filtering in a **single pass**, collecting only the successful
-`Some` values and discarding `None` states automatically:
+For nested arrays, `Arr.flatMap` maps each element to an array and flattens the result by one level,
+while `Arr.flatten` flattens an existing two-dimensional array:
 
 ```ts
-const parseNumeric = (s: string): Maybe<number> => {
-  const n = Number(s);
-  return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
+pipe(
+  [{ sku: "A1", tags: ["sale", "new"] }, { sku: "B2", tags: ["clearance"] }],
+  Arr.flatMap((item) => item.tags),
+); // ["sale", "new", "clearance"]
+
+Arr.flatten([["us-east", "us-west"], ["eu-central"]]);
+// ["us-east", "us-west", "eu-central"]
+```
+
+### Single-pass mapping and filtering with `filterMap` and `compact`
+
+Mapping over a collection and discarding invalid items with native array methods requires multiple
+iterations (`items.map(parse).filter(Boolean)`). `Arr.filterMap` combines mapping and filtering into
+a single pass, keeping only the unwrapped `Some` values and discarding `None` results:
+
+```ts
+const parsePrice = (raw: string): Maybe<number> => {
+  const parsed = Number(raw);
+  return Number.isNaN(parsed) ? Maybe.make.none() : Maybe.make.some(parsed);
 };
 
-const numbers = pipe(
-  ["1", "invalid_text", "3", "hello", "9"],
-  Arr.filterMap(parseNumeric),
-); // [1, 3, 9] (single pass, perfectly typed as number[])
+const validPrices = pipe(
+  ["19.99", "N/A", "45.00", "TBD", "9.50"],
+  Arr.filterMap(parsePrice),
+); // [19.99, 45, 9.5]
+```
+
+If you already have an array of `Maybe<A>` containers, `Arr.compact` unwraps all `Some` values and
+removes all `None` entries in one step:
+
+```ts
+const resolvedEmails = Arr.compact([
+  Maybe.make.some("alice@example.com"),
+  Maybe.make.none(),
+  Maybe.make.some("bob@example.com"),
+]); // ["alice@example.com", "bob@example.com"]
 ```
 
 ---
 
-## Index Slicing and Modification
+## Partitioning and Grouping
+
+When you need to keep both passing and failing items rather than discarding failures, `Arr` provides
+four specialized partitioning tools:
+
+`Arr.partition` splits an array using a boolean predicate (or TypeScript type guard) into a tuple of
+`[passing, failing]` arrays. `Arr.partitionMaybe` applies a `Maybe`-returning parser and separates
+the unparseable raw inputs from the parsed values into `[failures, successes]`:
 
 ```ts
-pipe([1, 2, 3, 4], Arr.take(2)); // [1, 2]
-pipe([1, 2, 3, 4], Arr.drop(2)); // [3, 4]
+// Split numbers into [passing, failing]:
+const [highPriority, standardPriority] = pipe(
+  [101, 45, 230, 12],
+  Arr.partition((score) => score >= 100),
+); // highPriority: [101, 230], standardPriority: [45, 12]
 
-pipe([1, 2, 3, 1], Arr.takeWhile((n) => n < 3)); // [1, 2]
-pipe([1, 2, 3, 1], Arr.dropWhile((n) => n < 3)); // [3, 1]
+// Separate unparseable raw strings from valid parsed numbers:
+const [rejectedInputs, parsedPrices] = pipe(
+  ["19.99", "N/A", "45.00", "TBD"],
+  Arr.partitionMaybe(parsePrice),
+); // rejectedInputs: ["N/A", "TBD"], parsedPrices: [19.99, 45]
 ```
 
-### Safe modifications
-
-Unlike direct mutations or bracket insertions, these return a fresh, structurally copied array,
-preserving immutability:
-
-- `insertAt` places an item at a given index (negative clamp to `0`, overflow appends).
-- `removeAt` removes the element at an index (out of bounds returns the original array unchanged).
+When your validation logic returns a `Result<E, B>` with a specific error message for each rejected
+item, `Arr.partitionMap` maps each item and collects `[errors, successes]`. If you already hold an
+array of `Result<E, A>` values, `Arr.separate` splits them directly into `[errors, successes]`:
 
 ```ts
-pipe([1, 2, 3], Arr.insertAt(1, 99)); // [1, 99, 2, 3]
-pipe([1, 2, 3], Arr.removeAt(1));     // [1, 3]
+import { Result } from "@nlozgachev/pipelined/core";
+
+const validateQuantity = (qty: number): Result<string, number> =>
+  qty > 0 ? Result.make.ok(qty) : Result.make.err(`Invalid quantity: ${qty}`);
+
+const [quantityErrors, validQuantities] = pipe(
+  [5, -1, 12, 0],
+  Arr.partitionMap(validateQuantity),
+);
+// quantityErrors: ["Invalid quantity: -1", "Invalid quantity: 0"]
+// validQuantities: [5, 12]
+
+const [batchErrors, batchSuccesses] = Arr.separate([
+  Result.make.ok("ord_1"),
+  Result.make.err("Out of stock"),
+  Result.make.ok("ord_2"),
+]);
+// batchErrors: ["Out of stock"], batchSuccesses: ["ord_1", "ord_2"]
+```
+
+To bucket items into a dictionary of non-empty arrays by a computed string key, use `Arr.groupBy`:
+
+```ts
+const tickets = [
+  { id: "T-1", status: "open" },
+  { id: "T-2", status: "closed" },
+  { id: "T-3", status: "open" },
+];
+
+const ticketsByStatus = pipe(
+  tickets,
+  Arr.groupBy((ticket) => ticket.status),
+);
+// {
+//   open: [{ id: "T-1", status: "open" }, { id: "T-3", status: "open" }],
+//   closed: [{ id: "T-2", status: "closed" }]
+// }
 ```
 
 ---
 
-## Combinations and Folds
+## Deduplication and Sorting
 
-- `zip` pairs elements from two arrays, terminating at the length of the shorter array.
-- `zipWith` combines elements using a custom function.
-- `intersperse` injects a separator between every element.
-- `chunksOf` splits an array into fixed-size chunks.
-- `reduce` reduces a collection from the left into a single value.
+`Arr` offers three deduplication strategies depending on how equality is defined in your domain:
+
+`Arr.uniq` removes duplicates across the array using strict equality. `Arr.uniqBy` deduplicates
+objects by comparing a projected key such as an ID or email address. `Arr.uniqWith` accepts a custom
+`Equality<A>` function for deep or composite comparisons. In all cases, the order of first
+occurrence is preserved:
 
 ```ts
-pipe([1, 2], Arr.zip(["a", "b"]));          // [[1, "a"], [2, "b"]]
-pipe([1, 2, 3], Arr.intersperse(0));         // [1, 0, 2, 0, 3]
-pipe([1, 2, 3, 4, 5], Arr.chunksOf(2));     // [[1, 2], [3, 4], [5]]
+import { Equality } from "@nlozgachev/pipelined/core";
+
+const uniqueTags = Arr.uniq(["urgent", "billing", "urgent", "support"]);
+// ["urgent", "billing", "support"]
+
+const uniqueUsers = pipe(
+  [
+    { id: "u1", name: "Alice" },
+    { id: "u1", name: "Alice (Duplicate)" },
+    { id: "u2", name: "Bob" },
+  ],
+  Arr.uniqBy((user) => user.id),
+); // [{ id: "u1", name: "Alice" }, { id: "u2", name: "Bob" }]
+
+type Coordinate = { readonly lat: number; readonly lng: number };
+const sameLocation: Equality<Coordinate> = (a, b) => a.lat === b.lat && a.lng === b.lng;
+
+const waypoints = pipe(
+  [{ lat: 37.77, lng: -122.41 }, { lat: 34.05, lng: -118.24 }, { lat: 37.77, lng: -122.41 }],
+  Arr.uniqWith(sameLocation),
+); // [{ lat: 37.77, lng: -122.41 }, { lat: 34.05, lng: -118.24 }]
+```
+
+When working with time-series streams where you only want to collapse consecutive duplicate readings
+while keeping later repetitions, use `Arr.dedupeAdjacent`:
+
+```ts
+const statusStream = ["idle", "idle", "running", "running", "idle"];
+const transitions = pipe(statusStream, Arr.dedupeAdjacent());
+// ["idle", "running", "idle"]
+```
+
+For immutable sorting, `Arr.sortBy` accepts a standard comparator function `(a, b) => number`, while
+`Arr.sortWith` integrates directly with composable `Ordering<A>` instances from `@nlozgachev/pipelined/core`:
+
+```ts
+import { Ordering } from "@nlozgachev/pipelined/core";
+
+const sortedScores = pipe([88, 42, 95], Arr.sortBy((a, b) => a - b));
+// [42, 88, 95]
+
+type Product = { readonly name: string; readonly price: number };
+const byPriceAsc = pipe(Ordering.number, Ordering.by((p: Product) => p.price));
+
+const catalog: readonly Product[] = [
+  { name: "Keyboard", price: 120 },
+  { name: "Mouse", price: 60 },
+];
+const sortedCatalog = pipe(catalog, Arr.sortWith(byPriceAsc));
+// [{ name: "Mouse", price: 60 }, { name: "Keyboard", price: 120 }]
 ```
 
 ---
 
-## Grouping, Windowing, and Occurrences
+## Slicing and Immutable Modifications
 
-### Consecutive grouping with `Arr.chunkBy`
-
-When you need to group adjacent elements that share a calculated key (such as identical status tags
-or timestamp intervals):
+To extract prefixes or suffixes of an array, `Arr.take` and `Arr.drop` slice by element count, while
+`Arr.takeWhile` and `Arr.dropWhile` slice while a condition holds. `Arr.splitAt` divides an array at
+a target index into a `[before, after]` tuple in a single call:
 
 ```ts
+const queue = ["job_1", "job_2", "job_3", "job_4"];
+
+pipe(queue, Arr.take(2));    // ["job_1", "job_2"]
+pipe(queue, Arr.drop(2));    // ["job_3", "job_4"]
+pipe(queue, Arr.splitAt(2)); // [["job_1", "job_2"], ["job_3", "job_4"]]
+
+const readings = [12, 18, 55, 14];
+pipe(readings, Arr.takeWhile((n) => n < 50)); // [12, 18]
+pipe(readings, Arr.dropWhile((n) => n < 50)); // [55, 14]
+```
+
+To add or remove elements at specific positions without mutating the array in place, `Arr.insertAt`
+and `Arr.removeAt` return fresh copies. `Arr.prepend` and `Arr.append` add an element to the start
+or end of an array and statically narrow the return type to `Arr.NonEmpty<A>`:
+
+```ts
+pipe(["step_1", "step_3"], Arr.insertAt(1, "step_2")); // ["step_1", "step_2", "step_3"]
+pipe(["step_1", "step_2", "step_3"], Arr.removeAt(1)); // ["step_1", "step_3"]
+
+const withHeader = pipe(["row_1", "row_2"], Arr.prepend("id,name"));
+// Arr.NonEmpty<string>: ["id,name", "row_1", "row_2"]
+
+const withFooter = pipe(["row_1", "row_2"], Arr.append("end_of_file"));
+// Arr.NonEmpty<string>: ["row_1", "row_2", "end_of_file"]
+```
+
+---
+
+## Combinations, Folds, and Scans
+
+When combining two arrays element-by-element, `Arr.zip` pairs items into `[A, B]` tuples up to the
+length of the shorter array, and `Arr.zipWith` combines each pair using a custom function.
+`Arr.concat` appends one array onto another, and `Arr.intersperse` places a separator element
+between every item:
+
+```ts
+const columns = ["id", "email"];
+const rowValues = ["usr_1", "alice@example.com"];
+
+pipe(columns, Arr.zip(rowValues));
+// [["id", "usr_1"], ["email", "alice@example.com"]]
+
+pipe(columns, Arr.zipWith((col: string, val: string) => `${col}=${val}`)(rowValues));
+// ["id=usr_1", "email=alice@example.com"]
+
+pipe(["home", "settings", "profile"], Arr.intersperse("/"));
+// ["home", "/", "settings", "/", "profile"]
+
+pipe(["us-east"], Arr.concat(["eu-west", "ap-south"]));
+// ["us-east", "eu-west", "ap-south"]
+```
+
+To fold an array into a single summary value, use `Arr.reduce`. When you need to keep every
+intermediate accumulator state—such as computing a running account balance across a ledger of
+transactions—use `Arr.scan`:
+
+```ts
+const transactions = [100, -30, 50, -20];
+
+const finalBalance = pipe(
+  transactions,
+  Arr.reduce(0, (balance, amount) => balance + amount),
+); // 100
+
+const runningBalances = pipe(
+  transactions,
+  Arr.scan(0, (balance, amount) => balance + amount),
+); // [100, 70, 120, 100]
+```
+
+---
+
+## Chunking, Windowing, and Indexing
+
+When batching API requests or paginating datasets, `Arr.chunksOf` divides an array into fixed-size
+batches. When you instead want to group consecutive elements that share a computed property—such as
+adjacent log entries from the same service—use `Arr.chunkBy`:
+
+```ts
+// Fixed-size batches of 2:
+pipe(["id_1", "id_2", "id_3", "id_4", "id_5"], Arr.chunksOf(2));
+// [["id_1", "id_2"], ["id_3", "id_4"], ["id_5"]]
+
+// Group consecutive elements sharing the same key:
 pipe(
-  [1, 1, 2, 3, 3, 1],
-  Arr.chunkBy((n) => n),
-); // [[1, 1], [2], [3, 3], [1]]
+  ["auth", "auth", "billing", "billing", "auth"],
+  Arr.chunkBy((service) => service),
+); // [["auth", "auth"], ["billing", "billing"], ["auth"]]
 ```
 
-### Sliding windows with `Arr.windowed`
-
-`Arr.windowed` produces fixed-size overlapping slices across a collection, advancing by a specified
-`step` (defaulting to 1):
+For moving averages or trend detection, `Arr.windowed` produces overlapping sliding windows of a
+given size, advancing by `step` (which defaults to `1`):
 
 ```ts
-const metrics = [10, 15, 20, 25];
+const dailyRevenue = [100, 150, 200, 250];
 
-// Overlapping pairs for trend calculation:
-pipe(metrics, Arr.windowed(2)); // [[10, 15], [15, 20], [20, 25]]
-
-// Stepping by 2:
-pipe(metrics, Arr.windowed(2, { step: 2 })); // [[10, 15], [20, 25]]
+pipe(dailyRevenue, Arr.windowed(2));              // [[100, 150], [150, 200], [200, 250]]
+pipe(dailyRevenue, Arr.windowed(2, { step: 2 })); // [[100, 150], [200, 250]]
 ```
 
-### Indexing and counting occurrences
-
-- `Arr.indexBy` maps an array into a `ReadonlyMap<K, A>` by a key extraction function.
-- `Arr.frequencies` counts element occurrences, returning a `ReadonlyMap<A, number>`:
+To build fast lookup maps from an array, `Arr.indexBy` indexes elements into a `ReadonlyMap<K, A>`
+using a key selector, and `Arr.frequencies` counts how many times each distinct element appears:
 
 ```ts
-interface Product { id: string; category: string }
-const catalog: Product[] = [
+type Product = { readonly id: string; readonly category: string };
+const catalog: readonly Product[] = [
   { id: "p1", category: "books" },
   { id: "p2", category: "electronics" },
 ];
 
-const catalogMap = pipe(catalog, Arr.indexBy((p) => p.id));
-// ReadonlyMap { "p1" => { id: "p1", ... }, "p2" => { id: "p2", ... } }
+const catalogById = pipe(catalog, Arr.indexBy((product) => product.id));
+// ReadonlyMap { "p1" => { id: "p1", category: "books" }, "p2" => { id: "p2", category: "electronics" } }
 
-const tagCounts = Arr.frequencies(["typescript", "rust", "typescript", "go"]);
-// ReadonlyMap { "typescript" => 2, "rust" => 1, "go" => 1 }
+const statusCounts = Arr.frequencies(["200", "500", "200", "404", "200"]);
+// ReadonlyMap { "200" => 3, "500" => 1, "404" => 1 }
 ```
 
 ---
 
 ## Sequence Generation: unfold
 
-When generating a sequence from an initial seed state until a termination condition is met (such as
-generating paginated page numbers or unfolding an arithmetic sequence), `Arr.unfold` executes while
-the step callback returns `Some`:
+When generating an array from an initial seed state until a termination condition is reached—such as
+building pagination offsets or time intervals—`Arr.unfold` repeatedly invokes your step function as
+long as it returns `Some([nextItem, nextState])`:
 
 ```ts
-// Unfold countdown until 0:
-const countdown = Arr.unfold(5, (current) =>
-  current > 0 ? Maybe.make.some([current, current - 1]) : Maybe.make.none(),
-); // [5, 4, 3, 2, 1]
+// Generate pagination offsets for 100 items with a page size of 25:
+const pageOffsets = Arr.unfold(0, (offset) =>
+  offset < 100 ? Maybe.make.some([offset, offset + 25]) : Maybe.make.none(),
+); // [0, 25, 50, 75]
 ```
 
 ---
 
 ## Traversal across Contexts: traverse and sequence
 
-When you map an array using an operation that can fail or runs asynchronously, you end up with an
-array of containers, such as `Array<Maybe<A>>` or `Array<Result<E, A>>`.
+Mapping an array with a function that returns a `Maybe`, `Result`, `Validation`, or `Task` produces
+an array of containers such as `readonly Result<E, A>[]`. In practice, you almost always want the
+inverted structure—a single container holding the collected array (`Result<E, readonly A[]>`).
 
-This is highly inconvenient. Typically, we want to flip this structure inside out: if *all*
-operations passed, we want `Maybe<Array<A>>` or `Result<E, Array<A>>`. If a single check failed, we
-want the entire pipeline to fail.
+`Arr.traverse` maps and flips the container in a single operation, while `Arr.sequence` flips an
+existing array of containers.
 
-The `traverse` family executes this inside-out flip automatically during the mapping stage.
+### Optional traversal (`Maybe`)
 
-### Safe traversal with `Arr.traverse.Maybe`
-
-Maps each element to a `Maybe` and flattens it. If a single element yields `None`, the entire result
-resolves to `None`:
+`Arr.traverse.Maybe` maps each element to a `Maybe` and returns `Some` of all results only if every
+element succeeded, short-circuiting to `None` on the first missing value:
 
 ```ts
-pipe(
-  ["1", "2", "3"],
-  Arr.traverse.Maybe(parseNumeric),
-); // Some([1, 2, 3])
+pipe(["10", "20", "30"], Arr.traverse.Maybe(parsePrice));    // Some([10, 20, 30])
+pipe(["10", "N/A", "30"], Arr.traverse.Maybe(parsePrice));   // None
 
-pipe(
-  ["1", "invalid_text", "3"],
-  Arr.traverse.Maybe(parseNumeric),
-); // None (the entire check short-circuits)
+Arr.sequence.Maybe([Maybe.make.some(10), Maybe.make.some(20)]); // Some([10, 20])
+Arr.sequence.Maybe([Maybe.make.some(10), Maybe.make.none()]);   // None
 ```
 
-### Safe error traversal with `Arr.traverse.Result`
+### Short-circuiting error traversal (`Result`)
 
-Maps elements to `Result`, returning `Ok` only if every element succeeded, or the first `Err`
-encountered:
+`Arr.traverse.Result` and `Arr.sequence.Result` collect `Ok` values and short-circuit on the first
+`Err` encountered:
 
 ```ts
-const validateAge = (age: number): Result<string, number> =>
-  age >= 18 ? Result.make.ok(age) : Result.make.err(`Age ${age} is underage`);
+const validatePort = (port: number): Result<string, number> =>
+  port >= 1024 && port <= 65535
+    ? Result.make.ok(port)
+    : Result.make.err(`Invalid port: ${port}`);
 
-pipe([20, 25, 30], Arr.traverse.Result(validateAge)); // Ok([20, 25, 30])
-pipe([20, 16, 30], Arr.traverse.Result(validateAge)); // Err("Age 16 is underage")
+pipe([8080, 3000, 5432], Arr.traverse.Result(validatePort)); // Ok([8080, 3000, 5432])
+pipe([8080, 80, 5432], Arr.traverse.Result(validatePort));   // Err("Invalid port: 80")
+
+Arr.sequence.Result([Result.make.ok(8080), Result.make.ok(3000)]);        // Ok([8080, 3000])
+Arr.sequence.Result([Result.make.ok(8080), Result.make.err("Port busy")]); // Err("Port busy")
 ```
 
-### Asynchronous traversal with `Arr.traverse.Task`
+### Error-accumulating traversal (`Validation`)
 
-`Arr.traverse.Task` runs asynchronous tasks, resolving to a `Task<readonly A[]>` once all complete.
-By default, it executes all tasks in parallel. Pass `{ concurrency }` to limit concurrent execution.
-For fallible tasks (`Task.Result<E, A>`), traverse with `Arr.traverse.Task` and invert the collected
-results using `Task.map(Arr.sequence.Result)`:
+When validating forms or batch imports where you want to report *every* failure at once rather than
+stopping at the first error, use `Arr.traverse.Validation` and `Arr.sequence.Validation`:
 
 ```ts
-// Parallel user profile fetch bounded to 3 in-flight requests:
-pipe(
-  userIds,
-  Arr.traverse.Task((id) => fetchUserTask(id), { concurrency: 3 }),
-)();
+import { Validation } from "@nlozgachev/pipelined/core";
 
-// Fallible batch processing bounded to 5 concurrent workers:
-pipe(
-  userIds,
-  Arr.traverse.Task((id) => fetchUserTaskResult(id), { concurrency: 5 }),
-  Task.map(Arr.sequence.Result),
-)();
+const checkPositive = (amount: number): Validation<string, number> =>
+  amount > 0
+    ? Validation.make.passed(amount)
+    : Validation.make.failed(`Amount must be positive: ${amount}`);
+
+pipe([10, -5, -20], Arr.traverse.Validation(checkPositive));
+// Failed(["Amount must be positive: -5", "Amount must be positive: -20"])
+
+Arr.sequence.Validation([
+  Validation.make.passed(10),
+  Validation.make.failed("Missing SKU"),
+]); // Failed(["Missing SKU"])
 ```
 
-### Accumulating validation traversal with `Arr.traverse.Validation`
+### Asynchronous traversal (`Task`)
 
-Unlike `Arr.traverse.Result` which short-circuits on the first error, `Arr.traverse.Validation`
-evaluates all elements and accumulates every error into a `Failed` non-empty array:
-
-```ts
-const validatePositive = (n: number) =>
-  n > 0 ? Validation.make.passed(n) : Validation.make.failed(`Non-positive: ${n}`);
-
-pipe([1, 2, 3], Arr.traverse.Validation(validatePositive)); // Passed([1, 2, 3])
-pipe([1, -2, -3], Arr.traverse.Validation(validatePositive)); // Failed(["Non-positive: -2", "Non-positive: -3"])
-```
-
-### Flipping existing structures: `sequence`
-
-If you *already* have an array of containers, you can flip them using `sequence` directly under the
-new layout:
+`Arr.traverse.Task` and `Arr.sequence.Task` execute asynchronous `Task` computations and collect
+their resolved values into `Task<readonly B[]>`. By default, tasks run in parallel; you can pass
+`{ concurrency }` to `Arr.traverse.Task` to cap the number of in-flight workers:
 
 ```ts
-// Array<Maybe<number>> → Maybe<Array<number>>
-Arr.sequence.Maybe([Maybe.make.some(1), Maybe.make.some(2)]); // Some([1, 2])
-Arr.sequence.Maybe([Maybe.make.some(1), Maybe.make.none()]);   // None
+import { Task } from "@nlozgachev/pipelined/core";
 
-// Array<Validation<string, number>> → Validation<string, Array<number>>
-Arr.sequence.Validation([Validation.make.passed(1), Validation.make.passed(2)]); // Passed([1, 2])
-Arr.sequence.Validation([Validation.make.failed("err1"), Validation.make.failed("err2")]); // Failed(["err1", "err2"])
+const computeHash = (input: string): Task<string> =>
+  Task.make(`hash_${input}`);
+
+// Run at most 2 tasks concurrently:
+const batchHashes = pipe(
+  ["doc_1", "doc_2", "doc_3"],
+  Arr.traverse.Task(computeHash, { concurrency: 2 }),
+);
+
+// Sequence an existing array of Tasks in parallel:
+const allHashes = Arr.sequence.Task([computeHash("doc_1"), computeHash("doc_2")]);
 ```
 
 ---
 
-## Non-Empty Arrays: Arr.NonEmpty and Generic Operations
+## Non-Empty Arrays: `Arr.NonEmpty`
 
-When you need compile-time guarantees that an array is not empty (e.g., for safe head access or
-accumulating validation errors), you can use `Arr.NonEmpty<A>` from the data module.
+When your domain requires an array with at least one element—such as a list of validation errors or
+line items in a confirmed order—`Arr.NonEmpty<A>` (aliased to `readonly [A, ...A[]]`) encodes that
+guarantee at compile time.
 
-To simplify operating on non-empty arrays, several core `Arr` helpers are generic and automatically
-preserve the non-empty type contract when applied to a `Arr.NonEmpty`. These include `map`,
-`mapWithIndex`, `reverse`, `intersperse`, `prepend`, `append`, and `concat`.
-
-```ts
-import { Arr } from "@nlozgachev/pipelined/data";
-
-const list: Arr.NonEmpty<number> = [1, 2, 3];
-
-// Generic operations preserve the Arr.NonEmpty type signature automatically:
-const doubled: Arr.NonEmpty<number> = Arr.map((n) => n * 2)(list);
-const reversed: Arr.NonEmpty<number> = Arr.reverse(list);
-const extended: Arr.NonEmpty<number> = pipe(list, Arr.concat([4, 5]));
-```
-
-### Specialized Non-Empty Operations: Arr.NonEmpty
-
-For operations that have structurally distinct signatures or return shapes when applied to non-empty
-arrays, you can use the nested `Arr.NonEmpty` module.
-
-- **`head` / `last`**: Because a non-empty array is guaranteed to contain elements, these helpers
-  return the value directly instead of wrapping it in a `Maybe`.
-- **`tail`**: Returns all elements after the first as a standard `readonly A[]`.
-- **`reduce`**: Reduces the array from the left without requiring an initial seed value, since there
-  is always at least one element.
-- **`singleton`**: Wraps a single value in an `Arr.NonEmpty`.
-- **`from.array`**: Attempts to lift a standard, potentially empty array into an `Arr.NonEmpty`,
-  returning `Some<Arr.NonEmpty>` if elements are present, and `None` otherwise.
+Constructing an array with `Arr.prepend`, `Arr.append`, or `Arr.NonEmpty.singleton` produces an
+`Arr.NonEmpty<A>` directly. For arbitrary runtime arrays, `Arr.is.nonEmpty` narrows the type in
+conditionals, and `Arr.NonEmpty.from.array` lifts the array into `Maybe<Arr.NonEmpty<A>>`:
 
 ```ts
-import { Arr } from "@nlozgachev/pipelined/data";
-
-const list: Arr.NonEmpty<number> = [10, 20, 30];
-
-const first: number = Arr.NonEmpty.head(list); // 10 (returns number directly, not Maybe)
-const sum: number = Arr.NonEmpty.reduce((a, b) => a + b)(list); // 60 (no initial value required)
-
-const singletonList = Arr.NonEmpty.singleton("value"); // Arr.NonEmpty<string>
-const maybeNonEmpty = Arr.NonEmpty.from.array([1, 2]); // Some([1, 2])
+const singleItem = Arr.NonEmpty.singleton("ord_101"); // Arr.NonEmpty<string>
+const refined = Arr.NonEmpty.from.array(["ord_101", "ord_102"]); // Some(Arr.NonEmpty<string>)
+const emptyAttempt = Arr.NonEmpty.from.array<string>([]);        // None
 ```
 
-For more details on when to enforce non-empty guarantees at the boundaries of your systems, see the
-dedicated [NonEmpty Guide](../nonempty).
+While top-level `Arr.map` and `Arr.reverse` return general `readonly B[]` arrays, the `Arr.NonEmpty`
+namespace provides dedicated transformations that preserve the `Arr.NonEmpty` guarantee across
+pipeline steps, as well as direct `head`, `last`, and seedless `reduce` operations that never need
+to wrap their result in `Maybe`:
+
+```ts
+const lineItems: Arr.NonEmpty<number> = [100, 250, 50];
+
+// Direct extraction without Maybe:
+const firstItem: number = Arr.NonEmpty.head(lineItems); // 100
+const lastItem: number = Arr.NonEmpty.last(lineItems);  // 50
+const remaining: readonly number[] = Arr.NonEmpty.tail(lineItems); // [250, 50]
+
+// Seedless reduction using the first element as the initial accumulator:
+const orderSubtotal: number = pipe(
+  lineItems,
+  Arr.NonEmpty.reduce((sum, price) => sum + price),
+); // 400
+
+// Transformations that preserve the Arr.NonEmpty<B> return type:
+const withTax: Arr.NonEmpty<number> = pipe(
+  lineItems,
+  Arr.NonEmpty.map((price) => price * 1.1),
+);
+
+const numberedItems: Arr.NonEmpty<string> = pipe(
+  lineItems,
+  Arr.NonEmpty.mapWithIndex((idx, price) => `#${idx + 1}: ${price}`),
+);
+
+const separated: Arr.NonEmpty<number> = pipe(lineItems, Arr.NonEmpty.intersperse(0));
+const combined: Arr.NonEmpty<number> = pipe(lineItems, Arr.NonEmpty.concat([75, 125]));
+const reversed: Arr.NonEmpty<number> = Arr.NonEmpty.reverse(lineItems);
+```
+
+For more details on non-empty data modeling across collections, see the
+[Non-Empty Collections Guide](../nonempty).
+
+---
+
+## Pipeline Composition
+
+Here is an end-to-end checkout reconciliation pipeline that cleans raw order amounts, filters out
+unparseable entries, deduplicates records, sorts from highest to lowest value, and extracts the top
+three orders for priority fulfillment:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Maybe, Ordering } from "@nlozgachev/pipelined/core";
+import { Arr } from "@nlozgachev/pipelined/data";
+
+type RawOrder = { readonly id: string; readonly amountText: string };
+type ValidOrder = { readonly id: string; readonly amount: number };
+
+const parseOrder = (raw: RawOrder): Maybe<ValidOrder> => {
+  const amount = Number(raw.amountText);
+  return Number.isFinite(amount) && amount > 0
+    ? Maybe.make.some({ id: raw.id, amount })
+    : Maybe.make.none();
+};
+
+const byAmountDesc = pipe(
+  Ordering.number,
+  Ordering.reverse,
+  Ordering.by((order: ValidOrder) => order.amount),
+);
+
+const rawOrders: readonly RawOrder[] = [
+  { id: "ord_1", amountText: "120.50" },
+  { id: "ord_2", amountText: "N/A" },
+  { id: "ord_1", amountText: "120.50" },
+  { id: "ord_3", amountText: "450.00" },
+  { id: "ord_4", amountText: "85.00" },
+  { id: "ord_5", amountText: "310.00" },
+];
+
+const priorityOrders = pipe(
+  rawOrders,
+  Arr.filterMap(parseOrder),
+  Arr.uniqBy((order) => order.id),
+  Arr.sortWith(byAmountDesc),
+  Arr.take(3),
+);
+// [
+//   { id: "ord_3", amount: 450 },
+//   { id: "ord_5", amount: 310 },
+//   { id: "ord_1", amount: 120.5 }
+// ]
+```
 
 ---
 
 ## Problems it solves
 
 - **Point-free transformation in data pipelines**: In API response formatters and event processors,
-  transforming arrays with native methods often requires verbose arrow wrapper functions inside
-  `pipe` chains. `Arr` provides data-last combinators (`Arr.map`, `Arr.filterMap`, `Arr.chunk`,
-  `Arr.groupBy`) that compose cleanly into linear pipelines.
+  transforming arrays with native methods requires verbose arrow wrapper functions inside `pipe`
+  chains. `Arr` provides data-last combinators (`Arr.map`, `Arr.filterMap`, `Arr.chunksOf`,
+  `Arr.chunkBy`, `Arr.groupBy`) that compose cleanly into linear pipelines.
 - **Safe element extraction and out-of-bounds protection (`Arr.head`, `Arr.last`, `Arr.at`)**:
   Native indexing (`arr[i]`) returns `undefined` at runtime without static safety. `Arr.head`,
   `Arr.last`, and `Arr.at` return `Maybe<A>`, supporting negative offsets and guaranteeing
@@ -434,19 +662,19 @@ dedicated [NonEmpty Guide](../nonempty).
   moving averages across time-series metrics, `Arr.chunksOf`, `Arr.chunkBy`, and `Arr.windowed`
   partition collections point-free.
 - **Categorization and dual-partitioning (`Arr.groupBy`, `Arr.partition`, `Arr.partitionMaybe`,
-  `Arr.frequencies`)**: In UI dashboards and reporting tools, collections need to be split by
-  boolean criteria (`Arr.partition`), segregated by optional parsers (`Arr.partitionMaybe`),
-  organized into non-empty buckets (`Arr.groupBy`), or counted into frequency maps
-  (`Arr.frequencies`).
+  `Arr.partitionMap`, `Arr.separate`, `Arr.frequencies`)**: In UI dashboards and reporting tools,
+  collections can be split by boolean criteria (`Arr.partition`), segregated by optional or fallible
+  parsers (`Arr.partitionMaybe`, `Arr.partitionMap`), organized into non-empty buckets
+  (`Arr.groupBy`), or counted into frequency maps (`Arr.frequencies`).
 - **Simultaneous mapping and filtering (`Arr.filterMap`, `Arr.findMap`, `Arr.compact`)**: Extracting
   valid data from dirty datasets (such as parsing strings to numbers and discarding unparseable
   rows) typically requires separate `.map()` and `.filter()` passes. `Arr.filterMap` and
-  `Arr.findMap` execute transformation and filtering in a single efficient pass.
+  `Arr.findMap` execute transformation and filtering in a single pass.
 - **Sequence generation from seeds (`Arr.unfold`)**: Constructing lists from iterative algorithms or
   paginated cursor workflows without imperative `while` loops or mutable array allocations.
-- **Traversing collections of fallible or asynchronous steps (`Arr.traverse`)**: When running batch
-  operations (such as validating an array of input records or fetching details for a list of IDs),
-  standard mapping produces collections of containers like `Array<Result<E, A>>` or
-  `Array<Task<A>>`. `Arr.traverse.Result` and `Arr.traverse.Task` sequence or parallelize the
-  collection with optional bounded concurrency into a single container (`Result<E, readonly A[]>` or
-  `Task<readonly A[]>`), handling failures and collection inversion automatically.
+- **Traversing collections of fallible or asynchronous steps (`Arr.traverse`, `Arr.sequence`)**:
+  When running batch operations (such as validating an array of input records or executing tasks for
+  a list of IDs), standard mapping produces collections of containers like `Array<Result<E, A>>` or
+  `Array<Task<A>>`. `Arr.traverse` and `Arr.sequence` invert the collection into a single container
+  (`Result<E, readonly A[]>`, `Validation<E, readonly A[]>`, or `Task<readonly A[]>`), handling
+  short-circuiting, error accumulation, or bounded concurrency automatically.

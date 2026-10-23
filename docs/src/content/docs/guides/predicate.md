@@ -1,6 +1,6 @@
 ---
 title: Predicate — Composable Logic
-description: Represent boolean checks as first-class, composable functions, combining, negating, and adapting them to richer data structures point-free.
+description: Represent boolean checks as first-class, composable functions, combining, negating, and adapting them to richer data structures without wrapper boilerplate.
 ---
 
 Boolean checks are the structural foundation of control flow. We write them everywhere: inside
@@ -30,7 +30,8 @@ type Predicate<A> = (a: A) => boolean;
 ```
 
 By representing boolean checks as first-class values, we can name them, negate them, combine them,
-and adapt them to new shapes point-free.
+and adapt them to new object shapes directly inside pipelines without writing extra wrapper
+functions.
 
 ---
 
@@ -39,17 +40,30 @@ and adapt them to new shapes point-free.
 `Predicate<A>` and `Refinement<A, B>` are closely related. In fact, every `Refinement` is
 structurally a `Predicate`. However, they serve different purposes in your design:
 
-| Type                   | Type System Behavior                                                | Primary Use Case                                                                                 |
-| :--------------------- | :------------------------------------------------------------------ | :----------------------------------------------------------------------------------------------- |
-| **`Predicate<A>`**     | None. The type remains `A` after the check has evaluated to `true`. | Standard domain checks where type narrowing is not needed (e.g., `isAdult`, `isAffordable`).     |
-| **`Refinement<A, B>`** | Nrows the type to `B` inside successful conditional branches.       | Type guards where you must assert a stricter type safety boundary (e.g., `isString`, `isEmail`). |
+- **`Predicate<A>`** tests whether a value satisfies a domain rule (such as `isAdult` or
+  `isAffordable`), keeping the TypeScript type as `A` after the check evaluates to `true`.
+- **`Refinement<A, B>`** is a type guard (`(a: A) => a is B`) that narrows the compile-time type of
+  `A` to a more specific subtype `B` inside conditional branches (such as narrowing `unknown` to
+  `string` or `string` to a branded `Email`).
 
 `Predicate` has a major structural superpower: the `using` operator. It allows you to adapt simple
-primitive checks to work on rich, deeply nested domain objects, which is extremely difficult to
-express cleanly with `Refinement`.
+primitive checks to work on rich, deeply nested domain objects, which is difficult to express
+cleanly with `Refinement`.
 
-If you need to mix a type guard into a simple boolean chain, you can lift it using
-`Predicate.from.Refinement`.
+If you have an existing `Refinement<A, B>` and want to compose it alongside plain boolean rules
+using `Predicate.and`, `Predicate.or`, or `Predicate.all`, lift it with `Predicate.from.Refinement`:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Predicate, Refinement } from "@nlozgachev/pipelined/core";
+import { Str } from "@nlozgachev/pipelined/data";
+
+// Str.is.nonEmpty is a Refinement<string, Str.NonEmpty>
+const isValidUsername: Predicate<string> = pipe(
+  Predicate.from.Refinement(Str.is.nonEmpty),
+  Predicate.and((s) => s.length <= 20),
+);
+```
 
 ---
 
@@ -79,7 +93,9 @@ stops the moment a check succeeds.
 ```ts
 const isAdult: Predicate<number> = (age) => age >= 18;
 const isSenior: Predicate<number> = (age) => age >= 65;
+const isChild: Predicate<number> = (age) => age < 13;
 
+// Logical AND: both conditions must hold
 const isWorkingAge: Predicate<number> = pipe(
   isAdult,
   Predicate.and(pipe(isSenior, Predicate.not)),
@@ -88,6 +104,16 @@ const isWorkingAge: Predicate<number> = pipe(
 isWorkingAge(30); // true
 isWorkingAge(15); // false (too young)
 isWorkingAge(70); // false (retired)
+
+// Logical OR: passes when either condition holds
+const qualifiesForDiscount: Predicate<number> = pipe(
+  isChild,
+  Predicate.or(isSenior),
+);
+
+qualifiesForDiscount(10); // true
+qualifiesForDiscount(68); // true
+qualifiesForDiscount(35); // false
 ```
 
 By chaining `and` in a `pipe`, you describe complex rules as a highly readable checklist:
@@ -175,9 +201,37 @@ const allowedImageFormats: Predicate<string>[] = [
 const isSupportedImage = Predicate.any(allowedImageFormats);
 ```
 
-Both combinators short-circuit internally (using `Array.prototype.every` and
-`Array.prototype.some`), ensuring that downstream checks are skipped as soon as the outcome is
-determined.
+Both combinators short-circuit on the first decisive element in the loop, ensuring that downstream
+checks are skipped as soon as the outcome is determined.
+
+---
+
+## Declarative Conditional Branching: match
+
+When routing an input value across multiple mutually exclusive boolean rules, nested `if / else if`
+statements or chained ternaries become difficult to scan. `Predicate.match` accepts an array of
+`[predicate, handler]` pairs and a mandatory fallback handler, evaluating predicates in order and
+returning the result of the first matching branch:
+
+```ts
+interface Order {
+  subtotal: number;
+  isExpress: boolean;
+}
+
+const calculateShippingTier = Predicate.match<Order, string>(
+  [
+    [(order) => order.isExpress, () => "priority-overnight"],
+    [(order) => order.subtotal >= 100, () => "free-standard"],
+    [(order) => order.subtotal >= 50, () => "discounted-ground"],
+  ],
+  () => "standard-ground",
+);
+
+calculateShippingTier({ subtotal: 120, isExpress: false }); // "free-standard"
+calculateShippingTier({ subtotal: 25, isExpress: true });   // "priority-overnight"
+calculateShippingTier({ subtotal: 25, isExpress: false });  // "standard-ground"
+```
 
 ---
 
@@ -192,8 +246,8 @@ determined.
   testable policy functions.
 - **Projecting atomic checks onto nested domain records**: Instead of re-implementing checks across
   different object structures, `Predicate.using` allows developers to define simple checks on
-  primitives (such as `Str.isNonEmpty` or `Num.greaterThan(0)`) and project them cleanly onto
-  specific entity properties.
+  primitives (such as `Str.is.nonEmpty` or `Num.is.positive`) and project them cleanly onto specific
+  entity properties.
 - **Short-circuiting rule evaluations with `all` and `any`**: When checking an array of security or
   domain conditions against a request, `Predicate.all` and `Predicate.any` short-circuit execution
   as soon as a passing or failing state is determined, skipping unnecessary downstream evaluations.

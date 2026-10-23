@@ -12,14 +12,14 @@ boilerplate for basic event sequence tracking.
 messages, match specific event sequences, accumulate state over time, and forward events between
 event buses without manual callback management.
 
-The design of `EventBus` draws inspiration from key functional programming patterns:
+`EventBus` centers on three core capabilities:
 
-- **Functional Reactive Programming (FRP)**: Incremental state reduction over a stream of discrete
-  events (`scanl`).
-- **Event-Driven State Machines**: Sequence pattern matching and reset rules over typed message
-  kinds.
-- **Typed Pub/Sub Messaging**: Strongly-typed payload schemas, broadcasting, and structural channel
-  forwarding.
+- **Incremental State Reduction**: Accumulating derived state over a stream of discrete events as
+  they arrive.
+- **Event-Driven Sequence Matching**: Matching ordered or unordered multi-event sequences with
+  optional steps and automatic reset rules.
+- **Typed Pub/Sub Messaging**: Strongly-typed payload schemas, multi-bus broadcasting, and
+  cross-bus event forwarding.
 
 ---
 
@@ -95,14 +95,14 @@ EventBus.emit([authBus, analyticsBus], {
 ## Listening & Sequence Matching
 
 `EventBus.listen` registers subscribers on an event bus for a single message kind or a sequence of
-message kinds. Matching options control sequence ordering, strictness, and auto-resetting.
-Subscribing the exact same listener function reference multiple times is idempotent and
-automatically deduplicated.
+message kinds. Matching options control sequence ordering, strictness, and auto-resetting. Each
+call to `.reduce()`, `.tap()`, or `.collect()` registers an independent subscription with its own
+sequence tracking state and disposal function.
 
 ```ts
 import { EventBus } from "@nlozgachev/pipelined/core";
 
-// Single-word sequence options:
+// Sequence options:
 // - ordered: matches events in exact array sequence order
 // - strict: requires strictly consecutive events without intermediary events
 // - once: automatically unsubscribes after the first match
@@ -149,7 +149,7 @@ const subscription = EventBus.listen(
     }
     return state;
   },
-  { completedSteps: 0, lastEmail: "" }
+  { completedSteps: 0, lastEmail: "" },
 );
 
 // Inspect state after emission
@@ -164,7 +164,9 @@ subscription.unsubscribe();
 ## Stateless Side-Effects
 
 For scenarios where state accumulation is not required, `.tap(effect)` executes a side-effect
-callback when the matching event or sequence fires. It returns a cleanup function to unsubscribe.
+callback when the matching event or sequence fires. Because `EventBus.listen` narrows the message
+type to the listened key(s), `msg.value` is automatically typed without extra narrowing checks. It
+returns a cleanup function to unsubscribe:
 
 ```ts
 import { EventBus } from "@nlozgachev/pipelined/core";
@@ -177,9 +179,7 @@ type TelemetryMessages = {
 const analyticsBus = EventBus.make<TelemetryMessages>();
 
 const unsubscribe = EventBus.listen(analyticsBus, "buttonClicked").tap((msg) => {
-  if (msg.kind === "buttonClicked") {
-    console.log("Telemetry event:", msg.value.buttonId);
-  }
+  console.log("Telemetry event:", msg.value.buttonId);
 });
 
 // Remove listener
@@ -245,8 +245,9 @@ const sub = EventBus.listen(
 
 ## Structural Event Bus Forwarding
 
-`EventBus.forward` connects buses together, piping messages from a source bus to target buses. An
-optional `only` filter restricts forwarding to specific message kinds.
+`EventBus.forward` connects buses together, piping messages from a source bus to one or more target
+buses. An optional `only` filter restricts forwarding to specific message kinds, allowing you to
+forward shared event keys across buses with distinct domain schemas:
 
 ```ts
 import { EventBus } from "@nlozgachev/pipelined/core";
@@ -256,10 +257,15 @@ type OrderMessages = {
   checkoutSubmitted: { total: number };
 };
 
-const UIBus = EventBus.make<OrderMessages>();
-const AuditBus = EventBus.make<OrderMessages>();
+type AuditMessages = {
+  checkoutSubmitted: { total: number };
+  userLoggedOut: { userId: string };
+};
 
-// Forward checkout events from UIBus to AuditBus
+const UIBus = EventBus.make<OrderMessages>();
+const AuditBus = EventBus.make<AuditMessages>();
+
+// Forward shared checkoutSubmitted events from UIBus to AuditBus
 const stopForwarding = EventBus.forward({
   from: UIBus,
   to: AuditBus,
@@ -323,8 +329,8 @@ This architecture guarantees two core runtime properties:
   accumulates state over time synchronously without external mutable state stores.
 - **Structural event bus forwarding and subsystem aggregation (`EventBus.forward`)**: In modular
   applications, child feature modules maintain local event buses. `EventBus.forward` bridges and
-  forwards filtered or renamed events from isolated module buses into a central application event
-  bus without manual event plumbing.
+  forwards filtered subsets of shared events from isolated module buses into a central application
+  event bus without manual event plumbing.
 - **Memory leak prevention with explicit listener disposal**: Every subscription returns a clean
   disposal function that removes the listener instantly, preventing dangling references and memory
   leaks when UI views unmount.

@@ -3,13 +3,13 @@ title: These — Inclusive OR
 description: Model inclusive-OR scenarios where you have a first value, a second value, or both coexisting simultaneously.
 ---
 
-TypeScript models exclusive-OR states with discriminated unions (`A | B`) and product states with
+TypeScript models exclusive-OR states with discriminated unions (`A | B`) and paired states with
 objects (`{ a: A; b: B }`). However, operations like data synchronization, diff engines, and
 non-fatal warnings require modeling inclusive-OR states: having a first value, a second value, or
 both simultaneously.
 
 `These<A, B>` represents inclusive-OR as a discriminated union of three variants: `First<A>`,
-`Second<B>`, and `Both<A, B>`: offering three distinct variants:
+`Second<B>`, and `Both<A, B>`:
 
 - `First(a)` — only the first value is present.
 - `Second(b)` — only the second value is present.
@@ -25,6 +25,13 @@ flowchart TD
 
 `These` is a neutral, structural domain-modeling type. It does not carry any success, failure, or
 implicit error connotations. Neither side is privileged.
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { These } from "@nlozgachev/pipelined/core";
+
+export type These<A, B> = These.First<A> | These.Second<B> | These.Both<A, B>;
+```
 
 ---
 
@@ -44,9 +51,9 @@ import { These } from "@nlozgachev/pipelined/core";
 
 type ContactDetails = These<EmailAddress, PhoneNumber>;
 
-const emailOnly = These.make.first(email);       // Email only
-const phoneOnly = These.make.second(phone);      // Phone only
-const both = These.make.both(email, phone);      // Both channels available
+const emailOnly = These.make.first(email); // Email only
+const phoneOnly = These.make.second(phone); // Phone only
+const both = These.make.both(email, phone); // Both channels available
 ```
 
 ### 2. Local and Remote Synchronization
@@ -59,12 +66,18 @@ comparing records, three outcomes are structurally possible:
 - Both local and remote changes exist and must be merged: `Both(local, remote)`
 
 ```ts
-interface UserRecord { id: string; name: string }
+interface UserRecord {
+  id: string;
+  name: string;
+}
 
-const reconcile = (local: UserRecord | null, remote: UserRecord | null): These<UserRecord, UserRecord> => {
+const reconcile = (
+  local: UserRecord | null,
+  remote: UserRecord | null,
+): These<UserRecord, UserRecord> => {
   if (local && !remote) return These.make.first(local);
   if (!local && remote) return These.make.second(remote);
-  if (local && remote)  return These.make.both(local, remote);
+  if (local && remote) return These.make.both(local, remote);
   throw new Error("Cannot reconcile when both sources are empty");
 };
 ```
@@ -86,9 +99,9 @@ import { pipe } from "@nlozgachev/pipelined/composition";
 
 const formatEmail = (email: EmailAddress) => email.toLowerCase();
 
-pipe(These.make.first(email), These.mapFirst(formatEmail));      // First(formattedEmail)
+pipe(These.make.first(email), These.mapFirst(formatEmail)); // First(formattedEmail)
 pipe(These.make.both(email, phone), These.mapFirst(formatEmail)); // Both(formattedEmail, phone)
-pipe(These.make.second(phone), These.mapFirst(formatEmail));     // Second(phone)
+pipe(These.make.second(phone), These.mapFirst(formatEmail)); // Second(phone)
 ```
 
 ### Mapping the second side with `mapSecond`
@@ -98,7 +111,7 @@ pipe(These.make.second(phone), These.mapFirst(formatEmail));     // Second(phone
 ```ts
 const formatPhone = (phone: PhoneNumber) => phone.trim();
 
-pipe(These.make.second(phone), These.mapSecond(formatPhone));  // Second(formattedPhone)
+pipe(These.make.second(phone), These.mapSecond(formatPhone)); // Second(formattedPhone)
 pipe(These.make.both(email, phone), These.mapSecond(formatPhone)); // Both(email, formattedPhone)
 ```
 
@@ -121,8 +134,7 @@ Chaining operations over a `These` requires careful attention to what should hap
 values.
 
 `chainFirst` passes the first value to the next step, leaving `Second` unchanged. When the input is
-a `Both` variant, the coexisting second value is dropped, and the pipeline yields whatever the next
-step returns:
+a `Both` variant, the coexisting second value is replaced by whatever the next step returns:
 
 ```ts
 const lookupEmailMetaData = (email: string): These<EmailMeta, PhoneNumber> =>
@@ -134,14 +146,20 @@ pipe(
 ); // First(EmailMeta) — phone number is discarded
 ```
 
-If you need the second value to survive the chain, you must use pure maps rather than monadic
-chains.
+If you need both coexisting values to be preserved without replacement, transform them using
+`mapFirst`, `mapSecond`, or `mapBoth` rather than `chainFirst` or `chainSecond`.
 
 `chainSecond` performs the symmetric operation, chaining over the second value while leaving `First`
 unchanged:
 
 ```ts
-const validatePhone = (phone: string): These<EmailAddress, PhoneMeta> => ...
+const validatePhoneCarrier = (phone: string): These<EmailAddress, PhoneMeta> =>
+  These.make.second({ number: phone, carrier: "Verizon" });
+
+pipe(
+  These.make.second("+15550199"),
+  These.chainSecond(validatePhoneCarrier),
+); // Second({ number: "+15550199", carrier: "Verizon" })
 ```
 
 ---
@@ -187,11 +205,11 @@ To check which variant is active without unpacking the full structure, `These` p
 guards:
 
 ```ts
-These.is.first(value);  // true if First only
+These.is.first(value); // true if First only
 These.is.second(value); // true if Second only
-These.is.both(value);   // true if Both
+These.is.both(value); // true if Both
 
-These.hasFirst(value);  // true if First or Both
+These.hasFirst(value); // true if First or Both
 These.hasSecond(value); // true if Second or Both
 ```
 
@@ -204,8 +222,8 @@ These.hasSecond(value); // true if Second or Both
 `swap` reverses the first and second values of the container:
 
 ```ts
-These.swap(These.make.first(email));         // Second(email)
-These.swap(These.make.both(email, phone));   // Both(phone, email)
+These.swap(These.make.first(email)); // Second(email)
+These.swap(These.make.both(email, phone)); // Both(phone, email)
 ```
 
 ### Peeking with tap
@@ -222,20 +240,54 @@ pipe(
 
 ---
 
+## Pipeline composition
+
+Here is a lenient configuration parser that parses a raw concurrency setting while preserving
+non-fatal deprecation warnings alongside the parsed value:
+
+```ts
+const parseConcurrencySetting = (raw: string): These<number, string> => {
+  const trimmed = raw.trim();
+  const parsed = Number.parseInt(trimmed, 10);
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    return These.make.second(`Invalid concurrency "${raw}"; must be a positive integer`);
+  }
+  if (parsed > 32) {
+    return These.make.both(32, `Concurrency ${parsed} exceeds max pool size; clamped to 32`);
+  }
+  return These.make.first(parsed);
+};
+
+const summary = pipe(
+  parseConcurrencySetting(" 64 "),
+  These.mapFirst((workers) => ({ workers })),
+  These.mapSecond((warning) => `[Config Warning] ${warning}`),
+  These.tap(({ workers }) => console.info(`Initialized pool with ${workers} workers`)),
+  These.match({
+    first: ({ workers }) => `Pool ready (${workers} workers)`,
+    second: (error) => `Pool startup failed: ${error}`,
+    both: ({ workers }, warning) => `Pool ready (${workers} workers) — ${warning}`,
+  }),
+);
+// "Pool ready (32 workers) — [Config Warning] Concurrency 64 exceeds max pool size; clamped to 32"
+```
+
+---
+
 ## Problems it solves
 
 - **Two-way offline and remote synchronization**: When synchronizing records between local offline
   stores (such as SQLite or IndexedDB) and a remote server, changes may exist exclusively locally
   (new offline drafts), exclusively remotely (cloud updates), or concurrently on both sides (merge
-  conflicts). `These` models inclusive three-way states (`This`, `That`, `Both`) without ambiguous
-  nullable flags.
+  conflicts). `These` models inclusive three-way states (`First`, `Second`, `Both`) without
+  ambiguous nullable flags.
 - **Partial success with non-fatal warnings**: In batch processing and API transformations, an
   operation often successfully parses a payload while also encountering non-fatal warnings or
   recoverable format issues. `These` allows functions to return both the valid payload and the
   collected warnings, avoiding the need to either fail the entire operation or discard diagnostic
   details.
 - **Reconciling diff patches with custom strategies**: When calculating database differences between
-  two snapshot versions, `These.match` handles additions (`This`), deletions (`That`), and
+  two snapshot versions, `These.match` handles additions (`First`), deletions (`Second`), and
   modifications (`Both`) with clean, case-specific logic.
 - **Multi-channel communication delivery**: In notification systems where alerts can be dispatched
   via Email, SMS, or both channels simultaneously, `These` models valid communication options and

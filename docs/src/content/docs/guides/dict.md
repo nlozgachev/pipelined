@@ -6,243 +6,370 @@ description: Model key-value associations immutably, replacing mutation-based Ma
 JavaScript provides two primary ways to associate keys with values: plain objects (`{}`) and the
 built-in `Map`.
 
-A `Map` is exceptionally useful: it supports any key type (not just strings and symbols), guarantees
-insertion-order iteration, and offers highly optimized membership lookups for large collections.
-However, in a functional pipeline, the native `Map` API introduces notable friction:
+A `Map` is essential when you need non-string keys (such as numeric IDs, composite objects, or
+symbols), guaranteed insertion-order iteration, or frequent additions and removals without prototype
+pollution risks. However, using native `Map` instances in TypeScript pipelines introduces three
+problems:
 
-1. **It is mutation-based**: Methods like `.set()` and `.delete()` alter the map in place, violating
-   the principles of immutability and creating subtle shared-state bugs.
-2. **It is data-first**: Methods are located on the prototype, forcing us to write verbose inline
-   arrow wrappers inside `pipe` chains.
-3. **It is unsafe**: The `.get()` method silently returns `undefined` when a key is absent, shifting
-   the checking burden back to our code.
+1. **Mutation in place**: Calling `.set()` or `.delete()` mutates the underlying `Map` instance,
+   creating shared-state bugs across components and breaking change detection in UI frameworks.
+2. **Data-first prototype methods**: Native `Map` has no `.map()` or `.filter()` methods, forcing you
+   to spread entries into arrays (`new Map([...map].filter(...))`) for every transformation.
+3. **Unsafe `.get()` lookups**: Calling `map.get(key)` returns `V | undefined`, shifting the burden
+   of null-checking onto every caller and conflating missing keys with keys whose value is
+   `undefined`.
 
-`Dict` solves these limitations. It acts as a wrapper around the standard `ReadonlyMap<K, V>`,
-providing a suite of pure, **data-last**, immutable utilities that return `Maybe` containers for
-safe, explicit lookups.
+```ts
+// Native Map mutation alters shared references in place:
+const activeSessions = new Map<number, string>([[101, "tok_abc"]]);
+activeSessions.delete(101); // Mutates activeSessions for all holders of the reference!
+```
+
+`Dict` solves these limitations by operating over standard `ReadonlyMap<K, V>` instances with pure,
+curried, **data-last** functions. Every modification returns a fresh `ReadonlyMap` without mutating
+the original, and every key lookup returns an explicit `Maybe<V>`.
 
 ---
 
 ## Creating Dictionaries
 
-We lift key-value associations into the `Dict` context using its core constructors:
+You can construct a `ReadonlyMap<K, V>` using `Dict.empty`, `Dict.singleton`, or the converters in
+`Dict.from`:
 
 ```ts
 import { Dict } from "@nlozgachev/pipelined/data";
 
-// An empty dictionary
-const empty = Dict.empty<string, number>();
+// An empty dictionary with explicit key and value types:
+const emptyCache = Dict.empty<number, string>();
 
-// Lift an array of key-value pairs (supports any key type)
-const byId = Dict.from.entries([
-  ["usr_1", { name: "Alice", role: "admin" }],
-  ["usr_2", { name: "Bob", role: "member" }],
+// A single-entry dictionary:
+const primaryAdmin = Dict.singleton("usr_1", { name: "Alice", role: "admin" });
+
+// From an array of [key, value] tuples (supports any key type, such as numeric IDs):
+const accountsById = Dict.from.entries([
+  [1001, { owner: "Alice", balance: 2500 }],
+  [1002, { owner: "Bob", balance: 1800 }],
 ]);
 
-// Convert a plain object
-const scores = Dict.from.record({ alice: 85, bob: 92, carol: 74 });
+// From a plain string-keyed JavaScript object:
+const scoresByUser = Dict.from.record({ alice: 85, bob: 92, carol: 74 });
+
+// From a nullable Map reference (returns Some(ReadonlyMap) or None):
+const maybeSessionMap = Dict.from.nullable(externalCache.getMap());
 ```
 
-`Dict.singleton(key, value)` is also available to quickly construct a typed dictionary holding
-exactly one initial entry.
-
----
-
-## Safe Lookups: Bypassing Undefined
-
-Instead of returning nullable values, `Dict.lookup` explicitly yields a `Maybe` container:
+You can also build a dictionary directly from an array of items using `Dict.groupBy`, which groups
+elements by a key selector function into a `ReadonlyMap<K, Arr.NonEmpty<A>>`:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
+
+const events = [
+  { tenantId: 10, type: "login" },
+  { tenantId: 20, type: "purchase" },
+  { tenantId: 10, type: "logout" },
+];
+
+const eventsByTenant = pipe(
+  events,
+  Dict.groupBy((event) => event.tenantId),
+);
+// ReadonlyMap {
+//   10 => [{ tenantId: 10, type: "login" }, { tenantId: 10, type: "logout" }],
+//   20 => [{ tenantId: 20, type: "purchase" }]
+// }
+```
+
+---
+
+## Safe Lookups and Inspection
+
+Instead of returning `undefined` when a key is absent, `Dict.lookup` returns `Some(value)` when the
+key exists in the dictionary and `None` when it does not:
+
+```ts
 import { Maybe } from "@nlozgachev/pipelined/core";
 
-const config = Dict.from.record({ timeout: 5000, retries: 3 });
+const timeouts = Dict.from.record({ api: 5000, webhook: 12000 });
 
-pipe(config, Dict.lookup("timeout")); // Some(5000)
-pipe(config, Dict.lookup("missing")); // None
+pipe(timeouts, Dict.lookup("api"));     // Some(5000)
+pipe(timeouts, Dict.lookup("billing")); // None
 ```
 
-If you only need to verify whether a key is present and do not need to retrieve its value,
-`Dict.has` is the optimized tool, avoiding the allocations of a `Maybe` instance:
+When you only need to check whether a key exists without wrapping its value in a `Maybe`, use
+`Dict.has`. To inspect entry counts, emptiness, or extract arrays of keys, values, and entries,
+use `Dict.size`, `Dict.is.empty`, `Dict.is.nonEmpty`, `Dict.keys`, `Dict.values`, and
+`Dict.entries`:
 
 ```ts
-pipe(config, Dict.has("retries")); // true
-```
+pipe(timeouts, Dict.has("webhook")); // true
 
----
+Dict.size(timeouts);        // 2
+Dict.is.empty(timeouts);    // false
+Dict.is.nonEmpty(timeouts); // true (narrows to Dict.NonEmpty<string, number>)
 
-## Transforming Values
-
-`Dict.map` applies a transformation to every value inside the dictionary, returning a new dictionary
-with the same keys:
-
-```ts
-// Normalize all test scores to a 0–1 decimal scale:
-const normalized = pipe(scores, Dict.map((score) => score / 100));
-```
-
-If the transformation depends on the key as well as the value, `Dict.mapWithKey` passes both to your
-callback:
-
-```ts
-const userDetails = Dict.from.record({ usr_1: "admin", usr_2: "member" });
-
-const labels = pipe(
-  userDetails,
-  Dict.mapWithKey((key, role) => `${key} (${role})`),
-); // Map { "usr_1" => "usr_1 (admin)", "usr_2" => "usr_2 (member)" }
-```
-
-### Transforming keys with `Dict.mapKeys`
-
-When migrating key namespaces or prefixing identifiers, `Dict.mapKeys` applies a transformation
-strictly to dictionary keys:
-
-```ts
-const userRoles = Dict.from.record({ 1: "admin", 2: "editor" });
-
-const prefixedRoles = pipe(
-  userRoles,
-  Dict.mapKeys((id) => `user_${id}`),
-); // Map { "user_1" => "admin", "user_2" => "editor" }
-```
-
-### Transforming entries with `Dict.mapEntries`
-
-To transform keys and values simultaneously in a single pass, `Dict.mapEntries` maps each
-`[key, value]` pair to a new tuple:
-
-```ts
-const rawConfig = Dict.from.record({ port: "8080", host: "localhost" });
-
-const parsedConfig = pipe(
-  rawConfig,
-  Dict.mapEntries((key, value) => [key.toUpperCase(), value.trim()]),
-); // Map { "PORT" => "8080", "HOST" => "localhost" }
+Dict.keys(timeouts);        // ["api", "webhook"]
+Dict.values(timeouts);      // [5000, 12000]
+Dict.entries(timeouts);     // [["api", 5000], ["webhook", 12000]]
 ```
 
 ---
 
-## Filtering Values
+## Transforming Values and Keys
 
-- `Dict.filter` filters out entries whose values do not satisfy a predicate.
-- `Dict.filterWithKey` passes both the key and the value to the predicate:
+`Dict.map` applies a function to every value in the dictionary, returning a new `ReadonlyMap` with
+the same keys. When the transformation also depends on the key, use `Dict.mapWithKey`:
 
 ```ts
-// Keep only passing exam scores:
-const passing = pipe(scores, Dict.filter((score) => score >= 75));
+// Convert millisecond timeouts to seconds:
+const timeoutsInSeconds = pipe(
+  timeouts,
+  Dict.map((ms) => ms / 1000),
+); // ReadonlyMap { "api" => 5, "webhook" => 12 }
 
-// Remove entries where the key starts with an internal prefix:
-const publicScores = pipe(
-  Dict.from.record({ test_alice: 99, bob: 92 }),
-  Dict.filterWithKey((key, _score) => !key.startsWith("test_")),
-); // Map { "bob" => 92 }
+// Include the service key in a formatted label:
+const timeoutLabels = pipe(
+  timeouts,
+  Dict.mapWithKey((service, ms) => `${service}: ${ms}ms`),
+); // ReadonlyMap { "api" => "api: 5000ms", "webhook" => "webhook: 12000ms" }
 ```
 
-### The Single-Pass map-and-filter: filterMap
-
-When you need to map dictionary values and filter out empty or invalid items simultaneously,
-`Dict.filterMap` performs both operations in a **single pass**, collecting only the successful
-`Some` values:
+To transform only the keys of a dictionary, use `Dict.mapKeys`. To transform both keys and values
+simultaneously in a single pass, use `Dict.mapEntries`:
 
 ```ts
-const parseNumeric = (s: string): Maybe<number> => {
-  const n = Number(s);
-  return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
+const prefixedTimeouts = pipe(
+  timeouts,
+  Dict.mapKeys((service) => `svc_${service}`),
+); // ReadonlyMap { "svc_api" => 5000, "svc_webhook" => 12000 }
+
+const scaledEntries = pipe(
+  timeouts,
+  Dict.mapEntries((service, ms) => [service.toUpperCase(), ms * 2]),
+); // ReadonlyMap { "API" => 10000, "WEBHOOK" => 24000 }
+```
+
+---
+
+## Filtering and Compacting
+
+`Dict.filter` retains entries whose values satisfy a predicate, and `Dict.filterWithKey` passes both
+the key and value to the predicate:
+
+```ts
+const passingScores = pipe(
+  scoresByUser,
+  Dict.filter((score) => score >= 80),
+); // ReadonlyMap { "alice" => 85, "bob" => 92 }
+
+const nonInternalScores = pipe(
+  Dict.from.record({ test_bot: 100, alice: 85, bob: 92 }),
+  Dict.filterWithKey((username, score) => !username.startsWith("test_") && score >= 80),
+); // ReadonlyMap { "alice" => 85, "bob" => 92 }
+```
+
+When mapping values with a parser or validator that returns `Maybe<B>`, `Dict.filterMap` transforms
+and filters the dictionary in a single pass, keeping only unwrapped `Some` values. If you already
+hold a `ReadonlyMap<K, Maybe<A>>`, `Dict.compact` unwraps all `Some` entries and discards all `None`
+entries:
+
+```ts
+const parsePort = (raw: string): Maybe<number> => {
+  const port = Number(raw);
+  return Number.isInteger(port) && port > 0 ? Maybe.make.some(port) : Maybe.make.none();
 };
 
-const parsed = pipe(
-  Dict.from.record({ val_a: "42", val_b: "invalid_text", val_c: "100" }),
-  Dict.filterMap(parseNumeric),
-); // Map { "val_a" => 42, "val_c" => 100 }
+const rawPorts = Dict.from.record({ http: "8080", grpc: "invalid", metrics: "9090" });
+
+const validPorts = pipe(rawPorts, Dict.filterMap(parsePort));
+// ReadonlyMap { "http" => 8080, "metrics" => 9090 }
+
+const optionalEndpoints = Dict.from.entries([
+  ["primary", Maybe.make.some("10.0.0.1")],
+  ["failover", Maybe.make.none()],
+]);
+
+const activeEndpoints = Dict.compact(optionalEndpoints);
+// ReadonlyMap { "primary" => "10.0.0.1" }
 ```
 
 ---
 
 ## Modifying Entries Immutably
 
-Unlike native `Map` operations, modifying a `Dict` never alters the original instance. Every
-modification returns a fresh, structurally copied dictionary:
+Every modification function in `Dict` leaves the input dictionary untouched and returns a new
+`ReadonlyMap`. Use `Dict.insert` to add or overwrite a key, `Dict.remove` to delete a key, and
+`Dict.upsert` when updating a key depends on whether an existing value is already present:
 
 ```ts
-const baseStats = Dict.from.record({ visits: 100, likes: 25 });
+const baseQuota = Dict.from.record({ requests: 100, uploads: 10 });
 
-// Inserting a new key-value pair
-const expanded = pipe(baseStats, Dict.insert("shares", 5));
+const withDownloads = pipe(baseQuota, Dict.insert("downloads", 50));
+// ReadonlyMap { "requests" => 100, "uploads" => 10, "downloads" => 50 }
 
-// Removing a key
-const cleaned = pipe(baseStats, Dict.remove("likes"));
-```
+const withoutUploads = pipe(baseQuota, Dict.remove("uploads"));
+// ReadonlyMap { "requests" => 100 }
 
-### Inserting or updating with upsert
+// Dict.upsert passes Some(existingValue) when the key is present, or None when absent:
+const incrementCount = (existing: Maybe<number>): number =>
+  pipe(existing, Maybe.getOrElse(() => 0)) + 1;
 
-For the common pattern of incrementing a counter or initializing a default value on first write,
-`Dict.upsert` provides a single, unified operation. It passes `Some(value)` to your updater function
-if the key exists, or `None` if the key is absent:
+const afterRequest = pipe(baseQuota, Dict.upsert("requests", incrementCount));
+// ReadonlyMap { "requests" => 101, "uploads" => 10 }
 
-```ts
-const incrementCounter = (current: Maybe<number>): number =>
-  pipe(current, Maybe.getOrElse(() => 0)) + 1;
-
-// Increments visits to 101:
-const updatedStats = pipe(baseStats, Dict.upsert("visits", incrementCounter));
-
-// Initializes shares to 1:
-const initialStats = pipe(baseStats, Dict.upsert("shares", incrementCounter));
+const afterFirstError = pipe(baseQuota, Dict.upsert("errors", incrementCount));
+// ReadonlyMap { "requests" => 100, "uploads" => 10, "errors" => 1 }
 ```
 
 ---
 
-## Combining Dictionaries
+## Combining Set Algebra and Merging
 
-- `Dict.union` merges two dictionaries. When a key exists in both, the value from the right-hand
-  dictionary takes precedence (equivalent to spreading objects).
-- `Dict.intersection` preserves only the keys that exist in both dictionaries, keeping the values
-  from the left-hand dictionary.
-- `Dict.difference` removes from the left-hand dictionary any keys present in the right-hand
-  dictionary.
+When reconciling two dictionaries, `Dict` provides three set-theoretic combinators plus a custom
+collision merger:
 
-```ts
-const defaults = Dict.from.record({ timeout: 3000, retries: 3 });
-const overrides = Dict.from.record({ timeout: 10000 });
-
-const merged = pipe(defaults, Dict.union(overrides));
-// Map { "timeout" => 10000, "retries" => 3 }
-```
-
-### Resolving key collisions with `Dict.mergeWith`
-
-When two dictionaries share keys and you need to combine collision values rather than discarding the
-left-hand value, use `Dict.mergeWith` with a custom combiner function:
+`Dict.union(other)(dict)` combines all entries from both dictionaries, with values in `other`
+overwriting matching keys in `dict`. `Dict.intersection(other)(dict)` keeps only keys that exist in
+both dictionaries (preserving values from `dict`). `Dict.difference(other)(dict)` keeps only keys in
+`dict` that do not exist in `other`:
 
 ```ts
-const regionA = new Map([["latency", 45], ["connections", 100]]);
-const regionB = new Map([["latency", 55], ["connections", 150]]);
+const defaultFlags = Dict.from.record({ darkMode: false, betaSearch: false, telemetry: true });
+const userOverrides = Dict.from.record({ darkMode: true, experimentalAi: true });
 
-// Combine by summing counts or averaging latencies:
-const aggregated = pipe(
-  regionA,
-  Dict.mergeWith((a: number, b: number) => a + b)(regionB),
-); // Map { "latency" => 100, "connections" => 250 }
+// Combine all keys (userOverrides wins on collisions):
+const effectiveFlags = pipe(defaultFlags, Dict.union(userOverrides));
+// ReadonlyMap { "darkMode" => true, "betaSearch" => false, "telemetry" => true, "experimentalAi" => true }
+
+// Keep only keys present in both dictionaries:
+const overlappingFlags = pipe(defaultFlags, Dict.intersection(userOverrides));
+// ReadonlyMap { "darkMode" => false }
+
+// Keep keys in defaultFlags that were NOT overridden by the user:
+const untouchedDefaults = pipe(defaultFlags, Dict.difference(userOverrides));
+// ReadonlyMap { "betaSearch" => false, "telemetry" => true }
 ```
 
-`Dict.mergeWith` also supports direct uncurried execution: `Dict.mergeWith(combine)(mapA, mapB)`.
+When colliding keys should be combined with a calculation rather than overwritten, `Dict.mergeWith`
+accepts a combiner callback `(first, second) => combined`:
+
+```ts
+const shardA = Dict.from.record({ clicks: 120, conversions: 8 });
+const shardB = Dict.from.record({ clicks: 95, conversions: 12 });
+
+const totalTraffic = pipe(
+  shardA,
+  Dict.mergeWith((a: number, b: number) => a + b)(shardB),
+); // ReadonlyMap { "clicks" => 215, "conversions" => 20 }
+```
 
 ---
 
-## Compacting and Reductions
+## Reducing and Exporting
 
-- `compact` collapses a dictionary of optional values `ReadonlyMap<K, Maybe<V>>` into a clean
-  dictionary of values `ReadonlyMap<K, V>`, discarding `None` states.
-- `reduce` reduces the dictionary values from the left into a single accumulator.
-- `to.record` exports a string-keyed dictionary back into a plain JavaScript object.
+To fold a dictionary into a single summary value, `Dict.reduce` iterates over values, while
+`Dict.reduceWithKey` passes `(accumulator, value, key)` to the reducer. To convert a string-keyed
+dictionary back into a plain JavaScript `Readonly<Record<K, V>>`, use `Dict.to.record`:
 
 ```ts
-// Sum all scores:
-const totalScore = pipe(
-  scores,
-  Dict.reduce(0, (sum, score) => sum + score),
+const invoiceLines = Dict.from.record({ hosting: 150, support: 50, bandwidth: 25 });
+
+const totalBilled = pipe(
+  invoiceLines,
+  Dict.reduce(0, (sum, amount) => sum + amount),
+); // 225
+
+const summaryLine = pipe(
+  invoiceLines,
+  Dict.reduceWithKey("", (acc, amount, item) =>
+    acc === "" ? `${item}:$${amount}` : `${acc}, ${item}:$${amount}`,
+  ),
+); // "hosting:$150, support:$50, bandwidth:$25"
+
+const plainRecord = Dict.to.record(invoiceLines);
+// { hosting: 150, support: 50, bandwidth: 25 }
+```
+
+---
+
+## Non-Empty Dictionaries: `Dict.NonEmpty`
+
+When a function requires a dictionary guaranteed to contain at least one entry, use the branded type
+`Dict.NonEmpty<K, V>`. You can create one directly with `Dict.NonEmpty.singleton`, narrow a
+`ReadonlyMap` with the `Dict.is.nonEmpty` type guard, or refine an existing map into
+`Maybe<Dict.NonEmpty<K, V>>` via `Dict.NonEmpty.from.map`:
+
+```ts
+const singleRegion = Dict.NonEmpty.singleton("us-east", 120); // Dict.NonEmpty<string, number>
+
+const refinedMap = Dict.NonEmpty.from.map(invoiceLines);      // Some(Dict.NonEmpty<string, number>)
+const emptyAttempt = Dict.NonEmpty.from.map(Dict.empty());    // None
+```
+
+Operating on `Dict.NonEmpty<K, V>` unlocks guaranteed non-empty array extractors
+(`Dict.NonEmpty.keys`, `Dict.NonEmpty.values`, `Dict.NonEmpty.entries`), seedless reduction
+(`Dict.NonEmpty.reduce`), and non-emptiness-preserving transformations (`Dict.NonEmpty.map`,
+`Dict.NonEmpty.mapWithKey`):
+
+```ts
+const regionKeys = Dict.NonEmpty.keys(singleRegion);       // Arr.NonEmpty<string>
+const regionValues = Dict.NonEmpty.values(singleRegion);   // Arr.NonEmpty<number>
+const regionEntries = Dict.NonEmpty.entries(singleRegion); // Arr.NonEmpty<readonly [string, number]>
+
+const highestLoad = pipe(
+  singleRegion,
+  Dict.NonEmpty.reduce((a, b) => Math.max(a, b)),
+); // 120
+
+const doubledLoad: Dict.NonEmpty<string, number> = pipe(
+  singleRegion,
+  Dict.NonEmpty.map((load) => load * 2),
 );
+
+const labeledLoad: Dict.NonEmpty<string, string> = pipe(
+  singleRegion,
+  Dict.NonEmpty.mapWithKey((region, load) => `${region}=${load}`),
+);
+```
+
+For more details on non-empty data modeling across collections, see the
+[Non-Empty Collections Guide](../nonempty).
+
+---
+
+## Pipeline Composition
+
+Here is an end-to-end metrics aggregation pipeline that merges regional request counters, filters
+out idle endpoints, normalizes route keys, and exports a plain JSON-serializable summary record:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Dict } from "@nlozgachev/pipelined/data";
+
+const usTraffic = Dict.from.record({
+  "/V1/CHECKOUT": 450,
+  "/V1/HEALTH": 0,
+  "/V1/CATALOG": 1200,
+});
+
+const euTraffic = Dict.from.record({
+  "/V1/CHECKOUT": 310,
+  "/V1/HEALTH": 0,
+  "/V1/SEARCH": 890,
+});
+
+const activeRouteReport = pipe(
+  usTraffic,
+  Dict.mergeWith((usCount: number, euCount: number) => usCount + euCount)(euTraffic),
+  Dict.filter((totalRequests) => totalRequests > 0),
+  Dict.mapKeys((route) => route.toLowerCase()),
+  Dict.to.record,
+);
+// {
+//   "/v1/checkout": 760,
+//   "/v1/catalog": 1200,
+//   "/v1/search": 890
+// }
 ```
 
 ---
@@ -250,18 +377,20 @@ const totalScore = pipe(
 ## Problems it solves
 
 - **Entity caching with non-string keys**: Plain JavaScript objects coerce all keys into strings,
-  which corrupts numeric database IDs, UUIDs, or symbol identifiers. `Dict` preserves typed
-  non-string keys while providing guaranteed insertion-order iteration.
-- **Safe map lookup in pipeline chains**: Calling `.get(key)` on a standard `Map` returns
-  `V | undefined`, which easily escapes into downstream arithmetic or method calls. `Dict.get` wraps
-  lookups in `Maybe<V>`, enforcing compile-time absence handling before values can be used.
-- **Insertion-ordered processing queues**: When maintaining a registry of background tasks or event
-  handlers where execution order must strictly match insertion order, `Dict` guarantees
-  deterministic iteration order.
+  which corrupts numeric database IDs or composite identifiers. `Dict` preserves typed non-string
+  keys while providing guaranteed insertion-order iteration.
+- **Safe map lookup in pipeline chains (`Dict.lookup`)**: Calling `.get(key)` on a standard `Map`
+  returns `V | undefined`, which easily escapes into downstream arithmetic or method calls.
+  `Dict.lookup` wraps lookups in `Maybe<V>`, enforcing compile-time absence handling before values
+  can be used.
+- **Immutable updates without shared-state mutation (`Dict.insert`, `Dict.remove`, `Dict.upsert`)**:
+  Mutating a native `Map` with `.set()` or `.delete()` modifies shared references in place. `Dict`
+  returns fresh `ReadonlyMap` instances on every update and provides atomic initialize-or-update
+  semantics via `Dict.upsert`.
 - **Point-free transformation of key-value stores (`Dict.map`, `Dict.mapKeys`, `Dict.mapEntries`,
-  `Dict.mergeWith`)**: Filtering expired cache entries, merging configuration layers with custom
-  collision resolvers, or transforming map keys/values in data pipelines without converting to
-  arrays and back.
+  `Dict.filterMap`, `Dict.compact`, `Dict.mergeWith`)**: Filtering invalid entries, merging
+  configuration layers with custom collision resolvers, or transforming map keys and values in data
+  pipelines without converting to arrays and back.
 - **Dictionary set algebra (`Dict.union`, `Dict.intersection`, `Dict.difference`)**: Reconciling
-  local offline entity stores with remote server state by finding updated, overlapping, or removed
-  map entries purely.
+  local entity caches with remote server state by finding updated, overlapping, or removed map
+  entries purely.

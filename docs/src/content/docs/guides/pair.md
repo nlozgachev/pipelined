@@ -21,8 +21,8 @@ dedicated combinators to transform the first element, the second element, or bot
 independently without breaking your pipeline flow.
 
 ```ts
-import { Pair } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Pair } from "@nlozgachev/pipelined/core";
 
 const entry = Pair.make("alice", 980);
 
@@ -51,7 +51,7 @@ destructure or manage array indices manually.
 
 ## Creating Pairs
 
-To lift two distinct values into a typed pair, we use `Pair.make`:
+To wrap two distinct values into a typed pair, we use `Pair.make`:
 
 ```ts
 import { Pair } from "@nlozgachev/pipelined/core";
@@ -59,8 +59,9 @@ import { Pair } from "@nlozgachev/pipelined/core";
 const entry = Pair.make("timeout_seconds", 30); // Pair<string, number>
 ```
 
-Any existing function that returns a two-element tuple (such as array utilities like `Arr.splitAt`)
-is already structurally compatible with `Pair` and requires no constructor wrapping.
+Any existing function that returns a two-element tuple (such as array utilities like `Arr.splitAt`
+or `Object.entries`) is already structurally compatible with `Pair` and requires no constructor
+wrapping.
 
 ---
 
@@ -72,7 +73,7 @@ using `Pair.swap`:
 ```ts
 const pair = Pair.make("port", 8080);
 
-Pair.first(pair);  // "port"
+Pair.first(pair); // "port"
 Pair.second(pair); // 8080
 
 const swapped = Pair.swap(pair); // [8080, "port"]
@@ -122,7 +123,7 @@ const updatedPair = pipe(
 ## Merging and Converting Pairs
 
 When we reach the end of a transformation pipeline and need to merge the pair into a single value,
-we use `Pair.merge`. It applies a binary function that merges the two elements:
+we use `Pair.merge`. It applies a binary function that combines the two elements:
 
 ```ts
 const formatted = pipe(
@@ -142,6 +143,27 @@ const arr = pipe(
   Pair.tap((key, val) => console.log(`Config: ${key} is ${val}`)),
   Pair.to.array,
 ); // ["debug_flag", true]
+```
+
+---
+
+## Pipeline composition
+
+Here is an end-to-end pipeline that normalizes an HTTP header entry `(headerName, rawValue)`, logs
+the sanitized header for debugging, and formats it into a wire-ready header line:
+
+```ts
+const formatHeaderLine = (rawHeader: Pair<string, string | number>): string =>
+  pipe(
+    rawHeader,
+    Pair.mapFirst((name) => name.trim().toLowerCase()),
+    Pair.mapSecond((value) => String(value).trim()),
+    Pair.tap((name, value) => console.debug(`Normalized header [${name}]: ${value}`)),
+    Pair.merge((name, value) => `${name}: ${value}`),
+  );
+
+formatHeaderLine(Pair.make("  X-RateLimit-Remaining ", 42));
+// "x-ratelimit-remaining: 42"
 ```
 
 ---

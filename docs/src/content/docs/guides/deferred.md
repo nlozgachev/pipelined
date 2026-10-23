@@ -12,7 +12,7 @@ delays, in-memory caches, or pure computations), this creates dead error-handlin
 ```ts
 type Deferred<A> = {
   readonly [_deferred]: A;
-  readonly then: (onfulfilled: (value: A) => void) => void;
+  readonly then: (onfulfilled: (value: A) => unknown) => void;
 };
 ```
 
@@ -21,7 +21,7 @@ Two deliberate design choices make `Deferred` work:
 1. **Nominal Safety**: The `[_deferred]` property is a phantom unique symbol. It carries the type
    parameter `A` nominally, ensuring that only genuine values produced by `Deferred` satisfy the
    type. A plain, raw `{ then: ... }` object cannot bypass the type check.
-2. **No Chaining or Rejection**: The `.then()` method accepts only a single fulfillment callback. It
+2. **No Chaining or Rejection**: The `.then()` method accepts only a single fulfillment callback and
    returns `void` rather than a new thenable. There is no second parameter to pass a rejection
    handler, and no chainable return value. Rejection and chaining are excluded by construction.
 
@@ -42,9 +42,10 @@ const themeState: Deferred<string> = Deferred.from.Promise(
 ```
 
 When you call `Deferred.from.Promise`, you are asserting to the compiler that the underlying Promise
-is infallible. If the Promise does reject, that rejection behaves exactly like an unhandled Promise
-rejection at runtime. Only wrap Promises that are guaranteed to succeed, such as those that have
-already resolved their errors using defaults or fallback strategies.
+will never reject. **Precondition**: if the underlying Promise does reject, the returned `Deferred`
+will never resolve — `await`-ing it will hang indefinitely. Only wrap Promises that are guaranteed
+to resolve (such as promises whose errors have already been caught and converted into `Result` or
+fallback values, or use `Task.Result.tryCatch` for fallible operations).
 
 ---
 
@@ -95,9 +96,9 @@ results once every handle resolves:
 import { Deferred } from "@nlozgachev/pipelined/core";
 
 const cacheLookup: Deferred<string> = loadCachedToken();
-const pingService: Deferred<number> = checkLatency();
+const timerCheck: Deferred<number> = measureElapsedMs();
 
-const [token, latency] = await Deferred.all([cacheLookup, pingService]);
+const [token, elapsedMs] = await Deferred.all([cacheLookup, timerCheck]);
 ```
 
 ### Racing with `Deferred.race`
@@ -105,10 +106,10 @@ const [token, latency] = await Deferred.all([cacheLookup, pingService]);
 `Deferred.race` resolves with whichever `Deferred` completes first:
 
 ```ts
-const primaryMirror: Deferred<Config> = fetchFromPrimary();
-const secondaryMirror: Deferred<Config> = fetchFromSecondary();
+const memorySnapshot: Deferred<Config> = readMemoryCache();
+const diskSnapshot: Deferred<Config> = readDiskCache();
 
-const activeConfig = await Deferred.race([primaryMirror, secondaryMirror]);
+const activeConfig = await Deferred.race([memorySnapshot, diskSnapshot]);
 ```
 
 ---

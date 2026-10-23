@@ -35,7 +35,8 @@ type Equality<A> = (a: A, b: A) => boolean;
 ```
 
 Any binary function matching this signature is a valid `Equality` checker. By treating equality as a
-composable value, we can construct, name, and combine equivalence checkers point-free.
+composable value, we can construct, name, and combine equivalence checkers directly without manual
+wrapper boilerplate.
 
 ---
 
@@ -122,6 +123,56 @@ eqUserExact(
   { name: "Alice", role: "admin" },
   { name: "Alice", role: "member" },
 ); // false (names match, but roles differ)
+```
+
+---
+
+## Structural Equivalence: struct and tuple
+
+When comparing entire records or fixed-length tuples, chaining individual `Equality.by` and
+`Equality.and` calls for every property can be verbose. `Equality.struct` and `Equality.tuple`
+derive composite equality checkers directly from field-level or positional checkers.
+
+### Record equivalence with `struct`
+
+`Equality.struct` takes a schema of field-level `Equality` instances and returns an `Equality` for
+the entire record:
+
+```ts
+interface ShippingAddress {
+  street: string;
+  postalCode: string;
+  country: string;
+}
+
+const eqAddress: Equality<ShippingAddress> = Equality.struct({
+  street: Equality.string,
+  postalCode: Equality.string,
+  country: Equality.string,
+});
+
+eqAddress(
+  { street: "100 Main St", postalCode: "94105", country: "US" },
+  { street: "100 Main St", postalCode: "94105", country: "US" },
+); // true
+```
+
+### Positional equivalence with `tuple`
+
+`Equality.tuple` takes positional `Equality` instances and compares fixed-length tuples element by
+element:
+
+```ts
+type CoordinateAndLabel = readonly [number, number, string];
+
+const eqWaypoint: Equality<CoordinateAndLabel> = Equality.tuple(
+  Equality.number,
+  Equality.number,
+  Equality.string,
+);
+
+eqWaypoint([37.7749, -122.4194, "HQ"], [37.7749, -122.4194, "HQ"]); // true
+eqWaypoint([37.7749, -122.4194, "HQ"], [37.7749, -122.4194, "Warehouse"]); // false
 ```
 
 ---

@@ -203,9 +203,11 @@ To keep root module objects clean and focused on pipeline combinators, instantia
 | Drawer | Purpose | Examples |
 | :--- | :--- | :--- |
 | **`make.*`** | Instantiates a specific variant of a discriminated union. | `Result.make.ok(42)`<br/>`Maybe.make.some(5)`<br/>`RemoteData.make.loading()` |
-| **`from.*`** | Converts external types or primitives into the container. | `Maybe.from.nullable(val)`<br/>`Result.from.Validation(fn)`<br/>`Tuple.from.pair(a, b)` |
-| **`to.*`** | Converts the container back to language primitives or other containers. | `Maybe.to.nullable(maybe)`<br/>`Result.to.Maybe(result)`<br/>`Str.to.number(str)` |
+| **`from.*`** | Converts external types or primitives into the container. | `Maybe.from.nullable(val)`<br/>`Result.from.Validation(fn)`<br/>`Num.from.string(str)` |
+| **`to.*`** | Converts the container back to language primitives or other containers. | `Maybe.to.nullable(maybe)`<br/>`Result.to.Maybe(result)`<br/>`Arr.to.record(fn)(items)` |
 | **`is.*`** | Type guard predicates for conditional branching and filtering. | `Result.is.ok(result)`<br/>`Arr.is.empty(array)`<br/>`Num.is.even(n)` |
+
+*(Single-variant structures like `Pair` use a direct `Pair.make(first, second)` constructor.)*
 
 ---
 
@@ -232,7 +234,7 @@ const submitUserOp = Op.interpret(
         method: "POST",
         body: JSON.stringify(payload),
         signal,
-      }).then((r) => r.json()),
+      }).then((r) => r.json() as Promise<{ id: string }>),
     { onError: (err) => `Registration error: ${err}` },
   ),
   { strategy: "exclusive" }, // Prevents double-clicks while in flight
@@ -250,11 +252,15 @@ const handleRegister = async (name: string, email: string) => {
   }
 
   uiState = RemoteData.make.loading();
-  const outcome = await submitUserOp(validation.value);
+  const outcome = await submitUserOp.run(validation.value);
 
   uiState = pipe(
     outcome,
-    RemoteData.from.Result,
+    Op.Outcome.match({
+      ok: (user) => RemoteData.make.success(user),
+      err: (error) => RemoteData.make.failure(error),
+      nil: () => RemoteData.make.notAsked(),
+    }),
   );
 };
 ```

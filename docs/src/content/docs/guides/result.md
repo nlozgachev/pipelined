@@ -35,12 +35,19 @@ By turning exceptions into a data structure, we can chain operations safely. If 
 error flows through to the end of the pipeline automatically, while the happy path is skipped. We
 decouple the logic of what we want to do from the logic of handling failures.
 
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Result } from "@nlozgachev/pipelined/core";
+
+export type Result<E, A> = Result.Ok<A> | Result.Err<E>;
+```
+
 ---
 
 ## Creating Results
 
-To work within a typed error pipeline, we must wrap our synchronous operations in a `Result` context
-at the boundaries of our system.
+To work within a typed error pipeline, we wrap our synchronous operations in a `Result` context at
+the boundaries of our system.
 
 ```ts
 import { Result } from "@nlozgachev/pipelined/core";
@@ -59,20 +66,24 @@ rely on exceptions. `Result.tryCatch` wraps these unsafe, throwing operations an
 a clean `Result`:
 
 ```ts
-const parseJson = (s: string): Result<string, unknown> =>
+interface SessionPayload {
+  userId: string;
+}
+
+const parseSession = (raw: string): Result<string, SessionPayload> =>
   Result.tryCatch(
-    () => JSON.parse(s),
+    () => JSON.parse(raw) as SessionPayload,
     { onError: (error) => `Malformed JSON payload: ${error}` },
   );
 ```
 
-The second argument is a mapper function that intercepts the thrown exception (which is of type
-`unknown`) and converts it into your designated error type `E`.
+The second argument is a configuration object with an `onError` mapper that intercepts the thrown
+exception (which is of type `unknown`) and converts it into your designated error type `E`.
 
-### Constructing from predicates with `from.Predicate`
+### Constructing from predicates and nullables
 
 When you have a plain value and a condition that determines whether that value is valid,
-`Result.from.Predicate` lifts the value into `Result` without requiring an explicit `if/else` block:
+`Result.from.Predicate` wraps the value into `Result` without requiring an explicit `if/else` block:
 
 ```ts
 const validateAge = Result.from.Predicate(
@@ -83,6 +94,36 @@ const validateAge = Result.from.Predicate(
 
 The second argument receives the original input, allowing you to format descriptive, context-rich
 error messages.
+
+When reading a value that may be `null` or `undefined` (such as an environment variable or header),
+`Result.from.nullable` converts non-nullish values to `Ok` and missing values to `Err`:
+
+```ts
+const getApiKey = (env: Record<string, string | undefined>): Result<string, string> =>
+  pipe(
+    env.API_KEY,
+    Result.from.nullable(() => "Missing required API_KEY environment variable"),
+  );
+```
+
+### Inspecting with type guards: `is.ok` and `is.err`
+
+When interfacing with imperative code or test assertions, use `Result.is.ok` and `Result.is.err` to
+narrow a `Result` and access `.value` or `.error` directly:
+
+```ts
+const parsed = parseSession('{"userId": "usr_42"}');
+
+if (Result.is.ok(parsed)) {
+  // Narrowed to Result.Ok<SessionPayload>
+  console.log("Active user:", parsed.value.userId);
+}
+
+if (Result.is.err(parsed)) {
+  // Narrowed to Result.Err<string>
+  console.error("Failed to parse session:", parsed.error);
+}
+```
 
 ---
 
@@ -100,7 +141,7 @@ import { pipe } from "@nlozgachev/pipelined/composition";
 
 const double = (n: number) => n * 2;
 
-pipe(Result.make.ok(5), Result.map(double));     // Ok(10)
+pipe(Result.make.ok(5), Result.map(double)); // Ok(10)
 pipe(Result.make.err("oops"), Result.map(double)); // Err("oops")
 ```
 
@@ -110,7 +151,7 @@ bypassed:
 
 ```ts
 const route = pipe(
-  parseJson(input),
+  parseSession(input),
   Result.map((payload) => payload.userId),
   Result.map((id) => `/users/${id}`),
 );
@@ -178,7 +219,7 @@ const validateStock = (item: CartItem, availableStock: number): Result<string, C
     ),
   );
 
-validateStock({ id: "item_9", quantity: 2 }, 5);  // Ok({ id: "item_9", quantity: 2 })
+validateStock({ id: "item_9", quantity: 2 }, 5); // Ok({ id: "item_9", quantity: 2 })
 validateStock({ id: "item_9", quantity: 10 }, 5); // Err("Requested 10 units of item_9, but only 5 in stock")
 ```
 
@@ -194,16 +235,33 @@ const validateUserExists = (id: string): Result<string, User> =>
   db.has(id) ? Result.make.ok(db.get(id)) : Result.make.err(`User ${id} not found`);
 
 const userProfile = pipe(
-  parseJson(input),                        // Result<string, unknown>
+  parseSession(input), // Result<string, SessionPayload>
   Result.map((payload) => payload.userId), // Result<string, string>
-  Result.chain(validateUserExists),        // Result<string, User>
+  Result.chain(validateUserExists), // Result<string, User>
 );
 ```
 
-If `parseJson` fails, the error short-circuits the pipeline immediately. If it succeeds, the
+If `parseSession` fails, the error short-circuits the pipeline immediately. If it succeeds, the
 resulting `userId` is passed to `validateUserExists`. If that lookup fails, the new error is
 returned. The pipeline reads as a single, linear progression of operations that can each
 independently fail.
+
+### Combining independent values with `apply`
+
+When you have a curried function and multiple independent `Result` arguments, `Result.apply`
+evaluates and applies them one by one, short-circuiting on the first `Err` encountered:
+
+```ts
+const calculateLineTotal = (unitPrice: number) => (quantity: number) => (discount: number) =>
+  unitPrice * quantity * (1 - discount);
+
+const lineTotal = pipe(
+  Result.make.ok(calculateLineTotal),
+  Result.apply(parsePrice(rawPrice)),
+  Result.apply(parseQuantity(rawQuantity)),
+  Result.apply(parseDiscount(rawDiscount)),
+); // Result<string, number>
+```
 
 ---
 
@@ -312,25 +370,25 @@ pipe(
 
 ## Converting to and from Maybe
 
-`Result` and `Maybe` are structurally highly compatible. The only difference is that `Result`
-carries a typed reason for its failure, whereas `Maybe` models pure absence.
+`Result` and `Maybe` are structurally compatible. The only difference is that `Result` carries a
+typed reason for its failure, whereas `Maybe` models pure absence.
 
-To discard the error context and convert to a `Maybe`:
+To discard the error context and convert to a `Maybe`, use `Result.to.Maybe`:
 
 ```ts
 const maybeValue = Result.to.Maybe(Result.make.ok(42)); // Some(42)
 const empty = Result.to.Maybe(Result.make.err("oops")); // None
 ```
 
-Conversely, if you want to lift a `Maybe` into a `Result`, you must supply a typed error to replace
-the implicit absence of a `None`:
+Conversely, if you want to convert a `Maybe` into a `Result`, supply an error thunk via
+`Result.from.Maybe` (or `Maybe.to.Result`) to replace `None`:
 
 ```ts
 import { Maybe } from "@nlozgachev/pipelined/core";
 
 const resultValue = pipe(
   Maybe.make.none(),
-  Maybe.to.Result(() => "Value was absent"),
+  Result.from.Maybe(() => "Value was absent"),
 ); // Err("Value was absent")
 ```
 
@@ -341,8 +399,8 @@ When working with operations that return nested optional results (such as `Resul
 
 ```ts
 Result.sequence.Maybe(Result.make.ok(Maybe.make.some(42))); // Some(Ok(42))
-Result.sequence.Maybe(Result.make.ok(Maybe.make.none()));   // None
-Result.sequence.Maybe(Result.make.err("DB error"));         // Some(Err("DB error"))
+Result.sequence.Maybe(Result.make.ok(Maybe.make.none())); // None
+Result.sequence.Maybe(Result.make.err("DB error")); // Some(Err("DB error"))
 ```
 
 ---
@@ -362,7 +420,7 @@ const failFastResult = pipe(
   Result.from.Validation((errors) => errors.join("; ")),
 );
 
-// Lift a fail-fast Result into a Validation container:
+// Convert a fail-fast Result into a Validation container:
 const validation = Result.to.Validation(Result.make.err("invalid_id")); // Failed(["invalid_id"])
 ```
 
@@ -380,27 +438,27 @@ const userProfile = pipe(
   Result.chain((user) =>
     pipe(
       getPreferences(user.id),
-      Result.map((prefs) => ({ user, prefs }))
+      Result.map((prefs) => ({ user, prefs })),
     )
   ),
   Result.chain(({ user, prefs }) =>
     pipe(
       getTheme(prefs.themeId),
-      Result.map((theme) => ({ user, prefs, theme }))
+      Result.map((theme) => ({ user, prefs, theme })),
     )
-  )
+  ),
 );
 ```
 
 To solve this, we can use `bindTo` and `bind` to cleanly accumulate values key-by-key in a flat,
 readable pipeline.
 
-`bindTo` lifts a value into the pipeline's accumulator object:
+`bindTo` wraps a value into the pipeline's accumulator object:
 
 ```ts
 pipe(
   Result.make.ok(42),
-  Result.bindTo("value")
+  Result.bindTo("value"),
 ); // Ok({ value: 42 })
 ```
 
@@ -411,7 +469,7 @@ const userProfile = pipe(
   getUser(userId),
   Result.bindTo("user"),
   Result.bind("prefs", ({ user }) => getPreferences(user.id)),
-  Result.bind("theme", ({ prefs }) => getTheme(prefs.themeId))
+  Result.bind("theme", ({ prefs }) => getTheme(prefs.themeId)),
 ); // Ok({ user: User, prefs: Preferences, theme: Theme })
 ```
 
@@ -421,7 +479,7 @@ If any step fails, the entire pipeline short-circuits and propagates the failure
 
 ## Combining records: struct
 
-While `bind` is perfect for sequential steps where a latter step depends on the output of a prior
+While `bind` is ideal for sequential steps where a later step depends on the output of a prior
 step, sometimes you have a set of independent `Result`s that you want to combine into a single
 object. For this, you can use `Result.struct`.
 
@@ -434,7 +492,7 @@ const user = Result.struct({
   age: Result.make.ok(30),
   role: Result.from.Predicate(
     (r: string) => r === "admin" || r === "user",
-    () => "Invalid role"
+    () => "Invalid role",
   )("user"),
 }); // Ok({ name: "Alice", age: 30, role: "user" })
 ```
@@ -443,11 +501,51 @@ If multiple fields fail, `Result.struct` short-circuits and returns the first er
 key order:
 
 ```ts
-const failed = Result.struct({
-  a: Result.make.ok(1),
-  b: Result.make.err("first fail"),
-  c: Result.make.err("second fail"),
-}); // Err("first fail")
+const serviceConfig = Result.struct({
+  host: Result.make.ok("db.internal"),
+  port: Result.make.err("Invalid port number"),
+  apiKey: Result.make.err("Missing API key"),
+}); // Err("Invalid port number")
+```
+
+---
+
+## Pipeline composition
+
+Here is an end-to-end checkout authorization pipeline that parses a raw request payload, validates
+inventory and spending limits, logs errors for observability, and formats an HTTP response:
+
+```ts
+interface CheckoutPayload {
+  sku: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+const processOrder = (rawBody: string, availableStock: number): { status: number; body: string } =>
+  pipe(
+    Result.tryCatch(
+      () => JSON.parse(rawBody) as CheckoutPayload,
+      { onError: () => "INVALID_JSON" as const },
+    ),
+    Result.ensure(
+      (order) => order.quantity > 0 && order.quantity <= availableStock,
+      () => "INSUFFICIENT_STOCK" as const,
+    ),
+    Result.map((order) => ({
+      ...order,
+      total: order.quantity * order.unitPrice,
+    })),
+    Result.ensure(
+      (order) => order.total <= 10_000,
+      () => "LIMIT_EXCEEDED" as const,
+    ),
+    Result.tapError((code) => console.warn(`Order rejected: ${code}`)),
+    Result.match({
+      ok: (order) => ({ status: 200, body: `Confirmed ${order.quantity}x ${order.sku} ($${order.total})` }),
+      err: (code) => ({ status: 400, body: `Order failed: ${code}` }),
+    }),
+  );
 ```
 
 ---

@@ -1,6 +1,6 @@
 ---
 title: Refinement — Type Predicates
-description: Represent type-narrowing predicates as composable, first-class values, combining checks point-free without losing type information.
+description: Represent type-narrowing predicates as composable, first-class values, combining checks in pipelines without losing type information.
 ---
 
 import { Aside } from '@astrojs/starlight/components'
@@ -27,7 +27,7 @@ function validateInput(raw: string) {
 type Refinement<A, B extends A> = (a: A) => a is B;
 ```
 
-At the runtime level, a `Refinement` is simply a standard function returning a boolean. At compile time, it is a type predicate. Because the refinement is a first-class value, we can compose, intersect, and combine checks point-free.
+At the runtime level, a `Refinement` is simply a standard function returning a boolean. At compile time, it is a type predicate. Because the refinement is a first-class value, we can compose, intersect, and combine checks directly without manual wrapper functions.
 
 ---
 
@@ -130,11 +130,13 @@ const isPrivileged: Refinement<User, AdminUser | SuperUser> = pipe(
 
 Refinements convert into functions compatible with `pipe` and `Maybe`.
 
-### Entering Maybe contexts with `toFilter`
+### Entering Maybe contexts with `Refinement.to.Maybe`
 
-`toFilter` converts a `Refinement<A, B>` into a mapping function `(a: A) => Maybe<B>`. This is the standard gateway to validate inputs and lift them safely into an optional pipeline:
+`Refinement.to.Maybe` converts a `Refinement<A, B>` into a mapping function `(a: A) => Maybe<B>`. This is the standard gateway to validate inputs and lift them safely into an optional pipeline:
 
 ```ts
+import { Maybe } from "@nlozgachev/pipelined/core";
+
 type NonEmptyString = Brand<"NonEmpty", string>;
 const isNonEmpty: Refinement<string, NonEmptyString> = Refinement.from.Predicate((s) => s.length > 0);
 
@@ -183,6 +185,6 @@ const validateEmailInput = (raw: string): Result<string, EmailString> =>
 ## Problems it solves
 
 - **Narrowing unvalidated inputs at API boundaries**: Inbound HTTP payloads, environment variables, and route parameters arrive as `unknown` or raw strings. `Refinement` encapsulates TypeScript custom type guards (`x is T`) into first-class functions that statically narrow types while verifying data at runtime.
-- **Composing multi-step narrowing rules**: Combining multiple structural type checks (such as verifying a payload is a non-null object, that a specific property exists, and that the property matches a branded type) often requires verbose nested guard functions. `Refinement.and` and `Refinement.compose` chain type-narrowing rules point-free.
+- **Composing multi-step narrowing rules**: Combining multiple structural type checks (such as verifying a payload is a non-null object, that a specific property exists, and that the property matches a branded type) often requires verbose nested guard functions. `Refinement.and` and `Refinement.compose` chain type-narrowing rules directly inside a pipeline.
 - **Lightweight runtime schema validation**: Validating parsed JSON tokens, localStorage entries, or WebSocket frames without bundling heavy schema libraries, maintaining full TypeScript type narrowing with zero external overhead.
 - **Bridging runtime checks into `Maybe` and `Result` pipelines**: Transforming raw input into narrowed domain types inside pipelines using `Refinement.to.Maybe` or `Refinement.to.Result`, safely converting unverified data into typed values with explicit error messages on failure.

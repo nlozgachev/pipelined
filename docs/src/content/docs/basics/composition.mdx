@@ -63,15 +63,15 @@ Dividing the pipeline into cohesive sub-pipelines provides cleaner type boundari
 
 Piping raw values through standard functions works well for clean, linear logic. However, real-world applications frequently require optional branches. Rather than forcing you to write noisy inline arrow functions with ternary expressions, `Composition` provides declarative branching combinators that slot into `pipe` and `flow`.
 
-`when` and `unless` execute a transformation only when a predicate evaluates to `true` (or `false`), returning the original input value unchanged otherwise:
+`when` executes a transformation only when a predicate evaluates to `true`, whereas `unless` executes the transformation only when the predicate evaluates to `false`, returning the original input value unchanged otherwise:
 
 ```ts
-import { pipe, when } from "@nlozgachev/pipelined/composition";
+import { pipe, unless, when } from "@nlozgachev/pipelined/composition";
 
 const invoice = pipe(
   cart,
-  when((c) => c.isVip, applyDiscount),
-  calculateTax,
+  when((c) => c.isVip, applyVipDiscount),
+  unless((c) => c.isTaxExempt, addSalesTax),
 );
 ```
 
@@ -330,6 +330,22 @@ initConnection(); // Logs message and connects
 initConnection(); // Returns the cached connection (no second log or connection)
 ```
 
+`tuple` and `untuple` adapt functions between positional multi-argument signatures and single-tuple argument signatures. Use `tuple` when a pipeline step yields a `[A, B]` pair (such as `Arr.zip` or `juxt`) that you want to pass into a standard multi-argument function, and `untuple` when passing a tuple-accepting function to a callback API that supplies separate arguments:
+
+```ts
+import { pipe, tuple, untuple } from "@nlozgachev/pipelined/composition";
+
+const formatRange = (min: number, max: number) => `${min}px - ${max}px`;
+const formatRangeTuple = tuple(formatRange);
+
+pipe([10, 50] as const, formatRangeTuple); // "10px - 50px"
+
+const sumPair = ([a, b]: readonly [number, number]) => a + b;
+const add = untuple(sumPair);
+
+add(15, 25); // 40
+```
+
 ---
 
 ## Predicate composition
@@ -430,27 +446,11 @@ const sorted = [...tracks].sort(byDuration);
 
 ---
 
-## When to use each utility
+## Problems it solves
 
-*   **`pipe`** — Sequence transformations top-to-bottom on an immediate value.
-*   **`pipeAsync`** — Sequence transformations containing asynchronous promise steps.
-*   **`flow`** — Build a reusable, deferred transformation function.
-*   **`flowAsync`** — Build a reusable, deferred asynchronous transformation function.
-*   **`when` / `unless`** — Run a step conditionally in a pipeline.
-*   **`struct`** — Reshape a single input value into a structured object of transforms.
-*   **`curry`** — Convert multi-argument functions to curried steps (2, 3, or 4 arguments).
-*   **`uncurry`** — Convert curried functions back to multi-argument format (2, 3, or 4 arguments).
-*   **`flip`** — Reverse the argument order of a curried binary function.
-*   **`identity`** — A no-op callback that returns its input exactly as received.
-*   **`constant`** — Create a function that always returns a static value.
-*   **`once`** — Ensure a function executes only on its first invocation.
-*   **`memoize`** — Cache results using primitive keys.
-*   **`memoizeWeak`** — Cache results using object keys, allowing garbage collection.
-*   **`tap`** — Execute a side effect in a pipeline without altering the value.
-*   **`tapLog`** — Log piped values to console or custom logger without altering the value.
-*   **`tapInspect`** — Deeply inspect piped objects without altering the value.
-*   **`tapAsync`** — Trigger non-blocking asynchronous side effects without altering the value.
-*   **`tapTime`** — Measure execution time of a side effect without altering the value.
-*   **`converge`** — Fan out an input through multiple transformers and combine the results.
-*   **`juxt`** — Fan out an input through multiple transformers and collect them in a tuple.
-*   **`on`** — Build comparators or equality checks by comparing projected properties.
+- **Eliminating deeply nested calls and intermediate variables (`pipe`, `flow`, `pipeAsync`, `flowAsync`)**: Sequencing synchronous and asynchronous operations top-to-bottom in execution order without temporary local variables (`const step1 = ...; const step2 = ...`) or inside-out nested function calls.
+- **Declarative inline branching (`when`, `unless`)**: Applying conditional transformations inside a pipeline (such as applying promotional discounts or skipping tax calculations for exempt accounts) without breaking the linear flow with manual ternary wrappers.
+- **Deriving and combining parallel projections (`struct`, `converge`, `juxt`)**: Computing multiple independent values from a single input—whether assembling a summary object (`struct`), feeding parallel calculations into a combiner (`converge`), or collecting tuple results (`juxt`)—without referencing the input variable repeatedly.
+- **Non-intrusive pipeline observability (`tap`, `tapLog`, `tapInspect`, `tapAsync`, `tapTime`)**: Logging values, inspecting deep payloads, firing background telemetry, and measuring step execution durations mid-pipeline without altering return types or disrupting data flow.
+- **Adapting function signatures across boundaries (`curry`, `uncurry`, `flip`, `tuple`, `untuple`, `on`)**: Bridging multi-argument callbacks, tuple pairs, and third-party APIs with data-last pipeline steps without repetitive wrapper functions.
+- **Bounding redundant computations (`once`, `memoize`, `memoizeWeak`)**: Guaranteeing one-time initialization for resources (`once`) and caching expensive pure calculations by primitive key (`memoize` with optional LRU `maxSize`) or object reference (`memoizeWeak`).

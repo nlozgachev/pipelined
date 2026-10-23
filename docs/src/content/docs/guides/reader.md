@@ -50,6 +50,7 @@ blueprint, and the environment is supplied once at the boundary of our program.
 To describe how we want to read from our context, we use the constructors of `Reader`:
 
 ```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
 import { Reader } from "@nlozgachev/pipelined/core";
 
 interface ApiConfig {
@@ -60,12 +61,21 @@ interface ApiConfig {
 // Projecting specific values from the environment
 const getBaseUrl: Reader<ApiConfig, string> = (c) => c.baseUrl;
 const getApiKey: Reader<ApiConfig, string> = (c) => c.apiKey;
+
+// Accessing the full environment inside a pipeline with Reader.ask()
+const readFullConfig = pipe(
+  Reader.ask<ApiConfig>(),
+  Reader.map((config) => `${config.baseUrl} (key: ${config.apiKey})`),
+);
+
+// Lifting a static value that ignores the environment
+const defaultVersion: Reader<ApiConfig, string> = Reader.make("v1");
 ```
 
 Because a `Reader<R, A>` is a plain function `(env: R) => A`, any function that accepts an
-environment is already a valid `Reader`. If a step requires the entire environment as a pipeline
-step, you can use `Reader.ask()`. If you want to lift a static value that does not depend on the
-environment at all, you can use `Reader.make(value)`.
+environment is already a valid `Reader`. If a step requires the entire environment inside a
+pipeline, use `Reader.ask<ApiConfig>()`. If you want to lift a static value that does not depend on
+the environment at all, use `Reader.make(value)`.
 
 ---
 
@@ -172,13 +182,18 @@ the global environment into these modular slices.
 operations receive the same environment:
 
 ```ts
+interface PricingConfig {
+  defaultPrice: number;
+  defaultTax: number;
+}
+
 const calculateTotal = (tax: number) => (price: number) => price + tax;
 
-const productPrice: Reader<ApiConfig, number> = (c) => c.defaultPrice;
-const productTax: Reader<ApiConfig, number> = (c) => c.defaultTax;
+const productPrice: Reader<PricingConfig, number> = (c) => c.defaultPrice;
+const productTax: Reader<PricingConfig, number> = (c) => c.defaultTax;
 
-const total: Reader<ApiConfig, number> = pipe(
-  Reader.make(calculateTotal),
+const total: Reader<PricingConfig, number> = pipe(
+  Reader.make<PricingConfig, typeof calculateTotal>(calculateTotal),
   Reader.apply(productTax),
   Reader.apply(productPrice),
 );
@@ -244,13 +259,13 @@ const userProfile = pipe(
 To solve this, you can use `bindTo` and `bind` to cleanly accumulate environment-derived values
 key-by-key in a flat, readable pipeline.
 
-`bindTo` lifts a value into the pipeline's accumulator object:
+`bindTo` wraps the initial `Reader` result into a single-key accumulator object:
 
 ```ts
-pipe(
-  Reader.make(42),
-  Reader.bindTo("value")
-); // Reader({ value: 42 })
+const initialScope = pipe(
+  getUser(userId),
+  Reader.bindTo("user"),
+); // Reader<AppEnv, { user: User }>
 ```
 
 `bind` runs a new operation using the accumulated object and attaches the result to a new key:

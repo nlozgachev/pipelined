@@ -4,12 +4,7 @@ description: Guarantee that database connections, file handles, and locks are al
 ---
 
 Managing resources like database connections, file handles, or mutex locks requires guaranteeing
-that cleanup logic runs even if operations throw runtime errors. When coordinating multiple
-resources, nested `try/finally` blocks quickly accumulate boilerplate.
-
-`Resource<E, A>` encapsulates the acquire-use-release lifecycle (the bracket pattern) into a
-composable data structure, guaranteeing that release functions execute whenever an acquired resource
-leaves scope.
+that cleanup logic runs even if operations fail or throw runtime errors:
 
 ```ts
 const connection = await openConnection();
@@ -20,14 +15,14 @@ try {
 }
 ```
 
-This works for a single resource within a narrow scope. But as applications grow, we find ourselves
-composing multiple resources — like a database connection and a cache socket. Managing nested
-`try/finally` blocks is extremely fragile, and passing a resource across multiple function
-boundaries makes it very easy to forget who holds the responsibility to clean it up.
+This works for a single resource within a narrow scope. However, when workflows require multiple
+resources — such as a database connection, a distributed lock, and a cache client — nested
+`try/finally` blocks quickly become fragile. If the second resource fails to open or an operation
+aborts midway, it is easy to leak an already-opened handle or release resources in the wrong order.
 
-`Resource<E, A>` solves this structurally by implementing the **bracket pattern**. It packages the
-potentially fallible `acquire` step (a `Task.Result`) and the infallible `release` step (a `Task`)
-into a single, cohesive data structure.
+`Resource<E, A>` solves this structurally by packaging the potentially fallible `acquire` step (a
+`Task.Result<E, A>`) and the infallible `release` step (a `(value: A) => Task<unknown>`) into a
+single, composable data structure:
 
 ```mermaid
 flowchart TD
@@ -39,31 +34,43 @@ flowchart TD
     Release --> WorkExit([Return Work Result])
 ```
 
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Resource, Task } from "@nlozgachev/pipelined/core";
+
+export type Resource<E, A> = {
+  readonly acquire: Task.Result<E, A>;
+  readonly release: (value: A) => Task<unknown>;
+};
+```
+
 By describing *how to open* and *how to close* a resource once, we delegate the execution safety to
-the library. `Resource.use` guarantees that the cleanup step is always executed, whether the work
-succeeds or fails.
+`Resource.use`, which guarantees that the cleanup step is always executed whenever acquisition
+succeeds.
 
 ---
 
 ## Creating a Resource
 
-We define a resource by supplying the actions to open and close it using `Resource.make`.
+We define a resource by supplying the actions to open and close it using `Resource.make`:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 import { Resource, Task } from "@nlozgachev/pipelined/core";
 
+type DbError = { readonly kind: "DbError"; readonly message: string };
+
 const dbResource = Resource.make(
   Task.Result.tryCatch(
     () => openConnection({ host: "db.local" }),
-    { onError: (error) => new Error(`DB connection failed: ${error}`) },
+    { onError: (error): DbError => ({ kind: "DbError", message: `DB connection failed: ${error}` }) },
   ),
   (connection) => Task.tryCatch(() => connection.close(), { onError: () => {} }),
 );
 ```
 
 The release callback receives the exact value produced by the acquisition step. Even if a query
-fails midway, the manager will execute `connection.close()` automatically.
+fails midway, `Resource.use` will execute `connection.close()` automatically.
 
 ### Resources that cannot fail
 
@@ -72,20 +79,20 @@ a local timer — we can use `Resource.from.Task` to skip error mapping:
 
 ```ts
 const lockResource = Resource.from.Task(
-  Task.tryCatch(() => Promise.resolve(acquireLock("process_orders")), { onError: () => defaultLock }),
-  (lock) => Task.tryCatch(() => Promise.resolve(lock.release()), { onError: () => {} }),
+  Task.from.sync(() => acquireInMemoryLock("process_orders")),
+  (lock) => Task.from.sync(() => lock.release()),
 );
 ```
 
-The error parameter defaults to `never` to formally declare to the compiler that this resource is
-structurally incapable of failing to acquire.
+The error parameter defaults to `never` to declare to the compiler that this resource cannot fail
+during acquisition.
 
 ---
 
 ## Running Actions with use
 
 To perform work with our resource, we pass our operational logic to `Resource.use`. The work
-function receives the acquired value and must return a `Task.Result`:
+function receives the acquired value and returns a `Task.Result`:
 
 ```ts
 const products = await pipe(
@@ -93,20 +100,20 @@ const products = await pipe(
   Resource.use((connection) =>
     Task.Result.tryCatch(
       () => connection.query("SELECT * FROM products"),
-      { onError: (error) => new Error(`Query failed: ${error}`) },
+      { onError: (error): DbError => ({ kind: "DbError", message: `Query failed: ${error}` }) },
     )
   ),
-)(); // Resolves to Result<Error, Product[]>
+)(); // Resolves to Result<DbError, Product[]>
 ```
 
 Let's trace the execution:
 
-1. `dbResource` executes its `acquire` task. If this fails, the execution stops and yields the
-   acquisition error.
+1. `dbResource` executes its `acquire` task. If this fails, execution stops and yields the
+   acquisition error without calling `release`.
 2. If successful, the active connection is passed to the query function.
 3. Whether the query succeeds or fails, the `release` task (`connection.close()`) is immediately
    executed.
-4. The final result of the query (an `Ok` or `Err`) is returned.
+4. The final result of the query (`Ok` or `Err`) is returned.
 
 ---
 
@@ -115,10 +122,10 @@ Let's trace the execution:
 When an operation requires multiple distinct resources to execute — for instance, a database
 connection and a Redis cache client — we can combine them into a single, unified resource.
 
-### Parallel acquisition with `combine`
+### Sequential acquisition with `combine`
 
-`Resource.combine` aggregates two resources, presenting them as a single resource carrying a tuple
-of both values:
+`Resource.combine` acquires two resources in sequence (`resourceA` first, then `resourceB`) and
+presents them as a single resource carrying a `readonly [A, B]` tuple of both values:
 
 ```ts
 const combinedResource = Resource.combine(dbResource, cacheResource);
@@ -135,7 +142,7 @@ const result = await pipe(
         await cache.set("profile_123", user);
         return user;
       },
-      { onError: (error) => new Error(`Database lookup failed: ${error}`) },
+      { onError: (error): DbError => ({ kind: "DbError", message: `Lookup failed: ${error}` }) },
     )
   ),
 )();
@@ -144,14 +151,14 @@ const result = await pipe(
 When combining resources, the release tasks are executed in **reverse acquisition order**: the cache
 is released first, and the database is released second.
 
-If the database is successfully opened but the cache client fails to acquire, the manager
+If the database is successfully opened but the cache client fails to acquire, `Resource.combine`
 immediately releases the database connection and returns the cache acquisition error. Your system is
 guaranteed never to leak a connection mid-setup.
 
-### Sequential nesting
+### Dependent resource nesting
 
-For complex workflows where a second resource depends directly on the value of the first (e.g.
-initiating a transaction on an active connection), you can nest `Resource.use` calls:
+For workflows where a second resource depends directly on the acquired value of the first (e.g.
+initiating a transaction on an active connection), nest `Resource.use` calls:
 
 ```ts
 const result = await pipe(
@@ -162,7 +169,7 @@ const result = await pipe(
       Resource.use((transaction) =>
         Task.Result.tryCatch(
           () => executeDatabaseWrite(transaction, orderData),
-          { onError: (error) => new Error(`Write failed: ${error}`) },
+          { onError: (error): DbError => ({ kind: "DbError", message: `Write failed: ${error}` }) },
         )
       ),
     )

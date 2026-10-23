@@ -3,21 +3,19 @@ title: Task — Lazy Asynchronous Work
 description: Model asynchronous operations as lazy, infallible functions that execute only when called.
 ---
 
-import { Aside } from '@astrojs/starlight/components'
-
 JavaScript `Promise` instances execute eagerly upon creation and can reject with untyped values (`unknown`). This makes it difficult to compose async workflows before execution or track errors in type signatures.
 
-`Task<A>` is a zero-argument function returning an infallible `Deferred<A>`:
+`Task<A>` is a function accepting an optional `AbortSignal` and returning an infallible `Deferred<A>`:
 
 ```ts
-type Task<A> = () => Deferred<A>;
+type Task<A> = (signal?: AbortSignal) => Deferred<A>;
 ```
 
 Because `Task` is a function, execution is deferred until invoked. Because `Deferred<A>` is typed to never reject, failures are tracked explicitly in return types via `Task.Result<E, A>`.
 
 ```ts
-import { Task } from "@nlozgachev/pipelined/core";
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Task } from "@nlozgachev/pipelined/core";
 
 const getTimestamp = Task.from.sync(() => Date.now()); // Task<number>
 
@@ -35,14 +33,17 @@ const timeString = await formattedTime();
 
 ## Creating Tasks
 
-We lift asynchronous values into a `Task` context depending on whether they are already resolved or require evaluation:
+We create `Task` values depending on whether the computation is already resolved, synchronous, or asynchronous:
 
 ```ts
-// Resolving immediately
+// Resolving immediately with a constant value
 const constantTask = Task.make(42); // Task<number>
+
+// Wrapping a lazy synchronous computation
+const readClockTask = Task.from.sync(() => performance.now()); // Task<number>
 ```
 
-Because standard Promises in JavaScript are fallible by definition, `Task.tryCatch` is the canonical intake for operations that may reject or throw an exception, trapping errors with a fallback handler to ensure the returned `Task<A>` is infallible and never throws:
+Because standard Promises in JavaScript can reject, `Task.tryCatch` is the canonical intake for asynchronous operations where you want to handle any failure immediately with a fallback value so the resulting `Task<A>` is guaranteed never to fail:
 
 ```ts
 // Trapping errors with a fallback handler
@@ -54,7 +55,7 @@ const loadConfig = Task.tryCatch(
 
 ---
 
-## Transforming and Sequencing
+## Transforming, Sequencing, and Side Effects
 
 We can transform and chain our asynchronous blueprints while they are still in their lazy, unexecuted state.
 
@@ -94,11 +95,37 @@ const userPrefs = pipe(
 const prefs = await userPrefs(); // Loads userId first, then loads preferences
 ```
 
+### Combining independent tasks with `apply`
+
+When you have a curried function inside a `Task` and want to feed multiple independent `Task` arguments into it, `Task.apply` executes the tasks in parallel and applies their resolved values:
+
+```ts
+const formatSummary = (region: string) => (uptimeMs: number) =>
+  `[${region}] Uptime: ${uptimeMs}ms`;
+
+const summaryTask = pipe(
+  Task.make(formatSummary),
+  Task.apply(detectRegionTask),
+  Task.apply(readUptimeTask),
+); // Task<string>
+```
+
+### Side effects with `tap`
+
+`Task.tap` runs a side-effect callback on the resolved value without altering the `Task` output:
+
+```ts
+const auditedConfigTask = pipe(
+  loadConfig,
+  Task.tap((cfg) => console.info("Loaded config version:", cfg.version)),
+);
+```
+
 ---
 
 ## Concurrency Controls
 
-Unlike raw Promises, which require manual coordination using `Promise.all` or `Promise.race`, `Task` provides clean, functional combinators for parallel, raced, or sequential execution.
+Unlike raw Promises, which require manual coordination using `Promise.all` or `Promise.race`, `Task` provides composable combinators for parallel, raced, or sequential execution.
 
 ### Parallel execution with `all`
 
@@ -113,7 +140,7 @@ const [config, user] = await Task.all([
 
 The return type is structurally matched to your input: passing `[Task<Config>, Task<User>]` yields a `Task<[Config, User]>` tuple.
 
-To prevent overwhelming sockets or triggering external rate limits, provide `{ concurrency }` to constrain how many tasks execute at any given moment:
+To prevent overwhelming resources, provide `{ concurrency }` to constrain how many tasks execute at any given moment:
 
 ```ts
 const userTasks = userIds.map((id) => loadUserTask(id));
@@ -124,26 +151,26 @@ const users = await Task.all(userTasks, { concurrency: 3 })();
 
 ### Raced execution with `race`
 
-`Task.race` starts multiple Tasks simultaneously and resolves with the outcome of whichever Task completes first, abandoning the remaining in-flight tasks:
+`Task.race` starts multiple Tasks simultaneously and resolves with the outcome of whichever Task completes first, automatically aborting the remaining in-flight tasks via their `AbortSignal`:
 
 ```ts
 const fastestSource = Task.race([
-  loadFromPrimaryRegion,
-  loadFromSecondaryRegion,
+  loadFromPrimaryCache,
+  loadFromSecondaryCache,
 ]);
 
-const data = await fastestSource(); // Whichever region responds first
+const data = await fastestSource(); // Whichever cache responds first
 ```
 
 ### Sequential queueing with `sequential`
 
-When execution order matters, or when running tasks in parallel would trigger race conditions or overload resources, `Task.sequential` executes each Task in submission order:
+When execution order matters, or when running tasks in parallel would trigger race conditions or overload resources, `Task.sequential` executes an array or tuple of `Task`s one at a time in submission order:
 
 ```ts
 const results = await Task.sequential([
-  () => acquireLock(resourceId),
-  () => processPayload(resourceId),
-  () => releaseLock(resourceId),
+  acquireLockTask(resourceId),
+  processPayloadTask(resourceId),
+  releaseLockTask(resourceId),
 ])();
 ```
 
@@ -164,6 +191,22 @@ const delayedGreeting = pipe(
 );
 ```
 
+### Enforcing deadlines with `timeout`
+
+`Task.timeout` converts an infallible `Task<A>` into a fallible `Task.Result<E, A>`, resolving to `Err(onTimeout())` if the task does not complete within the specified `Duration` and aborting the inner `AbortSignal`:
+
+```ts
+import { Duration } from "@nlozgachev/pipelined/types";
+
+const boundedComputation = pipe(
+  runHeavyIndexRebuild,
+  Task.timeout({
+    duration: Duration.seconds(5),
+    onTimeout: () => "INDEX_REBUILD_TIMED_OUT" as const,
+  }),
+); // Task.Result<"INDEX_REBUILD_TIMED_OUT", IndexStats>
+```
+
 ### Standard cancellation with `abortable`
 
 `Task.abortable` wraps a promise factory, yielding a managed `Task` alongside a shared `abort` function. Invoking `abort()` immediately cancels any active, in-flight execution:
@@ -181,6 +224,20 @@ input.addEventListener("input", async () => {
 ```
 
 Calling `task()` while a previous invocation is still active will automatically abort the previous run.
+
+### Progress tracking and diagnostic labels: `withProgress` and `withLabel`
+
+`Task.withProgress` invokes a callback with `0` immediately before the task starts and `1` when it resolves. `Task.withLabel` attaches a read-only `.label` property to a `Task`, preserving the literal label string in editor hover tooltips:
+
+```ts
+const backupTask = pipe(
+  exportDatabaseSnapshot,
+  Task.withProgress((ratio) => updateProgressBar(ratio * 100)),
+  Task.withLabel("database-snapshot-backup"),
+);
+
+console.log(backupTask.label); // "database-snapshot-backup"
+```
 
 ### Ending pipelines with `run`
 
@@ -230,50 +287,120 @@ const readyState = await pipe(
 
 ## The Task Family
 
-While `Task<A>` is excellent for operations that never fail, typical real-world async tasks involve network or database requests that can yield errors. For these, we use specialized variants within the Task family.
+While `Task<A>` is designed for operations that never fail, typical real-world async tasks involve network or database requests that can yield errors or empty results. For these, we use specialized namespaces within `Task`.
 
 ### Task.Result
 
-`Task.Result<E, A>` represents a fallible async task, equivalent to `Task<Result<E, A>>` under the hood. It serves as the primary tool for most asynchronous applications:
+`Task.Result<E, A>` represents a fallible async task, equivalent to `Task<Result<E, A>>` under the hood.
+
+#### Creating and converting `Task.Result`
+
+Construct a `Task.Result` directly with `make.ok` and `make.err`, wrap a throwing or rejecting promise factory with `tryCatch`, or lift existing values via `from.Result`, `from.Maybe`, and `from.nullable`:
 
 ```ts
-import { Task } from "@nlozgachev/pipelined/core";
+import { Maybe, Result, Task } from "@nlozgachev/pipelined/core";
 
+const okTask = Task.Result.make.ok(42);
+const errTask = Task.Result.make.err("UNAUTHORIZED");
+
+const fromNullableTask = pipe(
+  process.env.API_URL,
+  Task.Result.from.nullable(() => "Missing API_URL"),
+);
+
+const fromMaybeTask = pipe(
+  Maybe.make.some("token_xyz"),
+  Task.Result.from.Maybe(() => "Missing token"),
+);
+
+const fromResultTask = Task.Result.from.Result(Result.make.ok("ready"));
+```
+
+For network calls and fallible I/O, use `Task.Result.tryCatch`:
+
+```ts
 const fetchProfile = (userId: string): Task.Result<string, User> =>
   Task.Result.tryCatch(
     (signal) => fetch(`/users/${userId}`, { signal }).then((r) => r.json()),
     { onError: (error) => `Could not fetch user: ${error}` },
   );
-
-const userDisplayName = pipe(
-  fetchProfile("123"),
-  Task.Result.map((user) => user.name),
-  Task.Result.getOrElse(() => "Guest User"),
-);
-
-const name = await userDisplayName(); // Returns a string safely (never throws)
 ```
 
-### Cancellation propagation in Task.Result chains
-
-When sequencing multiple `Task.Result` steps, `Task.Result.chain` propagates the abort signal down the line automatically. An abort triggered at the call site immediately cancels whichever step is currently in flight:
+To discard the error channel and convert a `Task.Result<E, A>` into a `Task.Maybe<A>`, use `Task.Result.to.Maybe`:
 
 ```ts
+const optionalProfile: Task.Maybe<User> = pipe(
+  fetchProfile("123"),
+  Task.Result.to.Maybe,
+);
+```
+
+#### Transforming, recovering, and extracting `Task.Result`
+
+`Task.Result` mirrors the full `Result` combinator surface over async execution (`map`, `mapError`, `bimap`, `chain`, `apply`, `ensure`, `tap`, `tapError`, `recover`, `recoverUnless`, `match`, `getOrElse`, `run`):
+
+```ts
+const loadUserBanner = (userId: string): Task<string> =>
+  pipe(
+    fetchProfile(userId),
+    Task.Result.ensure(
+      (user) => user.isActive,
+      (user) => `User ${user.id} is deactivated`,
+    ),
+    Task.Result.map((user) => user.name.trim()),
+    Task.Result.mapError((err) => `[Auth] ${err}`),
+    Task.Result.tap((name) => console.info(`Loaded active user: ${name}`)),
+    Task.Result.tapError((err) => console.warn(err)),
+    Task.Result.recoverUnless(
+      (err) => err.includes("deactivated"),
+      () => Task.Result.make.ok("Guest User"),
+    ),
+    Task.Result.match({
+      ok: (name) => `Welcome, ${name}`,
+      err: (err) => `Access denied (${err})`,
+    }),
+  );
+```
+
+When combining independent fallible tasks via a curried function, `Task.Result.apply` runs them in parallel:
+
+```ts
+const mergeUserAndQuota = (user: User) => (quota: number) => ({ user, quota });
+
+const accountWithQuota = pipe(
+  Task.Result.make.ok(mergeUserAndQuota),
+  Task.Result.apply(fetchProfile("123")),
+  Task.Result.apply(fetchQuota("123")),
+);
+```
+
+#### Cancellation and Timeouts in `Task.Result`
+
+When sequencing multiple `Task.Result` steps, `Task.Result.chain` propagates the `AbortSignal` down the line automatically. You can also enforce a deadline on any `Task.Result` using `Task.Result.timeout`, and execute the pipeline using `Task.Result.run(signal)`:
+
+```ts
+import { Duration } from "@nlozgachev/pipelined/types";
+
 const fetchReport = (reportId: string): Task.Result<string, Report> =>
   pipe(
     Task.Result.tryCatch((sig) => initiateJob(reportId, sig), { onError: String }),
-    Task.Result.chain((job) => Task.Result.tryCatch((sig) => checkJobStatus(job.id, sig), { onError: String })),
-    Task.Result.chain((status) => Task.Result.tryCatch((sig) => downloadData(status.url, sig), { onError: String })),
+    Task.Result.chain((job) =>
+      Task.Result.tryCatch((sig) => downloadData(job.url, sig), { onError: String })
+    ),
+    Task.Result.timeout({
+      duration: Duration.seconds(10),
+      onTimeout: () => "Report generation timed out",
+    }),
   );
 
 const controller = new AbortController();
-const result = await fetchReport("report_42")(controller.signal);
-
-// Invoking controller.abort() at any point will cancel the active request
-// and instantly stop the chain, preventing subsequent network calls.
+const result = await pipe(
+  fetchReport("report_42"),
+  Task.Result.run(controller.signal),
+);
 ```
 
-### Retrying fallible tasks with Task.Result.retry
+#### Retrying fallible tasks with `Task.Result.retry`
 
 When network operations or database queries suffer transient failures, `Task.Result.retry` automatically re-evaluates the task according to a `RetryPolicy`:
 
@@ -300,8 +427,6 @@ const resilientFetch = pipe(
 );
 ```
 
-If an attempt succeeds (`Ok`), execution completes immediately without further retries. If an attempt fails (`Err`), the policy calculates the delay before executing the next attempt, respecting any `AbortSignal` passed from the call site.
-
 To fail fast on permanent client errors while retrying transient server errors, pass a `when` predicate:
 
 ```ts
@@ -316,35 +441,7 @@ const transientFetch = pipe(
 );
 ```
 
-### Validating task results with `ensure`
-
-`Task.Result.ensure` validates the `Ok` value with a predicate. If the check returns `false`, it converts the value to an `Err` using the provided error constructor:
-
-```ts
-const validatedProfile = pipe(
-  fetchProfile("123"),
-  Task.Result.ensure(
-    (user) => user.isActive,
-    (user) => `User ${user.id} is inactive`,
-  ),
-);
-```
-
-### Transforming both channels with `bimap`
-
-`Task.Result.bimap` transforms both the `Err` and `Ok` channels in a single operation:
-
-```ts
-const formatted = pipe(
-  fetchProfile("123"),
-  Task.Result.bimap(
-    (err) => new Error(`Fetch failed: ${err}`),
-    (user) => user.name.toUpperCase(),
-  ),
-);
-```
-
-### Non-short-circuiting batching with `allSettled`
+#### Non-short-circuiting batching with `allSettled`
 
 When evaluating multiple independent fallible requests in parallel, `Task.Result.struct` short-circuits on the first error encountered. If you need all tasks to run to completion regardless of individual failures (such as health check probes or bulk batch processing), use `Task.Result.allSettled`:
 
@@ -369,7 +466,75 @@ for (const outcome of outcomes) {
 }
 ```
 
-The resulting `Task` is guaranteed to resolve, returning an array where every item is individually wrapped in a `Result`.
+---
+
+### Task.Maybe
+
+`Task.Maybe<A>` represents an asynchronous operation that may yield nothing, equivalent to `Task<Maybe<A>>`.
+
+You can construct a `Task.Maybe` with `Task.Maybe.make.some`, `Task.Maybe.make.none`, `Task.Maybe.tryCatch` (which turns rejections into `None`), or lift values via `Task.Maybe.from.Maybe`, `Task.Maybe.from.nullable`, `Task.Maybe.from.Result`, and `Task.Maybe.from.Task`:
+
+```ts
+import { Task } from "@nlozgachev/pipelined/core";
+
+const lookupUser = (id: string): Task.Maybe<User> =>
+  Task.Maybe.tryCatch((signal) =>
+    fetch(`/users/${id}`, { signal }).then((r) => (r.ok ? r.json() : Promise.reject()))
+  );
+```
+
+`Task.Maybe` supports `map`, `chain`, `apply`, `filter`, `tap`, `recover`, `match`, `getOrElse`, `to.Result`, and `run`:
+
+```ts
+const resolveActiveUserEmail = (userId: string): Task.Result<string, string> =>
+  pipe(
+    lookupUser(userId),
+    Task.Maybe.filter((user) => user.isActive),
+    Task.Maybe.map((user) => user.email),
+    Task.Maybe.tap((email) => console.debug("Found active email:", email)),
+    Task.Maybe.recover(() => lookupBackupEmail(userId)),
+    Task.Maybe.to.Result(() => `No active email found for user ${userId}`),
+  );
+```
+
+---
+
+### Task.Validation
+
+`Task.Validation<E, A>` represents an asynchronous validation check that accumulates multiple errors across parallel checks, equivalent to `Task<Validation<E, A>>`.
+
+Create a `Task.Validation` using `make.passed`, `make.failed`, `make.failedAll`, `tryCatch`, or lift existing containers via `from.Validation`, `from.Result`, `from.Maybe`, and `from.nullable`:
+
+```ts
+import { Task } from "@nlozgachev/pipelined/core";
+
+const checkUsernameAvailable = (username: string): Task.Validation<string, string> =>
+  Task.Validation.tryCatch(
+    async (signal) => {
+      const response = await fetch(`/api/usernames/${username}/available`, { signal });
+      if (!response.ok) throw new Error("Username is already taken");
+      return username;
+    },
+    { onError: () => `Username "${username}" is not available` },
+  );
+```
+
+`Task.Validation` provides `map`, `mapError`, `apply`, `struct`, `tap`, `tapError`, `recover`, `recoverUnless`, `match`, `getOrElse`, `to.Result`, `to.Maybe`, and `run`:
+
+```ts
+const registerAccount = (username: string, email: string) =>
+  pipe(
+    Task.Validation.struct({
+      username: checkUsernameAvailable(username),
+      email: checkEmailDomainAllowed(email),
+    }),
+    Task.Validation.mapError((err) => `[Registration] ${err}`),
+    Task.Validation.tapError((errors) => {
+      logger.warn(`Async validation failed with ${errors.length} errors`);
+    }),
+    Task.Validation.to.Result((errors) => errors.join("; ")),
+  );
+```
 
 ---
 
@@ -384,7 +549,7 @@ const loadToken = Task.memoize(
   Task.tryCatch(
     () => readAuthToken(),
     { onError: () => "ANONYMOUS_TOKEN" },
-  )
+  ),
 );
 
 // First invocation triggers token resolution:
@@ -394,86 +559,21 @@ const token1 = await loadToken();
 const token2 = await loadToken();
 ```
 
-### Task.Maybe
-
-`Task.Maybe<A>` represents an asynchronous operation that may yield nothing, equivalent to `Task<Maybe<A>>`:
-
-```ts
-import { Task } from "@nlozgachev/pipelined/core";
-
-const lookupUser = (id: string): Task.Maybe<User> =>
-  Task.Maybe.tryCatch(() => db.users.findById(id));
-```
-
-When an asynchronous operation resolves to `None` (representing an absent resource or a failed lookup), you can recover gracefully by providing a fallback asynchronous operation using `recover`:
-
-```ts
-const loadConfig = (userId: string): Task.Maybe<Config> =>
-  pipe(
-    loadUserConfig(userId),
-    Task.Maybe.recover(() => loadDefaultConfig())
-  );
-```
-
-### Task.Validation
-
-`Task.Validation<E, A>` represents an asynchronous validation check that accumulates multiple errors, equivalent to `Task<Validation<E, A>>`:
-
-```ts
-import { Task } from "@nlozgachev/pipelined/core";
-
-const checkUsernameUnique = (username: string): Task.Validation<string, string> =>
-  Task.Validation.tryCatch(
-    (signal) => db.users.isUnique(username, signal),
-    { onError: (error) => `Username check failed: ${error}` },
-  );
-```
-
-Because validations accumulate multiple errors instead of failing fast, we often need to transform or perform side effects on the collected errors mid-pipeline. You can transform the error list using `mapError`, or execute a side effect (such as writing to a warning logger) using `tapError`:
-
-```ts
-const validateProfile = pipe(
-  checkUsernameUnique(username),
-  Task.Validation.mapError((err) => `Validation: ${err}`),
-  Task.Validation.tapError((errors) => {
-    logger.warn(`Async validation failed with ${errors.length} errors`);
-  })
-);
-```
-
 ---
 
 ## Accumulating values: bind / bindTo
 
-When you need to perform multiple sequential asynchronous operations and gather their results into a single object, nesting `chain` and `map` inside pipelines can become highly complex and hard to read:
+When you need to perform multiple sequential asynchronous operations and gather their results into a single object, nesting `chain` and `map` inside pipelines can become hard to read.
 
-```ts
-const userProfile = pipe(
-  getUser(userId),
-  Task.chain((user) =>
-    pipe(
-      getPreferences(user.id),
-      Task.map((prefs) => ({ user, prefs }))
-    )
-  ),
-  Task.chain(({ user, prefs }) =>
-    pipe(
-      getTheme(prefs.themeId),
-      Task.map((theme) => ({ user, prefs, theme }))
-    )
-  )
-);
-```
+You can use `bindTo` and `bind` to cleanly accumulate asynchronous values key-by-key in a flat, readable pipeline. These helpers are available across `Task`, `Task.Result`, and `Task.Maybe`.
 
-To solve this, you can use `bindTo` and `bind` to cleanly accumulate asynchronous values key-by-key in a flat, readable pipeline. These helpers are available across the entire Task family: `Task`, `Task.Result`, and `Task.Maybe`.
-
-`bindTo` lifts an asynchronous value into the pipeline's accumulator object:
+`bindTo` wraps an asynchronous value into the pipeline's accumulator object:
 
 ```ts
 pipe(
   Task.make(42),
-  Task.bindTo("value")
-); // Task({ value: 42 })
+  Task.bindTo("value"),
+); // Task<{ value: number }>
 ```
 
 `bind` runs a new asynchronous operation using the accumulated object and attaches the result to a new key:
@@ -483,8 +583,8 @@ const userProfile = pipe(
   getUser(userId), // Task.Maybe<User>
   Task.Maybe.bindTo("user"),
   Task.Maybe.bind("prefs", ({ user }) => getPreferences(user.id)),
-  Task.Maybe.bind("theme", ({ prefs }) => getTheme(prefs.themeId))
-); // Task.Maybe({ user: User, prefs: Preferences, theme: Theme })
+  Task.Maybe.bind("theme", ({ prefs }) => getTheme(prefs.themeId)),
+); // Task.Maybe<{ user: User; prefs: Preferences; theme: Theme }>
 ```
 
 If any step fails (yielding `None` in `Task.Maybe` or `Err` in `Task.Result`), the entire pipeline short-circuits and propagates the failure immediately.
@@ -493,9 +593,9 @@ If any step fails (yielding `None` in `Task.Maybe` or `Err` in `Task.Result`), t
 
 ## Combining async records: struct
 
-While `bind` is perfect for sequential steps where a latter step depends on the output of a prior step, sometimes you have a set of independent asynchronous tasks that you want to combine into a single object. For this, you can use the `struct` helper, which is available on `Task.Result`, `Task.Maybe`, and `Task.Validation`.
+While `bind` is ideal for sequential steps where a later step depends on the output of a prior step, sometimes you have a set of independent asynchronous tasks that you want to combine into a single object. For this, you can use the `struct` helper, which is available on `Task.Result`, `Task.Maybe`, and `Task.Validation`.
 
-`struct` combines a record of async tasks into a single task holding a record of success values. Under the hood, **it evaluates all tasks in parallel** (by calling them concurrently and using `Promise.all` internally) while correctly forwarding the `AbortSignal` down to each sub-task.
+`struct` combines a record of async tasks into a single task holding a record of success values. Under the hood, **it evaluates all tasks in parallel** while forwarding the `AbortSignal` down to each sub-task.
 
 ### With Task.Result
 If any individual field resolves to an `Err`, the entire struct short-circuits to that error. If multiple fields fail, `Task.Result.struct` returns the first error encountered in key order:
@@ -523,8 +623,8 @@ Evaluates validations in parallel and **accumulates all validation errors** acro
 
 ```ts
 const validationTask = Task.Validation.struct({
-  username: checkUsernameUnique(username),
-  email: checkEmailNotBlocked(email),
+  username: checkUsernameAvailable(username),
+  email: checkEmailDomainAllowed(email),
 }); // Task.Validation<string, { username: string; email: string }>
 ```
 
@@ -532,8 +632,7 @@ const validationTask = Task.Validation.struct({
 
 ## Running Tasks at boundaries
 
-
-Because a `Task` is simply a function, you run it by invoking it. Invoking a `Task<A>` yields a `Deferred<A>`, which is highly compatible with the standard `Promise` ecosystem. You can `await` it directly within any standard `async/await` block:
+Because a `Task` is a function, you run it by invoking it (or passing it to `Task.run(signal)`). Invoking a `Task<A>` yields a `Deferred<A>`, which you can `await` directly within any standard `async/await` block:
 
 ```ts
 const value = await fetchProfile("123")(); // Ok(user) or Err(error)
@@ -554,5 +653,5 @@ const profilePromise = Deferred.to.Promise(fetchProfile("123")()); // Promise<Re
 - **Composing lazy asynchronous workflows**: In background workers and server endpoints, asynchronous pipelines often involve multiple sequential steps (such as acquiring auth tokens, querying profile data, fetching permission lists, and writing audit records). Native promises execute eagerly upon creation. `Task` encapsulates asynchronous operations as lazy descriptions, enabling modular pipeline composition and transformation before initiating network or I/O work.
 - **Coordinated concurrency and fallback racing**: When aggregating data across distributed backends or caching layers, applications need fine-grained concurrency control. `Task` provides structured combinators like `Task.all` for parallel fan-out, `Task.race` for racing primary against fallback sources, and `Task.sequential` for queue execution, all while preserving functional purity.
 - **Compiler-enforced async error handling with `Task.Result`**: Network calls and disk I/O naturally produce domain failures. Standard `Promise.reject` discards TypeScript type information, allowing unhandled rejections to bubble up. `Task.Result` pairs lazy asynchronous execution with typed errors, ensuring the outer task always resolves safely while forcing callers to handle specific failure variants.
-- **Time-bound operations and scheduled polling (`Task.timeout`, `Task.delay`, `Task.repeat`, `Task.poll`)**: Wrapping external network calls with timeout boundaries typically involves race hackery with `setTimeout` and cleanup listeners. `Task.timeout` attaches strict duration limits returning typed `Result` errors on expiration, while `Task.delay`, `Task.repeat`, and `Task.poll` configure scheduled interval polling cleanly.
+- **Time-bound operations and scheduled polling (`Task.timeout`, `Task.delay`, `Task.repeat`, `Task.poll`)**: Wrapping external network calls with timeout boundaries typically involves race boilerplate with `setTimeout` and cleanup listeners. `Task.timeout` and `Task.Result.timeout` attach strict duration limits returning typed `Result` errors on expiration, while `Task.delay`, `Task.repeat`, and `Task.poll` configure scheduled interval polling cleanly.
 - **Asynchronous optionality with `Task.Maybe`**: When loading cached tokens or reading optional database settings asynchronously, missing entries are expected. `Task.Maybe` threads async execution and optional absence together, allowing callers to map, chain, and recover without nested promise-and-null checks.

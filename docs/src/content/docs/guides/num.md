@@ -1,224 +1,272 @@
 ---
 title: Num — Number Utilities
-description: Curried arithmetic, safe parsing, clamping, range generation, and array aggregations designed for pipelines.
+description: Curried arithmetic, safe parsing, rounding, formatting, clamping, range generation, and array aggregations designed for pipelines.
 ---
 
 Working with numbers in standard JavaScript or TypeScript often leads to code cluttered with
-anonymous arrow functions, manual `isNaN` checks, and verbose range-bounding conditionals.
+inline arrow functions, manual `Number.isNaN` checks, and silent runtime traps:
 
-Simple pipelines — such as transforming API response counts, filtering temperature readings, or
-calculating averages from form inputs — frequently require us to write repetitive expressions like
-`n => n * 100`, `Math.max(0, Math.min(100, value))`, or checking if a parsed number is actually a
-number.
-
-`Num` replaces these imperative checks and inline math formulas with declarative, curried,
-pipeline-ready operations. By modeling arithmetic and validation as first-class functions, we can
-compose clear, self-describing transformations without scattering temporary arrow functions
-throughout our codebase.
-
-## The problem with scattered arithmetic and NaN
-
-Consider a backend service that processes incoming query parameters representing user-configurable
-slider values:
+1. **Silent `NaN` and `Infinity` propagation**: Parsing an invalid string with `Number("abc")`
+   produces `NaN`, and dividing `100 / 0` produces `Infinity`. Both values have the TypeScript type
+   `number`, allowing corrupted math to spread silently into database writes or UI displays.
+2. **Unsafe empty collection aggregates**: Calling `Math.min(...items)` on an empty array evaluates
+   to `Infinity`, `Math.max(...items)` evaluates to `-Infinity`, and computing an average via
+   `sum / items.length` produces `NaN` when `items` is empty.
+3. **Verbose inline math in pipelines**: Applying arithmetic, clamping bounds, or formatting
+   currencies inside a `pipe` requires repetitive inline functions like `n => Math.max(0, Math.min(100, n))`.
 
 ```ts
 function parseSliderValue(rawInput: string | undefined): number {
   if (rawInput === undefined) {
-    return 50; // Default fallback
+    return 50;
   }
-
   const parsed = parseFloat(rawInput);
   if (isNaN(parsed)) {
     return 50;
   }
-
-  // Clamp the value between 0 and 100
   return Math.max(0, Math.min(100, parsed));
 }
 ```
 
-This function combines parsing, validation, clamping, and fallback logic within a single imperative
-block. If we want to map this over an array of inputs, we must write a wrapping helper function or
-embed inline ternary checks.
+`Num` replaces these imperative checks and silent failure modes with declarative, curried,
+**data-last** operations that model failure boundaries—such as unparseable strings, division by
+zero, or empty array aggregations—explicitly using `Maybe<number>`.
 
-Additionally, standard JavaScript arithmetic contains structural pitfalls: dividing by zero does not
-fail at the type level or throw an exception — it returns `Infinity`, which silently propagates
-through our application, causing unpredictable mathematical errors downstream.
+---
 
-## The shift to declarative arithmetic
+## Safe Numeric Parsing
 
-The `Num` module provides curried arithmetic, parsing, clamping, and bounds-checking utilities
-designed for pipelines.
-
-## Safe numeric parsing
-
-To convert a string into a number without encountering the `NaN` trap, we use `Num.from.string`. It
-returns a `Maybe<number>` context which explicitly models potential parsing failure:
+To convert a string into a number without encountering the `NaN` trap or accepting blank whitespace
+as `0` (which `Number("   ")` does in standard JavaScript), use `Num.from.string`. It returns
+`Some(number)` for valid numeric strings and `None` for empty, whitespace-only, or malformed text:
 
 ```ts
 import { Num } from "@nlozgachev/pipelined/data";
 
-Num.from.string("42");    // Some(42)
-Num.from.string("3.14");  // Some(3.14)
-Num.from.string("abc");   // None
-Num.from.string("");      // None
+Num.from.string("42");   // Some(42)
+Num.from.string("3.14"); // Some(3.14)
+Num.from.string("abc");  // None
+Num.from.string("   ");  // None (avoids JavaScript's Number("   ") === 0 coercion trap)
 ```
 
-## Curried arithmetic
+---
 
-Arithmetic functions in `Num` are curried and place the primary data argument last. This makes them
-ideal for composition within `pipe` and `Arr.map`:
+## Curried Arithmetic and Safe Division
+
+Arithmetic functions in `Num` are curried and place the target number last so they compose directly
+inside `pipe` and `Arr.map`. In particular, `Num.subtract(amount)(from)` computes `from - amount`,
+reading naturally in a pipeline as "subtract `amount`":
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
-import { Arr } from "@nlozgachev/pipelined/data";
+import { Arr, Num } from "@nlozgachev/pipelined/data";
 
-// Scale an array of scores
-const baseScores = [10, 20, 30];
-const scaled = pipe(
-  baseScores,
-  Arr.map(Num.multiply(1.5))
-); // [15, 30, 45]
+// Add a flat shipping surcharge:
+const withShipping = pipe(
+  [25, 50, 75],
+  Arr.map(Num.add(5)),
+); // [30, 55, 80]
 
-// Subtract a fee
-const finalAmounts = pipe(
+// Subtract a promotional discount (from - amount):
+const discounted = pipe(
   [100, 200, 300],
-  Arr.map(Num.subtract(10)) // equivalent to x => x - 10
-); // [90, 190, 290]
+  Arr.map(Num.subtract(15)),
+); // [85, 185, 285]
+
+// Scale unit prices by tax multiplier:
+const withTax = pipe(
+  [10, 20, 30],
+  Arr.map(Num.multiply(1.2)),
+); // [12, 24, 36]
 ```
 
-To prevent runtime errors and silent `Infinity` propagation, division and remainder operations
-return a `Maybe` context, returning `None` if the divisor is zero:
+For unary sign adjustments, `Num.abs` returns the non-negative magnitude of a number and
+`Num.negate` flips its sign:
 
 ```ts
-// Safe division
+pipe(-42, Num.abs);   // 42
+pipe(15, Num.negate); // -15
+```
+
+To prevent division by zero from introducing `Infinity` or `NaN`, `Num.divide(divisor)(dividend)`
+and `Num.remainder(divisor)(dividend)` return `Maybe<number>`, yielding `None` whenever `divisor` is
+`0`:
+
+```ts
+// Safe division (dividend / divisor):
 pipe(100, Num.divide(5)); // Some(20)
 pipe(100, Num.divide(0)); // None
 
-// Safe remainder
+// Safe remainder (dividend % divisor):
 pipe(10, Num.remainder(3)); // Some(1)
 pipe(10, Num.remainder(0)); // None
 ```
 
-## Constraining and testing bounds
+---
 
-We can clamp a number to a specific range or test its membership using `Num.clamp`, `Num.between`,
-and `Num.inRange`:
+## Rounding
+
+When converting fractional calculations into whole integers—such as calculating cent amounts, page
+counts, or pixel coordinates—`Num.round`, `Num.floor`, and `Num.ceil` provide point-free wrappers
+around standard rounding rules:
 
 ```ts
-// Constrain a value to the range [0, 100] (both inclusive)
+pipe(19.6, Num.round); // 20 (nearest integer)
+pipe(19.4, Num.round); // 19
+
+pipe(19.9, Num.floor); // 19 (rounds down)
+pipe(19.1, Num.ceil);  // 20 (rounds up)
+```
+
+---
+
+## Constraining and Testing Bounds
+
+Use `Num.clamp` to restrict a number to an inclusive `[min, max]` interval, `Num.between` to test
+membership in a closed `[min, max]` interval, and `Num.inRange` to test membership in a half-open
+`[start, end)` interval (where `start` is included and `end` is excluded):
+
+```ts
+// Constrain a percentage to [0, 100]:
 pipe(150, Num.clamp(0, 100)); // 100
 pipe(-5, Num.clamp(0, 100));  // 0
 pipe(42, Num.clamp(0, 100));  // 42
 
-// Test if a value falls within a range (both inclusive)
-const isWithinRange = pipe(25, Num.between(10, 50)); // true
+// Closed range check [min, max]:
+pipe(50, Num.between(10, 50)); // true (50 is included)
 
-// Test if a value falls within a half-open range [start, end) (start inclusive, end exclusive)
-const isInHalfOpenRange = pipe(10, Num.inRange(1, 10)); // false (10 is excluded)
-const isWithinHalfOpenRange = pipe(5, Num.inRange(1, 10)); // true
+// Half-open range check [start, end):
+pipe(50, Num.inRange(10, 50)); // false (50 is excluded)
+pipe(25, Num.inRange(10, 50)); // true
 ```
 
-## Numeric predicates (`Num.is`)
+---
 
-The `Num.is` drawer provides boolean predicates for inspecting number characteristics within
-pipelines:
+## Numeric Predicates (`Num.is`)
+
+The `Num.is` namespace provides boolean predicates for inspecting numeric properties inside
+pipelines and array filters:
 
 ```ts
 Num.is.zero(0);        // true
 Num.is.integer(42);    // true
-Num.is.float(3.14);    // true
-Num.is.finite(100);    // true
+Num.is.float(3.14);    // true (finite and non-integer)
+Num.is.finite(100);    // true (false for Infinity, -Infinity, and NaN)
 Num.is.nan(NaN);       // true
 Num.is.even(4);        // true
 Num.is.odd(3);         // true
-Num.is.positive(5);    // true
-Num.is.negative(-5);   // true
-```
+Num.is.positive(5);    // true (strictly > 0)
+Num.is.negative(-5);   // true (strictly < 0)
 
-These predicates compose directly with array helpers like `Arr.filter`:
-
-```ts
-pipe(
-  [-2, -1, 0, 1, 2, 3, 3.14],
+const validQuantities = pipe(
+  [-2, 0, 1.5, 3, 8],
   Arr.filter(Num.is.positive),
   Arr.filter(Num.is.integer),
-); // [1, 2, 3]
+); // [3, 8]
 ```
 
-## Generating sequences
+---
 
-To build sequences of numbers without manual `for` loops or pre-allocating arrays, we use
-`Num.range`. It generates an array of numbers from `start` to `end` (both inclusive) with a
-customizable step:
+## Generating Sequences
+
+To generate an inclusive sequence of numbers without manual `for` loops, `Num.range(from, to, step?)`
+builds a readonly array stepping by `step` (default `1`). If `from > to`, `step <= 0`, or any
+argument is non-finite, it safely returns an empty array `[]`:
 
 ```ts
-Num.range(0, 5);      // [0, 1, 2, 3, 4, 5]
-Num.range(0, 10, 2);  // [0, 2, 4, 6, 8, 10]
-Num.range(0, 9, 2);   // [0, 2, 4, 6, 8] (stops before exceeding the limit)
-Num.range(5, 0);      // [] (when start > end, the range is empty)
+Num.range(1, 5);     // [1, 2, 3, 4, 5]
+Num.range(0, 10, 2); // [0, 2, 4, 6, 8, 10]
+Num.range(0, 9, 2);  // [0, 2, 4, 6, 8]
+Num.range(5, 1);     // []
 ```
 
-## Statistical calculations on collections
+---
 
-Calculating statistics on arrays of numbers using standard JavaScript arrays can be unsafe. Calling
-`Math.min` or `Math.max` on an empty array returns `Infinity` or `-Infinity`, and dividing a sum by
-the length of an empty array returns `NaN`.
+## Safe Collection Aggregations
 
-`Num` provides safe aggregate functions that model empty collections explicitly:
+`Num` provides collection reducers that handle empty arrays safely without returning `Infinity` or
+`NaN`. `Num.sum` returns `0` for an empty list, while `Num.mean`, `Num.min`, and `Num.max` return
+`Maybe<number>`:
 
 ```ts
-// Summing values (returns 0 for empty arrays)
-Num.sum([10, 20, 30]); // 60
-Num.sum([]);           // 0
+Num.sum([10, 20, 30]);  // 60
+Num.sum([]);            // 0
 
-// Calculating average (returns None for empty arrays, avoiding division by zero)
 Num.mean([10, 20, 30]); // Some(20)
 Num.mean([]);           // None
 
-// Finding bounds safely
-Num.min([5, 12, 3]); // Some(3)
-Num.min([]);         // None
+Num.min([5, 12, 3]);    // Some(3)
+Num.min([]);            // None
 
-Num.max([5, 12, 3]); // Some(12)
-Num.max([]);         // None
+Num.max([5, 12, 3]);    // Some(12)
+Num.max([]);            // None
 ```
 
-## Composing numeric pipelines
+---
 
-We can combine all of these utilities to build clean, self-contained data flows. Here, we parse raw
-user inputs, filter out invalid numbers, clamp the valid ones, and calculate their average:
+## Locale-Aware Formatting
+
+When presenting numbers in a UI or report, `Num.format(options?, locales?)` wraps
+`Intl.NumberFormat` in a curried, safe function. Because formatting `NaN` or `Infinity` into user
+interfaces is almost always a bug, `Num.format` returns `Some(formattedString)` for finite numbers
+and `None` for `NaN`, `Infinity`, or `-Infinity`:
 
 ```ts
-import { Maybe } from "@nlozgachev/pipelined/core";
+const formatUsd = Num.format({ style: "currency", currency: "USD" }, "en-US");
 
-const rawInputs = ["120", "invalid", "85", "40", "0"];
-
-const averageValidScore = pipe(
-  rawInputs,
-  Arr.filterMap(Num.from.string),    // [120, 85, 40, 0] (skips "invalid")
-  Arr.map(Num.clamp(0, 100)),       // [100, 85, 40, 0] (clamps 120 to 100)
-  Num.mean,                         // Some(56.25)
-  Maybe.getOrElse(() => 0)          // 56.25 (defaults to 0 if no valid inputs)
-);
+pipe(1249.5, formatUsd);   // Some("$1,249.50")
+pipe(NaN, formatUsd);      // None
+pipe(Infinity, formatUsd); // None
 ```
+
+---
+
+## Pipeline Composition
+
+We can combine parsing, filtering, clamping, arithmetic, aggregation, and formatting into a single
+pipeline. Here, we process raw discount percentages from a configuration payload, clamp them to the
+permitted `[0, 50]` range, compute the average discount, and format it for display:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Maybe } from "@nlozgachev/pipelined/core";
+import { Arr, Num } from "@nlozgachev/pipelined/data";
+
+const rawDiscounts = ["15", "invalid", "60", "25", "10"];
+
+const averageDiscountLabel = pipe(
+  rawDiscounts,
+  Arr.filterMap(Num.from.string), // [15, 60, 25, 10]
+  Arr.map(Num.clamp(0, 50)),      // [15, 50, 25, 10]
+  Num.mean,                       // Some(25)
+  Maybe.map(Num.round),           // Some(25)
+  Maybe.chain(
+    Num.format({ style: "unit", unit: "percent" }, "en-US"),
+  ),                              // Some("25%")
+  Maybe.getOrElse(() => "0%"),
+); // "25%"
+```
+
+---
 
 ## Problems it solves
 
 - **Sanitizing and clamping untrusted numeric inputs**: When extracting pagination offsets, page
-  limits, or price filter boundaries from query strings, numbers can fall outside permitted domain
-  ranges. `Num.from.string` and `Num.clamp` sanitize and constrain values point-free in pipeline
-  workflows.
+  limits, or price filter boundaries from query strings, numbers can be malformed or fall outside
+  permitted domain ranges. `Num.from.string` and `Num.clamp` sanitize and constrain values
+  point-free in pipeline workflows.
 - **Safe statistical computations without `Infinity` or `NaN`**: Calling standard functions like
   `Math.min()` on an empty collection returns `Infinity`, while dividing by an empty list length
-  yields `NaN`. `Num.min`, `Num.max`, `Num.mean`, and `Num.median` return `Maybe<number>`,
-  guaranteeing that empty datasets are handled explicitly.
-- **Division-by-zero protection in progress calculations**: Calculating task percentages (e.g.
-  `completed / total`) when `total === 0` produces `NaN` or `Infinity` in standard JavaScript,
-  causing broken UI progress bars. `Num.divide` guards against division by zero safely.
-- **Coordinate and bounding box constraints in charts and maps**: Clamping cursor offsets, zoom
-  levels, or viewport coordinates within min/max thresholds (`Num.clamp`, `Num.inRange`) without
-  writing manual ternary chains.
-- **Point-free mathematical pipelines**: In shopping cart calculations, currency conversions, and
-  rate adjustments, combining arithmetic operations (`Num.add`, `Num.multiply`, `Num.round`) inside
-  `pipe` keeps mathematical transformations readable without temporary variables.
+  yields `NaN`. `Num.min`, `Num.max`, and `Num.mean` return `Maybe<number>`, guaranteeing that empty
+  datasets are handled explicitly.
+- **Division-by-zero protection in progress and ratio calculations**: Calculating task percentages
+  (e.g. `completed / total`) when `total === 0` produces `NaN` or `Infinity` in standard JavaScript,
+  causing broken UI progress bars. `Num.divide` and `Num.remainder` guard against division by zero
+  safely.
+- **Safe locale formatting (`Num.format`)**: Formatting numbers into currencies, units, or compact
+  notation via `Intl.NumberFormat` while automatically rejecting `NaN` and `Infinity` values as
+  `None`.
+- **Point-free mathematical pipelines**: In shopping cart calculations, rate adjustments, and layout
+  engines, combining arithmetic and rounding operations (`Num.add`, `Num.subtract`, `Num.multiply`,
+  `Num.abs`, `Num.negate`, `Num.round`, `Num.floor`, `Num.ceil`) inside `pipe` keeps mathematical
+  transformations readable without temporary variables.

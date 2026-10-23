@@ -7,14 +7,13 @@ Collecting audit logs or diagnostic traces during computations typically require
 threading an array of log messages through every function or calling impure side effects
 (`console.log`) that complicate unit testing.
 
-`Logged<W, A>` pairs a computed value `A` with an accumulated log `W` (defaulting to `string[]`).
-Operations on `Logged` append log entries automatically as transformations are chained: value `A`
-with an accumulated read-only array of log entries `W`:
+`Logged<L, A>` pairs a computed value `A` with an accumulated read-only array of log entries `L`.
+Operations on `Logged` append log entries automatically as transformations are chained:
 
 ```ts
-type Logged<W, A> = {
+type Logged<L, A> = {
   readonly value: A;
-  readonly log: ReadonlyArray<W>;
+  readonly log: readonly L[];
 };
 ```
 
@@ -32,21 +31,28 @@ To begin logging, we lift our values into `Logged` using its core constructors:
 import { Logged } from "@nlozgachev/pipelined/core";
 
 // Lifting a raw value with an empty log
-const start = Logged.make(0); // { value: 0, log: [] }
+const start = Logged.make<string, number>(0);
+// { value: 0, log: [] }
 
-// Logging a single entry with an empty value
-const note = Logged.from.entry("Initializing calculations"); 
+// Lifting a value with an initial log array
+const seeded = Logged.make("order_101", ["Order received", "Validated schema"]);
+// { value: "order_101", log: ["Order received", "Validated schema"] }
+
+// Recording a single log entry with an empty (undefined) value
+const note = Logged.from.entry("Initializing calculations");
 // { value: undefined, log: ["Initializing calculations"] }
 ```
 
-`Logged.from.entry` represents the atomic logging block. It writes a single log entry and returns
-`undefined` as its value, ready to be sequenced into a pipeline.
+`Logged.make(value, log?)` wraps a value with an optional initial array of log entries (defaulting
+to `[]`). `Logged.from.entry` writes a single log entry and sets `value` to `undefined`, ready to be
+sequenced into a pipeline.
 
 ---
 
 ## Transforming and Sequencing
 
-We can transform the values inside `Logged` and sequence multiple logging steps point-free.
+We can transform the values inside `Logged` and sequence multiple logging steps directly in a
+pipeline without manually concatenating arrays at each step.
 
 ### Transforming values with `map`
 
@@ -81,6 +87,57 @@ const [value, log] = Logged.run(program);
 
 The intermediate log arrays are stitched together by `chain` itself. Each individual step only
 declares its own log entry, fully isolated from the history of the pipeline.
+
+### Combining logged values with `apply`
+
+When combining independent `Logged` computations through a curried function, `Logged.apply` applies
+the wrapped function to the wrapped value and concatenates their logs in order:
+
+```ts
+const buildLineItem = (sku: string) => (quantity: number) => ({ sku, quantity });
+
+const validatedSku = Logged.make("SKU-900", ["Verified SKU in catalog"]);
+const allocatedQty = Logged.make(3, ["Reserved 3 units from warehouse"]);
+
+const lineItem = pipe(
+  Logged.make<string, typeof buildLineItem>(buildLineItem),
+  Logged.apply(validatedSku),
+  Logged.apply(allocatedQty),
+);
+
+Logged.run(lineItem);
+// [
+//   { sku: "SKU-900", quantity: 3 },
+//   ["Verified SKU in catalog", "Reserved 3 units from warehouse"]
+// ]
+```
+
+### Inspecting values with `tap` and updating nested fields with `focus`
+
+Use `Logged.tap` to execute a side effect on the current value (such as emitting a metric) without
+modifying the value or the accumulated log. When the logged value is a nested record, `Logged.focus`
+pairs with a `Lens` to update a specific property while preserving all existing log entries:
+
+```ts
+import { Lens } from "@nlozgachev/pipelined/core";
+
+interface InvoiceDraft {
+  id: string;
+  subtotal: number;
+}
+
+const subtotalLens = Lens.from.property<InvoiceDraft>()("subtotal");
+
+const updatedDraft = pipe(
+  Logged.make<string, InvoiceDraft>(
+    { id: "inv_01", subtotal: 100 },
+    ["Draft initialized"],
+  ),
+  Logged.focus(subtotalLens)((amount) => amount + 25),
+  Logged.tap((draft) => console.log(`Current draft subtotal: ${draft.subtotal}`)),
+);
+// { value: { id: "inv_01", subtotal: 125 }, log: ["Draft initialized"] }
+```
 
 ---
 
@@ -162,13 +219,14 @@ const userProfile = pipe(
 To solve this, you can use `bindTo` and `bind` to cleanly accumulate values key-by-key in a flat,
 readable pipeline.
 
-`bindTo` lifts a value into the pipeline's accumulator object:
+`bindTo` wraps the initial `Logged` value into a single-key accumulator object while keeping its
+log:
 
 ```ts
-pipe(
-  Logged.make<string, number>(42),
-  Logged.bindTo("value")
-); // Logged({ value: 42 })
+const initialUser = pipe(
+  getUser(userId),
+  Logged.bindTo("user"),
+); // Logged<string, { user: User }>
 ```
 
 `bind` runs a new operation using the accumulated object and attaches the result to a new key:

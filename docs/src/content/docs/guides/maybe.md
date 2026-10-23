@@ -59,8 +59,8 @@ export type Maybe<A> = Maybe.Some<A> | Maybe.None;
 
 ## Creating Maybe
 
-To work within this model, we must first lift our raw, potentially unsafe values into a `Maybe`
-context. This is the boundary where the messy real world meets our clean system.
+To work within this model, we must first wrap our raw, potentially missing values into a `Maybe`
+context. This is the boundary where external data enters our typed pipeline.
 
 ```ts
 // Wrapping an existing value
@@ -95,6 +95,24 @@ parseConfigJson('{"port": 8080}'); // Some({ port: 8080 })
 parseConfigJson("invalid json"); // None
 ```
 
+### Inspecting with type guards: `is.some` and `is.none`
+
+When interacting with imperative code or conditional UI branches where you want to check whether a
+`Maybe` holds a value before proceeding, use the `Maybe.is.some` and `Maybe.is.none` type guards:
+
+```ts
+const cachedToken = Maybe.from.nullable(localStorage.getItem("auth_token"));
+
+if (Maybe.is.some(cachedToken)) {
+  // TypeScript narrows cachedToken to Maybe.Some<string>
+  attachAuthorizationHeader(cachedToken.value);
+}
+
+if (Maybe.is.none(cachedToken)) {
+  redirectToLogin();
+}
+```
+
 ---
 
 ## Transforming values
@@ -111,39 +129,38 @@ result. If we have a `None`, `map` does nothing and returns the `None` unchanged
 const double = (n: number) => n * 2;
 
 pipe(Maybe.make.some(5), Maybe.map(double)); // Some(10)
-pipe(Maybe.make.none(), Maybe.map(double));  // None
+pipe(Maybe.make.none(), Maybe.map(double)); // None
 ```
 
-Consider how this simplifies deep record navigation. Imagine parsing a user profile to extract their
-avatar's filename:
+Consider how this simplifies record transformations. Imagine extracting and formatting a user's
+display handle when their profile is optional, but `handle` is guaranteed on a present profile:
 
 ```ts
 interface User {
   profile?: {
-    avatarUrl?: string;
+    handle: string;
   };
 }
 
-const getAvatarFilename = (user: User): Maybe<string> =>
+const getFormattedHandle = (user: User): Maybe<string> =>
   pipe(
     Maybe.from.nullable(user.profile),
-    Maybe.map((p) => p.avatarUrl),
-    Maybe.map((url) => url.split("/").pop()),
+    Maybe.map((p) => p.handle.trim()),
+    Maybe.map((handle) => `@${handle.toLowerCase()}`),
   );
 ```
 
-We do not write a single `if` statement. If `profile` is missing, the first `map` is skipped. If
-`avatarUrl` is missing, the second `map` is skipped. The pipeline remains perfectly linear, and we
-are guaranteed never to encounter a `TypeError: Cannot read properties of undefined`.
+If `profile` is missing, both `map` steps are skipped and `None` is returned. If `profile` is
+present, each transformation runs in sequence.
 
-### Nested pipelines with `chain`
+### Chaining optional steps with `chain`
 
-Sometimes, a transformation itself might return a `Maybe`. For example, we might want to take a
-string and parse it into an integer. The parsing operation is fallible — if the string is `"abc"`,
-there is no valid number to return.
+Sometimes, a transformation itself might produce an optional value or fail. For example, navigating
+through nested optional properties (`avatarUrl?: string`) or parsing a string into an integer can
+each yield `None`.
 
 If we were to use `map` with a function that returns a `Maybe`, we would end up with a nested type:
-`Maybe<Maybe<number>>`. This is inconvenient to work with.
+`Maybe<Maybe<number>>`.
 
 ```ts
 const parseInteger = (s: string): Maybe<number> => {
@@ -156,15 +173,50 @@ const nested = pipe(Maybe.make.some("42"), Maybe.map(parseInteger)); // Some(Som
 ```
 
 To resolve this, we use `chain`. It applies the transformation and flattens the nested structure,
-leaving us with a clean `Maybe<number>`.
+leaving us with a single `Maybe`:
 
 ```ts
 const flat = pipe(Maybe.make.some("42"), Maybe.chain(parseInteger)); // Some(42)
 const failed = pipe(Maybe.make.some("abc"), Maybe.chain(parseInteger)); // None
 ```
 
-Think of `map` as a tool for transformations that are guaranteed to succeed once a value is present,
-and `chain` as a tool for transformations that themselves introduce the possibility of failure.
+This is also how we safely drill through multiple optional properties in a record:
+
+```ts
+interface UserProfile {
+  profile?: {
+    avatarUrl?: string;
+  };
+}
+
+const getAvatarFilename = (user: UserProfile): Maybe<string> =>
+  pipe(
+    Maybe.from.nullable(user.profile),
+    Maybe.chain((p) => Maybe.from.nullable(p.avatarUrl)),
+    Maybe.chain((url) => Maybe.from.nullable(url.split("/").pop())),
+  );
+```
+
+Think of `map` as a tool for transformations that always return a value once the input is present,
+and `chain` as a tool for transformations that can themselves return `None`.
+
+### Combining independent values with `apply`
+
+When you have a curried function and multiple independent `Maybe` values to feed into it,
+`Maybe.apply` applies each optional argument step-by-step. If all inputs are `Some`, the function
+is evaluated; if any input is `None`, the result is `None`:
+
+```ts
+const buildConnectionUrl = (host: string) => (port: number) => (dbName: string) =>
+  `postgres://${host}:${port}/${dbName}`;
+
+const connectionUrl = pipe(
+  Maybe.make.some(buildConnectionUrl),
+  Maybe.apply(Maybe.from.nullable(env.DB_HOST)),
+  Maybe.apply(pipe(Maybe.from.nullable(env.DB_PORT), Maybe.chain(parseInteger))),
+  Maybe.apply(Maybe.from.nullable(env.DB_NAME)),
+); // Maybe<string>
+```
 
 ### Narrowing focus with `filter` and `from.Predicate`
 
@@ -183,12 +235,12 @@ inner type:
 
 ```ts
 type Admin = { role: "admin"; permissions: string[] };
-type User = { role: "member" } | Admin;
+type Account = { role: "member" } | Admin;
 
-const isAdmin = (u: User): u is Admin => u.role === "admin";
+const isAdmin = (u: Account): u is Admin => u.role === "admin";
 
 const adminUser = pipe(
-  currentUser, // Maybe<User>
+  currentAccount, // Maybe<Account>
   Maybe.filter(isAdmin), // Maybe<Admin>
 );
 ```
@@ -210,7 +262,7 @@ const validateAge = (age: number): Maybe<number> =>
 
 Eventually, our pipeline must interface with the rest of our application — libraries that expect
 standard TypeScript primitives, UI frameworks, or database connectors. We must step out of our
-philosophical data structures and return a concrete value. We call this reaching the edge.
+container and return a concrete value.
 
 ### Safe fallbacks with `getOrElse`
 
@@ -254,7 +306,7 @@ If you are passing the result to an external library that expects standard `null
 values, you can convert the `Maybe` back at the very end of your pipeline:
 
 ```ts
-const nullable = Maybe.to.nullable(maybeValue);   // T | null
+const nullable = Maybe.to.nullable(maybeValue); // T | null
 const undefinedVal = Maybe.to.undefined(maybeValue); // T | undefined
 ```
 
@@ -298,7 +350,7 @@ For this, we use `recover`. It takes a function that returns another `Maybe` whe
 `None`.
 
 ```ts
-const getTheme = (userId: string): Maybe<string> =>
+const getTheme = (userId: string): string =>
   pipe(
     Maybe.from.nullable(cache.get(`theme:${userId}`)),
     Maybe.recover(() => Maybe.from.nullable(db.get(`theme:${userId}`))),
@@ -311,7 +363,7 @@ the database lookup. Only if both fail do we settle for the fallback value `"lig
 
 ---
 
-## Converting to and from Result
+## Converting to and from Result and Validation
 
 A `Maybe` represents absence but does not tell you *why* the value is missing. Sometimes, absence is
 an error, and we need to attach a reason to it.
@@ -367,33 +419,10 @@ When working with optional operations that return fallible results (such as `May
 `Maybe.sequence.Result` swaps the outer and inner contexts, producing `Result<E, Maybe<A>>`:
 
 ```ts
-Maybe.sequence.Result(Maybe.make.some(Result.make.ok(42)));  // Ok(Some(42))
+Maybe.sequence.Result(Maybe.make.some(Result.make.ok(42))); // Ok(Some(42))
 Maybe.sequence.Result(Maybe.make.some(Result.make.err("e"))); // Err("e")
-Maybe.sequence.Result(Maybe.make.none());                     // Ok(None)
+Maybe.sequence.Result(Maybe.make.none()); // Ok(None)
 ```
-
----
-
-## Composition in practice
-
-Let us look at how these elements fit together into a cohesive, structured pipeline. We will take a
-raw query parameter representing a page offset, validate it, apply pagination bounds, and return a
-clean offset index.
-
-```ts
-const getPageOffset = (rawOffset: string | undefined, pageSize: number): number =>
-  pipe(
-    Maybe.from.nullable(rawOffset),                     // Maybe<string>
-    Maybe.chain(parseInteger),                         // Maybe<number>
-    Maybe.filter((offset) => offset >= 0),             // Maybe<number>
-    Maybe.map((offset) => offset * pageSize),          // Maybe<number>
-    Maybe.getOrElse(() => 0),                          // number
-  );
-```
-
-Observe the flow. Every step is insulated. The parsing logic, the validation criteria, and the
-mathematical mapping are written in a straight, readable line, fully detached from the defensive
-logic of verifying the presence of `rawOffset`.
 
 ---
 
@@ -409,27 +438,27 @@ const userProfile = pipe(
   Maybe.chain((user) =>
     pipe(
       getPreferences(user.id),
-      Maybe.map((prefs) => ({ user, prefs }))
+      Maybe.map((prefs) => ({ user, prefs })),
     )
   ),
   Maybe.chain(({ user, prefs }) =>
     pipe(
-      getTheme(prefs.themeId),
-      Maybe.map((theme) => ({ user, prefs, theme }))
+      getThemeById(prefs.themeId),
+      Maybe.map((theme) => ({ user, prefs, theme })),
     )
-  )
+  ),
 );
 ```
 
 To solve this, we can use `bindTo` and `bind` to cleanly accumulate values key-by-key in a flat,
 readable pipeline.
 
-`bindTo` lifts a value into the pipeline's accumulator object:
+`bindTo` wraps a value into the pipeline's accumulator object:
 
 ```ts
 pipe(
   Maybe.make.some(42),
-  Maybe.bindTo("value")
+  Maybe.bindTo("value"),
 ); // Some({ value: 42 })
 ```
 
@@ -440,7 +469,7 @@ const userProfile = pipe(
   getUser(userId),
   Maybe.bindTo("user"),
   Maybe.bind("prefs", ({ user }) => getPreferences(user.id)),
-  Maybe.bind("theme", ({ prefs }) => getTheme(prefs.themeId))
+  Maybe.bind("theme", ({ prefs }) => getThemeById(prefs.themeId)),
 ); // Some({ user: User, prefs: Preferences, theme: Theme })
 ```
 
@@ -451,7 +480,7 @@ immediately.
 
 ## Combining records: struct
 
-While `bind` is perfect for sequential steps where a latter step depends on the output of a prior
+While `bind` is ideal for sequential steps where a later step depends on the output of a prior
 step, sometimes you have a set of independent `Maybe` values that you want to combine into a single
 object. For this, you can use `Maybe.struct`.
 
@@ -470,12 +499,35 @@ If multiple fields are `None`, `Maybe.struct` short-circuits immediately on the 
 encountered in key order:
 
 ```ts
-const failed = Maybe.struct({
-  a: Maybe.make.some(1),
-  b: Maybe.make.none(),
-  c: Maybe.make.none(),
+const reportQuery = Maybe.struct({
+  startDate: Maybe.make.some("2026-01-01"),
+  endDate: Maybe.make.none(),
+  regionId: Maybe.make.none(),
 }); // None
 ```
+
+---
+
+## Pipeline composition
+
+Let us look at how these elements fit together into a cohesive, structured pipeline. We will take a
+raw query parameter representing a page offset, validate it, apply pagination bounds, and return a
+clean offset index.
+
+```ts
+const getPageOffset = (rawOffset: string | undefined, pageSize: number): number =>
+  pipe(
+    Maybe.from.nullable(rawOffset), // Maybe<string>
+    Maybe.chain(parseInteger), // Maybe<number>
+    Maybe.filter((offset) => offset >= 0), // Maybe<number>
+    Maybe.map((offset) => offset * pageSize), // Maybe<number>
+    Maybe.getOrElse(() => 0), // number
+  );
+```
+
+Observe the flow. Every step is insulated. The parsing logic, the validation criteria, and the
+mathematical mapping are written in a straight, readable line, fully detached from the defensive
+logic of verifying the presence of `rawOffset`.
 
 ---
 
@@ -500,7 +552,7 @@ const failed = Maybe.struct({
 - **Filtering missing entries from collection streams (`Arr.compact`)**: When resolving an array of
   identifiers against a local cache or search index, some IDs match while others yield `None`.
   `Arr.compact` and `Maybe` combinators filter out all absent entries and unwrap the present values
-  into a dense array in a single point-free step.
+  into a dense array in a single pipeline step without wrapper functions.
 - **Explicit public module contracts**: In shared domain services and library interfaces, returning
   `null` or `undefined` permits callers to inadvertently ignore missing values until a runtime error
   triggers downstream. Returning `Maybe<A>` makes absence an explicit type guarantee, ensuring

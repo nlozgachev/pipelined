@@ -1,6 +1,6 @@
 ---
 title: Ordering — Composable Comparators
-description: Model sorting and comparisons structurally, combining sort comparators and tiebreaker rules point-free.
+description: Model sorting and comparisons structurally, combining sort comparators and tiebreaker rules cleanly in pipelines.
 ---
 
 Sorting a collection is straightforward when we only care about a single, simple field:
@@ -98,6 +98,7 @@ const byPrice: Ordering<Product> = pipe(
 
 ```ts
 interface Employee {
+  name: string;
   department: string;
   salary: number;
 }
@@ -114,7 +115,7 @@ const byDeptAndSalary: Ordering<Employee> = pipe(
 
 ---
 
-## Multi-Column Sorting: byFields
+## Multi-Column Sorting: byFields and tuple
 
 When you need to aggregate an arbitrary list of field comparators — such as multi-column data tables
 where users can sort by dynamic combinations of columns — `Ordering.byFields` combines an array of
@@ -135,6 +136,31 @@ const multiColumnSort: Ordering<Employee> = Ordering.byFields([
 
 It evaluates each comparator sequentially until it finds a non-zero comparison result,
 short-circuiting early once a tie is broken.
+
+### Lexicographical Tuple Ordering: `tuple`
+
+When comparing fixed-length tuples (such as `[major, minor, patch]` semantic version triples or
+`[year, month]` calendar pairs), `Ordering.tuple` derives a lexicographical comparator from
+positional `Ordering` instances:
+
+```ts
+type SemVer = readonly [number, number, number];
+
+const bySemVer: Ordering<SemVer> = Ordering.tuple(
+  Ordering.number,
+  Ordering.number,
+  Ordering.number,
+);
+
+const releases: SemVer[] = [
+  [2, 1, 0],
+  [1, 9, 4],
+  [2, 0, 5],
+];
+
+const chronologicalReleases = pipe(releases, Arr.sortWith(bySemVer));
+// [[1, 9, 4], [2, 0, 5], [2, 1, 0]]
+```
 
 ---
 

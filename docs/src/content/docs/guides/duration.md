@@ -8,7 +8,7 @@ passing seconds to a function expecting milliseconds). Because both values are t
 TypeScript cannot catch the error at compile time.
 
 `Duration` provides a branded, unit-safe representation of time with explicit constructors
-(`Duration.seconds`, `Duration.millis`) and conversion helpers.
+(`Duration.seconds`, `Duration.milliseconds`) and conversion helpers.
 
 ## The problem with primitive numbers for time
 
@@ -84,12 +84,13 @@ When interfacing with third-party libraries, native browser APIs, or database dr
 plain numbers, we unwrap the `Duration` into the specific unit we need:
 
 ```ts
-const duration = Duration.minutes(1.5);
+const duration = Duration.hours(36);
 
-Duration.to.milliseconds(duration); // 90000
-Duration.to.seconds(duration);      // 90
-Duration.to.minutes(duration);      // 1.5
-Duration.to.hours(duration);        // 0.025
+Duration.to.milliseconds(duration); // 129600000
+Duration.to.seconds(duration);      // 129600
+Duration.to.minutes(duration);      // 2160
+Duration.to.hours(duration);        // 36
+Duration.to.days(duration);         // 1.5
 ```
 
 ## Curried time arithmetic
@@ -141,6 +142,58 @@ const pollingTask = pipe(
 );
 ```
 
+## Modeling retry backoffs with RetryPolicy
+
+Transient network errors, rate-limited endpoints, and brief database lock contentions often succeed
+when retried after a short pause. Rather than scattering ad-hoc retry loops and raw millisecond
+multipliers across your services, `RetryPolicy` (from `@nlozgachev/pipelined/types`) pairs with
+`Duration` to define reusable, declarative backoff schedules.
+
+`RetryPolicy` offers two constructors:
+
+- `RetryPolicy.constant({ attempts, delay })`: Waits a fixed `Duration` between each retry attempt.
+- `RetryPolicy.exponential({ attempts, initial, factor?, jitter?, maxDelay? })`: Grows the wait
+  duration exponentially after each failure (defaulting to `factor: 2`), with optional `maxDelay`
+  capping and randomized `jitter` to prevent synchronized retry spikes ("thundering herds") across
+  clients.
+
+```ts
+import { Op, Task } from "@nlozgachev/pipelined/core";
+import { Duration, RetryPolicy } from "@nlozgachev/pipelined/types";
+
+// 1. Fixed delay between attempts
+const fixedRetry = RetryPolicy.constant({
+  attempts: 3,
+  delay: Duration.seconds(1),
+});
+
+// 2. Exponential backoff with jitter and an upper ceiling
+const backoffPolicy = RetryPolicy.exponential({
+  attempts: 5,
+  initial: Duration.milliseconds(200),
+  factor: 2,
+  jitter: true,
+  maxDelay: Duration.seconds(10),
+});
+
+// 3. Pairing RetryPolicy with Task.Result.retry
+const resilientFetch = pipe(
+  fetchInvoiceTask,
+  Task.Result.retry(backoffPolicy, {
+    when: (err) => err.status === 503 || err.status === 429,
+  }),
+);
+
+// 4. Pairing RetryPolicy with Op.interpret
+const syncInventoryRunner = Op.interpret(syncInventoryOp, {
+  strategy: "exclusive",
+  retry: {
+    attempts: backoffPolicy.attempts,
+    backoff: backoffPolicy,
+  },
+});
+```
+
 ## Problems it solves
 
 - **Eliminating time unit ambiguity in configurations**: When configuring HTTP timeouts, debounce
@@ -148,10 +201,12 @@ const pollingTask = pipe(
   the function expects seconds or milliseconds. Passing `5` instead of `5000` leads to premature
   timeout failures in production. `Duration` makes time units explicit (`Duration.seconds(5)`,
   `Duration.minutes(10)`).
-- **Safe duration arithmetic and rate-limit comparisons**: Calculating total timeout budgets, adding
-  exponential backoff delays with jitter, or comparing elapsed spans using raw numbers risks mixing
-  millisecond and second units. `Duration` provides unit-safe arithmetic (`Duration.add`,
-  `Duration.times`) and comparisons.
+- **Safe duration arithmetic**: Calculating total timeout budgets or subtracting safety margins using
+  raw numbers risks mixing millisecond and second units. `Duration` provides unit-safe arithmetic
+  (`Duration.add`, `Duration.subtract`).
+- **Declarative retry and backoff strategies (`RetryPolicy`)**: Expressing constant or exponential
+  backoff with jitter and maximum delay caps via `RetryPolicy` eliminates manual exponentiation math
+  and integrates directly with `Task.Result.retry` and `Op.interpret`.
 - **Cache TTL and session expiry policies**: Calculating cache eviction deadlines or token validity
   spans in security middlewares without manual millisecond multiplier math (`Duration.hours(2)`).
 - **Unified time modeling across async utilities**: Core asynchronous combinators (such as

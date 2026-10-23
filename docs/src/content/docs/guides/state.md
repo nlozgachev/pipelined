@@ -73,8 +73,8 @@ const overwrite = State.put(42);
 
 ## Transforming and Sequencing
 
-We can compose our stateful blueprints point-free, allowing the state to flow through our
-transformations automatically.
+We can compose our stateful blueprints directly inside a pipeline without passing the state variable
+manually between steps, allowing the state to flow through our transformations automatically.
 
 ### Transforming values with `map`
 
@@ -118,6 +118,74 @@ const checkout = pipe(
 
 Notice the layout. We describe the addition of three items to the cart and read the final total. The
 intermediate cart state is threaded from step to step behind the scenes.
+
+### Combining stateful computations with `apply`
+
+When you want to combine multiple independent stateful steps using a curried function, `State.apply`
+runs the function computation first and passes its resulting state into the argument computation:
+
+```ts
+const formatReceiptLine = (itemNumber: number) => (sku: string) => `#${itemNumber}: ${sku}`;
+
+const nextItemNumber: State<number, number> = pipe(
+  State.modify((count: number) => count + 1),
+  State.chain(() => State.get<number>()),
+);
+
+const labelItem = (sku: string): State<number, string> =>
+  pipe(
+    State.make<number, typeof formatReceiptLine>(formatReceiptLine),
+    State.apply(nextItemNumber),
+    State.apply(State.make(sku)),
+  );
+
+State.run(0)(labelItem("COFFEE-01")); // ["#1: COFFEE-01", 1]
+```
+
+### Inspecting values mid-pipeline with `tap`
+
+`State.tap` executes a side effect on the produced value without altering either the value or the
+underlying state transition:
+
+```ts
+const auditedCheckout = pipe(
+  checkout,
+  State.tap((total) => console.log(`Checkout subtotal computed: $${total}`)),
+);
+```
+
+### Focusing on nested state with `focus`
+
+In larger applications, helper transitions often care about a single slice of state (such as a
+shopping cart) while the root application state holds additional fields (such as session metadata).
+`State.focus` pairs a `State` operation with a `Lens` so a narrow state transition can run directly
+against a wider parent state:
+
+```ts
+import { Lens } from "@nlozgachev/pipelined/core";
+
+interface StoreSession {
+  userId: string;
+  cart: Cart;
+}
+
+const cartLens = Lens.from.property<StoreSession>()("cart");
+
+// Lift the Cart-specific checkout transition to operate on StoreSession:
+const sessionCheckout: State<StoreSession, number> = pipe(
+  checkout,
+  State.focus(cartLens),
+);
+
+const initialSession: StoreSession = {
+  userId: "usr_42",
+  cart: { items: [], total: 0 },
+};
+
+const [total, updatedSession] = State.run(initialSession)(sessionCheckout);
+// total = 9
+// updatedSession = { userId: "usr_42", cart: { items: ["coffee", "croissant", "juice"], total: 9 } }
+```
 
 ---
 
@@ -226,13 +294,13 @@ const buildProfile = pipe(
 To solve this, you can use `bindTo` and `bind` to cleanly accumulate values key-by-key in a flat,
 readable pipeline.
 
-`bindTo` lifts a value into the pipeline's accumulator object:
+`bindTo` wraps the initial `State` output into a single-key accumulator object:
 
 ```ts
-pipe(
-  State.make(42),
-  State.bindTo("value")
-); // State({ value: 42 })
+const initialProfile = pipe(
+  generateId,
+  State.bindTo("id"),
+); // State<IdState, { id: number }>
 ```
 
 `bind` runs a new stateful operation using the accumulated object and attaches the result to a new
