@@ -1,30 +1,33 @@
 ---
 title: Why this exists
-description: Architectural trade-offs, standard TypeScript error handling, and the design decisions behind pipelined.
+description: What I wanted from a library like this, and what it costs.
 ---
 
-Standard TypeScript provides two primary mechanisms for handling edge cases: `null` or `undefined`
-for missing values, and `try/catch` for errors. While familiar, both mechanisms have structural
-limitations in production applications:
+I started `pipelined` for TypeScript developers who are curious about functional programming and
+want it to make their code simpler. I was one of them. I kept writing the same null checks, the same
+`try/catch` around calls that might throw, and the same retry loop with an `AbortController` wired
+through it, and every copy was a little different. I wanted code where the steps of the work were
+easy to see, where hovering over a function told you how it could fail, and where that plumbing
+lived in one place instead of in every feature.
 
-1. **Exceptions are invisible in type signatures**: A function signature `(id: string) => User` does
-   not indicate whether it throws. Callers must either inspect implementation details, read
-   documentation, or add defensive `try/catch` blocks around calls.
-2. **`null` and `undefined` force immediate branching**: Handling optional values typically requires
-   conditional `if` checks at every step of a pipeline, breaking linear data flow.
-3. **Promises reject with `unknown`**: Standard `Promise<T>` rejections bypass the return type
-   channel and can throw untyped values at runtime.
-
-`pipelined` provides data structures that represent absence, failure, and asynchronous execution
-explicitly within TypeScript's type system, without introducing external dependencies or a
-proprietary runtime.
+The sections below describe what I was looking for.
 
 ---
 
-## Control Flow as Data
+## Something useful
 
-Consider retrieving configuration data, extracting a connection string, and opening a database
-client in standard TypeScript:
+Each module here started as a problem I ran into more than once. Functions that can fail got
+`Result`. Values that might be missing got `Maybe`. Forms where several fields can be wrong at the
+same time got `Validation`, so the user sees every error at once instead of fixing them one submit
+at a time. Requests got `RemoteData`, which replaces the `isLoading`/`error`/`data` trio and the
+combinations of it that should never happen.
+
+---
+
+## Something readable
+
+Here is a function that loads a user's config, reads the connection string from it, and opens a
+database client:
 
 ```ts
 function getClient(userId: string): Client | null {
@@ -42,11 +45,8 @@ function getClient(userId: string): Client | null {
 }
 ```
 
-In this implementation, data extraction and conditional branching are combined in a single block.
-Each intermediate step requires manual verification before the next step can run.
-
-Using `Maybe`, the operations are expressed as a pipeline where absent values skip subsequent
-transformations automatically:
+There are three steps in it, but you have to read past the null checks and the `try` to find them.
+Here is the same function as a pipeline:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -61,76 +61,92 @@ const getClient = (userId: string) =>
   );
 ```
 
-If `fetchConfig` or the connection string lookup returns `None`, execution bypasses `connect` and
-returns `None` directly.
+Each line is one step, in the order it runs. If a step returns nothing, the rest are skipped and you
+get `None`. The null checks still happen inside `Maybe.chain`, but nobody has to write them again.
 
 ---
 
-## Descriptive Names Over Category Theory
+## Something understandable
 
-Many functional programming libraries use terminology derived from abstract algebra, such as
-*Functor*, *Monad*, *Applicative*, or *Kleisli arrow*.
+I wanted the types to do some of the explaining. If a function is typed
+`(input: unknown) => Validation<FieldError, Order>`, a colleague knows it can return several field
+errors before they open the file. In a pipeline, hovering over any step shows what it hands to the
+next one.
 
-`pipelined` uses names that describe the concrete operation being performed:
-
-- **`map`**: Transforms the value inside a container.
-- **`chain`**: Transforms the value using a function that returns another container, flattening the
-  result.
-- **`match`**: Pattern matches against named cases (`{ ok, err }` or `{ some, none }`).
-
-This keeps the API readable for TypeScript developers without requiring background in functional
-programming theory.
+The function names are picked for the same reason. `map` changes the value inside a container,
+`chain` runs a step that can itself fail or come back empty, and `match` takes one handler per case,
+such as `{ ok, err }` or `{ some, none }`. Other libraries call the ideas underneath Functor and
+Monad. You don't need those words here.
 
 ---
 
-## Plain Discriminated Unions
+## Something honest
 
-`pipelined` structures are plain JavaScript objects with a `kind` discriminator:
+A signature should cover everything that can happen. `(id: string) => User` doesn't tell you it
+throws when the user isn't found, and `(id: string) => Result<NotFound, User>` does. `Task` goes a
+step further. It returns a `Deferred`, which has no rejection path, so you know it never throws
+because the type says so.
+
+I used the same rule to decide how much an abstraction is allowed to hide. It can hide how something
+happens, but not what can happen. `Op` handles retries, backoff, timeouts and cancellation for you:
 
 ```ts
-type Some<A> = { readonly kind: "Some"; readonly value: A };
-type None = { readonly kind: "None" };
-type Maybe<A> = Some<A> | None;
+const paymentManager = Op.interpret(submitPaymentOp, {
+  strategy: "exclusive",
+  retry: { attempts: 3, backoff: (attempt) => Duration.milliseconds(attempt * 500) },
+  timeout: { duration: Duration.seconds(10), onTimeout: () => paymentTimedOut },
+});
 ```
 
-This design choice provides several practical benefits:
+None of that machinery shows up in your code, but every possible result does. A run ends as `Ok`,
+`Err`, or `Nil` (cancelled or dropped), and `Op.Outcome.match` won't compile until you've handled
+all three.
 
-- **Standard debugging**: Values inspect cleanly in `console.log` and browser devtools without
-  hidden prototype wrappers.
-- **Exhaustive pattern matching**: TypeScript's standard `switch (val.kind)` and
-  `if (val.kind === "Ok")` narrow types natively.
-- **Zero classes**: No `new` keyword, no prototype methods, and no `instanceof` checks that can fail
-  across package boundaries or worker threads.
+The library has costs, and they belong in this section too. Curried functions allocate small
+closures, which you'll only notice in tight loops over large arrays. Data-last currying takes some
+getting used to. And where your code meets code that doesn't use these types, like a framework
+callback or a third-party SDK, you have to convert values at the boundary.
 
 ---
 
-## Trade-Offs and Architectural Context
+## Something unobtrusive
 
-Choosing a tool requires balancing safety against operational complexity:
+I didn't want to move a codebase into a framework to get any of this. Values in `pipelined` are
+plain objects with a `kind` field. They print normally in `console.log`, survive `JSON.stringify`,
+and narrow in a regular `switch`. There are no classes, so `instanceof` can't break when a value
+crosses a package or worker boundary, and there's no runtime to start.
 
-### Standard TypeScript
+So you can try it in one function. That function returns a `Result` and the code around it stays the
+same. If it doesn't help, you take it out of that one function and you're done.
 
-- **Pros**: Zero dependencies, familiar syntax, direct execution with no function-call overhead.
-- **Cons**: Errors are untyped, missing values require repetitive branching, and async rejections
-  can crash processes if unhandled.
-- **When to use**: Simple CRUD scripts, small internal tools, or performance-critical micro-loops
-  where function allocations must be strictly avoided.
+---
 
-### Frameworks like Effect
+## Something thorough
 
-- **Pros**: Comprehensive ecosystem with built-in fibers, distributed tracing, structured
-  concurrency, and dependency injection.
-- **Cons**: Large runtime footprint, steep learning curve, and pervasive architectural lock-in
-  requiring the entire application to run inside an effect runtime.
-- **When to use**: Large-scale distributed applications requiring structured concurrency and runtime
-  telemetry across all layers.
+A lot of the work went into keeping things consistent, so that once you know one module you mostly
+know the others. The success value is always called `value`. A single failure is `error`, and a list
+of failures is `errors`. All containers share the same core operations under the same names.
 
-### Pipelined
+Some guarantees live in the types. A failed `Validation` always has at least one error, because the
+list is typed as non-empty, so you never check for an empty one. Others are enforced at runtime:
+index helpers treat `1.5`, `NaN` and `Infinity` as invalid instead of returning `undefined`.
 
-- **Pros**: Lightweight (<11 KB core), zero dependencies, tree-shakeable, plain discriminated
-  unions, and works with standard Node and browser runtimes.
-- **Cons**: Curried pipelines introduce closure allocations; requires wrapping and unwrapping data
-  containers at system boundaries.
-- **When to use**: Application business logic, form validation, parsing pipelines, and async
-  workflows where typed errors and linear composition improve maintainability without adding a
-  runtime framework.
+---
+
+## Something small
+
+A team should be able to learn the whole library, so it tries to stay small. There's one way to do
+each thing, with no aliases or duplicate modules, so code review never turns into a debate about
+which spelling to use. It's small in the bundle as well. It has no dependencies and tree-shakes per
+function, so if you only use `Maybe.map`, that's all you ship.
+
+[Design and influences](/appendix/influences) covers what was left out on purpose and where the
+ideas came from.
+
+---
+
+## When plain TypeScript is enough
+
+Plain TypeScript with early returns is often the better choice for a one-off script, a small
+internal tool, or a hot loop where allocations matter. `pipelined` is for the code a team keeps
+working on for years: business logic, parsing and validation, and async workflows.

@@ -3,56 +3,55 @@ title: Design and influences
 description: Where the ideas in pipelined come from, how the internals are structured, and why things are the way they are.
 ---
 
-This document details the architectural decisions behind the API, the structural patterns used
-across modules, and the prior work in functional programming that shaped `pipelined`.
+This page covers where the ideas in `pipelined` came from, the patterns every module follows, and
+what was left out on purpose.
 
 ## Where the ideas come from
 
 ### Haskell
 
-Most core types in this library descend from Haskell. `Either` inspired `Result`, and the `IO`
-type—a lazy, composable representation of side effects—inspired `Task`. Combinators like `map` and
-`chain` adapt Haskell's `fmap` and `>>=` into names describing concrete operations. `match` performs
-exhaustive pattern matching on named cases, corresponding to Haskell's `maybe` and `either`
-eliminators.
+Most core types in this library come from Haskell. `Result` is based on `Either`, and `Task` on
+`IO`, Haskell's lazy and composable way of describing side effects. `map` and `chain` are Haskell's
+`fmap` and `>>=` under names that say what they do. `match` handles every case by name, the way
+Haskell's `maybe` and `either` functions do.
 
-`These` comes from the Haskell library of the same name, representing inclusive-OR: a value carrying
-a first value, a second value, or both simultaneously.
+`These` comes from the Haskell library of the same name. It holds a first value, a second value, or
+both at once.
 
 ### Elm
 
-Elm demonstrated that `Maybe` and `Result` types can be presented with approachable, consistent
-naming without algebraic terminology.
+Elm showed that `Maybe` and `Result` can be taught with plain, consistent names and no algebra.
 
-Elm is also where the `RemoteData` pattern originated, in a package by Kris Jenkins. The four-state
-model—that a data fetch has four mutually exclusive states—eliminates inconsistent loading/error
-flags.
+The `RemoteData` pattern also started in Elm, in a package by Kris Jenkins. A data fetch is in
+exactly one of four states, and modelling it that way removes the loading and error flags that can
+disagree with each other.
 
 ### Rust
 
-Rust established `Option<T>` and `Result<T, E>` in a mainstream standard library, proving that
-explicit absence and typed failure are practical in performance-critical production systems.
+Rust put `Option<T>` and `Result<T, E>` in a mainstream standard library, and plenty of
+performance-sensitive code uses them every day. That settled the question of whether explicit
+absence and typed failure are practical outside academic languages.
 
 ### fp-ts
 
-The direct TypeScript predecessor is fp-ts by Giulio Canti, which established the `pipe` composition
-model, data-last currying, and co-located type/value module pairings in TypeScript.
+The direct TypeScript predecessor is fp-ts by Giulio Canti. It introduced the `pipe` composition
+model, data-last currying, and the pattern of pairing a type with a module of the same name.
 
 ### Optics
 
-`Lens` and `Optional` belong to a tradition in functional programming of treating "a path through
-data" as a composable first-class value — a path you define once, name, pass around, and compose
-into deeper paths. The tradition originates primarily in Haskell, where Edward Kmett's `lens`
-package is the canonical implementation.
+`Lens` and `Optional` come from a functional programming tradition that treats a path through data
+as a value. You define the path once, give it a name, pass it around, and combine it with other
+paths to reach deeper. Most of that tradition comes from Haskell, and Edward Kmett's `lens` package
+is the best-known implementation.
 
-The `lens` package defines a full optics hierarchy — `Iso`, `Prism`, `Lens`, `Traversal`, `Fold`,
-`Getter`, `Setter` — and unifies them using the van Laarhoven encoding: an optic is a polymorphic
-higher-order function over `Functor`/`Applicative`/etc., and composition is ordinary function
-composition. This encoding is elegant, but it relies on higher-kinded types — and while TypeScript
-can approximate those through HKT encoding tricks (as fp-ts demonstrates), this library deliberately
-avoids that approach for the same reasons described in the typeclass section below.
+The `lens` package defines a whole family of optics (`Iso`, `Prism`, `Lens`, `Traversal`, `Fold`,
+`Getter`, `Setter`) and unifies them with the van Laarhoven encoding. In that encoding, an optic is
+a polymorphic higher-order function over `Functor`, `Applicative` and similar abstractions, and
+optics compose with ordinary function composition. It is elegant, but it depends on higher-kinded
+types. TypeScript can approximate those with encoding tricks, as fp-ts does, and this library avoids
+that for the reasons given in the typeclass section below.
 
-This library uses a simpler "concrete" representation instead. Each optic is a plain record with
+This library uses a simpler, concrete representation instead. Each optic is a plain record with
 `get` and `set` fields:
 
 ```ts
@@ -67,16 +66,15 @@ type Optional<S, A> = {
 };
 ```
 
-The concrete form gives up uniform composition across the full hierarchy but gains implementation
-transparency — you can read the type and see exactly what it does — and introduces no encoding
-overhead whatsoever.
+The concrete form can't compose uniformly across the whole family, but you can read the type and
+see exactly what it does, and there is no encoding to pay for.
 
 ## Structural principles
 
 ### Tagged unions
 
-Every core type in this library is a discriminated union — a union of object types, each
-distinguished by a literal `kind` field:
+Every core type in this library is a discriminated union: a union of object types that each carry a
+literal `kind` field.
 
 ```ts
 type Maybe<A> = { kind: "Some"; value: A } | { kind: "None" };
@@ -90,21 +88,17 @@ type RemoteData<E, A> =
   | { kind: "Success"; value: A };
 ```
 
-This representation offers three key structural advantages within TypeScript. First, it enables
-reliable exhaustiveness checking. A `switch` or `match` expression over `kind` that accounts for
-every variant satisfies the compiler; if a new variant is later added to the type, every existing
-`match` instantly becomes a compile-time error until the new case is handled. Second, it yields
-complete operational transparency. Because the structures are plain, transparent data, they can be
-inspected easily with standard tools like `console.log`, serialized cleanly with `JSON.stringify`,
-and pattern-matched without any custom class instantiation machinery. Finally, it eliminates
-prototype chain complexity. Since there is nothing to inherit, override, or accidentally mutate,
-operations remain isolated in separate module objects rather than coupled to the data instances
-themselves.
+The main reason is exhaustiveness checking. A `switch` or `match` over `kind` that covers every
+variant satisfies the compiler, and if a variant is added later, every existing `match` becomes a
+compile error until the new case is handled.
 
-The alternative — class-based encoding — would use `instanceof` for dispatch and method definitions
-for operations. This has appeal, but it couples operations to types (adding a method means touching
-the class), makes the types opaque (you can't pattern-match without the class being in scope), and
-ties the library to a specific instantiation model.
+The values are also just data. They show up readably in `console.log`, serialize with
+`JSON.stringify`, and can be matched without any class in scope. There is nothing to inherit or
+override, and the operations live in separate module objects instead of on the values.
+
+A class-based encoding would dispatch with `instanceof` and put operations in methods. That ties
+operations to types, so adding one means editing the class. It also means you can't pattern-match
+on a value unless the class is in scope.
 
 ### InternalTypes
 
@@ -117,18 +111,16 @@ type WithError<T> = { readonly error: T };
 type WithErrors<T> = { readonly errors: NonEmptyArr<T> };
 ```
 
-These ensure that field names are consistent across every type in the library. The success payload
-is always named `value`. A single failure is always named `error`. Multiple accumulated failures are
-always named `errors`, and the type of `errors` is always `NonEmptyArr` — guaranteeing at least one
-error exists when a type is in an invalid state.
+These keep field names the same across every type in the library. The success payload is always
+`value`, a single failure is always `error`, and accumulated failures are always `errors`. The type
+of `errors` is always `NonEmptyArr`, so a failed value has at least one error.
 
-This consistency matters at runtime too: `Maybe.map` and `Result.map` and `RemoteData.map` all look
-for `.value` to find the success payload. Sharing the field name is what makes this uniform without
-code duplication.
+The shared names matter at runtime too. `Maybe.map`, `Result.map` and `RemoteData.map` all read the
+success payload from `.value`, which keeps them uniform without duplicated code.
 
-`These` is the deliberate exception. Its variants (`TheseFirst`, `TheseSecond`, `TheseBoth`) use
-`first` and `second` as field names. `These<A, B>` models a symmetric inclusive-OR across two
-arbitrary types without assuming success or failure semantics.
+`These` is the one exception. Its variants (`TheseFirst`, `TheseSecond`, `TheseBoth`) use `first`
+and `second` as field names, because `These<A, B>` holds two arbitrary types and neither of them
+means success or failure.
 
 ### The type and static object pattern
 
@@ -143,7 +135,7 @@ export const Maybe = {
     some: <A>(value: A): Some<A> => ({ kind: "Some", value }),
     none: <A = never>(): None => ({ kind: "None" }),
   },
-  map: <A, B>(f: (a: A) => B) => (data: Maybe<A>): Maybe<B> => ...,
+  map: <A, B>(transform: (value: A) => B) => (maybe: Maybe<A>): Maybe<B> => ...,
   match: ...,
 };
 ```
@@ -156,11 +148,11 @@ import { Maybe } from "@nlozgachev/pipelined/core";
 const x: Maybe<number> = Maybe.make.some(42); // type and constructor from the same import
 ```
 
-The object literal acts like a module — a flat collection of pure, data-last functions. There is no
-class, no prototype, and no `this`. Using static object literals instead of TypeScript runtime
-namespaces avoids IIFE closure generation (`(function(Maybe) { ... })(Maybe || (Maybe = {}))`),
-enabling intra-subpath tree-shaking in modern bundlers. If your application only imports
-`Maybe.map`, unused combinators from other modules are excluded from your production bundle.
+The object literal works like a module: a flat collection of pure, data-last functions with no
+class, no prototype, and no `this`. TypeScript's runtime namespaces compile to an IIFE
+(`(function(Maybe) { ... })(Maybe || (Maybe = {}))`) that bundlers can't split, while an object
+literal can be tree-shaken within a subpath. If your application only imports `Maybe.map`, the
+unused combinators are left out of your production bundle.
 
 ### Data-last convention
 
@@ -200,45 +192,41 @@ The convention is a direct import from fp-ts, which in turn took it from Haskell
 
 ### Error type as the first type parameter
 
-`Result<E, A>` puts the error type before the value type. Same for `Validation<E, A>` and
-`RemoteData<E, A>`. This is the opposite of many TypeScript APIs and feels counterintuitive at first
-glance.
+`Result<E, A>` puts the error type before the value type, and so do `Validation<E, A>` and
+`RemoteData<E, A>`. Many TypeScript APIs do the opposite, so it can look backwards at first.
 
-The reason is about which type parameter `map` should transform. `map` transforms the success value
-— the `A`. For TypeScript to infer this correctly when you write `Result.map(f)`, `A` needs to be
-the "last" type parameter in the sense that it's the one that varies across a `map` operation.
-Putting `E` first keeps it stable while `A` changes — the same reason Haskell's `Either` is
-`Either e a` with `e` first and `a` last.
+It comes down to which type parameter `map` transforms. `map` changes the success value, `A`, and
+leaves `E` alone. Putting the parameter that changes last and the one that stays fixed first is the
+same convention Haskell uses for `Either e a`.
 
-In practice this rarely matters for reading type signatures: once you've seen `Result<string, User>`
-a few times, you read it as "can fail with string, succeeds with User" and the ordering is
-automatic.
+Once you've seen `Result<string, User>` a few times, you read it as "can fail with a string,
+succeeds with a User" without thinking about the order.
 
 ### NonEmptyArr as a structural guarantee
 
-`Validation` uses `NonEmptyArr<E>` (defined as `readonly [E, ...E[]]`) for the errors field instead
-of `E[]`. This is a structural guarantee: when a value is `Failed`, it always has at least one
-error. A `Failed` with zero errors is a contradiction — it can't be represented.
+`Validation` types its errors field as `NonEmptyArr<E>` (defined as `readonly [E, ...E[]]`) instead
+of `E[]`. A `Failed` value always has at least one error, and a `Failed` with zero errors can't be
+constructed.
 
-This matters for consumers of the `failed` branch. If `errors` were `E[]`, every handler would need
-to guard against the empty case even though it's semantically impossible. With `NonEmptyArr`, you
-can call `errors[0]` or `errors.join(", ")` without defensive checks.
+This helps whoever handles the `failed` branch. If `errors` were `E[]`, every handler would need to
+guard against an empty list that can never actually happen. With `NonEmptyArr`, you can call
+`errors[0]` or `errors.join(", ")` without a check.
 
 ## What was deliberately left out
 
 ### Typeclass names
 
-The library implements standard functional structures (such as `Functor`, `Monad`, and
-`Applicative`) using descriptive operation names (`map`, `chain`, `ap`) rather than algebraic
-taxonomies. See [Why this exists](/appendix/motivation) for details.
+The library implements the usual functional structures (`Functor`, `Monad`, `Applicative`) but
+exposes them only through operation names like `map`, `chain` and `apply`.
+[Why this exists](/appendix/motivation#something-understandable) explains the reasoning.
 
 ### A typeclass system
 
-fp-ts uses a `HKT` encoding to simulate higher-kinded types in TypeScript, which allows generic code
-over any type that implements a given typeclass. This library makes no attempt at that. The `map` on
-`Maybe` and the `map` on `Result` share a naming convention, not a shared interface. This is a real
-limitation — you can't write a function that works generically over "any type with a `map`" — but
-the tradeoff is a much simpler type system with no encoding overhead.
+fp-ts simulates higher-kinded types in TypeScript with an `HKT` encoding, which lets you write
+generic code over any type that implements a given typeclass. This library doesn't try. The `map`
+on `Maybe` and the `map` on `Result` share a name, not an interface, so you can't write one function
+that works over "any type with a `map`". That is a real limitation. In exchange, the types stay
+simple and there is no encoding layer to learn.
 
 ### Classes and inheritance
 
@@ -247,40 +235,35 @@ code.
 
 ### Runtime brand overhead
 
-`Brand<K, T>` exists only as a compile-time phantom. At runtime, a branded value is exactly the
-underlying value — no wrapper object, no tag field, no extra allocation. The brand is erased
-entirely by the TypeScript compiler. `Brand.wrap` and `Brand.unwrap` are identity functions at
-runtime; their only job is to satisfy the type checker.
+`Brand<K, T>` exists only at compile time. At runtime, a branded value is exactly the underlying
+value, with no wrapper object, tag field, or extra allocation. `Brand.wrap` and `Brand.unwrap` are
+identity functions whose only job is to satisfy the type checker.
 
 ### The full optics hierarchy
 
-`Lens` and `Optional` cover two points in a much larger optics space. The most practically useful
-omissions are `Prism` — which focuses into one variant of a union type (e.g. the inner value of
-`Some`, or the `Ok` case of a `Result`) — and `Traversal` — which focuses on multiple values
-simultaneously, useful for updating all elements of a nested array in one composed path. Both were
-left out because the concrete `{ get, set }` encoding doesn't compose them uniformly with `Lens` and
-`Optional` without additional per-combination composition functions, adding complexity proportional
-to the square of the number of optic types. In practice, `Lens` and `Optional` cover the cases that
-arise most often in everyday TypeScript code.
+`Lens` and `Optional` are two members of a much larger family. The two most useful ones left out are
+`Prism`, which focuses on one variant of a union (such as the value inside `Some`, or the `Ok` case
+of a `Result`), and `Traversal`, which focuses on several values at once, for example every element
+of a nested array. With the concrete `{ get, set }` encoding, each new optic type needs its own
+composition function for every other type, so the API grows with the square of the number of optic
+types. `Lens` and `Optional` cover the cases that come up most in everyday TypeScript, so the rest
+stayed out.
 
 ## Acknowledgements
 
-The ideas behind this library were worked out over years of reading code written by people who
-thought carefully about these problems — the Haskell community's decades of refining abstractions
-down to their most composable form; the Elm community's insistence that good ideas should be
-approachable; the fp-ts contributors who did the genuinely hard work of encoding those ideas
-faithfully in TypeScript.
+The ideas behind this library come from years of reading code by people who thought hard about
+these problems: the Haskell community, the Elm community and its insistence that good ideas should
+be approachable, and the fp-ts contributors who did the work of encoding those ideas in TypeScript.
 
-Particular thanks to Giulio Canti, whose fp-ts library is the clearest demonstration that typed
-functional programming is practical in TypeScript — and whose source code taught me more about the
-language than any tutorial. To Kris Jenkins, for naming `RemoteData` and making the case so clearly
-that the pattern spread beyond Elm. To Edward Kmett for the `lens` library and the optics tradition
-that `Lens` and `Optional` descend from. To the Haskell community more broadly — for `These` and for
-an enormous body of work that keeps the ecosystem moving forward. And to the TypeScript team, for
-building a type system expressive enough that most of these ideas can be encoded at all.
+Particular thanks to Giulio Canti, whose fp-ts showed that typed functional programming is practical
+in TypeScript, and whose source code taught me more about the language than any tutorial. To Kris
+Jenkins, for naming `RemoteData` and making the case for it so clearly that the pattern spread
+beyond Elm. To Edward Kmett, for the `lens` library and the optics tradition that `Lens` and
+`Optional` come from. To the Haskell community more broadly, for `These` and for a huge body of work
+that keeps the ecosystem moving. And to the TypeScript team, for a type system expressive enough to
+encode most of these ideas at all.
 
-If you've read this far, thank you for your curiosity. Whether you found the library useful, built
-something interesting with it, spotted something wrong, or just wanted to understand how the pieces
-fit together — that kind of engagement is what makes writing software for others worthwhile.
+If you've read this far, thank you. Whether you found the library useful, built something with it,
+spotted something wrong, or just wanted to see how the pieces fit together, I'm glad you did.
 
 Write good code. Make the impossible states unrepresentable.
