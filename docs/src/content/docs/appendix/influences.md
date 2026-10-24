@@ -66,8 +66,8 @@ type Optional<S, A> = {
 };
 ```
 
-The concrete form can't compose uniformly across the whole family, but you can read the type and
-see exactly what it does, and there is no encoding to pay for.
+The concrete form can't compose uniformly across the whole family, but you can read the type and see
+exactly what it does, and there is no encoding to pay for.
 
 ## Structural principles
 
@@ -97,8 +97,8 @@ The values are also just data. They show up readably in `console.log`, serialize
 override, and the operations live in separate module objects instead of on the values.
 
 A class-based encoding would dispatch with `instanceof` and put operations in methods. That ties
-operations to types, so adding one means editing the class. It also means you can't pattern-match
-on a value unless the class is in scope.
+operations to types, so adding one means editing the class. It also means you can't pattern-match on
+a value unless the class is in scope.
 
 ### InternalTypes
 
@@ -223,8 +223,8 @@ exposes them only through operation names like `map`, `chain` and `apply`.
 ### A typeclass system
 
 fp-ts simulates higher-kinded types in TypeScript with an `HKT` encoding, which lets you write
-generic code over any type that implements a given typeclass. This library doesn't try. The `map`
-on `Maybe` and the `map` on `Result` share a name, not an interface, so you can't write one function
+generic code over any type that implements a given typeclass. This library doesn't try. The `map` on
+`Maybe` and the `map` on `Result` share a name, not an interface, so you can't write one function
 that works over "any type with a `map`". That is a real limitation. In exchange, the types stay
 simple and there is no encoding layer to learn.
 
@@ -251,9 +251,9 @@ stayed out.
 
 ## Acknowledgements
 
-The ideas behind this library come from years of reading code by people who thought hard about
-these problems: the Haskell community, the Elm community and its insistence that good ideas should
-be approachable, and the fp-ts contributors who did the work of encoding those ideas in TypeScript.
+The ideas behind this library come from years of reading code by people who thought hard about these
+problems: the Haskell community, the Elm community and its insistence that good ideas should be
+approachable, and the fp-ts contributors who did the work of encoding those ideas in TypeScript.
 
 Particular thanks to Giulio Canti, whose fp-ts showed that typed functional programming is practical
 in TypeScript, and whose source code taught me more about the language than any tutorial. To Kris

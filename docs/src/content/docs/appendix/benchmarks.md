@@ -82,8 +82,8 @@ with `.slice()` versus 5.1 microseconds with a loop.
 Not every operation beats a hand-written loop or a direct native call. In the current benchmarks on
 10,000 elements:
 
-- **`Arr.reduce` (51 us vs 14 us for `data.reduce`)**: `Arr.reduce` delegates to `items.reduce`,
-  but passing the reducer through a curried wrapper stops V8 from inlining the callback at the call
+- **`Arr.reduce` (51 us vs 14 us for `data.reduce`)**: `Arr.reduce` delegates to `items.reduce`, but
+  passing the reducer through a curried wrapper stops V8 from inlining the callback at the call
   site.
 - **`Arr.groupBy` (132 us vs 65 us for a plain loop)**: `Arr.groupBy` checks `Object.hasOwn` on
   every key and guards against `"__proto__"` to prevent prototype pollution, while the baseline loop
@@ -112,13 +112,13 @@ pnpm bench
 
 The numbers on this page were recorded on:
 
-| Component          | Detail                 |
-| :----------------- | :--------------------- |
-| **CPU**            | Apple M1 Pro (arm64)   |
-| **OS**             | macOS (darwin)         |
-| **Node.js**        | 26.10.0                |
-| **V8**             | 14.6.202.34            |
-| **TypeScript**     | 6.0.3                  |
+| Component      | Detail               |
+| :------------- | :------------------- |
+| **CPU**        | Apple M1 Pro (arm64) |
+| **OS**         | macOS (darwin)       |
+| **Node.js**    | 26.10.0              |
+| **V8**         | 14.6.202.34          |
+| **TypeScript** | 6.0.3                |
 
 ## What micro-benchmarks do and don't tell you
 
