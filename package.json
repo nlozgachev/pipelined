@@ -1,13 +1,22 @@
 {
 	"name": "@nlozgachev/pipelined",
 	"version": "0.83.0",
-	"description": "Opinionated functional abstractions for TypeScript",
+	"description": "Typed errors, explicit optional values, and composable pipelines for TypeScript",
 	"keywords": [
-		"composition",
-		"fp",
-		"functional",
+		"typescript",
+		"result",
+		"maybe",
+		"error-handling",
+		"typed-errors",
+		"validation",
 		"pipe",
-		"typescript"
+		"flow",
+		"async",
+		"concurrency",
+		"retry",
+		"remotedata",
+		"lens",
+		"branded-types"
 	],
 	"homepage": "https://pipelined.lozgachev.dev",
 	"license": "BSD-3-Clause",
