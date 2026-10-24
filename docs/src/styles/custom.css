@@ -1,7 +1,7 @@
 @layer starlight, nova, custom-styles;
 
 @layer custom-styles {
-  main ul > li {
+  main ul>li {
     list-style-type: square;
     list-style-position: inside;
   }
@@ -11,11 +11,12 @@
     padding-top: 3rem;
   }
 
-  .content-panel li > ul {
+  .content-panel li>ul {
     margin-left: 1.4rem;
   }
 
- .sl-markdown-content, sl-sidebar-state-persist > ul {
+  .sl-markdown-content,
+  sl-sidebar-state-persist>ul {
     padding-bottom: 16vh;
   }
 
@@ -29,23 +30,65 @@
     margin: 1.5rem 0;
   }
 
-  /* Sharp right-angle rectangular node boxes */
-  .mermaid .node rect:not([rx]) {
-    rx: 0 !important;
-    ry: 0 !important;
+
+
+  /* Node rectangular boxes with subtle rounded corners */
+  .mermaid .node rect {
+    rx: 6px !important;
+    ry: 6px !important;
+    stroke: #3f3f46 !important;
+    stroke-width: 1.5px !important;
+    fill: #1f1f23 !important;
+  }
+
+  /* Decision diamond nodes (Choice) */
+  .mermaid .node polygon {
+    stroke: #3f3f46 !important;
+    stroke-width: 1.5px !important;
+    fill: #1f1f23 !important;
+  }
+
+  /* Node text labels */
+  .mermaid .node text,
+  .mermaid .node .label,
+  .mermaid .node .nodeLabel {
+    fill: #f4f4f5 !important;
+    color: #f4f4f5 !important;
   }
 
   /* Edge paths */
   .mermaid .flowchart-link,
-  .mermaid .edge-thickness-normal {
+  .mermaid .edge-thickness-normal,
+  .mermaid .edgePath path {
     stroke: #71717a !important;
     stroke-width: 1.5px !important;
   }
 
-  /* Electric blue arrowheads */
+  /* Arrowheads matching edge line color */
   .mermaid marker path,
   .mermaid marker polygon {
-    fill: #3b82f6 !important;
-    stroke: #3b82f6 !important;
+    fill: #71717a !important;
+    stroke: #71717a !important;
   }
+
+  /* Edge labels / badges */
+  .mermaid .edgeLabel {
+    color: #d4d4d8 !important;
+    fill: #d4d4d8 !important;
+  }
+
+  .mermaid .edgeLabel text {
+    fill: #d4d4d8 !important;
+  }
+
+  .mermaid .edgeLabel rect {
+    opacity: initial !important;
+    backdrop-filter: blur(10px);
+    fill: #1f1f23 !important;
+    stroke: #3f3f46 !important;
+    stroke-width: 1px !important;
+    rx: 3px !important;
+    ry: 3px !important;
+  }
+
 }
