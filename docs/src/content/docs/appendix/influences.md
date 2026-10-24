@@ -218,8 +218,8 @@ guard against an empty list that can never actually happen. With `NonEmptyArr`, 
 
 The library implements the usual functional structures (`Functor`, `Monad`, `Applicative`,
 `Semigroup`, `Monoid`, `Ord`, `Eq`) but names every module and function after what it does in code:
-`map`, `chain`, `apply`, `Combinable`, `Ordering`, `Equality`. Someone reading a call site should
-be able to tell what happens without knowing the algebraic name for it. See
+`map`, `chain`, `apply`, `Combinable`, `Ordering`, `Equality`. Someone reading a call site should be
+able to tell what happens without knowing the algebraic name for it. See
 [Why this exists](/appendix/motivation#something-understandable).
 
 ### A typeclass system

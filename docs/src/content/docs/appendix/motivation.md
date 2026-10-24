@@ -3,11 +3,11 @@ title: Why this exists
 description: What I wanted from a library like this, and what it costs.
 ---
 
-I started `pipelined` because I kept writing the same null checks, the same `try/catch` around
-calls that might throw, and the same retry loop with an `AbortController` wired through it, and
-every copy was a little different. I wanted code where the steps of the work were easy to see,
-where hovering over a function told you how it could fail, and where that plumbing lived in one
-place instead of in every feature.
+I started `pipelined` because I kept writing the same null checks, the same `try/catch` around calls
+that might throw, and the same retry loop with an `AbortController` wired through it, and every copy
+was a little different. I wanted code where the steps of the work were easy to see, where hovering
+over a function told you how it could fail, and where that plumbing lived in one place instead of in
+every feature.
 
 The sections below describe what I was looking for.
 
@@ -72,9 +72,9 @@ I wanted the types to do some of the explaining. If a function is typed
 errors before they open the file. In a pipeline, hovering over any step shows what it hands to the
 next one.
 
-The function names follow the same idea: they say what the step does. `map` changes the value
-inside a container, `chain` runs a step that can itself fail or come back empty, and `match` takes
-one handler per case, such as `{ ok, err }` or `{ some, none }`.
+The function names follow the same idea: they say what the step does. `map` changes the value inside
+a container, `chain` runs a step that can itself fail or come back empty, and `match` takes one
+handler per case, such as `{ ok, err }` or `{ some, none }`.
 
 ---
 
