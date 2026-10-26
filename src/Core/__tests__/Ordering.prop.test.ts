@@ -13,9 +13,11 @@ test("string: satisfies reflexivity and antisymmetry", () => {
 	}));
 
 	fc.assert(fc.property(fc.string(), fc.string(), (a, b) => {
-		const s1 = Math.sign(Ordering.string(a, b));
-		const s2 = Math.sign(Ordering.string(b, a));
-		expect(s1 + s2).toBe(0);
+		const ab = Ordering.string(a, b);
+		const ba = Ordering.string(b, a);
+		expect([-1, 0, 1]).toContain(ab);
+		expect([-1, 0, 1]).toContain(ba);
+		expect(ba).toBe(ab === 0 ? 0 : -ab);
 	}));
 });
 
@@ -27,9 +29,11 @@ test("number: satisfies reflexivity, antisymmetry, and trichotomy for finite and
 	}));
 
 	fc.assert(fc.property(arbNum, arbNum, (a, b) => {
-		const cmp = Ordering.number(a, b);
-		expect([-1, 0, 1]).toContain(cmp);
-		expect(cmp).toBe(-Ordering.number(b, a));
+		const ab = Ordering.number(a, b);
+		const ba = Ordering.number(b, a);
+		expect([-1, 0, 1]).toContain(ab);
+		expect([-1, 0, 1]).toContain(ba);
+		expect(ba).toBe(ab === 0 ? 0 : -ab);
 	}));
 });
 
@@ -53,9 +57,11 @@ test("date: satisfies reflexivity and antisymmetry", () => {
 	}));
 
 	fc.assert(fc.property(arbDate, arbDate, (a, b) => {
-		const s1 = Math.sign(Ordering.date(a, b));
-		const s2 = Math.sign(Ordering.date(b, a));
-		expect(s1 + s2).toBe(0);
+		const ab = Ordering.date(a, b);
+		const ba = Ordering.date(b, a);
+		expect([-1, 0, 1]).toContain(ab);
+		expect([-1, 0, 1]).toContain(ba);
+		expect(ba).toBe(ab === 0 ? 0 : -ab);
 	}));
 });
 
@@ -112,8 +118,10 @@ test("tuple: satisfies reflexivity and antisymmetry", () => {
 	}));
 
 	fc.assert(fc.property(fc.string(), fc.integer(), fc.string(), fc.integer(), (s1, n1, s2, n2) => {
-		const res1 = pairOrd([s1, n1], [s2, n2]);
-		const res2 = pairOrd([s2, n2], [s1, n1]);
-		expect(Math.sign(res1) + Math.sign(res2)).toBe(0);
+		const ab = pairOrd([s1, n1], [s2, n2]);
+		const ba = pairOrd([s2, n2], [s1, n1]);
+		expect([-1, 0, 1]).toContain(ab);
+		expect([-1, 0, 1]).toContain(ba);
+		expect(ba).toBe(ab === 0 ? 0 : -ab);
 	}));
 });
