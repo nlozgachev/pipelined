@@ -18,6 +18,9 @@ test("make & from.sync: infers lazy infallible task return types", () => {
 test("tryCatch: wraps promise factory into infallible task via fallback", () => {
 	const safeTask = Task.tryCatch(() => Promise.resolve(42), { onError: (_error: unknown) => 0 });
 	expectTypeOf(safeTask).toEqualTypeOf<Task<number>>();
+
+	const widenedTask = Task.tryCatch(() => Promise.resolve(42), { onError: (_error: unknown) => "fallback" });
+	expectTypeOf(widenedTask).toEqualTypeOf<Task<number | string>>();
 });
 
 test("map & apply: transforms encapsulated values and applies function tasks", () => {
@@ -66,6 +69,9 @@ test("all, sequential & race: preserve element types and execute multiple tasks"
 
 	const raceTask = Task.race([taskA, Task.make(2)]);
 	expectTypeOf(raceTask).toEqualTypeOf<Task<number>>();
+
+	const mixedRace = Task.race([taskA, taskB]);
+	expectTypeOf(mixedRace).toEqualTypeOf<Task<number | string>>();
 });
 
 test("timeout: converts task into fallible result channel with typed error", () => {

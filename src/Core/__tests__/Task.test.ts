@@ -41,6 +41,16 @@ test("tryCatch: traps rejections and resolves to fallback value", async () => {
 	expect(fallbackVal).toBe(0);
 });
 
+test("tryCatch: widens return type when fallback returns alternative sentinel type", async () => {
+	const taskSuccess = Task.tryCatch(() => Promise.resolve(42), { onError: () => "error" });
+	const okVal = await taskSuccess();
+	expect(okVal).toBe(42);
+
+	const taskFail = Task.tryCatch(() => Promise.reject(new Error("network error")), { onError: () => "error" });
+	const fallbackVal = await taskFail();
+	expect(fallbackVal).toBe("error");
+});
+
 // ---------------------------------------------------------------------------
 // map
 // ---------------------------------------------------------------------------
@@ -282,6 +292,13 @@ test("race: resolves immediately when resolved Task is included", async () => {
 	const slow = fromPromise<string>(() => new Promise((r) => setTimeout(() => r("slow"), 100)));
 	const result = await Task.race([slow, immediate])();
 	expect(result).toBe("immediate");
+});
+
+test("race: resolves with fastest Task across heterogeneous task types", async () => {
+	const numTask = fromPromise<number>(() => new Promise((r) => setTimeout(() => r(42), 20)));
+	const strTask = fromPromise<string>(() => new Promise((r) => setTimeout(() => r("fast"), 5)));
+	const result = await Task.race([numTask, strTask])();
+	expect(result).toBe("fast");
 });
 
 test("race: resolves to value with single Task", async () => {

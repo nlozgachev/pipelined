@@ -93,6 +93,47 @@ const setProperty = <T extends Record<string, unknown>>(target: T, key: string, 
 	}
 };
 
+const raceTask = (<T extends readonly Task<unknown>[]>(tasks: readonly [...T]): Task<unknown> => {
+	const len = tasks.length;
+	if (len === 0) {
+		return () => Deferred.from.Promise(new Promise(() => {}));
+	}
+	return fromPromise((outerSignal) => {
+		const controllers = new Array<AbortController>(len);
+		for (let i = 0; i < len; i++) {
+			controllers[i] = new AbortController();
+		}
+		const onOuterAbort = () => {
+			for (let i = 0; i < len; i++) {
+				controllers[i].abort();
+			}
+		};
+		if (outerSignal) {
+			if (outerSignal.aborted) {
+				onOuterAbort();
+			} else {
+				outerSignal.addEventListener("abort", onOuterAbort, { once: true });
+			}
+		}
+		const promises = new Array<Promise<unknown>>(len);
+		for (let i = 0; i < len; i++) {
+			const ctrl = controllers[i];
+			promises[i] = toPromise(tasks[i], ctrl.signal).then((result) => {
+				for (let j = 0; j < len; j++) {
+					if (j !== i) {
+						controllers[j].abort();
+					}
+				}
+				outerSignal?.removeEventListener("abort", onOuterAbort);
+				return result;
+			});
+		}
+		return Promise.race(promises);
+	});
+}) as
+	& (<T extends readonly Task<unknown>[]>(tasks: readonly [...T]) => Task<T[number] extends Task<infer A> ? A : never>)
+	& (<A>(tasks: readonly Task<A>[]) => Task<A>);
+
 export const Task = {
 	/**
 	 * Creates a Task that immediately resolves to the given value.
@@ -132,7 +173,10 @@ export const Task = {
 	 * );
 	 * ```
 	 */
-	tryCatch: <A>(fn: (signal?: AbortSignal) => Thenable<A>, options: { onError: (error: unknown) => A; }): Task<A> =>
+	tryCatch: <A, B = A>(
+		fn: (signal?: AbortSignal) => Thenable<A>,
+		options: { onError: (error: unknown) => B; },
+	): Task<A | B> =>
 		fromPromise((signal) =>
 			// oxlint-disable-next-line require-await
 			globalThis.Promise.resolve().then(async () => fn(signal)).catch((err) => options.onError(err))
@@ -413,44 +457,7 @@ export const Task = {
 	 * await Task.race([fast, slow])(); // "fast"
 	 * ```
 	 */
-	race: <A>(tasks: ReadonlyArray<Task<A>>): Task<A> => {
-		const len = tasks.length;
-		if (len === 0) {
-			return () => Deferred.from.Promise(new Promise(() => {}));
-		}
-		return fromPromise((outerSignal) => {
-			const controllers = new Array<AbortController>(len);
-			for (let i = 0; i < len; i++) {
-				controllers[i] = new AbortController();
-			}
-			const onOuterAbort = () => {
-				for (let i = 0; i < len; i++) {
-					controllers[i].abort();
-				}
-			};
-			if (outerSignal) {
-				if (outerSignal.aborted) {
-					onOuterAbort();
-				} else {
-					outerSignal.addEventListener("abort", onOuterAbort, { once: true });
-				}
-			}
-			const promises = new Array<Promise<A>>(len);
-			for (let i = 0; i < len; i++) {
-				const ctrl = controllers[i];
-				promises[i] = toPromise(tasks[i], ctrl.signal).then((result) => {
-					for (let j = 0; j < len; j++) {
-						if (j !== i) {
-							controllers[j].abort();
-						}
-					}
-					outerSignal?.removeEventListener("abort", onOuterAbort);
-					return result;
-				});
-			}
-			return Promise.race(promises);
-		});
-	},
+	race: raceTask,
 
 	/**
 	 * Runs an array or tuple of Tasks one at a time in order, collecting all results.
