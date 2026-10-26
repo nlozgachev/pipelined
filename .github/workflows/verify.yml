@@ -28,6 +28,9 @@ jobs:
       - name: Test types (.test-d.ts)
         run: pnpm test:types
 
+      - name: Build (tsdown)
+        run: pnpm build
+
       - name: Test runtime & coverage
         run: pnpm test:coverage
 
