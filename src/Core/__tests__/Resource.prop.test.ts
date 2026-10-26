@@ -81,3 +81,78 @@ test("combine: releases in reverse acquisition order", async () => {
 		expect(releaseOrder).toStrictEqual(["B", "A"]);
 	}));
 });
+
+test("map: satisfies functor identity law", async () => {
+	await fc.assert(fc.asyncProperty(fc.integer(), async (val) => {
+		const res = Resource.make(Task.Result.make.ok(val), () => Task.make(undefined));
+		const mapped = pipe(res, Resource.map((x) => x));
+
+		const resultOriginal = await pipe(res, Resource.use((n) => Task.Result.make.ok(n)))();
+		const resultMapped = await pipe(mapped, Resource.use((n) => Task.Result.make.ok(n)))();
+
+		expect(resultMapped).toStrictEqual(resultOriginal);
+	}));
+});
+
+test("map: satisfies functor composition law", async () => {
+	await fc.assert(fc.asyncProperty(fc.integer(), async (val) => {
+		const f = (x: number) => x * 3;
+		const g = (x: number) => `str:${x + 1}`;
+
+		const res = Resource.make(Task.Result.make.ok(val), () => Task.make(undefined));
+
+		const composedSeparately = pipe(res, Resource.map(f), Resource.map(g));
+
+		const composedFused = pipe(res, Resource.map((x) => g(f(x))));
+
+		const resultSeparate = await pipe(composedSeparately, Resource.use((s) => Task.Result.make.ok(s)))();
+		const resultFused = await pipe(composedFused, Resource.use((s) => Task.Result.make.ok(s)))();
+
+		expect(resultSeparate).toStrictEqual(resultFused);
+	}));
+});
+
+test("chain: releases in strict reverse order across arbitrary pairs", async () => {
+	await fc.assert(fc.asyncProperty(fc.integer(), fc.string(), async (valA, valB) => {
+		const releaseOrder: string[] = [];
+
+		const resA = Resource.make(Task.Result.make.ok(valA), (_n) =>
+			Task.tryCatch(() => {
+				releaseOrder.push("outer");
+				return Promise.resolve();
+			}, { onError: () => {} }));
+
+		const resB = (prefix: number) =>
+			Resource.make(Task.Result.make.ok(`${prefix}:${valB}`), (_s) =>
+				Task.tryCatch(() => {
+					releaseOrder.push("inner");
+					return Promise.resolve();
+				}, { onError: () => {} }));
+
+		const chained = pipe(resA, Resource.chain(resB));
+
+		await pipe(chained, Resource.use((_val) => Task.Result.make.ok(true)))();
+
+		expect(releaseOrder).toStrictEqual(["inner", "outer"]);
+	}));
+});
+
+test("all: releases arbitrary arrays of resources in strict reverse LIFO order", async () => {
+	await fc.assert(fc.asyncProperty(fc.array(fc.integer(), { minLength: 1, maxLength: 8 }), async (values) => {
+		const releaseOrder: number[] = [];
+
+		const resources = values.map((val, idx) =>
+			Resource.make(Task.Result.make.ok(val), () =>
+				Task.tryCatch(() => {
+					releaseOrder.push(idx);
+					return Promise.resolve();
+				}, { onError: () => {} }))
+		);
+
+		const allRes = Resource.all(resources);
+		await pipe(allRes, Resource.use((_vals) => Task.Result.make.ok(true)))();
+
+		const expectedOrder = values.map((_v, idx) => idx).reverse();
+		expect(releaseOrder).toStrictEqual(expectedOrder);
+	}));
+});

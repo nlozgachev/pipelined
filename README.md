@@ -21,7 +21,8 @@ carry `unknown`, and retry or cancellation logic ends up tangled with the reques
 `pipelined` gives those cases plain discriminated-union types and curried functions that compose in
 a `pipe`: `Maybe` for missing values, `Result` for typed errors, `Validation` for collecting
 multiple errors at once, `Task.Result` for lazy async work with cancellation, `Op` for managed
-requests with retries and concurrency rules, and `EventBus` for typed in-memory events.
+requests with retries and concurrency rules, `Resource` for safe lifecycle management of connections
+and locks, and `EventBus` for typed in-memory events.
 
 It has zero dependencies, ships ESM and CommonJS builds, and stays under 12 KB gzipped for `core`
 (<19 KB for the whole package).
@@ -481,6 +482,79 @@ const updatedUser = pipe(
 );
 
 updatedUser.address.city; // "BERLIN"
+```
+
+### Safe lifecycle management for connections and locks
+
+Acquiring database connections, sockets, or distributed locks usually requires nested `try/finally`
+blocks. If a second resource fails to open or an operation aborts midway, it is easy to leak an
+already-opened handle or release resources in the wrong order.
+
+`Resource<E, A>` packages acquisition and guaranteed cleanup into an opaque bracket. When composed
+with `Resource.chain` or `Resource.all`, resources are acquired sequentially and automatically
+released in strict reverse (LIFO) order upon completion or error:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Resource, Task } from "@nlozgachev/pipelined/core";
+
+type AppError =
+  | { kind: "DbError"; message: string }
+  | { kind: "CacheError"; message: string };
+
+type DbClient = {
+  query: (sql: string) => Promise<{ id: string; name: string }>;
+  close: () => Promise<void>;
+};
+type CacheClient = {
+  set: (key: string, value: string) => Promise<void>;
+  quit: () => Promise<void>;
+};
+
+declare function connectPostgres(url: string): Promise<DbClient>;
+declare function connectRedis(url: string): Promise<CacheClient>;
+
+const dbResource = Resource.make(
+  Task.Result.tryCatch(
+    () => connectPostgres("postgres://localhost:5432/app"),
+    { onError: (error): AppError => ({ kind: "DbError", message: String(error) }) },
+  ),
+  (db) => Task.tryCatch(() => db.close(), { onError: () => {} }),
+);
+
+const cacheResource = Resource.make(
+  Task.Result.tryCatch(
+    () => connectRedis("redis://localhost:6379"),
+    { onError: (error): AppError => ({ kind: "CacheError", message: String(error) }) },
+  ),
+  (cache) => Task.tryCatch(() => cache.quit(), { onError: () => {} }),
+);
+
+// Group independent resources into a typed record:
+const appInfra = Resource.all({
+  db: dbResource,
+  cache: cacheResource,
+});
+
+// Run operations safely — both handles are closed in reverse order upon completion or failure
+const syncUserProfile = (userId: string) =>
+  pipe(
+    appInfra,
+    Resource.use(({ db, cache }) =>
+      Task.Result.tryCatch(
+        async () => {
+          const user = await db.query(`SELECT * FROM users WHERE id = '${userId}'`);
+          await cache.set(`user:${userId}`, JSON.stringify(user));
+          return user;
+        },
+        { onError: (error): AppError => ({ kind: "DbError", message: String(error) }) },
+      )
+    ),
+  );
+
+const fetchAndCacheUser = syncUserProfile("usr_101");
+const result = await fetchAndCacheUser();
+// cache.quit() and db.close() are guaranteed to have run in reverse order
 ```
 
 ### Nominal type safety and security boundaries

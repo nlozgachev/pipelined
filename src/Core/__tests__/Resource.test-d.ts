@@ -52,3 +52,76 @@ test("combine: sequences two resources and combines values and error channels", 
 	// @ts-expect-error — combine requires Resource instances
 	Resource.combine(resA, "not a resource");
 });
+
+test("map: transforms the value channel while preserving error channel", () => {
+	const res = Resource.make(
+		constTruthyBool() ? Task.Result.make.ok(42) : Task.Result.make.err("err_string"),
+		(_n) => Task.make(undefined),
+	);
+
+	const mapped = pipe(res, Resource.map((n) => `num:${n}`));
+	expectTypeOf(mapped).toEqualTypeOf<Resource<string, string>>();
+
+	// @ts-expect-error — transform callback must accept the acquired value type
+	pipe(res, Resource.map((s: boolean) => !s));
+});
+
+test("chain: sequences dependent resources and unifies error channels", () => {
+	const resA = Resource.make(
+		constTruthyBool() ? Task.Result.make.ok(42) : Task.Result.make.err("err_a"),
+		(_n) => Task.make(undefined),
+	);
+
+	const chained = pipe(
+		resA,
+		Resource.chain((n) =>
+			Resource.make(constTruthyBool() ? Task.Result.make.ok(`val:${n}`) : Task.Result.make.err(500), (_s) =>
+				Task.make(undefined))
+		),
+	);
+	expectTypeOf(chained).toEqualTypeOf<Resource<string | number, string>>();
+
+	// @ts-expect-error — chain callback must return a Resource, not a plain value or Task
+	pipe(resA, Resource.chain((n) => n * 2));
+});
+
+test("all: infers tuple elements and named records with unified error channels", () => {
+	const rA = Resource.make(
+		constTruthyBool() ? Task.Result.make.ok(1) : Task.Result.make.err("err_a"),
+		(_n) => Task.make(undefined),
+	);
+	const rB = Resource.make(
+		constTruthyBool() ? Task.Result.make.ok("two") : Task.Result.make.err(true),
+		(_s) => Task.make(undefined),
+	);
+	const rC = Resource.make(
+		constTruthyBool() ? Task.Result.make.ok({ ready: true }) : Task.Result.make.err(99),
+		(_obj) => Task.make(undefined),
+	);
+
+	// 1. Tuple literal
+	const tupleRes = Resource.all([rA, rB, rC]);
+	expectTypeOf(tupleRes).toEqualTypeOf<
+		Resource<string | boolean | number, readonly [number, string, { ready: boolean; }]>
+	>();
+
+	// 2. Empty tuple
+	const emptyTupleRes = Resource.all([] as const);
+	expectTypeOf(emptyTupleRes).toEqualTypeOf<Resource<never, readonly []>>();
+
+	// 3. Named record
+	const recordRes = Resource.all({ a: rA, b: rB, c: rC });
+	expectTypeOf(recordRes).toEqualTypeOf<
+		Resource<string | boolean | number, { readonly a: number; readonly b: string; readonly c: { ready: boolean; }; }>
+	>();
+
+	// 4. Empty record
+	const emptyRecordRes = Resource.all({});
+	expectTypeOf(emptyRecordRes).toEqualTypeOf<Resource<never, {}>>();
+
+	// @ts-expect-error — all requires Resource items in tuple
+	Resource.all([rA, "not a resource"]);
+
+	// @ts-expect-error — all requires Resource values in record
+	Resource.all({ a: rA, b: 123 });
+});
