@@ -4,6 +4,7 @@ export * from "./Equality";
 export * from "./EventBus";
 export * from "./Lens";
 export * from "./Logged";
+export * from "./Machine";
 export * from "./Maybe";
 export * from "./Op";
 export * from "./Optional";
