@@ -3,6 +3,12 @@ title: Validation — Accumulating Errors
 description: Collect all validation failures in one pass, ensuring a complete overview of errors rather than failing fast on the first one.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 1.57 kB minified + gzipped (1,568 B)
+
+<!-- BUNDLE_SIZE:END -->
+
 Using fail-fast error structures (`Result`, `try/catch`) for form or schema validation
 short-circuits on the first failure, hiding subsequent field errors until previous ones are
 corrected.

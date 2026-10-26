@@ -3,6 +3,12 @@ title: Pair — Typed Pairs
 description: Model two values that always travel together in a pipeline as an explicit, strongly typed pair without destructuring.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 144 B minified + gzipped
+
+<!-- BUNDLE_SIZE:END -->
+
 In modern application code, data naturally comes in connected pairs: key-value entries in maps,
 width and height dimensions, coordinate points `(x, y)`, or HTTP response headers
 `(headerName, headerValue)`.

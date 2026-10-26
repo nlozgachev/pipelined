@@ -3,6 +3,12 @@ title: Rec — Record Utilities
 description: Work with plain JavaScript objects as key-value records immutably and safely inside pipelines, using data-last utilities with type-safe key lookup.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 6.79 kB minified + gzipped (6,787 B)
+
+<!-- BUNDLE_SIZE:END -->
+
 Plain JavaScript objects serving as string-keyed dictionaries — typed as `Record<string, A>`—are
 used everywhere in TypeScript applications for configurations, HTTP headers, lookup tables, and JSON
 payloads.

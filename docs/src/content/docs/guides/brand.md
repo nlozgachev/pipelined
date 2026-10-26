@@ -3,6 +3,12 @@ title: Brand — Distinguishing Values
 description: Use compile-time phantom tags to distinguish between primitive values that share the same underlying type, preventing semantic bugs at zero runtime cost.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 36 B minified + gzipped
+
+<!-- BUNDLE_SIZE:END -->
+
 TypeScript uses structural typing: any `string` is compatible with every other `string`. This allows
 semantic bugs — such as passing an `OrderId` into a function expecting a `UserId`—to compile without
 warnings.

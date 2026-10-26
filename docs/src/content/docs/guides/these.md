@@ -3,6 +3,12 @@ title: These — Inclusive OR
 description: Model inclusive-OR scenarios where you have a first value, a second value, or both coexisting simultaneously.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 316 B minified + gzipped
+
+<!-- BUNDLE_SIZE:END -->
+
 TypeScript models exclusive-OR states with discriminated unions (`A | B`) and paired states with
 objects (`{ a: A; b: B }`). However, operations like data synchronization, diff engines, and
 non-fatal warnings require modeling inclusive-OR states: having a first value, a second value, or

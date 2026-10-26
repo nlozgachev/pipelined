@@ -3,6 +3,12 @@ title: Str — String Utilities
 description: Data-last, curried string operations, safe parsers, and line/word splitting designed to compose in functional pipelines.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 7.39 kB minified + gzipped (7,388 B)
+
+<!-- BUNDLE_SIZE:END -->
+
 Strings are the primary medium for untrusted data entering an application. Whether you are parsing
 HTTP headers, processing CSV uploads, or sanitizing user-submitted form fields, raw text requires
 constant validation and formatting.

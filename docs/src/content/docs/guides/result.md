@@ -3,6 +3,12 @@ title: Result — Modeling Failures
 description: Bring the possibility of failure into the type system, replacing scattered try/catch blocks with typed flow.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 1.57 kB minified + gzipped (1,568 B)
+
+<!-- BUNDLE_SIZE:END -->
+
 Every function that can fail has two possible outcomes: it either succeeds and returns a value, or
 it fails and returns an error. Yet, in traditional JavaScript, only the success outcome is visible
 in the function’s type signature. The failure is treated as an exceptional event, thrown out of the

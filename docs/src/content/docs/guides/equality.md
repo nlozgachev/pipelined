@@ -3,6 +3,12 @@ title: Equality — Composable Equality Checks
 description: Model value equivalence structurally, replacing pointer-based reference checks and fragile JSON stringification with composable equality checkers.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 255 B minified + gzipped
+
+<!-- BUNDLE_SIZE:END -->
+
 Checking whether two values are equal is one of the most common requirements in software
 development. We do it to deduplicate arrays of items, detect changes in a user profile before
 saving, or confirm if an asset is already in a local collection.

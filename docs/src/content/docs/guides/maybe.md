@@ -3,6 +3,12 @@ title: Maybe — Modeling Absence
 description: Treat the absence of a value as first-class data rather than a control flow problem.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 1.57 kB minified + gzipped (1,568 B)
+
+<!-- BUNDLE_SIZE:END -->
+
 When retrieving values from maps, database queries, or optional properties, standard TypeScript
 represents absence with `T | null` or `T | undefined`.
 

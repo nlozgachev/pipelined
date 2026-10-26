@@ -3,6 +3,12 @@ title: Optional — Nullable Paths
 description: Focus on a property or index that may be absent to read, set, and modify nested nullable paths safely.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 1.87 kB minified + gzipped (1,874 B)
+
+<!-- BUNDLE_SIZE:END -->
+
 While optional chaining (`?.`) allows safe reads through nullable object hierarchies, JavaScript has
 no syntax for immutable updates along nullable paths. Updating nested optional properties immutably
 requires multi-layer conditional checks and object spreads.

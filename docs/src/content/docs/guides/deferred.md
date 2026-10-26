@@ -3,6 +3,12 @@ title: Deferred — Infallible Async Values
 description: Model asynchronous computations that are guaranteed to resolve successfully, structurally excluding rejection and chaining at the type level.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 109 B minified + gzipped
+
+<!-- BUNDLE_SIZE:END -->
+
 Standard JavaScript `Promise<A>` exposes `.catch()` and `.finally()`, implying that any asynchronous
 operation might reject. For operations that are guaranteed to resolve successfully (such as timer
 delays, in-memory caches, or pure computations), this creates dead error-handling paths.

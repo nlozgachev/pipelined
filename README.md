@@ -24,8 +24,13 @@ multiple errors at once, `Task.Result` for lazy async work with cancellation, `O
 requests with retries and concurrency rules, `Resource` for safe lifecycle management of connections
 and locks, and `EventBus` for typed in-memory events.
 
-It has zero dependencies, ships ESM and CommonJS builds, and stays under 12 KB gzipped for `core`
-(<19 KB for the whole package).
+<!-- BUNDLE_OVERVIEW:START -->
+
+It has zero dependencies, ships ESM and CommonJS builds, and tree-shakes down to ~142 B–1.69 kB
+gzipped for individual modules (with an upper ceiling of <12.34 kB gzipped for all of `core` and
+<19.16 kB for the entire package).
+
+<!-- BUNDLE_OVERVIEW:END -->
 
 ## Documentation
 
@@ -643,19 +648,52 @@ if (Result.is.ok(email)) {
 
 ## Package Architecture and Performance
 
-`pipelined` is split into four tree-shakeable entry points:
+All entry points are published with `"sideEffects": false` and structured as static constant objects
+without class prototypes or closure side-effects. Modern bundlers (Vite, Rollup, webpack, esbuild,
+Next.js) automatically tree-shake unused functions and modules, bundling only the specific symbols
+imported by your application.
 
-- **`@nlozgachev/pipelined/core`**: Containers (`Maybe`, `Result`, `Validation`, `RemoteData`,
-  `These`), async primitives (`Task`, `Op`, `Deferred`, `EventBus`, `Resource`), optics (`Lens`,
-  `Optional`), and state/context types (`Reader`, `State`, `Logged`) (<12 KB gzipped).
-- **`@nlozgachev/pipelined/data`**: Curried, data-last helpers for arrays, records, maps, sets,
-  numbers, bigints, strings, booleans, and JSON (<10 KB gzipped).
-- **`@nlozgachev/pipelined/composition`**: Function composition helpers (`pipe`, `pipeAsync`,
-  `flow`, `flowAsync`, `when`, `unless`, `struct`, `curry`, `uncurry`, `tuple`, `untuple`,
-  `identity`, `constant`, `noop`, `converge`, `juxt`, `memoize`, `tap`, `tapLog`, `on`, `flip`) (<2
-  KB gzipped).
-- **`@nlozgachev/pipelined/types`**: Compile-time branding and time/retry types (`Brand`,
-  `Duration`, `RetryPolicy`) (<450 B gzipped).
+<!-- BUNDLE_TABLE:START -->
+
+### Standalone Module Footprint (Tree-Shaken)
+
+When imported individually, only the targeted module is bundled into your application:
+
+| Import Pattern | Subpath                             | Minified + Gzipped | Raw Bytes |
+| :------------- | :---------------------------------- | :----------------- | :-------- |
+| `pipe`         | `@nlozgachev/pipelined/composition` | **142 B**          | 142 B     |
+| `flow`         | `@nlozgachev/pipelined/composition` | **173 B**          | 173 B     |
+| `Brand`        | `@nlozgachev/pipelined/types`       | **36 B**           | 36 B      |
+| `Duration`     | `@nlozgachev/pipelined/types`       | **153 B**          | 153 B     |
+| `Maybe`        | `@nlozgachev/pipelined/core`        | **1.57 kB**        | 1,568 B   |
+| `Result`       | `@nlozgachev/pipelined/core`        | **1.57 kB**        | 1,568 B   |
+| `Validation`   | `@nlozgachev/pipelined/core`        | **1.57 kB**        | 1,568 B   |
+| `RemoteData`   | `@nlozgachev/pipelined/core`        | **1.87 kB**        | 1,868 B   |
+| `Machine`      | `@nlozgachev/pipelined/core`        | **1.69 kB**        | 1,689 B   |
+| `EventBus`     | `@nlozgachev/pipelined/core`        | **1.11 kB**        | 1,106 B   |
+| `Resource`     | `@nlozgachev/pipelined/core`        | **2.32 kB**        | 2,322 B   |
+| `Task`         | `@nlozgachev/pipelined/core`        | **4.01 kB**        | 4,011 B   |
+| `Op`           | `@nlozgachev/pipelined/core`        | **5.84 kB**        | 5,843 B   |
+| `Lens`         | `@nlozgachev/pipelined/core`        | **233 B**          | 233 B     |
+| `Arr`          | `@nlozgachev/pipelined/data`        | **6.79 kB**        | 6,786 B   |
+| `Rec`          | `@nlozgachev/pipelined/data`        | **6.79 kB**        | 6,787 B   |
+| `Dict`         | `@nlozgachev/pipelined/data`        | **7.50 kB**        | 7,495 B   |
+| `Str`          | `@nlozgachev/pipelined/data`        | **7.39 kB**        | 7,388 B   |
+
+### Subpath Ceilings (Worst-Case Monolithic Imports)
+
+The upper bounds below apply only if your application imports every exported symbol from that
+subpath:
+
+| Subpath                             | Scope                                                  | Gzipped Size | Budget Limit |
+| :---------------------------------- | :----------------------------------------------------- | :----------- | :----------- |
+| `@nlozgachev/pipelined/types`       | Domain branded types and duration units                | **429 B**    | 450 B        |
+| `@nlozgachev/pipelined/composition` | Pipeline runners and composition combinators           | **1.54 kB**  | 2.00 kB      |
+| `@nlozgachev/pipelined/data`        | Bounds-safe array, record, and primitive helpers       | **9.61 kB**  | 10.00 kB     |
+| `@nlozgachev/pipelined/core`        | Monadic containers, async execution, state, and optics | **12.34 kB** | 13.00 kB     |
+| **All entry points combined**       | Monolithic import of entire library                    | **19.16 kB** | 20.00 kB     |
+
+<!-- BUNDLE_TABLE:END -->
 
 Data helpers use pre-allocated arrays and index loops where built-in methods add callback or
 allocation overhead, and delegate to native C++ methods like `.slice()` where the engine is faster.

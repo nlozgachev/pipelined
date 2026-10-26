@@ -30,7 +30,7 @@ async function bundleCode(
 	return result.outputFiles[0].text;
 }
 
-test("core: excludes Op, EventBus, and Dict when importing only Maybe", async () => {
+test("core: excludes Op, EventBus, Machine, and Dict when importing only Maybe", async () => {
 	const code = `
 		import { Maybe } from "#core";
 		const val = Maybe.make.some(42);
@@ -39,11 +39,12 @@ test("core: excludes Op, EventBus, and Dict when importing only Maybe", async ()
 	const output = await bundleCode(code);
 	expect(output).not.toContain("OpErr");
 	expect(output).not.toContain("EventBus");
+	expect(output).not.toContain("Machine");
 	expect(output).not.toContain("Dict");
 	expect(output).not.toContain("TaskValidation");
 });
 
-test("core: excludes Op and EventBus when importing only Result", async () => {
+test("core: excludes Op, EventBus, and Machine when importing only Result", async () => {
 	const code = `
 		import { Result } from "#core";
 		const res = Result.make.ok("success");
@@ -51,6 +52,7 @@ test("core: excludes Op and EventBus when importing only Result", async () => {
 	`;
 	const output = await bundleCode(code);
 	expect(output).not.toContain("EventBus");
+	expect(output).not.toContain("Machine");
 	expect(output).not.toContain("OpErr");
 	expect(output).not.toContain("TaskValidation");
 });

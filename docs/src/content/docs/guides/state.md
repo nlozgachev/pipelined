@@ -3,6 +3,12 @@ title: State — Stateful Computations
 description: Thread immutable state through a sequence of transformations cleanly, replacing local mutations and parameter drilling with pure state transitions.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 229 B minified + gzipped
+
+<!-- BUNDLE_SIZE:END -->
+
 Many programming tasks — such as parsing, sequential ID generation, and simulations — require
 updating state across a sequence of steps.
 

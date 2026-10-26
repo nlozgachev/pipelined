@@ -3,6 +3,12 @@ title: Lens — Nested Updates
 description: Focus on a required field in nested data structures to read, set, and modify values immutably.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 233 B minified + gzipped
+
+<!-- BUNDLE_SIZE:END -->
+
 Updating deeply nested properties immutably in standard TypeScript requires nested object spread
 syntax (`{ ...a, b: { ...a.b, c: ... } }`), which becomes verbose and error-prone.
 

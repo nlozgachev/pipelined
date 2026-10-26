@@ -3,6 +3,12 @@ title: Duration — Type-Safe Time
 description: A branded, compile-time type-safe representation of time quantities to prevent unit-mismatch bugs.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 153 B minified + gzipped
+
+<!-- BUNDLE_SIZE:END -->
+
 Modeling time quantities as raw `number` primitives introduces silent unit-mismatch bugs (such as
 passing seconds to a function expecting milliseconds). Because both values are typed as `number`,
 TypeScript cannot catch the error at compile time.

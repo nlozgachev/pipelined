@@ -3,6 +3,12 @@ title: Ordering — Composable Comparators
 description: Model sorting and comparisons structurally, combining sort comparators and tiebreaker rules cleanly in pipelines.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 258 B minified + gzipped
+
+<!-- BUNDLE_SIZE:END -->
+
 Sorting a collection is straightforward when we only care about a single, simple field:
 
 ```ts

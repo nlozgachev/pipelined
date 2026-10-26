@@ -3,6 +3,12 @@ title: Arr — Array Utilities
 description: Work with collections linearly, replacing data-first array method chains and unsafe undefined values with pipeline-ready, type-safe array helpers.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 6.79 kB minified + gzipped (6,786 B)
+
+<!-- BUNDLE_SIZE:END -->
+
 JavaScript arrays feature a rich built-in set of methods, yet building structured data pipelines
 with native array operations exposes two major sources of bugs and boilerplate:
 

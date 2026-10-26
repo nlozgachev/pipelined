@@ -3,6 +3,12 @@ title: Resource — Safe Lifecycle Management
 description: Guarantee that database connections, file handles, and locks are always safely closed and cleaned up, even when runtime errors occur.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 2.32 kB minified + gzipped (2,322 B)
+
+<!-- BUNDLE_SIZE:END -->
+
 Managing resources like database connections, file handles, or mutex locks requires guaranteeing
 that cleanup logic runs even if operations fail or throw runtime errors:
 

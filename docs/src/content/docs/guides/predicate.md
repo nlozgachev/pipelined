@@ -3,6 +3,12 @@ title: Predicate — Composable Logic
 description: Represent boolean checks as first-class, composable functions, combining, negating, and adapting them to richer data structures without wrapper boilerplate.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 185 B minified + gzipped
+
+<!-- BUNDLE_SIZE:END -->
+
 Boolean checks are the structural foundation of control flow. We write them everywhere: inside
 `Array.prototype.filter` callbacks, authorization gates, and conditional branch guards.
 

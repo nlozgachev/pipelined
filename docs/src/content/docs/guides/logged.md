@@ -3,6 +3,12 @@ title: Logged — Accumulated Logs
 description: Pair computations with a log that accumulates automatically as you chain transformations, keeping logging pure, testable, and side-effect-free.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 232 B minified + gzipped
+
+<!-- BUNDLE_SIZE:END -->
+
 Collecting audit logs or diagnostic traces during computations typically requires either manually
 threading an array of log messages through every function or calling impure side effects
 (`console.log`) that complicate unit testing.

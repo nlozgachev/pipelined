@@ -2,6 +2,11 @@
 title: Refinement — Type Predicates
 description: Represent type-narrowing predicates as composable, first-class values, combining checks in pipelines without losing type information.
 ---
+{/* BUNDLE_SIZE:START */}
+
+> 1.63 kB minified + gzipped (1,630 B)
+
+{/* BUNDLE_SIZE:END */}
 
 import { Aside } from '@astrojs/starlight/components'
 
@@ -30,6 +35,7 @@ type Refinement<A, B extends A> = (a: A) => a is B;
 At the runtime level, a `Refinement` is simply a standard function returning a boolean. At compile time, it is a type predicate. Because the refinement is a first-class value, we can compose, intersect, and combine checks directly without manual wrapper functions.
 
 ---
+
 
 ## Creating Refinements
 

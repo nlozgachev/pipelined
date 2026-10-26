@@ -3,6 +3,12 @@ title: Json — Safe Parsing & Stringifying
 description: Non-throwing JSON parsing and serialization returning typed Result containers.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 6.96 kB minified + gzipped (6,959 B)
+
+<!-- BUNDLE_SIZE:END -->
+
 Almost every network boundary, webhook handler, cache layer, and browser storage adapter serializes
 and deserializes JSON. Yet JavaScript's built-in `JSON.parse` and `JSON.stringify` are designed
 around runtime exceptions and untyped return values that undermine TypeScript pipelines:

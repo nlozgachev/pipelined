@@ -3,6 +3,12 @@ title: RemoteData — Loading States
 description: Explicitly model the four states of an asynchronous data lifecycle, replacing conflicting boolean flags with type-safe state transitions.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 1.87 kB minified + gzipped (1,868 B)
+
+<!-- BUNDLE_SIZE:END -->
+
 Representing asynchronous UI state with independent boolean flags (`data`, `isLoading`, `error`)
 allows impossible state combinations (such as `isLoading: true` while an `error` is displayed) and
 makes initial un-fetched states ambiguous.

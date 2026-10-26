@@ -3,6 +3,12 @@ title: Num — Number Utilities
 description: Curried arithmetic, safe parsing, rounding, formatting, clamping, range generation, and array aggregations designed for pipelines.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 7.21 kB minified + gzipped (7,212 B)
+
+<!-- BUNDLE_SIZE:END -->
+
 Working with numbers in standard JavaScript or TypeScript often leads to code cluttered with inline
 arrow functions, manual `Number.isNaN` checks, and silent runtime traps:
 

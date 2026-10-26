@@ -3,6 +3,12 @@ title: Dict — Dictionary Utilities
 description: Model key-value associations immutably, replacing mutation-based Map structures and unsafe lookups with clean, pipeline-ready dictionary helpers.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 7.50 kB minified + gzipped (7,495 B)
+
+<!-- BUNDLE_SIZE:END -->
+
 JavaScript provides two primary ways to associate keys with values: plain objects (`{}`) and the
 built-in `Map`.
 

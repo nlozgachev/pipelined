@@ -3,6 +3,12 @@ title: EventBus — Typed Event Sequences & State Reduction
 description: Decouple event emission from sequence matching, state reduction, and structural forwarding.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 1.11 kB minified + gzipped (1,106 B)
+
+<!-- BUNDLE_SIZE:END -->
+
 Applications often need to coordinate decoupled events happening in different places — such as form
 step transitions, authentication handshakes, and UI user action tracking. Standard event emitters
 leave message payloads untyped, while complex reactive stream libraries introduce heavy operator

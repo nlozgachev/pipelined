@@ -93,7 +93,9 @@ export default defineConfig({
 				{
 					label: "State & context",
 					collapsed: false,
-					items: [{ slug: "guides/reader" }, { slug: "guides/state" }, { slug: "guides/logged" }],
+					items: [{ slug: "guides/reader" }, { slug: "guides/state" }, { slug: "guides/machine" }, {
+						slug: "guides/logged",
+					}],
 				},
 				{ label: "Optics", collapsed: false, items: [{ slug: "guides/lens" }, { slug: "guides/optional" }] },
 				{

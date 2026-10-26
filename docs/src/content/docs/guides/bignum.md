@@ -3,6 +3,12 @@ title: BigNum — Arbitrary Precision Integers
 description: Pure, non-throwing utilities for safe BigInt parsing, type conversions, and data-last arithmetic.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 7.09 kB minified + gzipped (7,093 B)
+
+<!-- BUNDLE_SIZE:END -->
+
 Financial ledgers, billing engines, cryptocurrency balances, and 64-bit database snowflake IDs
 cannot safely use JavaScript's standard `number` type. Because `number` is a 64-bit IEEE-754 float,
 it suffers from two critical limitations:

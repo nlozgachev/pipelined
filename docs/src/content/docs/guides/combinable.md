@@ -3,6 +3,12 @@ title: Combinable — Combining Values
 description: Package combining operations with their neutral starting points into first-class blueprints, simplifying collection reduction.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 1.81 kB minified + gzipped (1,808 B)
+
+<!-- BUNDLE_SIZE:END -->
+
 Aggregating collections of data is a fundamental task in software engineering. Summing an array of
 invoice prices, concatenating list items into a single string, or merging a series of configuration
 profiles are structurally identical operations.

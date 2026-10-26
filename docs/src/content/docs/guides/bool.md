@@ -3,6 +3,12 @@ title: Bool — Boolean Utilities
 description: Curried boolean algebra, lazy short-circuiting, truthiness narrowing, exhaustive branching, and type-safe Maybe and Result bridges.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 7.10 kB minified + gzipped (7,098 B)
+
+<!-- BUNDLE_SIZE:END -->
+
 Working with boolean logic in standard JavaScript and TypeScript frequently leads to nested ternary
 expressions, repetitive inline arrow functions inside pipelines, and subtle coercion bugs:
 

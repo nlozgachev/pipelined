@@ -3,6 +3,12 @@ title: Reader — Shared Contexts
 description: Model computations that read from a shared environment, eliminating parameter drilling and making dependency injection clean and testable.
 ---
 
+<!-- BUNDLE_SIZE:START -->
+
+> 153 B minified + gzipped
+
+<!-- BUNDLE_SIZE:END -->
+
 Passing shared configuration, database pools, or request contexts through deep call hierarchies
 leads to parameter drilling, coupling intermediate helper functions to ambient dependencies.
 
