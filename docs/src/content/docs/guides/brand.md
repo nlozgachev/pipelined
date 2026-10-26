@@ -4,7 +4,7 @@ description: Use compile-time phantom tags to distinguish between primitive valu
 ---
 
 TypeScript uses structural typing: any `string` is compatible with every other `string`. This allows
-semantic bugs—such as passing an `OrderId` into a function expecting a `UserId`—to compile without
+semantic bugs — such as passing an `OrderId` into a function expecting a `UserId`—to compile without
 warnings.
 
 `Brand<K, T>` attaches a compile-time phantom tag `K` to an underlying type `T`, enforcing nominal

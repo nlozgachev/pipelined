@@ -5,7 +5,7 @@ description: Decouple async task definitions from execution strategies like conc
 
 import { Aside } from '@astrojs/starlight/components'
 
-Rapid asynchronous operations—such as search autocomplete—can result in out-of-order network responses overwriting newer data. Manually managing cancellation with `AbortController` and component state adds significant boilerplate.
+Rapid asynchronous operations — such as search autocomplete — can result in out-of-order network responses overwriting newer data. Manually managing cancellation with `AbortController` and component state adds significant boilerplate.
 
 `Op<Args, E, A>` decouples the asynchronous operation from its execution strategy:
 

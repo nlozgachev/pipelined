@@ -373,8 +373,8 @@ pipe(["us-east"], Arr.concat(["eu-west", "ap-south"]));
 ```
 
 To fold an array into a single summary value, use `Arr.reduce`. When you need to keep every
-intermediate accumulator state—such as computing a running account balance across a ledger of
-transactions—use `Arr.scan`:
+intermediate accumulator state — such as computing a running account balance across a ledger of
+transactions — use `Arr.scan`:
 
 ```ts
 const transactions = [100, -30, 50, -20];
@@ -395,8 +395,8 @@ const runningBalances = pipe(
 ## Chunking, Windowing, and Indexing
 
 When batching API requests or paginating datasets, `Arr.chunksOf` divides an array into fixed-size
-batches. When you instead want to group consecutive elements that share a computed property—such as
-adjacent log entries from the same service—use `Arr.chunkBy`:
+batches. When you instead want to group consecutive elements that share a computed property — such
+as adjacent log entries from the same service — use `Arr.chunkBy`:
 
 ```ts
 // Fixed-size batches of 2:
@@ -441,9 +441,9 @@ const statusCounts = Arr.frequencies(["200", "500", "200", "404", "200"]);
 
 ## Sequence Generation: unfold
 
-When generating an array from an initial seed state until a termination condition is reached—such as
-building pagination offsets or time intervals—`Arr.unfold` repeatedly invokes your step function as
-long as it returns `Some([nextItem, nextState])`:
+When generating an array from an initial seed state until a termination condition is reached — such
+as building pagination offsets or time intervals—`Arr.unfold` repeatedly invokes your step function
+as long as it returns `Some([nextItem, nextState])`:
 
 ```ts
 // Generate pagination offsets for 100 items with a page size of 25:
@@ -458,7 +458,7 @@ const pageOffsets = Arr.unfold(0, (offset) =>
 
 Mapping an array with a function that returns a `Maybe`, `Result`, `Validation`, or `Task` produces
 an array of containers such as `readonly Result<E, A>[]`. In practice, you almost always want the
-inverted structure—a single container holding the collected array (`Result<E, readonly A[]>`).
+inverted structure — a single container holding the collected array (`Result<E, readonly A[]>`).
 
 `Arr.traverse` maps and flips the container in a single operation, while `Arr.sequence` flips an
 existing array of containers.
@@ -542,9 +542,9 @@ const allHashes = Arr.sequence.Task([computeHash("doc_1"), computeHash("doc_2")]
 
 ## Non-Empty Arrays: `Arr.NonEmpty`
 
-When your domain requires an array with at least one element—such as a list of validation errors or
-line items in a confirmed order—`Arr.NonEmpty<A>` (aliased to `readonly [A, ...A[]]`) encodes that
-guarantee at compile time.
+When your domain requires an array with at least one element — such as a list of validation errors
+or line items in a confirmed order—`Arr.NonEmpty<A>` (aliased to `readonly [A, ...A[]]`) encodes
+that guarantee at compile time.
 
 Constructing an array with `Arr.prepend`, `Arr.append`, or `Arr.NonEmpty.singleton` produces an
 `Arr.NonEmpty<A>` directly. For arbitrary runtime arrays, `Arr.is.nonEmpty` narrows the type in

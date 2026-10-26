@@ -3,8 +3,8 @@ title: Rec — Record Utilities
 description: Work with plain JavaScript objects as key-value records immutably and safely inside pipelines, using data-last utilities with type-safe key lookup.
 ---
 
-Plain JavaScript objects serving as string-keyed dictionaries—typed as `Record<string, A>`—are used
-everywhere in TypeScript applications for configurations, HTTP headers, lookup tables, and JSON
+Plain JavaScript objects serving as string-keyed dictionaries — typed as `Record<string, A>`—are
+used everywhere in TypeScript applications for configurations, HTTP headers, lookup tables, and JSON
 payloads.
 
 However, working with records in standard JavaScript introduces two recurring problems:
@@ -91,7 +91,7 @@ const priceLabels = pipe(
 // { starter: "STARTER: $20/mo", pro: "PRO: $50/mo", enterprise: "ENTERPRISE: $200/mo" }
 ```
 
-When you need to rename keys across a record—such as normalizing HTTP header names or prefixing
+When you need to rename keys across a record — such as normalizing HTTP header names or prefixing
 configuration keys—`Rec.mapKeys` transforms each key while preserving its value. To transform both
 keys and values in a single pass, `Rec.mapEntries` maps each `(key, value)` pair to a new
 `[newKey, newValue]` tuple:

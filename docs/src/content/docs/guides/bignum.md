@@ -46,8 +46,8 @@ functional pipelines.
 
 ## Safe Parsing and Conversions
 
-To parse untrusted strings—such as API query parameters, JSON string fields, or database drivers
-returning 64-bit integers as text—use `BigNum.from.string`. It returns `Some(bigint)` for valid
+To parse untrusted strings — such as API query parameters, JSON string fields, or database drivers
+returning 64-bit integers as text — use `BigNum.from.string`. It returns `Some(bigint)` for valid
 integer strings and `None` for empty, whitespace-only, or malformed strings without throwing a
 `SyntaxError`:
 

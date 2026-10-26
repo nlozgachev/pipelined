@@ -101,8 +101,8 @@ pipe([], Combinable.combineAll(Combinable.sum)); // 0
 
 ## Merging Structured Records: struct
 
-When aggregating objects with multiple fields—such as service telemetry snapshots, shopping cart
-summaries, or permission sets—different fields often require different combining rules.
+When aggregating objects with multiple fields — such as service telemetry snapshots, shopping cart
+summaries, or permission sets — different fields often require different combining rules.
 `Combinable.struct` builds a `Combinable` for an entire record from field-level `Combinable`
 definitions:
 

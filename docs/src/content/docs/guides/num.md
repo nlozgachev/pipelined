@@ -30,8 +30,8 @@ function parseSliderValue(rawInput: string | undefined): number {
 ```
 
 `Num` replaces these imperative checks and silent failure modes with declarative, curried,
-**data-last** operations that model failure boundaries—such as unparseable strings, division by
-zero, or empty array aggregations—explicitly using `Maybe<number>`.
+**data-last** operations that model failure boundaries — such as unparseable strings, division by
+zero, or empty array aggregations — explicitly using `Maybe<number>`.
 
 ---
 
@@ -107,7 +107,7 @@ pipe(10, Num.remainder(0)); // None
 
 ## Rounding
 
-When converting fractional calculations into whole integers—such as calculating cent amounts, page
+When converting fractional calculations into whole integers — such as calculating cent amounts, page
 counts, or pixel coordinates—`Num.round`, `Num.floor`, and `Num.ceil` provide point-free wrappers
 around standard rounding rules:
 
