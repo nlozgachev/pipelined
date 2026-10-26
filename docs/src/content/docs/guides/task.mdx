@@ -8,15 +8,27 @@ description: Model asynchronous operations as lazy, infallible functions that ex
 
 {/* BUNDLE_SIZE:END */}
 
-JavaScript `Promise` instances execute eagerly upon creation and can reject with untyped values (`unknown`). This makes it difficult to compose async workflows before execution or track errors in type signatures.
+JavaScript `Promise` instances execute eagerly upon creation and reject with untyped values (`unknown`):
 
-`Task<A>` is a function accepting an optional `AbortSignal` and returning an infallible `Deferred<A>`:
+```ts
+// Eager execution starts immediately upon call
+const response = loadUserData(userId); // Promise<User>
+
+// Rejections are untyped — callers cannot determine error shapes from types
+try {
+  const user = await response;
+} catch (error: unknown) {
+  // error is untyped
+}
+```
+
+`Task<A>` models an asynchronous computation as a lazy, infallible function that accepts an optional `AbortSignal` and returns a `Deferred<A>`:
 
 ```ts
 type Task<A> = (signal?: AbortSignal) => Deferred<A>;
 ```
 
-Because `Task` is a function, execution is deferred until invoked. Because `Deferred<A>` is typed to never reject, failures are tracked explicitly in return types via `Task.Result<E, A>`.
+Execution is deferred until the function is called. Because `Deferred<A>` is typed never to reject, failures are tracked explicitly in return types via `Task.Result<E, A>`.
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -36,10 +48,9 @@ const timeString = await formattedTime();
 
 ---
 
-
 ## Creating Tasks
 
-We create `Task` values depending on whether the computation is already resolved, synchronous, or asynchronous:
+Task values are constructed from immediate constants, lazy synchronous thunks, or fallible promise factories:
 
 ```ts
 // Resolving immediately with a constant value
@@ -49,7 +60,7 @@ const constantTask = Task.make(42); // Task<number>
 const readClockTask = Task.from.sync(() => performance.now()); // Task<number>
 ```
 
-Because standard Promises in JavaScript can reject, `Task.tryCatch` is the canonical intake for asynchronous operations where you want to handle any failure immediately with a fallback value so the resulting `Task<A>` is guaranteed never to fail:
+For asynchronous operations that may throw or reject, `Task.tryCatch` traps errors with a fallback handler, guaranteeing the resulting `Task<A>` never rejects:
 
 ```ts
 // Trapping errors with a fallback handler
@@ -59,15 +70,25 @@ const loadConfig = Task.tryCatch(
 ); // Task<Config>
 ```
 
+If the fallback handler returns an alternative sentinel type (such as `null`), TypeScript widens the return type automatically:
+
+```ts
+// Fallback returns alternative sentinel type
+const loadOptionalConfig = Task.tryCatch(
+  () => configStore.get("default"),
+  { onError: () => null },
+); // Task<Config | null>
+```
+
 ---
 
 ## Transforming, Sequencing, and Side Effects
 
-We can transform and chain our asynchronous blueprints while they are still in their lazy, unexecuted state.
+Transformations, chains, and side-effect taps compose before execution starts.
 
 ### Transforming values with `map`
 
-`map` describes how the resolved value should change once the Task eventually runs, returning a new `Task` without triggering any execution:
+`map` transforms the resolved value once the Task runs, returning a new `Task` without initiating execution:
 
 ```ts
 const double = (n: number) => n * 2;
@@ -82,7 +103,7 @@ const result = await doubledTask(); // 10
 
 ### Sequential chains with `chain`
 
-When a transformation itself returns another `Task`, we use `chain` to execute them sequentially and flatten the resulting context:
+When a transformation returns another `Task`, `chain` sequences them in order and flattens the result:
 
 ```ts
 const getSessionUserId = (): Task<string> => Task.make("user_abc");
@@ -103,22 +124,27 @@ const prefs = await userPrefs(); // Loads userId first, then loads preferences
 
 ### Combining independent tasks with `apply`
 
-When you have a curried function inside a `Task` and want to feed multiple independent `Task` arguments into it, `Task.apply` executes the tasks in parallel and applies their resolved values:
+When a curried function is wrapped in a `Task`, `Task.apply` runs the function task and its argument tasks in parallel, applying the resolved arguments:
 
 ```ts
 const formatSummary = (region: string) => (uptimeMs: number) =>
   `[${region}] Uptime: ${uptimeMs}ms`;
+
+const detectRegionTask = Task.make("us-east-1");
+const readUptimeTask = Task.from.sync(() => 14200);
 
 const summaryTask = pipe(
   Task.make(formatSummary),
   Task.apply(detectRegionTask),
   Task.apply(readUptimeTask),
 ); // Task<string>
+
+const summary = await summaryTask(); // "[us-east-1] Uptime: 14200ms"
 ```
 
 ### Side effects with `tap`
 
-`Task.tap` runs a side-effect callback on the resolved value without altering the `Task` output:
+`Task.tap` executes a side-effect callback on the resolved value without altering the `Task` output:
 
 ```ts
 const auditedConfigTask = pipe(
@@ -131,22 +157,25 @@ const auditedConfigTask = pipe(
 
 ## Concurrency Controls
 
-Unlike raw Promises, which require manual coordination using `Promise.all` or `Promise.race`, `Task` provides composable combinators for parallel, raced, or sequential execution.
+Task provides composable combinators for parallel, raced, and sequential execution with automatic `AbortSignal` propagation.
 
 ### Parallel execution with `all`
 
 `Task.all` runs an array of Tasks simultaneously and collects all results into a typed tuple:
 
 ```ts
+const loadConfigTask = Task.make({ apiUrl: "https://api.example.com" });
+const loadUserTask = Task.make({ id: "user_1", name: "Alice" });
+
 const [config, user] = await Task.all([
   loadConfigTask,
   loadUserTask,
 ])();
 ```
 
-The return type is structurally matched to your input: passing `[Task<Config>, Task<User>]` yields a `Task<[Config, User]>` tuple.
+The return type structurally matches the input: passing `[Task<Config>, Task<User>]` yields `Task<[Config, User]>`.
 
-To prevent overwhelming resources, provide `{ concurrency }` to constrain how many tasks execute at any given moment:
+To limit concurrency, pass `{ concurrency }`:
 
 ```ts
 const userTasks = userIds.map((id) => loadUserTask(id));
@@ -160,17 +189,22 @@ const users = await Task.all(userTasks, { concurrency: 3 })();
 `Task.race` starts multiple Tasks simultaneously and resolves with the outcome of whichever Task completes first, automatically aborting the remaining in-flight tasks via their `AbortSignal`:
 
 ```ts
+const loadFromPrimaryCache = Task.delay(Duration.milliseconds(50))(Task.make("cache-hit"));
+const loadFromSecondaryCache = Task.delay(Duration.milliseconds(10))(Task.make("replica-hit"));
+
 const fastestSource = Task.race([
   loadFromPrimaryCache,
   loadFromSecondaryCache,
 ]);
 
-const data = await fastestSource(); // Whichever cache responds first
+const data = await fastestSource(); // "replica-hit"
 ```
 
-### Sequential queueing with `sequential`
+Heterogeneous task types are preserved as a union: racing `Task<number>` and `Task<string>` evaluates to `Task<number | string>`.
 
-When execution order matters, or when running tasks in parallel would trigger race conditions or overload resources, `Task.sequential` executes an array or tuple of `Task`s one at a time in submission order:
+### Sequential execution with `sequential`
+
+When execution order matters, or when parallel execution would cause race conditions, `Task.sequential` executes tasks one at a time in submission order:
 
 ```ts
 const results = await Task.sequential([
@@ -263,7 +297,7 @@ const configUrl = await pipe(
 
 ## Polling and Repetition
 
-`Task` provides built-in utilities to repeat executing a task, designed naturally around the guarantee that Tasks are infallible.
+Task provides combinators for repeating and polling operations:
 
 `repeat` executes a Task a fixed number of times, collecting all outcomes:
 
@@ -293,11 +327,15 @@ const readyState = await pipe(
 
 ## The Task Family
 
-While `Task<A>` is designed for operations that never fail, typical real-world async tasks involve network or database requests that can yield errors or empty results. For these, we use specialized namespaces within `Task`.
+Asynchronous network requests, disk operations, and external services can fail or return missing values. The Task namespace provides specialized container modules for these patterns:
+
+- `Task.Result<E, A>` for operations with typed errors.
+- `Task.Maybe<A>` for operations that may yield no value.
+- `Task.Validation<E, A>` for parallel operations that accumulate multiple errors.
 
 ### Task.Result
 
-`Task.Result<E, A>` represents a fallible async task, equivalent to `Task<Result<E, A>>` under the hood.
+`Task.Result<E, A>` is a type alias for `Task<Result<E, A>>`.
 
 #### Creating and converting `Task.Result`
 
@@ -546,9 +584,9 @@ const registerAccount = (username: string, email: string) =>
 
 ## Lazy Task Memoization: Task.memoize
 
-Because `Task` blueprints are lazy thunks, calling a task multiple times will re-trigger the underlying async computation every time.
+Calling a Task executes the underlying asynchronous computation on every invocation.
 
-`Task.memoize` (as well as `Task.Result.memoize`, `Task.Maybe.memoize`, and `Task.Validation.memoize`) creates a memoized task that executes the operation at most once on the first call and caches the resolved result for all subsequent calls:
+`Task.memoize` (along with `Task.Result.memoize`, `Task.Maybe.memoize`, and `Task.Validation.memoize`) caches the resolved result on the first call, returning it immediately on subsequent calls without re-executing:
 
 ```ts
 const loadToken = Task.memoize(
@@ -569,9 +607,7 @@ const token2 = await loadToken();
 
 ## Accumulating values: bind / bindTo
 
-When you need to perform multiple sequential asynchronous operations and gather their results into a single object, nesting `chain` and `map` inside pipelines can become hard to read.
-
-You can use `bindTo` and `bind` to cleanly accumulate asynchronous values key-by-key in a flat, readable pipeline. These helpers are available across `Task`, `Task.Result`, and `Task.Maybe`.
+Sequential asynchronous operations that build up a combined record can be expressed with `bindTo` and `bind` without nested callbacks. Available across `Task`, `Task.Result`, and `Task.Maybe`:
 
 `bindTo` wraps an asynchronous value into the pipeline's accumulator object:
 
@@ -599,9 +635,9 @@ If any step fails (yielding `None` in `Task.Maybe` or `Err` in `Task.Result`), t
 
 ## Combining async records: struct
 
-While `bind` is ideal for sequential steps where a later step depends on the output of a prior step, sometimes you have a set of independent asynchronous tasks that you want to combine into a single object. For this, you can use the `struct` helper, which is available on `Task.Result`, `Task.Maybe`, and `Task.Validation`.
+For independent asynchronous tasks that can execute in parallel, `struct` combines a record of tasks into a single task holding a record of success values. Available on `Task.Result`, `Task.Maybe`, and `Task.Validation`.
 
-`struct` combines a record of async tasks into a single task holding a record of success values. Under the hood, **it evaluates all tasks in parallel** while forwarding the `AbortSignal` down to each sub-task.
+All fields evaluate in parallel, forwarding the `AbortSignal` down to each sub-task:
 
 ### With Task.Result
 If any individual field resolves to an `Err`, the entire struct short-circuits to that error. If multiple fields fail, `Task.Result.struct` returns the first error encountered in key order:
@@ -625,7 +661,7 @@ const profileTask = Task.Maybe.struct({
 ```
 
 ### With Task.Validation
-Evaluates validations in parallel and **accumulates all validation errors** across all failed branches, rather than short-circuiting:
+Evaluates validations in parallel and accumulates all validation errors across all failed branches, rather than short-circuiting:
 
 ```ts
 const validationTask = Task.Validation.struct({
@@ -657,7 +693,8 @@ const profilePromise = Deferred.to.Promise(fetchProfile("123")()); // Promise<Re
 ## Problems it solves
 
 - **Composing lazy asynchronous workflows**: In background workers and server endpoints, asynchronous pipelines often involve multiple sequential steps (such as acquiring auth tokens, querying profile data, fetching permission lists, and writing audit records). Native promises execute eagerly upon creation. `Task` encapsulates asynchronous operations as lazy descriptions, enabling modular pipeline composition and transformation before initiating network or I/O work.
-- **Coordinated concurrency and fallback racing**: When aggregating data across distributed backends or caching layers, applications need fine-grained concurrency control. `Task` provides structured combinators like `Task.all` for parallel fan-out, `Task.race` for racing primary against fallback sources, and `Task.sequential` for queue execution, all while preserving functional purity.
-- **Compiler-enforced async error handling with `Task.Result`**: Network calls and disk I/O naturally produce domain failures. Standard `Promise.reject` discards TypeScript type information, allowing unhandled rejections to bubble up. `Task.Result` pairs lazy asynchronous execution with typed errors, ensuring the outer task always resolves safely while forcing callers to handle specific failure variants.
+- **Coordinated concurrency and fallback racing**: When aggregating data across distributed backends or caching layers, applications need fine-grained concurrency control. `Task` provides structured combinators like `Task.all` for parallel fan-out, `Task.race` for racing primary against fallback sources, and `Task.sequential` for queue execution, without mutating external state before execution.
+- **Compiler-enforced async error handling with `Task.Result`**: Network calls and disk I/O produce domain failures. Standard `Promise.reject` discards TypeScript type information, allowing unhandled rejections to bubble up. `Task.Result` pairs lazy asynchronous execution with typed errors, ensuring the outer task always resolves safely while forcing callers to handle specific failure variants.
 - **Time-bound operations and scheduled polling (`Task.timeout`, `Task.delay`, `Task.repeat`, `Task.poll`)**: Wrapping external network calls with timeout boundaries typically involves race boilerplate with `setTimeout` and cleanup listeners. `Task.timeout` and `Task.Result.timeout` attach strict duration limits returning typed `Result` errors on expiration, while `Task.delay`, `Task.repeat`, and `Task.poll` configure scheduled interval polling cleanly.
 - **Asynchronous optionality with `Task.Maybe`**: When loading cached tokens or reading optional database settings asynchronously, missing entries are expected. `Task.Maybe` threads async execution and optional absence together, allowing callers to map, chain, and recover without nested promise-and-null checks.
+

@@ -10,17 +10,122 @@ description: Decouple async task definitions from execution strategies like conc
 
 import { Aside } from '@astrojs/starlight/components'
 
-Rapid asynchronous operations — such as search autocomplete — can result in out-of-order network responses overwriting newer data. Manually managing cancellation with `AbortController` and component state adds significant boilerplate.
+Managing asynchronous workflows in frontend components or backend services usually couples task logic directly to execution controls. Consider a standard search-as-you-type input written in vanilla TypeScript:
 
-`Op<Args, E, A>` decouples the asynchronous operation from its execution strategy:
+```ts
+// The fragile status quo: manual AbortController and boolean flags
+let currentController: AbortController | null = null;
+let isLoading = false;
+let searchResults: readonly string[] = [];
+let searchError: string | null = null;
 
-*   **Task Definition**: The core asynchronous work is defined once using `Op.make`.
-*   **Execution Strategy**: Concurrency models (`restartable`, `exclusive`, `concurrent`), retries with backoff, and timeouts are configured via `Op.interpret`.
+async function handleSearch(query: string) {
+  // Cancel previous request if user typed again
+  if (currentController) {
+    currentController.abort();
+  }
+  currentController = new AbortController();
+  isLoading = true;
+  searchError = null;
+
+  try {
+    const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
+      signal: currentController.signal,
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    searchResults = (await response.json()) as readonly string[];
+  } catch (error: unknown) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      // Ignored, but what about isLoading?
+      return;
+    }
+    searchError = error instanceof Error ? error.message : String(error);
+  } finally {
+    // BUG: When an earlier request is aborted, its finally block runs immediately,
+    // flipping isLoading to false while the newer request is still in flight!
+    isLoading = false;
+  }
+}
+```
+
+This pattern exposes four critical failure modes in production:
+
+1. **The `finally` state race**: When a user types a new character, the previous request is aborted. Its `finally` block runs immediately and resets `isLoading = false`, hiding the loading indicator while the second request is still waiting for network bytes.
+2. **Out-of-order response overwrites**: If a developer forgets the `AbortController` entirely, a slower response from an earlier short query (`"ca"`) can resolve after a faster response from a longer query (`"cat"`), overwriting fresh results with stale data.
+3. **Contradictory state flags**: Juggling separate `isLoading`, `searchError`, and `searchResults` variables allows impossible states to render (such as an error banner appearing alongside stale data while a spinner is active).
+4. **Coupled execution logic**: Switching from "cancel previous" (`restartable`) to "ignore clicks while submitting" (`exclusive` for checkout buttons) requires rewriting the entire control flow from scratch with guard flags and manual timers.
+
+`Op<Args, E, A>` decouples the **what** (the core asynchronous task) from the **how** (the execution strategy). You describe the asynchronous work once with `Op.make`, then configure concurrency, retries, and timeouts declaratively with `Op.interpret`.
 
 ---
 
+## Type Structure & Mental Model
 
-## Creating an Op
+`Op` separates asynchronous coordination into two distinct layers: the task definition and the stateful manager.
+
+```mermaid
+flowchart TD
+    A["1. Op.make"] -->|"Define core async work"| B["2. Op.interpret"]
+    B -->|"Configure concurrency strategy"| C["3. manager.subscribe"]
+    C -->|"Observe lifecycle transitions"| D["4. manager.run"]
+    D -->|"Every invocation settles"| E{"Op.Outcome"}
+    E -->|"Success"| Ok["OpOk A"]
+    E -->|"Typed Failure"| Err["OpErr E"]
+    E -->|"Cancelled or Dropped"| Nil["OpNil reason"]
+```
+
+### The Task Definition (`Op<Args, E, A>`)
+
+An `Op<Args, E, A>` is an immutable blueprint for fallible asynchronous work. It accepts an `AbortSignal` and your domain arguments, returning a promise. It never runs on its own:
+
+```ts
+import { Op } from "@nlozgachev/pipelined/core";
+
+// Op<[query: string], ApiError, readonly User[]>
+```
+
+### The Execution Manager (`Op.Manager<Args, E, A>`)
+
+Created by passing an `Op` blueprint to `Op.interpret(op, options)`. The manager owns the active state machine, enforces your chosen concurrency model (`restartable`, `exclusive`, `queue`, `buffered`, `debounced`, `throttled`, `concurrent`, `keyed`, `once`), and coordinates subscriptions.
+
+### The Lifecycle State (`Op.State<E, A>`)
+
+The manager transitions through observable lifecycle states:
+
+```ts
+type State<E, A> =
+  | { readonly kind: "Idle" }
+  | { readonly kind: "Pending" }
+  | { readonly kind: "Queued"; readonly position: number }
+  | {
+    readonly kind: "Retrying";
+    readonly attempt: number;
+    readonly lastError: E;
+    readonly nextRetryIn: Duration;
+  }
+  | Outcome<E, A>;
+```
+
+### The Tri-State Outcome (`Op.Outcome<E, A>`)
+
+Every invocation triggered via `manager.run(...args)` returns a promise (`Deferred<Op.Outcome<E, A>>`) that is **guaranteed to settle**. Invocations never hang or reject unexpectedly. Every run settles into one of three variants:
+
+```ts
+type Outcome<E, A> =
+  | { readonly kind: "OpOk"; readonly value: A }
+  | { readonly kind: "OpErr"; readonly error: E }
+  | { readonly kind: "OpNil"; readonly reason: NilReason };
+
+type NilReason = "aborted" | "dropped" | "replaced" | "evicted";
+```
+
+- `OpOk`: The operation completed successfully with value `A`.
+- `OpErr`: The operation failed with a typed domain error `E`.
+- `OpNil`: The operation did not finish because the concurrency strategy cancelled, dropped, replaced, or evicted it.
+
+---
+
+## Creating Operations
 
 `Op.make` defines an operation by accepting an asynchronous runner function and an error options object:
 
@@ -28,8 +133,8 @@ Rapid asynchronous operations — such as search autocomplete — can result in 
 import { Op } from "@nlozgachev/pipelined/core";
 
 interface User {
-  id: string;
-  name: string;
+  readonly id: string;
+  readonly name: string;
 }
 
 type ApiError = {
@@ -42,7 +147,7 @@ const toApiError = (error: unknown): ApiError => ({
   message: error instanceof Error ? error.message : String(error),
 });
 
-const fetchUser = Op.make(
+const fetchUserOp = Op.make(
   (signal) => (id: string) =>
     fetch(`/users/${id}`, { signal }).then((r) => {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -60,68 +165,48 @@ If the async function is defined elsewhere with signal curried first, you can pa
 const getUserData = (signal: AbortSignal) => (id: string): Promise<User> =>
   fetch(`/users/${id}`, { signal }).then((r) => r.json());
 
-const fetchUserOp = Op.make(getUserData, {
+const fetchUserFromService = Op.make(getUserData, {
   onError: toApiError,
 });
 ```
 
 <Aside type="caution">
-The `AbortSignal` is required for concurrency strategies to cancel obsolete in-flight requests. Ignoring the signal allows underlying operations to continue running, wasting bandwidth.
+The `AbortSignal` is required for concurrency strategies to cancel obsolete in-flight requests. Ignoring the signal allows underlying operations to continue running, wasting bandwidth and server resources.
 </Aside>
 
-`Op` definitions are lazy blueprints; execution begins only when interpreted and triggered.
+### Lifting Plain Async Functions with `Op.lift`
 
-### Lifting plain async functions with `lift`
-
-If you are writing a quick utility or do not require a typed error channel, you can lift a plain async function using `Op.lift`. Any rejection is captured as `Err<unknown>` automatically:
+For rapid prototyping or utilities where typed domain error mapping is unnecessary, `Op.lift` wraps a plain async function. Any uncaught rejection is captured automatically as `Err<unknown>`:
 
 ```ts
-const quickSearch = Op.interpret(
-  Op.lift((signal) => (query: string) =>
-    fetch(`/search?q=${query}`, { signal }).then((r) => r.json()),
-  ),
-  { strategy: "restartable" },
+const quickSearchOp = Op.lift(
+  (signal) => (query: string) =>
+    fetch(`/search?q=${encodeURIComponent(query)}`, { signal }).then((r) => r.json()),
 );
 ```
 
 ---
 
-## The Asynchronous Lifecycle
+## The Execution Lifecycle & Type Guards
 
-Four steps take you from a raw, uncancellable fetch to a managed UI flow:
-
-```mermaid
-flowchart TD
-    A[1. Op.make] -->|Describe the work once| B[2. Op.interpret]
-    B -->|Select a concurrency strategy| C[3. manager.subscribe]
-    C -->|Listen to loading and outcome states| D[4. manager.run]
-    D -->|Execute operation| E{Outcome}
-    E -->|Success| Ok[Ok A]
-    E -->|Failure| Err[Err E]
-    E -->|Cancelled or Dropped| Nil[Nil reason]
-```
-
-1.  **Define (`Op.make`)**: Describe the core async task once.
-2.  **Interpret (`Op.interpret`)**: Choose a concurrency and lifecycle strategy, returning a manager.
-3.  **Subscribe (`manager.subscribe`)**: Attach listeners to react to active states and settled outcomes.
-4.  **Run (`manager.run`)**: Trigger the operation with input arguments.
+To execute an operation, interpret it with a concurrency strategy and trigger `run()`:
 
 ```ts
-// 2. Choose our strategy
+// 1. Choose strategy and create manager
 const userManager = Op.interpret(fetchUserOp, { strategy: "exclusive" });
 
-// 3. Listen to transitions
+// 2. Subscribe to state transitions
 userManager.subscribe((state) => {
   if (Op.is.pending(state)) showSpinner();
   if (Op.Outcome.is.ok(state)) renderProfile(state.value);
   if (Op.Outcome.is.err(state)) showError(state.error.message);
 });
 
-// 4. Trigger execution
+// 3. Trigger execution
 userManager.run("user_123");
 ```
 
-### Inspecting lifecycle states with `Op.is`
+### Inspecting Lifecycle States with `Op.is`
 
 The manager state transitions through active states before settling into an `Op.Outcome`. Use the `Op.is` type guards to inspect the manager's lifecycle stage:
 
@@ -143,85 +228,29 @@ userManager.subscribe((state) => {
 
 ---
 
-## The Three Outcomes: Ok, Err, and Nil
-
-Every time you call `run()`, the invocation eventually settles into one of three outcomes: `Ok<A>`, `Err<E>`, or `Nil`.
-
-`Ok` and `Err` represent standard success and failure. `Nil` models situations where an invocation did not complete because the concurrency strategy cancelled, dropped, or bypassed it.
-
-To help you diagnose what happened, the `Nil` variant carries a precise `reason`:
-
-*   `"aborted"` — `manager.abort()` was called explicitly.
-*   `"dropped"` — the invocation was ignored because the strategy was busy and had no remaining capacity.
-*   `"replaced"` — a newer `run()` call executed, cancelling this in-flight invocation.
-*   `"evicted"` — the invocation was removed from a waiting queue or buffer before it started executing.
-
-### Working with `Op.Outcome`
-
-`Op.Outcome` is a complete container namespace with its own constructors (`make.ok`, `make.err`, `make.nil`), type guards (`is.ok`, `is.err`, `is.nil`), transformations (`map`, `mapError`, `chain`, `recover`), side-effect taps (`tap`, `tapError`), eliminators (`match`, `getOrElse`), and converters (`to.Result`, `to.Maybe`, `from.Result`, `from.Maybe`).
-
-```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Op } from "@nlozgachev/pipelined/core";
-
-const outcome = await userManager.run("user_123");
-
-const displayName = pipe(
-  outcome,
-  Op.Outcome.map((user) => user.name.trim()),
-  Op.Outcome.mapError((err) => ({ ...err, message: `[UserLookup] ${err.message}` })),
-  Op.Outcome.tap((name) => console.info("Loaded user:", name)),
-  Op.Outcome.tapError((err) => console.error("Failed:", err.message)),
-  Op.Outcome.recover((err) =>
-    err.message.includes("HTTP 404")
-      ? Op.Outcome.make.ok("Anonymous User")
-      : Op.Outcome.make.err(err)
-  ),
-  Op.Outcome.getOrElse(() => "Fallback User"),
-);
-```
-
-When you need to sequence another operation that returns an `Op.Outcome` or handle all three branches explicitly, use `Op.Outcome.chain` and `Op.Outcome.match`:
-
-```ts
-const validateLoadedUser = (user: User): Op.Outcome<ApiError, User> =>
-  user.name.length > 0
-    ? Op.Outcome.make.ok(user)
-    : Op.Outcome.make.err({ kind: "ApiError", message: "Empty user name" });
-
-const statusBanner = pipe(
-  outcome,
-  Op.Outcome.chain(validateLoadedUser),
-  Op.Outcome.match({
-    ok: (user) => `Welcome back, ${user.name}`,
-    err: (err) => `Alert: ${err.message}`,
-    nil: (reason) => `Request skipped (${reason})`,
-  }),
-);
-```
-
----
-
 ## Choosing a Concurrency Strategy
 
 The execution strategy dictates what happens when `run()` is triggered while an existing operation is already in flight.
 
-### Single-execution and one-at-a-time strategies
+### Single-Execution & Exclusive Strategies
 
-- **`once`**: Fires at most once. Only the first `run()` executes, and all subsequent calls resolve immediately to `Nil` (`reason: "dropped"`). Once the first invocation finishes, its settled state is cached permanently (until `manager.reset()` is called). Use `once` for app bootstrap and initial configuration loads.
 - **`restartable`**: New calls immediately abort any active in-flight request (`reason: "replaced"`) and start a fresh run. Only the latest invocation ever completes. Use `restartable` for autocomplete inputs, search boxes, and tab switching.
 - **`exclusive`**: New calls are ignored (`reason: "dropped"`) while an operation is actively in flight. The active request always runs to completion. Use `exclusive` for form submissions and payment checkouts to prevent double-submits.
-- **`queue`**: Calls are placed in a FIFO queue (`Queued` state) and executed sequentially in the order they were submitted. Supports optional `maxSize`, `overflow` (`"drop"` or `"replace-last"`), `concurrency`, and `dedupe`.
+- **`once`**: Fires at most once. Only the first `run()` executes, and all subsequent calls resolve immediately to `Nil` (`reason: "dropped"`). Once the first invocation finishes, its settled state is cached permanently (until `manager.reset()` is called). Use `once` for app bootstrap and initial configuration loads.
+
+### Queuing & Draft Buffering Strategies
+
+- **`queue`**: Calls are placed in a FIFO queue (`Queued` state) and executed sequentially in the order they were submitted. Supports optional `maxSize`, `overflow` (`"drop"` or `"replace-last"`), `concurrency`, and `dedupe`. Ideal for transactional batch steps and offline sync queues.
 - **`buffered`**: Maintains 1 active execution slot and a waiting buffer (default size 1). When a new call arrives while one is already waiting, the older waiting call is evicted (`reason: "evicted"`) and replaced by the latest call. Use `buffered` for auto-saving editor drafts.
 
-### Rate-limiting and parallel strategies
+### Rate-Limiting & Parallel Strategies
 
-- **`debounced`**: Waits for a quiet period of `duration` before starting execution. Every new call resets the timer and evicts the previous pending call (`reason: "evicted"`). Supports optional `leading: true` and `maxWait`.
+- **`debounced`**: Waits for a quiet period of `duration` before starting execution. Every new call resets the timer and evicts the previous pending call (`reason: "evicted"`). Supports optional `leading: true` and `maxWait`:
 
 ```ts
 import { Duration } from "@nlozgachev/pipelined/types";
 
-const debouncedSearch = Op.interpret(searchUsersOp, {
+const debouncedSearch = Op.interpret(quickSearchOp, {
   strategy: "debounced",
   duration: Duration.milliseconds(250),
 });
@@ -276,23 +305,26 @@ userProfileManager.run("user_b"); // Starts slot 'user_b' in parallel
 The manager returned by `Op.interpret` owns the active state machine. You can subscribe to state changes, read `manager.state` synchronously, or cancel in-flight work:
 
 ```ts
-const manager = Op.interpret(searchUsersOp, { strategy: "restartable" });
+const manager = Op.interpret(fetchUserOp, { strategy: "restartable" });
 
 manager.subscribe((state) => {
   if (Op.is.pending(state)) showSpinner();
-  if (Op.Outcome.is.ok(state)) renderList(state.value);
+  if (Op.Outcome.is.ok(state)) renderProfile(state.value);
   if (Op.Outcome.is.nil(state)) clearUI();
 });
 ```
 
-The `manager.state` property is always available for synchronous reads, making it straightforward to bind to UI frameworks:
+The `manager.state` property is always available for synchronous reads, making it straightforward to bind to reactive UI frameworks:
 
 ```ts
-// React Integration
-const state = useSyncExternalStore(
-  (onStoreChange) => manager.subscribe(onStoreChange),
-  () => manager.state,
-);
+import { useSyncExternalStore } from "react";
+
+function useUserProfile(manager: typeof userManager) {
+  return useSyncExternalStore(
+    (onStoreChange) => manager.subscribe(onStoreChange),
+    () => manager.state,
+  );
+}
 ```
 
 - **`manager.abort()`**: Cancels any active or queued executions immediately, resolving their callers with `Nil` (`reason: "aborted"`). On a `keyed` manager, `manager.abort(key)` aborts a specific key, or `manager.abort()` aborts all keys.
@@ -301,7 +333,7 @@ const state = useSyncExternalStore(
 
 ---
 
-## Per-Invocation Awaiting and Concurrency
+## Per-Invocation Awaiting & Settlement Invariant
 
 Every time you invoke `manager.run(...args)`, it returns a `Deferred` value that resolves to the specific settled outcome (`Op.Outcome`) of that invocation. Even if an invocation is replaced or aborted by a subsequent call, its promise is guaranteed to settle with `Nil` rather than hanging:
 
@@ -328,7 +360,7 @@ const [profile, settings] = await Deferred.all([
 
 ---
 
-## Retry and Timeout Policies
+## Declarative Resilience: Retries & Timeouts
 
 Retries and timeouts are configured declaratively at interpretation time, keeping operational concerns out of your core async definitions:
 
@@ -346,19 +378,72 @@ const paymentManager = Op.interpret(submitPaymentOp, {
     duration: Duration.seconds(10),
     onTimeout: (): ApiError => ({
       kind: "ApiError",
-      message: "Transaction timed out",
+      message: "Transaction timed out after 10s",
     }),
   },
 });
 ```
 
-If a retry policy is active, the manager's state union automatically includes `Op.Retrying<E>` between attempts, allowing the UI to inspect `state.attempt` and `state.lastError`.
+If a retry policy is active, the manager's state union automatically includes `Op.Retrying<E>` between attempts, allowing the UI to inspect `state.attempt`, `state.lastError`, and `state.nextRetryIn`.
+
+---
+
+## Working with `Op.Outcome`
+
+`Op.Outcome` is a complete container namespace with constructors (`make.ok`, `make.err`, `make.nil`), type guards (`is.ok`, `is.err`, `is.nil`), transformations (`map`, `mapError`, `chain`, `recover`), side-effect taps (`tap`, `tapError`), and eliminators (`match`, `getOrElse`).
+
+The `Nil` variant carries a precise `reason` explaining why the invocation did not finish:
+
+- `"aborted"` — `manager.abort()` was called explicitly.
+- `"dropped"` — the invocation was ignored because the strategy had no remaining capacity.
+- `"replaced"` — a newer `run()` call executed, cancelling this in-flight invocation.
+- `"evicted"` — the invocation was removed from a waiting queue or buffer before starting.
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Op } from "@nlozgachev/pipelined/core";
+
+const outcome = await userManager.run("user_123");
+
+const displayName = pipe(
+  outcome,
+  Op.Outcome.map((user) => user.name.trim()),
+  Op.Outcome.mapError((err) => ({ ...err, message: `[UserLookup] ${err.message}` })),
+  Op.Outcome.tap((name) => console.info("Loaded user:", name)),
+  Op.Outcome.tapError((err) => console.error("Failed:", err.message)),
+  Op.Outcome.recover((err) =>
+    err.message.includes("HTTP 404")
+      ? Op.Outcome.make.ok({ id: "anon", name: "Guest User" })
+      : Op.Outcome.make.err(err)
+  ),
+  Op.Outcome.getOrElse(() => ({ id: "fallback", name: "Default User" })),
+);
+```
+
+When sequencing another fallible step that returns an `Op.Outcome` or handling all three branches explicitly, use `Op.Outcome.chain` and `Op.Outcome.match`:
+
+```ts
+const validateUser = (user: User): Op.Outcome<ApiError, User> =>
+  user.name.length > 0
+    ? Op.Outcome.make.ok(user)
+    : Op.Outcome.make.err({ kind: "ApiError", message: "Empty user name" });
+
+const statusMessage = pipe(
+  outcome,
+  Op.Outcome.chain(validateUser),
+  Op.Outcome.match({
+    ok: (user) => `Welcome back, ${user.name}`,
+    err: (err) => `Alert: ${err.message}`,
+    nil: (reason) => `Request skipped (${reason})`,
+  }),
+);
+```
 
 ---
 
 ## Outcome Conversions and Wiring
 
-At system boundaries, you can convert between `Op.Outcome` and `Result` or `Maybe`:
+At system boundaries, convert between `Op.Outcome` and `Result` or `Maybe`:
 
 - **`Op.Outcome.to.Result(onNil)`**: Maps `Ok` to `Ok`, `Err` to `Err`, and `Nil` to `Err(onNil(reason))`.
 - **`Op.Outcome.to.Maybe(outcome)`**: Maps `Ok` to `Some`, and maps both `Err` and `Nil` to `None`.
@@ -385,12 +470,61 @@ const fromMay = Op.Outcome.from.Maybe(Maybe.make.none(), () => "aborted"); // Op
 To trigger a downstream manager or side effect automatically whenever a source manager settles with `Ok`, use `Op.wire`:
 
 ```ts
-const stopWire = Op.wire(searchManager, (users) => auditManager.run(users));
+const stopWire = Op.wire(userManager, (user) => auditLogManager.run(user.id));
 ```
 
 ---
 
-## Problems it solves
+## Composing Outcome Pipelines
+
+Here is an end-to-end example processing an order checkout. It awaits an exclusive payment submission, verifies discount codes, recovers from non-fatal inventory alerts, logs auditing records, and extracts a customer confirmation banner:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Op } from "@nlozgachev/pipelined/core";
+
+interface OrderReceipt {
+  readonly orderId: string;
+  readonly amount: number;
+  readonly appliedCoupon?: string;
+}
+
+type CheckoutError = {
+  readonly kind: "PaymentDeclined" | "InventoryLocked";
+  readonly message: string;
+};
+
+const verifyCoupon = (receipt: OrderReceipt): Op.Outcome<CheckoutError, OrderReceipt> =>
+  receipt.amount >= 0
+    ? Op.Outcome.make.ok(receipt)
+    : Op.Outcome.make.err({ kind: "PaymentDeclined", message: "Invalid order amount" });
+
+async function processCheckout(cartId: string): Promise<string> {
+  const outcome = await checkoutManager.run(cartId);
+
+  return pipe(
+    outcome,
+    Op.Outcome.chain(verifyCoupon),
+    Op.Outcome.tap((receipt) => {
+      telemetryManager.run({ event: "order_completed", orderId: receipt.orderId });
+    }),
+    Op.Outcome.recover((error) =>
+      error.kind === "InventoryLocked"
+        ? Op.Outcome.make.ok({ orderId: "BACKORDER", amount: 0 })
+        : Op.Outcome.make.err(error)
+    ),
+    Op.Outcome.match({
+      ok: (receipt) => `Order confirmed: ${receipt.orderId}`,
+      err: (err) => `Checkout error: ${err.message}`,
+      nil: (reason) => `Checkout halted (${reason})`,
+    }),
+  );
+}
+```
+
+---
+
+## Problems It Solves
 
 - **Search-as-you-type and tab navigation without network race conditions (`restartable`)**: In autocomplete inputs or rapid tab navigation, fast user actions fire multiple overlapping HTTP requests. Slower earlier responses often arrive after newer ones, overwriting fresh data with stale results. Setting `strategy: "restartable"` automatically aborts previous in-flight HTTP requests via `AbortSignal`, freeing up browser socket connections and guaranteeing only the latest network response updates state.
 - **Preventing duplicate mutation requests and double charges (`exclusive`)**: Rapidly clicking payment, checkout, or delete buttons can send duplicate HTTP POST/PUT requests to backend servers. Setting `strategy: "exclusive"` ignores subsequent triggers while a network mutation is actively in flight, structurally eliminating duplicate API submissions without manual component boolean flags.

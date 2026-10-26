@@ -9,17 +9,58 @@ description: Collect all validation failures in one pass, ensuring a complete ov
 
 <!-- BUNDLE_SIZE:END -->
 
-Using fail-fast error structures (`Result`, `try/catch`) for form or schema validation
-short-circuits on the first failure, hiding subsequent field errors until previous ones are
-corrected.
+When validating incoming data — such as a user registration form, a configuration file, or an API
+request body — a payload often contains multiple invalid fields simultaneously. Standard JavaScript
+error-handling patterns rely on exceptions or early return statements:
 
-`Validation<E, A>` models validation outcomes as a discriminated union: `Passed<A>` (valid value) or
-`Failed<E>` (accumulated non-empty list of errors). Instead of short-circuiting, it evaluates
-independent checks and merges all failures together.
+```ts
+function validateRegistration(input: { username: string; email: string; age: number }) {
+  if (input.username.length < 3) {
+    throw new Error("Username must be at least 3 characters");
+  }
+  if (!input.email.includes("@")) {
+    throw new Error("Email must contain an @ symbol");
+  }
+  if (input.age < 18) {
+    throw new Error("User must be at least 18 years old");
+  }
+  return input;
+}
+```
+
+This fail-fast approach short-circuits on the first failure. If a user submits a form with an
+invalid username, an invalid email, and an invalid age, the function throws immediately on the
+username. The caller never discovers the email and age errors until the user corrects the username
+and submits again. In web forms, this forces users into a frustrating cycle of submitting, fixing
+one field, submitting again, and finding another error.
+
+Developers often attempt to solve this by creating an imperative error array:
+
+```ts
+function validateRegistrationImperative(input: { username: string; email: string; age: number }) {
+  const errors: string[] = [];
+  if (input.username.length < 3) errors.push("Username must be at least 3 characters");
+  if (!input.email.includes("@")) errors.push("Email must contain an @ symbol");
+  if (input.age < 18) errors.push("User must be at least 18 years old");
+
+  if (errors.length > 0) {
+    return { success: false as const, errors };
+  }
+  return { success: true as const, data: input };
+}
+```
+
+While this accumulates all errors, it loses composition. Combining checks across multiple functions
+requires manually merging arrays, passing error lists through arguments, and handling boilerplate
+status checks at every call site.
+
+`Validation<E, A>` models validation outcomes as a discriminated union: `Passed<A>` representing a
+valid value, or `Failed<E>` representing an accumulated list of errors. Instead of short-circuiting
+on the first failure, it evaluates independent checks and merges all accumulated errors together.
 
 ```mermaid
 flowchart TD
-    Check1([Check Name]) --> Combine{Combine All Checks}
+    Check1([Check Username]) --> Combine{Combine All Checks}
     Check2([Check Email]) --> Combine
     Check3([Check Age]) --> Combine
     Combine -->|All Pass| Passed[Passed Record]
@@ -33,50 +74,54 @@ import { Validation } from "@nlozgachev/pipelined/core";
 export type Validation<E, A> = Validation.Passed<A> | Validation.Failed<E>;
 ```
 
+Failures in `Validation` are stored inside an `Arr.NonEmpty<E>` (an array guaranteed to hold at
+least one element). This prevents empty error states at compile time.
+
 ---
 
 ## Creating Validations
 
-To begin validating, we wrap our data checks into the `Validation` context:
+Validation instances represent either a verified value or an initial failure.
 
 ```ts
 import { Validation } from "@nlozgachev/pipelined/core";
 
-// Representing a successful validation check
+// Successful validation check
 const pass = Validation.make.passed("Alice"); // Validation<never, string>
 
-// Representing a single failure
+// Single validation failure
 const fail = Validation.make.failed("Username must be at least 3 characters"); // Validation<string, never>
 ```
 
-Under the hood, all failures in `Validation` are collected inside an `Arr.NonEmpty` (a type-safe
-array guaranteed to contain at least one element). When you call `Validation.make.failed(err)`, the
-library automatically wraps your error in an array container.
+When you call `Validation.make.failed(err)`, the library automatically wraps the error in a
+single-element `Arr.NonEmpty` array.
 
-If you already have an array of errors and want to wrap it directly, you can use `failedAll`:
+If you already have an array of errors, wrap it directly with `failedAll`:
 
 ```ts
 const multipleFails = Validation.make.failedAll([
-  "Email is malformed",
   "Email domain is not allowed",
+  "Email address has expired",
 ]);
 ```
 
 ### Constructing checks with `from.Predicate`, `from.nullable`, and `tryCatch`
 
-You can build reusable, rule-specific validation checkers using `from.Predicate`:
+Build reusable rule checkers from boolean conditions using `from.Predicate`:
 
 ```ts
 const validatePasswordLength = Validation.from.Predicate(
   (s: string) => s.length >= 8,
   (s) => `Password of length ${s.length} is too short (minimum 8 characters)`,
 );
+
+validatePasswordLength("secret123"); // Passed("secret123")
+validatePasswordLength("short"); // Failed(["Password of length 5 is too short (minimum 8 characters)"])
 ```
 
-The second argument receives the original input, allowing you to format descriptive, clear feedback
-for your users.
+The second argument receives the original input, allowing you to format descriptive error messages.
 
-To validate that a nullable input is present, use `Validation.from.nullable`:
+To validate that an input is not null or undefined, use `Validation.from.nullable`:
 
 ```ts
 const requireTaxId = Validation.from.nullable(() => "Tax ID is required");
@@ -85,8 +130,8 @@ requireTaxId("XX-12345"); // Passed("XX-12345")
 requireTaxId(null); // Failed(["Tax ID is required"])
 ```
 
-When a validation step involves calling a synchronous parser that throws on invalid input (such as
-`new URL(...)` or `JSON.parse`), use `Validation.tryCatch`:
+When a validation step calls a parser that throws on invalid input (such as `new URL(...)` or
+`JSON.parse`), use `Validation.tryCatch`:
 
 ```ts
 const validateWebhookUrl = (raw: string): Validation<string, URL> =>
@@ -98,7 +143,7 @@ const validateWebhookUrl = (raw: string): Validation<string, URL> =>
 
 ### Inspecting with type guards: `is.passed` and `is.failed`
 
-When you need to check a `Validation` outcome imperatively, use `Validation.is.passed` and
+When inspecting a `Validation` outcome imperatively, use `Validation.is.passed` and
 `Validation.is.failed`:
 
 ```ts
@@ -115,48 +160,70 @@ if (Validation.is.failed(check)) {
 
 ---
 
-## The Accumulation Pattern: apply
+## Combining Validations: struct and apply
 
-What makes `Validation` structurally different from `Result` is how we combine multiple independent
-checks.
+Combining multiple independent checks is the central capability of `Validation`.
 
-The primary tool for this is `apply`. The pattern begins by wrapping a curried constructor function
-in `passed`, and then applying each validated argument one-by-one:
+### Combining records with `struct`
+
+`Validation.struct` combines a record of independent validation checks into a single validated
+object. Unlike `Result.struct` (which halts on the first error), `Validation.struct` evaluates every
+property and accumulates all errors into a unified list:
+
+```ts
+const validatedUser = Validation.struct({
+  name: Validation.from.Predicate((s: string) => s.length > 0, () => "Name is required")(""),
+  age: Validation.from.Predicate((n: number) => n >= 18, () => "Must be at least 18")(16),
+  role: Validation.make.passed("user"),
+});
+// Failed(["Name is required", "Must be at least 18"])
+```
+
+When all fields pass, it produces a `Passed` record with the assembled values:
+
+```ts
+const passedUser = Validation.struct({
+  name: Validation.make.passed("Alice"),
+  age: Validation.make.passed(30),
+  role: Validation.make.passed("admin"),
+});
+// Passed({ name: "Alice", age: 30, role: "admin" })
+```
+
+### Combining positional arguments with `apply`
+
+When constructing objects from curried functions or assembling tuple arguments, use
+`Validation.apply`:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 
-// A constructor function representing our valid target structure
-const createUser = (name: string) => (email: string) => (age: number) => ({
+const createProfile = (name: string) => (email: string) => (age: number) => ({
   name,
   email,
   age,
 });
 
 const result = pipe(
-  Validation.make.passed(createUser),
-  Validation.apply(validateName(form.name)), // Applies name check
-  Validation.apply(validateEmail(form.email)), // Applies email check
-  Validation.apply(validateAge(form.age)), // Applies age check
+  Validation.make.passed(createProfile),
+  Validation.apply(validateName(form.name)),
+  Validation.apply(validateEmail(form.email)),
+  Validation.apply(validateAge(form.age)),
 );
 ```
 
-Let's dissect what happens when this pipeline executes. Each `apply` step inspects both sides:
+Each `apply` step checks both sides:
 
-- If both the function and the argument have passed, the argument value is applied to the function.
-- If either the function or the argument has failed, the errors are gathered.
-- If *both* have failed, their respective error lists are merged (or combined via an optional
-  `{ combineErrors }` option).
-
-Because each argument is validated independently before being combined, all validation checks are
-guaranteed to run, and every failure is gathered into a single consolidated `Failed` container.
+- If both the function and argument pass, the argument is applied.
+- If either side fails, the errors are gathered into `Failed`.
+- If both sides fail, their error lists are concatenated together.
 
 ---
 
 ## Transforming values and errors
 
-You can transform the success value inside a `Passed` container without worrying about the failure
-branch using `map`:
+You can transform the success value inside a `Passed` container without altering failure branches
+using `map`:
 
 ```ts
 pipe(
@@ -165,10 +232,10 @@ pipe(
 );
 ```
 
-If the validation has failed, `map` does nothing and lets the accumulated errors propagate.
+If the validation fails, `map` does nothing and lets accumulated errors flow through.
 
-To transform every error inside a `Failed` container — for example, prefixing field names when
-nesting child form validations — use `Validation.mapError`:
+To transform accumulated errors — such as prefixing field names when nesting child validations — use
+`Validation.mapError`:
 
 ```ts
 const billingValidation = pipe(
@@ -181,13 +248,12 @@ const billingValidation = pipe(
 
 ## Extracting the value
 
-Once all checks have run and the errors have been accumulated, you must exit the `Validation`
-context at the edge of your pipeline.
+Once all checks have run and errors are collected, extract the value at the edge of your pipeline.
 
 ### Safe fallbacks with `getOrElse`
 
-`getOrElse` extracts the validated value from a `Passed` container, or returns a safe fallback value
-if the validations failed:
+`getOrElse` extracts the validated value from a `Passed` container, or evaluates a fallback thunk if
+the validation failed:
 
 ```ts
 pipe(
@@ -196,12 +262,11 @@ pipe(
 );
 ```
 
-As with other modules in this library, `getOrElse` expects a function (a thunk) to defer evaluating
-the fallback value, saving execution costs if the validation checks pass successfully.
+`getOrElse` expects a thunk to avoid computing the fallback value when checks pass.
 
 ### Exhaustive matching with `match`
 
-To drive distinct UI rendering or business branches based on the outcome, use `match`:
+To handle both outcomes explicitly, use `match`:
 
 ```ts
 const view = pipe(
@@ -213,12 +278,14 @@ const view = pipe(
 );
 ```
 
+`match` enforces exhaustive handling with named cases. Positional fold callbacks are not supported.
+
 ---
 
 ## Side effects with tap and tapError
 
-When you want to log or inspect outcomes mid-pipeline without altering the validation flow, use
-`tap` for valid values and `tapError` for accumulated errors:
+To log or inspect outcomes mid-pipeline without altering the validation flow, use `tap` for valid
+values and `tapError` for accumulated errors:
 
 ```ts
 pipe(
@@ -234,23 +301,22 @@ pipe(
 
 ## Fallback strategies: recover and recoverUnless
 
-`recover` provides a fallback `Validation` when validation has failed. It passes the accumulated
-error list to your fallback function, allowing you to inspect what went wrong and decide how to
-recover dynamically:
+`recover` provides an alternative `Validation` when validation has failed. It passes the accumulated
+error list to your fallback function:
 
 ```ts
 pipe(
   validatePayload(input),
   Validation.recover((errors) => {
-    console.warn("Payload validation failed. Using default configuration.", errors);
+    logger.warn("Payload validation failed. Falling back to default payload.", { errors });
     return Validation.make.passed(defaultPayload);
   }),
 );
 ```
 
-When certain errors should block recovery (such as a security violation or corrupted schema header),
+When specific errors should prevent recovery (such as security violations or invalid credentials),
 use `Validation.recoverUnless`. If any accumulated error matches the `isBlocked` predicate, the
-failure propagates untouched; otherwise, the fallback runs:
+failure propagates untouched:
 
 ```ts
 pipe(
@@ -266,23 +332,22 @@ pipe(
 
 ## Interoperability and Hand-offs
 
-Because software systems use a variety of modeling types, you can translate `Validation` to and from
-other modules.
+`Validation` translates cleanly to and from other containers in the library.
 
 ### Converting to and from Maybe
 
-If you only care about obtaining a valid value and do not need to report the reasons for failure,
-you can downgrade the `Validation` to a `Maybe` using `to.Maybe`:
+To discard error details and retain only success or failure, convert `Validation` to `Maybe` using
+`to.Maybe`:
 
 ```ts
 const maybeValidData = Validation.to.Maybe(formValidation); // Some(data) or None
 ```
 
-Conversely, to convert an optional `Maybe` into a `Validation`, supply an error thunk for the `None`
-case using `Validation.from.Maybe`:
+To convert an optional `Maybe` into a `Validation`, supply an error generator for the `None` case
+using `Validation.from.Maybe`:
 
 ```ts
-const CouponValidation = pipe(
+const couponValidation = pipe(
   findCouponCode(rawCode), // Maybe<Coupon>
   Validation.from.Maybe(() => "Coupon code is invalid or expired"),
 );
@@ -290,29 +355,28 @@ const CouponValidation = pipe(
 
 ### Bridging from Result
 
-When incorporating an operation that throws or performs fail-fast checks (like a `Result` parser)
-into an accumulating validation flow, you can convert it using `from.Result`:
+When incorporating a fail-fast parser into an accumulating validation flow, convert it using
+`from.Result`:
 
 ```ts
 const emailCheck = Validation.from.Result(parseEmail(input)); // Passed(email) or Failed([err])
 ```
 
-The single error from the `Err` is wrapped in a type-safe `Arr.NonEmpty` automatically.
+The error from the `Err` variant is wrapped in an `Arr.NonEmpty` array automatically.
 
 ### Sequencing actions by converting to Result
 
-`Validation` is designed for running independent checks and collecting all failures. However, once
-you have established that the data is 100% valid, you typically need to run sequential steps that
-depend on earlier outputs or perform fail-fast operations.
+`Validation` evaluates independent checks simultaneously. Once all inputs are verified, subsequent
+steps (such as database writes or API calls) often depend on earlier outputs and must execute
+sequentially.
 
-For this, you should hand off execution to a `Result` pipeline using `to.Result`. If you want to
-merge accumulated validation errors into a single error string or composite error object, pass a
-combiner function to `to.Result`:
+To transition from parallel validation into sequential execution, convert to `Result` using
+`to.Result`:
 
 ```ts
 pipe(
   Validation.struct({ name: validateName(form.name), email: validateEmail(form.email) }),
-  Validation.to.Result((errors) => errors.join("; ")), // Passed becomes Ok, Failed becomes Err("err1; err2")
+  Validation.to.Result((errors) => errors.join("; ")), // Passed becomes Ok, Failed becomes Err
   Result.chain((data) => db.saveUser(data)), // Sequential, fail-fast operation
   Result.getOrElse(() => null),
 );
@@ -323,15 +387,12 @@ Calling `Validation.to.Result` without arguments retains the raw `Arr.NonEmpty<E
 
 ---
 
-## Why Validation has no chain, bind, or bindTo
+## Why Validation omits chain, bind, and bindTo
 
-A developer familiar with `Result` or `Maybe` might wonder why `Validation` omits `chain`, `bind`,
-and `bindTo`.
+Developers familiar with `Result` or `Maybe` often ask why `Validation` lacks `chain`, `bind`, and
+`bindTo`.
 
-This omission is a deliberate architectural design choice.
-
-`chain`, `bind`, and `bindTo` sequence dependent steps where Step B requires the successful output
-of Step A:
+`chain` and `bind` sequence dependent operations where Step B requires the output of Step A:
 
 ```ts
 // Supported in Result, NOT in Validation
@@ -342,56 +403,22 @@ pipe(
 );
 ```
 
-If Step A fails, Step B has no input and cannot run. That sequential dependency conflicts with the
-purpose of `Validation`: **independent error accumulation**. When steps depend on prior outputs,
-they cannot be evaluated independently to gather all errors at once.
+If Step A fails, Step B cannot run because it lacks an input. This sequential dependency directly
+contradicts error accumulation: you cannot run checks in parallel if one check requires the value of
+another.
 
-For dependent steps that rely on prior outputs, use `Result`. For independent inputs that can all be
-checked simultaneously, validate them with `Validation.struct` or `Validation.apply`, and then hand
-off the verified data to `Result` via `Validation.to.Result`.
-
----
-
-## Combining records: struct
-
-To combine multiple independent validation checks into a single validated object, you can use
-`Validation.struct`.
-
-Unlike `Result.struct` or `Maybe.struct` (which short-circuit on the first failure),
-`Validation.struct` **accumulates errors from all failed branches** into a single `Failed` list:
-
-```ts
-const validatedUser = Validation.struct({
-  name: Validation.from.Predicate((s: string) => s.length > 0, () => "Name is required")(""),
-  age: Validation.from.Predicate((n: number) => n >= 18, () => "Must be at least 18")(16),
-  role: Validation.make.passed("user"),
-});
-// Failed(["Name is required", "Must be at least 18"])
-```
-
-If all validation fields pass successfully, it returns a `Passed` container containing the fully
-constructed record:
-
-```ts
-const passedUser = Validation.struct({
-  name: Validation.make.passed("Alice"),
-  age: Validation.make.passed(30),
-  role: Validation.make.passed("admin"),
-});
-// Passed({ name: "Alice", age: 30, role: "admin" })
-```
+For dependent steps that rely on prior results, use `Result`. For independent inputs that can all be
+evaluated at once, validate them with `Validation.struct` or `Validation.apply`, and then hand off
+the verified record to `Result` using `Validation.to.Result`.
 
 ---
 
 ## Field-level validation: Validation.keyed
 
-While `Validation.struct` is ideal for producing a single final outcome where all errors merge into
-one list, user interfaces often need errors tied directly to their corresponding input fields.
-Rendering a form requires knowing specifically whether `username` or `email` failed so an error
-message appears next to the exact input.
+While `Validation.struct` combines all errors into a single list, user interfaces often require
+errors partitioned by input field so an error message renders next to the matching input.
 
-`Validation.keyed` keeps individual validation results partitioned by key inside a plain JavaScript
-object:
+`Validation.keyed` keeps individual validation results partitioned by key inside an object:
 
 ```ts
 const validateProfile = Validation.keyed.make({
@@ -413,11 +440,11 @@ const formState = validateProfile({
 ```
 
 Every property in `formState` is an independent `Validation` container, allowing UI components to
-inspect each field in isolation.
+render field errors independently.
 
 ### Inspecting field outcomes
 
-You can query the overall status of the keyed object using boolean guards:
+Query the overall status of the keyed object using boolean guards:
 
 ```ts
 if (Validation.keyed.is.failed(formState)) {
@@ -431,8 +458,7 @@ if (Validation.keyed.is.passed(formState)) {
 
 ### Extracting values and errors with Maybe
 
-To extract the clean data or the field-level errors without manual property iteration,
-`Validation.keyed` provides `getPassed` and `getErrors`, both returning `Maybe`:
+To extract the clean data or the field-level errors, use `getPassed` and `getErrors`:
 
 ```ts
 // Some({ username: "alice", email: "alice@example.com", age: 25 }) if all pass, otherwise None
@@ -442,8 +468,8 @@ const cleanData = Validation.keyed.getPassed(formState);
 const fieldErrors = Validation.keyed.getErrors(formState);
 ```
 
-When you are ready to collapse the keyed object into a single consolidated `Validation<E, T>`, pass
-the object directly into `Validation.struct`:
+To collapse the keyed object into a single consolidated `Validation<E, T>`, pass the object directly
+into `Validation.struct`:
 
 ```ts
 const singleValidation = Validation.struct(formState);
@@ -454,16 +480,11 @@ const singleValidation = Validation.struct(formState);
 
 ## Asynchronous Validation: Task.Validation
 
-When you need to perform validation checks that require asynchronous operations (such as making a
-network request to verify email availability, or querying a database to check if a username is
-taken), you can use `Task.Validation<E, A>`.
+When validation checks require asynchronous operations — such as checking username availability in a
+database or verifying an address against an external postal API — use `Task.Validation<E, A>`.
 
-Under the hood, `Task.Validation` is an alias for `Task<Validation<E, A>>`. Like `Validation`, it
-concurrently evaluates independent checks and aggregates all failures into a single list rather than
-failing fast.
-
-To run multiple asynchronous validation checks in parallel and accumulate any failures, combine them
-using `Task.Validation.struct`:
+`Task.Validation` is an alias for `Task<Validation<E, A>>`. It runs independent asynchronous checks
+concurrently and aggregates all failures into a single list:
 
 ```ts
 import { Task } from "@nlozgachev/pipelined/core";
@@ -477,15 +498,9 @@ const validateUserAsync = Task.Validation.struct({
 If any check fails, the task resolves to a `Failed` variant containing the accumulated list of all
 errors.
 
-### Transforming and Inspecting Errors
+### Transforming and inspecting errors in tasks
 
-Because validation processes are designed to accumulate multiple failures, we often need to format
-or log these errors mid-pipeline. `Task.Validation` provides dedicated error-mapping combinators for
-this:
-
-- **`mapError`**: Transforms all accumulated errors in the list using a function `(e: E) => F`.
-- **`tapError`**: Executes a side effect (such as logging warnings) on the accumulated list of
-  errors without modifying the pipeline's value.
+Format or log asynchronous validation errors mid-pipeline using dedicated combinators:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -502,27 +517,84 @@ const validatedProfile = pipe(
 
 ---
 
+## Pipeline composition
+
+Here is an end-to-end user registration endpoint pipeline. It validates input fields independently,
+namespaces errors, hands off the verified record to a sequential `Result` pipeline for database
+persistence, and formats the final HTTP response:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Result, Validation } from "@nlozgachev/pipelined/core";
+
+interface RegistrationInput {
+  username: string;
+  email: string;
+  age: number;
+}
+
+interface UserRecord {
+  id: string;
+  username: string;
+  email: string;
+  age: number;
+}
+
+const validateUsername = Validation.from.Predicate(
+  (s: string) => s.length >= 3,
+  () => "Username must be at least 3 characters",
+);
+
+const validateEmail = Validation.from.Predicate(
+  (s: string) => s.includes("@") && s.includes("."),
+  () => "Email address must be valid",
+);
+
+const validateAge = Validation.from.Predicate(
+  (n: number) => n >= 18,
+  () => "Registrant must be at least 18 years old",
+);
+
+const saveUserToDb = (data: { username: string; email: string; age: number }): Result<string, UserRecord> =>
+  Result.make.ok({ id: "usr_101", ...data });
+
+const registerUser = (input: RegistrationInput): { status: number; body: string } =>
+  pipe(
+    Validation.struct({
+      username: validateUsername(input.username),
+      email: validateEmail(input.email),
+      age: validateAge(input.age),
+    }),
+    Validation.mapError((err) => `[Registration] ${err}`),
+    Validation.to.Result((errors) => errors.join("; ")),
+    Result.chain((validData) => saveUserToDb(validData)),
+    Result.match({
+      ok: (user) => ({ status: 201, body: `Created user ${user.username} (${user.id})` }),
+      err: (errorMessage) => ({ status: 400, body: errorMessage }),
+    }),
+  );
+```
+
+---
+
 ## Problems it solves
 
-- **Multi-field web form validation**: In registration forms, profile editors, and checkout panels,
-  users frequently submit multiple invalid fields at once. Short-circuiting error handlers stop on
-  the first error, forcing frustrating trial-and-error submissions. `Validation` aggregates all
-  field errors into a single collection, allowing UIs to render feedback on every invalid input
-  simultaneously.
-- **Batch data ingestion and bulk import diagnostics**: When importing CSV spreadsheets, parsing
-  configuration files, or validating batch API payloads, systems need a full accounting of all
-  invalid records. `Validation.struct` and `Validation.apply` evaluate all checks independently,
-  gathering every schema and domain violation into a complete diagnostic report rather than halting
-  on the first error.
-- **Multi-rule entity policy checks**: When evaluating complex entity constraints (such as password
-  strength requirements, credit assessment criteria, or compliance checklists), `Validation` runs
-  all checks independently and reports every unmet condition at once for comprehensive user
-  feedback.
-- **Bridging validation accumulation with fail-fast execution (`Validation.to.Result`,
-  `Validation.from.Result`)**: In web endpoints, validating an incoming request body requires
-  accumulating all field errors with `Validation`, but subsequent database operations require
-  fail-fast sequential chaining with `Result`. `Validation.to.Result` bridges these patterns
-  cleanly, preserving all collected errors while transitioning into standard sequential pipelines.
+- **Multi-field web form validation**: Web forms frequently receive multiple invalid fields in a
+  single submission. Short-circuiting error handlers stop on the first error, forcing repetitive
+  submit-fix cycles. `Validation` aggregates all field errors into a single collection, allowing
+  user interfaces to render feedback on every invalid input at once.
+- **Batch data ingestion and bulk import diagnostics**: When importing spreadsheets, configuration
+  files, or batch API payloads, operators need an exhaustive report of all invalid rows.
+  `Validation.struct` and `Validation.apply` evaluate all checks independently, gathering every
+  schema and domain violation into a single diagnostic list rather than halting on row one.
+- **Multi-rule entity policy checks**: When evaluating complex entity constraints — such as password
+  strength requirements, credit assessment rules, or compliance checklists — `Validation` evaluates
+  all criteria independently and reports every unmet condition simultaneously.
+- **Bridging validation accumulation with fail-fast execution (`Validation.to.Result`)**: In web
+  endpoints, validating an incoming request body requires accumulating all field errors with
+  `Validation`, while subsequent database operations require fail-fast sequential chaining with
+  `Result`. `Validation.to.Result` transitions between these patterns cleanly, preserving all
+  collected errors while entering standard sequential pipelines.
 - **Contextual error tagging across nested forms (`Validation.mapError`)**: In nested forms and
   multi-step wizards, child components validate their own sub-fields. `Validation.mapError` allows
   parent forms to namespace child errors (e.g. prefixing `address.zipCode`) before merging, keeping
