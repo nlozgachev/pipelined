@@ -1,6 +1,6 @@
 {
 	"name": "@nlozgachev/pipelined",
-	"version": "0.83.0",
+	"version": "0.84.0",
 	"description": "Typed errors, explicit optional values, and composable pipelines for TypeScript",
 	"keywords": [
 		"typescript",
