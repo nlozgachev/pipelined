@@ -75,15 +75,35 @@ test("emit: validates message kind and payload matching schema", () => {
 	expectTypeOf(EventBus.emit(bus, { kind: "B", value: {} })).toBeVoid();
 });
 
-test("listen: single event listener narrows message kind and payload", () => {
+test("subscribe: schema-wide subscription observes all events and forbids collect", () => {
 	const bus = EventBus.make<TestSchema>();
 
-	EventBus.listen(bus, "A").tap((msg) => {
+	const subBuilder = EventBus.subscribe(bus);
+
+	const unsub = subBuilder.tap((msg) => {
+		expectTypeOf(msg).toEqualTypeOf<EventBus.Message<TestSchema>>();
+	});
+	expectTypeOf(unsub).toEqualTypeOf<() => void>();
+
+	const sub = subBuilder.reduce((msg, count: number) => {
+		expectTypeOf(msg).toEqualTypeOf<EventBus.Message<TestSchema>>();
+		return count + 1;
+	}, 0);
+	expectTypeOf(sub).toEqualTypeOf<EventBus.Subscription<number>>();
+
+	// @ts-expect-error — collect does not exist on schema-wide subscription
+	expectTypeOf(subBuilder.collect).toBeFunction();
+});
+
+test("subscribe: single event subscriber narrows message kind and payload", () => {
+	const bus = EventBus.make<TestSchema>();
+
+	EventBus.subscribe(bus, "A").tap((msg) => {
 		expectTypeOf(msg.kind).toEqualTypeOf<"A">();
 		expectTypeOf(msg.value).toEqualTypeOf<{ value: number; }>();
 	});
 
-	const sub = EventBus.listen(bus, "A").reduce((msg, count: number) => {
+	const sub = EventBus.subscribe(bus, "A").reduce((msg, count: number) => {
 		expectTypeOf(msg.kind).toEqualTypeOf<"A">();
 		expectTypeOf(msg.value).toEqualTypeOf<{ value: number; }>();
 		return count + msg.value.value;
@@ -92,20 +112,20 @@ test("listen: single event listener narrows message kind and payload", () => {
 	expectTypeOf(sub.getState()).toEqualTypeOf<number>();
 	expectTypeOf(sub.unsubscribe).toEqualTypeOf<() => void>();
 
-	EventBus.listen(bus, "A").collect((payloads) => {
+	EventBus.subscribe(bus, "A").collect((payloads) => {
 		expectTypeOf(payloads).toEqualTypeOf<EventBus.CollectedPayloads<TestSchema, "A">>();
 		expectTypeOf(payloads).toMatchTypeOf<{ readonly A: { value: number; }; }>();
 		expectTypeOf(payloads.A).toEqualTypeOf<{ value: number; }>();
 	});
 
-	// @ts-expect-error — listening to nonexistent event kind
-	expectTypeOf(EventBus.listen(bus, "NONEXISTENT")).toBeObject();
+	// @ts-expect-error — subscribing to nonexistent event kind
+	expectTypeOf(EventBus.subscribe(bus, "NONEXISTENT")).toBeObject();
 });
 
-test("listen: multiple events array narrows message kind and union payload", () => {
+test("subscribe: multiple events array narrows message kind and union payload", () => {
 	const bus = EventBus.make<TestSchema>();
 
-	EventBus.listen(bus, ["A", "B"]).tap((msg) => {
+	EventBus.subscribe(bus, ["A", "B"]).tap((msg) => {
 		expectTypeOf(msg.kind).toEqualTypeOf<"A" | "B">();
 		if (msg.kind === "A") {
 			expectTypeOf(msg.value).toEqualTypeOf<{ value: number; }>();
@@ -114,12 +134,12 @@ test("listen: multiple events array narrows message kind and union payload", () 
 		}
 	});
 
-	EventBus.listen(bus, ["A", "B"]).reduce((msg, state: string) => {
+	EventBus.subscribe(bus, ["A", "B"]).reduce((msg, state: string) => {
 		expectTypeOf(msg.kind).toEqualTypeOf<"A" | "B">();
 		return state + msg.kind;
 	}, "");
 
-	EventBus.listen(bus, ["A", "B"]).collect((payloads) => {
+	EventBus.subscribe(bus, ["A", "B"]).collect((payloads) => {
 		expectTypeOf(payloads).toEqualTypeOf<EventBus.CollectedPayloads<TestSchema, "A" | "B">>();
 		expectTypeOf(payloads).toMatchTypeOf<{ readonly A: { value: number; }; readonly B: { text: string; }; }>();
 		expectTypeOf(payloads.A).toEqualTypeOf<{ value: number; }>();
@@ -127,10 +147,10 @@ test("listen: multiple events array narrows message kind and union payload", () 
 	});
 });
 
-test("listen: sequence options with optional steps types skipped events as undefined", () => {
+test("subscribe: sequence options with optional steps types skipped events as undefined", () => {
 	const bus = EventBus.make<TestSchema>();
 
-	EventBus.listen(bus, ["A", "B", "C"], {
+	EventBus.subscribe(bus, ["A", "B", "C"], {
 		ordered: true,
 		optional: ["B"],
 		reset: "ResetEvent",
@@ -147,7 +167,7 @@ test("listen: sequence options with optional steps types skipped events as undef
 	});
 
 	// Multiple optional steps in sequence
-	EventBus.listen(bus, ["A", "B", "C"], { ordered: true, optional: ["B", "C"] }).collect((payloads) => {
+	EventBus.subscribe(bus, ["A", "B", "C"], { ordered: true, optional: ["B", "C"] }).collect((payloads) => {
 		expectTypeOf(payloads).toEqualTypeOf<EventBus.CollectedPayloads<TestSchema, "A" | "B" | "C", "B" | "C">>();
 		expectTypeOf(payloads.A).toEqualTypeOf<{ value: number; }>();
 		expectTypeOf(payloads.B).toEqualTypeOf<{ text: string; } | undefined>();
@@ -155,20 +175,22 @@ test("listen: sequence options with optional steps types skipped events as undef
 	});
 
 	// @ts-expect-error — optional event must be a valid key in schema
-	expectTypeOf(EventBus.listen(bus, ["A", "C"], { optional: ["NONEXISTENT"] })).toBeObject();
+	expectTypeOf(EventBus.subscribe(bus, ["A", "C"], { optional: ["NONEXISTENT"] })).toBeObject();
 
 	// @ts-expect-error — reset event must be a valid key in schema
-	expectTypeOf(EventBus.listen(bus, ["A"], { reset: "INVALID_RESET" })).toBeObject();
+	expectTypeOf(EventBus.subscribe(bus, ["A"], { reset: "INVALID_RESET" })).toBeObject();
 
 	// Array of reset events
-	EventBus.listen(bus, ["A", "B"], { ordered: true, strict: true, reset: ["ResetEvent", "C"] }).collect((payloads) => {
-		expectTypeOf(payloads).toEqualTypeOf<EventBus.CollectedPayloads<TestSchema, "A" | "B">>();
-		expectTypeOf(payloads.A).toEqualTypeOf<{ value: number; }>();
-		expectTypeOf(payloads.B).toEqualTypeOf<{ text: string; }>();
-	});
+	EventBus.subscribe(bus, ["A", "B"], { ordered: true, strict: true, reset: ["ResetEvent", "C"] }).collect(
+		(payloads) => {
+			expectTypeOf(payloads).toEqualTypeOf<EventBus.CollectedPayloads<TestSchema, "A" | "B">>();
+			expectTypeOf(payloads.A).toEqualTypeOf<{ value: number; }>();
+			expectTypeOf(payloads.B).toEqualTypeOf<{ text: string; }>();
+		},
+	);
 
 	// @ts-expect-error — reset array contains invalid event key
-	expectTypeOf(EventBus.listen(bus, ["A", "B"], { reset: ["NONEXISTENT"] })).toBeObject();
+	expectTypeOf(EventBus.subscribe(bus, ["A", "B"], { reset: ["NONEXISTENT"] })).toBeObject();
 });
 
 type AuthSchema = { userLoggedIn: { userId: string; }; sessionExpired: { at: number; }; };

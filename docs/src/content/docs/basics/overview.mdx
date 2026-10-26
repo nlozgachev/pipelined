@@ -159,7 +159,7 @@ type AppEvents = {
 const authBus = EventBus.make<AppEvents>();
 
 // Subscribe to typed events
-EventBus.listen(authBus, "login").tap(({ value }) => {
+EventBus.subscribe(authBus, "login").tap(({ value }) => {
   console.log(`User logged in: ${value.userId}`);
 });
 ```

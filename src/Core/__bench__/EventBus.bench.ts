@@ -3,7 +3,7 @@ import { test } from "vitest";
 import { EventBus } from "../EventBus.ts";
 
 const eventBusMake = EventBus.make;
-const eventBusListen = EventBus.listen;
+const eventBusSubscribe = EventBus.subscribe;
 const eventBusEmit = EventBus.emit;
 
 type AppSchema = {
@@ -16,7 +16,7 @@ type AppSchema = {
 
 const setup1Listener = () => {
 	const bus = eventBusMake<AppSchema>();
-	eventBusListen(bus, "ping").tap(() => {});
+	eventBusSubscribe(bus, "ping").tap(() => {});
 
 	const ee = new EventEmitter();
 	ee.on("ping", () => {});
@@ -27,7 +27,7 @@ const setup1Listener = () => {
 const setup10Listeners = () => {
 	const bus = eventBusMake<AppSchema>();
 	for (let i = 0; i < 10; i++) {
-		eventBusListen(bus, "ping").tap(() => {});
+		eventBusSubscribe(bus, "ping").tap(() => {});
 	}
 
 	const ee = new EventEmitter();
@@ -41,18 +41,24 @@ const setup10Listeners = () => {
 const setupSequenceMatching = () => {
 	const bus = eventBusMake<AppSchema>();
 	let sequenceMatches = 0;
-	eventBusListen(bus, ["step1", "step2", "step3"], { ordered: true }).tap(() => {
+	eventBusSubscribe(bus, ["step1", "step2", "step3"], { ordered: true }).tap(() => {
 		sequenceMatches++;
 	});
 	return { bus, getMatches: () => sequenceMatches };
 };
 
 const setupStateReduction = () => {
-	const bus = eventBusMake<{ ping: { count: number; }; }>();
-	const sub = eventBusListen(bus, "ping").reduce((msg, state) => ({ total: state.total + msg.value.count }), {
+	const bus = eventBusMake<AppSchema>();
+	const sub = eventBusSubscribe(bus, "ping").reduce((msg, state) => ({ total: state.total + msg.value.count }), {
 		total: 0,
 	});
 	return { bus, sub };
+};
+
+const setupStateCollect = () => {
+	const bus = eventBusMake<AppSchema>();
+	eventBusSubscribe(bus, "ping").collect((vals) => vals);
+	return { bus };
 };
 
 // =============================================================================
@@ -110,5 +116,17 @@ test("event-bus-state-reduction", async ({ bench }) => {
 	await bench("1. EventBus state reduction", () => {
 		eventBusEmit(bus, { kind: "ping", value: { count: 5 } });
 		sub.getState();
+	}).run();
+});
+
+// =============================================================================
+// Scenario 4: State Collection
+// =============================================================================
+
+test("event-bus-collect", async ({ bench }) => {
+	const { bus } = setupStateCollect();
+
+	await bench("1. EventBus ordered event data collection", () => {
+		eventBusEmit(bus, { kind: "ping", value: { "count": 5 } });
 	}).run();
 });

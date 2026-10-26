@@ -416,7 +416,7 @@ type UserFlowMessages = {
 const flowBus = EventBus.make<UserFlowMessages>();
 
 // Pattern-match the complete multi-step funnel
-const sub = EventBus.listen(
+const sub = EventBus.subscribe(
   flowBus,
   ["sessionStarted", "stepCompleted", "flowFinished"],
   { ordered: true, reset: "flowCancelled" },

@@ -23,7 +23,7 @@ test("emit: dispatches messages to subscribers", () => {
 	const s = EventBus.make<TestSchema>();
 	let received: EventBus.Message<TestSchema> | null = null;
 
-	EventBus.listen(s, "A").tap((msg) => {
+	EventBus.subscribe(s, "A").tap((msg) => {
 		received = msg;
 	});
 
@@ -39,10 +39,10 @@ test("emit: broadcasts to multiple target event buses", () => {
 	let s1Count = 0;
 	let s2Count = 0;
 
-	EventBus.listen(s1, "A").tap(() => {
+	EventBus.subscribe(s1, "A").tap(() => {
 		s1Count++;
 	});
-	EventBus.listen(s2, "A").tap(() => {
+	EventBus.subscribe(s2, "A").tap(() => {
 		s2Count++;
 	});
 
@@ -62,7 +62,7 @@ test("emit: passes errors to onError option handler if provided", () => {
 		},
 	});
 
-	EventBus.listen(s, "A").tap(() => {
+	EventBus.subscribe(s, "A").tap(() => {
 		throw new Error("listener error");
 	});
 
@@ -81,11 +81,11 @@ test("emit: subscriber isolation ensures throwing listener does not prevent sibl
 
 	let siblingReceived = false;
 
-	EventBus.listen(s, "A").tap(() => {
+	EventBus.subscribe(s, "A").tap(() => {
 		throw new Error("faulty subscriber");
 	});
 
-	EventBus.listen(s, "A").tap(() => {
+	EventBus.subscribe(s, "A").tap(() => {
 		siblingReceived = true;
 	});
 
@@ -97,7 +97,7 @@ test("emit: subscriber isolation ensures throwing listener does not prevent sibl
 
 test("emit: throws error if listener throws and no onError handler is provided", () => {
 	const s = EventBus.make<TestSchema>();
-	EventBus.listen(s, "A").tap(() => {
+	EventBus.subscribe(s, "A").tap(() => {
 		throw new Error("uncaught error");
 	});
 
@@ -110,16 +110,16 @@ test("emit: processes re-entrant emissions breadth-first", () => {
 	const s = EventBus.make<TestSchema>();
 	const log: string[] = [];
 
-	EventBus.listen(s, "A").tap(() => {
+	EventBus.subscribe(s, "A").tap(() => {
 		log.push("L1: A");
 		EventBus.emit(s, { kind: "B", value: { text: "from L1" } });
 	});
 
-	EventBus.listen(s, "A").tap(() => {
+	EventBus.subscribe(s, "A").tap(() => {
 		log.push("L2: A");
 	});
 
-	EventBus.listen(s, "B").tap(() => {
+	EventBus.subscribe(s, "B").tap(() => {
 		log.push("L3: B");
 	});
 
@@ -133,7 +133,7 @@ test("emit: processes deep re-entrant emission cascades without stack overflow",
 	const s = EventBus.make<TestSchema>();
 	let count = 0;
 
-	EventBus.listen(s, "A").tap(() => {
+	EventBus.subscribe(s, "A").tap(() => {
 		count++;
 		if (count < 1000) {
 			EventBus.emit(s, { kind: "A", value: { value: count } });
@@ -144,7 +144,7 @@ test("emit: processes deep re-entrant emission cascades without stack overflow",
 	expect(count).toBe(1000);
 });
 
-// --- EventBus.listen & reduce / tap ---
+// --- EventBus.subscribe & reduce / tap ---
 
 test("listen: accumulates state over matching events with reduce", () => {
 	const s = EventBus.make<TestSchema>();
@@ -152,7 +152,7 @@ test("listen: accumulates state over matching events with reduce", () => {
 	type State = { readonly sum: number; readonly texts: readonly string[]; };
 	const initialState: State = { sum: 0, texts: [] };
 
-	const sub = EventBus.listen(s, ["A", "B"]).reduce((msg, state) => {
+	const sub = EventBus.subscribe(s, ["A", "B"]).reduce((msg, state) => {
 		if (msg.kind === "A") {
 			return { ...state, sum: state.sum + msg.value.value };
 		}
@@ -177,7 +177,7 @@ test("listen: accumulates state over matching events with reduce", () => {
 
 test("listen: unsubscribes after first reduction when once is true", () => {
 	const s = EventBus.make<TestSchema>();
-	const sub = EventBus.listen(s, "A", { once: true }).reduce((_msg, state) => ({ count: state.count + 1 }), {
+	const sub = EventBus.subscribe(s, "A", { once: true }).reduce((_msg, state) => ({ count: state.count + 1 }), {
 		count: 0,
 	});
 
@@ -190,7 +190,7 @@ test("listen: unsubscribes after first reduction when once is true", () => {
 test("listen: returns an unsubscribe function that removes the listener from tap", () => {
 	const s = EventBus.make<TestSchema>();
 	let count = 0;
-	const unsubscribe = EventBus.listen(s, "A").tap(() => {
+	const unsubscribe = EventBus.subscribe(s, "A").tap(() => {
 		count++;
 	});
 
@@ -208,7 +208,7 @@ test("listen: matches sequence in exact order with ordered", () => {
 	const s = EventBus.make<TestSchema>();
 	let sequenceFiredCount = 0;
 
-	EventBus.listen(s, ["A", "B"], { ordered: true }).tap(() => {
+	EventBus.subscribe(s, ["A", "B"], { ordered: true }).tap(() => {
 		sequenceFiredCount++;
 	});
 
@@ -228,7 +228,7 @@ test("listen: resets sequence on unexpected event with strict", () => {
 	const s = EventBus.make<TestSchema>();
 	let sequenceFiredCount = 0;
 
-	EventBus.listen(s, ["A", "B"], { ordered: true, strict: true }).tap(() => {
+	EventBus.subscribe(s, ["A", "B"], { ordered: true, strict: true }).tap(() => {
 		sequenceFiredCount++;
 	});
 
@@ -252,7 +252,7 @@ test("listen: resets sequence to index 1 when unexpected event matches first eve
 	const s = EventBus.make<TestSchema>();
 	let firedCount = 0;
 
-	EventBus.listen(s, ["A", "B"], { ordered: true, strict: true }).tap(() => {
+	EventBus.subscribe(s, ["A", "B"], { ordered: true, strict: true }).tap(() => {
 		firedCount++;
 	});
 
@@ -268,7 +268,7 @@ test("listen: resets relaxed sequence to index 0 when out-of-order event in even
 	const s = EventBus.make<TestSchema>();
 	let firedCount = 0;
 
-	EventBus.listen(s, ["A", "B", "C"], { ordered: true, strict: false }).tap(() => {
+	EventBus.subscribe(s, ["A", "B", "C"], { ordered: true, strict: false }).tap(() => {
 		firedCount++;
 	});
 
@@ -286,7 +286,7 @@ test("listen: skips optional events in sequence when next event matches", () => 
 	let fired = 0;
 
 	// B is optional in sequence A -> B -> C
-	EventBus.listen(s, ["A", "B", "C"], { ordered: true, optional: ["B"] }).tap(() => {
+	EventBus.subscribe(s, ["A", "B", "C"], { ordered: true, optional: ["B"] }).tap(() => {
 		fired++;
 	});
 
@@ -301,7 +301,7 @@ test("listen: resets relaxed sequence to index 1 when out-of-order event matches
 	const s = EventBus.make<TestSchema>();
 	let firedCount = 0;
 
-	EventBus.listen(s, ["A", "B", "C"], { ordered: true, strict: false }).tap(() => {
+	EventBus.subscribe(s, ["A", "B", "C"], { ordered: true, strict: false }).tap(() => {
 		firedCount++;
 	});
 
@@ -318,7 +318,7 @@ test("listen: resets relaxed sequence to index 1 when out-of-order event matches
 test("listen: ignores lookahead if unexpected event does not match after optional items", () => {
 	const s = EventBus.make<TestSchema>();
 	let fired = 0;
-	EventBus.listen(s, ["A", "B", "C"], { ordered: true, optional: ["B"] }).tap(() => {
+	EventBus.subscribe(s, ["A", "B", "C"], { ordered: true, optional: ["B"] }).tap(() => {
 		fired++;
 	});
 	EventBus.emit(s, { kind: "A", value: { value: 1 } });
@@ -331,7 +331,7 @@ test("listen: ignores lookahead if unexpected event does not match after optiona
 test("listen: ignores events not present in eventList in relaxed sequence", () => {
 	const s = EventBus.make<TestSchema>();
 	let fired = 0;
-	EventBus.listen(s, ["A", "B"], { ordered: true, strict: false }).tap(() => {
+	EventBus.subscribe(s, ["A", "B"], { ordered: true, strict: false }).tap(() => {
 		fired++;
 	});
 	EventBus.emit(s, { kind: "A", value: { value: 1 } });
@@ -344,7 +344,7 @@ test("listen: automatically unsubscribes after first match with once", () => {
 	const s = EventBus.make<TestSchema>();
 	let fireCount = 0;
 
-	EventBus.listen(s, "A", { once: true }).tap(() => {
+	EventBus.subscribe(s, "A", { once: true }).tap(() => {
 		fireCount++;
 	});
 
@@ -358,7 +358,7 @@ test("listen: accepts array of event kinds and resets sequence tracking", () => 
 	const s = EventBus.make<TestSchema>();
 	let sequenceFiredCount = 0;
 
-	EventBus.listen(s, ["A", "B"], { ordered: true, reset: ["ResetEvent", "C"] }).tap(() => {
+	EventBus.subscribe(s, ["A", "B"], { ordered: true, reset: ["ResetEvent", "C"] }).tap(() => {
 		sequenceFiredCount++;
 	});
 
@@ -376,7 +376,7 @@ test("listen: accepts single string and resets sequence tracking", () => {
 	const s = EventBus.make<TestSchema>();
 	let sequenceFiredCount = 0;
 
-	EventBus.listen(s, ["A", "B"], { ordered: true, reset: "C" }).tap(() => {
+	EventBus.subscribe(s, ["A", "B"], { ordered: true, reset: "C" }).tap(() => {
 		sequenceFiredCount++;
 	});
 
@@ -394,7 +394,7 @@ test("listen: resets correctly when event from eventList is received out of orde
 	const s = EventBus.make<TestSchema>();
 	let count = 0;
 
-	EventBus.listen(s, ["A", "B", "C"], { ordered: true }).tap(() => {
+	EventBus.subscribe(s, ["A", "B", "C"], { ordered: true }).tap(() => {
 		count++;
 	});
 
@@ -418,7 +418,7 @@ test("listen: matches sequence when an optional step is present", () => {
 	const s = EventBus.make<TestSchema>();
 	let count = 0;
 
-	EventBus.listen(s, ["A", "B", "C"], { ordered: true, optional: "B" }).tap(() => {
+	EventBus.subscribe(s, ["A", "B", "C"], { ordered: true, optional: "B" }).tap(() => {
 		count++;
 	});
 
@@ -433,7 +433,7 @@ test("listen: matches sequence when an optional step is skipped", () => {
 	const s = EventBus.make<TestSchema>();
 	let count = 0;
 
-	EventBus.listen(s, ["A", "B", "C"], { ordered: true, optional: ["B"] }).tap(() => {
+	EventBus.subscribe(s, ["A", "B", "C"], { ordered: true, optional: ["B"] }).tap(() => {
 		count++;
 	});
 
@@ -452,7 +452,7 @@ test("forward: pipes messages from source to target event bus", () => {
 
 	let s2Received: string | null = null;
 
-	EventBus.listen(s2, "B").tap((msg) => {
+	EventBus.subscribe(s2, "B").tap((msg) => {
 		if (msg.kind === "B") {
 			s2Received = msg.value.text;
 		}
@@ -480,10 +480,10 @@ test("forward: pipes messages to multiple target event buses", () => {
 	let count2 = 0;
 	let count3 = 0;
 
-	EventBus.listen(s2, "A").tap(() => {
+	EventBus.subscribe(s2, "A").tap(() => {
 		count2++;
 	});
-	EventBus.listen(s3, "A").tap(() => {
+	EventBus.subscribe(s3, "A").tap(() => {
 		count3++;
 	});
 
@@ -503,7 +503,7 @@ test("listen: narrows msg.kind to listened keys in reduce", () => {
 	const memo: { A: number; B: number; } = { A: 10, B: 20 };
 	const matchedValues: number[] = [];
 
-	EventBus.listen(s, ["A", "B"]).reduce((msg, state) => {
+	EventBus.subscribe(s, ["A", "B"]).reduce((msg, state) => {
 		// Safe indexing without type errors because msg.kind is narrowed to "A" | "B"
 		const val = memo[msg.kind];
 		matchedValues.push(val);
@@ -520,7 +520,7 @@ test("listen: narrows msg.kind to listened keys in tap", () => {
 	const s = EventBus.make<TestSchema>();
 	let receivedKind: "A" | null = null;
 
-	EventBus.listen(s, "A").tap((msg) => {
+	EventBus.subscribe(s, "A").tap((msg) => {
 		receivedKind = msg.kind;
 	});
 
@@ -528,13 +528,13 @@ test("listen: narrows msg.kind to listened keys in tap", () => {
 	expect(receivedKind).toBe("A");
 });
 
-// --- EventBus.listen & collect ---
+// --- EventBus.subscribe & collect ---
 
 test("collect: delivers completed payload snapshot in ordered sequence", () => {
 	const s = EventBus.make<TestSchema>();
 	const snapshots: Array<{ A: { value: number; }; B: { text: string; }; }> = [];
 
-	EventBus.listen(s, ["A", "B"], { ordered: true }).collect((payloads) => {
+	EventBus.subscribe(s, ["A", "B"], { ordered: true }).collect((payloads) => {
 		snapshots.push(payloads);
 	});
 
@@ -562,7 +562,7 @@ test("collect: clears buffer on strict mismatch", () => {
 	const s = EventBus.make<TestSchema>();
 	let fired = 0;
 
-	EventBus.listen(s, ["A", "B"], { ordered: true, strict: true }).collect(() => {
+	EventBus.subscribe(s, ["A", "B"], { ordered: true, strict: true }).collect(() => {
 		fired++;
 	});
 
@@ -582,7 +582,7 @@ test("collect: updates buffer when unexpected event matches step 0", () => {
 	const s = EventBus.make<TestSchema>();
 	let captured: { A: { value: number; }; B: { text: string; }; } | null = null;
 
-	EventBus.listen(s, ["A", "B"], { ordered: true, strict: true }).collect((payloads) => {
+	EventBus.subscribe(s, ["A", "B"], { ordered: true, strict: true }).collect((payloads) => {
 		captured = payloads;
 	});
 
@@ -598,7 +598,7 @@ test("collect: resets buffer when reset event arrives", () => {
 	const s = EventBus.make<TestSchema>();
 	let fired = 0;
 
-	EventBus.listen(s, ["A", "B"], { ordered: true, reset: "ResetEvent" }).collect(() => {
+	EventBus.subscribe(s, ["A", "B"], { ordered: true, reset: "ResetEvent" }).collect(() => {
 		fired++;
 	});
 
@@ -613,7 +613,7 @@ test("collect: skips optional step and sets its value to undefined", () => {
 	const s = EventBus.make<TestSchema>();
 	const snapshots: Array<EventBus.CollectedPayloads<TestSchema, "A" | "B" | "C", "B">> = [];
 
-	EventBus.listen(s, ["A", "B", "C"], { ordered: true, optional: ["B"] }).collect((payloads) => {
+	EventBus.subscribe(s, ["A", "B", "C"], { ordered: true, optional: ["B"] }).collect((payloads) => {
 		snapshots.push(payloads);
 	});
 
@@ -631,7 +631,7 @@ test("collect: safely handles __proto__ event kind without prototype pollution",
 	const s = EventBus.make<ProtoSchema>();
 	const snapshots: Array<EventBus.CollectedPayloads<ProtoSchema, "__proto__" | "normal">> = [];
 
-	EventBus.listen(s, ["__proto__", "normal"]).collect((payloads) => {
+	EventBus.subscribe(s, ["__proto__", "normal"]).collect((payloads) => {
 		snapshots.push(payloads);
 	});
 
@@ -648,7 +648,7 @@ test("collect: preserves falsy payloads (0, false, empty string) without conflat
 	const s = EventBus.make<TestSchema>();
 	const snapshots: Array<EventBus.CollectedPayloads<TestSchema, "A" | "B" | "C">> = [];
 
-	EventBus.listen(s, ["A", "B", "C"], { ordered: true }).collect((payloads) => {
+	EventBus.subscribe(s, ["A", "B", "C"], { ordered: true }).collect((payloads) => {
 		snapshots.push(payloads);
 	});
 
@@ -663,7 +663,7 @@ test("collect: captures optional step when present in sequence", () => {
 	const s = EventBus.make<TestSchema>();
 	const snapshots: Array<EventBus.CollectedPayloads<TestSchema, "A" | "B" | "C", "B">> = [];
 
-	EventBus.listen(s, ["A", "B", "C"], { ordered: true, optional: "B" }).collect((payloads) => {
+	EventBus.subscribe(s, ["A", "B", "C"], { ordered: true, optional: "B" }).collect((payloads) => {
 		snapshots.push(payloads);
 	});
 
@@ -679,7 +679,7 @@ test("collect: unsubscribes after first completion with once option", () => {
 	const s = EventBus.make<TestSchema>();
 	let count = 0;
 
-	EventBus.listen(s, ["A", "B"], { ordered: true, once: true }).collect(() => {
+	EventBus.subscribe(s, ["A", "B"], { ordered: true, once: true }).collect(() => {
 		count++;
 	});
 
@@ -696,7 +696,7 @@ test("collect: aggregates unordered events once all required have arrived", () =
 	const s = EventBus.make<TestSchema>();
 	let captured: { A: { value: number; }; B: { text: string; }; } | null = null;
 
-	EventBus.listen(s, ["A", "B"]).collect((payloads) => {
+	EventBus.subscribe(s, ["A", "B"]).collect((payloads) => {
 		captured = payloads;
 	});
 
@@ -713,7 +713,7 @@ test("collect: unsubscribes after first completion in unordered mode with once o
 	const s = EventBus.make<TestSchema>();
 	let count = 0;
 
-	EventBus.listen(s, ["A", "B"], { once: true }).collect(() => {
+	EventBus.subscribe(s, ["A", "B"], { once: true }).collect(() => {
 		count++;
 	});
 
@@ -730,7 +730,7 @@ test("collect: supports optional events in unordered mode", () => {
 	const s = EventBus.make<TestSchema>();
 	let captured: { A: { value: number; }; B?: { text: string; }; C: { flag: boolean; }; } | null = null;
 
-	EventBus.listen(s, ["A", "B", "C"], { optional: ["B"] }).collect((payloads) => {
+	EventBus.subscribe(s, ["A", "B", "C"], { optional: ["B"] }).collect((payloads) => {
 		captured = payloads;
 	});
 
@@ -746,7 +746,7 @@ test("collect: ignores lookahead mismatch when unexpected event arrives after op
 	const s = EventBus.make<TestSchema>();
 	let captured: { A: { value: number; }; B?: { text: string; }; C: { flag: boolean; }; } | null = null;
 
-	EventBus.listen(s, ["A", "B", "C"], { ordered: true, optional: ["B"] }).collect((payloads) => {
+	EventBus.subscribe(s, ["A", "B", "C"], { ordered: true, optional: ["B"] }).collect((payloads) => {
 		captured = payloads;
 	});
 
@@ -760,7 +760,7 @@ test("collect: ignores irrelevant events in relaxed ordered sequence", () => {
 	const s = EventBus.make<TestSchema>();
 	let captured: { A: { value: number; }; B: { text: string; }; } | null = null;
 
-	EventBus.listen(s, ["A", "B"], { ordered: true, strict: false }).collect((payloads) => {
+	EventBus.subscribe(s, ["A", "B"], { ordered: true, strict: false }).collect((payloads) => {
 		captured = payloads;
 	});
 
@@ -777,7 +777,7 @@ test("collect: ignores non-matching events in unordered mode", () => {
 	const s = EventBus.make<TestSchema>();
 	let captured: { A: { value: number; }; B: { text: string; }; } | null = null;
 
-	EventBus.listen(s, ["A", "B"]).collect((payloads) => {
+	EventBus.subscribe(s, ["A", "B"]).collect((payloads) => {
 		captured = payloads;
 	});
 
@@ -795,7 +795,7 @@ test("collect: resets relaxed sequence to step 1 when out-of-order event matches
 	let captured: { A: { value: number; }; B: { text: string; }; C: { flag: boolean; }; } | null = null;
 
 	// A -> B -> A -> B -> C in relaxed mode
-	EventBus.listen(s, ["A", "B", "C"], { ordered: true, strict: false }).collect((payloads) => {
+	EventBus.subscribe(s, ["A", "B", "C"], { ordered: true, strict: false }).collect((payloads) => {
 		captured = payloads;
 	});
 
@@ -813,7 +813,7 @@ test("collect: returns an unsubscribe function that removes the listener", () =>
 	const s = EventBus.make<TestSchema>();
 	let count = 0;
 
-	const unsubscribe = EventBus.listen(s, ["A", "B"]).collect(() => {
+	const unsubscribe = EventBus.subscribe(s, ["A", "B"]).collect(() => {
 		count++;
 	});
 
@@ -828,9 +828,67 @@ test("collect: returns an unsubscribe function that removes the listener", () =>
 	expect(count).toBe(1);
 });
 
+// --- Schema-Wide Subscriptions ---
+
+test("subscribe: schema-wide tap observes all events on bus", () => {
+	const s = EventBus.make<TestSchema>();
+	const received: Array<{ kind: string; value: unknown; }> = [];
+
+	const unsubscribe = EventBus.subscribe(s).tap((msg) => {
+		received.push(msg);
+	});
+
+	EventBus.emit(s, { kind: "A", value: { value: 10 } });
+	EventBus.emit(s, { kind: "B", value: { text: "hello" } });
+	EventBus.emit(s, { kind: "C", value: { flag: true } });
+
+	expect(received).toStrictEqual([{ kind: "A", value: { value: 10 } }, { kind: "B", value: { text: "hello" } }, {
+		kind: "C",
+		value: { flag: true },
+	}]);
+
+	unsubscribe();
+	EventBus.emit(s, { kind: "A", value: { value: 20 } });
+	expect(received).toHaveLength(3);
+});
+
+test("subscribe: schema-wide reduce accumulates state across all events", () => {
+	const s = EventBus.make<TestSchema>();
+
+	const sub = EventBus.subscribe(s).reduce((msg, count) => {
+		switch (msg.kind) {
+			case "A":
+				return count + msg.value.value;
+			case "B":
+				return count + msg.value.text.length;
+			default:
+				return count + 1;
+		}
+	}, 0);
+
+	EventBus.emit(s, { kind: "A", value: { value: 5 } });
+	EventBus.emit(s, { kind: "B", value: { text: "test" } });
+	EventBus.emit(s, { kind: "C", value: { flag: true } });
+
+	expect(sub.getState()).toBe(10);
+
+	sub.unsubscribe();
+	EventBus.emit(s, { kind: "A", value: { value: 100 } });
+	expect(sub.getState()).toBe(10);
+});
+
+test("subscribe: schema-wide subscription object structurally omits collect", () => {
+	const s = EventBus.make<TestSchema>();
+	const builder = EventBus.subscribe(s);
+
+	expect("collect" in builder).toBe(false);
+	expect("reduce" in builder).toBe(true);
+	expect("tap" in builder).toBe(true);
+});
+
 // --- Once Lifecycle, Concurrency & Edge Cases ---
 
-test("listen: ensures once listener stays unsubscribed when callback throws under onError", () => {
+test("subscribe: ensures once subscriber stays unsubscribed when callback throws under onError", () => {
 	let caught = 0;
 	const s = EventBus.make<TestSchema>({
 		onError: () => {
@@ -839,7 +897,7 @@ test("listen: ensures once listener stays unsubscribed when callback throws unde
 	});
 	let executions = 0;
 
-	EventBus.listen(s, "A", { once: true }).tap(() => {
+	EventBus.subscribe(s, "A", { once: true }).tap(() => {
 		executions++;
 		throw new Error("once error");
 	});
@@ -848,17 +906,17 @@ test("listen: ensures once listener stays unsubscribed when callback throws unde
 	expect(caught).toBe(1);
 	expect(executions).toBe(1);
 
-	// Second emission must NOT trigger the once listener again
+	// Second emission must NOT trigger the once subscriber again
 	EventBus.emit(s, { kind: "A", value: { value: 2 } });
 	expect(caught).toBe(1);
 	expect(executions).toBe(1);
 });
 
-test("listen: unsubscribes once listener before executing callback to prevent re-entrant loops", () => {
+test("subscribe: unsubscribes once subscriber before executing callback to prevent re-entrant loops", () => {
 	const s = EventBus.make<TestSchema>();
 	let executions = 0;
 
-	EventBus.listen(s, "A", { once: true }).tap(() => {
+	EventBus.subscribe(s, "A", { once: true }).tap(() => {
 		executions++;
 		EventBus.emit(s, { kind: "A", value: { value: 99 } });
 	});
@@ -867,16 +925,16 @@ test("listen: unsubscribes once listener before executing callback to prevent re
 	expect(executions).toBe(1);
 });
 
-test("emit: discards pending queue when listener throws uncaught error", () => {
+test("emit: discards pending queue when subscriber throws uncaught error", () => {
 	const s = EventBus.make<TestSchema>();
 	let secondaryReceived = false;
 
-	EventBus.listen(s, "A").tap(() => {
+	EventBus.subscribe(s, "A").tap(() => {
 		EventBus.emit(s, { kind: "B", value: { text: "queued" } });
 		throw new Error("uncaught in emit");
 	});
 
-	EventBus.listen(s, "B").tap(() => {
+	EventBus.subscribe(s, "B").tap(() => {
 		secondaryReceived = true;
 	});
 
@@ -887,11 +945,11 @@ test("emit: discards pending queue when listener throws uncaught error", () => {
 	expect(secondaryReceived).toBe(false);
 });
 
-test("listen: skips multiple consecutive optional steps in ordered sequence", () => {
+test("subscribe: skips multiple consecutive optional steps in ordered sequence", () => {
 	const s = EventBus.make<TestSchema>();
 	let fired = 0;
 
-	EventBus.listen(s, ["A", "B", "C", "ResetEvent"], { ordered: true, optional: ["B", "C"] }).tap(() => {
+	EventBus.subscribe(s, ["A", "B", "C", "ResetEvent"], { ordered: true, optional: ["B", "C"] }).tap(() => {
 		fired++;
 	});
 
@@ -908,13 +966,13 @@ test("emit: handles empty target array as safe no-op", () => {
 	}).not.toThrow();
 });
 
-test("listen: unsubscribe is idempotent and safe when invoked repeatedly", () => {
+test("subscribe: unsubscribe is idempotent and safe when invoked repeatedly", () => {
 	const s = EventBus.make<TestSchema>();
 	let count = 0;
-	const unsubTap = EventBus.listen(s, "A").tap(() => {
+	const unsubTap = EventBus.subscribe(s, "A").tap(() => {
 		count++;
 	});
-	const subReduce = EventBus.listen(s, "A").reduce((_, n) => n + 1, 0);
+	const subReduce = EventBus.subscribe(s, "A").reduce((_, n) => n + 1, 0);
 
 	unsubTap();
 	unsubTap();
@@ -930,7 +988,7 @@ test("composition: integrates with pipe to process messages", () => {
 	const s = EventBus.make<TestSchema>();
 	const states: number[] = [];
 
-	const sub = EventBus.listen(s, "A").reduce((msg, current) => current + msg.value.value, 0);
+	const sub = EventBus.subscribe(s, "A").reduce((msg, current) => current + msg.value.value, 0);
 
 	pipe(
 		[10, 20, 30],
