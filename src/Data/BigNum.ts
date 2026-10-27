@@ -16,6 +16,9 @@ import { Maybe } from "../Core/Maybe.ts";
  * ```
  */
 export const BigNum = {
+	/**
+	 * Predicates and type guards for BigInt values.
+	 */
 	is: {
 		/**
 		 * Returns `true` when the bigint is equal to zero (`0n`).
@@ -83,7 +86,9 @@ export const BigNum = {
 		negative: (value: bigint): boolean => value < 0n,
 	},
 
-	// --- from ---
+	/**
+	 * Safe constructors and converters from raw primitives to BigInt.
+	 */
 	from: {
 		/**
 		 * Safely parses a string into a `bigint`. Returns `None` if parsing fails.
@@ -120,7 +125,9 @@ export const BigNum = {
 		},
 	},
 
-	// --- to ---
+	/**
+	 * Converters from BigInt to native types.
+	 */
 	to: {
 		/**
 		 * Safely converts a `bigint` to a `number`. Returns `None` if the value is outside JavaScript's safe integer range.

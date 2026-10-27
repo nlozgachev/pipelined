@@ -9,7 +9,7 @@ description: Work with plain JavaScript objects as key-value records immutably a
 
 <!-- BUNDLE_SIZE:END -->
 
-Plain JavaScript objects serving as string-keyed dictionaries — typed as `Record<string, A>`—are
+Plain JavaScript objects serving as string-keyed dictionaries — typed as `Record<string, A>` — are
 used everywhere in TypeScript applications for configurations, HTTP headers, lookup tables, and JSON
 payloads.
 
@@ -98,7 +98,7 @@ const priceLabels = pipe(
 ```
 
 When you need to rename keys across a record — such as normalizing HTTP header names or prefixing
-configuration keys—`Rec.mapKeys` transforms each key while preserving its value. To transform both
+configuration keys — `Rec.mapKeys` transforms each key while preserving its value. To transform both
 keys and values in a single pass, `Rec.mapEntries` maps each `(key, value)` pair to a new
 `[newKey, newValue]` tuple:
 
@@ -420,7 +420,7 @@ const workerThreads = pipe(
   properties downstream.
 - **Transforming and filtering record values in pipelines**: When processing dynamic dictionaries
   (such as converting string prices to numbers or stripping empty optional fields), `Rec.map`,
-  `Rec.filter`, `Rec.filterMap`, and `Rec.compact` apply transformations point-free within `pipe`
+  `Rec.filter`, `Rec.filterMap`, and `Rec.compact` apply transformations directly within `pipe`
   workflows while preserving key structure.
 - **Payload key migration and renaming (`Rec.mapKeys`, `Rec.mapEntries`)**: When ingesting
   third-party webhook payloads or normalizing HTTP headers, `Rec.mapKeys` and `Rec.mapEntries`

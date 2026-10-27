@@ -634,6 +634,9 @@ export const Dict = {
 	mergeWith,
 	mapEntries,
 	mapKeys,
+	/**
+	 * Utilities for working with guaranteed non-empty dictionaries (`NonEmptyMap`).
+	 */
 	NonEmpty: DictNonEmptyConst,
 };
 

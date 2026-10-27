@@ -1457,18 +1457,27 @@ export const Arr = {
 	windowed,
 	unfold,
 	is: ArrIs,
+	/**
+	 * Maps elements to an effectful container and aggregates the results.
+	 */
 	traverse: {
 		Maybe: ArrMaybe.traverse,
 		Result: ArrResult.traverse,
 		Task: ArrTask.traverse,
 		Validation: ArrValidation.traverse,
 	},
+	/**
+	 * Sequences an array of effectful containers into a container of array.
+	 */
 	sequence: {
 		Maybe: ArrMaybe.sequence,
 		Result: ArrResult.sequence,
 		Task: ArrTask.sequence,
 		Validation: ArrValidation.sequence,
 	},
+	/**
+	 * Utilities for working with guaranteed non-empty arrays (`NonEmptyArr`).
+	 */
 	NonEmpty: ArrNonEmpty,
 };
 

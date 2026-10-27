@@ -114,7 +114,7 @@ pipe(10, Num.remainder(0)); // None
 ## Rounding
 
 When converting fractional calculations into whole integers — such as calculating cent amounts, page
-counts, or pixel coordinates—`Num.round`, `Num.floor`, and `Num.ceil` provide point-free wrappers
+counts, or pixel coordinates — `Num.round`, `Num.floor`, and `Num.ceil` provide composable wrappers
 around standard rounding rules:
 
 ```ts
@@ -260,8 +260,8 @@ const averageDiscountLabel = pipe(
 
 - **Sanitizing and clamping untrusted numeric inputs**: When extracting pagination offsets, page
   limits, or price filter boundaries from query strings, numbers can be malformed or fall outside
-  permitted domain ranges. `Num.from.string` and `Num.clamp` sanitize and constrain values
-  point-free in pipeline workflows.
+  permitted domain ranges. `Num.from.string` and `Num.clamp` sanitize and constrain values directly
+  in pipeline workflows.
 - **Safe statistical computations without `Infinity` or `NaN`**: Calling standard functions like
   `Math.min()` on an empty collection returns `Infinity`, while dividing by an empty list length
   yields `NaN`. `Num.min`, `Num.max`, and `Num.mean` return `Maybe<number>`, guaranteeing that empty
@@ -273,7 +273,7 @@ const averageDiscountLabel = pipe(
 - **Safe locale formatting (`Num.format`)**: Formatting numbers into currencies, units, or compact
   notation via `Intl.NumberFormat` while automatically rejecting `NaN` and `Infinity` values as
   `None`.
-- **Point-free mathematical pipelines**: In shopping cart calculations, rate adjustments, and layout
+- **Linear mathematical pipelines**: In shopping cart calculations, rate adjustments, and layout
   engines, combining arithmetic and rounding operations (`Num.add`, `Num.subtract`, `Num.multiply`,
   `Num.abs`, `Num.negate`, `Num.round`, `Num.floor`, `Num.ceil`) inside `pipe` keeps mathematical
   transformations readable without temporary variables.

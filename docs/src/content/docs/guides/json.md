@@ -20,7 +20,7 @@ around runtime exceptions and untyped return values that undermine TypeScript pi
    contains a `bigint` field (such as a 64-bit database ID or cent balance) or a circular object
    reference, `JSON.stringify` throws a runtime `TypeError` and crashes the request.
 3. **`JSON.stringify` silently returns `undefined` on un-serializable inputs**: Passing `undefined`,
-   a function, or a `Symbol` directly to `JSON.stringify` does not return a `string`—it returns
+   a function, or a `Symbol` directly to `JSON.stringify` does not return a `string` — it returns
    `undefined`, which can corrupt storage writes or message queues expecting valid JSON text.
 
 ```ts

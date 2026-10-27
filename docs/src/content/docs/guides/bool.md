@@ -183,19 +183,19 @@ Bool.to.string(false); // "false"
 ```
 
 When a boolean check gates access to a value or decides whether a pipeline succeeds or fails,
-`Bool.to.Maybe` and `Bool.to.Result` lift the boolean directly into a container using lazy
+`Bool.to.Maybe` and `Bool.to.Result` convert the boolean directly into a container using lazy
 callbacks:
 
 ```ts
 import { Result } from "@nlozgachev/pipelined/core";
 
-// Lift to Maybe (Some on true, None on false):
+// Convert to Maybe (Some on true, None on false):
 const activeDiscountCode = pipe(
   cart.qualifiesForPromo,
   Bool.to.Maybe(() => "SAVE20"),
 ); // Some("SAVE20") or None
 
-// Lift to Result (Ok on true, Err on false):
+// Convert to Result (Ok on true, Err on false):
 const accessResult = pipe(
   user.hasActiveSubscription,
   Bool.to.Result(
@@ -255,7 +255,7 @@ function authorizeRequest(ctx: RequestContext): Result<string, string> {
 - **Short-circuiting in pipelines without imperative `if` blocks**: `Bool.andLazy` and `Bool.orLazy`
   avoid executing secondary expensive checks unless the upstream boolean requires it.
 - **Lazy bridges to `Maybe` and `Result`**: `Bool.to.Maybe` and `Bool.to.Result` turn boolean
-  conditions into structured containers point-free while only evaluating their value or error thunks
-  when needed.
+  conditions into structured containers inside pipelines while only evaluating their value or error
+  thunks when needed.
 - **Type-safe truthiness and falsiness filtering**: `Bool.is.truthy` and `Bool.is.falsy` provide
   narrowing type guards for filtering collections without manual type assertions.

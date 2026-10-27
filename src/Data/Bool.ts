@@ -79,6 +79,9 @@ const toString = (condition: boolean): "true" | "false" => (condition ? "true" :
 // Public Export
 // =============================================================================
 export const Bool = {
+	/**
+	 * Predicates and type guards for boolean values.
+	 */
 	is: {
 		/**
 		 * Type guard — checks if a value is a primitive boolean.
@@ -291,7 +294,9 @@ export const Bool = {
 	 */
 	match,
 
-	// --- from ---
+	/**
+	 * Parsers and converters from external values to boolean.
+	 */
 	from: {
 		/**
 		 * Parses a string into a `Maybe<boolean>`.
@@ -332,7 +337,9 @@ export const Bool = {
 		truthy: fromTruthy,
 	},
 
-	// --- to ---
+	/**
+	 * Converters from boolean conditions into strings or monadic containers.
+	 */
 	to: {
 		/**
 		 * Lifts a boolean condition into a `Maybe`.

@@ -18,6 +18,9 @@ const sumFn = (numbers: readonly number[]): number => {
 // Public Export
 // =============================================================================
 export const Num = {
+	/**
+	 * Predicates and type guards for number values.
+	 */
 	is: {
 		/**
 		 * Returns `true` when the number is equal to zero.
@@ -202,6 +205,9 @@ export const Num = {
 	 */
 	inRange: (start: number, end: number) => (value: number): boolean => value >= start && value < end,
 
+	/**
+	 * Parsers and converters from strings or BigInt to number.
+	 */
 	from: {
 		/**
 		 * Parses a string as a number. Returns `None` when parsing produces `NaN` or text is blank.

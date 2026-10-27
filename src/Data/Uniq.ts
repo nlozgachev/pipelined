@@ -382,7 +382,13 @@ export const Uniq = {
 	intersection,
 	difference,
 	reduce,
+	/**
+	 * Converters from unique collections to other data structures.
+	 */
 	to: { array: toArray },
+	/**
+	 * Utilities for working with guaranteed non-empty sets (`NonEmptySet`).
+	 */
 	NonEmpty: UniqNonEmptyConst,
 };
 

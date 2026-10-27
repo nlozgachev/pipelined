@@ -60,6 +60,9 @@ const isBlank = (text: string): boolean => text.trim().length === 0;
 // Public Export
 // =============================================================================
 export const Str = {
+	/**
+	 * Predicates and type guards for strings.
+	 */
 	is: {
 		/**
 		 * Returns `true` when the string is empty.
@@ -425,6 +428,9 @@ export const Str = {
 		return text.slice(0, targetLength - suffix.length) + suffix;
 	},
 
+	/**
+	 * Utilities for working with guaranteed non-empty strings (`NonEmptyString`).
+	 */
 	NonEmpty: StrNonEmptyConst,
 };
 

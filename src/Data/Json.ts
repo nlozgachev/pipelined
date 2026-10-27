@@ -16,8 +16,8 @@ const isTypeError = (err: unknown): err is TypeError =>
  * import { pipe } from "@nlozgachev/pipelined/composition";
  *
  * const result = pipe(
- *   Json.parse('{"name":"Alice"}'),
- *   Result.map((data: any) => data.name)
+ *   Json.parse<{ readonly name: string }>('{"name":"Alice"}'),
+ *   Result.map((data) => data.name)
  * ); // Ok("Alice")
  * ```
  */

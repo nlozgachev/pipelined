@@ -448,8 +448,8 @@ const statusCounts = Arr.frequencies(["200", "500", "200", "404", "200"]);
 ## Sequence Generation: unfold
 
 When generating an array from an initial seed state until a termination condition is reached — such
-as building pagination offsets or time intervals—`Arr.unfold` repeatedly invokes your step function
-as long as it returns `Some([nextItem, nextState])`:
+as building pagination offsets or time intervals — `Arr.unfold` repeatedly invokes your step
+function as long as it returns `Some([nextItem, nextState])`:
 
 ```ts
 // Generate pagination offsets for 100 items with a page size of 25:
@@ -549,7 +549,7 @@ const allHashes = Arr.sequence.Task([computeHash("doc_1"), computeHash("doc_2")]
 ## Non-Empty Arrays: `Arr.NonEmpty`
 
 When your domain requires an array with at least one element — such as a list of validation errors
-or line items in a confirmed order—`Arr.NonEmpty<A>` (aliased to `readonly [A, ...A[]]`) encodes
+or line items in a confirmed order — `Arr.NonEmpty<A>` (aliased to `readonly [A, ...A[]]`) encodes
 that guarantee at compile time.
 
 Constructing an array with `Arr.prepend`, `Arr.append`, or `Arr.NonEmpty.singleton` produces an
@@ -656,10 +656,10 @@ const priorityOrders = pipe(
 
 ## Problems it solves
 
-- **Point-free transformation in data pipelines**: In API response formatters and event processors,
-  transforming arrays with native methods requires verbose arrow wrapper functions inside `pipe`
-  chains. `Arr` provides data-last combinators (`Arr.map`, `Arr.filterMap`, `Arr.chunksOf`,
-  `Arr.chunkBy`, `Arr.groupBy`) that compose cleanly into linear pipelines.
+- **Pipeline transformation without callback wrappers**: In API response formatters and event
+  processors, transforming arrays with native methods requires verbose arrow wrapper functions
+  inside `pipe` chains. `Arr` provides data-last combinators (`Arr.map`, `Arr.filterMap`,
+  `Arr.chunksOf`, `Arr.chunkBy`, `Arr.groupBy`) that compose cleanly into linear pipelines.
 - **Safe element extraction and out-of-bounds protection (`Arr.head`, `Arr.last`, `Arr.at`)**:
   Native indexing (`arr[i]`) returns `undefined` at runtime without static safety. `Arr.head`,
   `Arr.last`, and `Arr.at` return `Maybe<A>`, supporting negative offsets and guaranteeing
@@ -667,7 +667,7 @@ const priorityOrders = pipe(
 - **Batch chunking and sliding windows (`Arr.chunksOf`, `Arr.chunkBy`, `Arr.windowed`)**: When
   submitting bulk inserts to rate-limited APIs, grouping consecutive identical states, or computing
   moving averages across time-series metrics, `Arr.chunksOf`, `Arr.chunkBy`, and `Arr.windowed`
-  partition collections point-free.
+  partition collections without custom chunking algorithms.
 - **Categorization and dual-partitioning (`Arr.groupBy`, `Arr.partition`, `Arr.partitionMaybe`,
   `Arr.partitionMap`, `Arr.separate`, `Arr.frequencies`)**: In UI dashboards and reporting tools,
   collections can be split by boolean criteria (`Arr.partition`), segregated by optional or fallible

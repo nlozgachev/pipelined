@@ -341,10 +341,10 @@ const formattedLabels = pipe(
   miscounts surrogate pairs and compound emojis. `Str.graphemeSize` counts actual user-perceived
   glyphs via `Intl.Segmenter`, while `Str.size` provides a uniform data-last UTF-16 code-unit
   accessor.
-- **Pure regular expression matching without stateful bugs**: Native `RegExp` flags (`/g`, `/y`)
+- **Stateless regular expression matching without pointer bugs**: Native `RegExp` flags (`/g`, `/y`)
   maintain internal `lastIndex` pointer offsets that cause successive checks to fail intermittently.
-  `Str.match` and `Str.test` reset state to index zero on every execution, guaranteeing pure,
-  idempotent pattern matching.
+  `Str.match` and `Str.test` reset state to index zero on every execution, guaranteeing idempotent,
+  side-effect-free pattern matching.
 - **Safe numeric string conversion**: Parsing numbers from HTTP parameters or form text with
   `Number()` or `parseInt()` yields `NaN` on invalid input without static compiler warnings.
   `Str.parse.int` and `Str.parse.float` return `Maybe<number>`, ensuring non-numeric inputs are

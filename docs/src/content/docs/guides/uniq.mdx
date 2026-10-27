@@ -11,7 +11,7 @@ description: Immutable, pipeline-ready operations for collections of unique valu
 import { Aside } from '@astrojs/starlight/components'
 
 JavaScript's native `Set` is the standard data structure for storing unique values and performing
-$O(1)$ membership checks. However, using native `Set` instances in TypeScript pipelines and
+O(1) membership checks. However, using native `Set` instances in TypeScript pipelines and
 state management introduces two recurring pitfalls:
 
 1. **In-place mutation**: Calling `.add()` or `.delete()` mutates the `Set` directly. If you forget
@@ -288,7 +288,7 @@ const effectiveScopes = pipe(
   existing references when operations produce no changes.
 - **Permission algebra and role reconciliation**: In role-based access control (RBAC), applications
   frequently need to compute missing permissions (`Uniq.difference`), combine group privileges
-  (`Uniq.union`), or find overlapping scopes (`Uniq.intersection`). `Uniq` provides pure, point-free
+  (`Uniq.union`), or find overlapping scopes (`Uniq.intersection`). `Uniq` provides immutable, data-last
   set algebra operations.
 - **Entitlement and prerequisite checks (`Uniq.is.subsetOf`)**: Verifying that a user's permission
   set covers all required scopes for an API endpoint or that a cart's tags meet promotional
@@ -296,6 +296,6 @@ const effectiveScopes = pipe(
 - **Interactive multi-select and tag toggling (`Uniq.toggle`, `Uniq.insert`, `Uniq.remove`)**: In
   search filter components and tag editors, toggling or updating selected items inside `pipe`
   pipelines without managing temporary arrays or mutable set instances.
-- **Point-free set mapping and filtering (`Uniq.map`, `Uniq.filter`, `Uniq.filterMap`,
+- **Pipeline set mapping and filtering (`Uniq.map`, `Uniq.filter`, `Uniq.filterMap`,
   `Uniq.reduce`)**: Transforming or filtering unique collections while maintaining uniqueness and
   non-emptiness (`Uniq.NonEmpty`) without spreading sets into intermediate arrays.

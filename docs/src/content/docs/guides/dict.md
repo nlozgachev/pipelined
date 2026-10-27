@@ -392,10 +392,10 @@ const activeRouteReport = pipe(
   Mutating a native `Map` with `.set()` or `.delete()` modifies shared references in place. `Dict`
   returns fresh `ReadonlyMap` instances on every update and provides atomic initialize-or-update
   semantics via `Dict.upsert`.
-- **Point-free transformation of key-value stores (`Dict.map`, `Dict.mapKeys`, `Dict.mapEntries`,
+- **Pipeline transformation of key-value stores (`Dict.map`, `Dict.mapKeys`, `Dict.mapEntries`,
   `Dict.filterMap`, `Dict.compact`, `Dict.mergeWith`)**: Filtering invalid entries, merging
   configuration layers with custom collision resolvers, or transforming map keys and values in data
   pipelines without converting to arrays and back.
 - **Dictionary set algebra (`Dict.union`, `Dict.intersection`, `Dict.difference`)**: Reconciling
   local entity caches with remote server state by finding updated, overlapping, or removed map
-  entries purely.
+  entries without mutating input maps.

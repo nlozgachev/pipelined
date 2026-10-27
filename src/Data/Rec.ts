@@ -779,8 +779,17 @@ export const Rec = {
 	compact,
 	mapEntries,
 	updateIn,
+	/**
+	 * Maps record values to an effectful container and aggregates the results into a record.
+	 */
 	traverse: { Maybe: RecMaybe.traverse, Result: RecResult.traverse },
+	/**
+	 * Sequences a record of effectful containers into a container of record.
+	 */
 	sequence: { Maybe: RecMaybe.sequence, Result: RecResult.sequence },
+	/**
+	 * Utilities for working with guaranteed non-empty records (`NonEmptyRecord`).
+	 */
 	NonEmpty: RecNonEmpty,
 };
 

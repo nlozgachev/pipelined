@@ -16,7 +16,7 @@ it suffers from two critical limitations:
 1. **Floating-point precision drift**: Representing currency amounts in dollars (`0.1 + 0.2`)
    introduces binary rounding errors (`0.30000000000000004`), which compounds across ledger entries.
 2. **Safe integer ceiling (`Number.MAX_SAFE_INTEGER`)**: Standard numbers lose integer precision
-   above `9,007,199,254,740,991` ($2^{53} - 1$). A 64-bit database identifier or an 18-decimal-place
+   above `9,007,199,254,740,991` (2^53 - 1). A 64-bit database identifier or an 18-decimal-place
    token balance (such as Wei in Ethereum) silently corrupts low-order digits when parsed as a
    `number`.
 
