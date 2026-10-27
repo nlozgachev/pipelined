@@ -9,14 +9,29 @@ description: Eliminate impossible states, enforce compile-time outbound transiti
 
 <!-- BUNDLE_SIZE:END -->
 
-Managing multi-step workflows (like checkouts, document approvals, or authentication flows) with
-independent boolean flags (`isLoading`, `isError`, `isSubmitted`) creates $2^N$ implicit states—most
-of which represent impossible or invalid combinations (such as `isLoading: true` while
-`orderReceipt` is present). Furthermore, untyped `switch/case` reducers permit arbitrary state jumps
-and provide no protection against race conditions when background async tasks resolve after a user
-has already navigated away.
+Managing multi-step workflows like order checkouts, document approvals, or user authentication with
+independent boolean flags quickly leads to fragile code:
 
-`Machine` models workflows as explicit discriminated variant-states where each state carries *only*
+```ts
+// The fragile status quo: independent boolean flags
+interface CheckoutState {
+  isLoading: boolean;
+  isError: boolean;
+  isShipping: boolean;
+  isPayment: boolean;
+  receiptUrl?: string;
+  errorMessage?: string;
+}
+```
+
+Every boolean flag added to an interface doubles the number of implicit states. Six boolean flags
+create 2^N (64) possible combinations — most of which represent impossible or invalid states. The
+compiler cannot prevent bugs like `isLoading: true` while `receiptUrl` is already populated, or
+jumping straight from cart into payment without valid shipping details. Untyped `switch/case`
+reducers permit arbitrary state jumps and provide no protection against race conditions when
+background async tasks resolve after a user has already navigated away.
+
+`Machine` models workflows as explicit discriminated variant-states where each state carries only
 the payload valid for that step, enforces outbound transition targets at compile time, and
 automatically aborts in-flight tasks upon exiting a state.
 
@@ -323,15 +338,35 @@ console.log(store.getState().value); // { items: ["Ergonomic Chair"], subtotalCe
 
 ## Stateful Execution & Async Lifecycles: `Machine.interpret`
 
-When states need to trigger async requests, background tasks, or timers, use `Machine.interpret`. It
-spawns an execution actor managing active state lifecycles:
+Pure reducers and `Machine.transition` compute next states synchronously. While this suffices for
+local UI data transformations, real-world workflows depend on asynchronous operations: authenticating
+with an API, charging payment cards, polling background jobs, or awaiting user inputs.
 
-- **State-Scoped `AbortSignal`**: Passed to `entry`, automatically aborted when transitioning out of
-  that state or when `actor.abort()` is called.
-- **Stale Callback Suppression**: Async completions originating from previous states are safely
-  dropped.
-- **Re-entrant Dispatch Queue**: Synchronous `send` calls inside handlers or callbacks resolve in
-  FIFO order.
+Managing asynchronous side effects outside the state machine (such as inside ad-hoc component effect
+hooks or detached async functions) introduces three classic race conditions:
+
+1. **Stale callbacks overwriting active state**: If a user submits an authentication form, cancels the
+   dialog, and submits a different email, a delayed response from the first request can resolve after
+   cancellation and log the user into the wrong account.
+2. **Dangling network requests and timers**: When a user transitions away from a screen or aborts a
+   flow, in-flight HTTP requests and active intervals continue running in the background unless
+   manually cancelled, consuming network bandwidth and leaking memory.
+3. **Re-entrant dispatch corruption**: If an event handler synchronously triggers another event
+   dispatch, naive recursive handlers update state out of order, leading to corrupted state snapshots
+   or call stack exhaustion.
+
+`Machine.interpret` turns a pure machine specification into an active execution actor that manages the
+lifecycle of asynchronous effects with three guarantees:
+
+- **State-scoped cancellation via `AbortSignal`**: Each state's `entry` hook receives an `AbortSignal`.
+  The actor aborts this signal the moment the machine exits that state or when `actor.abort()` is
+  called, cancelling in-flight requests and timers automatically.
+- **Generation token suppression**: Each state transition increments an internal generation counter.
+  If an asynchronous promise callback from a superseded state eventually settles, the actor detects the
+  stale generation token and ignores the dispatch as an idempotent no-op.
+- **Sequential FIFO dispatch queue**: When `send` is invoked synchronously within a transition handler
+  or entry hook, the event is queued and evaluated only after the active transition finishes,
+  guaranteeing strict causal event order.
 
 ```ts
 type AuthState =
@@ -408,32 +443,183 @@ actor.send({ kind: "CANCEL" });
 
 ## Synchronization with `EventBus`
 
-Actors synchronize directly with [`EventBus`](/guides/event-bus/). Passing `bus` in options forwards
-all schema events into the actor without glue code:
+In distributed architectures, event producers and state consumers are separated across module
+boundaries. Background WebSocket connections, worker threads, keyboard listeners, and analytics
+trackers emit events continuously.
+
+- **`EventBus` acts as a broadcast highway**: It decouples event producers from consumers,
+  distributing typed messages across subsystems without hardcoded references. However, an event bus
+  maintains no workflow state — it delivers every emitted message to every registered subscriber
+  regardless of whether the application is ready to process it.
+- **`Machine` acts as a stateful gatekeeper**: It enforces workflow rules, ignores events that are
+  invalid for the active state variant, and binds asynchronous side-effect lifecycles to state
+  transitions.
+
+Passing `bus` to `Machine.interpret` connects the broadcast highway directly to the stateful gatekeeper:
 
 ```ts
 import { EventBus, Machine } from "@nlozgachev/pipelined/core";
 
-const authBus = EventBus.make<AuthEvents>();
-const actor = Machine.interpret(authMachine, { bus: authBus });
+// 1. Define shared message schema for network & collaboration events
+export type CollaborationEvents = {
+  CONNECT: { readonly serverUrl: string };
+  CONNECTED: { readonly sessionId: string };
+  DISCONNECT: void;
+  REMOTE_PATCH: { readonly patchId: string; readonly content: string };
+};
 
-// Emitting on the bus drives transitions in the actor
-EventBus.emit(authBus, { kind: "SUBMIT", value: { email: "user@example.com" } });
+// 2. Define explicit state variants with outbound target bounds
+export type CollaborationState =
+  | Machine.State<"disconnected", void, "connecting">
+  | Machine.State<
+    "connecting",
+    { readonly serverUrl: string },
+    "connected" | "disconnected"
+  >
+  | Machine.State<
+    "connected",
+    { readonly sessionId: string; readonly documentText: string },
+    "connected" | "disconnected"
+  >;
+
+// 3. Define statechart with entry effects and transition handlers
+export const collaborationMachine = Machine.make<
+  CollaborationState,
+  CollaborationEvents
+>({
+  initial: Machine.state("disconnected"),
+  states: {
+    disconnected: {
+      on: {
+        CONNECT: (_state, { serverUrl }) =>
+          Machine.state("connecting", { serverUrl }),
+      },
+    },
+    connecting: {
+      entry: (state, { send, signal }) => {
+        // Scoped connection: abort signal cancels setup if state exits early
+        const socket = new WebSocket(state.value.serverUrl);
+
+        socket.onopen = () => {
+          send({ kind: "CONNECTED", value: { sessionId: "sess_xyz123" } });
+        };
+
+        signal.addEventListener("abort", () => {
+          socket.close();
+        });
+
+        return () => socket.close();
+      },
+      on: {
+        CONNECTED: (_state, { sessionId }) =>
+          Machine.state("connected", { sessionId, documentText: "" }),
+        DISCONNECT: () => Machine.state("disconnected"),
+      },
+    },
+    connected: {
+      on: {
+        REMOTE_PATCH: (state, { content }) =>
+          Machine.state("connected", {
+            sessionId: state.value.sessionId,
+            documentText: state.value.documentText + content,
+          }),
+        DISCONNECT: () => Machine.state("disconnected"),
+      },
+    },
+  },
+});
+
+// 4. Create an event bus and attach the actor directly
+const syncBus = EventBus.make<CollaborationEvents>({
+  onError: (error) => console.error("Sync bus error:", error),
+});
+
+const actor = Machine.interpret(collaborationMachine, { bus: syncBus });
+
+// 5. External WebSocket clients or UI modules publish events to the bus:
+EventBus.emit(syncBus, {
+  kind: "CONNECT",
+  value: { serverUrl: "wss://collab.example.com" },
+});
+
+// Out-of-order patches arriving before connection completes are dropped safely:
+EventBus.emit(syncBus, {
+  kind: "REMOTE_PATCH",
+  value: { patchId: "p1", content: "Initial draft text" },
+});
+
+// Teardown unsubscribes the actor from syncBus and closes the active connection:
+actor.abort();
 ```
+
+### Architectural Mechanics of the Bridge
+
+1. **Shared Discriminated Union Protocol**:
+   Both `EventBus.Message<Events>` and `Machine.Event<Events>` adhere to the identical `{ kind: K, value: Events[K] }`
+   discriminated union structure. When initialized with `{ bus }`, the actor registers an internal
+   listener with the bus. Any message emitted to the bus enters the actor's FIFO dispatch queue
+   without glue code or data mapping.
+
+2. **Contextual Event Filtering**:
+   When an event arrives from the bus, the actor delivers it to the machine's transition table for the
+   active state. If the active state variant has no handler defined for that event kind,
+   `Machine.transition` ignores the event and returns the current state reference unchanged. The event
+   bus does not need to know the machine's internal state, and unhandled messages are discarded as
+   safe, idempotent no-ops.
+
+3. **Bound Lifecycle Teardown**:
+   Calling `actor.abort()` cleans up all active state resources in a single operation: it fires the
+   state-scoped `AbortSignal`, invokes the active state's exit disposer, and unsubscribes the actor's
+   listener from the `EventBus`. This eliminates dangling listener leaks when a component or service
+   shuts down.
+
+### Technical Failure Modes Prevented
+
+1. **Out-of-Order Packet and Event Corruption**:
+   In distributed or real-time systems, network packets frequently arrive out of order (such as a
+   `REMOTE_PATCH` arriving before connection negotiation finishes, or a late update arriving after
+   disconnection). Without a state machine, premature or delayed events corrupt application state.
+   `Machine` acts as a firewall: any event not explicitly permitted by the active state variant is
+   dropped immediately.
+
+2. **Dangling Subscription and Memory Leaks**:
+   Manually wiring event bus listeners to UI component state requires tracking unsubscribe tokens and
+   calling them across unmount boundaries. Passing `{ bus }` to `Machine.interpret` binds subscription
+   lifecycles directly to the actor. Invoking `actor.abort()` unbinds the actor from the bus,
+   preventing retain cycles and memory leaks.
+
+3. **Cascading Exception Containment**:
+   `EventBus` utilizes a breadth-first trampoline dispatch loop with error boundaries (`onError`). If
+   a machine's transition handler or entry hook throws an unhandled exception, `EventBus` catches the
+   error, isolates it, and routes it to `onError`. The failure is contained, preventing a broken state
+   transition from crashing sibling subscribers or halting the broader event bus pipeline.
 
 ---
 
-## Problems it Solves
+## Problems it solves
 
-1. **Boolean Flag Proliferation**: Replaces independent boolean combinations (`isLoading`,
-   `isError`, `isSubmitted`) with mutually exclusive discriminated union states carrying only
-   relevant payloads.
-2. **Illegal State Transitions**: Enforces compile-time outbound target constraints
-   (`AllowedTargets`) so invalid state jumps are caught by TypeScript rather than triggering runtime
-   bugs.
-3. **Async Race Conditions & Stale Callbacks**: Automatically cancels state-scoped `AbortController`
-   instances upon exiting a state and ignores callbacks from superseded state generations.
-4. **Impedance Mismatch with React & Redux**: Provides `Machine.to.reducer` to natively bridge
-   data-last pipelines with standard uncurried `(state, action) => nextState` UI stores.
-5. **Re-entrant Dispatch Corruption**: Implements an internal FIFO queue ensuring nested or
-   re-entrant `send` dispatches resolve deterministically in sequence without stack overflows.
+- **Impossible state combinations from boolean flag proliferation**: In complex workflows like
+  checkout or user onboarding, managing status with multiple independent boolean flags (`isLoading`,
+  `isError`, `isSubmitted`) creates 2^N implicit states. The compiler cannot prevent invalid
+  combinations like `isLoading: true` while an order receipt is already present. `Machine` replaces
+  disconnected flags with mutually exclusive discriminated union variants, ensuring only the payload
+  valid for the active step exists in memory.
+- **Illegal state jumps and broken workflow transitions**: Untyped `switch/case` reducers allow any
+  action to transition into any state, making it possible for buggy UI code to jump directly from cart
+  to payment confirmation without capturing an address. `Machine.State` lets you declare explicit
+  outbound target bounds (`AllowedTargets`) so TypeScript flags illegal transitions at compile time
+  before code ever runs.
+- **Async race conditions, stale callbacks, and memory leaks**: When asynchronous requests are
+  initiated from UI components or loose effects, late network responses can resolve after a user has
+  cancelled or navigated away, overwriting fresh data with stale results. `Machine.interpret` passes a
+  state-scoped `AbortSignal` directly to entry hooks, aborting in-flight requests immediately on state
+  exit and dropping stale callbacks via internal generation counters.
+- **Bridging pure functional pipelines with standard UI stores**: Functional pipelines favor
+  curried data-last signatures `(event) => (state) => nextState`, whereas React's `useReducer` and
+  Redux require uncurried `(state, action) => nextState` functions that handle `undefined` initial
+  states. `Machine.to.reducer` bridges this gap, allowing pure statecharts to power standard React
+  components and Redux stores with zero wrapper glue.
+- **Re-entrant dispatch corruption and call stack overflow**: When an event handler or lifecycle hook
+  synchronously triggers another event dispatch, recursive event loops can scramble event ordering or
+  trigger stack overflows. `Machine.interpret` manages an internal FIFO dispatch queue, ensuring
+  synchronous events are processed sequentially in exact causal order.

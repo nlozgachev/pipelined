@@ -333,6 +333,44 @@ This architecture guarantees two core runtime properties:
 
 ---
 
+## Driving State Machines with `Machine.interpret`
+
+While `EventBus` broadcasts messages across decoupled modules, an event bus does not track workflow
+state. Passing an `EventBus` to [`Machine.interpret`](/guides/machine/) connects the event highway
+to a stateful gatekeeper:
+
+```ts
+import { EventBus, Machine } from "@nlozgachev/pipelined/core";
+
+// Shared event schema
+type AuthEvents = {
+  SUBMIT: { readonly email: string };
+  SUCCESS: { readonly token: string };
+  SIGNOUT: void;
+};
+
+// Create bus and attach the state machine actor
+const authBus = EventBus.make<AuthEvents>();
+const actor = Machine.interpret(authMachine, { bus: authBus });
+
+// Emitting on the bus drives transitions in the actor
+EventBus.emit(authBus, { kind: "SUBMIT", value: { email: "dev@example.com" } });
+
+// Aborting the actor automatically detaches it from the bus
+actor.abort();
+```
+
+Bridging an event bus with a state machine prevents three common failure modes:
+
+- **Out-of-order action corruption**: Messages arriving when the machine is in an incompatible state
+  are dropped safely as idempotent no-ops.
+- **Dangling subscriber leaks**: Calling `actor.abort()` unbinds the actor from the bus
+  automatically when UI views unmount.
+- **Cascading exception containment**: Subscriber errors inside machine entry hooks or transition
+  handlers are isolated by the bus's error boundary without crashing sibling subscribers.
+
+---
+
 ## Problems it solves
 
 - **Decoupling event producers from subscribers**: In modular architectures, components (such as
@@ -360,6 +398,10 @@ This architecture guarantees two core runtime properties:
   applications, child feature modules maintain local event buses. `EventBus.forward` bridges and
   forwards filtered subsets of shared events from isolated module buses into a central application
   event bus without manual event plumbing.
+- **Preventing state corruption during out-of-order event bursts**: Standard event emitters deliver
+  messages regardless of application workflow state. Passing an event bus to `Machine.interpret`
+  enforces statechart validity rules, drops incompatible messages safely, and couples event
+  subscription lifecycles directly to actor teardown.
 - **Memory leak prevention with explicit subscriber disposal**: Every subscription returns a clean
   disposal function that removes the subscriber instantly, preventing dangling references and memory
   leaks when UI views unmount.
