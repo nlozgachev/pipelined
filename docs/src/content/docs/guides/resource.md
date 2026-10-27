@@ -27,8 +27,8 @@ resources — such as a database connection, a distributed lock, and a cache cli
 aborts midway, it is easy to leak an already-opened handle or release resources in the wrong order.
 
 `Resource<E, A>` solves this structurally by packaging the potentially fallible `acquire` step (a
-`Task.Result<E, A>`) and the infallible `release` step (a `(value: A) => Task<unknown>`) into an
-opaque, composable lifecycle bracket:
+`Task.Result<E, A>`) and the infallible `release` step (a `(value: A) => Task<unknown>`) into a
+composable lifecycle bracket — an abstraction pairing allocation with guaranteed cleanup:
 
 ```mermaid
 flowchart TD
@@ -111,14 +111,14 @@ const products = await pipe(
 )(); // Resolves to Result<DbError, Product[]>
 ```
 
-Let's trace the execution:
+Execution proceeds through four steps:
 
-1. `dbResource` executes its `acquire` task. If this fails, execution stops and yields the
-   acquisition error without calling `release`.
-2. If successful, the active connection is passed to the query function.
-3. Whether the query succeeds, returns `Err`, or throws, the `release` finalizer
-   (`connection.close()`) is immediately executed.
-4. The final result of the query (`Ok` or `Err`) is returned.
+1. `dbResource` executes its `acquire` task. If acquisition fails, execution halts and yields the
+   error without invoking `release`.
+2. Upon successful acquisition, the active connection is passed to the query function.
+3. Whether the query resolves to `Ok`, returns an `Err`, or throws an uncaught exception, the
+   `release` finalizer (`connection.close()`) runs immediately.
+4. The outcome of the query (`Ok` or `Err`) is returned to the caller.
 
 ---
 
@@ -184,9 +184,9 @@ If acquiring the advisory lock fails with an error:
 2. `tunnel` is immediately closed.
 3. The lock acquisition error propagates to the caller.
 
-When the work function inside `Resource.use` completes, cleanup executes in **strict reverse (LIFO)
-acquisition order**: the advisory lock is released first, the database connection is closed second,
-and the SSH tunnel is closed last.
+When the work function inside `Resource.use` completes, cleanup executes in **strict reverse
+(last-in, first-out / LIFO) order**: the advisory lock is released first, the database connection is
+closed second, and the SSH tunnel is closed last.
 
 ---
 
@@ -232,32 +232,73 @@ const result = await pipe(
 )();
 ```
 
-For simple binary pairing, `Resource.combine(dbResource, cacheResource)` remains available as an
-ergonomic alternative.
+When pairing exactly two resources, `Resource.combine(dbResource, cacheResource)` pairs them into a
+2-tuple.
+
+---
+
+## Pipeline Composition
+
+Here is an end-to-end audit log export pipeline. It allocates a temporary scratch directory on disk
+alongside a read-only database snapshot, dumps log records to a compressed archive, and uploads the
+resulting file to cloud storage. Whether queries fail, disk space runs out, or upload times out, the
+scratch directory is cleaned up and the database connection is closed in reverse order:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Resource, Task } from "@nlozgachev/pipelined/core";
+
+type BackupError =
+  | { readonly kind: "DbError"; readonly message: string }
+  | { readonly kind: "FsError"; readonly message: string }
+  | { readonly kind: "UploadError"; readonly message: string };
+
+type TempDir = { readonly path: string };
+type DbSnapshot = { readonly query: (sql: string) => Promise<readonly Record<string, unknown>[]> };
+
+declare function openDbSnapshot(databaseUrl: string): Resource<BackupError, DbSnapshot>;
+declare function createTempDirectory(prefix: string): Resource<BackupError, TempDir>;
+declare function writeArchive(dir: TempDir, data: readonly Record<string, unknown>[]): Promise<string>;
+declare function uploadToS3(archivePath: string): Promise<string>;
+
+const backupPipeline = pipe(
+  Resource.all({
+    db: openDbSnapshot("postgres://primary.internal/app"),
+    scratch: createTempDirectory("backup-"),
+  }),
+  Resource.use(({ db, scratch }) =>
+    Task.Result.tryCatch(
+      async () => {
+        const rows = await db.query("SELECT * FROM audit_logs");
+        const archiveFile = await writeArchive(scratch, rows);
+        const s3Key = await uploadToS3(archiveFile);
+        return { s3Key, rowCount: rows.length };
+      },
+      { onError: (error): BackupError => ({ kind: "UploadError", message: String(error) }) },
+    )
+  ),
+);
+```
 
 ---
 
 ## Problems it solves
 
-- **Eliminating callback pyramids (`withX` hell) and nested `try/finally` blocks**: Safely managing
-  multiple resources in vanilla TypeScript forces developers into deeply nested `try/finally` blocks
-  or nested callback wrappers (`withDb(db => withRedis(redis => ...))`). Code drifts rightward into
-  a pyramid where error types and return values are tangled. `Resource` turns setup and teardown
-  into first-class values that sequence cleanly with `pipe` and `chain`.
-- **Automatic rollback on partial setup failure**: When opening multiple services, if service 3 of 4
-  fails to acquire, already-acquired services (2 and 1) leak into the Node process unless complex
-  manual rollback handlers are maintained. `Resource.all` and `Resource.chain` guarantee immediate,
-  automatic rollback in reverse order on any acquisition failure.
-- **Enforcing strict reverse (LIFO) teardown order**: Dependent services must be closed in the exact
-  reverse order of acquisition (e.g. release advisory lock -> close database connection -> terminate
-  SSH tunnel). Reversing the shutdown order manually is error-prone and can trigger connection
-  resets or deadlocks. `Resource` manages an internal finalizer stack that guarantees reverse
-  teardown order.
-- **Reliable teardown across errors, exceptions, and abort signals**: In asynchronous workflows,
-  execution can exit via successful completion, typed errors (`Result.Err`), runtime exceptions, or
-  cancellation (`AbortSignal`). `Resource.use` binds cleanup to a structured bracket boundary that
-  always executes release logic regardless of the exit path.
-- **Safe disposal of ephemeral OS handles**: Batch jobs and CLI utilities frequently create
-  temporary directories on disk, spawn child processes, or open streaming file descriptors.
-  `Resource.make` pairs allocation with guaranteed disposal, ensuring external OS assets are cleaned
-  up immediately when execution leaves scope.
+- Vanilla `try/finally` blocks and nested callback pyramids
+  (`withConnection(c => withTx(t => ...))`) drift rightward, tangling return values with teardown
+  logic. `Resource` turns acquisition and cleanup into first-class values that compose linearly with
+  `pipe` and `chain`.
+- Partial setup failures frequently leave orphan connections in the background. If service 3 of 4
+  fails to open, manual code must track prior handles and unwind them without masking the setup
+  error. `Resource.all` and `Resource.chain` guarantee automatic rollback in reverse order upon any
+  acquisition failure.
+- Dependent infrastructure requires strict reverse teardown. Terminating an SSH bastion tunnel
+  before disconnecting an active PostgreSQL client triggers socket errors or hangs. `Resource`
+  maintains an internal finalizer stack that guarantees teardown unwinds in exact reverse order of
+  acquisition.
+- Cleanup runs reliably across every exit path. Whether a computation resolves to `Ok`, returns an
+  expected `Err`, throws an unhandled runtime error, or aborts via `AbortSignal`, finalizers execute
+  without leaving lingering processes or open sockets.
+- Batch tools and scripts often create scratch directories, spawn child processes, or stream file
+  handles. `Resource.make` binds allocation directly to disposal, ensuring OS assets are released as
+  soon as work leaves scope.
