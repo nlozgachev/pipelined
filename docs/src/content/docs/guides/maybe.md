@@ -30,7 +30,16 @@ if (rawValue !== undefined && rawValue !== null) {
 ```
 
 In standard TypeScript, each transformation step requires guarding against missing intermediate
-values.
+values. With `Maybe`, the entire check collapses into a single, linear pipeline:
+
+```ts
+const timeout = pipe(
+  Maybe.from.nullable(config.get("timeout")),
+  Maybe.chain(parseInteger),
+  Maybe.filter((n) => n > 0),
+  Maybe.getOrElse(() => 1000),
+);
+```
 
 ## The Maybe Approach
 
@@ -73,7 +82,7 @@ context. This is the boundary where external data enters our typed pipeline.
 const five = Maybe.make.some(5); // Maybe<number>
 
 // Representing explicit absence
-const empty = Maybe.make.none(); // Maybe<never>
+const empty = Maybe.make.none(); // Maybe.None
 ```
 
 In practice, you will rarely write `some` or `none` manually. Instead, you will ingest values coming
@@ -101,10 +110,12 @@ parseConfigJson('{"port": 8080}'); // Some({ port: 8080 })
 parseConfigJson("invalid json"); // None
 ```
 
-### Inspecting with type guards: `is.some` and `is.none`
+### Boundary inspection with type guards: `is.some` and `is.none`
 
-When interacting with imperative code or conditional UI branches where you want to check whether a
-`Maybe` holds a value before proceeding, use the `Maybe.is.some` and `Maybe.is.none` type guards:
+Inside a pipeline, you will rarely inspect a `Maybe` with `if` statements — combinators like `map`,
+`chain`, and `match` handle branching automatically. However, when interfacing with legacy
+imperative APIs or conditional UI branches where you must branch imperatively, use the
+`Maybe.is.some` and `Maybe.is.none` type guards:
 
 ```ts
 const cachedToken = Maybe.from.nullable(localStorage.getItem("auth_token"));
@@ -126,7 +137,7 @@ if (Maybe.is.none(cachedToken)) {
 Once our data is wrapped inside a `Maybe`, we do not immediately unpack it. Instead, we describe how
 the value should change if it is present.
 
-### Pure transformations with `map`
+### Transforming values with `map`
 
 If we have a `Some`, `map` applies a function to the value inside and returns a new `Some` with the
 result. If we have a `None`, `map` does nothing and returns the `None` unchanged.
@@ -252,13 +263,20 @@ const adminUser = pipe(
 ```
 
 If we are starting from a raw value rather than a `Maybe`, we can use `from.Predicate` to decide
-whether to wrap the value in `Some` or `None` right at the boundary:
+whether to wrap the value in `Some` or `None` right at the boundary. Like `filter`, it supports
+TypeScript type guards to narrow unvalidated inputs:
 
 ```ts
 const validateAge = (age: number): Maybe<number> =>
   pipe(
     age,
     Maybe.from.Predicate((n) => n >= 18),
+  );
+
+const parseString = (raw: unknown): Maybe<string> =>
+  pipe(
+    raw,
+    Maybe.from.Predicate((value): value is string => typeof value === "string"),
   );
 ```
 
@@ -287,10 +305,10 @@ pipe(
 ); // "guest"
 ```
 
-Notice that `getOrElse` takes a function — a thunk — rather than a direct value. This is a
-deliberate design choice. If computing the fallback is expensive or triggers a side effect (such as
-writing to a log or generating a token), that computation is deferred. It is only executed if the
-value is actually absent.
+Notice that `getOrElse` takes a fallback callback rather than a direct value. This is a deliberate
+design choice. If computing the fallback is expensive or triggers a side effect (such as writing to
+a log or generating a token), that computation is deferred. It is only executed if the value is
+actually absent.
 
 ### Case analysis with `match`
 
@@ -374,7 +392,7 @@ the database lookup. Only if both fail do we settle for the fallback value `"lig
 A `Maybe` represents absence but does not tell you *why* the value is missing. Sometimes, absence is
 an error, and we need to attach a reason to it.
 
-We can transition from a `Maybe` to a `Result` using `to.Result`. We provide a thunk that generates
+We can transition from a `Maybe` to a `Result` using `to.Result`. We supply a callback that returns
 an error value if the `Maybe` is a `None`:
 
 ```ts
@@ -494,10 +512,12 @@ It combines a record of `Maybe` values into a single `Maybe` holding a record of
 any individual field is `None`, the entire struct short-circuits to `None` immediately:
 
 ```ts
+const parseRole = Maybe.from.Predicate((r: string) => r === "admin" || r === "user");
+
 const user = Maybe.struct({
   name: Maybe.make.some("Alice"),
   age: Maybe.make.some(30),
-  role: Maybe.from.Predicate((r: string) => r === "admin" || r === "user")("user"),
+  role: parseRole("user"),
 }); // Some({ name: "Alice", age: 30, role: "user" })
 ```
 

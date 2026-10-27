@@ -9,20 +9,81 @@ description: Bring the possibility of failure into the type system, replacing sc
 
 <!-- BUNDLE_SIZE:END -->
 
-Every function that can fail has two possible outcomes: it either succeeds and returns a value, or
-it fails and returns an error. Yet, in traditional JavaScript, only the success outcome is visible
-in the function’s type signature. The failure is treated as an exceptional event, thrown out of the
-call stack as a runtime exception.
+Every function that can fail has two possible outcomes: it succeeds and returns a value, or it fails
+and returns an error. Yet, in traditional JavaScript and TypeScript, only the success outcome is
+visible in the return type. The failure is thrown out of band as a runtime exception.
 
-This model has a fundamental structural flaw: exceptions are invisible to the type system. A
-function typed as `(id: string) => User` might throw at runtime if the database is down or the id is
-invalid, but nothing in its type forces the caller to handle that failure. Callers must either read
-the source code, read outdated documentation, or learn the hard way when the application crashes in
-production.
+## The problem with exceptions
 
-`Result<E, A>` solves this by making the possibility of failure an explicit, first-class value. It
-puts both outcomes inside the type system: `Ok<A>` representing a successful value, and `Err<E>`
-representing a typed error.
+In standard TypeScript, exceptions are invisible to the compiler. A function signature gives no
+warning that an operation can fail:
+
+```ts
+interface UserConfig {
+  port: number;
+  host: string;
+}
+
+// Signature claims this always returns UserConfig:
+function loadConfig(rawJson: string): UserConfig {
+  const parsed = JSON.parse(rawJson); // Can throw SyntaxError
+  if (typeof parsed.port !== "number" || parsed.port <= 0) {
+    throw new Error("Invalid port"); // Throws Error
+  }
+  return { port: parsed.port, host: parsed.host ?? "localhost" };
+}
+
+// Callers have no compiler warning forcing them to catch:
+try {
+  const config = loadConfig(userInput);
+  startServer(config);
+} catch (error: unknown) {
+  // error is unknown: did JSON parsing fail, or port validation?
+  // TypeScript provides zero type narrowing for thrown exceptions.
+}
+```
+
+This model creates three distinct failure modes:
+
+1. **Invisible failure contracts**: Callers must inspect source code or read documentation to know
+   what can throw.
+2. **Untyped error handling**: In a `catch (error: unknown)` block, TypeScript loses all error type
+   information.
+3. **Unhandled crashes**: Any forgot-to-catch exception crashes the entire worker or HTTP request
+   cycle.
+
+With `Result`, the possibility of failure becomes part of the return type:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Result } from "@nlozgachev/pipelined/core";
+
+const loadConfig = (rawJson: string): Result<"INVALID_JSON" | "INVALID_PORT", UserConfig> =>
+  pipe(
+    Result.tryCatch(
+      () => JSON.parse(rawJson) as { port?: unknown; host?: unknown },
+      { onError: () => "INVALID_JSON" as const },
+    ),
+    Result.ensure(
+      (data): data is { port: number; host?: string } =>
+        typeof data.port === "number" && data.port > 0,
+      () => "INVALID_PORT" as const,
+    ),
+    Result.map((data) => ({
+      port: data.port,
+      host: typeof data.host === "string" ? data.host : "localhost",
+    })),
+  );
+```
+
+The function signature `Result<"INVALID_JSON" | "INVALID_PORT", UserConfig>` communicates every
+failure mode directly to callers. The TypeScript compiler refuses to let callers access `UserConfig`
+without handling both error cases.
+
+## The Result approach
+
+`Result<E, A>` represents an operation's outcome as a discriminated union: `Ok<A>` (success holding
+a value) or `Err<E>` (failure holding a typed error).
 
 ```mermaid
 flowchart TD
@@ -92,14 +153,22 @@ When you have a plain value and a condition that determines whether that value i
 `Result.from.Predicate` wraps the value into `Result` without requiring an explicit `if/else` block:
 
 ```ts
+// Boolean condition:
 const validateAge = Result.from.Predicate(
   (n: number) => n >= 18,
   (n) => `Age ${n} is below the required threshold of 18`,
 );
+
+// Type guard refinement: narrows unknown to string:
+const parseString = Result.from.Predicate(
+  (val: unknown): val is string => typeof val === "string",
+  () => "Expected a string value",
+);
 ```
 
-The second argument receives the original input, allowing you to format descriptive, context-rich
-error messages.
+The second argument receives the original input, allowing you to format descriptive error messages.
+When given a custom TypeScript type guard (`(val: A) => val is B`), `Result.from.Predicate`
+automatically narrows the inner value from `A` to `B`.
 
 When reading a value that may be `null` or `undefined` (such as an environment variable or header),
 `Result.from.nullable` converts non-nullish values to `Ok` and missing values to `Err`:
@@ -138,9 +207,9 @@ if (Result.is.err(parsed)) {
 Once our data is wrapped inside a `Result`, we can describe transformations on both the success and
 failure branches independently.
 
-### Pure transformations with `map`
+### Transforming success values with `map`
 
-`map` transforms the value inside an `Ok` success container, leaving `Err` failures untouched:
+`map` transforms the value inside an `Ok` container, leaving `Err` failures untouched:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
@@ -163,7 +232,7 @@ const route = pipe(
 );
 ```
 
-### Pure error transformation with `mapError`
+### Transforming errors with `mapError`
 
 Sometimes you want to standardize or translate errors before passing them upstream. `mapError`
 transforms the error inside an `Err` container, leaving `Ok` success values untouched:
@@ -216,6 +285,7 @@ interface CartItem {
   quantity: number;
 }
 
+// Boolean validation:
 const validateStock = (item: CartItem, availableStock: number): Result<string, CartItem> =>
   pipe(
     Result.make.ok(item),
@@ -227,7 +297,23 @@ const validateStock = (item: CartItem, availableStock: number): Result<string, C
 
 validateStock({ id: "item_9", quantity: 2 }, 5); // Ok({ id: "item_9", quantity: 2 })
 validateStock({ id: "item_9", quantity: 10 }, 5); // Err("Requested 10 units of item_9, but only 5 in stock")
+
+// Type guard refinement:
+type AdminUser = { id: string; role: "admin"; permissions: string[] };
+type AppUser = { id: string; role: "member" } | AdminUser;
+
+const requireAdmin = (user: Result<string, AppUser>): Result<string, AdminUser> =>
+  pipe(
+    user,
+    Result.ensure(
+      (u): u is AdminUser => u.role === "admin",
+      () => "Admin privileges required",
+    ),
+  );
 ```
+
+When given a custom TypeScript type guard (`(value: A) => value is B`), `Result.ensure`
+automatically narrows the success type from `A` to `B`.
 
 ### Nested pipelines with `chain`
 
@@ -374,10 +460,12 @@ pipe(
 
 ---
 
-## Converting to and from Maybe
+## Converting to other containers
+
+### Converting to and from Maybe
 
 `Result` and `Maybe` are structurally compatible. The only difference is that `Result` carries a
-typed reason for its failure, whereas `Maybe` models pure absence.
+typed reason for its failure, whereas `Maybe` models the absence of a value.
 
 To discard the error context and convert to a `Maybe`, use `Result.to.Maybe`:
 
@@ -409,9 +497,7 @@ Result.sequence.Maybe(Result.make.ok(Maybe.make.none())); // None
 Result.sequence.Maybe(Result.make.err("DB error")); // Some(Err("DB error"))
 ```
 
----
-
-## Interoperability with Validation
+### Converting to and from Validation
 
 While `Result` is designed for fail-fast error propagation, `Validation` accumulates all errors
 across independent fields. Convert between the two representations using `Result.from.Validation`
@@ -548,7 +634,7 @@ const processOrder = (rawBody: string, availableStock: number): { status: number
     ),
     Result.tapError((code) => console.warn(`Order rejected: ${code}`)),
     Result.match({
-      ok: (order) => ({ status: 200, body: `Confirmed ${order.quantity}x ${order.sku} ($${order.total})` }),
+      ok: (order) => ({ status: 200, body: `Confirmed ${order.quantity}x ${order.sku} (USD ${order.total})` }),
       err: (code) => ({ status: 400, body: `Order failed: ${code}` }),
     }),
   );
