@@ -339,34 +339,35 @@ console.log(store.getState().value); // { items: ["Ergonomic Chair"], subtotalCe
 ## Stateful Execution & Async Lifecycles: `Machine.interpret`
 
 Pure reducers and `Machine.transition` compute next states synchronously. While this suffices for
-local UI data transformations, real-world workflows depend on asynchronous operations: authenticating
-with an API, charging payment cards, polling background jobs, or awaiting user inputs.
+local UI data transformations, real-world workflows depend on asynchronous operations:
+authenticating with an API, charging payment cards, polling background jobs, or awaiting user
+inputs.
 
 Managing asynchronous side effects outside the state machine (such as inside ad-hoc component effect
 hooks or detached async functions) introduces three classic race conditions:
 
-1. **Stale callbacks overwriting active state**: If a user submits an authentication form, cancels the
-   dialog, and submits a different email, a delayed response from the first request can resolve after
-   cancellation and log the user into the wrong account.
+1. **Stale callbacks overwriting active state**: If a user submits an authentication form, cancels
+   the dialog, and submits a different email, a delayed response from the first request can resolve
+   after cancellation and log the user into the wrong account.
 2. **Dangling network requests and timers**: When a user transitions away from a screen or aborts a
    flow, in-flight HTTP requests and active intervals continue running in the background unless
    manually cancelled, consuming network bandwidth and leaking memory.
 3. **Re-entrant dispatch corruption**: If an event handler synchronously triggers another event
-   dispatch, naive recursive handlers update state out of order, leading to corrupted state snapshots
-   or call stack exhaustion.
+   dispatch, naive recursive handlers update state out of order, leading to corrupted state
+   snapshots or call stack exhaustion.
 
-`Machine.interpret` turns a pure machine specification into an active execution actor that manages the
-lifecycle of asynchronous effects with three guarantees:
+`Machine.interpret` turns a pure machine specification into an active execution actor that manages
+the lifecycle of asynchronous effects with three guarantees:
 
-- **State-scoped cancellation via `AbortSignal`**: Each state's `entry` hook receives an `AbortSignal`.
-  The actor aborts this signal the moment the machine exits that state or when `actor.abort()` is
-  called, cancelling in-flight requests and timers automatically.
+- **State-scoped cancellation via `AbortSignal`**: Each state's `entry` hook receives an
+  `AbortSignal`. The actor aborts this signal the moment the machine exits that state or when
+  `actor.abort()` is called, cancelling in-flight requests and timers automatically.
 - **Generation token suppression**: Each state transition increments an internal generation counter.
-  If an asynchronous promise callback from a superseded state eventually settles, the actor detects the
-  stale generation token and ignores the dispatch as an idempotent no-op.
-- **Sequential FIFO dispatch queue**: When `send` is invoked synchronously within a transition handler
-  or entry hook, the event is queued and evaluated only after the active transition finishes,
-  guaranteeing strict causal event order.
+  If an asynchronous promise callback from a superseded state eventually settles, the actor detects
+  the stale generation token and ignores the dispatch as an idempotent no-op.
+- **Sequential FIFO dispatch queue**: When `send` is invoked synchronously within a transition
+  handler or entry hook, the event is queued and evaluated only after the active transition
+  finishes, guaranteeing strict causal event order.
 
 ```ts
 type AuthState =
@@ -455,7 +456,8 @@ trackers emit events continuously.
   invalid for the active state variant, and binds asynchronous side-effect lifecycles to state
   transitions.
 
-Passing `bus` to `Machine.interpret` connects the broadcast highway directly to the stateful gatekeeper:
+Passing `bus` to `Machine.interpret` connects the broadcast highway directly to the stateful
+gatekeeper:
 
 ```ts
 import { EventBus, Machine } from "@nlozgachev/pipelined/core";
@@ -554,45 +556,41 @@ actor.abort();
 
 ### Architectural Mechanics of the Bridge
 
-1. **Shared Discriminated Union Protocol**:
-   Both `EventBus.Message<Events>` and `Machine.Event<Events>` adhere to the identical `{ kind: K, value: Events[K] }`
-   discriminated union structure. When initialized with `{ bus }`, the actor registers an internal
-   listener with the bus. Any message emitted to the bus enters the actor's FIFO dispatch queue
-   without glue code or data mapping.
+1. **Shared Discriminated Union Protocol**: Both `EventBus.Message<Events>` and
+   `Machine.Event<Events>` adhere to the identical `{ kind: K, value: Events[K] }` discriminated
+   union structure. When initialized with `{ bus }`, the actor registers an internal listener with
+   the bus. Any message emitted to the bus enters the actor's FIFO dispatch queue without glue code
+   or data mapping.
 
-2. **Contextual Event Filtering**:
-   When an event arrives from the bus, the actor delivers it to the machine's transition table for the
-   active state. If the active state variant has no handler defined for that event kind,
-   `Machine.transition` ignores the event and returns the current state reference unchanged. The event
-   bus does not need to know the machine's internal state, and unhandled messages are discarded as
-   safe, idempotent no-ops.
+2. **Contextual Event Filtering**: When an event arrives from the bus, the actor delivers it to the
+   machine's transition table for the active state. If the active state variant has no handler
+   defined for that event kind, `Machine.transition` ignores the event and returns the current state
+   reference unchanged. The event bus does not need to know the machine's internal state, and
+   unhandled messages are discarded as safe, idempotent no-ops.
 
-3. **Bound Lifecycle Teardown**:
-   Calling `actor.abort()` cleans up all active state resources in a single operation: it fires the
-   state-scoped `AbortSignal`, invokes the active state's exit disposer, and unsubscribes the actor's
-   listener from the `EventBus`. This eliminates dangling listener leaks when a component or service
-   shuts down.
+3. **Bound Lifecycle Teardown**: Calling `actor.abort()` cleans up all active state resources in a
+   single operation: it fires the state-scoped `AbortSignal`, invokes the active state's exit
+   disposer, and unsubscribes the actor's listener from the `EventBus`. This eliminates dangling
+   listener leaks when a component or service shuts down.
 
 ### Technical Failure Modes Prevented
 
-1. **Out-of-Order Packet and Event Corruption**:
-   In distributed or real-time systems, network packets frequently arrive out of order (such as a
-   `REMOTE_PATCH` arriving before connection negotiation finishes, or a late update arriving after
-   disconnection). Without a state machine, premature or delayed events corrupt application state.
-   `Machine` acts as a firewall: any event not explicitly permitted by the active state variant is
-   dropped immediately.
+1. **Out-of-Order Packet and Event Corruption**: In distributed or real-time systems, network
+   packets frequently arrive out of order (such as a `REMOTE_PATCH` arriving before connection
+   negotiation finishes, or a late update arriving after disconnection). Without a state machine,
+   premature or delayed events corrupt application state. `Machine` acts as a firewall: any event
+   not explicitly permitted by the active state variant is dropped immediately.
 
-2. **Dangling Subscription and Memory Leaks**:
-   Manually wiring event bus listeners to UI component state requires tracking unsubscribe tokens and
-   calling them across unmount boundaries. Passing `{ bus }` to `Machine.interpret` binds subscription
-   lifecycles directly to the actor. Invoking `actor.abort()` unbinds the actor from the bus,
-   preventing retain cycles and memory leaks.
+2. **Dangling Subscription and Memory Leaks**: Manually wiring event bus listeners to UI component
+   state requires tracking unsubscribe tokens and calling them across unmount boundaries. Passing
+   `{ bus }` to `Machine.interpret` binds subscription lifecycles directly to the actor. Invoking
+   `actor.abort()` unbinds the actor from the bus, preventing retain cycles and memory leaks.
 
-3. **Cascading Exception Containment**:
-   `EventBus` utilizes a breadth-first trampoline dispatch loop with error boundaries (`onError`). If
-   a machine's transition handler or entry hook throws an unhandled exception, `EventBus` catches the
-   error, isolates it, and routes it to `onError`. The failure is contained, preventing a broken state
-   transition from crashing sibling subscribers or halting the broader event bus pipeline.
+3. **Cascading Exception Containment**: `EventBus` utilizes a breadth-first trampoline dispatch loop
+   with error boundaries (`onError`). If a machine's transition handler or entry hook throws an
+   unhandled exception, `EventBus` catches the error, isolates it, and routes it to `onError`. The
+   failure is contained, preventing a broken state transition from crashing sibling subscribers or
+   halting the broader event bus pipeline.
 
 ---
 
@@ -605,21 +603,21 @@ actor.abort();
   disconnected flags with mutually exclusive discriminated union variants, ensuring only the payload
   valid for the active step exists in memory.
 - **Illegal state jumps and broken workflow transitions**: Untyped `switch/case` reducers allow any
-  action to transition into any state, making it possible for buggy UI code to jump directly from cart
-  to payment confirmation without capturing an address. `Machine.State` lets you declare explicit
-  outbound target bounds (`AllowedTargets`) so TypeScript flags illegal transitions at compile time
-  before code ever runs.
+  action to transition into any state, making it possible for buggy UI code to jump directly from
+  cart to payment confirmation without capturing an address. `Machine.State` lets you declare
+  explicit outbound target bounds (`AllowedTargets`) so TypeScript flags illegal transitions at
+  compile time before code ever runs.
 - **Async race conditions, stale callbacks, and memory leaks**: When asynchronous requests are
   initiated from UI components or loose effects, late network responses can resolve after a user has
-  cancelled or navigated away, overwriting fresh data with stale results. `Machine.interpret` passes a
-  state-scoped `AbortSignal` directly to entry hooks, aborting in-flight requests immediately on state
-  exit and dropping stale callbacks via internal generation counters.
-- **Bridging pure functional pipelines with standard UI stores**: Functional pipelines favor
-  curried data-last signatures `(event) => (state) => nextState`, whereas React's `useReducer` and
-  Redux require uncurried `(state, action) => nextState` functions that handle `undefined` initial
-  states. `Machine.to.reducer` bridges this gap, allowing pure statecharts to power standard React
+  cancelled or navigated away, overwriting fresh data with stale results. `Machine.interpret` passes
+  a state-scoped `AbortSignal` directly to entry hooks, aborting in-flight requests immediately on
+  state exit and dropping stale callbacks via internal generation counters.
+- **Bridging pure functional pipelines with standard UI stores**: Functional pipelines favor curried
+  data-last signatures `(event) => (state) => nextState`, whereas React's `useReducer` and Redux
+  require uncurried `(state, action) => nextState` functions that handle `undefined` initial states.
+  `Machine.to.reducer` bridges this gap, allowing pure statecharts to power standard React
   components and Redux stores with zero wrapper glue.
-- **Re-entrant dispatch corruption and call stack overflow**: When an event handler or lifecycle hook
-  synchronously triggers another event dispatch, recursive event loops can scramble event ordering or
-  trigger stack overflows. `Machine.interpret` manages an internal FIFO dispatch queue, ensuring
-  synchronous events are processed sequentially in exact causal order.
+- **Re-entrant dispatch corruption and call stack overflow**: When an event handler or lifecycle
+  hook synchronously triggers another event dispatch, recursive event loops can scramble event
+  ordering or trigger stack overflows. `Machine.interpret` manages an internal FIFO dispatch queue,
+  ensuring synchronous events are processed sequentially in exact causal order.
