@@ -1,6 +1,8 @@
 import { constTruthyBool } from "#test-utils";
 import { expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import type { Maybe } from "../Maybe.ts";
+import { Pair } from "../Pair.ts";
 import { These } from "../These.ts";
 
 test("make: constructs exact variant types", () => {
@@ -127,16 +129,44 @@ test("getFirstOrElse & getSecondOrElse: retrieves value or fallback without coll
 	expectTypeOf(secondWiden).toEqualTypeOf<string | number>();
 });
 
-test("tap: executes side effect on first value without altering channels", () => {
+test("tapFirst, tapSecond, tapBoth: executes side effects without altering channels", () => {
 	const naturalUnion: These<number, string> = constTruthyBool() ? These.make.first(42) : These.make.second("warn");
 
-	const tapped = pipe(
+	const tappedFirst = pipe(
 		naturalUnion,
-		These.tap((n) => {
+		These.tapFirst((n) => {
 			expectTypeOf(n).toEqualTypeOf<number>();
 		}),
 	);
-	expectTypeOf(tapped).toEqualTypeOf<These<number, string>>();
+	expectTypeOf(tappedFirst).toEqualTypeOf<These<number, string>>();
+
+	const tappedSecond = pipe(
+		naturalUnion,
+		These.tapSecond((s) => {
+			expectTypeOf(s).toEqualTypeOf<string>();
+		}),
+	);
+	expectTypeOf(tappedSecond).toEqualTypeOf<These<number, string>>();
+
+	const tappedBoth = pipe(
+		naturalUnion,
+		These.tapBoth((n, s) => {
+			expectTypeOf(n).toEqualTypeOf<number>();
+			expectTypeOf(s).toEqualTypeOf<string>();
+		}),
+	);
+	expectTypeOf(tappedBoth).toEqualTypeOf<These<number, string>>();
+});
+
+test("converters: to.Pair and from.Pair", () => {
+	const naturalUnion: These<number, string> = constTruthyBool() ? These.make.first(42) : These.make.second("warn");
+
+	const asMaybePair = These.to.Pair(naturalUnion);
+	expectTypeOf(asMaybePair).toEqualTypeOf<Maybe<Pair<number, string>>>();
+
+	const pair = Pair.make(42, "warn");
+	const asBoth = These.from.Pair(pair);
+	expectTypeOf(asBoth).toEqualTypeOf<These.Both<number, string>>();
 });
 
 test("swap: interchanges first and second channels", () => {

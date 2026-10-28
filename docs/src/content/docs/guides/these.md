@@ -5,7 +5,7 @@ description: Model inclusive-OR scenarios where you have a first value, a second
 
 <!-- BUNDLE_SIZE:START -->
 
-> 316 B minified + gzipped
+> 1.99 kB minified + gzipped (1,988 B)
 
 <!-- BUNDLE_SIZE:END -->
 
@@ -234,16 +234,50 @@ These.swap(These.make.first(email)); // Second(email)
 These.swap(These.make.both(email, phone)); // Both(phone, email)
 ```
 
-### Peeking with tap
+### Side-effects: tapFirst, tapSecond, tapBoth
 
-`tap` allows you to execute a side-effectful callback on the first value of a `First` or `Both`
-container, leaving the original `These` unchanged:
+When you need to execute a logging or telemetry side-effect without modifying the data in flight,
+`These` provides three dedicated tap combinators matching its three structural scenarios:
+
+- `tapFirst`: Runs a callback on the first value if present (`First` or `Both`).
+- `tapSecond`: Runs a callback on the second value if present (`Second` or `Both`).
+- `tapBoth`: Runs a binary callback only when both values coexist simultaneously (`Both`).
 
 ```ts
 pipe(
   These.make.both(email, phone),
-  These.tap((e) => console.log(`Sending system check to ${e}`)),
+  These.tapFirst((e) => console.log(`Sending system check to email: ${e}`)),
+  These.tapSecond((p) => console.log(`Registering SMS fallback: ${p}`)),
+  These.tapBoth((e, p) => console.log(`Verified dual-channel user: ${e} / ${p}`)),
 );
+```
+
+---
+
+## Interoperability with Pair: to.Pair and from.Pair
+
+`These` integrates directly with `Pair<A, B>` when both values coexist.
+
+Use `These.to.Pair` to convert a `These` into a `Maybe<Pair<A, B>>`. If the value is `Both(a, b)`,
+it resolves to `Some([a, b])`; if only `First` or only `Second` is present, it resolves to `None`:
+
+```ts
+import { Pair } from "@nlozgachev/pipelined/core";
+
+const maybePair = These.to.Pair(These.make.both("Paris", 2_161_000));
+// Some(["Paris", 2161000])
+
+const nonePair = These.to.Pair(These.make.first("Paris"));
+// None
+```
+
+Conversely, if you already have a `Pair<A, B>` (or a native two-element tuple `readonly [A, B]`),
+`These.from.Pair` lifts it directly into a `These.Both`:
+
+```ts
+const coordinates = Pair.make(48.8566, 2.3522);
+const dualEntry = These.from.Pair(coordinates);
+// Both(48.8566, 2.3522)
 ```
 
 ---
@@ -270,7 +304,7 @@ const summary = pipe(
   parseConcurrencySetting(" 64 "),
   These.mapFirst((workers) => ({ workers })),
   These.mapSecond((warning) => `[Config Warning] ${warning}`),
-  These.tap(({ workers }) => console.info(`Initialized pool with ${workers} workers`)),
+  These.tapFirst(({ workers }) => console.info(`Initialized pool with ${workers} workers`)),
   These.match({
     first: ({ workers }) => `Pool ready (${workers} workers)`,
     second: (error) => `Pool startup failed: ${error}`,

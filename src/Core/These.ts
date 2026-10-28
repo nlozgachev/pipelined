@@ -1,4 +1,6 @@
 import type { WithFirst, WithKind, WithSecond } from "#internal";
+import { type Maybe, Maybe as CoreMaybe } from "./Maybe.ts";
+import { type Pair, Pair as CorePair } from "./Pair.ts";
 
 /**
  * These<A, B> is an inclusive-OR type: it holds a first value (A), a second
@@ -26,8 +28,8 @@ import type { WithFirst, WithKind, WithSecond } from "#internal";
 export type These<A, B> = These.First<A> | These.Second<B> | These.Both<A, B>;
 
 export namespace These {
-	export type First<T> = WithKind<"First"> & WithFirst<T>;
-	export type Second<T> = WithKind<"Second"> & WithSecond<T>;
+	export type First<A> = WithKind<"First"> & WithFirst<A>;
+	export type Second<B> = WithKind<"Second"> & WithSecond<B>;
 	export type Both<A, B> = WithKind<"Both"> & WithFirst<A> & WithSecond<B>;
 }
 
@@ -306,17 +308,92 @@ export const These = {
 		hasSecond(these) ? these.second : fallback(),
 
 	/**
-	 * Runs a side effect on the first value without changing the These.
+	 * Runs a side effect on the first value (if present in First or Both) without changing the These.
 	 * Useful for logging or debugging.
+	 *
+	 * @see {@link These.tapSecond} to run a side effect on the second value instead.
+	 * @see {@link These.tapBoth} to run a side effect on both values when both are present.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(These.make.first(5), These.tap(console.log)); // logs 5, returns First(5)
+	 * pipe(These.make.first(5), These.tapFirst(console.log)); // logs 5, returns First(5)
+	 * pipe(These.make.both(5, "warn"), These.tapFirst(console.log)); // logs 5, returns Both(5, "warn")
 	 * ```
 	 */
-	tap: <A>(sideEffect: (first: A) => void) => <B = never>(these: These<A, B>): These<A, B> => {
+	tapFirst: <A>(sideEffect: (first: A) => void) => <B = never>(these: These<A, B>): These<A, B> => {
 		if (hasFirst(these)) { sideEffect(these.first); }
 		return these;
+	},
+
+	/**
+	 * Runs a side effect on the second value (if present in Second or Both) without changing the These.
+	 * Useful for logging or reporting warnings.
+	 *
+	 * @see {@link These.tapFirst} to run a side effect on the first value instead.
+	 * @see {@link These.tapBoth} to run a side effect on both values when both are present.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(These.make.second("warn"), These.tapSecond(console.warn)); // logs "warn", returns Second("warn")
+	 * pipe(These.make.both(5, "warn"), These.tapSecond(console.warn)); // logs "warn", returns Both(5, "warn")
+	 * ```
+	 */
+	tapSecond: <B>(sideEffect: (second: B) => void) => <A = never>(these: These<A, B>): These<A, B> => {
+		if (hasSecond(these)) { sideEffect(these.second); }
+		return these;
+	},
+
+	/**
+	 * Runs a side effect on both values when both are present simultaneously (Both variant only).
+	 *
+	 * @see {@link These.tapFirst} to run a side effect on the first value.
+	 * @see {@link These.tapSecond} to run a side effect on the second value.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   These.make.both(5, "warn"),
+	 *   These.tapBoth((n, w) => console.log(`${n} with warning ${w}`)),
+	 * ); // logs "5 with warning warn"
+	 * ```
+	 */
+	tapBoth: <A, B>(sideEffect: (first: A, second: B) => void) => (these: These<A, B>): These<A, B> => {
+		if (isBoth(these)) { sideEffect(these.first, these.second); }
+		return these;
+	},
+
+	// --- to ---
+	to: {
+		/**
+		 * Converts a These to a Maybe containing a Pair if both values are present.
+		 * Returns Some([first, second]) for Both; returns None for First and Second.
+		 *
+		 * @see {@link These.from.Pair} to create a These.Both from a Pair.
+		 *
+		 * @example
+		 * ```ts
+		 * These.to.Pair(These.make.both("Paris", 2_161_000)); // Some(["Paris", 2161000])
+		 * These.to.Pair(These.make.first("Paris"));           // None
+		 * These.to.Pair(These.make.second(2_161_000));        // None
+		 * ```
+		 */
+		Pair: <A, B>(these: These<A, B>): Maybe<Pair<A, B>> =>
+			isBoth(these) ? CoreMaybe.make.some(CorePair.make(these.first, these.second)) : CoreMaybe.make.none(),
+	},
+
+	// --- from ---
+	from: {
+		/**
+		 * Creates a These.Both holding both values of a Pair.
+		 *
+		 * @see {@link These.to.Pair} to extract a Pair from a These when both values are present.
+		 *
+		 * @example
+		 * ```ts
+		 * These.from.Pair(Pair.make("Paris", 2_161_000)); // Both("Paris", 2161000)
+		 * ```
+		 */
+		Pair: <A, B>(pair: Pair<A, B>): These.Both<A, B> => makeBoth(pair[0], pair[1]),
 	},
 
 	/**

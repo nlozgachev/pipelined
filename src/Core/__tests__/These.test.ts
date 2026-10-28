@@ -1,5 +1,6 @@
 import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import { Pair } from "../Pair.ts";
 import { These } from "../These.ts";
 
 test("types: propagates types correctly for chainFirst chainSecond and mapBoth", () => {
@@ -308,6 +309,13 @@ test("getFirstOrElse: returns first value when present", () => {
 	expect(result).toBe(5);
 });
 
+test("getFirstOrElse: preserves falsy values without falling back", () => {
+	expect(pipe(These.make.first(0), These.getFirstOrElse(() => 999))).toBe(0);
+	expect(pipe(These.make.first(""), These.getFirstOrElse(() => "fallback"))).toBe("");
+	expect(pipe(These.make.first(false), These.getFirstOrElse(() => true))).toBe(false);
+	expect(pipe(These.make.both(0, "w"), These.getFirstOrElse(() => 999))).toBe(0);
+});
+
 test("getFirstOrElse: does not call thunk when value is present", () => {
 	let called = false;
 	pipe(
@@ -342,6 +350,13 @@ test("getSecondOrElse: returns second value when present", () => {
 	expect(result).toBe("warn");
 });
 
+test("getSecondOrElse: preserves falsy values without falling back", () => {
+	expect(pipe(These.make.second(0), These.getSecondOrElse(() => 999))).toBe(0);
+	expect(pipe(These.make.second(""), These.getSecondOrElse(() => "fallback"))).toBe("");
+	expect(pipe(These.make.second(false), These.getSecondOrElse(() => true))).toBe(false);
+	expect(pipe(These.make.both("f", 0), These.getSecondOrElse(() => 999))).toBe(0);
+});
+
 test("getSecondOrElse: does not call thunk when value is present", () => {
 	let called = false;
 	pipe(
@@ -355,14 +370,14 @@ test("getSecondOrElse: does not call thunk when value is present", () => {
 });
 
 // ---------------------------------------------------------------------------
-// tap
+// tapFirst / tapSecond / tapBoth
 // ---------------------------------------------------------------------------
 
-test("tap: executes side effect on First and returns original", () => {
+test("tapFirst: executes side effect on First and returns original", () => {
 	let seen = 0;
 	const result = pipe(
 		These.make.first(5),
-		These.tap((n: number) => {
+		These.tapFirst((n: number) => {
 			seen = n;
 		}),
 	);
@@ -370,11 +385,11 @@ test("tap: executes side effect on First and returns original", () => {
 	expect(result).toStrictEqual({ kind: "First", first: 5 });
 });
 
-test("tap: executes side effect on Both and returns original", () => {
+test("tapFirst: executes side effect on Both and returns original", () => {
 	let seen = 0;
 	const result = pipe(
 		These.make.both(7, "w"),
-		These.tap((n: number) => {
+		These.tapFirst((n: number) => {
 			seen = n;
 		}),
 	);
@@ -382,15 +397,102 @@ test("tap: executes side effect on Both and returns original", () => {
 	expect(result).toStrictEqual({ kind: "Both", first: 7, second: "w" });
 });
 
-test("tap: does not execute side effect on Second", () => {
+test("tapFirst: does not execute side effect on Second", () => {
 	let called = false;
 	pipe(
 		These.make.second<string>("e"),
-		These.tap((_n: number) => {
+		These.tapFirst((_n: number) => {
 			called = true;
 		}),
 	);
 	expect(called).toBe(false);
+});
+
+test("tapSecond: executes side effect on Second and returns original", () => {
+	let seen = "";
+	const result = pipe(
+		These.make.second("warn"),
+		These.tapSecond((s: string) => {
+			seen = s;
+		}),
+	);
+	expect(seen).toBe("warn");
+	expect(result).toStrictEqual({ kind: "Second", second: "warn" });
+});
+
+test("tapSecond: executes side effect on Both and returns original", () => {
+	let seen = "";
+	const result = pipe(
+		These.make.both(7, "warn"),
+		These.tapSecond((s: string) => {
+			seen = s;
+		}),
+	);
+	expect(seen).toBe("warn");
+	expect(result).toStrictEqual({ kind: "Both", first: 7, second: "warn" });
+});
+
+test("tapSecond: does not execute side effect on First", () => {
+	let called = false;
+	pipe(
+		These.make.first<number>(5),
+		These.tapSecond((_s: string) => {
+			called = true;
+		}),
+	);
+	expect(called).toBe(false);
+});
+
+test("tapBoth: executes side effect on Both and returns original", () => {
+	let seen = "";
+	const result = pipe(
+		These.make.both(7, "warn"),
+		These.tapBoth((n: number, s: string) => {
+			seen = `${n}:${s}`;
+		}),
+	);
+	expect(seen).toBe("7:warn");
+	expect(result).toStrictEqual({ kind: "Both", first: 7, second: "warn" });
+});
+
+test("tapBoth: does not execute side effect on First or Second", () => {
+	let calledFirst = false;
+	pipe(
+		These.make.first<number>(5),
+		These.tapBoth((_n: number, _s: string) => {
+			calledFirst = true;
+		}),
+	);
+	expect(calledFirst).toBe(false);
+
+	let calledSecond = false;
+	pipe(
+		These.make.second<string>("e"),
+		These.tapBoth((_n: number, _s: string) => {
+			calledSecond = true;
+		}),
+	);
+	expect(calledSecond).toBe(false);
+});
+
+// ---------------------------------------------------------------------------
+// to.Pair / from.Pair
+// ---------------------------------------------------------------------------
+
+test("to.Pair: returns Some of Pair for Both", () => {
+	const res = These.to.Pair(These.make.both("Paris", 2000));
+	expect(res).toStrictEqual({ kind: "Some", value: ["Paris", 2000] });
+});
+
+test("to.Pair: returns None for First and Second", () => {
+	expect(These.to.Pair(These.make.first("Paris"))).toStrictEqual({ kind: "None" });
+	expect(These.to.Pair(These.make.second(2000))).toStrictEqual({ kind: "None" });
+});
+
+test("from.Pair: creates These.Both from Pair", () => {
+	const pair = Pair.make("Paris", 2000);
+	const res = These.from.Pair(pair);
+	expect(res).toStrictEqual({ kind: "Both", first: "Paris", second: 2000 });
 });
 
 // ---------------------------------------------------------------------------

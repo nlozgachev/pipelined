@@ -38,6 +38,8 @@ export const Pair = {
 	/**
 	 * Returns the first value from the pair.
 	 *
+	 * @see {@link Pair.second} to retrieve the second value.
+	 *
 	 * @example
 	 * ```ts
 	 * Pair.first(Pair.make("Paris", 2_161_000)); // "Paris"
@@ -47,6 +49,8 @@ export const Pair = {
 
 	/**
 	 * Returns the second value from the pair.
+	 *
+	 * @see {@link Pair.first} to retrieve the first value.
 	 *
 	 * @example
 	 * ```ts

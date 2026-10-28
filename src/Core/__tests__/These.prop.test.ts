@@ -1,5 +1,6 @@
 import fc from "fast-check";
 import { expect, expectTypeOf, test } from "vitest";
+import { Pair } from "../Pair.ts";
 import { These } from "../These.ts";
 
 // ---------------------------------------------------------------------------
@@ -100,5 +101,46 @@ test("getFirstOrElse: returns fallback on Second", () => {
 test("getSecondOrElse: returns fallback on First", () => {
 	fc.assert(fc.property(arbFirst, fc.integer(), (t, fallback) => {
 		expect(These.getSecondOrElse(() => fallback)(t)).toBe(fallback);
+	}));
+});
+
+// ---------------------------------------------------------------------------
+// tapFirst / tapSecond / tapBoth
+// ---------------------------------------------------------------------------
+
+test("tapFirst: always returns identical reference", () => {
+	fc.assert(fc.property(arbThese, (t) => {
+		expect(These.tapFirst(() => {})(t)).toBe(t);
+	}));
+});
+
+test("tapSecond: always returns identical reference", () => {
+	fc.assert(fc.property(arbThese, (t) => {
+		expect(These.tapSecond(() => {})(t)).toBe(t);
+	}));
+});
+
+test("tapBoth: always returns identical reference", () => {
+	fc.assert(fc.property(arbThese, (t) => {
+		expect(These.tapBoth(() => {})(t)).toBe(t);
+	}));
+});
+
+// ---------------------------------------------------------------------------
+// to.Pair / from.Pair roundtrip
+// ---------------------------------------------------------------------------
+
+test("from.Pair: roundtrips with to.Pair for Pair and These.Both", () => {
+	fc.assert(fc.property(fc.string(), fc.integer(), (a, b) => {
+		const pair = Pair.make(a, b);
+		const these = These.from.Pair(pair);
+		expect(these).toStrictEqual(These.make.both(a, b));
+		expect(These.to.Pair(these)).toStrictEqual({ kind: "Some", value: pair });
+	}));
+});
+
+test("to.Pair: returns None for non-Both variants", () => {
+	fc.assert(fc.property(fc.oneof(arbFirst, arbSecond), (t) => {
+		expect(These.to.Pair(t)).toStrictEqual({ kind: "None" });
 	}));
 });

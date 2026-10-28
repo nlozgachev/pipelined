@@ -1,3 +1,4 @@
+import { constTruthyBool } from "#test-utils";
 import { expect, expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Maybe } from "../Maybe.ts";
@@ -203,8 +204,12 @@ test("apply: returns Loading when function is Loading and arg is Success", () =>
 });
 
 test("apply: widens error types from function and argument", () => {
-	const fn = RemoteData.make.success((n: number) => String(n)) as RemoteData<"ERR_FN", (n: number) => string>;
-	const arg = RemoteData.make.failure("ERR_ARG") as RemoteData<"ERR_ARG", number>;
+	const fn: RemoteData<"ERR_FN", (n: number) => string> = constTruthyBool()
+		? RemoteData.make.success((n: number) => String(n))
+		: RemoteData.make.failure("ERR_FN");
+	const arg: RemoteData<"ERR_ARG", number> = constTruthyBool()
+		? RemoteData.make.failure("ERR_ARG")
+		: RemoteData.make.success(42);
 	const result = pipe(fn, RemoteData.apply(arg));
 	expectTypeOf(result).toEqualTypeOf<RemoteData<"ERR_FN" | "ERR_ARG", string>>();
 	expect(result).toStrictEqual({ kind: "Failure", error: "ERR_ARG" });
@@ -541,4 +546,17 @@ test("filter: passes Failure through unchanged", () => {
 		kind: "Failure",
 		error: "original",
 	});
+});
+
+test("filter: preserves falsy values when predicate passes", () => {
+	expect(RemoteData.filter((n: number) => n === 0, () => "not zero")(RemoteData.make.success(0))).toStrictEqual({
+		kind: "Success",
+		value: 0,
+	});
+	expect(RemoteData.filter((s: string) => s === "", () => "not empty")(RemoteData.make.success(""))).toStrictEqual({
+		kind: "Success",
+		value: "",
+	});
+	expect(RemoteData.filter((b: boolean) => b === false, () => "not false")(RemoteData.make.success(false)))
+		.toStrictEqual({ kind: "Success", value: false });
 });

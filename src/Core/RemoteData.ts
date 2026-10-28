@@ -180,6 +180,7 @@ export const RemoteData = {
 	 * Transforms the error value inside a RemoteData.
 	 *
 	 * @see {@link RemoteData.map} to transform the success value instead of the error value.
+	 * @see {@link RemoteData.chain} to sequence operations that return a RemoteData.
 	 *
 	 * @example
 	 * ```ts
@@ -222,7 +223,8 @@ export const RemoteData = {
 	 * ```
 	 */
 	apply:
-		<E2, A>(arg: RemoteData<E2, A>) => <E1, B>(remoteData: RemoteData<E1, (value: A) => B>): RemoteData<E1 | E2, B> => {
+		<E2 = never, A = unknown>(arg: RemoteData<E2, A>) =>
+		<B, E1 = never>(remoteData: RemoteData<E1, (value: A) => B>): RemoteData<E1 | E2, B> => {
 			if (isSuccess(remoteData) && isSuccess(arg)) {
 				return makeSuccess(remoteData.value(arg.value));
 			}
@@ -277,10 +279,10 @@ export const RemoteData = {
 	 * ```ts
 	 * pipe(RemoteData.make.success(5), RemoteData.getOrElse(() => 0)); // 5
 	 * pipe(RemoteData.make.loading(), RemoteData.getOrElse(() => 0)); // 0
-	 * pipe(RemoteData.make.loading<string, number>(), RemoteData.getOrElse(() => null)); // null — typed as number | null
+	 * pipe(RemoteData.make.loading(), RemoteData.getOrElse(() => null)); // null — typed as number | null
 	 * ```
 	 */
-	getOrElse: <B>(fallback: () => B) => <E, A>(remoteData: RemoteData<E, A>): A | B =>
+	getOrElse: <B>(fallback: () => B) => <A, E = never>(remoteData: RemoteData<E, A>): A | B =>
 		isSuccess(remoteData) ? remoteData.value : fallback(),
 
 	/**
@@ -325,6 +327,19 @@ export const RemoteData = {
 	/**
 	 * Recovers from a Failure state by providing a fallback RemoteData.
 	 * The fallback can produce a different success type or resolve with a different error type.
+	 *
+	 * @see {@link RemoteData.getOrElse} to extract the success value with a default fallback.
+	 * @see {@link RemoteData.mapError} to transform the error without recovering from it.
+	 *
+	 * @example
+	 * ```ts
+	 * pipe(
+	 *   RemoteData.make.failure("offline"),
+	 *   RemoteData.recover((err) =>
+	 *     err === "offline" ? RemoteData.make.success(42) : RemoteData.make.failure(err)
+	 *   ),
+	 * ); // Success(42)
+	 * ```
 	 */
 	recover:
 		<E1, B = never, E2 = never>(fallback: (error: E1) => RemoteData<E2, B>) =>
@@ -336,6 +351,16 @@ export const RemoteData = {
 		/**
 		 * Converts a RemoteData to a Maybe.
 		 * Success becomes Some, all other states become None.
+		 *
+		 * @see {@link RemoteData.to.Result} to convert to a Result with an error fallback.
+		 * @see {@link RemoteData.from.Maybe} to convert a Maybe into a RemoteData.
+		 *
+		 * @example
+		 * ```ts
+		 * RemoteData.to.Maybe(RemoteData.make.success(42)); // Some(42)
+		 * RemoteData.to.Maybe(RemoteData.make.loading());   // None
+		 * RemoteData.to.Maybe(RemoteData.make.failure("e")); // None
+		 * ```
 		 */
 		Maybe: <E, A>(remoteData: RemoteData<E, A>): Maybe<A> =>
 			isSuccess(remoteData) ? CoreMaybe.make.some(remoteData.value) : CoreMaybe.make.none(),
