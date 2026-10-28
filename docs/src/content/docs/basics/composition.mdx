@@ -235,7 +235,7 @@ pipe(
 
 #### Detailed object inspection with tapInspect
 
-For deeply nested objects, `tapLog` might output truncated representations. `tapInspect` formats objects with infinite depth by default, utilizing Node's `util.inspect` engine under the hood:
+For deeply nested objects, `tapLog` might output truncated representations. `tapInspect` formats objects with infinite depth by default using Node's `util.inspect` engine:
 
 ```ts
 import { pipe, tapInspect } from "@nlozgachev/pipelined/composition";
@@ -387,7 +387,7 @@ const cachedLayout = memoizeWeak((element: HTMLElement) => computeLayout(element
 ```
 
 <Aside type="caution">
-`memoizeWeak` relies on a `WeakMap` under the hood. Consequently, it only accepts object instances as keys. For strings, numbers, or other primitives, use standard `memoize`.
+`memoizeWeak` stores cache entries in a `WeakMap`, which accepts only object references as keys. For strings, numbers, or other primitives, use standard `memoize`.
 </Aside>
 
 ---

@@ -103,9 +103,16 @@ A lens consists of two pure functions:
   `S` with the focused value replaced.
 
 ```mermaid
-flowchart TD
-    S["Outer Structure (S)"] -- "Lens.get" --> A["Focused Value (A)"]
-    A -- "Lens.set(value)" --> S2["Updated Outer Structure (S)"]
+flowchart TB
+    subgraph Read ["Focused Extraction"]
+        S["Outer Structure (S)"] -->|"Lens.get"| A["Focused Value (A)"]
+    end
+
+    subgraph Write ["Focused Replacement"]
+        S2["Outer Structure (S)"] & Val["New Value (A)"] -->|"Lens.set(value)(structure)"| SUpdated["Updated Structure (S)"]
+    end
+
+    A ~~~ S2
 ```
 
 Because a lens holds both functions, it acts as a bidirectional channel. Defining a lens once turns

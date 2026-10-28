@@ -51,6 +51,19 @@ type State<S, A> = (initialState: S) => readonly [A, S];
 By representing state transitions as a data structure rather than a series of mutable assignments,
 we compose stateful steps cleanly and execute them once at the boundary of our program.
 
+```mermaid
+flowchart TB
+    S0["Initial State (S0)"] --> Step1["Step 1: State(S, A)"]
+    Step1 -->|"Produces value"| A1["Value A1"]
+    Step1 -->|"Threads state S1"| Step2["Step 2: State(S, B)"]
+
+    Step2 -->|"Produces value"| A2["Value A2"]
+    Step2 -->|"Threads state S2"| Step3["Final State (S2)"]
+
+    A1 & A2 --> Comb["Combined Results"]
+    Comb & Step3 --> Final["readonly [CombinedResults, S2]"]
+```
+
 ---
 
 ## Creating State Operations

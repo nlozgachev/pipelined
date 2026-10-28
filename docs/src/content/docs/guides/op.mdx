@@ -64,14 +64,14 @@ This pattern exposes four critical failure modes in production:
 `Op` separates asynchronous coordination into two distinct layers: the task definition and the stateful manager.
 
 ```mermaid
-flowchart TD
+flowchart TB
     A["1. Op.make"] -->|"Define core async work"| B["2. Op.interpret"]
     B -->|"Configure concurrency strategy"| C["3. manager.subscribe"]
     C -->|"Observe lifecycle transitions"| D["4. manager.run"]
-    D -->|"Every invocation settles"| E{"Op.Outcome"}
-    E -->|"Success"| Ok["OpOk A"]
-    E -->|"Typed Failure"| Err["OpErr E"]
-    E -->|"Cancelled or Dropped"| Nil["OpNil reason"]
+    D -->|"Every invocation settles"| E{"Op.Outcome(E, A)"}
+    E -->|"Success"| Ok["OpOk (value: A)"]
+    E -->|"Typed Failure"| Err["OpErr (error: E)"]
+    E -->|"Cancelled / Dropped / Replaced"| Nil["OpNil (reason: NilReason)"]
 ```
 
 ### The Task Definition (`Op<Args, E, A>`)
@@ -104,6 +104,23 @@ type State<E, A> =
     readonly nextRetryIn: Duration;
   }
   | Outcome<E, A>;
+```
+
+```mermaid
+stateDiagram-v2
+  direction TB
+  [*] --> Idle
+  Idle --> Pending : run()
+  Pending --> Queued : capacity reached
+  Queued --> Pending : slot available
+  Pending --> Retrying : retry scheduled
+  Retrying --> Pending : retry triggered
+  Pending --> OpOk : success
+  Pending --> OpErr : failed
+  Pending --> OpNil : cancelled / replaced
+  OpOk --> Idle : reset / next run
+  OpErr --> Idle : reset / next run
+  OpNil --> Idle : reset / next run
 ```
 
 ### The Tri-State Outcome (`Op.Outcome<E, A>`)

@@ -44,11 +44,11 @@ chaining breaks down into temporary variables. `Str` solves this by providing pu
 combinators.
 
 ```mermaid
-flowchart TD
-    A["Raw Input"] --> B["Str.trim"]
-    B --> C["Str.split(',')"]
-    C --> D["Arr.map(Str.trim)"]
-    D --> E["Arr.filter(Str.is.nonEmpty)"]
+flowchart TB
+    A["'  alex , , bob  '"] -->|"Str.trim"| B["'alex , , bob'"]
+    B -->|"Str.split(',')"| C["['alex ', ' ', ' bob']"]
+    C -->|"Arr.map(Str.trim)"| D["['alex', '', 'bob']"]
+    D -->|"Arr.filter(Str.is.nonEmpty)"| E["['alex', 'bob']"]
 ```
 
 ---
@@ -306,7 +306,7 @@ import { Arr, Str } from "@nlozgachev/pipelined/data";
 const rawCsvColumn = `
   SKU-1042: Active
   # deprecated entry
-  
+
   sku-2088: Pending Review — awaiting warehouse confirmation
   SKU-3091: Active
 `;

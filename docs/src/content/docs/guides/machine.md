@@ -37,14 +37,16 @@ automatically aborts in-flight tasks upon exiting a state.
 
 ```mermaid
 stateDiagram-v2
-  direction TD
+  direction TB
   [*] --> Cart
+  Cart --> Cart : ADD_ITEM
   Cart --> Shipping : SET_SHIPPING
   Cart --> Cancelled : CANCEL
   Shipping --> Payment : PROCEED_PAYMENT
   Shipping --> Cart : BACK_TO_CART
   Shipping --> Cancelled : CANCEL
   Payment --> Completed : PAYMENT_SUCCESS
+  Payment --> Shipping : BACK_TO_SHIPPING
   Completed --> [*]
   Cancelled --> [*]
 ```

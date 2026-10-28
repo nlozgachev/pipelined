@@ -57,13 +57,16 @@ This pattern introduces four failure modes:
 sequence matching, pure state reduction, and breadth-first trampoline dispatching.
 
 ```mermaid
-flowchart TD
+flowchart TB
     Emit["EventBus.emit(bus, message)"] --> Queue["Breadth-First Trampoline Queue (FIFO)"]
     Queue --> Dispatch["Dispatch to Active Subscribers"]
-    Dispatch --> Tap["Stateless Side-Effect (.tap)"]
-    Dispatch --> Reduce["State Accumulator (.reduce)"]
-    Dispatch --> Collect["Sequence Matcher (.collect)"]
-    Dispatch --> Forward["Cross-Bus Forwarding (EventBus.forward)"]
+
+    subgraph Subscribers ["Subscribers by Capability"]
+        Dispatch --> Tap["Stateless Side-Effect (.tap)"]
+        Dispatch --> Reduce["State Accumulator (.reduce)"]
+        Dispatch --> Collect["Sequence Matcher (.collect)"]
+        Dispatch --> Forward["Cross-Bus Forwarding (EventBus.forward)"]
+    end
 ```
 
 ---

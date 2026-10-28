@@ -33,10 +33,11 @@ const elevatedPermissions = userPermissions.add("admin");
 the original set reference unchanged when inserting an existing item or removing an absent one.
 
 ```mermaid
-flowchart TD
-    A["Uniq (Original)"] --> B["Uniq.insert('admin')"]
-    B --> C["New Uniq (With admin)"]
-    A --> D["Original Uniq (Unchanged)"]
+flowchart TB
+    Original["Original ReadonlySet"] --> Operation["Uniq.insert(item)"]
+    Operation --> Check{"Is item already in set?"}
+    Check -->|"Yes (No membership change)"| Same["Original Set Reference (===)"]
+    Check -->|"No (New member)"| Cloned["New ReadonlySet (with item added)"]
 ```
 
 ---

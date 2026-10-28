@@ -49,6 +49,25 @@ With `Reader`, our functions do not accept dependencies as direct arguments. Ins
 description of a computation waiting for its context. The pipeline is built as a pure, inactive
 blueprint, and the environment is supplied once at the boundary of our program.
 
+```mermaid
+flowchart TB
+    subgraph ParameterDrilling ["Parameter Drilling (Fragile Coupling)"]
+        direction TB
+        Caller["Caller(config)"] --> F1["formatUrl(config, path)"]
+        F1 --> F2["addApiKey(config, url)"]
+        F2 --> F3["fetchWithConfig(config)"]
+    end
+
+    subgraph ReaderModel ["Reader(R, A) (Injected at Boundary)"]
+        direction TB
+        R1["formatUrlReader"] --> R2["addApiKeyReader"]
+        R2 --> R3["fetchReader"]
+        Env["Shared Environment (R)"] -.->|"Injected once: pipeline(env)"| R3
+    end
+
+    F3 ~~~ R1
+```
+
 ---
 
 ## Creating Readers

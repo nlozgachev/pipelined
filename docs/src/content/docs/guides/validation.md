@@ -59,12 +59,15 @@ valid value, or `Failed<E>` representing an accumulated list of errors. Instead 
 on the first failure, it evaluates independent checks and merges all accumulated errors together.
 
 ```mermaid
-flowchart TD
-    Check1([Check Username]) --> Combine{Combine All Checks}
-    Check2([Check Email]) --> Combine
-    Check3([Check Age]) --> Combine
-    Combine -->|All Pass| Passed[Passed Record]
-    Combine -->|Any Fail| Failed[Failed NonEmptyArr E]
+flowchart TB
+    Check1(["Check Username"]) -->|"Passed('alex') or Failed(['Too short'])"| Combine{"Validation.product / apply"}
+    Check2(["Check Email"]) -->|"Passed('a@b.com') or Failed(['Invalid domain'])"| Combine
+    Check3(["Check Age"]) -->|"Passed(25) or Failed(['Must be 18+'])"| Combine
+
+    Combine -->|"All checks pass"| Passed["Validation.Passed(User)"]
+    Combine -->|"Any checks fail"| Failed["Validation.Failed(NonEmptyErrors)"]
+
+    Failed -.->|"All errors accumulated, never short-circuited"| Note["Complete Error Report"]
 ```
 
 ```ts

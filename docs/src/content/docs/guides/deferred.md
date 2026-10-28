@@ -31,6 +31,14 @@ Two deliberate design choices make `Deferred` work:
    returns `void` rather than a new thenable. There is no second parameter to pass a rejection
    handler, and no chainable return value. Rejection and chaining are excluded by construction.
 
+```mermaid
+stateDiagram-v2
+  direction TB
+  [*] --> Pending
+  Pending --> Resolved : then(onfulfilled)
+  Resolved --> Resolved : subsequent resolution (idempotent no-op)
+```
+
 ---
 
 ## Wrapping Promises with Deferred.from.Promise

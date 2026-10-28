@@ -50,10 +50,10 @@ At compile time, however, the nominal type brand prevents it from being mixed wi
 or other units.
 
 ```mermaid
-flowchart TD
-    A["Raw Number (1000)"] -- "Duration.seconds" --> B["Duration (1000ms, Branded)"]
-    B -- "Passed to Task.delay" --> C["Safe, Type-Checked Delay"]
-    A -- "Passed to Task.delay" --> D["Compile Error"]
+flowchart TB
+    A["Raw Number (1)"] -->|"Duration.seconds(1)"| B["Duration (1000ms, Branded)"]
+    B -->|"Passed to Task.delay"| C["Safe, Type-Checked Delay"]
+    A -->|"Passed to Task.delay"| D["Compile Error: Type 'number' is not assignable to 'Duration'"]
 ```
 
 ## Creating Durations

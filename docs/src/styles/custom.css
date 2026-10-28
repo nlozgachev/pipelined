@@ -91,4 +91,36 @@
     ry: 3px !important;
   }
 
+  /* Subgraph / cluster containers */
+  .mermaid .cluster rect {
+    stroke: #3f3f46 !important;
+    stroke-width: 1px !important;
+    fill: #18181b !important;
+    rx: 8px !important;
+    ry: 8px !important;
+  }
+
+  /* Subgraph / cluster titles */
+  .mermaid .cluster text,
+  .mermaid .cluster-label text,
+  .mermaid .cluster-label span,
+  .mermaid .cluster span {
+    fill: #f4f4f5 !important;
+    color: #f4f4f5 !important;
+    font-weight: 600 !important;
+  }
+
+  /* Note containers and text */
+  .mermaid .note,
+  .mermaid .note rect {
+    fill: #27272a !important;
+    stroke: #3f3f46 !important;
+  }
+
+  .mermaid .note text,
+  .mermaid .note span {
+    fill: #f4f4f5 !important;
+    color: #f4f4f5 !important;
+  }
+
 }

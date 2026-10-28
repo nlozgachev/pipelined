@@ -48,6 +48,15 @@ const slug = pipe(
 );
 ```
 
+```mermaid
+flowchart TB
+    subgraph Pipelined ["Pipelined Dataflow: pipe(raw, ...)"]
+        P0["raw input"] -->|"trim"| P1["trimmed string"]
+        P1 -->|"toLowerCase"| P2["lowercase string"]
+        P2 -->|"replace"| P3["final slug"]
+    end
+```
+
 The code now reads top-to-bottom, in exactly the order it executes. There are no throwaway variable names, and modifying the pipeline is as simple as inserting or deleting a line.
 
 TypeScript infers the type of the value at each step. If one of your functions returns a type that the next step does not expect, the compiler will point to the exact step where the mismatch occurs, rather than showing a generic error downstream.

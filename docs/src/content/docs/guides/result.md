@@ -86,16 +86,19 @@ without handling both error cases.
 a value) or `Err<E>` (failure holding a typed error).
 
 ```mermaid
-flowchart TD
-    Input([Raw Operation]) --> Choice{Did it succeed?}
-    Choice -->|Yes| Ok[Ok A]
-    Choice -->|No| Err[Err E]
+flowchart TB
+    Input(["Raw Operation"]) --> Branch{"Fallible Evaluation"}
+    Branch -->|"Success"| Ok["Result.Ok(A)"]
+    Branch -->|"Failure"| Err["Result.Err(E)"]
 
-    Ok --> Map[Apply Transformations]
-    Err --> Skip[Skip / Propagate Error]
+    Ok -->|"Result.map / Result.chain"| Step2["Next Transformation"]
+    Step2 -->|"Success"| OkFinal["Result.Ok(B)"]
+    Step2 -->|"New Failure"| ErrFinal["Result.Err(E2)"]
 
-    Map --> Edge[Extract / Handle both cases]
-    Skip --> Edge
+    Err -->|"Short-circuit (bypassed)"| ErrFinal
+
+    OkFinal --> Boundary["Result.match / Result.getOrElse"]
+    ErrFinal --> Boundary
 ```
 
 By turning exceptions into a data structure, we can chain operations safely. If any step fails, the

@@ -26,6 +26,17 @@ type CustomerId = Brand<"CustomerId", string>;
 The underlying values remain plain JavaScript strings, but the compiler now treats `UserId` and
 `CustomerId` as completely distinct, incompatible types.
 
+```mermaid
+flowchart TB
+    Raw["Raw string: 'usr_42'"] --> Lift["Brand.wrap('UserId')"]
+    Lift --> Branded["Brand('UserId')"]
+
+    Branded -->|"Pass to getUserProfile(id: UserId)"| Valid["Type Check Passes"]
+    Raw -->|"Pass to getUserProfile(id: UserId)"| Reject1["Compile Error: string is not assignable to UserId"]
+
+    CustId["Brand('CustomerId')"] -->|"Pass to getUserProfile(id: UserId)"| Reject2["Compile Error: CustomerId is not assignable to UserId"]
+```
+
 ---
 
 ## Creating and Wrapping Brands

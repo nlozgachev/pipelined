@@ -31,14 +31,13 @@ aborts midway, it is easy to leak an already-opened handle or release resources 
 composable lifecycle bracket — an abstraction pairing allocation with guaranteed cleanup:
 
 ```mermaid
-flowchart TD
-    Start([Resource.use]) --> Acquire["Acquisition Phase (make, chain, or all)"]
-    Acquire -->|All Acquired| Work["Work Function (Task.Result)"]
-    Acquire -->|Partial Failure| Rollback["Roll Back Acquired Finalizers (LIFO Order)"]
-    Acquire -->|Immediate Failure| FailExit(["Return Acquire Error"])
-    Rollback --> FailExit
+flowchart TB
+    Start(["Resource.use(resource, work)"]) --> Acquire["Acquisition Phase (make, chain, or all)"]
+    Acquire -->|"All acquired successfully"| Work["Work Function (Task.Result)"]
+    Acquire -->|"Acquisition failure"| Rollback["Roll Back Acquired Finalizers (LIFO Order)"]
+    Rollback --> FailExit(["Return Acquire Error"])
 
-    Work -->|Succeeds, Fails, or Throws| Release["Release All Finalizers (LIFO Order)"]
+    Work -->|"Succeeds, fails, or throws"| Release["Release All Finalizers (LIFO Order)"]
     Release --> WorkExit(["Return Work Result (Ok or Err)"])
 ```
 

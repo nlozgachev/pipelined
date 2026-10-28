@@ -47,16 +47,19 @@ const timeout = pipe(
 (empty).
 
 ```mermaid
-flowchart TD
-    Input([Raw Data]) --> Choice{Is it null or undefined?}
-    Choice -->|No| Some[Some A]
-    Choice -->|Yes| None[None]
+flowchart TB
+    Input(["Raw Value"]) --> Check{"Is value null or undefined?"}
+    Check -->|"Present (value)"| Some["Maybe.Some(A)"]
+    Check -->|"Absent (null/undefined)"| None["Maybe.None"]
 
-    Some --> Transform[Apply Transformations]
-    None --> Skip[Skip Transformations]
+    Some -->|"Maybe.map / Maybe.chain"| Step2["Next Transformation"]
+    Step2 -->|"Value present"| SomeFinal["Maybe.Some(B)"]
+    Step2 -->|"Filtered or absent"| NoneFinal["Maybe.None"]
 
-    Transform --> Edge[Extract with Default / Match]
-    Skip --> Edge
+    None -->|"Short-circuit (bypassed)"| NoneFinal
+
+    SomeFinal --> Boundary["Maybe.getOrElse / Maybe.match"]
+    NoneFinal --> Boundary
 ```
 
 By representing absence as a data structure rather than a language keyword, we can write our

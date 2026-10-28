@@ -18,11 +18,11 @@ exclusive states: `NotAsked`, `Loading`, `Failure<E>`, and `Success<A>`:
 
 ```mermaid
 stateDiagram-v2
-  direction TD
+  direction TB
   [*] --> NotAsked
   NotAsked --> Loading : request starts
-  Loading --> Success : data arrives
-  Loading --> Failure : network fails
+  Loading --> Success : data arrives (Success A)
+  Loading --> Failure : network fails (Failure E)
   Failure --> Loading : retry
   Success --> Loading : refresh
 ```

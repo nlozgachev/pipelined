@@ -101,14 +101,20 @@ type Optional<S, A> = {
 The mental model centers on safe traversal:
 
 ```mermaid
-flowchart TD
-    S["Outer Structure (S)"] -- "Optional.get" --> M["Maybe<A>"]
-    M -- "Some(value)" --> Found["Target Present"]
-    M -- "None" --> Absent["Path Broken / Absent"]
+flowchart TB
+    subgraph Read ["Safe Reading (Optional.get)"]
+        S1["Structure (S)"] --> Get["Optional.get(structure)"]
+        Get -->|"Path exists"| Present["Maybe.Some(A)"]
+        Get -->|"Path broken / nullish"| Absent["Maybe.None"]
+    end
 
-    S -- "Optional.set(value)" --> S2["Outer Structure (S)"]
-    S2 -- "If Target Present" --> S3["Updated Structure"]
-    S2 -- "If Path Broken" --> S4["Original Structure (Unchanged)"]
+    subgraph Write ["Safe Writing (Optional.set)"]
+        S2["Structure (S)"] & Val["New Value (A)"] --> Set["Optional.set(value)(structure)"]
+        Set -->|"Target exists"| Updated["Updated Structure (new reference)"]
+        Set -->|"Target absent"| Unchanged["Original Structure (=== unchanged)"]
+    end
+
+    Absent ~~~ S2
 ```
 
 If the path exists, updates produce a new object reference with the leaf modified. If any segment in

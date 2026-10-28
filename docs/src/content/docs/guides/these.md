@@ -22,11 +22,13 @@ both simultaneously.
 - `Both(a, b)` — both the first and second values are present.
 
 ```mermaid
-flowchart TD
-    Start([Data Presence Check]) --> Choice{What is present?}
-    Choice -->|Only A| First[First A]
-    Choice -->|Only B| Second[Second B]
-    Choice -->|Both A and B| Both[Both A B]
+flowchart TB
+    Start(["Data Intake"]) --> Check{"What is present?"}
+    Check -->|"Only A"| First["These.First(A)"]
+    Check -->|"Only B"| Second["These.Second(B)"]
+    Check -->|"Both A and B"| Both["These.Both(A, B)"]
+
+    Check -.->|"Neither A nor B"| Excluded["Structurally Impossible (Cannot construct)"]
 ```
 
 `These` is a neutral, structural domain-modeling type. It does not carry any success, failure, or

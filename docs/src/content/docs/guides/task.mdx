@@ -30,6 +30,22 @@ type Task<A> = (signal?: AbortSignal) => Deferred<A>;
 
 Execution is deferred until the function is called. Because `Deferred<A>` is typed never to reject, failures are tracked explicitly in return types via `Task.Result<E, A>`.
 
+```mermaid
+flowchart TB
+    subgraph PromiseModel ["Native Promise (Eager Execution)"]
+        P1["loadUserData(userId) called"] --> P2["Immediately in-flight on network"]
+        P2 --> P3["Promise(User) settles (rejections untyped as unknown)"]
+    end
+
+    subgraph TaskModel ["Task (Lazy Execution Blueprint)"]
+        T1["formattedTime pipeline defined"] --> T2["Inert blueprint (zero execution)"]
+        T2 -->|"Explicit call: formattedTime(signal)"| T3["Executes on demand"]
+        T3 --> T4["Deferred(A) (infallible resolution)"]
+    end
+
+    P3 ~~~ T1
+```
+
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
 import { Task } from "@nlozgachev/pipelined/core";
@@ -336,6 +352,20 @@ Asynchronous network requests, disk operations, and external services can fail o
 ### Task.Result
 
 `Task.Result<E, A>` is a type alias for `Task<Result<E, A>>`.
+
+```mermaid
+flowchart TB
+    Input(["Task.Result.tryCatch(...)"]) --> Exec["Invoke Task: (signal) => Deferred"]
+    Exec --> Railway{"Async Outcome"}
+    Railway -->|"Async Success"| Ok["Result.Ok(A)"]
+    Railway -->|"Async Catch / Trap"| Err["Result.Err(E)"]
+
+    Ok -->|"Task.Result.chain / map"| Step2["Next Fallible Async Step"]
+    Err -->|"Short-circuit (bypassed)"| ErrFinal["Propagated Result.Err(E)"]
+
+    Step2 -->|"Success"| OkFinal["Result.Ok(B)"]
+    Step2 -->|"Failure"| ErrFinal
+```
 
 #### Creating and converting `Task.Result`
 
