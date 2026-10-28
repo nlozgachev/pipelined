@@ -2,21 +2,27 @@ import type { Lens } from "./Lens.ts";
 import { Maybe } from "./Maybe.ts";
 
 /**
- * Optional<S, A> focuses on a value A inside a structure S that may or may
- * not be present. Like a Lens, but get returns Maybe<A>.
+ * Focuses on a property or indexed value `A` inside a parent structure `S` that may or
+ * may not be present, providing a composable way to safely read, overwrite, and immutably
+ * transform nested nullable data.
+ *
+ * Reads return `Maybe<A>`. Overwriting or modifying returns the original structure
+ * unchanged if the path is broken.
  *
  * Compose with other Optionals via `andThen`, or with a Lens via `andThenLens`.
- * Convert a Lens to an Optional with `Lens.to.Optional`.
  *
  * @example
  * ```ts
  * type Profile = { username: string; bio?: string };
  *
- * const bioOpt = Optional.from.property<Profile>()("bio");
+ * const bioOptional = Optional.from.property<Profile>()("bio");
+ * const profile: Profile = { username: "alex", bio: "Engineer" };
  *
- * pipe(profile, Optional.get(bioOpt));               // Some("hello") or None
- * pipe(profile, Optional.set(bioOpt)("hello"));      // new Profile with bio set
- * pipe(profile, Optional.modify(bioOpt)(s => s + "!")); // appends if present
+ * pipe(profile, Optional.get(bioOptional)); // Some("Engineer")
+ * pipe(profile, Optional.set(bioOptional)("Staff Engineer"));
+ * // { username: "alex", bio: "Staff Engineer" }
+ * pipe(profile, Optional.modify(bioOptional)((bio) => bio.toUpperCase()));
+ * // { username: "alex", bio: "ENGINEER" }
  * ```
  */
 export type Optional<S, A> = {
@@ -50,34 +56,42 @@ const makeIndex = <A>(index: number): Optional<readonly A[], A> =>
 		},
 	);
 
+/**
+ * Utilities for reading, overwriting, and transforming values along nullable
+ * or indexed paths via composable optionals.
+ */
 export const Optional = {
-	// --- from ---
+	/**
+	 * Constructors for creating Optional instances from accessors, property keys, or array indices.
+	 */
 	from: {
 		/**
-		 * Constructs an Optional from a getter (returning Maybe<A>) and a setter.
+		 * Constructs an Optional from a getter (returning Maybe) and a setter function.
 		 *
 		 * @see {@link Optional.from.property} to create an Optional focused on an object property.
+		 * @see {@link Optional.from.index} to focus on an array element by index.
 		 *
 		 * @example
 		 * ```ts
 		 * const firstChar = Optional.from.accessors(
-		 *   (s: string) => s.length > 0 ? Maybe.make.some(s[0]) : Maybe.make.none(),
-		 *   (c) => (s) => s.length > 0 ? c + s.slice(1) : s,
+		 *   (text: string) => text.length > 0 ? Maybe.make.some(text[0]) : Maybe.make.none(),
+		 *   (char) => (text) => text.length > 0 ? char + text.slice(1) : text,
 		 * );
 		 * ```
 		 */
 		accessors: makeAccessors,
 
 		/**
-		 * Creates an Optional that focuses on a property of an object.
+		 * Creates an Optional that focuses on an optional or nullable property of an object.
 		 * Call with the structure type first, then the key.
 		 *
+		 * @see {@link Optional.from.accessors} to construct an Optional from custom getter and setter functions.
 		 * @see {@link Optional.from.index} to focus on an element of an array by index.
 		 *
 		 * @example
 		 * ```ts
 		 * type Profile = { username: string; bio?: string };
-		 * const bioOpt = Optional.from.property<Profile>()("bio");
+		 * const bioOptional = Optional.from.property<Profile>()("bio");
 		 * ```
 		 */
 		property: makeProperty,
@@ -87,13 +101,14 @@ export const Optional = {
 		 * Returns None when the index is out of bounds; set is a no-op when out of bounds.
 		 *
 		 * @see {@link Optional.from.property} to focus on an object property.
+		 * @see {@link Optional.from.accessors} to construct an Optional from custom getter and setter functions.
 		 *
 		 * @example
 		 * ```ts
 		 * const firstItem = Optional.from.index<string>(0);
 		 *
-		 * pipe(["a", "b"], Optional.get(firstItem)); // Some("a")
-		 * pipe([], Optional.get(firstItem));         // None
+		 * pipe(["ready", "running"], Optional.get(firstItem)); // Some("ready")
+		 * pipe([], Optional.get(firstItem));                   // None
 		 * ```
 		 */
 		index: makeIndex,
@@ -102,12 +117,18 @@ export const Optional = {
 	/**
 	 * Reads the focused value from a structure, returning Maybe<A>.
 	 *
+	 * @see {@link Optional.set} to overwrite the focused value if present.
+	 * @see {@link Optional.modify} to transform the focused value if present.
 	 * @see {@link Optional.getOrElse} to extract the value with a fallback default.
 	 * @see {@link Optional.match} to pattern match on present and absent states.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(profile, Optional.get(bioOpt)); // Some("...") or None
+	 * type UserProfile = { bio?: string };
+	 * const bioOptional = Optional.from.property<UserProfile>()("bio");
+	 * const profile: UserProfile = { bio: "Platform engineer" };
+	 *
+	 * pipe(profile, Optional.get(bioOptional)); // Some("Platform engineer")
 	 * ```
 	 */
 	get: <S, A>(opt: Optional<S, A>) => (structure: S): Maybe<A> => opt.get(structure),
@@ -116,11 +137,17 @@ export const Optional = {
 	 * Replaces the focused value within a structure.
 	 * For indexed focuses, this is a no-op when the index is out of bounds.
 	 *
+	 * @see {@link Optional.get} to extract the focused value as a Maybe.
 	 * @see {@link Optional.modify} to transform the focused value if present.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(profile, Optional.set(bioOpt)("hello"));
+	 * type UserProfile = { bio?: string };
+	 * const bioOptional = Optional.from.property<UserProfile>()("bio");
+	 * const profile: UserProfile = { bio: "Platform engineer" };
+	 *
+	 * pipe(profile, Optional.set(bioOptional)("Staff engineer"));
+	 * // { bio: "Staff engineer" }
 	 * ```
 	 */
 	set: <S, A>(opt: Optional<S, A>) => (value: A) => (structure: S): S => opt.set(value)(structure),
@@ -129,11 +156,17 @@ export const Optional = {
 	 * Applies a function to the focused value if it is present; returns the
 	 * structure unchanged if the focus is absent.
 	 *
+	 * @see {@link Optional.get} to extract the focused value as a Maybe.
 	 * @see {@link Optional.set} to overwrite the focused value directly.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(profile, Optional.modify(bioOpt)(s => s.toUpperCase()));
+	 * type UserProfile = { bio?: string };
+	 * const bioOptional = Optional.from.property<UserProfile>()("bio");
+	 * const profile: UserProfile = { bio: "platform engineer" };
+	 *
+	 * pipe(profile, Optional.modify(bioOptional)((bio) => bio.toUpperCase()));
+	 * // { bio: "PLATFORM ENGINEER" }
 	 * ```
 	 */
 	modify: <S, A>(opt: Optional<S, A>) => (transform: (value: A) => A) => (structure: S): S => {
@@ -146,14 +179,19 @@ export const Optional = {
 	},
 
 	/**
-	 * Returns the focused value or a default when the focus is absent.
+	 * Returns the focused value or a fallback default when the focus is absent.
 	 *
 	 * @see {@link Optional.get} to extract the value as a Maybe.
 	 * @see {@link Optional.match} to pattern match on presence with custom handlers.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(profile, Optional.getOrElse(bioOpt)(() => "no bio"));
+	 * type UserProfile = { bio?: string };
+	 * const bioOptional = Optional.from.property<UserProfile>()("bio");
+	 * const profile: UserProfile = {};
+	 *
+	 * pipe(profile, Optional.getOrElse(bioOptional)(() => "No bio provided"));
+	 * // "No bio provided"
 	 * ```
 	 */
 	getOrElse: <S, A>(opt: Optional<S, A>) => <B>(fallback: () => B) => (structure: S): A | B => {
@@ -164,14 +202,22 @@ export const Optional = {
 	/**
 	 * Pattern matches on an Optional focus using a named-case object.
 	 *
+	 * @see {@link Optional.get} to extract the value as a Maybe.
 	 * @see {@link Optional.getOrElse} to extract the value with a default fallback.
 	 *
 	 * @example
 	 * ```ts
+	 * type UserProfile = { bio?: string };
+	 * const bioOptional = Optional.from.property<UserProfile>()("bio");
+	 * const profile: UserProfile = { bio: "Staff engineer" };
+	 *
 	 * pipe(
 	 *   profile,
-	 *   Optional.match(bioOpt)({ none: () => "no bio", some: (bio) => bio }),
-	 * );
+	 *   Optional.match(bioOptional)({
+	 *     none: () => "Empty profile",
+	 *     some: (bio) => `Bio: ${bio}`,
+	 *   }),
+	 * ); // "Bio: Staff engineer"
 	 * ```
 	 */
 	match: <S, A>(opt: Optional<S, A>) => <B>(cases: { none: () => B; some: (value: A) => B; }) => (structure: S): B => {
@@ -180,15 +226,17 @@ export const Optional = {
 	},
 
 	/**
-	 * Composes two Optionals: focuses through the outer, then through the inner.
-	 * Returns None if either focus is absent.
+	 * Composes two optionals sequentially, yielding None if either segment is absent.
 	 *
 	 * @see {@link Optional.andThenLens} to compose an Optional with a Lens.
 	 *
 	 * @example
 	 * ```ts
-	 * const deepOpt = pipe(
-	 *   Optional.from.property<User>()("address"),
+	 * type Address = { landmark?: string };
+	 * type Account = { address?: Address };
+	 *
+	 * const landmarkOptional = pipe(
+	 *   Optional.from.property<Account>()("address"),
 	 *   Optional.andThen(Optional.from.property<Address>()("landmark")),
 	 * );
 	 * ```
@@ -207,11 +255,15 @@ export const Optional = {
 	 * The Lens focuses within the value found by the Optional.
 	 *
 	 * @see {@link Optional.andThen} to compose two Optional paths.
+	 * @see {@link Lens.andThenOptional} to compose a Lens with an Optional path.
 	 *
 	 * @example
 	 * ```ts
-	 * const cityOpt = pipe(
-	 *   Optional.from.property<User>()("address"),
+	 * type Address = { city: string };
+	 * type Account = { address?: Address };
+	 *
+	 * const cityOptional = pipe(
+	 *   Optional.from.property<Account>()("address"),
 	 *   Optional.andThenLens(Lens.from.property<Address>()("city")),
 	 * );
 	 * ```

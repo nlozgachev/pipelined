@@ -10,24 +10,28 @@ description: Focus on a required field in nested data structures to read, set, a
 <!-- BUNDLE_SIZE:END -->
 
 Updating deeply nested properties immutably in standard TypeScript requires nested object spread
-syntax (`{ ...a, b: { ...a.b, c: ... } }`), which becomes verbose and error-prone.
+syntax (`{ ...a, b: { ...a.b, c: ... } }`). As data structures grow, spread chains become verbose,
+difficult to scan, and prone to silent reference errors.
 
-`Lens<S, A>` models a bidirectional path to a required property `A` inside a parent structure `S`,
-enabling immutable reads, writes, and modifications with a single reusable path descriptor.
+`Lens<S, A>` models a bidirectional path to a guaranteed property `A` inside an outer structure `S`.
+It provides a reusable, composable path descriptor to read, overwrite, and immutably modify values
+at any level of nesting.
 
-## The problem with deep nesting and object spreads
+---
 
-Consider an application configuration that manages database connections and connection pools:
+## The problem with nested object spreads
+
+Consider an application configuration that manages database connections and pool limits:
 
 ```ts
 type AppConfig = {
-  env: string;
-  database: {
-    host: string;
-    port: number;
-    pool: {
-      min: number;
-      max: number;
+  readonly env: string;
+  readonly database: {
+    readonly host: string;
+    readonly port: number;
+    readonly pool: {
+      readonly min: number;
+      readonly max: number;
     };
   };
 };
@@ -35,7 +39,7 @@ type AppConfig = {
 const config: AppConfig = {
   env: "production",
   database: {
-    host: "db.local",
+    host: "db.internal",
     port: 5432,
     pool: {
       min: 2,
@@ -45,22 +49,18 @@ const config: AppConfig = {
 };
 ```
 
-If we need to adjust the maximum pool size, the most direct approach is mutation:
+Mutating deep values directly breaks immutability and bypasses change detection:
 
 ```ts
+// Mutation modifies shared memory directly and breaks reference equality checks:
 config.database.pool.max = 20;
 ```
 
-While simple, this mutation modifies the object in place. If another part of our application holds a
-reference to `config`, or if a state management system (such as React) relies on reference changes
-to trigger updates, this silent modification bypasses those mechanisms. It also makes tracking down
-when and where a value changed exceptionally difficult, as the change leaves no trace in the call
-stack.
-
-To update the configuration immutably using native JavaScript, we must copy every level of nesting:
+To update the configuration immutably with native JavaScript, every intermediate level must be
+copied manually:
 
 ```ts
-const updatedConfig = {
+const updatedConfig: AppConfig = {
   ...config,
   database: {
     ...config.database,
@@ -72,163 +72,288 @@ const updatedConfig = {
 };
 ```
 
-This spread pattern is syntactically heavy, error-prone, and tightly coupled to the exact shape of
-our data. If we rename `database` or add another layer, we have to rewrite every spread chain
-throughout our codebase.
+This pattern has three concrete failure modes:
 
-## The shift to first-class paths
+1. **Spread fatigue**: Each additional level of nesting adds another nested object literal. A path
+   four levels deep requires four spread operations.
+2. **Key loss and structural bugs**: Omitting a single spread operator silently discards sibling
+   keys at that layer. TypeScript cannot always catch a missing spread if the inner shape happens to
+   satisfy an optional or widened type.
+3. **Tight coupling**: The update logic hardcodes the exact schema path at the call site. If
+   `database` is moved under an `infrastructure` block, every manual spread chain across the
+   codebase must be rewritten.
 
-A `Lens<S, A>` separates the description of *where* a value lives from *what* we do with it. A lens
-is defined by two pure functions:
+---
 
-- A getter to extract the focused value `A` from the outer structure `S`.
-- A setter to return a new outer structure `S` with the focused value `A` replaced.
+## Type Structure & Mental Model
+
+A `Lens<S, A>` separates the definition of where a value lives from the operations performed on it:
+
+```ts
+type Lens<S, A> = {
+  readonly get: (structure: S) => A;
+  readonly set: (value: A) => (structure: S) => S;
+};
+```
+
+A lens consists of two pure functions:
+
+- `get`: Extracts the focused value `A` from the outer structure `S`.
+- `set`: Accepts a new value `A` and an outer structure `S`, returning an updated outer structure
+  `S` with the focused value replaced.
 
 ```mermaid
 flowchart TD
-    S["Outer Structure (S)"] -- "get" --> A["Focused Value (A)"]
-    A -- "set(newValue)" --> S2["New Outer Structure (S)"]
+    S["Outer Structure (S)"] -- "Lens.get" --> A["Focused Value (A)"]
+    A -- "Lens.set(value)" --> S2["Updated Outer Structure (S)"]
 ```
 
-By defining this path once as a standalone variable, we can reuse it to read, write, and modify the
-target field across our application.
+Because a lens holds both functions, it acts as a bidirectional channel. Defining a lens once turns
+an access path into a first-class value that can be stored, passed to child components, and composed
+with other lenses.
 
-## Creating lenses
+---
 
-The simplest way to create a lens is with `Lens.from.property`, which focuses on a single property
-of an object. The double-parenthesis syntax (`Lens.from.property<Source>()("key")`) allows
-TypeScript to autocomplete keys and enforce type safety:
+## Creating Lenses
+
+The primary constructor is `Lens.from.property`, which focuses on an object key. The
+double-parenthesis invocation (`Lens.from.property<Structure>()("key")`) allows TypeScript to
+autocomplete valid property keys and infer the target value type:
 
 ```ts
 import { Lens } from "@nlozgachev/pipelined/core";
 
-// Focus on the database property of AppConfig
-const databaseLens = Lens.from.property<AppConfig>()("database");
-
-// Focus on the pool property of DatabaseConfig
 type DatabaseConfig = AppConfig["database"];
+type PoolConfig = DatabaseConfig["pool"];
+
+const databaseLens = Lens.from.property<AppConfig>()("database");
 const poolLens = Lens.from.property<DatabaseConfig>()("pool");
+const maxPoolLens = Lens.from.property<PoolConfig>()("max");
 ```
 
-For custom paths — such as navigating a non-standard data structure or mapping values on the fly —
-we can define a lens manually using `Lens.from.accessors`:
+### Custom accessors
+
+For data structures that are not plain keyed objects — such as tuples, positional coordinates, or
+custom records — `Lens.from.accessors` constructs a lens from custom getter and setter functions:
 
 ```ts
-const coordinatesLens = Lens.from.accessors(
-  (point: [number, number]) => point[0], // Getter: focus on the X coordinate
-  (x) => (point) => [x, point[1]]        // Setter: return a new coordinate tuple
+type Coordinate = readonly [latitude: number, longitude: number];
+
+const latitudeLens = Lens.from.accessors(
+  (coord: Coordinate) => coord[0],
+  (latitude) => (coord) => [latitude, coord[1]] as const,
 );
+
+const position: Coordinate = [52.52, 13.405];
+const updatedPosition = Lens.set(latitudeLens)(48.8566)(position);
+// [48.8566, 13.405]
 ```
 
-## Reading and writing deep values
+---
 
-Once we have a lens, we can use `Lens.get`, `Lens.set`, and `Lens.modify` to interact with our
-structure. These operations are curried and accept the data structure as their last argument, making
-them perfectly suited for `pipe`:
+## Reading and Writing Deep Values
+
+`Lens.get`, `Lens.set`, and `Lens.modify` are curried and accept the target structure as their final
+argument, allowing clean integration with `pipe`:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Lens } from "@nlozgachev/pipelined/core";
 
-const maxLens = Lens.from.property<AppConfig["database"]["pool"]>()("max");
+// 1. Read a value
+const currentMax = pipe(config.database.pool, Lens.get(maxPoolLens));
+// 10
 
-// 1. Reading a value
-const currentMax = pipe(config.database.pool, Lens.get(maxLens)); // 10
+// 2. Overwrite a value immutably
+const expandedPool = pipe(
+  config.database.pool,
+  Lens.set(maxPoolLens)(25),
+);
+// { min: 2, max: 25 }
 
-// 2. Overwriting a value immutably
-const newPool = pipe(config.database.pool, Lens.set(maxLens)(20));
-// Returns a new pool object with max: 20
-
-// 3. Modifying a value with a function
-const doublePool = pipe(config.database.pool, Lens.modify(maxLens)(m => m * 2));
-// Returns a new pool object with max: 20
+// 3. Transform a value with a mapping function
+const doubledPool = pipe(
+  config.database.pool,
+  Lens.modify(maxPoolLens)((limit) => limit * 2),
+);
+// { min: 2, max: 20 }
 ```
 
-## Composing paths for deep updates
+### Reference preservation with `modify`
 
-Lenses are truly powerful because they compose. We can combine multiple shallow lenses into a single
-deep lens using `Lens.andThen`.
-
-This composition lets us build complex paths out of simple, reusable building blocks:
+`Lens.modify` inspects the output of the transformation function using `Object.is`. If the mapper
+returns the exact same value that was already present, `Lens.modify` returns the original structure
+reference unchanged. This avoids unnecessary object allocations and prevents redundant re-renders in
+UI frameworks that rely on referential equality:
 
 ```ts
-// Define the shallow lenses
-const database = Lens.from.property<AppConfig>()("database");
-const pool = Lens.from.property<AppConfig["database"]>()("pool");
-const max = Lens.from.property<AppConfig["database"]["pool"]>()("max");
+const samePool = pipe(
+  config.database.pool,
+  Lens.modify(maxPoolLens)((limit) => limit),
+);
 
-// Compose them into a single deep lens
+// Returns true — same reference preserved because no field actually changed:
+console.log(samePool === config.database.pool);
+```
+
+---
+
+## Composing Paths with andThen
+
+Individual lenses compose into deep paths using `Lens.andThen`. The resulting composite lens behaves
+like any standard lens, reading and updating through the entire chain in a single step:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Lens } from "@nlozgachev/pipelined/core";
+
+// Compose shallow lenses into a deep path:
 const maxConnectionsLens = pipe(
-  database,
-  Lens.andThen(pool),
-  Lens.andThen(max)
+  Lens.from.property<AppConfig>()("database"),
+  Lens.andThen(Lens.from.property<DatabaseConfig>()("pool")),
+  Lens.andThen(Lens.from.property<PoolConfig>()("max")),
 );
 
-// Read the deeply nested value
-const currentMax = pipe(config, Lens.get(maxConnectionsLens)); // 10
+// Read from the root:
+const limit = pipe(config, Lens.get(maxConnectionsLens));
+// 10
 
-// Update the deeply nested value immutably with one call
-const nextConfig = pipe(
+// Update deep inside the root immutably:
+const updatedConfig = pipe(
   config,
-  Lens.set(maxConnectionsLens)(50)
+  Lens.set(maxConnectionsLens)(50),
 );
 ```
 
-The original `config` object remains unchanged. `nextConfig` is a new object where only the modified
-path references have been updated; unchanged subtrees are preserved by reference.
+`updatedConfig` contains the new limit. Intermediate objects along the path (`database` and `pool`)
+are copied immutably, while untouched siblings remain referentially equal to their counterparts in
+`config`.
 
-## Reaching fields that might be absent
+---
 
-A standard `Lens` assumes that the path is guaranteed to exist. If a property in our path is
-optional (e.g. `host?: string`) or we want to focus on an element of an array that might be empty,
-we must transition from a `Lens` to an `Optional`.
+## Conversions and Optional Paths
 
-We can compose a `Lens` with an `Optional` path using `Lens.andThenOptional` or convert a lens
-entirely with `Lens.to.Optional`:
+A `Lens` requires that the target field is guaranteed to exist. When a path crosses an optional or
+nullable property (e.g. `billingAddress?: Address`), the path transitions from a guaranteed lens to
+an `Optional`.
+
+`Lens.andThenOptional` composes a `Lens` with an `Optional` segment, producing an `Optional`.
+Alternatively, `Lens.to.Optional` widens a `Lens` directly into an `Optional` whose getter always
+returns `Some`:
 
 ```ts
-import { Optional } from "@nlozgachev/pipelined/core";
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Lens, Optional } from "@nlozgachev/pipelined/core";
 
 type UserPreferences = {
-  theme?: string;
+  readonly theme?: string;
 };
 
-type UserProfile = {
-  name: string;
-  preferences: UserPreferences;
+type UserAccount = {
+  readonly id: string;
+  readonly preferences: UserPreferences;
 };
 
-const preferencesLens = Lens.from.property<UserProfile>()("preferences");
+const preferencesLens = Lens.from.property<UserAccount>()("preferences");
 const themeOptional = Optional.from.property<UserPreferences>()("theme");
 
-// Compose a guaranteed path (Lens) directly with an optional path (Optional)
-const profileThemeOptional = pipe(
+// Compose a guaranteed lens directly with an optional leaf:
+const userThemeOptional = pipe(
   preferencesLens,
   Lens.andThenOptional(themeOptional),
 );
 
-// Or convert a Lens into an Optional explicitly with Lens.to.Optional
-const preferencesAsOptional = Lens.to.Optional(preferencesLens);
+// Widen a lens into an Optional explicitly:
+const preferencesOptional = Lens.to.Optional(preferencesLens);
 ```
 
-See the [Optional guide](/guides/optional) for details on navigating optional paths.
+See the [Optional guide](/guides/optional) for details on navigating and modifying nullable paths.
+
+---
+
+## Pipeline Composition
+
+Here is an end-to-end e-commerce order fulfillment pipeline. It receives an order payload,
+normalizes customer shipping details, recalculates package dimensions, and increments a processing
+revision counter. Using lenses, each step operates directly on its focused sub-model without
+coupling helper functions to the overall order schema:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { Lens } from "@nlozgachev/pipelined/core";
+
+type ShippingAddress = {
+  readonly recipient: string;
+  readonly postalCode: string;
+  readonly city: string;
+};
+
+type PackageDimensions = {
+  readonly weightGrams: number;
+  readonly insured: boolean;
+};
+
+type FulfillmentOrder = {
+  readonly orderId: string;
+  readonly revision: number;
+  readonly shipping: {
+    readonly address: ShippingAddress;
+    readonly dimensions: PackageDimensions;
+  };
+};
+
+const shippingLens = Lens.from.property<FulfillmentOrder>()("shipping");
+const addressLens = Lens.from.property<FulfillmentOrder["shipping"]>()("address");
+const dimensionsLens = Lens.from.property<FulfillmentOrder["shipping"]>()("dimensions");
+const postalCodeLens = Lens.from.property<ShippingAddress>()("postalCode");
+const weightLens = Lens.from.property<PackageDimensions>()("weightGrams");
+const revisionLens = Lens.from.property<FulfillmentOrder>()("revision");
+
+// Compose deep path lenses:
+const orderPostalLens = pipe(shippingLens, Lens.andThen(addressLens), Lens.andThen(postalCodeLens));
+const orderWeightLens = pipe(shippingLens, Lens.andThen(dimensionsLens), Lens.andThen(weightLens));
+
+const incomingOrder: FulfillmentOrder = {
+  orderId: "ord_8821",
+  revision: 1,
+  shipping: {
+    address: {
+      recipient: "Ada Lovelace",
+      postalCode: " 10115 ",
+      city: "Berlin",
+    },
+    dimensions: {
+      weightGrams: 450,
+      insured: false,
+    },
+  },
+};
+
+// Process updates linearly across disparate sub-models:
+const processedOrder = pipe(
+  incomingOrder,
+  Lens.modify(orderPostalLens)((code) => code.trim()),
+  Lens.modify(orderWeightLens)((weight) => weight + 50),
+  Lens.modify(revisionLens)((rev) => rev + 1),
+);
+```
+
+---
 
 ## Problems it solves
 
-- **Deep immutable updates without spread boilerplate**: In React, Redux, or Zustand state trees,
-  modifying nested properties three or four levels deep requires multiple levels of spread operators
-  (`{ ...state, user: { ...state.user, settings: { ... } } }`). `Lens` encapsulates bidirectional
-  get/set operations, enabling single-line immutable updates at any depth.
-- **Decoupling child UI components with sub-model focusing**: Passing an entire global state tree to
-  a child form component couples it to the root schema. Passing a focused `Lens<State, Address>`
-  allows the child component to read and update only its specific sub-model while remaining
-  completely agnostic of the parent container structure.
-- **Atomic property modifications (`Lens.modify`)**: Applying pure transformation functions directly
-  to nested fields (such as incrementing counters, trimming strings, or appending items to nested
-  lists) via `Lens.modify` without extracting the value first.
-- **Reusable bidirectional property bindings in forms**: In form controllers and settings editors,
-  field components need to both read nested values for rendering and immutably write back user
-  inputs on change. `Lens` turns nested data paths into first-class values that can be passed
-  directly to form inputs, validation routines, and persistence layers.
-- **Composable data path navigation**: Individual lenses targeting sub-models can be combined using
-  `Lens.andThen`, allowing complex domain access paths to be assembled dynamically from small,
-  modular path definitions.
+- Deep updates in nested trees require cascades of spread operators that drift rightward and obscure
+  business intent. `Lens` encapsulates path navigation, enabling single-line reads, writes, and
+  updates at any level of nesting.
+- Passing entire root state objects to child components or domain helpers tightly couples those
+  sub-routines to the global schema. Passing a focused `Lens<State, SubModel>` allows sub-routines
+  to read and mutate their specific slice in complete isolation.
+- Unintentional object allocations in state managers trigger cascading UI re-renders. `Lens.modify`
+  checks `Object.is` before applying writes, returning the original object reference if the target
+  value did not change.
+- Refactoring schema layouts usually requires searching and rewriting manual spread patterns across
+  dozens of files. Lenses centralize access paths into standalone values that can be updated in a
+  single location.
+- Form inputs and bidirectional controls require both an extractor to display current state and an
+  updater to persist changes. `Lens` provides a unified pair of pure functions that can be passed
+  directly into form controllers and settings widgets.
