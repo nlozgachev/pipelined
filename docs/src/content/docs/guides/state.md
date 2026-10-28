@@ -287,7 +287,7 @@ receive duplicate IDs.
 
 ---
 
-## Accumulating values: bind / bindTo
+## Accumulating values: assign / assignTo
 
 When you need to perform multiple sequential stateful operations and gather their results into a
 single object, nesting `chain` and `map` inside pipelines can become highly complex:
@@ -310,27 +310,27 @@ const buildProfile = pipe(
 );
 ```
 
-To solve this, you can use `bindTo` and `bind` to cleanly accumulate values key-by-key in a flat,
-readable pipeline.
+To solve this, you can use `assignTo` and `assign` to cleanly accumulate values key-by-key in a
+flat, readable pipeline.
 
-`bindTo` wraps the initial `State` output into a single-key accumulator object:
+`assignTo` wraps the initial `State` output into a single-key accumulator object:
 
 ```ts
 const initialProfile = pipe(
   generateId,
-  State.bindTo("id"),
+  State.assignTo("id"),
 ); // State<IdState, { id: number }>
 ```
 
-`bind` runs a new stateful operation using the accumulated object and attaches the result to a new
+`assign` runs a new stateful operation using the accumulated object and attaches the result to a new
 key:
 
 ```ts
 const buildProfile = pipe(
   generateId,
-  State.bindTo("id"),
-  State.bind("data", ({ id }) => loadData(id)),
-  State.bind("prefs", ({ id }) => loadPrefs(id))
+  State.assignTo("id"),
+  State.assign("data", ({ id }) => loadData(id)),
+  State.assign("prefs", ({ id }) => loadPrefs(id))
 ); // State({ id: number, data: Data, prefs: Preferences })
 ```
 

@@ -184,30 +184,30 @@ export const Reader = {
 	/**
 	 * Lifts a Reader value into an accumulator object.
 	 *
-	 * @see {@link bind} to accumulate subsequent Reader values into the object.
+	 * @see {@link assign} to accumulate subsequent Reader values into the object.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Reader.make(42), Reader.bindTo("value")); // Reader({ value: 42 })
+	 * pipe(Reader.make(42), Reader.assignTo("value")); // Reader({ value: 42 })
 	 * ```
 	 */
-	bindTo: <K extends string>(key: K) => <R = never, A = unknown>(reader: Reader<R, A>): Reader<R, { [P in K]: A; }> =>
+	assignTo: <K extends string>(key: K) => <R = never, A = unknown>(reader: Reader<R, A>): Reader<R, { [P in K]: A; }> =>
 		mapReader<A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(reader),
 
 	/**
 	 * Evaluates a new Reader using the current accumulator and attaches the output to a new key.
 	 *
-	 * @see {@link bindTo} to initialize the accumulator record.
+	 * @see {@link assignTo} to initialize the accumulator record.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(
 	 *   Reader.make({ a: 1 }),
-	 *   Reader.bind("b", ({ a }) => Reader.make(a + 1))
+	 *   Reader.assign("b", ({ a }) => Reader.make(a + 1))
 	 * ); // Reader({ a: 1, b: 2 })
 	 * ```
 	 */
-	bind:
+	assign:
 		<K extends string, R2, A, B>(key: K, transform: (value: A) => Reader<R2, B>) =>
 		<R1 = never>(reader: Reader<R1, A>): Reader<R1 & R2, A & { [P in K]: B; }> =>
 			chainReader<A, R2, A & { [P in K]: B; }>((a) =>

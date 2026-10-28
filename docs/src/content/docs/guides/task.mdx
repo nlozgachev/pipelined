@@ -635,27 +635,27 @@ const token2 = await loadToken();
 
 ---
 
-## Accumulating values: bind / bindTo
+## Accumulating values: assign / assignTo
 
-Sequential asynchronous operations that build up a combined record can be expressed with `bindTo` and `bind` without nested callbacks. Available across `Task`, `Task.Result`, and `Task.Maybe`:
+Sequential asynchronous operations that build up a combined record can be expressed with `assignTo` and `assign` without nested callbacks. Available across `Task`, `Task.Result`, and `Task.Maybe`:
 
-`bindTo` wraps an asynchronous value into the pipeline's accumulator object:
+`assignTo` wraps an asynchronous value into the pipeline's accumulator object:
 
 ```ts
 pipe(
   Task.make(42),
-  Task.bindTo("value"),
+  Task.assignTo("value"),
 ); // Task<{ value: number }>
 ```
 
-`bind` runs a new asynchronous operation using the accumulated object and attaches the result to a new key:
+`assign` runs a new asynchronous operation using the accumulated object and attaches the result to a new key:
 
 ```ts
 const userProfile = pipe(
   getUser(userId), // Task.Maybe<User>
-  Task.Maybe.bindTo("user"),
-  Task.Maybe.bind("prefs", ({ user }) => getPreferences(user.id)),
-  Task.Maybe.bind("theme", ({ prefs }) => getTheme(prefs.themeId)),
+  Task.Maybe.assignTo("user"),
+  Task.Maybe.assign("prefs", ({ user }) => getPreferences(user.id)),
+  Task.Maybe.assign("theme", ({ prefs }) => getTheme(prefs.themeId)),
 ); // Task.Maybe<{ user: User; prefs: Preferences; theme: Theme }>
 ```
 

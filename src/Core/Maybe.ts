@@ -432,10 +432,10 @@ export const Maybe = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Maybe.make.some(42), Maybe.bindTo("value")); // Some({ value: 42 })
+	 * pipe(Maybe.make.some(42), Maybe.assignTo("value")); // Some({ value: 42 })
 	 * ```
 	 */
-	bindTo: <K extends string>(key: K) => <A = unknown>(maybe: Maybe<A>): Maybe<{ [P in K]: A; }> =>
+	assignTo: <K extends string>(key: K) => <A = unknown>(maybe: Maybe<A>): Maybe<{ [P in K]: A; }> =>
 		isSome(maybe) ? makeSome({ [key]: maybe.value } as { [P in K]: A; }) : maybe,
 
 	/**
@@ -445,11 +445,11 @@ export const Maybe = {
 	 * ```ts
 	 * pipe(
 	 *   Maybe.make.some({ a: 1 }),
-	 *   Maybe.bind("b", ({ a }) => Maybe.make.some(a + 1))
+	 *   Maybe.assign("b", ({ a }) => Maybe.make.some(a + 1))
 	 * ); // Some({ a: 1, b: 2 })
 	 * ```
 	 */
-	bind:
+	assign:
 		<K extends string, A, B>(key: K, transform: (value: A) => Maybe<B>) =>
 		(maybe: Maybe<A>): Maybe<A & { [P in K]: B; }> => {
 			if (!isSome(maybe)) {

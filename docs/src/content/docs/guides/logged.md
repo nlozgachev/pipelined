@@ -214,10 +214,11 @@ const monitored = pipe(
 
 ---
 
-## Object Accumulation: `bindTo` and `bind`
+## Object Accumulation: `assignTo` and `assign`
 
 When accumulating multiple sequential computations into a single object, nesting `chain` calls
-produces deep indentation. Use `bindTo` and `bind` to construct an accumulator record step-by-step:
+produces deep indentation. Use `assignTo` and `assign` to construct an accumulator record
+step-by-step:
 
 ```ts
 interface User {
@@ -232,8 +233,8 @@ const loadPrefs = (id: string) => Logged.make({ theme: "dark" }, [`Loaded prefer
 
 const profile = pipe(
   loadUser("usr_42"),
-  Logged.bindTo("user"),
-  Logged.bind("preferences", ({ user }) => loadPrefs(user.id)),
+  Logged.assignTo("user"),
+  Logged.assign("preferences", ({ user }) => loadPrefs(user.id)),
 );
 // {
 //   value: { user: { id: "usr_42" }, preferences: { theme: "dark" } },

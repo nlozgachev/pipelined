@@ -390,19 +390,19 @@ Calling `Validation.to.Result` without arguments retains the raw `Arr.NonEmpty<E
 
 ---
 
-## Why Validation omits chain, bind, and bindTo
+## Why Validation omits chain, assign, and assignTo
 
-Developers familiar with `Result` or `Maybe` often ask why `Validation` lacks `chain`, `bind`, and
-`bindTo`.
+Developers familiar with `Result` or `Maybe` often ask why `Validation` lacks `chain`, `assign`, and
+`assignTo`.
 
-`chain` and `bind` sequence dependent operations where Step B requires the output of Step A:
+`chain` and `assign` sequence dependent operations where Step B requires the output of Step A:
 
 ```ts
 // Supported in Result, NOT in Validation
 pipe(
   getUser(userId),
-  Result.bindTo("user"),
-  Result.bind("prefs", ({ user }) => getPreferences(user.id)),
+  Result.assignTo("user"),
+  Result.assign("prefs", ({ user }) => getPreferences(user.id)),
 );
 ```
 

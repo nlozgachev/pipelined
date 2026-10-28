@@ -466,8 +466,8 @@ test("filter: preserves falsy values that satisfy the predicate", () => {
 // recover
 // ---------------------------------------------------------------------------
 
-test("bindTo: returns None when given None", () => {
-	const result = pipe(Maybe.make.none(), Maybe.bindTo("key"));
+test("assignTo: returns None when given None", () => {
+	const result = pipe(Maybe.make.none(), Maybe.assignTo("key"));
 	expect(result).toStrictEqual(Maybe.make.none());
 });
 
@@ -621,32 +621,32 @@ test("getOrElse: widens return type to union", () => {
 	expect(val).toBe("hello");
 });
 
-// --- bindTo ---
+// --- assignTo ---
 
-test("bindTo: wraps value in accumulator object", () => {
-	const result = pipe(Maybe.make.some(2), Maybe.bindTo("a"));
+test("assignTo: wraps value in accumulator object", () => {
+	const result = pipe(Maybe.make.some(2), Maybe.assignTo("a"));
 	expect(result).toStrictEqual(Maybe.make.some({ a: 2 }));
 });
 
-// --- bind ---
+// --- assign ---
 
-test("bind: accumulates values key-by-key in pipeline", () => {
+test("assign: accumulates values key-by-key in pipeline", () => {
 	const result = pipe(
 		Maybe.make.some(2),
-		Maybe.bindTo("a"),
-		Maybe.bind("b", ({ a }) => Maybe.make.some(a * 3)),
-		Maybe.bind("c", ({ a, b }) => Maybe.make.some(a + b)),
+		Maybe.assignTo("a"),
+		Maybe.assign("b", ({ a }) => Maybe.make.some(a * 3)),
+		Maybe.assign("c", ({ a, b }) => Maybe.make.some(a + b)),
 	);
 	expect(result).toStrictEqual(Maybe.make.some({ a: 2, b: 6, c: 8 }));
 });
 
-test("bind: short-circuits on None", () => {
+test("assign: short-circuits on None", () => {
 	let called = false;
 	const result = pipe(
 		Maybe.make.some(2),
-		Maybe.bindTo("a"),
-		Maybe.bind("b", () => Maybe.make.none()),
-		Maybe.bind("c", ({ b }) => {
+		Maybe.assignTo("a"),
+		Maybe.assign("b", () => Maybe.make.none()),
+		Maybe.assign("c", ({ b }) => {
 			called = true;
 			return Maybe.make.some(b);
 		}),
@@ -708,8 +708,8 @@ test("sequence.Result: swaps None to Ok(None)", () => {
 	expect(res).toStrictEqual(Result.make.ok(Maybe.make.none()));
 });
 
-test("bind: safely handles __proto__ property without prototype pollution", () => {
-	const res = pipe(Maybe.make.some({ a: 1 }), Maybe.bind("__proto__", () => Maybe.make.some({ polluted: true })));
+test("assign: safely handles __proto__ property without prototype pollution", () => {
+	const res = pipe(Maybe.make.some({ a: 1 }), Maybe.assign("__proto__", () => Maybe.make.some({ polluted: true })));
 	expect(Maybe.is.some(res)).toBe(true);
 	const value = Maybe.getOrElse(() => ({ a: 0 }))(res);
 	expect(Object.hasOwn(value, "__proto__")).toBe(true);

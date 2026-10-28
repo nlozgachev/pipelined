@@ -345,32 +345,32 @@ test("from.Result: returns None for Err", async () => {
 	expect(result).toStrictEqual(Maybe.make.none());
 });
 
-// --- bindTo ---
+// --- assignTo ---
 
-test("bindTo: wraps value in accumulator object", async () => {
-	const result = await pipe(Task.Maybe.make.some(2), Task.Maybe.bindTo("a"))();
+test("assignTo: wraps value in accumulator object", async () => {
+	const result = await pipe(Task.Maybe.make.some(2), Task.Maybe.assignTo("a"))();
 	expect(result).toStrictEqual(Maybe.make.some({ a: 2 }));
 });
 
-// --- bind ---
+// --- assign ---
 
-test("bind: accumulates values key-by-key in pipeline", async () => {
+test("assign: accumulates values key-by-key in pipeline", async () => {
 	const result = await pipe(
 		Task.Maybe.make.some(2),
-		Task.Maybe.bindTo("a"),
-		Task.Maybe.bind("b", ({ a }) => Task.Maybe.make.some(a * 3)),
-		Task.Maybe.bind("c", ({ a, b }) => Task.Maybe.make.some(a + b)),
+		Task.Maybe.assignTo("a"),
+		Task.Maybe.assign("b", ({ a }) => Task.Maybe.make.some(a * 3)),
+		Task.Maybe.assign("c", ({ a, b }) => Task.Maybe.make.some(a + b)),
 	)();
 	expect(result).toStrictEqual(Maybe.make.some({ a: 2, b: 6, c: 8 }));
 });
 
-test("bind: short-circuits on None", async () => {
+test("assign: short-circuits on None", async () => {
 	let called = false;
 	const result = await pipe(
 		Task.Maybe.make.some(2),
-		Task.Maybe.bindTo("a"),
-		Task.Maybe.bind("b", () => Task.Maybe.make.none()),
-		Task.Maybe.bind("c", ({ b }) => {
+		Task.Maybe.assignTo("a"),
+		Task.Maybe.assign("b", () => Task.Maybe.make.none()),
+		Task.Maybe.assign("c", ({ b }) => {
 			called = true;
 			return Task.Maybe.make.some(b);
 		}),
@@ -450,10 +450,10 @@ test("run: executes Task.Maybe in a pipeline", async () => {
 	expect(res).toStrictEqual(Maybe.make.some(42));
 });
 
-test("bind: safely handles __proto__ property without prototype pollution", async () => {
+test("assign: safely handles __proto__ property without prototype pollution", async () => {
 	const res = await pipe(
 		Task.Maybe.make.some({ a: 1 }),
-		Task.Maybe.bind("__proto__", () => Task.Maybe.make.some({ polluted: true })),
+		Task.Maybe.assign("__proto__", () => Task.Maybe.make.some({ polluted: true })),
 	)();
 	expect(Maybe.is.some(res)).toBe(true);
 	const value = Maybe.getOrElse((): Record<string, unknown> => ({}))(res);

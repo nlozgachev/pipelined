@@ -521,7 +521,7 @@ const validation = Result.to.Validation(Result.make.err("invalid_id")); // Faile
 
 ---
 
-## Accumulating values: bind / bindTo
+## Accumulating values: assign / assignTo
 
 When you need to perform multiple sequential operations and gather their results into a single
 object, traditional pipelines can become deeply nested because each successive function needs access
@@ -545,26 +545,26 @@ const userProfile = pipe(
 );
 ```
 
-To solve this, we can use `bindTo` and `bind` to cleanly accumulate values key-by-key in a flat,
+To solve this, we can use `assignTo` and `assign` to cleanly accumulate values key-by-key in a flat,
 readable pipeline.
 
-`bindTo` wraps a value into the pipeline's accumulator object:
+`assignTo` wraps a value into the pipeline's accumulator object:
 
 ```ts
 pipe(
   Result.make.ok(42),
-  Result.bindTo("value"),
+  Result.assignTo("value"),
 ); // Ok({ value: 42 })
 ```
 
-`bind` runs a new operation using the accumulated object and attaches the result to a new key:
+`assign` runs a new operation using the accumulated object and attaches the result to a new key:
 
 ```ts
 const userProfile = pipe(
   getUser(userId),
-  Result.bindTo("user"),
-  Result.bind("prefs", ({ user }) => getPreferences(user.id)),
-  Result.bind("theme", ({ prefs }) => getTheme(prefs.themeId)),
+  Result.assignTo("user"),
+  Result.assign("prefs", ({ user }) => getPreferences(user.id)),
+  Result.assign("theme", ({ prefs }) => getTheme(prefs.themeId)),
 ); // Ok({ user: User, prefs: Preferences, theme: Theme })
 ```
 
@@ -574,9 +574,9 @@ If any step fails, the entire pipeline short-circuits and propagates the failure
 
 ## Combining records: struct
 
-While `bind` is ideal for sequential steps where a later step depends on the output of a prior step,
-sometimes you have a set of independent `Result`s that you want to combine into a single object. For
-this, you can use `Result.struct`.
+While `assign` is ideal for sequential steps where a later step depends on the output of a prior
+step, sometimes you have a set of independent `Result`s that you want to combine into a single
+object. For this, you can use `Result.struct`.
 
 It combines a record of `Result`s into a single `Result` holding a record of success values. If any
 individual field is an `Err`, the entire struct short-circuits to that error immediately:

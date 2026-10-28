@@ -254,39 +254,39 @@ test("tapLog: runs side effect on log array without changing value or log", () =
 });
 
 // ---------------------------------------------------------------------------
-// bindTo & bind
+// assign & assignTo
 // ---------------------------------------------------------------------------
 
-test("bindTo: wraps value in accumulator object", () => {
-	const result = pipe(Logged.make(2), Logged.bindTo("a"));
+test("assignTo: wraps value in accumulator object", () => {
+	const result = pipe(Logged.make(2), Logged.assignTo("a"));
 	const [value, log] = Logged.to.Pair(result);
 	expect(value).toStrictEqual({ a: 2 });
 	expect(log).toStrictEqual([]);
 });
 
-test("bindTo: preserves falsy values", () => {
-	const result = pipe(Logged.make(0), Logged.bindTo("count"));
+test("assignTo: preserves falsy values", () => {
+	const result = pipe(Logged.make(0), Logged.assignTo("count"));
 	expect(result.value).toStrictEqual({ count: 0 });
 });
 
-test("bind: accumulates values key-by-key in pipeline", () => {
+test("assign: accumulates values key-by-key in pipeline", () => {
 	const result = pipe(
 		Logged.make(2),
-		Logged.bindTo("a"),
-		Logged.bind("b", ({ a }) => pipe(Logged.from.entry("logged b"), Logged.map(() => a * 3))),
-		Logged.bind("c", ({ a, b }) => pipe(Logged.from.entry("logged c"), Logged.map(() => a + b))),
+		Logged.assignTo("a"),
+		Logged.assign("b", ({ a }) => pipe(Logged.from.entry("logged b"), Logged.map(() => a * 3))),
+		Logged.assign("c", ({ a, b }) => pipe(Logged.from.entry("logged c"), Logged.map(() => a + b))),
 	);
 	const [value, log] = Logged.to.Pair(result);
 	expect(value).toStrictEqual({ a: 2, b: 6, c: 8 });
 	expect(log).toStrictEqual(["logged b", "logged c"]);
 });
 
-test("bind: handles falsy field values", () => {
+test("assign: handles falsy field values", () => {
 	const result = pipe(
 		Logged.make("init"),
-		Logged.bindTo("str"),
-		Logged.bind("zero", () => Logged.make(0, ["added zero"])),
-		Logged.bind("flag", () => Logged.make(false, ["added flag"])),
+		Logged.assignTo("str"),
+		Logged.assign("zero", () => Logged.make(0, ["added zero"])),
+		Logged.assign("flag", () => Logged.make(false, ["added flag"])),
 	);
 	expect(result.value).toStrictEqual({ str: "init", zero: 0, flag: false });
 	expect(result.log).toStrictEqual(["added zero", "added flag"]);

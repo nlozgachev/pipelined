@@ -916,21 +916,21 @@ test("sequential: preserves tuple element types for heterogeneous task literals"
 	expect(result).toStrictEqual([42, "hello"]);
 });
 
-// --- bindTo ---
+// --- assignTo ---
 
-test("bindTo: wraps value in accumulator object", async () => {
-	const result = await pipe(Task.make(2), Task.bindTo("a"))();
+test("assignTo: wraps value in accumulator object", async () => {
+	const result = await pipe(Task.make(2), Task.assignTo("a"))();
 	expect(result).toStrictEqual({ a: 2 });
 });
 
-// --- bind ---
+// --- assign ---
 
-test("bind: accumulates values key-by-key in pipeline", async () => {
+test("assign: accumulates values key-by-key in pipeline", async () => {
 	const result = await pipe(
 		Task.make(2),
-		Task.bindTo("a"),
-		Task.bind("b", ({ a }) => Task.make(a * 3)),
-		Task.bind("c", ({ a, b }) => Task.make(a + b)),
+		Task.assignTo("a"),
+		Task.assign("b", ({ a }) => Task.make(a * 3)),
+		Task.assign("c", ({ a, b }) => Task.make(a + b)),
 	)();
 	expect(result).toStrictEqual({ a: 2, b: 6, c: 8 });
 });
@@ -1042,8 +1042,8 @@ test("poll: exits wait immediately if signal is already aborted", async () => {
 	expect(result).toBe(1);
 });
 
-test("bind: safely handles __proto__ property without prototype pollution", async () => {
-	const res = await pipe(Task.make({ a: 1 }), Task.bind("__proto__", () => Task.make({ polluted: true })))();
+test("assign: safely handles __proto__ property without prototype pollution", async () => {
+	const res = await pipe(Task.make({ a: 1 }), Task.assign("__proto__", () => Task.make({ polluted: true })))();
 	expect(Object.hasOwn(res, "__proto__")).toBe(true);
 	expect("polluted" in {}).toBe(false);
 });

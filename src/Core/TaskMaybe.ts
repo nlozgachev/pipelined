@@ -272,10 +272,10 @@ export const TaskMaybe = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Task.Maybe.make.some(42), Task.Maybe.bindTo("value")); // Task.Maybe({ value: 42 })
+	 * pipe(Task.Maybe.make.some(42), Task.Maybe.assignTo("value")); // Task.Maybe({ value: 42 })
 	 * ```
 	 */
-	bindTo: <K extends string>(key: K) => <A>(task: Task.Maybe<A>): Task.Maybe<{ [P in K]: A; }> =>
+	assignTo: <K extends string>(key: K) => <A>(task: Task.Maybe<A>): Task.Maybe<{ [P in K]: A; }> =>
 		mapTaskMaybe<A, { [P in K]: A; }>((value) => ({ [key]: value } as { [P in K]: A; }))(task),
 
 	/**
@@ -285,11 +285,11 @@ export const TaskMaybe = {
 	 * ```ts
 	 * pipe(
 	 *   Task.Maybe.make.some({ a: 1 }),
-	 *   Task.Maybe.bind("b", ({ a }) => Task.Maybe.make.some(a + 1))
+	 *   Task.Maybe.assign("b", ({ a }) => Task.Maybe.make.some(a + 1))
 	 * ); // Task.Maybe({ a: 1, b: 2 })
 	 * ```
 	 */
-	bind:
+	assign:
 		<K extends string, A, B>(key: K, transform: (value: A) => Task.Maybe<B>) =>
 		(task: Task.Maybe<A>): Task.Maybe<A & { [P in K]: B; }> =>
 			chainTaskMaybe<A, A & { [P in K]: B; }>((acc) =>

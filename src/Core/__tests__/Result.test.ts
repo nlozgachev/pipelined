@@ -390,8 +390,8 @@ test("recover: widens error types when fallback can fail with different error", 
 	expect(result).toStrictEqual(Result.make.ok(42));
 });
 
-test("bindTo: returns Err when given Err", () => {
-	const result = pipe(Result.make.err("err"), Result.bindTo("key"));
+test("assignTo: returns Err when given Err", () => {
+	const result = pipe(Result.make.err("err"), Result.assignTo("key"));
 	expect(result).toStrictEqual(Result.make.err("err"));
 });
 
@@ -625,32 +625,32 @@ test("from.Maybe: returns Err for None", () => {
 	expect(result).toStrictEqual(Result.make.err("is none"));
 });
 
-// --- bindTo ---
+// --- assignTo ---
 
-test("bindTo: wraps a value in an accumulator object", () => {
-	const result = pipe(Result.make.ok(2), Result.bindTo("a"));
+test("assignTo: wraps a value in an accumulator object", () => {
+	const result = pipe(Result.make.ok(2), Result.assignTo("a"));
 	expect(result).toStrictEqual(Result.make.ok({ a: 2 }));
 });
 
-// --- bind ---
+// --- assign ---
 
-test("bind: accumulates values key-by-key in a pipeline", () => {
+test("assign: accumulates values key-by-key in a pipeline", () => {
 	const result = pipe(
 		Result.make.ok(2),
-		Result.bindTo("a"),
-		Result.bind("b", ({ a }) => Result.make.ok(a * 3)),
-		Result.bind("c", ({ a, b }) => Result.make.ok(a + b)),
+		Result.assignTo("a"),
+		Result.assign("b", ({ a }) => Result.make.ok(a * 3)),
+		Result.assign("c", ({ a, b }) => Result.make.ok(a + b)),
 	);
 	expect(result).toStrictEqual(Result.make.ok({ a: 2, b: 6, c: 8 }));
 });
 
-test("bind: short-circuits on Err", () => {
+test("assign: short-circuits on Err", () => {
 	let called = false;
 	const result = pipe(
 		Result.make.ok(2),
-		Result.bindTo("a"),
-		Result.bind("b", () => Result.make.err("fail")),
-		Result.bind("c", ({ b }) => {
+		Result.assignTo("a"),
+		Result.assign("b", () => Result.make.err("fail")),
+		Result.assign("c", ({ b }) => {
 			called = true;
 			return Result.make.ok(b);
 		}),
@@ -821,8 +821,8 @@ test("bimap: does not invoke onOk on Err", () => {
 
 // --- prototype pollution shielding ---
 
-test("bind: safely handles __proto__ property without prototype pollution", () => {
-	const res = pipe(Result.make.ok({ a: 1 }), Result.bind("__proto__", () => Result.make.ok({ polluted: true })));
+test("assign: safely handles __proto__ property without prototype pollution", () => {
+	const res = pipe(Result.make.ok({ a: 1 }), Result.assign("__proto__", () => Result.make.ok({ polluted: true })));
 	expect(Result.is.ok(res)).toBe(true);
 	const emptyFallback: Record<string, unknown> = {};
 	const value = Result.getOrElse(() => emptyFallback)(res);

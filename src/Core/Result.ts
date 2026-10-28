@@ -429,10 +429,10 @@ export const Result = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Result.make.ok(42), Result.bindTo("value")); // Ok({ value: 42 })
+	 * pipe(Result.make.ok(42), Result.assignTo("value")); // Ok({ value: 42 })
 	 * ```
 	 */
-	bindTo: <K extends string>(key: K) => <E = never, A = unknown>(result: Result<E, A>): Result<E, { [P in K]: A; }> =>
+	assignTo: <K extends string>(key: K) => <E = never, A = unknown>(result: Result<E, A>): Result<E, { [P in K]: A; }> =>
 		isOk(result) ? makeOk({ [key]: result.value } as { [P in K]: A; }) : result,
 
 	/**
@@ -442,11 +442,11 @@ export const Result = {
 	 * ```ts
 	 * pipe(
 	 *   Result.make.ok({ a: 1 }),
-	 *   Result.bind("b", ({ a }) => Result.make.ok(a + 1))
+	 *   Result.assign("b", ({ a }) => Result.make.ok(a + 1))
 	 * ); // Ok({ a: 1, b: 2 })
 	 * ```
 	 */
-	bind:
+	assign:
 		<K extends string, E2, A, B>(key: K, transform: (value: A) => Result<E2, B>) =>
 		<E1 = never>(result: Result<E1, A>): Result<E1 | E2, A & { [P in K]: B; }> => {
 			if (!isOk(result)) { return result; }

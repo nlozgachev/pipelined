@@ -610,10 +610,10 @@ export const Task = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Task.make(42), Task.bindTo("value")); // Task({ value: 42 })
+	 * pipe(Task.make(42), Task.assignTo("value")); // Task({ value: 42 })
 	 * ```
 	 */
-	bindTo: <K extends string>(key: K) => <A>(task: Task<A>): Task<{ [P in K]: A; }> =>
+	assignTo: <K extends string>(key: K) => <A>(task: Task<A>): Task<{ [P in K]: A; }> =>
 		fromPromise((signal) => toPromise(task, signal).then((a) => ({ [key]: a } as { [P in K]: A; }))),
 
 	/**
@@ -623,11 +623,11 @@ export const Task = {
 	 * ```ts
 	 * pipe(
 	 *   Task.make({ a: 1 }),
-	 *   Task.bind("b", ({ a }) => Task.make(a + 1))
+	 *   Task.assign("b", ({ a }) => Task.make(a + 1))
 	 * ); // Task({ a: 1, b: 2 })
 	 * ```
 	 */
-	bind:
+	assign:
 		<K extends string, A, B>(key: K, transform: (value: A) => Task<B>) => (task: Task<A>): Task<A & { [P in K]: B; }> =>
 			fromPromise((signal) =>
 				toPromise(task, signal).then((a) =>

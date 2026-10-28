@@ -233,30 +233,30 @@ export const State = {
 	/**
 	 * Lifts a State value into an accumulator object.
 	 *
-	 * @see {@link bind} to accumulate subsequent State values into the object.
+	 * @see {@link assign} to accumulate subsequent State values into the object.
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(State.make(42), State.bindTo("value")); // State({ value: 42 })
+	 * pipe(State.make(42), State.assignTo("value")); // State({ value: 42 })
 	 * ```
 	 */
-	bindTo: <K extends string>(key: K) => <S = never, A = unknown>(state: State<S, A>): State<S, { [P in K]: A; }> =>
+	assignTo: <K extends string>(key: K) => <S = never, A = unknown>(state: State<S, A>): State<S, { [P in K]: A; }> =>
 		mapState<A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(state),
 
 	/**
 	 * Evaluates a new State using the current accumulator and attaches the output to a new key.
 	 *
-	 * @see {@link bindTo} to initialize the accumulator record.
+	 * @see {@link assignTo} to initialize the accumulator record.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(
 	 *   State.make({ a: 1 }),
-	 *   State.bind("b", ({ a }) => State.make(a + 1))
+	 *   State.assign("b", ({ a }) => State.make(a + 1))
 	 * ); // State({ a: 1, b: 2 })
 	 * ```
 	 */
-	bind:
+	assign:
 		<K extends string, S, A, B>(key: K, transform: (value: A) => State<S, B>) =>
 		(state: State<S, A>): State<S, A & { [P in K]: B; }> =>
 			chainState<A, S, A & { [P in K]: B; }>((a) =>

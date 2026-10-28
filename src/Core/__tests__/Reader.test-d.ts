@@ -70,14 +70,14 @@ test("run: executes reader by providing required environment", () => {
 	expectTypeOf(result).toEqualTypeOf<string>();
 });
 
-test("bindTo & bind: accumulates record fields across readers", () => {
+test("assign & assignTo: accumulates record fields across readers", () => {
 	type Env1 = { db: string; };
 	type Env2 = { port: number; };
 
 	const bound = pipe(
 		Reader.make<Env1, string>("initial"),
-		Reader.bindTo("dbValue"),
-		Reader.bind("portNumber", () => Reader.make<Env2, number>(8080)),
+		Reader.assignTo("dbValue"),
+		Reader.assign("portNumber", () => Reader.make<Env2, number>(8080)),
 	);
 	expectTypeOf(bound).toEqualTypeOf<Reader<Env1 & Env2, { dbValue: string; } & { portNumber: number; }>>();
 });

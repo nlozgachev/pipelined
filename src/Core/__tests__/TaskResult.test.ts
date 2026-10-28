@@ -540,34 +540,34 @@ test("from.Result: returns Err for Err", async () => {
 	expect(result).toStrictEqual(Result.make.err("bad"));
 });
 
-// --- bindTo ---
+// --- assignTo ---
 
-test("bindTo: wraps value in accumulator object", async () => {
-	const task = pipe(Task.Result.make.ok(2), Task.Result.bindTo("a"));
+test("assignTo: wraps value in accumulator object", async () => {
+	const task = pipe(Task.Result.make.ok(2), Task.Result.assignTo("a"));
 	const result = await task();
 	expect(result).toStrictEqual(Result.make.ok({ a: 2 }));
 });
 
-// --- bind ---
+// --- assign ---
 
-test("bind: accumulates values key-by-key in pipeline", async () => {
+test("assign: accumulates values key-by-key in pipeline", async () => {
 	const task = pipe(
 		Task.Result.make.ok(2),
-		Task.Result.bindTo("a"),
-		Task.Result.bind("b", ({ a }) => Task.Result.make.ok(a * 3)),
-		Task.Result.bind("c", ({ a, b }) => Task.Result.make.ok(a + b)),
+		Task.Result.assignTo("a"),
+		Task.Result.assign("b", ({ a }) => Task.Result.make.ok(a * 3)),
+		Task.Result.assign("c", ({ a, b }) => Task.Result.make.ok(a + b)),
 	);
 	const result = await task();
 	expect(result).toStrictEqual(Result.make.ok({ a: 2, b: 6, c: 8 }));
 });
 
-test("bind: short-circuits on Err", async () => {
+test("assign: short-circuits on Err", async () => {
 	let called = false;
 	const task = pipe(
 		Task.Result.make.ok(2),
-		Task.Result.bindTo("a"),
-		Task.Result.bind("b", () => Task.Result.make.err("fail")),
-		Task.Result.bind("c", ({ b }) => {
+		Task.Result.assignTo("a"),
+		Task.Result.assign("b", () => Task.Result.make.err("fail")),
+		Task.Result.assign("c", ({ b }) => {
 			called = true;
 			return Task.Result.make.ok(b);
 		}),
@@ -1102,10 +1102,10 @@ test("retry: handles throwing policy.getDelay gracefully", async () => {
 	expect(result).toStrictEqual(Result.make.err("fail"));
 });
 
-test("bind: safely handles __proto__ property without prototype pollution", async () => {
+test("assign: safely handles __proto__ property without prototype pollution", async () => {
 	const res = await pipe(
 		Task.Result.make.ok({ a: 1 }),
-		Task.Result.bind("__proto__", () => Task.Result.make.ok({ polluted: true })),
+		Task.Result.assign("__proto__", () => Task.Result.make.ok({ polluted: true })),
 	)();
 	expect(Result.is.ok(res)).toBe(true);
 	const value = Result.getOrElse((): Record<string, unknown> => ({}))(res);

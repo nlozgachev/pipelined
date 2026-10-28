@@ -190,21 +190,21 @@ test("chain: works with make to simulate map", () => {
 	expect(doubled(testConfig)).toBe(10_000);
 });
 
-// --- bindTo ---
+// --- assignTo ---
 
-test("bindTo: wraps value in accumulator object", () => {
-	const result = pipe(Reader.make<Config, number>(2), Reader.bindTo("a"))(testConfig);
+test("assignTo: wraps value in accumulator object", () => {
+	const result = pipe(Reader.make<Config, number>(2), Reader.assignTo("a"))(testConfig);
 	expect(result).toStrictEqual({ a: 2 });
 });
 
-// --- bind ---
+// --- assign ---
 
-test("bind: accumulates values key-by-key in pipeline", () => {
+test("assign: accumulates values key-by-key in pipeline", () => {
 	const result = pipe(
 		Reader.make<Config, number>(2),
-		Reader.bindTo("a"),
-		Reader.bind("b", ({ a }) => Reader.make(a * 3)),
-		Reader.bind("c", ({ a, b }) => Reader.make(a + b)),
+		Reader.assignTo("a"),
+		Reader.assign("b", ({ a }) => Reader.make(a * 3)),
+		Reader.assign("c", ({ a, b }) => Reader.make(a + b)),
 	)(testConfig);
 	expect(result).toStrictEqual({ a: 2, b: 6, c: 8 });
 });

@@ -343,10 +343,10 @@ export const TaskResult = {
 	 *
 	 * @example
 	 * ```ts
-	 * pipe(Task.Result.make.ok(42), Task.Result.bindTo("value")); // Task.Result({ value: 42 })
+	 * pipe(Task.Result.make.ok(42), Task.Result.assignTo("value")); // Task.Result({ value: 42 })
 	 * ```
 	 */
-	bindTo:
+	assignTo:
 		<K extends string>(key: K) => <E = never, A = unknown>(task: Task.Result<E, A>): Task.Result<E, { [P in K]: A; }> =>
 			mapTaskResult<A, { [P in K]: A; }>((value) => ({ [key]: value } as { [P in K]: A; }))(task),
 
@@ -357,11 +357,11 @@ export const TaskResult = {
 	 * ```ts
 	 * pipe(
 	 *   Task.Result.make.ok({ a: 1 }),
-	 *   Task.Result.bind("b", ({ a }) => Task.Result.make.ok(a + 1))
+	 *   Task.Result.assign("b", ({ a }) => Task.Result.make.ok(a + 1))
 	 * ); // Task.Result({ a: 1, b: 2 })
 	 * ```
 	 */
-	bind:
+	assign:
 		<K extends string, E2, A, B>(key: K, transform: (value: A) => Task.Result<E2, B>) =>
 		<E1 = never>(task: Task.Result<E1, A>): Task.Result<E1 | E2, A & { [P in K]: B; }> =>
 			chainTaskResult<E2, A, A & { [P in K]: B; }>((acc) =>

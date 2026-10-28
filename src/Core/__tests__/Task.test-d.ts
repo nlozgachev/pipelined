@@ -80,8 +80,8 @@ test("timeout: converts task into fallible result channel with typed error", () 
 	expectTypeOf(timed).toEqualTypeOf<Task<Result<"timed_out", number>>>();
 });
 
-test("bind & bindTo: accumulates pipeline object record correctly", () => {
-	const bound = pipe(Task.make(42), Task.bindTo("a"), Task.bind("b", ({ a }) => Task.make(a.toString())));
+test("assign & assignTo: accumulates pipeline object record correctly", () => {
+	const bound = pipe(Task.make(42), Task.assignTo("a"), Task.assign("b", ({ a }) => Task.make(a.toString())));
 	expectTypeOf(bound).toEqualTypeOf<Task<{ a: number; } & { b: string; }>>();
 	expectTypeOf(bound).toMatchTypeOf<Task<{ a: number; b: string; }>>();
 });

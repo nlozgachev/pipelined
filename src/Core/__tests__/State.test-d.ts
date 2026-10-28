@@ -61,11 +61,11 @@ test("run, evaluate, execute: unpacks state computation results", () => {
 	expectTypeOf(execResult).toEqualTypeOf<string>();
 });
 
-test("bindTo & bind: accumulates record fields over state operations", () => {
+test("assign & assignTo: accumulates record fields over state operations", () => {
 	const bound = pipe(
 		State.make<number, string>("hello"),
-		State.bindTo("text"),
-		State.bind("length", ({ text }) => State.make<number, number>(text.length)),
+		State.assignTo("text"),
+		State.assign("length", ({ text }) => State.make<number, number>(text.length)),
 	);
 	expectTypeOf(bound).toEqualTypeOf<State<number, { text: string; } & { length: number; }>>();
 });

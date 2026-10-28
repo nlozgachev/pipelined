@@ -174,13 +174,13 @@ test("struct: preserves heterogeneous error unions and object shapes", () => {
 	expectTypeOf(structured).toEqualTypeOf<Result<"ERR_A" | "ERR_B", { a: number; b: string; }>>();
 });
 
-test("bind & bindTo: accumulates pipeline object record correctly", () => {
+test("assign & assignTo: accumulates pipeline object record correctly", () => {
 	const resA: Result<"ERR_A", number> = constTruthyBool() ? Result.make.ok(1) : Result.make.err("ERR_A");
 
 	const bound = pipe(
 		resA,
-		Result.bindTo("a"),
-		Result.bind("b", ({ a }) => (a > 0 ? Result.make.ok(a.toString()) : Result.make.err("ERR_B" as const))),
+		Result.assignTo("a"),
+		Result.assign("b", ({ a }) => (a > 0 ? Result.make.ok(a.toString()) : Result.make.err("ERR_B" as const))),
 	);
 	expectTypeOf(bound).toEqualTypeOf<Result<"ERR_A" | "ERR_B", { a: number; } & { b: string; }>>();
 	expectTypeOf(bound).toMatchTypeOf<Result<"ERR_A" | "ERR_B", { a: number; b: string; }>>();

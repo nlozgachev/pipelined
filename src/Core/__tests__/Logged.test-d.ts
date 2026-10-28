@@ -62,11 +62,11 @@ test("tap & tapLog: preserve exact container types", () => {
 	expectTypeOf(tappedLog).toEqualTypeOf<Logged<string, number>>();
 });
 
-test("bindTo & bind: accumulate object fields and combine log channels", () => {
+test("assign & assignTo: accumulate object fields and combine log channels", () => {
 	const bound = pipe(
 		Logged.make(42, ["start"]),
-		Logged.bindTo("first"),
-		Logged.bind("second", ({ first }) => Logged.make(first > 0, [1])),
+		Logged.assignTo("first"),
+		Logged.assign("second", ({ first }) => Logged.make(first > 0, [1])),
 	);
 	expectTypeOf(bound).toEqualTypeOf<Logged<string | number, { first: number; } & { second: boolean; }>>();
 });

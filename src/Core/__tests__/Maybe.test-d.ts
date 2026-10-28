@@ -165,13 +165,13 @@ test("struct: combines homogeneous and heterogeneous Maybes into single object r
 	expectTypeOf(structured).toEqualTypeOf<Maybe<{ a: number; b: string; }>>();
 });
 
-test("bind & bindTo: accumulates pipeline object record correctly", () => {
+test("assign & assignTo: accumulates pipeline object record correctly", () => {
 	const optA = constTruthyBool() ? Maybe.make.some(1) : Maybe.make.none();
 
 	const bound = pipe(
 		optA,
-		Maybe.bindTo("a"),
-		Maybe.bind("b", ({ a }) => (a > 0 ? Maybe.make.some(a.toString()) : Maybe.make.none())),
+		Maybe.assignTo("a"),
+		Maybe.assign("b", ({ a }) => (a > 0 ? Maybe.make.some(a.toString()) : Maybe.make.none())),
 	);
 	expectTypeOf(bound).toEqualTypeOf<Maybe<{ a: number; } & { b: string; }>>();
 	expectTypeOf(bound).toMatchTypeOf<Maybe<{ a: number; b: string; }>>();

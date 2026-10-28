@@ -36,11 +36,11 @@ test("struct: combines record of Task.Maybes into single record", () => {
 	expectTypeOf(structured).toEqualTypeOf<Task.Maybe<{ a: number; b: string; }>>();
 });
 
-test("bind & bindTo: accumulates pipeline object record correctly", () => {
+test("assign & assignTo: accumulates pipeline object record correctly", () => {
 	const bound = pipe(
 		Task.Maybe.make.some(42),
-		Task.Maybe.bindTo("a"),
-		Task.Maybe.bind("b", ({ a }) => Task.Maybe.make.some(a.toString())),
+		Task.Maybe.assignTo("a"),
+		Task.Maybe.assign("b", ({ a }) => Task.Maybe.make.some(a.toString())),
 	);
 	expectTypeOf(bound).toEqualTypeOf<Task.Maybe<{ a: number; } & { b: string; }>>();
 	expectTypeOf(bound).toMatchTypeOf<Task.Maybe<{ a: number; b: string; }>>();

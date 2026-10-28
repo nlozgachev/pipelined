@@ -258,7 +258,7 @@ dependencies and environment variables are resolved.
 
 ---
 
-## Accumulating values: bind / bindTo
+## Accumulating values: assign / assignTo
 
 When you need to perform multiple sequential operations reading from the same environment and
 accumulate their results into a single object, traditional pipelines can become deeply nested
@@ -282,26 +282,26 @@ const userProfile = pipe(
 );
 ```
 
-To solve this, you can use `bindTo` and `bind` to cleanly accumulate environment-derived values
+To solve this, you can use `assignTo` and `assign` to cleanly accumulate environment-derived values
 key-by-key in a flat, readable pipeline.
 
-`bindTo` wraps the initial `Reader` result into a single-key accumulator object:
+`assignTo` wraps the initial `Reader` result into a single-key accumulator object:
 
 ```ts
 const initialScope = pipe(
   getUser(userId),
-  Reader.bindTo("user"),
+  Reader.assignTo("user"),
 ); // Reader<AppEnv, { user: User }>
 ```
 
-`bind` runs a new operation using the accumulated object and attaches the result to a new key:
+`assign` runs a new operation using the accumulated object and attaches the result to a new key:
 
 ```ts
 const userProfile = pipe(
   getUser(userId),
-  Reader.bindTo("user"),
-  Reader.bind("prefs", ({ user }) => getPreferences(user.id)),
-  Reader.bind("theme", ({ prefs }) => getTheme(prefs.themeId))
+  Reader.assignTo("user"),
+  Reader.assign("prefs", ({ user }) => getPreferences(user.id)),
+  Reader.assign("theme", ({ prefs }) => getTheme(prefs.themeId))
 ); // Reader({ user: User, prefs: Preferences, theme: Theme })
 ```
 
@@ -322,11 +322,11 @@ const userProfile = pipe(
   often require modified contexts (such as attaching a child correlation trace ID, adjusting a
   timeout window, or running a query in an impersonated user scope). `Reader.local` transforms or
   overrides the environment for a specific sub-pipeline without affecting outer callers.
-- **Accumulating multi-step contextual pipelines (`Reader.bindTo`, `Reader.bind`)**: When assembling
-  a workflow that depends on multiple resolved environment values or sequential contextual steps
-  (such as reading tenant flags, building connection strings, and compiling headers), `bindTo` and
-  `bind` accumulate contextual results into a structured object step-by-step without losing access
-  to the shared environment.
+- **Accumulating multi-step contextual pipelines (`Reader.assignTo`, `Reader.assign`)**: When
+  assembling a workflow that depends on multiple resolved environment values or sequential
+  contextual steps (such as reading tenant flags, building connection strings, and compiling
+  headers), `assignTo` and `assign` accumulate contextual results into a structured object
+  step-by-step without losing access to the shared environment.
 - **Deterministic testing without mock libraries**: Rather than relying on global environment
   variables, singleton containers, or complex mock frameworks, `Reader` makes environmental
   requirements visible in the type signature, enabling unit tests to pass mock environments directly

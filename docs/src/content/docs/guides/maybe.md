@@ -453,7 +453,7 @@ Maybe.sequence.Result(Maybe.make.none()); // Ok(None)
 
 ---
 
-## Accumulating values: bind / bindTo
+## Accumulating values: assign / assignTo
 
 When you need to perform multiple sequential operations and gather their results into a single
 object, traditional pipelines can become deeply nested because each successive function needs access
@@ -477,26 +477,26 @@ const userProfile = pipe(
 );
 ```
 
-To solve this, we can use `bindTo` and `bind` to cleanly accumulate values key-by-key in a flat,
+To solve this, we can use `assignTo` and `assign` to cleanly accumulate values key-by-key in a flat,
 readable pipeline.
 
-`bindTo` wraps a value into the pipeline's accumulator object:
+`assignTo` wraps a value into the pipeline's accumulator object:
 
 ```ts
 pipe(
   Maybe.make.some(42),
-  Maybe.bindTo("value"),
+  Maybe.assignTo("value"),
 ); // Some({ value: 42 })
 ```
 
-`bind` runs a new operation using the accumulated object and attaches the result to a new key:
+`assign` runs a new operation using the accumulated object and attaches the result to a new key:
 
 ```ts
 const userProfile = pipe(
   getUser(userId),
-  Maybe.bindTo("user"),
-  Maybe.bind("prefs", ({ user }) => getPreferences(user.id)),
-  Maybe.bind("theme", ({ prefs }) => getThemeById(prefs.themeId)),
+  Maybe.assignTo("user"),
+  Maybe.assign("prefs", ({ user }) => getPreferences(user.id)),
+  Maybe.assign("theme", ({ prefs }) => getThemeById(prefs.themeId)),
 ); // Some({ user: User, prefs: Preferences, theme: Theme })
 ```
 
@@ -507,8 +507,8 @@ immediately.
 
 ## Combining records: struct
 
-While `bind` is ideal for sequential steps where a later step depends on the output of a prior step,
-sometimes you have a set of independent `Maybe` values that you want to combine into a single
+While `assign` is ideal for sequential steps where a later step depends on the output of a prior
+step, sometimes you have a set of independent `Maybe` values that you want to combine into a single
 object. For this, you can use `Maybe.struct`.
 
 It combines a record of `Maybe` values into a single `Maybe` holding a record of success values. If

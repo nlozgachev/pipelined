@@ -205,23 +205,23 @@ test("pipe: composes state updates in sequence", () => {
 	expect(total).toBe(4);
 });
 
-// --- bindTo ---
+// --- assignTo ---
 
-test("bindTo: wraps a value in an accumulator object", () => {
-	const result = pipe(State.make<number, number>(2), State.bindTo("a"));
+test("assignTo: wraps a value in an accumulator object", () => {
+	const result = pipe(State.make<number, number>(2), State.assignTo("a"));
 	const [value, state] = State.run(99)(result);
 	expect(value).toStrictEqual({ a: 2 });
 	expect(state).toBe(99);
 });
 
-// --- bind ---
+// --- assign ---
 
-test("bind: accumulates values key-by-key in a pipeline", () => {
+test("assign: accumulates values key-by-key in a pipeline", () => {
 	const result = pipe(
 		State.make<number, number>(2),
-		State.bindTo("a"),
-		State.bind("b", ({ a }) => State.make(a * 3)),
-		State.bind("c", ({ a, b }) => State.make(a + b)),
+		State.assignTo("a"),
+		State.assign("b", ({ a }) => State.make(a * 3)),
+		State.assign("c", ({ a, b }) => State.make(a + b)),
 	);
 	const [value, state] = State.run(99)(result);
 	expect(value).toStrictEqual({ a: 2, b: 6, c: 8 });

@@ -200,13 +200,13 @@ export const Logged = {
 	 * Wraps a Logged value in an accumulator record with a single specified key.
 	 * Initiates the pipeline accumulator object.
 	 *
-	 * @see {@link Logged.bind} to attach subsequent values to the accumulator object.
+	 * @see {@link Logged.assign} to attach subsequent values to the accumulator object.
 	 * @example
 	 * ```ts
-	 * pipe(Logged.make(42), Logged.bindTo("value")); // { value: { value: 42 }, log: [] }
+	 * pipe(Logged.make(42), Logged.assignTo("value")); // { value: { value: 42 }, log: [] }
 	 * ```
 	 */
-	bindTo: <K extends string>(key: K) => <A, L = never>(logged: Logged<L, A>): Logged<L, { [P in K]: A; }> => ({
+	assignTo: <K extends string>(key: K) => <A, L = never>(logged: Logged<L, A>): Logged<L, { [P in K]: A; }> => ({
 		value: { [key]: logged.value } as { [P in K]: A; },
 		log: logged.log,
 	}),
@@ -214,16 +214,16 @@ export const Logged = {
 	/**
 	 * Evaluates a new Logged computation using the current accumulator object and attaches the result to a new key.
 	 *
-	 * @see {@link Logged.bindTo} to initiate the accumulator object.
+	 * @see {@link Logged.assignTo} to initiate the accumulator object.
 	 * @example
 	 * ```ts
 	 * pipe(
 	 *   Logged.make({ a: 1 }),
-	 *   Logged.bind("b", ({ a }) => Logged.make(a + 1, ["computed b"])),
+	 *   Logged.assign("b", ({ a }) => Logged.make(a + 1, ["computed b"])),
 	 * ); // { value: { a: 1, b: 2 }, log: ["computed b"] }
 	 * ```
 	 */
-	bind:
+	assign:
 		<K extends string, L2, A, B>(key: K, transform: (value: A) => Logged<L2, B>) =>
 		<L1 = never>(logged: Logged<L1, A>): Logged<L1 | L2, A & { [P in K]: B; }> => {
 			const next = transform(logged.value);
