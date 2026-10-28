@@ -237,3 +237,21 @@ test("map: executes side effect callback when reader is run", () => {
 	reader(testConfig);
 	expect(called).toBe(true);
 });
+
+// --- boundary & falsy environment preservation ---
+
+test("run: preserves boolean false environment", () => {
+	const readBool: Reader<boolean, string> = (b) => (b ? "truthy" : "falsy");
+	expect(Reader.run(false)(readBool)).toBe("falsy");
+	expect(pipe(readBool, Reader.local((n: number) => n > 0), Reader.run(0))).toBe("falsy");
+});
+
+test("run: preserves empty string environment", () => {
+	const readStr: Reader<string, number> = (s) => s.length;
+	expect(Reader.run("")(readStr)).toBe(0);
+});
+
+test("run: preserves zero environment", () => {
+	const readNum: Reader<number, number> = (n) => n * 10;
+	expect(Reader.run(0)(readNum)).toBe(0);
+});

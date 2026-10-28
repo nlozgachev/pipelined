@@ -117,6 +117,7 @@ property of the price value itself:
 
 ```ts
 import { pipe } from "@nlozgachev/pipelined/composition";
+import { Reader } from "@nlozgachev/pipelined/core";
 
 interface LocaleConfig {
   symbol: string;

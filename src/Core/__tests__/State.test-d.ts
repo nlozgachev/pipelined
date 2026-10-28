@@ -78,3 +78,29 @@ test("focus: projects state operation onto sub-state using Lens", () => {
 	const focused = pipe(subOp, State.focus(profileLens));
 	expectTypeOf(focused).toEqualTypeOf<State<User, undefined>>();
 });
+
+test("negative: enforces state invariants and parameter types at compile time", () => {
+	const st = State.make<number, string>("hello");
+
+	// @ts-expect-error run expects initial state of type number, but received string
+	expectTypeOf(pipe(st, State.run("not-a-number"))).toBeObject();
+
+	// @ts-expect-error evaluate expects initial state of type number, but received boolean
+	expectTypeOf(pipe(st, State.evaluate(true))).toBeString();
+
+	// @ts-expect-error execute expects initial state of type number, but received object
+	expectTypeOf(pipe(st, State.execute({}))).toBeNumber();
+
+	// @ts-expect-error modify callback must return the same state type number, not string
+	expectTypeOf(State.modify<number>((_n) => "invalid")).toBeFunction();
+
+	type User = { id: number; profile: { age: number; }; };
+	const idLens: Lens<User, number> = { get: (u) => u.id, set: (id) => (u) => ({ ...u, id }) };
+	const strOp = State.modify<string>((s) => s.toUpperCase());
+
+	// @ts-expect-error focus requires lens target type to match sub-operation state type
+	expectTypeOf(pipe(strOp, State.focus(idLens))).toBeFunction();
+
+	// @ts-expect-error apply requires piped state to hold a function value, but received State<number, string>
+	expectTypeOf(pipe(st, State.apply(State.make<number, number>(42)))).toBeFunction();
+});

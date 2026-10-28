@@ -40,6 +40,8 @@ export const State = {
 	/**
 	 * Lifts a pure value into a State computation. The state passes through unchanged.
 	 *
+	 * @see {@link get} to produce the current state instead of a static value.
+	 *
 	 * @example
 	 * ```ts
 	 * State.run(10)(State.make(42)); // [42, 10] — value 42, state unchanged
@@ -49,6 +51,8 @@ export const State = {
 
 	/**
 	 * Produces the current state as the value, without modifying it.
+	 *
+	 * @see {@link put} to replace the state, or {@link modify} to transform it with a function.
 	 *
 	 * @example
 	 * ```ts
@@ -61,6 +65,8 @@ export const State = {
 	/**
 	 * Replaces the current state with a new value. Produces no meaningful value.
 	 *
+	 * @see {@link get} to read the current state, or {@link modify} to transform it.
+	 *
 	 * @example
 	 * ```ts
 	 * const reset: State<number, undefined> = State.put(0);
@@ -72,6 +78,8 @@ export const State = {
 	/**
 	 * Applies a function to the current state to produce the next state.
 	 * Produces no meaningful value.
+	 *
+	 * @see {@link put} to replace the state with a constant value, or {@link get} to read it.
 	 *
 	 * @example
 	 * ```ts
@@ -86,6 +94,8 @@ export const State = {
 	/**
 	 * Transforms the value produced by a State computation.
 	 * The state transformation is unchanged.
+	 *
+	 * @see {@link chain} to sequence a computation that produces a new State.
 	 *
 	 * @example
 	 * ```ts
@@ -104,6 +114,8 @@ export const State = {
 	 * as the state input to the second.
 	 *
 	 * Data-last — the first computation is the data being piped.
+	 *
+	 * @see {@link map} to transform the produced value without changing the state transition.
 	 *
 	 * @example
 	 * ```ts
@@ -126,6 +138,8 @@ export const State = {
 	 * The function computation runs first; its output state is the input to the
 	 * argument computation.
 	 *
+	 * @see {@link chain} to sequence dependent State transitions.
+	 *
 	 * @example
 	 * ```ts
 	 * const addCounted = (n: number) => (m: number) => n + m;
@@ -138,14 +152,16 @@ export const State = {
 	 * State.evaluate(3)(program); // 6 + 3 = 9
 	 * ```
 	 */
-	apply: <S, A>(arg: State<S, A>) => <B>(fn: State<S, (a: A) => B>): State<S, B> => (s) => {
-		const [f, s1] = fn(s);
+	apply: <S, A>(arg: State<S, A>) => <B>(state: State<S, (value: A) => B>): State<S, B> => (s) => {
+		const [f, s1] = state(s);
 		const [a, s2] = arg(s1);
 		return [f(a), s2];
 	},
 
 	/**
 	 * Runs a side effect on the produced value without changing the State computation.
+	 *
+	 * @see {@link map} to transform the value instead of executing a side effect.
 	 *
 	 * @example
 	 * ```ts
@@ -168,6 +184,8 @@ export const State = {
 	 *
 	 * Data-last — the computation is the data being piped.
 	 *
+	 * @see {@link evaluate} to discard the final state, or {@link execute} to discard the produced value.
+	 *
 	 * @example
 	 * ```ts
 	 * const program = pipe(
@@ -178,11 +196,13 @@ export const State = {
 	 * State.run(0)(program); // [1, 1]
 	 * ```
 	 */
-	run: <S>(initialState: S) => <A>(st: State<S, A>): readonly [A, S] => st(initialState),
+	run: <S>(initialState: S) => <A>(state: State<S, A>): readonly [A, S] => state(initialState),
 
 	/**
 	 * Runs a State computation with an initial state, returning only the
 	 * produced value (discarding the final state).
+	 *
+	 * @see {@link run} to obtain both the value and final state, or {@link execute} for only the state.
 	 *
 	 * @example
 	 * ```ts
@@ -192,11 +212,13 @@ export const State = {
 	 * )); // ["x"]
 	 * ```
 	 */
-	evaluate: <S>(initialState: S) => <A>(st: State<S, A>): A => st(initialState)[0],
+	evaluate: <S>(initialState: S) => <A>(state: State<S, A>): A => state(initialState)[0],
 
 	/**
 	 * Runs a State computation with an initial state, returning only the
 	 * final state (discarding the produced value).
+	 *
+	 * @see {@link run} to obtain both the value and final state, or {@link evaluate} for only the value.
 	 *
 	 * @example
 	 * ```ts
@@ -206,21 +228,25 @@ export const State = {
 	 * )); // 20
 	 * ```
 	 */
-	execute: <S>(initialState: S) => <A>(st: State<S, A>): S => st(initialState)[1],
+	execute: <S>(initialState: S) => <A>(state: State<S, A>): S => state(initialState)[1],
 
 	/**
 	 * Lifts a State value into an accumulator object.
+	 *
+	 * @see {@link bind} to accumulate subsequent State values into the object.
 	 *
 	 * @example
 	 * ```ts
 	 * pipe(State.make(42), State.bindTo("value")); // State({ value: 42 })
 	 * ```
 	 */
-	bindTo: <K extends string>(key: K) => <S, A>(data: State<S, A>): State<S, { [P in K]: A; }> =>
-		mapState<A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(data),
+	bindTo: <K extends string>(key: K) => <S = never, A = unknown>(state: State<S, A>): State<S, { [P in K]: A; }> =>
+		mapState<A, { [P in K]: A; }>((a) => ({ [key]: a } as { [P in K]: A; }))(state),
 
 	/**
 	 * Evaluates a new State using the current accumulator and attaches the output to a new key.
+	 *
+	 * @see {@link bindTo} to initialize the accumulator record.
 	 *
 	 * @example
 	 * ```ts
@@ -232,15 +258,17 @@ export const State = {
 	 */
 	bind:
 		<K extends string, S, A, B>(key: K, transform: (value: A) => State<S, B>) =>
-		(data: State<S, A>): State<S, A & { [P in K]: B; }> =>
+		(state: State<S, A>): State<S, A & { [P in K]: B; }> =>
 			chainState<A, S, A & { [P in K]: B; }>((a) =>
 				mapState<B, A & { [P in K]: B; }>((
 					b,
 				) => ({ ...(a as unknown as Record<string, unknown>), [key]: b } as A & { [P in K]: B; }))(transform(a))
-			)(data),
+			)(state),
 
 	/**
 	 * Focuses a State computation on a sub-state using a Lens.
+	 *
+	 * @see {@link modify} to update state directly without a Lens.
 	 *
 	 * @example
 	 * ```ts
@@ -250,9 +278,9 @@ export const State = {
 	 * const focusedProgram = pipe(increment, State.focus(countLens));
 	 * ```
 	 */
-	focus: <S, A>(lens: Lens<S, A>) => <B>(stateOp: State<A, B>): State<S, B> => (s: S) => {
+	focus: <S, SubState>(lens: Lens<S, SubState>) => <A>(state: State<SubState, A>): State<S, A> => (s: S) => {
 		const subState = lens.get(s);
-		const [b, newSubState] = stateOp(subState);
-		return [b, lens.set(newSubState)(s)];
+		const [a, newSubState] = state(subState);
+		return [a, lens.set(newSubState)(s)];
 	},
 };

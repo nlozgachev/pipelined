@@ -81,3 +81,23 @@ test("bindTo & bind: accumulates record fields across readers", () => {
 	);
 	expectTypeOf(bound).toEqualTypeOf<Reader<Env1 & Env2, { dbValue: string; } & { portNumber: number; }>>();
 });
+
+test("negative: enforces environment and argument constraints at compile time", () => {
+	type Env = { port: number; };
+	const r: Reader<Env, string> = (c) => `localhost:${c.port}`;
+
+	// @ts-expect-error missing required port property in environment
+	expectTypeOf(pipe(r, Reader.run({}))).toBeString();
+
+	// @ts-expect-error incompatible environment property type
+	expectTypeOf(pipe(r, Reader.run({ port: "8080" }))).toBeString();
+
+	type SmallEnv = { baseUrl: string; };
+	const rSmall: Reader<SmallEnv, string> = (c) => c.baseUrl;
+	// @ts-expect-error local transform does not satisfy required SmallEnv structure
+	expectTypeOf(pipe(rSmall, Reader.local((_env: { other: number; }) => ({ wrong: "url" })))).toBeFunction();
+
+	const numReader: Reader<Env, number> = (c) => c.port;
+	// @ts-expect-error apply expects Reader of function on piped data, but received Reader<Env, string>
+	expectTypeOf(pipe(r, Reader.apply(numReader))).toBeFunction();
+});

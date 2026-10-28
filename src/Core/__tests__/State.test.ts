@@ -119,7 +119,8 @@ test("chain: builds a stack via modify and get", () => {
 		State.chain(() => push("c")),
 		State.chain(() => State.get<string[]>()),
 	);
-	const [value] = State.run([] as string[])(program);
+	const initialStack: string[] = [];
+	const [value] = State.run(initialStack)(program);
 	expect(value).toStrictEqual(["a", "b", "c"]);
 });
 
@@ -199,7 +200,8 @@ test("pipe: composes state updates in sequence", () => {
 		State.chain(() => pipe(State.get<Cart>(), State.map((cart) => cart.total))),
 	);
 
-	const total = State.evaluate({ items: [] as string[], total: 0 })(program);
+	const initialCart: Cart = { items: [], total: 0 };
+	const total = State.evaluate(initialCart)(program);
 	expect(total).toBe(4);
 });
 
@@ -263,4 +265,30 @@ test("modify: executes state transformation function when run", () => {
 	expect(called).toBe(false);
 	State.run(0)(program);
 	expect(called).toBe(true);
+});
+
+// --- boundary & falsy state preservation ---
+
+test("modify: preserves boolean false across state operations", () => {
+	const toggle = State.modify<boolean>((b) => !b);
+	const [val1, st1] = State.run(false)(toggle);
+	expect(val1).toBeUndefined();
+	expect(st1).toBe(true);
+
+	const [val2, st2] = State.run(false)(pipe(State.get<boolean>(), State.map((b) => (b ? "yes" : "no"))));
+	expect(val2).toBe("no");
+	expect(st2).toBe(false);
+});
+
+test("modify: preserves empty string across state operations", () => {
+	const append = (char: string): State<string, undefined> => State.modify((s) => s + char);
+	const [val, st] = State.run("")(pipe(append("a"), State.chain(() => State.get<string>())));
+	expect(val).toBe("a");
+	expect(st).toBe("a");
+});
+
+test("run: preserves zero and negative zero across state operations", () => {
+	const [val, st] = State.run(0)(pipe(State.get<number>(), State.map((n) => n === 0)));
+	expect(val).toBe(true);
+	expect(st).toBe(0);
 });
