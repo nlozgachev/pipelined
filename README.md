@@ -28,7 +28,7 @@ and locks, and `EventBus` for typed in-memory events.
 
 It has zero dependencies, ships ESM and CommonJS builds, and tree-shakes down to ~142 B–1.69 kB
 gzipped for individual modules (with an upper ceiling of <12.44 kB gzipped for all of `core` and
-<19.25 kB for the entire package).
+<19.26 kB for the entire package).
 
 <!-- BUNDLE_OVERVIEW:END -->
 
@@ -691,7 +691,7 @@ subpath:
 | `@nlozgachev/pipelined/composition` | Pipeline runners and composition combinators           | **1.54 kB**  | 2.00 kB      |
 | `@nlozgachev/pipelined/data`        | Bounds-safe array, record, and primitive helpers       | **9.60 kB**  | 10.00 kB     |
 | `@nlozgachev/pipelined/core`        | Monadic containers, async execution, state, and optics | **12.44 kB** | 13.00 kB     |
-| **All entry points combined**       | Monolithic import of entire library                    | **19.25 kB** | 20.00 kB     |
+| **All entry points combined**       | Monolithic import of entire library                    | **19.26 kB** | 20.00 kB     |
 
 <!-- BUNDLE_TABLE:END -->
 

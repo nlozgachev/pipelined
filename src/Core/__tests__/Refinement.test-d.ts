@@ -1,6 +1,7 @@
 import { describe, expectTypeOf, it } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import type { Maybe } from "../Maybe.ts";
+import type { Predicate } from "../Predicate.ts";
 import { Refinement } from "../Refinement.ts";
 import type { Result } from "../Result.ts";
 
@@ -45,6 +46,9 @@ describe("Refinement type-level tests", () => {
 
 		const toResult = Refinement.to.Result(isNonEmpty, () => "empty_error");
 		expectTypeOf(toResult("hello")).toEqualTypeOf<Result<string, NonEmptyString>>();
+
+		const toPredicate = Refinement.to.Predicate(isNonEmpty);
+		expectTypeOf(toPredicate).toEqualTypeOf<Predicate<string>>();
 	});
 
 	it("rejects invalid compositions where target is not a sub-refinement", () => {

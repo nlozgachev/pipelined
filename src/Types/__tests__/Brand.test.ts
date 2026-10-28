@@ -69,5 +69,7 @@ test("runtime: treats distinct brands of same value as strictly equal", () => {
 	const uid = toUserId("shared");
 	const pid = toProductId("shared");
 	// At runtime brands are erased — both are just the string "shared"
-	expect(uid).toBe(pid as unknown as typeof uid);
+	const rawUid: string = uid;
+	const rawPid: string = pid;
+	expect(rawUid).toBe(rawPid);
 });

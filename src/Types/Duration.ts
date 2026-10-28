@@ -26,7 +26,7 @@ export const Duration = {
 	 * Duration.milliseconds(500); // 500ms Duration
 	 * ```
 	 */
-	milliseconds: (ms: number): Duration => wrap(ms),
+	milliseconds: (milliseconds: number): Duration => wrap(milliseconds),
 
 	/**
 	 * Creates a Duration from seconds.
@@ -36,7 +36,7 @@ export const Duration = {
 	 * Duration.seconds(2); // 2000ms Duration
 	 * ```
 	 */
-	seconds: (s: number): Duration => wrap(s * 1000),
+	seconds: (seconds: number): Duration => wrap(seconds * 1000),
 
 	/**
 	 * Creates a Duration from minutes.
@@ -46,7 +46,7 @@ export const Duration = {
 	 * Duration.minutes(5); // 300000ms Duration
 	 * ```
 	 */
-	minutes: (m: number): Duration => wrap(m * 60 * 1000),
+	minutes: (minutes: number): Duration => wrap(minutes * 60 * 1000),
 
 	/**
 	 * Creates a Duration from hours.
@@ -56,7 +56,7 @@ export const Duration = {
 	 * Duration.hours(1); // 3600000ms Duration
 	 * ```
 	 */
-	hours: (h: number): Duration => wrap(h * 60 * 60 * 1000),
+	hours: (hours: number): Duration => wrap(hours * 60 * 60 * 1000),
 
 	/**
 	 * Creates a Duration from days.
@@ -66,7 +66,7 @@ export const Duration = {
 	 * Duration.days(1); // 86400000ms Duration
 	 * ```
 	 */
-	days: (d: number): Duration => wrap(d * 24 * 60 * 60 * 1000),
+	days: (days: number): Duration => wrap(days * 24 * 60 * 60 * 1000),
 
 	// --- to ---
 	to: {
@@ -78,7 +78,7 @@ export const Duration = {
 		 * Duration.to.milliseconds(Duration.seconds(2)); // 2000
 		 * ```
 		 */
-		milliseconds: (d: Duration): number => Brand.unwrap(d),
+		milliseconds: (duration: Duration): number => Brand.unwrap(duration),
 
 		/**
 		 * Converts a Duration to seconds.
@@ -88,7 +88,7 @@ export const Duration = {
 		 * Duration.to.seconds(Duration.milliseconds(2500)); // 2.5
 		 * ```
 		 */
-		seconds: (d: Duration): number => Brand.unwrap(d) / 1000,
+		seconds: (duration: Duration): number => Brand.unwrap(duration) / 1000,
 
 		/**
 		 * Converts a Duration to minutes.
@@ -98,7 +98,7 @@ export const Duration = {
 		 * Duration.to.minutes(Duration.seconds(120)); // 2
 		 * ```
 		 */
-		minutes: (d: Duration): number => Brand.unwrap(d) / (60 * 1000),
+		minutes: (duration: Duration): number => Brand.unwrap(duration) / (60 * 1000),
 
 		/**
 		 * Converts a Duration to hours.
@@ -108,7 +108,7 @@ export const Duration = {
 		 * Duration.to.hours(Duration.minutes(90)); // 1.5
 		 * ```
 		 */
-		hours: (d: Duration): number => Brand.unwrap(d) / (60 * 60 * 1000),
+		hours: (duration: Duration): number => Brand.unwrap(duration) / (60 * 60 * 1000),
 
 		/**
 		 * Converts a Duration to days.
@@ -118,7 +118,7 @@ export const Duration = {
 		 * Duration.to.days(Duration.hours(36)); // 1.5
 		 * ```
 		 */
-		days: (d: Duration): number => Brand.unwrap(d) / (24 * 60 * 60 * 1000),
+		days: (duration: Duration): number => Brand.unwrap(duration) / (24 * 60 * 60 * 1000),
 	},
 
 	/**
@@ -129,7 +129,7 @@ export const Duration = {
 	 * pipe(Duration.seconds(1), Duration.add(Duration.milliseconds(500))); // 1500ms
 	 * ```
 	 */
-	add: (other: Duration) => (self: Duration): Duration => wrap(Brand.unwrap(self) + Brand.unwrap(other)),
+	add: (amount: Duration) => (duration: Duration): Duration => wrap(Brand.unwrap(duration) + Brand.unwrap(amount)),
 
 	/**
 	 * Subtracts the other Duration from this one.
@@ -139,5 +139,5 @@ export const Duration = {
 	 * pipe(Duration.seconds(1), Duration.subtract(Duration.milliseconds(500))); // 500ms
 	 * ```
 	 */
-	subtract: (other: Duration) => (self: Duration): Duration => wrap(Brand.unwrap(self) - Brand.unwrap(other)),
+	subtract: (amount: Duration) => (from: Duration): Duration => wrap(Brand.unwrap(from) - Brand.unwrap(amount)),
 };

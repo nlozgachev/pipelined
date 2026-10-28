@@ -241,6 +241,13 @@ test("match: branches over predicate-handler pairs with fallback", () => {
 	expect(classify(10)).toBe("positive");
 });
 
+test("match: widens return type when fallback returns different type", () => {
+	const classify = Predicate.match([[(n: number) => n > 0, () => "positive"]], () => null);
+
+	expect(classify(5)).toBe("positive");
+	expect(classify(-5)).toBeNull();
+});
+
 // --- side-effect isolation ---
 
 test("and: executes side effect in second predicate when first passes", () => {

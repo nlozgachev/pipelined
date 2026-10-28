@@ -28,7 +28,7 @@ import { Refinement } from "./Refinement.ts";
  */
 export type Predicate<A> = (a: A) => boolean;
 
-const fromRefinement = <A, B extends A>(r: Refinement<A, B>): Predicate<A> => r;
+const fromRefinement = <A, B extends A>(refinement: Refinement<A, B>): Predicate<A> => refinement;
 
 export const Predicate = {
 	/**
@@ -43,7 +43,7 @@ export const Predicate = {
 	 * isNotBlank("   ");    // false
 	 * ```
 	 */
-	not: <A>(p: Predicate<A>): Predicate<A> => (a) => !p(a),
+	not: <A>(predicate: Predicate<A>): Predicate<A> => (value) => !predicate(value),
 
 	/**
 	 * Combines two predicates with logical AND: passes only when both hold.
@@ -62,7 +62,7 @@ export const Predicate = {
 	 * isPositiveEven(-2);  // false — even but not positive
 	 * ```
 	 */
-	and: <A>(second: Predicate<A>) => (first: Predicate<A>): Predicate<A> => (a) => first(a) && second(a),
+	and: <A>(that: Predicate<A>) => (predicate: Predicate<A>): Predicate<A> => (value) => predicate(value) && that(value),
 
 	/**
 	 * Combines two predicates with logical OR: passes when either holds.
@@ -81,13 +81,13 @@ export const Predicate = {
 	 * getsDiscount(30);  // false
 	 * ```
 	 */
-	or: <A>(second: Predicate<A>) => (first: Predicate<A>): Predicate<A> => (a) => first(a) || second(a),
+	or: <A>(that: Predicate<A>) => (predicate: Predicate<A>): Predicate<A> => (value) => predicate(value) || that(value),
 
 	/**
-	 * Adapts a `Predicate<A>` to work on a different input type `B` by applying `f`
+	 * Adapts a `Predicate<A>` to work on a different input type `B` by applying `transform`
 	 * to extract the relevant `A` from a `B` before running the check.
 	 *
-	 * Data-last — the predicate is the data being piped; `f` is the extractor.
+	 * Data-last — the predicate is the data being piped; `transform` is the extractor.
 	 *
 	 * @example
 	 * ```ts
@@ -105,7 +105,8 @@ export const Predicate = {
 	 * isAdultUser({ name: "Bob",   age: 15 });  // false
 	 * ```
 	 */
-	using: <A, B>(f: (b: B) => A) => (p: Predicate<A>): Predicate<B> => (b) => p(f(b)),
+	using: <A, B>(transform: (value: B) => A) => (predicate: Predicate<A>): Predicate<B> => (value) =>
+		predicate(transform(value)),
 
 	/**
 	 * Combines an array of predicates with AND: passes only when every predicate holds.
@@ -125,9 +126,9 @@ export const Predicate = {
 	 * Predicate.all([])("anything");   // true
 	 * ```
 	 */
-	all: <A>(predicates: ReadonlyArray<Predicate<A>>): Predicate<A> => (a) => {
+	all: <A>(predicates: ReadonlyArray<Predicate<A>>): Predicate<A> => (value) => {
 		for (let i = 0; i < predicates.length; i++) {
-			if (!predicates[i](a)) {
+			if (!predicates[i](value)) {
 				return false;
 			}
 		}
@@ -151,9 +152,9 @@ export const Predicate = {
 	 * Predicate.any([])("anything");                 // false
 	 * ```
 	 */
-	any: <A>(predicates: ReadonlyArray<Predicate<A>>): Predicate<A> => (a) => {
+	any: <A>(predicates: ReadonlyArray<Predicate<A>>): Predicate<A> => (value) => {
 		for (let i = 0; i < predicates.length; i++) {
-			if (predicates[i](a)) {
+			if (predicates[i](value)) {
 				return true;
 			}
 		}
@@ -169,19 +170,21 @@ export const Predicate = {
 		 *
 		 * This is a zero-cost runtime type cast.
 		 *
+		 * @see {@link Refinement.to.Predicate} for the inverse converter under the Refinement namespace.
+		 *
 		 * @example
 		 * ```ts
-		 * const isString: Refinement<unknown, string> =
-		 *   Refinement.from.Predicate(x => typeof x === "string");
+		 * type NonEmptyString = string & { readonly _tag: "NonEmpty" };
+		 * const isNonEmpty: Refinement<string, NonEmptyString> =
+		 *   Refinement.from.Predicate(s => s.length > 0);
 		 *
-		 * const isShortString: Predicate<unknown> = pipe(
-		 *   Predicate.from.Refinement(isString),
-		 *   Predicate.and(x => (x as string).length < 10)
+		 * const isValidUsername: Predicate<string> = pipe(
+		 *   Predicate.from.Refinement(isNonEmpty),
+		 *   Predicate.and(s => s.length <= 20)
 		 * );
 		 *
-		 * isShortString("hi");            // true
-		 * isShortString("a very long string that exceeds ten characters");  // false
-		 * isShortString(42);              // false
+		 * isValidUsername("alice");  // true
+		 * isValidUsername("");       // false
 		 * ```
 		 */
 		Refinement: fromRefinement,
@@ -203,13 +206,15 @@ export const Predicate = {
 	 * classifyNumber(-5); // "negative"
 	 * ```
 	 */
-	match: <A, B>(branches: ReadonlyArray<readonly [Predicate<A>, (a: A) => B]>, fallback: (a: A) => B) => (a: A): B => {
-		for (let i = 0; i < branches.length; i++) {
-			const [p, h] = branches[i];
-			if (p(a)) {
-				return h(a);
+	match:
+		<A, B, C = B>(branches: ReadonlyArray<readonly [Predicate<A>, (value: A) => B]>, fallback: (value: A) => C) =>
+		(value: A): B | C => {
+			for (let i = 0; i < branches.length; i++) {
+				const [predicate, handler] = branches[i];
+				if (predicate(value)) {
+					return handler(value);
+				}
 			}
-		}
-		return fallback(a);
-	},
+			return fallback(value);
+		},
 };

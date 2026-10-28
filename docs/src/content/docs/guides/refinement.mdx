@@ -4,7 +4,7 @@ description: Represent type-narrowing predicates as composable, first-class valu
 ---
 {/* BUNDLE_SIZE:START */}
 
-> 1.63 kB minified + gzipped (1,632 B)
+> 1.64 kB minified + gzipped (1,638 B)
 
 {/* BUNDLE_SIZE:END */}
 
@@ -184,6 +184,19 @@ const validateEmailInput = (raw: string): Result<string, EmailString> =>
       )
     ),
   );
+```
+
+### Converting to Predicate with `Refinement.to.Predicate`
+
+When composing a narrowing check alongside standard boolean predicates (such as in `Predicate.and` or `Predicate.all`), `Refinement.to.Predicate` converts a `Refinement<A, B>` into a plain `Predicate<A>`, discarding the type narrowing at compile time at zero runtime cost:
+
+```ts
+import { Predicate, Refinement } from "@nlozgachev/pipelined/core";
+
+const isNonEmptyPredicate: Predicate<string> = Refinement.to.Predicate(isNonEmpty);
+
+isNonEmptyPredicate("hello"); // true
+isNonEmptyPredicate("");      // false
 ```
 
 ---

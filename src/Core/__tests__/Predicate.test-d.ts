@@ -27,6 +27,9 @@ describe("Predicate type-level tests", () => {
 			() => "positive",
 		);
 		expectTypeOf(classify).toEqualTypeOf<(a: number) => string>();
+
+		const classifyWidened = Predicate.match([[(n: number) => n > 0, () => "positive"]], () => null);
+		expectTypeOf(classifyWidened).toEqualTypeOf<(a: number) => string | null>();
 	});
 
 	it("rejects mismatched types in combinators", () => {

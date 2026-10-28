@@ -170,6 +170,16 @@ test("to.Result: works in pipe chain with composed refinements", () => {
 	});
 });
 
+// ---------------------------------------------------------------------------
+// toPredicate
+// ---------------------------------------------------------------------------
+
+test("to.Predicate: converts refinement to predicate", () => {
+	const isNonEmptyPred = Refinement.to.Predicate(isNonEmpty);
+	expect(isNonEmptyPred("hello")).toBe(true);
+	expect(isNonEmptyPred("")).toBe(false);
+});
+
 // --- side-effect isolation ---
 
 test("and: executes second refinement when first passes", () => {

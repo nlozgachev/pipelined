@@ -1,4 +1,5 @@
 import { Maybe as CoreMaybe } from "./Maybe.ts";
+import type { Predicate } from "./Predicate.ts";
 import { Result as CoreResult } from "./Result.ts";
 
 /**
@@ -23,9 +24,10 @@ import { Result as CoreResult } from "./Result.ts";
  * ); // Some("hello")
  * ```
  */
-export type Refinement<A, B extends A> = (a: A) => a is B;
+export type Refinement<A, B extends A> = (value: A) => value is B;
 
-const fromPredicate = <A, B extends A>(f: (a: A) => boolean): Refinement<A, B> => f as Refinement<A, B>;
+const fromPredicate = <A, B extends A>(predicate: (value: A) => boolean): Refinement<A, B> =>
+	predicate as Refinement<A, B>;
 
 export const Refinement = {
 	// --- from ---
@@ -72,8 +74,9 @@ export const Refinement = {
 	 * ```
 	 */
 	compose:
-		<A, B extends A, C extends B>(bc: Refinement<B, C>) => (ab: Refinement<A, B>): Refinement<A, C> => (a): a is C =>
-			ab(a) && bc(a),
+		<A, B extends A, C extends B>(bc: Refinement<B, C>) =>
+		(ab: Refinement<A, B>): Refinement<A, C> =>
+		(value): value is C => ab(value) && bc(value),
 
 	/**
 	 * Intersects two refinements: the result narrows `A` to `B & C`, passing only
@@ -83,19 +86,18 @@ export const Refinement = {
 	 *
 	 * @example
 	 * ```ts
-	 * const isString: Refinement<unknown, string> = Refinement.from.Predicate(x => typeof x === "string");
-	 * const isNonEmpty: Refinement<unknown, { length: number }> =
-	 *   Refinement.from.Predicate(x => (x as any).length > 0);
+	 * type HasId = { readonly id: string };
+	 * type HasEmail = { readonly email: string };
+	 * const hasId: Refinement<object, HasId> = Refinement.from.Predicate((x): x is HasId => "id" in x);
+	 * const hasEmail: Refinement<object, HasEmail> = Refinement.from.Predicate((x): x is HasEmail => "email" in x);
 	 *
-	 * const isNonEmptyString = pipe(isString, Refinement.and(isNonEmpty));
-	 * isNonEmptyString("hi");  // true
-	 * isNonEmptyString("");    // false
+	 * const hasIdAndEmail = pipe(hasId, Refinement.and(hasEmail));
 	 * ```
 	 */
 	and:
 		<A, C extends A>(second: Refinement<A, C>) =>
 		<B extends A>(first: Refinement<A, B>): Refinement<A, B & C> =>
-		(a): a is B & C => first(a) && second(a),
+		(value): value is B & C => first(value) && second(value),
 
 	/**
 	 * Unions two refinements: the result narrows `A` to `B | C`, passing when either
@@ -117,7 +119,7 @@ export const Refinement = {
 	or:
 		<A, C extends A>(second: Refinement<A, C>) =>
 		<B extends A>(first: Refinement<A, B>): Refinement<A, B | C> =>
-		(a): a is B | C => first(a) || second(a),
+		(value): value is B | C => first(value) || second(value),
 
 	// --- to ---
 	to: {
@@ -137,8 +139,8 @@ export const Refinement = {
 		 * pipe(42, Refinement.to.Maybe(isPositive)); // Some(42)
 		 * ```
 		 */
-		Maybe: <A, B extends A>(r: Refinement<A, B>) => (a: A): CoreMaybe<B> =>
-			r(a) ? CoreMaybe.make.some(a) : CoreMaybe.make.none(),
+		Maybe: <A, B extends A>(refinement: Refinement<A, B>) => (value: A): CoreMaybe<B> =>
+			refinement(value) ? CoreMaybe.make.some(value) : CoreMaybe.make.none(),
 
 		/**
 		 * Converts a `Refinement<A, B>` into a function `(a: A) => Result<E, B>`.
@@ -156,7 +158,28 @@ export const Refinement = {
 		 * pipe("hi", Refinement.to.Result(isNonEmpty, () => "must not be empty")); // Ok("hi")
 		 * ```
 		 */
-		Result: <A, B extends A, E>(r: Refinement<A, B>, onFail: (a: A) => E) => (a: A): CoreResult<E, B> =>
-			r(a) ? CoreResult.make.ok(a) : CoreResult.make.err(onFail(a)),
+		Result: <A, B extends A, E>(refinement: Refinement<A, B>, onFail: (value: A) => E) => (value: A): CoreResult<E, B> =>
+			refinement(value) ? CoreResult.make.ok(value) : CoreResult.make.err(onFail(value)),
+
+		/**
+		 * Converts a `Refinement<A, B>` into a `Predicate<A>`, discarding the compile-time
+		 * narrowing.
+		 *
+		 * This is a zero-cost runtime conversion.
+		 *
+		 * @see {@link Predicate.from.Refinement} for the inverse converter under the Predicate namespace.
+		 *
+		 * @example
+		 * ```ts
+		 * type NonEmptyString = string & { readonly _tag: "NonEmpty" };
+		 * const isNonEmpty: Refinement<string, NonEmptyString> =
+		 *   Refinement.from.Predicate(s => s.length > 0);
+		 *
+		 * const isNonEmptyPredicate = Refinement.to.Predicate(isNonEmpty);
+		 * isNonEmptyPredicate("hello"); // true
+		 * isNonEmptyPredicate("");      // false
+		 * ```
+		 */
+		Predicate: <A, B extends A>(refinement: Refinement<A, B>): Predicate<A> => refinement,
 	},
 };
