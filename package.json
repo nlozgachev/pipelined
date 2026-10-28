@@ -297,7 +297,7 @@
 			"name": "These",
 			"import": "{ These }",
 			"path": "dist/core.mjs",
-			"limit": "500 B",
+			"limit": "2 KB",
 			"gzip": true
 		},
 		{

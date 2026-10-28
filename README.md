@@ -27,8 +27,8 @@ and locks, and `EventBus` for typed in-memory events.
 <!-- BUNDLE_OVERVIEW:START -->
 
 It has zero dependencies, ships ESM and CommonJS builds, and tree-shakes down to ~142 B–1.69 kB
-gzipped for individual modules (with an upper ceiling of <12.39 kB gzipped for all of `core` and
-<19.21 kB for the entire package).
+gzipped for individual modules (with an upper ceiling of <12.44 kB gzipped for all of `core` and
+<19.26 kB for the entire package).
 
 <!-- BUNDLE_OVERVIEW:END -->
 
@@ -669,7 +669,7 @@ When imported individually, only the targeted module is bundled into your applic
 | `Result`       | `@nlozgachev/pipelined/core`        | **1.57 kB**        | 1,568 B   |
 | `Validation`   | `@nlozgachev/pipelined/core`        | **1.57 kB**        | 1,568 B   |
 | `RemoteData`   | `@nlozgachev/pipelined/core`        | **1.87 kB**        | 1,868 B   |
-| `Machine`      | `@nlozgachev/pipelined/core`        | **1.69 kB**        | 1,689 B   |
+| `Machine`      | `@nlozgachev/pipelined/core`        | **1.69 kB**        | 1,690 B   |
 | `EventBus`     | `@nlozgachev/pipelined/core`        | **1.11 kB**        | 1,106 B   |
 | `Resource`     | `@nlozgachev/pipelined/core`        | **2.32 kB**        | 2,322 B   |
 | `Task`         | `@nlozgachev/pipelined/core`        | **4.01 kB**        | 4,011 B   |
@@ -690,8 +690,8 @@ subpath:
 | `@nlozgachev/pipelined/types`       | Domain branded types and duration units                | **429 B**    | 450 B        |
 | `@nlozgachev/pipelined/composition` | Pipeline runners and composition combinators           | **1.54 kB**  | 2.00 kB      |
 | `@nlozgachev/pipelined/data`        | Bounds-safe array, record, and primitive helpers       | **9.61 kB**  | 10.00 kB     |
-| `@nlozgachev/pipelined/core`        | Monadic containers, async execution, state, and optics | **12.39 kB** | 13.00 kB     |
-| **All entry points combined**       | Monolithic import of entire library                    | **19.21 kB** | 20.00 kB     |
+| `@nlozgachev/pipelined/core`        | Monadic containers, async execution, state, and optics | **12.44 kB** | 13.00 kB     |
+| **All entry points combined**       | Monolithic import of entire library                    | **19.26 kB** | 20.00 kB     |
 
 <!-- BUNDLE_TABLE:END -->
 

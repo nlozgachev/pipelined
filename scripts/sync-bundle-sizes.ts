@@ -68,7 +68,7 @@ export function getMeasuredSizes(): Map<string, SizeItem> {
 	if (!fs.existsSync(coreDist)) {
 		execSync("pnpm build", { cwd: projectRoot, stdio: "inherit" });
 	}
-	const raw = execSync("npx size-limit --json", { cwd: projectRoot, encoding: "utf8" });
+	const raw = execSync("pnpm size-limit --json", { cwd: projectRoot, encoding: "utf8" });
 	const items = JSON.parse(raw) as SizeItem[];
 	const map = new Map<string, SizeItem>();
 	for (const item of items) {
