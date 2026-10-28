@@ -9,46 +9,83 @@ description: Decouple event emission from sequence matching, state reduction, an
 
 <!-- BUNDLE_SIZE:END -->
 
-Applications often need to coordinate decoupled events happening in different places — such as form
-step transitions, authentication handshakes, and UI user action tracking. Standard event emitters
-leave message payloads untyped, while complex reactive stream libraries introduce heavy operator
-boilerplate for basic event sequence tracking.
+Coordinating multi-step workflows like order checkouts, multi-factor authentication, or data import
+pipelines across decoupled modules with raw event emitters quickly leads to fragile code:
 
-`EventBus` provides a lightweight, type-safe event pipeline. It enables modules to publish typed
-messages, match specific event sequences, accumulate state over time, and forward events between
-event buses without manual callback management.
+```ts
+// Raw event emitters with manual sequence tracking and mutable flags
+import EventEmitter from "node:events";
 
-`EventBus` centers on three core capabilities:
+const emitter = new EventEmitter();
 
-- **Incremental State Reduction**: Accumulating derived state over a stream of discrete events as
-  they arrive.
-- **Event-Driven Sequence Matching**: Matching ordered or unordered multi-event sequences with
-  optional steps and automatic reset rules.
-- **Typed Pub/Sub Messaging**: Strongly-typed payload schemas, multi-bus broadcasting, and cross-bus
-  event forwarding.
+let hasAddress = false;
+let addressPayload: { street: string; zip: string } | null = null;
+let hasPayment = false;
+let paymentPayload: { transactionId: string } | null = null;
+
+emitter.on("shippingAddressEntered", (payload: any) => {
+  hasAddress = true;
+  addressPayload = payload;
+});
+
+emitter.on("paymentAuthorized", (payload: any) => {
+  if (!hasAddress) {
+    // Out-of-order payment arrived before shipping address
+    return;
+  }
+  hasPayment = true;
+  paymentPayload = payload;
+  finalizeOrder(addressPayload!, paymentPayload!);
+});
+```
+
+This pattern introduces four failure modes:
+
+- **Zero payload type safety**: Event names are untyped strings (`"shippingAddressEntered"`).
+  Misspelled keys fail silently at runtime, and payloads collapse to `any`.
+- **Fragile manual sequence state**: Every multi-step sequence requires independent mutable flags
+  (`hasAddress`, `hasPayment`) and manual cleanup. If a step is cancelled or times out, flags remain
+  stuck in partial states.
+- **Re-entrant call stack corruption**: When a listener reacts to an incoming event by immediately
+  emitting a new event, standard event emitters execute listeners recursively on the call stack.
+  This scrambles chronological dispatch order and causes stack overflow crashes during event
+  cascades.
+- **Memory leaks**: Listeners must be manually tracked and detached on component unmount; missing a
+  `.off()` call leaks closures and retains large object graphs.
+
+`EventBus` models events as a typed schema map. It couples strongly typed payloads with native
+sequence matching, pure state reduction, and breadth-first trampoline dispatching.
+
+```mermaid
+flowchart TD
+    Emit["EventBus.emit(bus, message)"] --> Queue["Breadth-First Trampoline Queue (FIFO)"]
+    Queue --> Dispatch["Dispatch to Active Subscribers"]
+    Dispatch --> Tap["Stateless Side-Effect (.tap)"]
+    Dispatch --> Reduce["State Accumulator (.reduce)"]
+    Dispatch --> Collect["Sequence Matcher (.collect)"]
+    Dispatch --> Forward["Cross-Bus Forwarding (EventBus.forward)"]
+```
 
 ---
 
 ## Type Structure
 
-An `EventBus<S>` represents an active message pipeline constrained to a schema map `S`. Each schema
-map defines message kind string keys paired with payload types.
+An `EventBus<S>` represents a message pipeline constrained to a schema map `S`. Each schema map
+defines message kind string keys paired with payload types:
 
 ```ts
 import { EventBus } from "@nlozgachev/pipelined/core";
 
-type UserFlowMessages = {
-  sessionStarted: { sessionId: string; timestamp: number };
-  emailEntered: { email: string };
-  otpVerified: { code: string };
-  flowCompleted: { userId: string };
+type CheckoutMessages = {
+  addressValidated: { shippingAddress: string };
+  paymentAuthorized: { transactionId: string; amount: number };
+  orderConfirmed: { orderId: string };
 };
 
-// EventBus.Message<UserFlowMessages> is a discriminated union of all messages in UserFlowMessages:
-// | { kind: "sessionStarted"; value: { sessionId: string; timestamp: number } }
-// | { kind: "emailEntered"; value: { email: string } }
-// | { kind: "otpVerified"; value: { code: string } }
-// | { kind: "flowCompleted"; value: { userId: string } }
+// EventBus.Message<CheckoutMessages> evaluates to:
+// | { kind: "addressValidated"; value: { shippingAddress: string } }
+// | { kind: "paymentAuthorized"; value: { transactionId: string; amount: number } }
+// | { kind: "orderConfirmed"; value: { orderId: string } }
 ```
 
 Every message emitted through an event bus is structured as a plain discriminated union containing
@@ -59,14 +96,15 @@ Every message emitted through an event bus is structured as a plain discriminate
 ## Creating Event Buses
 
 Event buses are constructed using `EventBus.make`. An optional configuration object allows naming
-the bus for debugging or attaching an error boundary callback to isolate subscriber exceptions.
+the bus for debugging or attaching an error boundary callback to isolate subscriber exceptions from
+halting sibling listeners:
 
 ```ts
 import { EventBus } from "@nlozgachev/pipelined/core";
 
-// Create an isolated event bus with an error handler
-const authBus = EventBus.make<UserFlowMessages>({
-  name: "auth-pipeline",
+// Create an isolated event bus with an error boundary
+const authBus = EventBus.make<CheckoutMessages>({
+  name: "checkout-pipeline",
   onError: (error) => {
     console.error("EventBus subscriber exception:", error);
   },
@@ -78,39 +116,41 @@ const authBus = EventBus.make<UserFlowMessages>({
 ## Emitting Messages
 
 Messages are published using `EventBus.emit`, which accepts the target event bus (or an array of
-buses for broadcasting) and the message payload object.
+buses for broadcasting) and the message object. The compiler enforces that `value` matches the
+payload type declared for that `kind`:
 
 ```ts
 import { EventBus } from "@nlozgachev/pipelined/core";
 
 // Emit to a single event bus
 EventBus.emit(authBus, {
-  kind: "sessionStarted",
-  value: { sessionId: "sess-9921", timestamp: Date.now() },
+  kind: "addressValidated",
+  value: { shippingAddress: "123 Market St" },
 });
 
 // Broadcast to multiple event buses simultaneously
 EventBus.emit([authBus, analyticsBus], {
-  kind: "emailEntered",
-  value: { email: "dev@example.com" },
+  kind: "paymentAuthorized",
+  value: { transactionId: "tx-491", amount: 89.50 },
 });
 ```
 
 ---
 
-## Subscribing & Sequence Matching
+## Subscribing to Events
 
 `EventBus.subscribe` registers subscribers on an event bus. Omitting the event filter subscribes to
-all events defined in the bus schema, while providing a key or array of keys targets specific events
-or sequences. Matching options control sequence ordering, strictness, and auto-resetting. Each call
-to `.reduce()`, `.tap()`, or `.collect()` registers an independent subscription with its own
-sequence tracking state and disposal function.
+all events defined on the bus schema, while providing a key or array of keys targets specific events
+or sequences.
+
+Each call to `.reduce()`, `.tap()`, or `.collect()` registers an independent subscription with its
+own sequence tracking state and disposal function.
 
 ### Schema-Wide Subscriptions
 
-When building cross-cutting loggers, metrics sinks, or state projections across an entire bus, call
-`EventBus.subscribe(bus)` without specifying event keys. The callback receives a discriminated union
-of all messages defined on the bus schema:
+When building telemetry collectors, audit loggers, or global metrics sinks across an entire bus,
+call `EventBus.subscribe(bus)` without specifying event keys. The callback receives a discriminated
+union of all messages defined on the bus schema:
 
 ```ts
 import { EventBus } from "@nlozgachev/pipelined/core";
@@ -120,82 +160,14 @@ const unsubscribe = EventBus.subscribe(authBus).tap((msg) => {
   console.log("Telemetry event:", msg.kind, msg.value);
 });
 
-// Accumulate state across all events
+// Accumulate total event count across the entire bus
 const eventCount = EventBus.subscribe(authBus).reduce((_msg, count) => count + 1, 0);
 ```
 
-### Targeted & Sequence Matching
+### Targeted Subscriptions
 
-When targeting specific event keys or sequences:
-
-```ts
-import { EventBus } from "@nlozgachev/pipelined/core";
-
-// Sequence options:
-// - ordered: matches events in exact array sequence order
-// - strict: requires strictly consecutive events without intermediary events
-// - once: automatically unsubscribes after the first match
-// - reset: event kind(s) that reset sequence tracking to index 0
-// - optional: event kind(s) in sequence that may be present or skipped
-
-const sequenceListener = EventBus.subscribe(
-  authBus,
-  ["sessionStarted", "emailEntered", "otpVerified"],
-  {
-    ordered: true,
-    strict: false,
-    optional: ["emailEntered"],
-    reset: "sessionStarted",
-  },
-);
-```
-
----
-
-## Stateful Reduction
-
-When an event or sequence of events matches, `.reduce(reducer, initialState)` accumulates state over
-time. It returns a `Subscription<State>` object with `.getState()` and `.unsubscribe()`.
-
-```ts
-import { EventBus } from "@nlozgachev/pipelined/core";
-
-type OnboardingState = {
-  completedSteps: number;
-  lastEmail: string;
-};
-
-const subscription = EventBus.subscribe(
-  authBus,
-  ["sessionStarted", "emailEntered", "otpVerified"],
-).reduce(
-  (msg, state) => {
-    if (msg.kind === "emailEntered") {
-      return { ...state, lastEmail: msg.value.email };
-    }
-    if (msg.kind === "otpVerified") {
-      return { ...state, completedSteps: state.completedSteps + 1 };
-    }
-    return state;
-  },
-  { completedSteps: 0, lastEmail: "" },
-);
-
-// Inspect state after emission
-console.log(subscription.getState());
-
-// Stop listening when no longer needed
-subscription.unsubscribe();
-```
-
----
-
-## Stateless Side-Effects
-
-For scenarios where state accumulation is not required, `.tap(effect)` executes a side-effect
-callback when the matching event or sequence fires. Because `EventBus.subscribe` narrows the message
-type to the listened key(s), `msg.value` is automatically typed without extra narrowing checks. It
-returns a cleanup function to unsubscribe:
+When targeting specific event keys, `EventBus.subscribe` narrows the message payload directly in the
+handler:
 
 ```ts
 import { EventBus } from "@nlozgachev/pipelined/core";
@@ -207,76 +179,176 @@ type TelemetryMessages = {
 
 const analyticsBus = EventBus.make<TelemetryMessages>();
 
+// msg.value is strictly typed as { buttonId: string }
 const unsubscribe = EventBus.subscribe(analyticsBus, "buttonClicked").tap((msg) => {
-  console.log("Telemetry event:", msg.value.buttonId);
+  console.log("Button clicked:", msg.value.buttonId);
+});
+
+// Stop listening when the view unmounts
+unsubscribe();
+```
+
+---
+
+## Handling Events
+
+`EventBus.subscribe` provides three consumption methods depending on whether you need stateless
+side-effects, accumulated state, or aggregated sequence payloads.
+
+### Stateless Side-Effects (`.tap`)
+
+`.tap(effect)` executes a side-effect callback when a matching event arrives. It returns a cleanup
+function to remove the subscriber:
+
+```ts
+import { EventBus } from "@nlozgachev/pipelined/core";
+
+const unsubscribe = EventBus.subscribe(analyticsBus, "pageViewed").tap((msg) => {
+  trackPageView(msg.value.path);
 });
 
 // Remove subscriber
 unsubscribe();
 ```
 
----
+### Stateful Accumulation (`.reduce`)
 
-## Sequence Payload Collection
-
-`.collect(callback)` registers a terminal subscriber that aggregates payloads into a single keyed
-record (`{ [Event]: Payload }`), returning an unsubscribe disposer. The callback executes each time
-all required events have been emitted (in sequence when `{ ordered: true }`, or in any order when
-omitted), recurring on every completion unless `{ once: true }` is set.
+`.reduce(reducer, initialState)` accumulates derived state over incoming events using a pure reducer
+function. It returns a `Subscription<State>` handle with `.getState()` and `.unsubscribe()`:
 
 ```ts
 import { EventBus } from "@nlozgachev/pipelined/core";
 
-type CheckoutMessages = {
-  addressValidated: { shippingAddress: string };
-  paymentAuthorized: { transactionId: string; amount: number };
-  orderConfirmed: { orderId: string };
+type CartMessages = {
+  itemAdded: { price: number; quantity: number };
+  itemRemoved: { price: number; quantity: number };
+  cartCleared: void;
 };
+
+const cartBus = EventBus.make<CartMessages>();
+
+type CartSummary = {
+  totalItems: number;
+  totalCost: number;
+};
+
+const cartSubscription = EventBus.subscribe(
+  cartBus,
+  ["itemAdded", "itemRemoved", "cartCleared"],
+).reduce(
+  (msg, state) => {
+    if (msg.kind === "itemAdded") {
+      return {
+        totalItems: state.totalItems + msg.value.quantity,
+        totalCost: state.totalCost + (msg.value.price * msg.value.quantity),
+      };
+    }
+    if (msg.kind === "itemRemoved") {
+      return {
+        totalItems: Math.max(0, state.totalItems - msg.value.quantity),
+        totalCost: Math.max(0, state.totalCost - (msg.value.price * msg.value.quantity)),
+      };
+    }
+    return { totalItems: 0, totalCost: 0 };
+  },
+  { totalItems: 0, totalCost: 0 },
+);
+
+// Inspect live accumulated state
+console.log(cartSubscription.getState());
+
+// Stop subscription
+cartSubscription.unsubscribe();
+```
+
+### Sequence Payload Aggregation (`.collect`)
+
+`.collect(callback)` registers a terminal subscriber that aggregates payloads from multiple steps
+into a single keyed record (`{ [Event]: Payload }`). The callback executes once all required events
+have arrived, recurring on every completion unless `{ once: true }` is configured:
+
+```ts
+import { EventBus } from "@nlozgachev/pipelined/core";
 
 const checkoutBus = EventBus.make<CheckoutMessages>();
 
-// Listen for the complete multi-step checkout sequence:
+// Listen for the complete checkout sequence:
 const unsubscribe = EventBus.subscribe(
   checkoutBus,
   ["addressValidated", "paymentAuthorized", "orderConfirmed"],
   { ordered: true, strict: true },
 ).collect((payloads) => {
-  // payloads is typed as:
+  // payloads is strictly typed:
   // {
   //   addressValidated: { shippingAddress: string };
   //   paymentAuthorized: { transactionId: string; amount: number };
   //   orderConfirmed: { orderId: string };
   // }
-  console.log("Order processed:", payloads.orderConfirmed.orderId);
-  console.log("Payment amount:", payloads.paymentAuthorized.amount);
-});
-```
-
-If an event is configured as optional via `{ optional: [...] }`, it may be skipped in the sequence.
-In `.collect()`, skipped optional events evaluate to `undefined`, and TypeScript marks their
-properties as optional (`T | undefined`) to enforce proper narrowing:
-
-```ts
-const sub = EventBus.subscribe(
-  checkoutBus,
-  ["addressValidated", "paymentAuthorized"],
-  { ordered: true, optional: ["paymentAuthorized"] },
-).collect((payloads) => {
-  console.log(payloads.addressValidated.shippingAddress);
-
-  if (payloads.paymentAuthorized !== undefined) {
-    console.log("Payment captured:", payloads.paymentAuthorized.transactionId);
-  }
+  console.log("Order confirmed:", payloads.orderConfirmed.orderId);
+  console.log("Shipped to:", payloads.addressValidated.shippingAddress);
 });
 ```
 
 ---
 
+## Sequence Matching Options
+
+When subscribing to multiple event keys, pass a `SequenceOptions` record to configure order,
+strictness, and reset conditions:
+
+```ts
+import { EventBus } from "@nlozgachev/pipelined/core";
+
+type UserOnboardingMessages = {
+  accountCreated: { userId: string };
+  profileCompleted: { displayName: string };
+  mfaEnrolled: { method: "totp" | "sms" };
+  onboardingFinished: { completedAt: number };
+  flowReset: { reason: string };
+};
+
+const onboardingBus = EventBus.make<UserOnboardingMessages>();
+
+const sub = EventBus.subscribe(
+  onboardingBus,
+  ["accountCreated", "profileCompleted", "mfaEnrolled", "onboardingFinished"],
+  {
+    ordered: true,
+    strict: false,
+    optional: ["mfaEnrolled"],
+    reset: "flowReset",
+    once: true,
+  },
+).collect((payloads) => {
+  console.log("User ready:", payloads.accountCreated.userId);
+
+  // Optional steps evaluate to T | undefined
+  if (payloads.mfaEnrolled !== undefined) {
+    console.log("MFA configured via:", payloads.mfaEnrolled.method);
+  }
+});
+```
+
+Matching behavior follows these rules:
+
+- **`ordered: true`**: Events must arrive in the exact order specified in the array. In relaxed mode
+  (`strict: false`), intervening irrelevant events are ignored.
+- **`strict: true`**: In ordered sequences, events must arrive consecutively without any intervening
+  events from the schema. An unexpected event immediately resets sequence tracking to index 0.
+- **`optional: [...]`**: Configures events that may be skipped without breaking sequence progress.
+  In `.collect()`, skipped optional steps evaluate to `undefined`, and TypeScript types them as
+  `T | undefined` to enforce safe narrowing.
+- **`reset: [...]`**: Specifies one or more event kinds that immediately reset sequence progress and
+  clear partially aggregated payloads when emitted.
+- **`once: true`**: Automatically detaches the subscriber before executing the callback upon the
+  first match, preventing re-entrant cycles and duplicate firings.
+
+---
+
 ## Structural Event Bus Forwarding
 
-`EventBus.forward` connects buses together, piping messages from a source bus to one or more target
-buses. An optional `only` filter restricts forwarding to specific message kinds, allowing you to
-forward shared event keys across buses with distinct domain schemas:
+`EventBus.forward` routes messages from a source event bus to one or more target buses. Using the
+`only` filter permits forwarding shared event keys between buses with distinct domain schemas:
 
 ```ts
 import { EventBus } from "@nlozgachev/pipelined/core";
@@ -291,53 +363,73 @@ type AuditMessages = {
   userLoggedOut: { userId: string };
 };
 
-const UIBus = EventBus.make<OrderMessages>();
-const AuditBus = EventBus.make<AuditMessages>();
+const uiBus = EventBus.make<OrderMessages>();
+const auditBus = EventBus.make<AuditMessages>();
 
-// Forward shared checkoutSubmitted events from UIBus to AuditBus
+// Forward only checkoutSubmitted events from uiBus to auditBus
 const stopForwarding = EventBus.forward({
-  from: UIBus,
-  to: AuditBus,
+  from: uiBus,
+  to: auditBus,
   only: ["checkoutSubmitted"],
 });
 
-// Emitting on UIBus automatically reaches AuditBus subscribers
-EventBus.emit(UIBus, {
+// Emitting on uiBus automatically routes to auditBus subscribers
+EventBus.emit(uiBus, {
   kind: "checkoutSubmitted",
   value: { total: 149.99 },
 });
 
-// Disconnect event forwarding when feature unmounts
+// Disconnect forwarding when the feature unmounts
 stopForwarding();
 ```
+
+When `only` is omitted, the target bus schema must accept every event defined on the source bus.
 
 ---
 
 ## Synchronous Breadth-First Dispatch
 
-When a subscriber callback emits a new message during event handling (`EventBus.emit` called within
-a subscriber), `EventBus` dispatches messages using a synchronous breadth-first trampoline queue.
+When a subscriber reacts to an incoming event by immediately emitting a new event (`EventBus.emit`
+called inside a subscriber callback), `EventBus` dispatches messages through an internal synchronous
+trampoline queue.
 
 Rather than invoking re-entrant emissions recursively on the call stack, nested messages are
-appended to the bus's internal queue. The active dispatch loop delivers the current message to all
-registered subscribers completely before processing subsequent messages in sequence.
+appended to the bus queue. The active dispatch loop delivers the current message to all registered
+subscribers completely before processing subsequent queued messages:
 
-This architecture guarantees two core runtime properties:
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant EventBus as EventBus (Trampoline Queue)
+    participant Sub1 as Subscriber 1
+    participant Sub2 as Subscriber 2
 
-- **Strict Causal Ordering**: Parallel subscribers always receive messages in exact chronological
-  sequence. A subscriber will never observe a re-entrantly emitted message before finishing its
-  processing of the preceding event.
-- **Stack Overflow Prevention**: Deeply cascading re-entrant emissions run sequentially inside a
-  flat queue using O(1) stack space, preventing call stack exhaustion without introducing
-  asynchronous microtask delays.
+    Caller->>EventBus: emit("EVENT_A")
+    EventBus->>Sub1: deliver("EVENT_A")
+    Note over Sub1: Sub1 calls emit("EVENT_B")
+    Sub1->>EventBus: enqueue("EVENT_B") [Queue: EVENT_B]
+    EventBus->>Sub2: deliver("EVENT_A")
+    Note over EventBus: EVENT_A finished for all subscribers
+    EventBus->>Sub1: deliver("EVENT_B")
+    EventBus->>Sub2: deliver("EVENT_B")
+```
+
+This dispatch architecture enforces two invariants:
+
+- **Strict Causal Ordering**: Parallel subscribers always observe messages in chronological FIFO
+  order. No subscriber will observe a re-entrantly triggered event before finishing the event that
+  caused it.
+- **Call Stack Protection**: Deeply cascading event chains execute sequentially inside a flat loop
+  in O(1) stack space, preventing call stack exhaustion without introducing asynchronous microtask
+  delays.
 
 ---
 
 ## Driving State Machines with `Machine.interpret`
 
 While `EventBus` broadcasts messages across decoupled modules, an event bus does not track workflow
-state. Passing an `EventBus` to [`Machine.interpret`](/guides/machine/) connects the event highway
-to a stateful gatekeeper:
+state. Passing an `EventBus` to [`Machine.interpret`](/guides/machine/) connects the event bus to a
+stateful gatekeeper:
 
 ```ts
 import { EventBus, Machine } from "@nlozgachev/pipelined/core";
@@ -360,7 +452,7 @@ EventBus.emit(authBus, { kind: "SUBMIT", value: { email: "dev@example.com" } });
 actor.abort();
 ```
 
-Bridging an event bus with a state machine prevents three common failure modes:
+Bridging an event bus with a state machine prevents three failure modes:
 
 - **Out-of-order action corruption**: Messages arriving when the machine is in an incompatible state
   are dropped safely as idempotent no-ops.
@@ -371,37 +463,75 @@ Bridging an event bus with a state machine prevents three common failure modes:
 
 ---
 
+## Pipeline Composition
+
+`EventBus` operations integrate cleanly with `pipe` for batch processing, telemetry streaming, and
+multi-stage event transformations:
+
+```ts
+import { pipe } from "@nlozgachev/pipelined/composition";
+import { EventBus } from "@nlozgachev/pipelined/core";
+
+type OrderStreamMessages = {
+  orderPlaced: { orderId: string; amount: number };
+  fraudFlagged: { orderId: string; riskScore: number };
+  orderSettled: { orderId: string; fee: number };
+};
+
+const orderBus = EventBus.make<OrderStreamMessages>();
+
+// Live revenue accumulator
+const revenueTracker = EventBus.subscribe(orderBus, "orderPlaced").reduce(
+  (msg, total) => total + msg.value.amount,
+  0,
+);
+
+// Ingest a batch of external transaction records through pipe
+type RawTransaction = { id: string; val: number; flagged?: boolean };
+
+const rawBatch: readonly RawTransaction[] = [
+  { id: "ord-1", val: 120.00 },
+  { id: "ord-2", val: 450.00, flagged: true },
+  { id: "ord-3", val: 85.50 },
+];
+
+pipe(
+  rawBatch,
+  (batch) =>
+    batch.map((tx): EventBus.Message<OrderStreamMessages> => {
+      if (tx.flagged) {
+        return { kind: "fraudFlagged", value: { orderId: tx.id, riskScore: 0.95 } };
+      }
+      return { kind: "orderPlaced", value: { orderId: tx.id, amount: tx.val } };
+    }),
+  (messages) => {
+    for (let i = 0; i < messages.length; i++) {
+      EventBus.emit(orderBus, messages[i]);
+    }
+  },
+);
+
+console.log("Total revenue from valid orders:", revenueTracker.getState());
+revenueTracker.unsubscribe();
+```
+
+---
+
 ## Problems it solves
 
-- **Decoupling event producers from subscribers**: In modular architectures, components (such as
-  auth controllers, shopping carts, or WebSocket clients) need to broadcast lifecycle events without
-  hardcoded references to UI banners, logging sinks, or analytics trackers. `EventBus` provides a
-  typed, memory-safe event broker that completely decouples event sources from consumers.
-- **Pattern-matching multi-step event sequences (`EventBus.subscribe`)**: Tracking complex
-  multi-event flows (such as detecting a multi-step checkout sequence: `userRegistered` →
-  `planSelected` → `paymentSubmitted`, or keyboard shortcut combos) normally requires ad-hoc boolean
-  flags and timeout handles. `EventBus.subscribe` matches ordered or strict event sequences
-  natively, with configurable reset events (`reset: "cartEmptied"`).
-- **Preventing re-entrant message reordering**: When an event subscriber reacts to an incoming event
-  by immediately emitting a new event, standard event emitters execute subscribers recursively. This
-  can cause secondary events to finish before primary events, scrambling chronological order.
-  `EventBus` uses causal queue dispatching to guarantee strict FIFO ordering across all subscribers.
-- **Eliminating stack overflow crashes during event cascades**: Cascading domain events (where event
-  A triggers event B, which triggers event C) can easily exceed JavaScript's call stack limits in
-  recursive emitter implementations. `EventBus` executes nested dispatches iteratively using an
-  internal queue with O(1) stack overhead.
-- **State reduction over matched event streams (`.reduce()`)**: In dashboard widgets and activity
-  trackers, components need to compute live derived state (such as counting unread notifications or
-  summing active cart totals) from a stream of discrete events. Calling `.reduce()` on a subscriber
-  accumulates state over time synchronously without external mutable state stores.
-- **Structural event bus forwarding and subsystem aggregation (`EventBus.forward`)**: In modular
-  applications, child feature modules maintain local event buses. `EventBus.forward` bridges and
-  forwards filtered subsets of shared events from isolated module buses into a central application
-  event bus without manual event plumbing.
-- **Preventing state corruption during out-of-order event bursts**: Standard event emitters deliver
-  messages regardless of application workflow state. Passing an event bus to `Machine.interpret`
-  enforces statechart validity rules, drops incompatible messages safely, and couples event
-  subscription lifecycles directly to actor teardown.
-- **Memory leak prevention with explicit subscriber disposal**: Every subscription returns a clean
-  disposal function that removes the subscriber instantly, preventing dangling references and memory
-  leaks when UI views unmount.
+- **Decoupling event producers from subscribers**: Modules broadcast lifecycle events through a
+  strongly typed schema map without retaining hardcoded references to UI views, logging sinks, or
+  analytics trackers.
+- **Pattern-matching multi-step event sequences**: Tracks multi-step flows (such as registration →
+  verification → onboarding completion) natively with configurable ordering, strict consecutive
+  matching, optional steps, and reset events.
+- **Preventing re-entrant message reordering**: Trampoline FIFO queue dispatching guarantees that
+  nested emissions triggered by subscriber callbacks never jump ahead of primary events.
+- **Eliminating call stack overflow crashes**: Cascading domain events execute sequentially inside
+  an iterative dispatch loop using O(1) stack overhead, preventing recursion crashes.
+- **State reduction over matched event streams**: Calling `.reduce()` accumulates live derived state
+  directly from event streams synchronously without external mutable stores.
+- **Structural event bus forwarding**: `EventBus.forward` bridges filtered subsets of events between
+  feature modules and root application buses with compile-time schema compatibility verification.
+- **Memory leak prevention**: Subscriptions return explicit disposal functions that immediately
+  clean up subscriber sets and prevent dangling closures on component unmount.

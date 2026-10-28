@@ -13,7 +13,7 @@ import { Aside } from '@astrojs/starlight/components'
 Managing asynchronous workflows in frontend components or backend services usually couples task logic directly to execution controls. Consider a standard search-as-you-type input written in vanilla TypeScript:
 
 ```ts
-// The fragile status quo: manual AbortController and boolean flags
+// Manual AbortController and boolean flags in vanilla code
 let currentController: AbortController | null = null;
 let isLoading = false;
 let searchResults: readonly string[] = [];

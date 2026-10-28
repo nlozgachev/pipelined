@@ -37,7 +37,7 @@ least one element: `Arr.NonEmpty`, `Rec.NonEmpty`, `Uniq.NonEmpty`, `Dict.NonEmp
 
 ## Type Structure
 
-Under the hood, non-empty collections leverage TypeScript's type system:
+Non-empty collections are represented directly using TypeScript structural types:
 
 - **`Arr.NonEmpty<A>`**: Represented as a structural read-only tuple structure
   `readonly [A, ...A[]]`. Because it extends the standard `readonly A[]` interface, it is assignable

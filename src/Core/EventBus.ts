@@ -314,10 +314,33 @@ function forwardEventBus(
 }
 
 type SchemaWideSubscriptionBuilder<S extends Record<string, unknown>> = {
+	/**
+	 * Accumulates state over all incoming events on the bus using a pure reducer function.
+	 *
+	 * @see {@link tap} for stateless side-effects without accumulating values.
+	 *
+	 * @example
+	 * ```ts
+	 * const eventCount = EventBus.subscribe(appBus).reduce((_msg, count) => count + 1, 0);
+	 * ```
+	 */
 	readonly reduce: <State>(
 		reducer: (msg: EventBus.Message<S, keyof S & string>, state: State) => State,
 		initialState: State,
 	) => EventBus.Subscription<State>;
+
+	/**
+	 * Registers a side-effect callback invoked on every event emitted on the bus.
+	 *
+	 * @see {@link reduce} for accumulating state over time.
+	 *
+	 * @example
+	 * ```ts
+	 * const unsubscribe = EventBus.subscribe(appBus).tap((msg) => {
+	 *   console.log("Telemetry event:", msg.kind, msg.value);
+	 * });
+	 * ```
+	 */
 	readonly tap: (effect: (msg: EventBus.Message<S, keyof S & string>) => void) => () => void;
 };
 
@@ -326,11 +349,64 @@ type TargetedSubscriptionBuilder<
 	K extends keyof S & string,
 	Opt extends keyof S & string = never,
 > = {
+	/**
+	 * Accumulates state over incoming matching events using a pure reducer function.
+	 *
+	 * @see {@link tap} for stateless side-effects without accumulating values.
+	 * @see {@link collect} for aggregating sequence payloads into a typed object.
+	 *
+	 * @example
+	 * ```ts
+	 * const sub = EventBus.subscribe(cartBus, ["itemAdded", "itemRemoved"]).reduce(
+	 *   (msg, count) => msg.kind === "itemAdded" ? count + 1 : count - 1,
+	 *   0,
+	 * );
+	 * ```
+	 */
 	readonly reduce: <State>(
 		reducer: (msg: EventBus.Message<S, K>, state: State) => State,
 		initialState: State,
 	) => EventBus.Subscription<State>;
+
+	/**
+	 * Registers a side-effect callback invoked when a matching event arrives.
+	 *
+	 * @see {@link reduce} for accumulating state over time.
+	 * @see {@link collect} for aggregating sequence payloads into a typed object.
+	 *
+	 * @example
+	 * ```ts
+	 * const unsubscribe = EventBus.subscribe(authBus, "userLoggedIn").tap((msg) => {
+	 *   analytics.track("login", msg.value);
+	 * });
+	 * ```
+	 */
 	readonly tap: (effect: (msg: EventBus.Message<S, K>) => void) => () => void;
+
+	/**
+	 * Aggregates all payloads from the specified events or sequence into a single typed dictionary,
+	 * returning an unsubscribe disposer function.
+	 *
+	 * In ordered mode (`{ ordered: true }`), the callback fires each time the sequence completes in order
+	 * (recurring on every completed sequence unless `{ once: true }` is set).
+	 * In unordered mode, the callback fires each time all required events have been emitted at least once.
+	 *
+	 * Optional events that were skipped during sequence matching evaluate to `undefined`.
+	 *
+	 * @see {@link reduce} for continuous state reduction.
+	 * @see {@link tap} for firing on individual matching events.
+	 *
+	 * @example
+	 * ```ts
+	 * EventBus.subscribe(
+	 *   checkoutBus,
+	 *   ["addressEntered", "paymentSubmitted"],
+	 *   { ordered: true },
+	 * ).collect((payloads) => {
+	 *   completeCheckout(payloads.addressEntered, payloads.paymentSubmitted);
+	 * });
+	 * ```
+	 */
 	readonly collect: (effect: (payloads: EventBus.CollectedPayloads<S, K, Opt>) => void) => () => void;
 };
 
@@ -609,6 +685,9 @@ function subscribeEventBus(
 export const EventBus = {
 	/**
 	 * Constructs a new `EventBus` instance.
+	 *
+	 * @see {@link EventBus.emit} for dispatching messages to an event bus.
+	 * @see {@link EventBus.subscribe} for registering subscribers or sequence matchers.
 	 *
 	 * @example
 	 * ```ts

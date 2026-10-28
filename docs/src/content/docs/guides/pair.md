@@ -43,8 +43,8 @@ const updatedEntry = pipe(
 
 ## Type Structure
 
-A `Pair<A, B>` is a structural alias for a `readonly [A, B]` array. Because it is a plain TypeScript
-tuple under the hood, any native two-element array is automatically a valid `Pair`.
+A `Pair<A, B>` is a structural alias for a `readonly [A, B]` array. Because it is defined directly
+as a TypeScript tuple, any native two-element array is automatically a valid `Pair`.
 
 ```ts
 type Pair<A, B> = readonly [A, B];

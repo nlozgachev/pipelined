@@ -210,7 +210,7 @@ const ArrTask = {
 
 /**
  * A type alias representing an array that is guaranteed to contain at least one element.
- * Under the hood, this is a read-only tuple structure: `readonly [A, ...A[]]`.
+ * Defined as a structural read-only tuple: `readonly [A, ...A[]]`.
  *
  * @example
  * ```ts

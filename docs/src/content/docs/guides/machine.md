@@ -13,7 +13,7 @@ Managing multi-step workflows like order checkouts, document approvals, or user 
 independent boolean flags quickly leads to fragile code:
 
 ```ts
-// The fragile status quo: independent boolean flags
+// Independent boolean flags in vanilla code
 interface CheckoutState {
   isLoading: boolean;
   isError: boolean;
@@ -37,7 +37,7 @@ automatically aborts in-flight tasks upon exiting a state.
 
 ```mermaid
 stateDiagram-v2
-  direction TB
+  direction TD
   [*] --> Cart
   Cart --> Shipping : SET_SHIPPING
   Cart --> Cancelled : CANCEL

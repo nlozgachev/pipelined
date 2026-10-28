@@ -18,7 +18,7 @@ exclusive states: `NotAsked`, `Loading`, `Failure<E>`, and `Success<A>`:
 
 ```mermaid
 stateDiagram-v2
-  direction TB
+  direction TD
   [*] --> NotAsked
   NotAsked --> Loading : request starts
   Loading --> Success : data arrives
@@ -373,6 +373,6 @@ const renderInvoiceBanner = (
   formatting or filtering already-loaded records (e.g. applying a local text filter to a fetched
   product catalog) should not reset the UI to a loading state. `RemoteData.map` applies
   transformations purely to the `Success` payload while leaving other lifecycle states intact.
-- **Seamless integration with asynchronous results (`from.Result`, `from.Maybe`)**: Bridging async
-  API endpoints and cache lookups into UI component state via `RemoteData.from.Result` and
-  `RemoteData.from.Maybe` converts raw outcomes into rendering states in a single line.
+- **Converting asynchronous results (`from.Result`, `from.Maybe`)**: Bridging async API endpoints
+  and cache lookups into UI component state via `RemoteData.from.Result` and `RemoteData.from.Maybe`
+  converts raw outcomes into rendering states in a single line.

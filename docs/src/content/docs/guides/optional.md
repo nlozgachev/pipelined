@@ -290,7 +290,7 @@ const unchanged = pipe(
 ## Bridging Lenses and Optionals
 
 Domain structures frequently mix guaranteed structural containers with optional leaf properties.
-`Lens` and `Optional` bridge seamlessly:
+`Lens` and `Optional` compose directly:
 
 - `Lens.andThenOptional`: Connects an initial guaranteed `Lens` to an inner `Optional`.
 - `Optional.andThenLens`: Connects an initial `Optional` to an inner guaranteed `Lens`.
