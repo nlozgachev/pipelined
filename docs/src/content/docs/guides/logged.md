@@ -5,7 +5,7 @@ description: Pair computations with an immutable log that accumulates automatica
 
 <!-- BUNDLE_SIZE:START -->
 
-> 266 B minified + gzipped
+> 267 B minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 

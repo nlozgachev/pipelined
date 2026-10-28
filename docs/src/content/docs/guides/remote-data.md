@@ -5,7 +5,7 @@ description: Explicitly model the four states of an asynchronous data lifecycle,
 
 <!-- BUNDLE_SIZE:START -->
 
-> 1.87 kB minified + gzipped (1,868 B)
+> 1.87 kB minified + gzipped (1,870 B)
 
 <!-- BUNDLE_SIZE:END -->
 

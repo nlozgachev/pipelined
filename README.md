@@ -28,7 +28,7 @@ and locks, and `EventBus` for typed in-memory events.
 
 It has zero dependencies, ships ESM and CommonJS builds, and tree-shakes down to ~142 B–1.69 kB
 gzipped for individual modules (with an upper ceiling of <12.44 kB gzipped for all of `core` and
-<19.26 kB for the entire package).
+<19.25 kB for the entire package).
 
 <!-- BUNDLE_OVERVIEW:END -->
 
@@ -665,19 +665,19 @@ When imported individually, only the targeted module is bundled into your applic
 | `flow`         | `@nlozgachev/pipelined/composition` | **173 B**          | 173 B     |
 | `Brand`        | `@nlozgachev/pipelined/types`       | **36 B**           | 36 B      |
 | `Duration`     | `@nlozgachev/pipelined/types`       | **153 B**          | 153 B     |
-| `Maybe`        | `@nlozgachev/pipelined/core`        | **1.57 kB**        | 1,568 B   |
-| `Result`       | `@nlozgachev/pipelined/core`        | **1.57 kB**        | 1,568 B   |
-| `Validation`   | `@nlozgachev/pipelined/core`        | **1.57 kB**        | 1,568 B   |
-| `RemoteData`   | `@nlozgachev/pipelined/core`        | **1.87 kB**        | 1,868 B   |
+| `Maybe`        | `@nlozgachev/pipelined/core`        | **1.57 kB**        | 1,569 B   |
+| `Result`       | `@nlozgachev/pipelined/core`        | **1.57 kB**        | 1,569 B   |
+| `Validation`   | `@nlozgachev/pipelined/core`        | **1.57 kB**        | 1,569 B   |
+| `RemoteData`   | `@nlozgachev/pipelined/core`        | **1.87 kB**        | 1,870 B   |
 | `Machine`      | `@nlozgachev/pipelined/core`        | **1.69 kB**        | 1,690 B   |
 | `EventBus`     | `@nlozgachev/pipelined/core`        | **1.11 kB**        | 1,106 B   |
-| `Resource`     | `@nlozgachev/pipelined/core`        | **2.32 kB**        | 2,322 B   |
+| `Resource`     | `@nlozgachev/pipelined/core`        | **2.33 kB**        | 2,325 B   |
 | `Task`         | `@nlozgachev/pipelined/core`        | **4.01 kB**        | 4,011 B   |
 | `Op`           | `@nlozgachev/pipelined/core`        | **5.84 kB**        | 5,842 B   |
 | `Lens`         | `@nlozgachev/pipelined/core`        | **233 B**          | 233 B     |
-| `Arr`          | `@nlozgachev/pipelined/data`        | **6.79 kB**        | 6,786 B   |
-| `Rec`          | `@nlozgachev/pipelined/data`        | **6.79 kB**        | 6,787 B   |
-| `Dict`         | `@nlozgachev/pipelined/data`        | **7.50 kB**        | 7,495 B   |
+| `Arr`          | `@nlozgachev/pipelined/data`        | **6.79 kB**        | 6,787 B   |
+| `Rec`          | `@nlozgachev/pipelined/data`        | **6.79 kB**        | 6,788 B   |
+| `Dict`         | `@nlozgachev/pipelined/data`        | **7.50 kB**        | 7,496 B   |
 | `Str`          | `@nlozgachev/pipelined/data`        | **7.39 kB**        | 7,388 B   |
 
 ### Subpath Ceilings (Worst-Case Monolithic Imports)
@@ -689,9 +689,9 @@ subpath:
 | :---------------------------------- | :----------------------------------------------------- | :----------- | :----------- |
 | `@nlozgachev/pipelined/types`       | Domain branded types and duration units                | **429 B**    | 450 B        |
 | `@nlozgachev/pipelined/composition` | Pipeline runners and composition combinators           | **1.54 kB**  | 2.00 kB      |
-| `@nlozgachev/pipelined/data`        | Bounds-safe array, record, and primitive helpers       | **9.61 kB**  | 10.00 kB     |
+| `@nlozgachev/pipelined/data`        | Bounds-safe array, record, and primitive helpers       | **9.60 kB**  | 10.00 kB     |
 | `@nlozgachev/pipelined/core`        | Monadic containers, async execution, state, and optics | **12.44 kB** | 13.00 kB     |
-| **All entry points combined**       | Monolithic import of entire library                    | **19.26 kB** | 20.00 kB     |
+| **All entry points combined**       | Monolithic import of entire library                    | **19.25 kB** | 20.00 kB     |
 
 <!-- BUNDLE_TABLE:END -->
 

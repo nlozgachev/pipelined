@@ -5,7 +5,7 @@ description: Package combining operations with their neutral starting points int
 
 <!-- BUNDLE_SIZE:START -->
 
-> 1.81 kB minified + gzipped (1,809 B)
+> 1.81 kB minified + gzipped (1,811 B)
 
 <!-- BUNDLE_SIZE:END -->
 

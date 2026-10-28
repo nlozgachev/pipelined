@@ -5,7 +5,7 @@ description: Curried boolean algebra, lazy short-circuiting, truthiness narrowin
 
 <!-- BUNDLE_SIZE:START -->
 
-> 7.10 kB minified + gzipped (7,098 B)
+> 7.10 kB minified + gzipped (7,100 B)
 
 <!-- BUNDLE_SIZE:END -->
 

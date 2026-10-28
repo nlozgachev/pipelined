@@ -5,7 +5,7 @@ description: Bring the possibility of failure into the type system, replacing sc
 
 <!-- BUNDLE_SIZE:START -->
 
-> 1.57 kB minified + gzipped (1,568 B)
+> 1.57 kB minified + gzipped (1,569 B)
 
 <!-- BUNDLE_SIZE:END -->
 
