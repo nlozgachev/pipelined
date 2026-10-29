@@ -79,7 +79,7 @@ export const Maybe = {
 		/**
 		 * Type guard that checks if a Maybe is Some.
 		 *
-		 * @see {@link Maybe.is.none}
+		 * @see {@link Maybe.is.none} to check if a Maybe is a None (empty) variant.
 		 *
 		 * @example
 		 * ```ts
@@ -94,7 +94,7 @@ export const Maybe = {
 		/**
 		 * Type guard that checks if a Maybe is None.
 		 *
-		 * @see {@link Maybe.is.some}
+		 * @see {@link Maybe.is.some} to check if a Maybe is a Some variant containing a value.
 		 *
 		 * @example
 		 * ```ts
@@ -112,8 +112,8 @@ export const Maybe = {
 		/**
 		 * Extracts the value from a Maybe, returning null if None.
 		 *
-		 * @see {@link Maybe.to.undefined}
-		 * @see {@link Maybe.from.nullable}
+		 * @see {@link Maybe.to.undefined} to extract value returning undefined on None.
+		 * @see {@link Maybe.from.nullable} to create a Maybe from a nullable value.
 		 *
 		 * @example
 		 * ```ts
@@ -126,7 +126,7 @@ export const Maybe = {
 		/**
 		 * Extracts the value from a Maybe, returning undefined if None.
 		 *
-		 * @see {@link Maybe.to.nullable}
+		 * @see {@link Maybe.to.nullable} to extract value returning null on None.
 		 *
 		 * @example
 		 * ```ts
@@ -140,7 +140,8 @@ export const Maybe = {
 		 * Converts a Maybe to a Result.
 		 * Some becomes Ok, None becomes Err with the provided error.
 		 *
-		 * @see {@link Maybe.from.Result}
+		 * @see {@link Maybe.from.Result} to convert a Result back into a Maybe.
+		 * @see {@link Maybe.to.Validation} to convert a Maybe into an error-accumulating Validation.
 		 *
 		 * @example
 		 * ```ts
@@ -162,7 +163,8 @@ export const Maybe = {
 		 * Converts a Maybe to a Validation.
 		 * Some becomes Passed, None becomes Failed with error produced by `onNone`.
 		 *
-		 * @see {@link Maybe.from.Validation}
+		 * @see {@link Maybe.to.Result} to convert a Maybe into a fail-fast Result.
+		 * @see {@link Maybe.from.Validation} to convert a Validation back into a Maybe.
 		 *
 		 * @example
 		 * ```ts
@@ -180,7 +182,7 @@ export const Maybe = {
 		 * Creates a Maybe from a nullable value.
 		 * Returns None if the value is null or undefined, Some otherwise.
 		 *
-		 * @see {@link Maybe.to.nullable}
+		 * @see {@link Maybe.to.nullable} to extract a value back into a nullable primitive.
 		 *
 		 * @example
 		 * ```ts
@@ -195,7 +197,7 @@ export const Maybe = {
 		 * Creates a Maybe from a predicate or type guard applied to a value.
 		 * Returns Some if the predicate passes, None otherwise.
 		 *
-		 * @see {@link Maybe.filter}
+		 * @see {@link Maybe.filter} to filter an existing Maybe with a predicate or type guard.
 		 *
 		 * @example
 		 * ```ts
@@ -217,7 +219,7 @@ export const Maybe = {
 		 * Creates a Maybe from a Result.
 		 * Ok becomes Some, Err becomes None (the error is discarded).
 		 *
-		 * @see {@link Maybe.to.Result}
+		 * @see {@link Maybe.to.Result} to convert a Maybe to a Result with an explicit error.
 		 *
 		 * @example
 		 * ```ts
@@ -231,7 +233,7 @@ export const Maybe = {
 		 * Creates a Maybe from a Validation.
 		 * Passed becomes Some, Failed becomes None (the errors are discarded).
 		 *
-		 * @see {@link Maybe.to.Validation}
+		 * @see {@link Maybe.to.Validation} to convert a Maybe to a Validation with an explicit error.
 		 *
 		 * @example
 		 * ```ts
@@ -317,11 +319,11 @@ export const Maybe = {
 
 	/**
 	 * Returns the value inside a Maybe, or a default value if None.
-	 * The default is a thunk `() => B` — evaluated only when the Maybe is None.
-	 * The default can be a different type, widening the result to `A | B`.
+	 * The fallback is a thunk `() => B` — evaluated only when the Maybe is None.
+	 * The fallback can be a different type, widening the result to `A | B`.
 	 *
-	 * @see {@link Maybe.match}
-	 * @see {@link Maybe.to.nullable}
+	 * @see {@link Maybe.match} to handle both the Some and None cases.
+	 * @see {@link Maybe.to.nullable} to extract the value as a nullable primitive.
 	 *
 	 * @example
 	 * ```ts
@@ -330,7 +332,7 @@ export const Maybe = {
 	 * pipe(Maybe.make.none<string>(), Maybe.getOrElse(() => null)); // null — typed as string | null
 	 * ```
 	 */
-	getOrElse: <B>(defaultValue: () => B) => <A>(maybe: Maybe<A>): A | B => isSome(maybe) ? maybe.value : defaultValue(),
+	getOrElse: <B>(fallback: () => B) => <A>(maybe: Maybe<A>): A | B => isSome(maybe) ? maybe.value : fallback(),
 
 	/**
 	 * Executes a side effect on the value without changing the Maybe.
@@ -378,7 +380,8 @@ export const Maybe = {
 	 * Filters a Maybe based on a predicate or type guard.
 	 * Returns None if the predicate returns false or if the Maybe is already None.
 	 *
-	 * @see {@link Maybe.map}
+	 * @see {@link Maybe.from.Predicate} to lift a raw value into a Maybe based on a predicate.
+	 * @see {@link Maybe.map} to transform the value without filtering.
 	 *
 	 * @example
 	 * ```ts
@@ -400,7 +403,7 @@ export const Maybe = {
 	 * Recovers from a None by providing a fallback Maybe.
 	 * The fallback can produce a different type, widening the result to `Maybe<A | B>`.
 	 *
-	 * @see {@link Maybe.getOrElse}
+	 * @see {@link Maybe.getOrElse} to unwrap a Maybe with a fallback value instead of another Maybe.
 	 *
 	 * @example
 	 * ```ts
@@ -412,6 +415,8 @@ export const Maybe = {
 
 	/**
 	 * Applies a function wrapped in a Maybe to a value wrapped in a Maybe.
+	 *
+	 * @see {@link Maybe.map} to apply a plain unary function to a Maybe value.
 	 *
 	 * @example
 	 * ```ts
@@ -430,6 +435,8 @@ export const Maybe = {
 	 * Converts a Maybe value into an object containing a single property.
 	 * Initiates the pipeline accumulator record.
 	 *
+	 * @see {@link Maybe.assign} to append additional fields to an accumulator record.
+	 *
 	 * @example
 	 * ```ts
 	 * pipe(Maybe.make.some(42), Maybe.assignTo("value")); // Some({ value: 42 })
@@ -440,6 +447,8 @@ export const Maybe = {
 
 	/**
 	 * Evaluates a new Maybe using the current accumulator and attaches the output to a new key.
+	 *
+	 * @see {@link Maybe.assignTo} to initialize a pipeline accumulator record.
 	 *
 	 * @example
 	 * ```ts
@@ -467,6 +476,8 @@ export const Maybe = {
 	/**
 	 * Combines a record of Maybes into a single Maybe of a record.
 	 * Evaluates fields in key order and short-circuits on the first None.
+	 *
+	 * @see {@link Maybe.assign} to combine values sequentially with inter-field dependencies.
 	 *
 	 * @example
 	 * ```ts
@@ -497,6 +508,8 @@ export const Maybe = {
 		/**
 		 * Swaps the outer `Maybe` and inner `Result` context.
 		 * `Some(Ok(a))` becomes `Ok(Some(a))`, `Some(Err(e))` becomes `Err(e)`, and `None` becomes `Ok(None)`.
+		 *
+		 * @see {@link Result.sequence.Maybe} to swap outer Result and inner Maybe contexts.
 		 *
 		 * @example
 		 * ```ts

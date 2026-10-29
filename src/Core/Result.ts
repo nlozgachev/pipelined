@@ -277,6 +277,7 @@ export const Result = {
 		 * Returns Ok if the value is not null or undefined, error from onNull otherwise.
 		 *
 		 * @see {@link Result.from.Maybe} to convert an optional Maybe into a Result.
+		 * @see {@link Result.from.Predicate} to validate and lift values into a Result based on a predicate.
 		 *
 		 * @example
 		 * ```ts
@@ -408,6 +409,8 @@ export const Result = {
 	/**
 	 * Applies a function wrapped in a Result to a value wrapped in a Result.
 	 *
+	 * @see {@link Result.map} to apply a plain unary function to an Ok value.
+	 *
 	 * @example
 	 * ```ts
 	 * const add = (a: number) => (b: number) => a + b;
@@ -427,6 +430,8 @@ export const Result = {
 	 * Converts a Result value into an object containing a single property.
 	 * Initiates the pipeline accumulator record.
 	 *
+	 * @see {@link Result.assign} to append additional fields to an accumulator record.
+	 *
 	 * @example
 	 * ```ts
 	 * pipe(Result.make.ok(42), Result.assignTo("value")); // Ok({ value: 42 })
@@ -437,6 +442,8 @@ export const Result = {
 
 	/**
 	 * Evaluates a new Result using the current accumulator and attaches the output to a new key.
+	 *
+	 * @see {@link Result.assignTo} to initialize a pipeline accumulator record.
 	 *
 	 * @example
 	 * ```ts
@@ -460,6 +467,8 @@ export const Result = {
 	/**
 	 * Combines a record of Results into a single Result of a record.
 	 * Evaluates fields in key order and short-circuits on the first failure.
+	 *
+	 * @see {@link Result.assign} to combine values sequentially with inter-field dependencies.
 	 *
 	 * @example
 	 * ```ts
