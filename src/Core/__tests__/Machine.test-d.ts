@@ -73,6 +73,18 @@ test("make: validates transition table and enforces AllowedTargets at compile ti
 	});
 
 	expectTypeOf(validMachine).toEqualTypeOf<Machine<AuthState, AuthEvents>>();
+	expectTypeOf(validMachine.id).toEqualTypeOf<string | undefined>();
+	expectTypeOf(validMachine[Symbol.toStringTag]).toEqualTypeOf<string | undefined>();
+
+	const machineWithId = Machine.make<AuthState, AuthEvents>({
+		id: "auth-machine",
+		initial: Machine.state("loggedOut"),
+		states: validMachine.states,
+	});
+	expectTypeOf(machineWithId.id).toEqualTypeOf<string | undefined>();
+
+	// @ts-expect-error — id must be a string
+	Machine.make<AuthState, AuthEvents>({ id: 123, initial: Machine.state("loggedOut"), states: validMachine.states });
 
 	Machine.make<AuthState, AuthEvents>({
 		initial: Machine.state("loggedOut"),
@@ -148,6 +160,19 @@ test("transition & actor: validate event types and enforce strict payloads", () 
 	});
 
 	const actor = Machine.interpret(machine);
+
+	expectTypeOf(actor.id).toEqualTypeOf<string | undefined>();
+	expectTypeOf(actor[Symbol.toStringTag]).toEqualTypeOf<string | undefined>();
+
+	const actorWithOpts = Machine.interpret(machine, {
+		id: "auth-actor",
+		onError: (_err, context) => {
+			expectTypeOf(context?.actorId).toEqualTypeOf<string | undefined>();
+			expectTypeOf(context?.state).toEqualTypeOf<AuthState | undefined>();
+			expectTypeOf(context?.phase).toEqualTypeOf<"entry" | "exit" | "listener" | "transition" | undefined>();
+		},
+	});
+	expectTypeOf(actorWithOpts.id).toEqualTypeOf<string | undefined>();
 
 	expectTypeOf(actor.getState()).toEqualTypeOf<AuthState>();
 	expectTypeOf(actor.send({ kind: "LOGOUT" })).toEqualTypeOf<AuthState>();

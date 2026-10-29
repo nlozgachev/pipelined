@@ -5,7 +5,7 @@ description: Eliminate impossible states, enforce compile-time outbound transiti
 
 <!-- BUNDLE_SIZE:START -->
 
-> 1.69 kB minified + gzipped (1,690 B)
+> 1.89 kB minified + gzipped (1,894 B)
 
 <!-- BUNDLE_SIZE:END -->
 
@@ -386,6 +386,7 @@ type AuthEvents = {
 };
 
 const authMachine = Machine.make<AuthState, AuthEvents>({
+  id: "auth-flow",
   initial: Machine.state("idle"),
   states: {
     idle: {
@@ -428,7 +429,12 @@ const authMachine = Machine.make<AuthState, AuthEvents>({
   },
 });
 
-const actor = Machine.interpret(authMachine);
+const actor = Machine.interpret(authMachine, {
+  id: "auth-instance-1",
+  onError: (error, context) => {
+    console.error(`Actor ${context?.actorId} failed in ${context?.phase}:`, error);
+  },
+});
 
 const unsubscribe = actor.subscribe((state) => {
   console.log("Active state:", state.kind);
@@ -441,6 +447,11 @@ actor.send({ kind: "SUBMIT", value: { email: "dev@example.com" } });
 // and late callbacks are ignored:
 actor.send({ kind: "CANCEL" });
 ```
+
+Providing an optional `id` labels both blueprint definitions (`[object Machine(auth-flow)]`) and
+runtime actor instances (`[object Machine.Actor(auth-instance-1)[auth-flow]]`) for inspection and
+telemetry. Any synchronous exception thrown inside lifecycle hooks or transition handlers is caught
+and routed to `onError` with contextual metadata (`actorId`, `state`, and `phase`).
 
 ---
 

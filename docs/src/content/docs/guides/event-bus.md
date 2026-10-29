@@ -5,7 +5,7 @@ description: Decouple event emission from sequence matching, state reduction, an
 
 <!-- BUNDLE_SIZE:START -->
 
-> 1.11 kB minified + gzipped (1,106 B)
+> 1.18 kB minified + gzipped (1,179 B)
 
 <!-- BUNDLE_SIZE:END -->
 
@@ -107,12 +107,16 @@ import { EventBus } from "@nlozgachev/pipelined/core";
 
 // Create an isolated event bus with an error boundary
 const authBus = EventBus.make<CheckoutMessages>({
-  name: "checkout-pipeline",
-  onError: (error) => {
-    console.error("EventBus subscriber exception:", error);
+  id: "checkout-pipeline",
+  onError: (error, context) => {
+    console.error(`EventBus ${context?.busId} subscriber exception:`, error, context?.message);
   },
 });
 ```
+
+The `id` labels the bus instance in logs and DevTools (`[object EventBus(checkout-pipeline)]`). The
+`onError` callback receives both the uncaught exception and contextual execution metadata (`busId`
+and the active `message`).
 
 ---
 

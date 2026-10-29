@@ -3,6 +3,7 @@ import {
 	type WithCooldown,
 	type WithDuration,
 	type WithError,
+	type WithId,
 	type WithKind,
 	type WithMinInterval,
 	type WithSize,
@@ -42,39 +43,42 @@ type TimeoutOptionsInternal<E = unknown> = { readonly duration: Duration; readon
 // Union of all valid option shapes — exposed as a single type so the TS language service
 // can show all strategy literals in autocomplete (overload aggregation is unreliable).
 type AllInterpretOptions<Args extends readonly unknown[], E> =
-	| ({ strategy: "once"; retry?: RetryOptionsInternal<E>; } & WithTimeout<unknown>)
-	| ({ strategy: "restartable"; retry?: RetryOptionsInternal<E>; } & WithMinInterval & WithTimeout<unknown>)
-	| ({ strategy: "exclusive"; retry?: RetryOptionsInternal<E>; } & WithCooldown & WithTimeout<unknown>)
-	| (
-		& {
-			strategy: "queue";
-			retry?: RetryOptionsInternal<E>;
-			maxSize?: number;
-			overflow?: "drop" | "replace-last";
-			dedupe?: (a: Args, b: Args) => boolean;
-		}
-		& WithConcurrency
-		& WithTimeout<unknown>
+	& (
+		| ({ strategy: "once"; retry?: RetryOptionsInternal<E>; } & WithTimeout<unknown>)
+		| ({ strategy: "restartable"; retry?: RetryOptionsInternal<E>; } & WithMinInterval & WithTimeout<unknown>)
+		| ({ strategy: "exclusive"; retry?: RetryOptionsInternal<E>; } & WithCooldown & WithTimeout<unknown>)
+		| (
+			& {
+				strategy: "queue";
+				retry?: RetryOptionsInternal<E>;
+				maxSize?: number;
+				overflow?: "drop" | "replace-last";
+				dedupe?: (a: Args, b: Args) => boolean;
+			}
+			& WithConcurrency
+			& WithTimeout<unknown>
+		)
+		| ({ strategy: "buffered"; retry?: RetryOptionsInternal<E>; } & WithSize & WithTimeout<unknown>)
+		| (
+			& { strategy: "debounced"; retry?: RetryOptionsInternal<E>; leading?: boolean; maxWait?: Duration; }
+			& WithDuration
+			& WithTimeout<unknown>
+		)
+		| (
+			& { strategy: "throttled"; retry?: RetryOptionsInternal<E>; trailing?: boolean; }
+			& WithDuration
+			& WithTimeout<unknown>
+		)
+		| (
+			& { strategy: "concurrent"; retry?: RetryOptionsInternal<E>; overflow?: "queue" | "drop"; concurrency?: number; }
+			& WithTimeout<unknown>
+		)
+		| (
+			& { strategy: "keyed"; perKey?: "exclusive" | "restartable"; key?: (...args: Args) => unknown; }
+			& WithTimeout<unknown>
+		)
 	)
-	| ({ strategy: "buffered"; retry?: RetryOptionsInternal<E>; } & WithSize & WithTimeout<unknown>)
-	| (
-		& { strategy: "debounced"; retry?: RetryOptionsInternal<E>; leading?: boolean; maxWait?: Duration; }
-		& WithDuration
-		& WithTimeout<unknown>
-	)
-	| (
-		& { strategy: "throttled"; retry?: RetryOptionsInternal<E>; trailing?: boolean; }
-		& WithDuration
-		& WithTimeout<unknown>
-	)
-	| (
-		& { strategy: "concurrent"; retry?: RetryOptionsInternal<E>; overflow?: "queue" | "drop"; concurrency?: number; }
-		& WithTimeout<unknown>
-	)
-	| (
-		& { strategy: "keyed"; perKey?: "exclusive" | "restartable"; key?: (...args: Args) => unknown; }
-		& WithTimeout<unknown>
-	);
+	& WithId;
 
 // ---------------------------------------------------------------------------
 // Op<Args, E, A>
@@ -112,6 +116,11 @@ type AllInterpretOptions<Args extends readonly unknown[], E> =
  * ```
  */
 export type Op<Args extends readonly unknown[] = readonly unknown[], E = unknown, A = unknown> = {
+	/**
+	 * An optional diagnostic identifier for this operation blueprint.
+	 */
+	readonly id?: string;
+	readonly [Symbol.toStringTag]?: string;
 	readonly [_opBrand]: { readonly _args: (...args: Args) => void; readonly _error: () => E; readonly _value: () => A; };
 };
 
@@ -136,6 +145,11 @@ export namespace Op {
 		readonly nextRetryIn?: number;
 	};
 	export type Manager<Args extends readonly unknown[], E, A, S extends State<E, A>> = {
+		/**
+		 * An optional diagnostic identifier for this running manager instance.
+		 */
+		readonly id?: string;
+		readonly [Symbol.toStringTag]?: string;
 		readonly state: S;
 		/**
 		 * Triggers execution of the operation with the given arguments.
@@ -161,6 +175,11 @@ export namespace Op {
 		poll: (options: { interval: Duration; }) => (...args: Args) => () => void;
 	};
 	export type KeyedManager<Args extends readonly unknown[], K, E, PerKeyS> = {
+		/**
+		 * An optional diagnostic identifier for this running manager instance.
+		 */
+		readonly id?: string;
+		readonly [Symbol.toStringTag]?: string;
 		readonly state: ReadonlyMap<K, PerKeyS>;
 		/**
 		 * Triggers execution for the specific keyed item with the given arguments.
@@ -400,6 +419,7 @@ function interpretFn<Args extends readonly unknown[], E, A, O extends AllInterpr
 function interpretFn<Args extends readonly unknown[], E, A>(
 	op: Op<Args, E, A>,
 	options: {
+		readonly id?: string;
 		strategy:
 			| "once"
 			| "restartable"
@@ -427,16 +447,16 @@ function interpretFn<Args extends readonly unknown[], E, A>(
 		timeout?: TimeoutOptionsInternal<any>;
 	},
 ): unknown {
-	const { strategy, retry: retryOptions, timeout: timeoutOptions } = options;
+	const { strategy, retry: retryOptions, timeout: timeoutOptions, id } = options;
 	switch (strategy) {
 		case "once": {
-			return makeOnce(op, retryOptions, timeoutOptions);
+			return makeOnce(op, retryOptions, timeoutOptions, id);
 		}
 		case "restartable": {
-			return makeRestartable(op, options.minInterval, retryOptions, timeoutOptions);
+			return makeRestartable(op, options.minInterval, retryOptions, timeoutOptions, id);
 		}
 		case "exclusive": {
-			return makeExclusive(op, options.cooldown, retryOptions, timeoutOptions);
+			return makeExclusive(op, options.cooldown, retryOptions, timeoutOptions, id);
 		}
 		case "queue": {
 			return makeQueue(
@@ -447,16 +467,25 @@ function interpretFn<Args extends readonly unknown[], E, A>(
 				options.dedupe,
 				retryOptions,
 				timeoutOptions,
+				id,
 			);
 		}
 		case "buffered": {
-			return makeBuffered(op, options.size, retryOptions, timeoutOptions);
+			return makeBuffered(op, options.size, retryOptions, timeoutOptions, id);
 		}
 		case "debounced": {
-			return makeDebounced(op, options.duration!, options.leading ?? false, options.maxWait, retryOptions, timeoutOptions);
+			return makeDebounced(
+				op,
+				options.duration!,
+				options.leading ?? false,
+				options.maxWait,
+				retryOptions,
+				timeoutOptions,
+				id,
+			);
 		}
 		case "throttled": {
-			return makeThrottled(op, options.duration!, options.trailing ?? false, retryOptions, timeoutOptions);
+			return makeThrottled(op, options.duration!, options.trailing ?? false, retryOptions, timeoutOptions, id);
 		}
 		case "concurrent": {
 			return makeConcurrent(
@@ -465,6 +494,7 @@ function interpretFn<Args extends readonly unknown[], E, A>(
 				options.overflow as "queue" | "drop" ?? "drop",
 				retryOptions,
 				timeoutOptions,
+				id,
 			);
 		}
 		case "keyed": {
@@ -473,6 +503,7 @@ function interpretFn<Args extends readonly unknown[], E, A>(
 				(options.key ?? ((...args: Args) => args[0])) as (...args: Args) => unknown,
 				options.perKey ?? "exclusive",
 				timeoutOptions,
+				id,
 			);
 		}
 	}
@@ -772,21 +803,23 @@ const OpOutcome = {
 
 function makeFn<Fn extends (...args: never[]) => unknown, E = unknown>(
 	factory: (signal: AbortSignal) => Fn,
-	options: { onError: (error: unknown) => E; },
+	options: { readonly id?: string; onError: (error: unknown) => E; },
 ): Op<Parameters<Fn>, E, Awaited<ReturnType<Fn>>>;
 function makeFn<Input, Out, E = unknown>(
 	factory: (signal: AbortSignal) => (...args: NormalizeArgs<Input>) => PromiseLike<Out> | Out,
-	options: { onError: (error: unknown) => E; },
+	options: { readonly id?: string; onError: (error: unknown) => E; },
 ): Op<NormalizeArgs<Input>, E, Awaited<Out>>;
 function makeFn<Args extends readonly unknown[], Out, E = unknown>(
 	factory: (signal: AbortSignal) => (...args: Args) => PromiseLike<Out> | Out,
-	options: { onError: (error: unknown) => E; },
+	options: { readonly id?: string; onError: (error: unknown) => E; },
 ): Op<Args, E, Awaited<Out>>;
 function makeFn(
 	factory: (signal: AbortSignal) => (...args: readonly unknown[]) => unknown,
-	options: { onError: (error: unknown) => unknown; },
+	options: { readonly id?: string; onError: (error: unknown) => unknown; },
 ): unknown {
 	return {
+		...(options.id !== undefined ? { id: options.id } : {}),
+		[Symbol.toStringTag]: options.id !== undefined ? `Op(${options.id})` : "Op",
 		[OP_FACTORY]: (args: readonly unknown[], signal: AbortSignal) =>
 			Deferred.from.Promise(
 				(async () => {
@@ -808,15 +841,21 @@ function makeFn(
 
 function liftFn<Fn extends (...args: never[]) => unknown>(
 	factory: (signal: AbortSignal) => Fn,
+	options?: { readonly id?: string; },
 ): Op<Parameters<Fn>, unknown, Awaited<ReturnType<Fn>>>;
 function liftFn<Input, Out>(
 	factory: (signal: AbortSignal) => (...args: NormalizeArgs<Input>) => PromiseLike<Out> | Out,
+	options?: { readonly id?: string; },
 ): Op<NormalizeArgs<Input>, unknown, Awaited<Out>>;
 function liftFn<Args extends readonly unknown[], Out>(
 	factory: (signal: AbortSignal) => (...args: Args) => PromiseLike<Out> | Out,
+	options?: { readonly id?: string; },
 ): Op<Args, unknown, Awaited<Out>>;
-function liftFn(factory: (signal: AbortSignal) => (...args: readonly unknown[]) => unknown): unknown {
-	return makeFn(factory, { onError: (error) => error });
+function liftFn(
+	factory: (signal: AbortSignal) => (...args: readonly unknown[]) => unknown,
+	options?: { readonly id?: string; },
+): unknown {
+	return makeFn(factory, { id: options?.id, onError: (error) => error });
 }
 
 export const Op = {

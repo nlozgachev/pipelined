@@ -114,6 +114,12 @@ type MachineTransitionTable<States extends AnyMachineState, Events extends Recor
  */
 type MachineActor<States extends AnyMachineState, Events extends Record<string, unknown>> = {
 	/**
+	 * Diagnostic identifier for this running actor instance.
+	 */
+	readonly id?: string;
+	readonly [Symbol.toStringTag]?: string;
+
+	/**
 	 * Returns the current active state of the machine.
 	 */
 	readonly getState: () => States;
@@ -144,7 +150,12 @@ type MachineActor<States extends AnyMachineState, Events extends Record<string, 
 /**
  * Options for configuring {@link Machine.interpret}.
  */
-type MachineInterpretOptions<Events extends Record<string, unknown>> = {
+type MachineInterpretOptions<States extends AnyMachineState, Events extends Record<string, unknown>> = {
+	/**
+	 * An optional diagnostic identifier for this running actor instance.
+	 */
+	readonly id?: string;
+
 	/**
 	 * An optional {@link EventBus} to synchronize with.
 	 * All messages emitted on the bus will be forwarded to the actor.
@@ -152,15 +163,24 @@ type MachineInterpretOptions<Events extends Record<string, unknown>> = {
 	readonly bus?: EventBus<Events>;
 
 	/**
-	 * Error handler for exceptions thrown inside entry, exit, or subscriber callbacks.
+	 * Error handler for exceptions thrown inside entry, exit, transition, or subscriber callbacks.
 	 */
-	readonly onError?: (error: unknown) => void;
+	readonly onError?: (
+		error: unknown,
+		context?: {
+			readonly actorId?: string;
+			readonly state: States;
+			readonly phase: "entry" | "exit" | "listener" | "transition";
+		},
+	) => void;
 };
 
 /**
  * A typed statechart and finite state machine specification.
  */
 export type Machine<States extends AnyMachineState, Events extends Record<string, unknown>> = {
+	readonly id?: string;
+	readonly [Symbol.toStringTag]?: string;
 	readonly initial: States;
 	readonly states: Machine.TransitionTable<States, Events>;
 };
@@ -207,7 +227,10 @@ export namespace Machine {
 		Events
 	>;
 
-	export type InterpretOptions<Events extends Record<string, unknown>> = MachineInterpretOptions<Events>;
+	export type InterpretOptions<
+		Events extends Record<string, unknown>,
+		States extends AnyMachineState = AnyMachineState,
+	> = MachineInterpretOptions<States, Events>;
 }
 
 export const Machine = {
@@ -230,6 +253,7 @@ export const Machine = {
 	 * };
 	 *
 	 * const authMachine = Machine.make<AuthState, AuthEvents>({
+	 *   id: "auth",
 	 *   initial: Machine.state("loggedOut"),
 	 *   states: {
 	 *     loggedOut: {
@@ -259,8 +283,13 @@ export const Machine = {
 	 * ```
 	 */
 	make: <States extends AnyMachineState, Events extends Record<string, unknown>>(
-		config: { readonly initial: States; readonly states: MachineTransitionTable<States, Events>; },
-	): Machine<States, Events> => ({ initial: config.initial, states: { ...config.states } }),
+		config: { readonly id?: string; readonly initial: States; readonly states: MachineTransitionTable<States, Events>; },
+	): Machine<States, Events> => ({
+		...(config.id !== undefined ? { id: config.id } : {}),
+		[Symbol.toStringTag]: config.id !== undefined ? `Machine(${config.id})` : "Machine",
+		initial: config.initial,
+		states: { ...config.states },
+	}),
 
 	/**
 	 * Constructs a state variant without requiring manual type assertions.
@@ -402,8 +431,9 @@ export const Machine = {
 	 */
 	interpret: <States extends AnyMachineState, Events extends Record<string, unknown>>(
 		machine: Machine<States, Events>,
-		options?: MachineInterpretOptions<Events>,
+		options?: MachineInterpretOptions<States, Events>,
 	): MachineActor<States, Events> => {
+		const actorId = options?.id;
 		let currentState: States = machine.initial;
 		let isRunning = true;
 		let generation = 0;
@@ -415,10 +445,10 @@ export const Machine = {
 		const listeners = new Set<(state: States) => void>();
 		const queue: MachineEventMessage<Events>[] = [];
 
-		const reportError = (error: unknown): void => {
+		const reportError = (error: unknown, phase: "entry" | "exit" | "listener" | "transition", state: States): void => {
 			if (options?.onError) {
 				try {
-					options.onError(error);
+					options.onError(error, { ...(actorId !== undefined ? { actorId } : {}), state, phase });
 				} catch {
 					// Guard against re-entrant throw in user error handler
 				}
@@ -434,7 +464,7 @@ export const Machine = {
 				try {
 					currentCleanup();
 				} catch (error) {
-					reportError(error);
+					reportError(error, "exit", state);
 				}
 				currentCleanup = null;
 			}
@@ -443,7 +473,7 @@ export const Machine = {
 				try {
 					config.exit(state as any);
 				} catch (error) {
-					reportError(error);
+					reportError(error, "exit", state);
 				}
 			}
 		};
@@ -476,14 +506,14 @@ export const Machine = {
 						try {
 							cleanup();
 						} catch (error) {
-							reportError(error);
+							reportError(error, "exit", state);
 						}
 					} else {
 						currentCleanup = cleanup;
 					}
 				}
 			} catch (error) {
-				reportError(error);
+				reportError(error, "entry", state);
 			}
 		};
 
@@ -506,7 +536,7 @@ export const Machine = {
 					try {
 						nextState = Machine.transition(machine, nextEvent)(prevState);
 					} catch (error) {
-						reportError(error);
+						reportError(error, "transition", prevState);
 					}
 
 					if (nextState !== null && nextState !== prevState) {
@@ -519,7 +549,7 @@ export const Machine = {
 							try {
 								listener(nextState);
 							} catch (error) {
-								reportError(error);
+								reportError(error, "listener", nextState);
 							}
 						}
 
@@ -544,6 +574,12 @@ export const Machine = {
 		enterState(currentState, generation, send);
 
 		return {
+			...(actorId !== undefined ? { id: actorId } : {}),
+			[Symbol.toStringTag]: actorId !== undefined
+				? machine.id !== undefined ? `Machine.Actor(${actorId})[${machine.id}]` : `Machine.Actor(${actorId})`
+				: machine.id !== undefined
+				? `Machine.Actor[${machine.id}]`
+				: "Machine.Actor",
 			getState: () => currentState,
 			send,
 			subscribe: (listener: (state: States) => void) => {

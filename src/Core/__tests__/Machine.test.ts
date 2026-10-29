@@ -63,6 +63,20 @@ test("make: constructs an immutable machine definition", () => {
 	expect(machine.states.loggedOut.on?.SUBMIT).toBeTypeOf("function");
 });
 
+test("make: supports optional id and sets Symbol.toStringTag", () => {
+	const machineWithoutId = createAuthMachine();
+	expect(machineWithoutId.id).toBeUndefined();
+	expect(Object.prototype.toString.call(machineWithoutId)).toBe("[object Machine]");
+
+	const machineWithId = Machine.make<AuthState, AuthEvents>({
+		id: "auth",
+		initial: Machine.state("loggedOut"),
+		states: createAuthMachine().states,
+	});
+	expect(machineWithId.id).toBe("auth");
+	expect(Object.prototype.toString.call(machineWithId)).toBe("[object Machine(auth)]");
+});
+
 // =============================================================================
 // 2. Machine.is & Machine.match
 // =============================================================================
@@ -153,6 +167,30 @@ test("interpret: initializes with machine initial state and isRunning true", () 
 
 	expect(actor.getState()).toStrictEqual({ kind: "loggedOut" });
 	expect(actor.isRunning()).toBe(true);
+});
+
+test("interpret: supports optional instance id and sets Symbol.toStringTag", () => {
+	const machineWithoutId = createAuthMachine();
+	const actorDefault = Machine.interpret(machineWithoutId);
+	expect(actorDefault.id).toBeUndefined();
+	expect(Object.prototype.toString.call(actorDefault)).toBe("[object Machine.Actor]");
+
+	const machineWithId = Machine.make<AuthState, AuthEvents>({
+		id: "auth-machine",
+		initial: Machine.state("loggedOut"),
+		states: createAuthMachine().states,
+	});
+	const actorInherited = Machine.interpret(machineWithId);
+	expect(actorInherited.id).toBeUndefined();
+	expect(Object.prototype.toString.call(actorInherited)).toBe("[object Machine.Actor[auth-machine]]");
+
+	const actorOverridden = Machine.interpret(machineWithId, { id: "auth-instance-1" });
+	expect(actorOverridden.id).toBe("auth-instance-1");
+	expect(Object.prototype.toString.call(actorOverridden)).toBe("[object Machine.Actor(auth-instance-1)[auth-machine]]");
+
+	const actorWithIdOnly = Machine.interpret(machineWithoutId, { id: "custom-actor" });
+	expect(actorWithIdOnly.id).toBe("custom-actor");
+	expect(Object.prototype.toString.call(actorWithIdOnly)).toBe("[object Machine.Actor(custom-actor)]");
 });
 
 test("interpret: sends events, updates state, and notifies subscribers", () => {
@@ -415,6 +453,56 @@ test("interpret: routes exceptions in entry, exit, and listeners to onError", ()
 	expect(errors[0].message).toBe("exit error");
 	expect(errors[1].message).toBe("listener error");
 	expect(errors[2].message).toBe("entry error");
+});
+
+test("interpret: passes contextual actorId, state, and phase to onError", () => {
+	type TestState = Machine.State<"start", void, "middle"> | Machine.State<"middle", void, "end">;
+	type TestEvents = { NEXT: void; };
+
+	type ErrorContext = {
+		readonly actorId?: string;
+		readonly state: TestState;
+		readonly phase: "entry" | "exit" | "listener" | "transition";
+	};
+	const contexts: ErrorContext[] = [];
+
+	const machine = Machine.make<TestState, TestEvents>({
+		id: "context-machine",
+		initial: Machine.state("start"),
+		states: {
+			start: {
+				exit: () => {
+					throw new Error("exit error");
+				},
+				on: { NEXT: () => Machine.state("middle") },
+			},
+			middle: {
+				entry: () => {
+					throw new Error("entry error");
+				},
+			},
+		},
+	});
+
+	const actor = Machine.interpret(machine, {
+		id: "custom-actor",
+		onError: (_err, ctx) => {
+			if (ctx) {
+				contexts.push(ctx);
+			}
+		},
+	});
+
+	actor.subscribe(() => {
+		throw new Error("listener error");
+	});
+
+	actor.send({ kind: "NEXT" });
+
+	expect(contexts).toHaveLength(3);
+	expect(contexts[0]).toStrictEqual({ actorId: "custom-actor", state: { kind: "start" }, phase: "exit" });
+	expect(contexts[1]).toStrictEqual({ actorId: "custom-actor", state: { kind: "middle" }, phase: "listener" });
+	expect(contexts[2]).toStrictEqual({ actorId: "custom-actor", state: { kind: "middle" }, phase: "entry" });
 });
 
 test("interpret: runs immediate cleanup if entry transitions synchronously and catches throwing cleanup", () => {

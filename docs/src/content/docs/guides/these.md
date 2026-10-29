@@ -5,7 +5,7 @@ description: Model inclusive-OR scenarios where you have a first value, a second
 
 <!-- BUNDLE_SIZE:START -->
 
-> 1.99 kB minified + gzipped (1,990 B)
+> 1.99 kB minified + gzipped (1,991 B)
 
 <!-- BUNDLE_SIZE:END -->
 

@@ -35,7 +35,11 @@ declare const _eventBusBrand: unique symbol;
  * });
  * ```
  */
-export type EventBus<S extends Record<string, unknown>> = { readonly [_eventBusBrand]: (schema: S) => S; };
+export type EventBus<S extends Record<string, unknown>> = {
+	readonly id?: string;
+	readonly [Symbol.toStringTag]?: string;
+	readonly [_eventBusBrand]: (schema: S) => S;
+};
 
 export namespace EventBus {
 	/**
@@ -51,17 +55,20 @@ export namespace EventBus {
 	/**
 	 * Configuration options for creating an `EventBus`.
 	 */
-	export type Options = {
+	export type Options<S extends Record<string, unknown> = Record<string, unknown>> = {
 		/**
-		 * An optional diagnostic label for debugging, logging, and inspection.
+		 * An optional diagnostic identifier for debugging, logging, and inspection.
 		 */
-		readonly name?: string;
+		readonly id?: string;
 
 		/**
 		 * An optional error handler invoked when a subscriber callback throws an unhandled error during event emission.
 		 * If omitted, subscriber exceptions propagate synchronously to the caller of `EventBus.emit`.
 		 */
-		readonly onError?: (error: unknown) => void;
+		readonly onError?: (
+			error: unknown,
+			context?: { readonly busId?: string; readonly message: EventBus.Message<S>; },
+		) => void;
 	};
 
 	/**
@@ -184,8 +191,11 @@ const setProperty = <O extends object, K extends PropertyKey, V>(target: O, key:
  *
  * @internal
  */
-const makeEventBus = <S extends Record<string, unknown>>(options?: EventBus.Options): EventBus<S> =>
-	({
+const makeEventBus = <S extends Record<string, unknown>>(options?: EventBus.Options<S>): EventBus<S> => {
+	const busId = options?.id;
+	return ({
+		...(busId !== undefined ? { id: busId } : {}),
+		[Symbol.toStringTag]: busId !== undefined ? `EventBus(${busId})` : "EventBus",
 		[EVENT_BUS_STATE]: {
 			options,
 			subscribers: new Set(),
@@ -194,6 +204,7 @@ const makeEventBus = <S extends Record<string, unknown>>(options?: EventBus.Opti
 			isEmitting: false,
 		} as EventBusInternalState,
 	}) as unknown as EventBus<S>;
+};
 
 /**
  * Dispatches a message to all subscribers of a single `EventBus` instance.
@@ -228,7 +239,10 @@ const emitSingleBus = (
 					subscribers[i](nextMsg);
 				} catch (err) {
 					if (internal.options?.onError) {
-						internal.options.onError(err);
+						internal.options.onError(err, {
+							...(internal.options.id !== undefined ? { busId: internal.options.id } : {}),
+							message: nextMsg,
+						});
 					} else {
 						throw err;
 					}
@@ -691,7 +705,7 @@ export const EventBus = {
 	 *
 	 * @example
 	 * ```ts
-	 * const bus = EventBus.make<AppMessages>({ name: "app" });
+	 * const bus = EventBus.make<AppMessages>({ id: "app" });
 	 * ```
 	 */
 	make: makeEventBus,

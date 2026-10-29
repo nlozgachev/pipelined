@@ -14,14 +14,25 @@ test("make: infers EventBus<S> from schema type and accepts valid options", () =
 	const bus = EventBus.make<TestSchema>();
 	expectTypeOf(bus).toEqualTypeOf<EventBus<TestSchema>>();
 
-	const namedBus = EventBus.make<TestSchema>({ name: "app-bus", onError: (_err) => {} });
+	const namedBus = EventBus.make<TestSchema>({ id: "app-bus", onError: (_err) => {} });
 	expectTypeOf(namedBus).toEqualTypeOf<EventBus<TestSchema>>();
+	expectTypeOf(namedBus.id).toEqualTypeOf<string | undefined>();
+	expectTypeOf(namedBus[Symbol.toStringTag]).toEqualTypeOf<string | undefined>();
+
+	const contextualBus = EventBus.make<TestSchema>({
+		id: "app-bus",
+		onError: (_err, context) => {
+			expectTypeOf(context?.busId).toEqualTypeOf<string | undefined>();
+			expectTypeOf(context?.message).toEqualTypeOf<EventBus.Message<TestSchema> | undefined>();
+		},
+	});
+	expectTypeOf(contextualBus).toEqualTypeOf<EventBus<TestSchema>>();
 
 	// @ts-expect-error — schema must be a Record<string, unknown>
 	expectTypeOf(EventBus.make<string>).toBeFunction();
 
-	// @ts-expect-error — name option must be a string
-	expectTypeOf(EventBus.make<TestSchema>({ name: 123 })).toBeObject();
+	// @ts-expect-error — id option must be a string
+	expectTypeOf(EventBus.make<TestSchema>({ id: 123 })).toBeObject();
 
 	// @ts-expect-error — onError handler parameter cannot be restricted to number
 	expectTypeOf(EventBus.make<TestSchema>({ onError: (_err: number) => {} })).toBeObject();

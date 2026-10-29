@@ -5,7 +5,7 @@ description: Thread immutable state through a sequence of transformations cleanl
 
 <!-- BUNDLE_SIZE:START -->
 
-> 230 B minified + gzipped
+> 229 B minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 

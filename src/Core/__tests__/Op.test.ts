@@ -64,6 +64,16 @@ test("make: does not expose _factory as an enumerable or public property", () =>
 	expect(Reflect.ownKeys(op).some((k) => typeof k === "symbol")).toBe(true);
 });
 
+test("make: supports optional id and sets Symbol.toStringTag", () => {
+	const anonymous = Op.make((_signal) => () => Promise.resolve(1), { onError: String });
+	expect(anonymous.id).toBeUndefined();
+	expect(Object.prototype.toString.call(anonymous)).toBe("[object Op]");
+
+	const named = Op.make((_signal) => () => Promise.resolve(1), { id: "fetch-data", onError: String });
+	expect(named.id).toBe("fetch-data");
+	expect(Object.prototype.toString.call(named)).toBe("[object Op(fetch-data)]");
+});
+
 test("make: infers Op<[]> when factory takes no input", () => {
 	const op = Op.make((_signal) => () => Promise.resolve(42), { onError: String });
 	expect(op).toBeDefined();
@@ -231,6 +241,82 @@ test("lift: supports synchronous action returning Out directly", async () => {
 	const manager = Op.interpret(op, { strategy: "once" });
 	const result = await manager.run(10);
 	expect(result).toStrictEqual(Op.Outcome.make.ok(30));
+});
+
+test("lift: supports optional id and sets Symbol.toStringTag", () => {
+	const anonymous = Op.lift((_signal) => () => Promise.resolve(1));
+	expect(anonymous.id).toBeUndefined();
+	expect(Object.prototype.toString.call(anonymous)).toBe("[object Op]");
+
+	const named = Op.lift((_signal) => () => Promise.resolve(1), { id: "lifted-fetch" });
+	expect(named.id).toBe("lifted-fetch");
+	expect(Object.prototype.toString.call(named)).toBe("[object Op(lifted-fetch)]");
+});
+
+test("interpret: supports optional instance id and sets Symbol.toStringTag on Manager and KeyedManager", () => {
+	const anonymousOp = Op.lift((_signal) => () => Promise.resolve(1));
+	const defaultManager = Op.interpret(anonymousOp, { strategy: "once" });
+	expect(defaultManager.id).toBeUndefined();
+	expect(Object.prototype.toString.call(defaultManager)).toBe("[object Op.Manager]");
+
+	const namedOp = Op.lift((_signal) => () => Promise.resolve(1), { id: "op-base" });
+	const managerWithoutInstanceId = Op.interpret(namedOp, { strategy: "once" });
+	expect(managerWithoutInstanceId.id).toBeUndefined();
+	expect(Object.prototype.toString.call(managerWithoutInstanceId)).toBe("[object Op.Manager[op-base]]");
+
+	const overriddenManager = Op.interpret(namedOp, { strategy: "once", id: "manager-override" });
+	expect(overriddenManager.id).toBe("manager-override");
+	expect(Object.prototype.toString.call(overriddenManager)).toBe("[object Op.Manager(manager-override)[op-base]]");
+
+	const instanceOnlyManager = Op.interpret(anonymousOp, { strategy: "once", id: "instance-only" });
+	expect(instanceOnlyManager.id).toBe("instance-only");
+	expect(Object.prototype.toString.call(instanceOnlyManager)).toBe("[object Op.Manager(instance-only)]");
+
+	// All other strategies reflect blueprint tag without polluting instance id
+	const restartableMgr = Op.interpret(namedOp, { strategy: "restartable" });
+	expect(restartableMgr.id).toBeUndefined();
+	expect(Object.prototype.toString.call(restartableMgr)).toBe("[object Op.Manager[op-base]]");
+
+	const exclusiveMgr = Op.interpret(namedOp, { strategy: "exclusive" });
+	expect(exclusiveMgr.id).toBeUndefined();
+	expect(Object.prototype.toString.call(exclusiveMgr)).toBe("[object Op.Manager[op-base]]");
+
+	const queueMgr = Op.interpret(namedOp, { strategy: "queue" });
+	expect(queueMgr.id).toBeUndefined();
+	expect(Object.prototype.toString.call(queueMgr)).toBe("[object Op.Manager[op-base]]");
+
+	const bufferedMgr = Op.interpret(namedOp, { strategy: "buffered" });
+	expect(bufferedMgr.id).toBeUndefined();
+	expect(Object.prototype.toString.call(bufferedMgr)).toBe("[object Op.Manager[op-base]]");
+
+	const debouncedMgr = Op.interpret(namedOp, { strategy: "debounced", duration: Duration.milliseconds(10) });
+	expect(debouncedMgr.id).toBeUndefined();
+	expect(Object.prototype.toString.call(debouncedMgr)).toBe("[object Op.Manager[op-base]]");
+
+	const throttledMgr = Op.interpret(namedOp, { strategy: "throttled", duration: Duration.milliseconds(10) });
+	expect(throttledMgr.id).toBeUndefined();
+	expect(Object.prototype.toString.call(throttledMgr)).toBe("[object Op.Manager[op-base]]");
+
+	const concurrentMgr = Op.interpret(namedOp, { strategy: "concurrent", concurrency: 2 });
+	expect(concurrentMgr.id).toBeUndefined();
+	expect(Object.prototype.toString.call(concurrentMgr)).toBe("[object Op.Manager[op-base]]");
+
+	// KeyedManager (unified as Op.Manager under Option 1)
+	const defaultKeyed = Op.interpret(anonymousOp, { strategy: "keyed", key: () => "k" });
+	expect(defaultKeyed.id).toBeUndefined();
+	expect(Object.prototype.toString.call(defaultKeyed)).toBe("[object Op.Manager]");
+
+	const keyedWithoutInstanceId = Op.interpret(namedOp, { strategy: "keyed", key: () => "k" });
+	expect(keyedWithoutInstanceId.id).toBeUndefined();
+	expect(Object.prototype.toString.call(keyedWithoutInstanceId)).toBe("[object Op.Manager[op-base]]");
+
+	const overriddenKeyed = Op.interpret(namedOp, { strategy: "keyed", key: () => "k", id: "keyed-override" });
+	expect(overriddenKeyed.id).toBe("keyed-override");
+	expect(Object.prototype.toString.call(overriddenKeyed)).toBe("[object Op.Manager(keyed-override)[op-base]]");
+
+	const instanceOnlyKeyed = Op.interpret(anonymousOp, { strategy: "keyed", key: () => "k", id: "keyed-instance" });
+	expect(instanceOnlyKeyed.id).toBe("keyed-instance");
+	expect(Object.prototype.toString.call(instanceOnlyKeyed)).toBe("[object Op.Manager(keyed-instance)]");
 });
 
 // --- Outcome constructors ---

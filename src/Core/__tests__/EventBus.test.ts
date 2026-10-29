@@ -11,10 +11,14 @@ type TestSchema = {
 
 // --- EventBus.make ---
 
-test("make: creates an opaque event bus instance with no public properties", () => {
-	const s = EventBus.make<TestSchema>({ name: "test-bus" });
-	expect(Object.keys(s)).toStrictEqual([]);
-	expect(Reflect.ownKeys(s).filter((k) => typeof k === "string")).toStrictEqual([]);
+test("make: creates an event bus instance with optional id and toStringTag", () => {
+	const anonymous = EventBus.make<TestSchema>();
+	expect(anonymous.id).toBeUndefined();
+	expect(Object.prototype.toString.call(anonymous)).toBe("[object EventBus]");
+
+	const named = EventBus.make<TestSchema>({ id: "test-bus" });
+	expect(named.id).toBe("test-bus");
+	expect(Object.prototype.toString.call(named)).toBe("[object EventBus(test-bus)]");
 });
 
 // --- EventBus.emit ---
@@ -69,6 +73,29 @@ test("emit: passes errors to onError option handler if provided", () => {
 	EventBus.emit(s, { kind: "A", value: { value: 1 } });
 	expect(caughtError).toBeInstanceOf(Error);
 	expect(caughtError?.message).toBe("listener error");
+});
+
+test("emit: passes contextual busId and message to onError handler", () => {
+	let caughtError: Error | undefined;
+	let caughtContext: { readonly busId?: string; readonly message: EventBus.Message<TestSchema>; } | undefined;
+	const s = EventBus.make<TestSchema>({
+		id: "error-bus",
+		onError: (err, context) => {
+			if (err instanceof Error) {
+				caughtError = err;
+			}
+			caughtContext = context;
+		},
+	});
+
+	EventBus.subscribe(s, "A").tap(() => {
+		throw new Error("listener error");
+	});
+
+	EventBus.emit(s, { kind: "A", value: { value: 99 } });
+	expect(caughtError).toBeInstanceOf(Error);
+	expect(caughtError?.message).toBe("listener error");
+	expect(caughtContext).toStrictEqual({ busId: "error-bus", message: { kind: "A", value: { value: 99 } } });
 });
 
 test("emit: subscriber isolation ensures throwing listener does not prevent sibling listeners from receiving events", () => {

@@ -57,6 +57,13 @@ test("make: infers precise types across zero-argument, multi-argument, and expli
 	const wrappedOp = wrap((a: string, b: number) => `${a}:${b}`);
 	expectTypeOf(wrappedOp).toEqualTypeOf<Op<[a: string, b: number], string, string>>();
 
+	const namedOp = Op.make((_signal) => () => Promise.resolve(42), { id: "test-op", onError: String });
+	expectTypeOf(namedOp.id).toEqualTypeOf<string | undefined>();
+	expectTypeOf(namedOp[Symbol.toStringTag]).toEqualTypeOf<string | undefined>();
+
+	// @ts-expect-error — id must be string
+	Op.make((_signal) => () => Promise.resolve(42), { id: 123, onError: String });
+
 	// @ts-expect-error — Op requires an onError handler
 	Op.make((_signal) => () => Promise.resolve(42));
 });
@@ -64,6 +71,13 @@ test("make: infers precise types across zero-argument, multi-argument, and expli
 test("lift: infers unknown error type and preserves argument/return shapes", () => {
 	const zeroArgLift = Op.lift((_signal) => () => Promise.resolve(42));
 	expectTypeOf(zeroArgLift).toEqualTypeOf<Op<[], unknown, number>>();
+	expectTypeOf(zeroArgLift.id).toEqualTypeOf<string | undefined>();
+
+	const namedLift = Op.lift((_signal) => () => Promise.resolve(42), { id: "lifted-op" });
+	expectTypeOf(namedLift.id).toEqualTypeOf<string | undefined>();
+
+	// @ts-expect-error — id must be string
+	Op.lift((_signal) => () => Promise.resolve(42), { id: 123 });
 
 	const singleArgLift = Op.lift((_signal) => (n: number) => Promise.resolve(n * 2));
 	expectTypeOf(singleArgLift).toEqualTypeOf<Op<[n: number], unknown, number>>();
@@ -82,6 +96,15 @@ test("lift: infers unknown error type and preserves argument/return shapes", () 
 test("interpret: infers strategy-specific state unions and manager run return types", () => {
 	const onceManager = Op.interpret(delayedOp, { strategy: "once" });
 	expectTypeOf(onceManager).toEqualTypeOf<Op.Manager<[n: number], string, number, Op.OnceState<string, number>>>();
+	expectTypeOf(onceManager.id).toEqualTypeOf<string | undefined>();
+	expectTypeOf(onceManager[Symbol.toStringTag]).toEqualTypeOf<string | undefined>();
+
+	const namedManager = Op.interpret(delayedOp, { strategy: "once", id: "custom-mgr" });
+	expectTypeOf(namedManager.id).toEqualTypeOf<string | undefined>();
+
+	// @ts-expect-error — id must be string
+	Op.interpret(delayedOp, { strategy: "once", id: 123 });
+
 	expectTypeOf(onceManager.run).returns.toEqualTypeOf<
 		Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.DroppedNil>
 	>();
@@ -168,6 +191,8 @@ test("interpret: infers strategy-specific state unions and manager run return ty
 	expectTypeOf(keyedImplicit).toEqualTypeOf<
 		Op.KeyedManager<[n: number], number, string, Op.KeyedExclusivePerKey<string, number>>
 	>();
+	expectTypeOf(keyedImplicit.id).toEqualTypeOf<string | undefined>();
+	expectTypeOf(keyedImplicit[Symbol.toStringTag]).toEqualTypeOf<string | undefined>();
 	expectTypeOf(keyedImplicit.run).returns.toEqualTypeOf<
 		Deferred<Op.Ok<number> | Op.Err<string> | Op.AbortedNil | Op.DroppedNil>
 	>();

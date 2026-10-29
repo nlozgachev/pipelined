@@ -14,7 +14,10 @@ export const EVENT_BUS_STATE: unique symbol = Symbol.for(
  *
  * @internal
  */
-export type EventBusOptions = { readonly name?: string; readonly onError?: (error: unknown) => void; };
+export type EventBusOptions = {
+	readonly id?: string;
+	readonly onError?: (error: unknown, context?: { readonly busId?: string; readonly message: unknown; }) => void;
+};
 
 /**
  * Low-level operational state backing an `EventBus` instance.

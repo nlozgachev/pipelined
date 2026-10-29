@@ -30,6 +30,8 @@ export type WithSecond<T> = { readonly second: T; };
 
 export type WithLog<T> = { readonly log: ReadonlyArray<T>; };
 
+export type WithId = { readonly id?: string; };
+
 // ---------------------------------------------------------------------------
 // Op option types — moved from Op namespace and shared across strategies
 // ---------------------------------------------------------------------------

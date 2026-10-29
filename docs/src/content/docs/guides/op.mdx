@@ -4,7 +4,7 @@ description: Decouple async task definitions from execution strategies like conc
 ---
 {/* BUNDLE_SIZE:START */}
 
-> 5.84 kB minified + gzipped (5,842 B)
+> 5.98 kB minified + gzipped (5,979 B)
 
 {/* BUNDLE_SIZE:END */}
 
@@ -170,7 +170,7 @@ const fetchUserOp = Op.make(
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json() as Promise<User>;
     }),
-  { onError: toApiError },
+  { id: "fetchUser", onError: toApiError },
 );
 ```
 
@@ -210,7 +210,10 @@ To execute an operation, interpret it with a concurrency strategy and trigger `r
 
 ```ts
 // 1. Choose strategy and create manager
-const userManager = Op.interpret(fetchUserOp, { strategy: "exclusive" });
+const userManager = Op.interpret(fetchUserOp, {
+  strategy: "exclusive",
+  id: "profile-loader",
+});
 
 // 2. Subscribe to state transitions
 userManager.subscribe((state) => {
@@ -222,6 +225,10 @@ userManager.subscribe((state) => {
 // 3. Trigger execution
 userManager.run("user_123");
 ```
+
+Both `Op.make` and `Op.interpret` accept an optional `id` for diagnostics. In DevTools and loggers,
+the manager displays as `[object Op.Manager(profile-loader)[fetchUser]]`, combining the instance
+identifier with the blueprint definition without conflating runtime identity.
 
 ### Inspecting Lifecycle States with `Op.is`
 
