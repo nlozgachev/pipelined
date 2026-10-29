@@ -1,4 +1,4 @@
-import { constTruthyBool } from "#test-utils";
+import { constFalseBool, constTruthyBool } from "#test-utils";
 import { expect, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
 import { Maybe } from "../Maybe.ts";
@@ -214,6 +214,14 @@ test("match: is data-last (returns a function first)", () => {
 	expect(handler(Result.make.err("x"))).toBe("err: x");
 });
 
+test("match: operates on un-narrowed union type without CFA narrowing", () => {
+	const naturalOk: Result<string, number> = constTruthyBool() ? Result.make.ok(42) : Result.make.err("e");
+	expect(pipe(naturalOk, Result.match({ ok: (n) => `ok:${n}`, err: (e) => `err:${e}` }))).toBe("ok:42");
+
+	const naturalErr: Result<string, number> = constFalseBool() ? Result.make.ok(42) : Result.make.err("e");
+	expect(pipe(naturalErr, Result.match({ ok: (n) => `ok:${n}`, err: (e) => `err:${e}` }))).toBe("err:e");
+});
+
 // ---------------------------------------------------------------------------
 // getOrElse
 // ---------------------------------------------------------------------------
@@ -350,6 +358,42 @@ test("recoverUnless: works with object errors", () => {
 	const err = new Error("recoverable");
 	const result = pipe(Result.make.err(err), Result.recoverUnless((e) => e.message === "fatal", () => Result.make.ok(0)));
 	expect(result).toStrictEqual({ kind: "Ok", value: 0 });
+});
+
+test("recoverUnless: does not invoke fallback on Ok", () => {
+	let called = false;
+	const result = pipe(
+		Result.make.ok(42),
+		Result.recoverUnless(() => false, () => {
+			called = true;
+			return Result.make.ok(99);
+		}),
+	);
+	expect(called).toBe(false);
+	expect(result).toStrictEqual(Result.make.ok(42));
+});
+
+test("recoverUnless: does not invoke fallback when isBlocked returns true", () => {
+	let called = false;
+	const result = pipe(
+		Result.make.err("fatal"),
+		Result.recoverUnless((e) => e === "fatal", () => {
+			called = true;
+			return Result.make.ok(99);
+		}),
+	);
+	expect(called).toBe(false);
+	expect(result).toStrictEqual(Result.make.err("fatal"));
+});
+
+test("recoverUnless: operates on un-narrowed union type without CFA narrowing", () => {
+	const naturalOk: Result<string, number> = constTruthyBool() ? Result.make.ok(42) : Result.make.err("err");
+	const resOk = pipe(naturalOk, Result.recoverUnless((e) => e === "fatal", () => Result.make.ok(99)));
+	expect(resOk).toStrictEqual(Result.make.ok(42));
+
+	const naturalErr: Result<string, number> = constFalseBool() ? Result.make.ok(42) : Result.make.err("recoverable");
+	const resErr = pipe(naturalErr, Result.recoverUnless((e) => e === "fatal", () => Result.make.ok(99)));
+	expect(resErr).toStrictEqual(Result.make.ok(99));
 });
 
 // ---------------------------------------------------------------------------
@@ -503,6 +547,19 @@ test("from.Predicate: composes in pipe with chain", () => {
 	expect(result).toStrictEqual(Result.make.err("-5 is negative"));
 });
 
+test("from.Predicate: does not invoke onFalse callback when predicate passes", () => {
+	let called = false;
+	const res = pipe(
+		42,
+		Result.from.Predicate((n: number) => n > 0, () => {
+			called = true;
+			return "fail";
+		}),
+	);
+	expect(called).toBe(false);
+	expect(res).toStrictEqual(Result.make.ok(42));
+});
+
 // ---------------------------------------------------------------------------
 // Type inference
 // ---------------------------------------------------------------------------
@@ -613,10 +670,30 @@ test("from.nullable: preserves falsy values without conflating with null/undefin
 	expect(Number.isNaN(Result.getOrElse(() => 0)(nanRes))).toBe(true);
 });
 
+test("from.nullable: does not invoke onNull callback for non-nullish values", () => {
+	let called = false;
+	const result = Result.from.nullable(() => {
+		called = true;
+		return "err";
+	})(42);
+	expect(called).toBe(false);
+	expect(result).toStrictEqual(Result.make.ok(42));
+});
+
 // --- fromMaybe ---
 
 test("from.Maybe: returns Ok for Some", () => {
 	const result = Result.from.Maybe(() => "is none")(Maybe.make.some(42));
+	expect(result).toStrictEqual(Result.make.ok(42));
+});
+
+test("from.Maybe: does not invoke onNone callback for Some", () => {
+	let called = false;
+	const result = Result.from.Maybe(() => {
+		called = true;
+		return "err";
+	})(Maybe.make.some(42));
+	expect(called).toBe(false);
 	expect(result).toStrictEqual(Result.make.ok(42));
 });
 
@@ -726,6 +803,16 @@ test("from.Validation: converts Passed to Ok", () => {
 	expect(res).toStrictEqual(Result.make.ok(42));
 });
 
+test("from.Validation: does not invoke combineErrors on Passed", () => {
+	let called = false;
+	const res = Result.from.Validation(() => {
+		called = true;
+		return "combined";
+	})(Validation.make.passed(42));
+	expect(called).toBe(false);
+	expect(res).toStrictEqual(Result.make.ok(42));
+});
+
 test("from.Validation: converts Failed to Err using combineErrors", () => {
 	const res = Result.from.Validation((errs: readonly string[]) => errs.join("; "))(
 		Validation.make.failedAll(["err1", "err2"]),
@@ -781,6 +868,19 @@ test("ensure: does not invoke predicate or onFail on Err", () => {
 	expect(res).toStrictEqual(Result.make.err("initial_error"));
 });
 
+test("ensure: does not invoke onFail on Ok when predicate returns true", () => {
+	let onFailCalled = false;
+	const res = pipe(
+		Result.make.ok(42),
+		Result.ensure((n) => n > 0, () => {
+			onFailCalled = true;
+			return "failed";
+		}),
+	);
+	expect(onFailCalled).toBe(false);
+	expect(res).toStrictEqual(Result.make.ok(42));
+});
+
 // --- bimap ---
 
 test("bimap: applies onOk to Ok values", () => {
@@ -819,6 +919,16 @@ test("bimap: does not invoke onOk on Err", () => {
 	expect(res).toStrictEqual(Result.make.err("mapped: error"));
 });
 
+test("bimap: operates on un-narrowed union type without CFA narrowing", () => {
+	const naturalOk: Result<string, number> = constTruthyBool() ? Result.make.ok(42) : Result.make.err("err");
+	const resOk = pipe(naturalOk, Result.bimap((e) => `mapped:${e}`, (n) => n * 2));
+	expect(resOk).toStrictEqual(Result.make.ok(84));
+
+	const naturalErr: Result<string, number> = constFalseBool() ? Result.make.ok(42) : Result.make.err("err");
+	const resErr = pipe(naturalErr, Result.bimap((e) => `mapped:${e}`, (n) => n * 2));
+	expect(resErr).toStrictEqual(Result.make.err("mapped:err"));
+});
+
 // --- prototype pollution shielding ---
 
 test("assign: safely handles __proto__ property without prototype pollution", () => {
@@ -829,6 +939,30 @@ test("assign: safely handles __proto__ property without prototype pollution", ()
 	expect(Object.hasOwn(value, "__proto__")).toBe(true);
 	const target: Record<string, unknown> = {};
 	expect(target.polluted).toBeUndefined();
+});
+
+test("assignTo: safely handles __proto__ property without prototype pollution", () => {
+	const res = pipe(Result.make.ok(42), Result.assignTo("__proto__"));
+	expect(Result.is.ok(res)).toBe(true);
+	const emptyFallback: Record<string, unknown> = {};
+	const value = Result.getOrElse(() => emptyFallback)(res);
+	expect(Object.hasOwn(value, "__proto__")).toBe(true);
+	const target: Record<string, unknown> = {};
+	expect(target["__proto__"]).toBe(Object.prototype);
+});
+
+test("assign: operates on un-narrowed union type without CFA narrowing", () => {
+	const naturalOk: Result<string, { a: number; }> = constTruthyBool()
+		? Result.make.ok({ a: 1 })
+		: Result.make.err("err");
+	const resOk = pipe(naturalOk, Result.assign("b", ({ a }) => Result.make.ok(a + 1)));
+	expect(resOk).toStrictEqual(Result.make.ok({ a: 1, b: 2 }));
+
+	const naturalErr: Result<string, { a: number; }> = constFalseBool()
+		? Result.make.ok({ a: 1 })
+		: Result.make.err("err");
+	const resErr = pipe(naturalErr, Result.assign("b", ({ a }) => Result.make.ok(a + 1)));
+	expect(resErr).toStrictEqual(Result.make.err("err"));
 });
 
 test("struct: safely handles __proto__ property without prototype pollution", () => {

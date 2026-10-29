@@ -98,6 +98,12 @@ test("match: handles all variants without throwing", () => {
 // apply
 // ---------------------------------------------------------------------------
 
+test("apply: satisfies identity law", () => {
+	fc.assert(fc.property(arbMaybe, (m) => {
+		expect(pipe(Maybe.make.some((x: number) => x), Maybe.apply(m))).toStrictEqual(m);
+	}));
+});
+
 test("apply: satisfies homomorphism", () => {
 	fc.assert(fc.property(fc.integer(), fc.integer(), (a, b) => {
 		const f = (x: number) => x + b;
@@ -168,6 +174,19 @@ test("filter: passes through None unchanged", () => {
 test("from.nullable: round-trip with to.nullable on non-null value", () => {
 	fc.assert(fc.property(fc.integer(), (n) => {
 		expect(Maybe.to.nullable(Maybe.from.nullable(n))).toBe(n);
+	}));
+});
+
+test("from.nullable: non-nullish primitives wrap into Some", () => {
+	const arbPrimitive = fc.oneof(
+		fc.integer(),
+		fc.double({ noInteger: true }),
+		fc.string(),
+		fc.boolean(),
+		fc.constantFrom(0, false, "", Number.NaN),
+	);
+	fc.assert(fc.property(arbPrimitive, (val) => {
+		expect(Maybe.from.nullable(val)).toStrictEqual(Maybe.make.some(val));
 	}));
 });
 

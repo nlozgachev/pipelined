@@ -341,7 +341,7 @@ test("getOrElse: returns Some value typed as A | B when Some", () => {
 	expect(result).toBe("hello");
 });
 
-test("getOrElse: does not invoke defaultValue callback on Some", () => {
+test("getOrElse: does not invoke fallback callback on Some", () => {
 	let called = false;
 	const result = pipe(
 		Maybe.make.some(42),
@@ -352,6 +352,14 @@ test("getOrElse: does not invoke defaultValue callback on Some", () => {
 	);
 	expect(called).toBe(false);
 	expect(result).toBe(42);
+});
+
+test("getOrElse: operates on un-narrowed union type without CFA narrowing", () => {
+	const naturalSome: Maybe<number> = constTruthyBool() ? Maybe.make.some(42) : Maybe.make.none();
+	expect(pipe(naturalSome, Maybe.getOrElse(() => 0))).toBe(42);
+
+	const naturalNone: Maybe<number> = constFalseBool() ? Maybe.make.some(42) : Maybe.make.none();
+	expect(pipe(naturalNone, Maybe.getOrElse(() => 0))).toBe(0);
 });
 
 // ---------------------------------------------------------------------------
@@ -382,6 +390,30 @@ test("tap: does not execute side effect on None", () => {
 	expect(result).toStrictEqual({ kind: "None" });
 });
 
+test("tap: operates on un-narrowed union type without CFA narrowing", () => {
+	let called = false;
+	const naturalSome: Maybe<number> = constTruthyBool() ? Maybe.make.some(42) : Maybe.make.none();
+	const resSome = pipe(
+		naturalSome,
+		Maybe.tap(() => {
+			called = true;
+		}),
+	);
+	expect(called).toBe(true);
+	expect(resSome).toStrictEqual(Maybe.make.some(42));
+
+	called = false;
+	const naturalNone: Maybe<number> = constFalseBool() ? Maybe.make.some(42) : Maybe.make.none();
+	const resNone = pipe(
+		naturalNone,
+		Maybe.tap(() => {
+			called = true;
+		}),
+	);
+	expect(called).toBe(false);
+	expect(resNone).toStrictEqual(Maybe.make.none());
+});
+
 // ---------------------------------------------------------------------------
 // tapNone
 // ---------------------------------------------------------------------------
@@ -408,6 +440,30 @@ test("tapNone: does not execute side effect on Some", () => {
 	);
 	expect(called).toBe(false);
 	expect(result).toStrictEqual({ kind: "Some", value: 42 });
+});
+
+test("tapNone: operates on un-narrowed union type without CFA narrowing", () => {
+	let called = false;
+	const naturalSome: Maybe<number> = constTruthyBool() ? Maybe.make.some(42) : Maybe.make.none();
+	const resSome = pipe(
+		naturalSome,
+		Maybe.tapNone(() => {
+			called = true;
+		}),
+	);
+	expect(called).toBe(false);
+	expect(resSome).toStrictEqual(Maybe.make.some(42));
+
+	called = false;
+	const naturalNone: Maybe<number> = constFalseBool() ? Maybe.make.some(42) : Maybe.make.none();
+	const resNone = pipe(
+		naturalNone,
+		Maybe.tapNone(() => {
+			called = true;
+		}),
+	);
+	expect(called).toBe(true);
+	expect(resNone).toStrictEqual(Maybe.make.none());
 });
 
 // ---------------------------------------------------------------------------
@@ -535,6 +591,19 @@ test("apply: returns None when value is None", () => {
 test("apply: returns None when both are None", () => {
 	const result = pipe(Maybe.make.none(), Maybe.apply(Maybe.make.none()));
 	expect(result).toStrictEqual({ kind: "None" });
+});
+
+test("apply: operates on un-narrowed union type without CFA narrowing", () => {
+	const naturalFn: Maybe<(n: number) => number> = constTruthyBool()
+		? Maybe.make.some((n: number) => n * 2)
+		: Maybe.make.none();
+	const naturalArg: Maybe<number> = constTruthyBool() ? Maybe.make.some(5) : Maybe.make.none();
+	expect(pipe(naturalFn, Maybe.apply(naturalArg))).toStrictEqual(Maybe.make.some(10));
+
+	const naturalFnNone: Maybe<(n: number) => number> = constFalseBool()
+		? Maybe.make.some((n: number) => n * 2)
+		: Maybe.make.none();
+	expect(pipe(naturalFnNone, Maybe.apply(naturalArg))).toStrictEqual(Maybe.make.none());
 });
 
 // ---------------------------------------------------------------------------
@@ -733,4 +802,23 @@ test("struct: safely handles __proto__ property without prototype pollution", ()
 	expect(Object.hasOwn(value, "__proto__")).toBe(true);
 	const emptyTarget: Record<string, unknown> = {};
 	expect(emptyTarget.polluted).toBeUndefined();
+});
+
+test("assignTo: safely handles __proto__ property without prototype pollution", () => {
+	const res = pipe(Maybe.make.some(42), Maybe.assignTo("__proto__"));
+	expect(Maybe.is.some(res)).toBe(true);
+	const value = Maybe.getOrElse(() => ({} as Record<string, unknown>))(res);
+	expect(Object.hasOwn(value, "__proto__")).toBe(true);
+	const emptyTarget: Record<string, unknown> = {};
+	expect(emptyTarget["__proto__"]).toBe(Object.prototype);
+});
+
+test("assign: operates on un-narrowed union type without CFA narrowing", () => {
+	const naturalSome: Maybe<{ a: number; }> = constTruthyBool() ? Maybe.make.some({ a: 1 }) : Maybe.make.none();
+	const resSome = pipe(naturalSome, Maybe.assign("b", ({ a }) => Maybe.make.some(a + 1)));
+	expect(resSome).toStrictEqual(Maybe.make.some({ a: 1, b: 2 }));
+
+	const naturalNone: Maybe<{ a: number; }> = constFalseBool() ? Maybe.make.some({ a: 1 }) : Maybe.make.none();
+	const resNone = pipe(naturalNone, Maybe.assign("b", ({ a }) => Maybe.make.some(a + 1)));
+	expect(resNone).toStrictEqual(Maybe.make.none());
 });

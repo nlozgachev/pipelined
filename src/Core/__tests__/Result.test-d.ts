@@ -95,6 +95,9 @@ test("recover & recoverUnless: preserves or widens recovery error and value type
 	);
 	expectTypeOf(recovered).toEqualTypeOf<Result<"RECOVER_ERR", number | string>>();
 
+	const infallibleRecovered = pipe(initial, Result.recover((_e) => Result.make.ok("fallback")));
+	expectTypeOf(infallibleRecovered).toEqualTypeOf<Result<never, number | string>>();
+
 	const recoveredUnless = pipe(initial, Result.recoverUnless((e) => e === "INIT_ERR", () => Result.make.ok("fallback")));
 	expectTypeOf(recoveredUnless).toEqualTypeOf<Result<"INIT_ERR", number | string>>();
 });

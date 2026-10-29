@@ -1,5 +1,6 @@
 import fc from "fast-check";
 import { expect, expectTypeOf, test } from "vitest";
+import { pipe } from "../../Composition/pipe.ts";
 import { Maybe } from "../Maybe.ts";
 import { Result } from "../Result.ts";
 
@@ -162,6 +163,12 @@ test("bimap: satisfies composition law", () => {
 // ---------------------------------------------------------------------------
 // apply — applicative functor laws
 // ---------------------------------------------------------------------------
+
+test("apply: satisfies identity law", () => {
+	fc.assert(fc.property(arbResult, (r) => {
+		expect(pipe(Result.make.ok((x: number) => x), Result.apply(r))).toStrictEqual(r);
+	}));
+});
 
 test("apply: satisfies homomorphism law", () => {
 	fc.assert(fc.property(fc.integer(), fc.integer(), (x, factor) => {
