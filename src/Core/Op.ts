@@ -32,11 +32,7 @@ declare const _opBrand: unique symbol;
 
 type NormalizeArgs<T> = [T] extends [void] ? [] : T extends readonly unknown[] ? T : [T];
 
-type RetryOptionsInternal<E = unknown> = {
-	readonly attempts: number;
-	readonly backoff?: Duration | ((attempt: number) => Duration) | RetryPolicy;
-	readonly when?: (error: E) => boolean;
-};
+type RetryOptionsInternal<E = unknown> = RetryPolicy<E>;
 
 type TimeoutOptionsInternal<E = unknown> = { readonly duration: Duration; readonly onTimeout: () => E; };
 
@@ -311,13 +307,18 @@ export namespace Op {
 
 	/**
 	 * Configuration options for operation retry policies in `Op.interpret`.
+	 * Represents a `RetryPolicy` specifying retry attempts, backoff delay generation,
+	 * error-filtering predicates (`when`), and retry telemetry callbacks (`onRetry`).
 	 *
 	 * @example
 	 * ```ts
-	 * const retry: Op.RetryOptions = {
+	 * const retry: Op.RetryOptions = RetryPolicy.constant({
 	 *   attempts: 3,
-	 *   backoff: Duration.seconds(1),
-	 * };
+	 *   delay: Duration.seconds(1),
+	 *   onRetry: ({ attempt, error, delay }) => {
+	 *     console.warn(`Retry attempt ${attempt}: ${error}`);
+	 *   },
+	 * });
 	 * ```
 	 */
 	export type RetryOptions<E = unknown> = RetryOptionsInternal<E>;

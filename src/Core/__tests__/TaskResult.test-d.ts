@@ -1,6 +1,8 @@
 import { constTruthyBool } from "#test-utils";
 import { expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import { Duration } from "../../Types/Duration.ts";
+import { RetryPolicy } from "../../Types/RetryPolicy.ts";
 import { type Result } from "../Result.ts";
 import { Task } from "../Task.ts";
 
@@ -98,6 +100,25 @@ test("ensure: narrows type when passed a type guard refinement", () => {
 	expectTypeOf(ensured).toEqualTypeOf<Task.Result<"ERR_INIT" | "NOT_STRING", string>>();
 });
 
+test("retry: preserves error and value channels with optional onRetry and when", () => {
+	const policy = RetryPolicy.constant<"MY_ERR">({
+		attempts: 3,
+		delay: Duration.seconds(1),
+		when: (_err) => true,
+		onRetry: (event) => {
+			expectTypeOf(event.attempt).toEqualTypeOf<number>();
+			expectTypeOf(event.delay).toEqualTypeOf<Duration>();
+			expectTypeOf(event.error).toEqualTypeOf<"MY_ERR">();
+		},
+	});
+	const task: Task.Result<"MY_ERR", number> = constTruthyBool()
+		? Task.Result.make.ok(42)
+		: Task.Result.make.err("MY_ERR");
+
+	const retried = pipe(task, Task.Result.retry(policy));
+	expectTypeOf(retried).toEqualTypeOf<Task.Result<"MY_ERR", number>>();
+});
+
 test("negative: flags invalid transforms and non-Task.Result struct fields", () => {
 	const task = Task.Result.make.ok(42);
 
@@ -109,4 +130,7 @@ test("negative: flags invalid transforms and non-Task.Result struct fields", () 
 
 	// @ts-expect-error Struct field values must be Task.Result instances
 	expectTypeOf(Task.Result.struct({ a: 123 })).toBeFunction();
+
+	// @ts-expect-error retry expects exactly 1 argument (policy) without legacy 2nd options argument
+	Task.Result.retry(RetryPolicy.constant({ attempts: 3, delay: Duration.seconds(1) }), { when: () => true });
 });

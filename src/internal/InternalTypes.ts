@@ -37,11 +37,7 @@ export type WithId = { readonly id?: string; };
 // ---------------------------------------------------------------------------
 
 /** Retry policy for `Op.interpret`. */
-export type RetryOptions<E = unknown> = {
-	readonly attempts: number;
-	readonly backoff?: Duration | ((attempt: number) => Duration) | RetryPolicy;
-	readonly when?: (error: E) => boolean;
-};
+export type RetryOptions<E = unknown> = RetryPolicy<E>;
 
 /** Timeout policy for `Op.interpret`. Wraps the entire retry sequence. */
 export type TimeoutOptions<E = unknown> = { readonly duration: Duration; readonly onTimeout: () => E; };

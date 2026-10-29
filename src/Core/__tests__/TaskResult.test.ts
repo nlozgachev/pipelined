@@ -947,11 +947,12 @@ test("retry: selectively retries only matching errors with when filter", async (
 		return Deferred.from.Promise(Promise.resolve(Result.make.err({ status: 400 })));
 	};
 
-	const policy = RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(1) });
-	const res = await pipe(
-		nonRetryableTask,
-		Task.Result.retry(policy, { when: (err) => isHttpError(err) && err.status >= 500 }),
-	)();
+	const policy = RetryPolicy.constant({
+		attempts: 3,
+		delay: Duration.milliseconds(1),
+		when: (err) => isHttpError(err) && err.status >= 500,
+	});
+	const res = await pipe(nonRetryableTask, Task.Result.retry(policy))();
 
 	expect(res).toStrictEqual(Result.make.err({ status: 400 }));
 	expect(calls).toBe(1); // not retried because status is 400
@@ -1079,15 +1080,14 @@ test("retry: exits wait immediately if signal is already aborted", async () => {
 });
 
 test("retry: handles throwing when predicate gracefully", async () => {
-	const policy = RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(10) });
-	const result = await pipe(
-		Task.Result.make.err("fail"),
-		Task.Result.retry(policy, {
-			when: () => {
-				throw new Error("predicate error");
-			},
-		}),
-	)();
+	const policy = RetryPolicy.constant({
+		attempts: 3,
+		delay: Duration.milliseconds(10),
+		when: () => {
+			throw new Error("predicate error");
+		},
+	});
+	const result = await pipe(Task.Result.make.err("fail"), Task.Result.retry(policy))();
 	expect(result).toStrictEqual(Result.make.err("fail"));
 });
 
@@ -1100,6 +1100,73 @@ test("retry: handles throwing policy.getDelay gracefully", async () => {
 	};
 	const result = await pipe(Task.Result.make.err("fail"), Task.Result.retry(faultyPolicy))();
 	expect(result).toStrictEqual(Result.make.err("fail"));
+});
+
+test("retry: executes onRetry callback on each attempt before delay", async () => {
+	const events: Array<{ attempt: number; error: unknown; delay: Duration; }> = [];
+	let attempts = 0;
+	const failingTask: Task.Result<string, number> = () => {
+		attempts++;
+		if (attempts < 3) {
+			return Deferred.from.Promise(Promise.resolve(Result.make.err(`err_${attempts}`)));
+		}
+		return Deferred.from.Promise(Promise.resolve(Result.make.ok(42)));
+	};
+
+	const policy = RetryPolicy.constant({
+		attempts: 4,
+		delay: Duration.milliseconds(2),
+		onRetry: (event) => {
+			events.push(event);
+		},
+	});
+	const result = await pipe(failingTask, Task.Result.retry(policy))();
+
+	expect(result).toStrictEqual(Result.make.ok(42));
+	expect(attempts).toBe(3);
+	expect(events).toHaveLength(2);
+	expect(events[0]).toStrictEqual({ attempt: 1, error: "err_1", delay: Duration.milliseconds(2) });
+	expect(events[1]).toStrictEqual({ attempt: 2, error: "err_2", delay: Duration.milliseconds(2) });
+});
+
+test("retry: does not invoke onRetry when first attempt succeeds", async () => {
+	let onRetryCalled = false;
+	const successTask = Task.Result.make.ok("success");
+	const policy = RetryPolicy.constant({
+		attempts: 3,
+		delay: Duration.milliseconds(2),
+		onRetry: () => {
+			onRetryCalled = true;
+		},
+	});
+
+	const result = await pipe(successTask, Task.Result.retry(policy))();
+
+	expect(result).toStrictEqual(Result.make.ok("success"));
+	expect(onRetryCalled).toBe(false);
+});
+
+test("retry: safely isolates throwing onRetry callback", async () => {
+	let attempts = 0;
+	const failingTask: Task.Result<string, number> = () => {
+		attempts++;
+		if (attempts < 2) {
+			return Deferred.from.Promise(Promise.resolve(Result.make.err("fail")));
+		}
+		return Deferred.from.Promise(Promise.resolve(Result.make.ok(100)));
+	};
+
+	const policy = RetryPolicy.constant({
+		attempts: 3,
+		delay: Duration.milliseconds(1),
+		onRetry: () => {
+			throw new Error("logger exploded");
+		},
+	});
+	const result = await pipe(failingTask, Task.Result.retry(policy))();
+
+	expect(result).toStrictEqual(Result.make.ok(100));
+	expect(attempts).toBe(2);
 });
 
 test("assign: safely handles __proto__ property without prototype pollution", async () => {

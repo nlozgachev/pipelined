@@ -9,6 +9,7 @@ import { Deferred } from "../../Core/Deferred.ts";
 import { Op } from "../../Core/Op.ts";
 import { Result } from "../../Core/Result.ts";
 import { Duration } from "../../Types/Duration.ts";
+import { RetryPolicy } from "../../Types/RetryPolicy.ts";
 import {
 	cancellableWait,
 	execute,
@@ -114,7 +115,7 @@ test("runWithRetry: returns Ok on first success", async () => {
 		successOp(),
 		[1],
 		new AbortController().signal,
-		{ attempts: 3 },
+		RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(0) }),
 		(r) => retrying.push(r),
 	);
 	expect(result).toStrictEqual(Result.make.ok(1));
@@ -128,7 +129,13 @@ test("runWithRetry: retries on Err and returns Err when attempts exhausted", asy
 		return Promise.reject(new Error("boom"));
 	}, { onError: (e) => (e as Error).message });
 	const retrying: Op.Retrying<string>[] = [];
-	const result = await runWithRetry(op, [1], new AbortController().signal, { attempts: 3 }, (r) => retrying.push(r));
+	const result = await runWithRetry(
+		op,
+		[1],
+		new AbortController().signal,
+		RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(0) }),
+		(r) => retrying.push(r),
+	);
 	expect(result).toStrictEqual(Result.make.err("boom"));
 	expect(calls).toBe(3);
 	expect(retrying).toHaveLength(2); // attempt 1 and 2 produce a Retrying; 3rd attempt returns Err
@@ -142,7 +149,13 @@ test("runWithRetry: stops early on Ok without exhausting all attempts", async ()
 		calls++;
 		return calls < 2 ? Promise.reject(new Error("not yet")) : Promise.resolve(99);
 	}, { onError: (e) => (e as Error).message });
-	const result = await runWithRetry(op, [1], new AbortController().signal, { attempts: 5 }, () => {});
+	const result = await runWithRetry(
+		op,
+		[1],
+		new AbortController().signal,
+		RetryPolicy.constant({ attempts: 5, delay: Duration.milliseconds(0) }),
+		() => {},
+	);
 	expect(result).toStrictEqual(Result.make.ok(99));
 	expect(calls).toBe(2);
 });
@@ -153,10 +166,13 @@ test("runWithRetry: respects when guard and stops early on non-retryable error",
 		calls++;
 		return Promise.reject(new Error("not-retryable"));
 	}, { onError: (e) => (e as Error).message });
-	const result = await runWithRetry(op, [1], new AbortController().signal, {
-		attempts: 5,
-		when: (e) => e !== "not-retryable",
-	}, () => {});
+	const result = await runWithRetry(
+		op,
+		[1],
+		new AbortController().signal,
+		RetryPolicy.constant({ attempts: 5, delay: Duration.milliseconds(0), when: (e) => e !== "not-retryable" }),
+		() => {},
+	);
 	expect(result).toStrictEqual(Result.make.err("not-retryable"));
 	expect(calls).toBe(1);
 });
@@ -170,20 +186,20 @@ test("runWithRetry: includes nextRetryIn when backoff is number > 0", async () =
 		op,
 		[1],
 		new AbortController().signal,
-		{ attempts: 2, backoff: Duration.milliseconds(50) },
+		RetryPolicy.constant({ attempts: 2, delay: Duration.milliseconds(50) }),
 		(r) => retrying.push(r),
 	);
 	expect(retrying[0]).toStrictEqual({ kind: "Retrying", attempt: 1, lastError: "fail", nextRetryIn: 50 });
 });
 
-test("runWithRetry: includes nextRetryIn when backoff is function", async () => {
+test("runWithRetry: includes nextRetryIn when getDelay is custom calculation", async () => {
 	const op = Op.make((_signal: AbortSignal) => (_: number) => Promise.reject(new Error("fail")), {
 		onError: (e) => (e as Error).message,
 	});
 	const retrying: Op.Retrying<string>[] = [];
 	await runWithRetry(op, [1], new AbortController().signal, {
 		attempts: 2,
-		backoff: (n) => Duration.milliseconds(n * 30),
+		getDelay: (n) => Duration.milliseconds(n * 30),
 	}, (r) => retrying.push(r));
 	expect(retrying[0]).toStrictEqual({ kind: "Retrying", attempt: 1, lastError: "fail", nextRetryIn: 30 });
 });
@@ -198,10 +214,58 @@ test("runWithRetry: returns null when signal is aborted during backoff wait", as
 		op,
 		[1],
 		controller.signal,
-		{ attempts: 5, backoff: Duration.milliseconds(200) },
+		RetryPolicy.constant({ attempts: 5, delay: Duration.milliseconds(200) }),
 		() => {},
 	);
 	expect(result).toBeNull();
+});
+
+test("runWithRetry: invokes onRetry callback before delay", async () => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => Promise.reject(new Error("fail")), {
+		onError: (e) => (e as Error).message,
+	});
+	const events: Array<{ attempt: number; error: string; delay: Duration; }> = [];
+	await runWithRetry(
+		op,
+		[1],
+		new AbortController().signal,
+		RetryPolicy.constant({ attempts: 2, delay: Duration.milliseconds(10), onRetry: (e) => events.push(e) }),
+		() => {},
+	);
+	expect(events).toHaveLength(1);
+	expect(events[0]).toStrictEqual({ attempt: 1, error: "fail", delay: Duration.milliseconds(10) });
+});
+
+test("runWithRetry: works with direct RetryPolicy object", async () => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => Promise.reject(new Error("policy_fail")), {
+		onError: (e) => (e as Error).message,
+	});
+	const events: Array<{ attempt: number; error: string; delay: Duration; }> = [];
+	const policy = RetryPolicy.constant<string>({
+		attempts: 2,
+		delay: Duration.milliseconds(5),
+		onRetry: (e) => events.push(e),
+	});
+	await runWithRetry(op, [1], new AbortController().signal, policy, () => {});
+	expect(events).toHaveLength(1);
+	expect(events[0].error).toBe("policy_fail");
+});
+
+test("runWithRetry: isolates throwing onRetry callback and faulty getDelay", async () => {
+	const op = Op.make((_signal: AbortSignal) => (_: number) => Promise.reject(new Error("fail")), {
+		onError: (e) => (e as Error).message,
+	});
+	const faultyPolicy: RetryPolicy<string> = {
+		attempts: 2,
+		getDelay: () => {
+			throw new Error("faulty_delay");
+		},
+		onRetry: () => {
+			throw new Error("faulty_onRetry");
+		},
+	};
+	const result = await runWithRetry(op, [1], new AbortController().signal, faultyPolicy, () => {});
+	expect(result).toStrictEqual(Result.make.err("fail"));
 });
 
 // ---------------------------------------------------------------------------
@@ -231,7 +295,16 @@ test("execute: resolves to AbortedNil when controller is aborted before op finis
 test("execute: calls onRetrying when retryOptions is provided", async () => {
 	const controller = new AbortController();
 	const retrying: Op.Retrying<string>[] = [];
-	await Deferred.to.Promise(execute(failOp(), [1], controller, { attempts: 3 }, undefined, (r) => retrying.push(r)));
+	await Deferred.to.Promise(
+		execute(
+			failOp(),
+			[1],
+			controller,
+			RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(0) }),
+			undefined,
+			(r) => retrying.push(r),
+		),
+	);
 	expect(retrying).toHaveLength(2);
 });
 
@@ -430,7 +503,12 @@ test("makeThrottled: onRetrying guard suppresses stale Retrying state from first
 		}), { onError: (e) => (e as Error).message });
 
 	const states: Op.State<string, number>[] = [];
-	const manager = makeThrottled(op, Duration.milliseconds(10), true, { attempts: 2, backoff: Duration.milliseconds(0) });
+	const manager = makeThrottled(
+		op,
+		Duration.milliseconds(10),
+		true,
+		RetryPolicy.constant({ attempts: 2, delay: Duration.milliseconds(0) }),
+	);
 	manager.subscribe((s) => states.push(s));
 
 	manager.run(1);
@@ -476,10 +554,13 @@ test("makeDebounced: onRetrying guard suppresses stale Retrying state when timer
 		}), { onError: (e) => (e as Error).message });
 
 	const states: Op.State<string, number>[] = [];
-	const manager = makeDebounced(op, Duration.milliseconds(10), false, undefined, {
-		attempts: 2,
-		backoff: Duration.milliseconds(0),
-	});
+	const manager = makeDebounced(
+		op,
+		Duration.milliseconds(10),
+		false,
+		undefined,
+		RetryPolicy.constant({ attempts: 2, delay: Duration.milliseconds(0) }),
+	);
 	manager.subscribe((s) => states.push(s));
 
 	manager.run(1);
@@ -518,7 +599,7 @@ test("runWithRetry: emits Retrying states across execution modes", async () => {
 	const failingOp = Op.make((_signal: AbortSignal) => (_input: number) => Promise.reject(new Error("err")), {
 		onError: (e) => (e as Error).message,
 	});
-	const retryOpt = { attempts: 2, backoff: Duration.milliseconds(1) };
+	const retryOpt = RetryPolicy.constant({ attempts: 2, delay: Duration.milliseconds(1) });
 
 	// makeRestartable
 	const latestManager = makeRestartable(failingOp, undefined, retryOpt);

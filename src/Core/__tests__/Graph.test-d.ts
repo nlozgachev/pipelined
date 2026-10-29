@@ -1,6 +1,7 @@
 import { constTruthyBool } from "#test-utils";
 import { expectTypeOf, test } from "vitest";
 import { Duration } from "../../Types/Duration.ts";
+import { RetryPolicy } from "../../Types/RetryPolicy.ts";
 import { Graph } from "../Graph.ts";
 import { Task } from "../Task.ts";
 
@@ -81,9 +82,42 @@ test("make & run: compiles and preserves error and output channels", () => {
 	const taskWithConcurrency = Graph.run(graph, { concurrency: 2 });
 	expectTypeOf(taskWithConcurrency).toEqualTypeOf<Task.Result<"e_perm" | "e_user", string[]>>();
 
+	const taskWithTelemetry = Graph.run(graph, {
+		concurrency: 2,
+		onRetry: (event) => {
+			expectTypeOf(event.nodeId).toEqualTypeOf<string>();
+			expectTypeOf(event.attempt).toEqualTypeOf<number>();
+			expectTypeOf(event.error).toEqualTypeOf<unknown>();
+			expectTypeOf(event.delay).toEqualTypeOf<Duration>();
+		},
+	});
+	expectTypeOf(taskWithTelemetry).toEqualTypeOf<Task.Result<"e_perm" | "e_user", string[]>>();
+
+	const retryingNode = Graph.node({
+		id: "with-retry",
+		retry: RetryPolicy.constant<"e_retry">({
+			attempts: 3,
+			delay: Duration.seconds(1),
+			when: (err) => err === "e_retry",
+			onRetry: (event) => {
+				expectTypeOf(event.attempt).toEqualTypeOf<number>();
+				expectTypeOf(event.error).toEqualTypeOf<"e_retry">();
+				expectTypeOf(event.delay).toEqualTypeOf<Duration>();
+			},
+		}),
+		run: () => constTruthyBool() ? Task.Result.make.ok("success") : Task.Result.make.err("e_retry" as const),
+	});
+	expectTypeOf(retryingNode).toEqualTypeOf<Graph.Node<"with-retry", "e_retry", string>>();
+
 	// @ts-expect-error — target must be a Graph.Node
 	Graph.make("not_a_node");
 
 	// @ts-expect-error — run expects a Graph instance
 	Graph.run("not_a_graph");
+
+	// @ts-expect-error — retry must be a valid RetryPolicy
+	Graph.node({ id: "bad_retry_1", retry: 123, run: () => Task.Result.make.ok(1) });
+
+	// @ts-expect-error — retry must have attempts
+	Graph.node({ id: "bad_retry_2", retry: { getDelay: () => Duration.seconds(1) }, run: () => Task.Result.make.ok(1) });
 });

@@ -7,6 +7,7 @@ import { Deferred } from "../Core/Deferred.ts";
 import type { Op } from "../Core/Op.ts";
 import { Result } from "../Core/Result.ts";
 import { Duration } from "../Types/Duration.ts";
+import type { RetryPolicy } from "../Types/RetryPolicy.ts";
 
 // ---------------------------------------------------------------------------
 // Internal singletons & helpers
@@ -81,17 +82,16 @@ export const runWithRetry = <Args extends readonly unknown[], E, A>(
 	op: Op<Args, E, A>,
 	args: Args,
 	signal: AbortSignal,
-	options: Op.RetryOptions<E>,
+	policy: RetryPolicy<E>,
 	onRetrying: (state: Op.Retrying<E>) => void,
 ): Promise<Result<E, A> | null> => {
-	const { attempts, backoff, when: shouldRetry } = options;
+	const { attempts, when: shouldRetry, onRetry } = policy;
 	const getDelay = (n: number): Duration | undefined => {
-		if (backoff === undefined) { return undefined; }
-		if (typeof backoff === "function") { return backoff(n); }
-		if (typeof backoff === "object" && backoff !== null && "getDelay" in backoff) {
-			return backoff.getDelay(n);
+		try {
+			return policy.getDelay(n);
+		} catch {
+			return undefined;
 		}
-		return backoff;
 	};
 
 	const attempt = async (left: number): Promise<Result<E, A> | null> => {
@@ -107,15 +107,22 @@ export const runWithRetry = <Args extends readonly unknown[], E, A>(
 			}
 		}
 		const attemptNumber = attempts - left + 1;
-		const delayDuration = getDelay(attemptNumber);
-		const ms = delayDuration ? getMs(delayDuration) : 0;
+		const delayDuration = getDelay(attemptNumber) ?? Duration.milliseconds(0);
+		const ms = getMs(delayDuration);
 		onRetrying({
 			kind: "Retrying",
 			attempt: attemptNumber,
 			lastError: result.error,
 			...(ms > 0 ? { nextRetryIn: ms } : {}),
 		});
-		if (delayDuration) {
+		if (onRetry !== undefined) {
+			try {
+				onRetry({ attempt: attemptNumber, error: result.error, delay: delayDuration });
+			} catch {
+				// Defensive callback shielding
+			}
+		}
+		if (ms > 0) {
 			await cancellableWait(delayDuration, signal);
 		}
 		if (signal.aborted) { return null; }

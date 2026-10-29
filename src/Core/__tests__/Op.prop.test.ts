@@ -1,6 +1,7 @@
 import fc from "fast-check";
 import { expect, test } from "vitest";
 import { Duration } from "../../Types/Duration.ts";
+import { RetryPolicy } from "../../Types/RetryPolicy.ts";
 import { Deferred } from "../Deferred.ts";
 import { Op } from "../Op.ts";
 
@@ -265,7 +266,10 @@ test("interpret: retries factory exactly specified attempts when failing", async
 			calls++;
 			return Promise.reject(new Error("fail"));
 		}, { onError: (e) => (e as Error).message });
-		const manager = Op.interpret(countingOp, { strategy: "exclusive", retry: { attempts } });
+		const manager = Op.interpret(countingOp, {
+			strategy: "exclusive",
+			retry: RetryPolicy.constant({ attempts, delay: Duration.milliseconds(0) }),
+		});
 		await manager.run(0);
 		expect(calls).toBe(attempts);
 	}));

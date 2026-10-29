@@ -1,6 +1,6 @@
 import type { WithKind } from "#internal";
 import type { Duration } from "../Types/Duration.ts";
-import type { RetryPolicy } from "../Types/RetryPolicy.ts";
+import type { RetryEvent, RetryPolicy } from "../Types/RetryPolicy.ts";
 import { Deferred } from "./Deferred.ts";
 import { Result } from "./Result.ts";
 import { Task } from "./Task.ts";
@@ -88,7 +88,7 @@ export namespace Graph {
 			/**
 			 * Retry policy governing transient failure retries before failing the node.
 			 */
-			readonly retry?: RetryPolicy;
+			readonly retry?: RetryPolicy<E>;
 
 			/**
 			 * Execution task evaluating to a fallible `Task.Result`.
@@ -98,7 +98,12 @@ export namespace Graph {
 		};
 
 	/**
-	 * Options configuring DAG execution pacing.
+	 * Telemetry event emitted when any node in the graph initiates a retry attempt.
+	 */
+	export type RunRetryEvent = RetryEvent<unknown> & { readonly nodeId: string; };
+
+	/**
+	 * Options configuring DAG execution pacing and telemetry.
 	 */
 	export type RunOptions = {
 		/**
@@ -106,6 +111,20 @@ export namespace Graph {
 		 * Defaults to `Infinity` (unbounded concurrency across all satisfied branches).
 		 */
 		readonly concurrency?: number;
+
+		/**
+		 * Global hook fired whenever any node in the graph initiates a retry attempt.
+		 *
+		 * @example
+		 * ```ts
+		 * const outcome = await Graph.run(graph, {
+		 *   onRetry: ({ nodeId, attempt, error, delay }) => {
+		 *     console.warn(`[${nodeId}] attempt ${attempt} failed: ${error}`);
+		 *   },
+		 * })();
+		 * ```
+		 */
+		readonly onRetry?: (event: RunRetryEvent) => void;
 	};
 }
 
@@ -118,7 +137,7 @@ type InternalNodeState = {
 	readonly deps: Readonly<Record<string, Graph.AnyNode>> | undefined;
 	readonly run: (deps: Record<string, unknown>) => Task.Result<unknown, unknown>;
 	readonly timeout?: { readonly duration: Duration; readonly onTimeout: () => unknown; };
-	readonly retry?: RetryPolicy;
+	readonly retry?: RetryPolicy<any>;
 };
 
 type InternalNode<Id extends string, E, Out> = Graph.Node<Id, E, Out> & {
@@ -445,8 +464,32 @@ const runGraph = <E, Out>(graph: Graph<E, Out>, options?: Graph.RunOptions): Tas
 				try {
 					let task = nodeInternal.run(inputs ?? {});
 
-					if (nodeInternal.retry) {
-						task = Task.Result.retry(nodeInternal.retry)(task);
+					const retryPolicy = nodeInternal.retry;
+					if (retryPolicy) {
+						const graphOnRetry = options?.onRetry;
+						const nodeOnRetry = retryPolicy.onRetry;
+
+						const policy: RetryPolicy<unknown> = graphOnRetry !== undefined
+							? {
+								...retryPolicy,
+								onRetry: (event) => {
+									if (nodeOnRetry) {
+										try {
+											nodeOnRetry(event);
+										} catch {
+											// Isolated: node-level telemetry error does not disrupt retry
+										}
+									}
+									try {
+										graphOnRetry({ ...event, nodeId: node.id });
+									} catch {
+										// Isolated: graph-level telemetry error does not disrupt retry
+									}
+								},
+							}
+							: retryPolicy;
+
+						task = Task.Result.retry(policy)(task);
 					}
 					if (nodeInternal.timeout) {
 						task = Task.Result.timeout(nodeInternal.timeout as any)(task);

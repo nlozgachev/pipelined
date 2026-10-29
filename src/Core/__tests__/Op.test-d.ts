@@ -221,11 +221,16 @@ test("interpret: infers strategy-specific state unions and manager run return ty
 });
 
 test("interpret options: widens state union with Retrying and widens error with timeout", () => {
-	const typedRetry: Op.RetryOptions<string> = {
+	const typedRetry: Op.RetryOptions<string> = RetryPolicy.constant({
 		attempts: 2,
+		delay: Duration.milliseconds(50),
 		when: (e) => e.length > 0,
-		backoff: RetryPolicy.constant({ attempts: 2, delay: Duration.milliseconds(50) }),
-	};
+		onRetry: (event) => {
+			expectTypeOf(event.attempt).toEqualTypeOf<number>();
+			expectTypeOf(event.error).toEqualTypeOf<string>();
+			expectTypeOf(event.delay).toEqualTypeOf<Duration>();
+		},
+	});
 	expectTypeOf(typedRetry).toEqualTypeOf<Op.RetryOptions<string>>();
 
 	const typedTimeout: Op.TimeoutOptions<Error> = {
@@ -236,6 +241,10 @@ test("interpret options: widens state union with Retrying and widens error with 
 
 	const retryManager = Op.interpret(delayedOp, { strategy: "restartable", retry: typedRetry });
 	expectTypeOf(retryManager.state).toEqualTypeOf<Op.RestartableState<string, number> | Op.Retrying<string>>();
+
+	const directPolicy = RetryPolicy.constant({ attempts: 3, delay: Duration.seconds(1) });
+	const policyManager = Op.interpret(delayedOp, { strategy: "restartable", retry: directPolicy });
+	expectTypeOf(policyManager.state).toEqualTypeOf<Op.RestartableState<string, number> | Op.Retrying<string>>();
 
 	const timeoutOp = Op.make((_signal: AbortSignal) => (_input: number) => Promise.resolve(42), {
 		onError: (_err) => "op_error" as const,

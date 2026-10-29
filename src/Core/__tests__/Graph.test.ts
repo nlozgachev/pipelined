@@ -272,7 +272,7 @@ test("node: applies retry policy on transient failure", async () => {
 
 	const retryingNode = Graph.node({
 		id: "retrying",
-		retry: RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(5) }),
+		retry: RetryPolicy.constant<string>({ attempts: 3, delay: Duration.milliseconds(5) }),
 		run: () =>
 			Task.Result.tryCatch(async () => {
 				attempts++;
@@ -289,6 +289,136 @@ test("node: applies retry policy on transient failure", async () => {
 
 	expect(attempts).toBe(3);
 	expect(outcome).toStrictEqual(Result.make.ok("recovered"));
+});
+
+test("node: applies retry policy with when filter and onRetry hook", async () => {
+	const events: Array<{ attempt: number; error: string; delay: Duration; }> = [];
+	let attempts = 0;
+
+	const retryingNode = Graph.node({
+		id: "with-hooks",
+		retry: RetryPolicy.constant<string>({
+			attempts: 4,
+			delay: Duration.milliseconds(2),
+			when: (err) => err === "transient_error",
+			onRetry: (event) => {
+				events.push(event);
+			},
+		}),
+		run: () =>
+			Task.Result.tryCatch(async () => {
+				attempts++;
+				if (attempts < 3) {
+					throw new Error("transient_error");
+				}
+				await Promise.resolve();
+				return "recovered_with_hook";
+			}, { onError: (e) => (e instanceof Error ? e.message : String(e)) }),
+	});
+
+	const graph = Graph.make(retryingNode);
+	const outcome = await Graph.run(graph)();
+
+	expect(outcome).toStrictEqual(Result.make.ok("recovered_with_hook"));
+	expect(attempts).toBe(3);
+	expect(events).toHaveLength(2);
+	expect(events[0]).toStrictEqual({ attempt: 1, error: "transient_error", delay: Duration.milliseconds(2) });
+	expect(events[1]).toStrictEqual({ attempt: 2, error: "transient_error", delay: Duration.milliseconds(2) });
+});
+
+test("run: aggregates graph-level onRetry telemetry across nodes", async () => {
+	const graphEvents: Array<{ nodeId: string; attempt: number; error: unknown; delay: Duration; }> = [];
+	let node1Attempts = 0;
+	let node2Attempts = 0;
+
+	const node1 = Graph.node({
+		id: "step1",
+		retry: RetryPolicy.constant<string>({ attempts: 3, delay: Duration.milliseconds(2) }),
+		run: () =>
+			Task.Result.tryCatch(() => {
+				node1Attempts++;
+				if (node1Attempts < 2) {
+					throw new Error("err_step1");
+				}
+				return Promise.resolve("step1_ok");
+			}, { onError: (e) => (e instanceof Error ? e.message : String(e)) }),
+	});
+
+	const node2 = Graph.node({
+		id: "step2",
+		deps: { n1: node1 },
+		retry: RetryPolicy.constant<string>({ attempts: 3, delay: Duration.milliseconds(2) }),
+		run: ({ n1 }) =>
+			Task.Result.tryCatch(() => {
+				node2Attempts++;
+				if (node2Attempts < 3) {
+					throw new Error("err_step2");
+				}
+				return Promise.resolve(`${n1}_step2_ok`);
+			}, { onError: (e) => (e instanceof Error ? e.message : String(e)) }),
+	});
+
+	const graph = Graph.make(node2);
+	const outcome = await Graph.run(graph, {
+		onRetry: (event) => {
+			graphEvents.push(event);
+		},
+	})();
+
+	expect(outcome).toStrictEqual(Result.make.ok("step1_ok_step2_ok"));
+	expect(node1Attempts).toBe(2);
+	expect(node2Attempts).toBe(3);
+	expect(graphEvents).toHaveLength(3);
+	expect(graphEvents[0]).toStrictEqual({
+		nodeId: "step1",
+		attempt: 1,
+		error: "err_step1",
+		delay: Duration.milliseconds(2),
+	});
+	expect(graphEvents[1]).toStrictEqual({
+		nodeId: "step2",
+		attempt: 1,
+		error: "err_step2",
+		delay: Duration.milliseconds(2),
+	});
+	expect(graphEvents[2]).toStrictEqual({
+		nodeId: "step2",
+		attempt: 2,
+		error: "err_step2",
+		delay: Duration.milliseconds(2),
+	});
+});
+
+test("run: safely isolates throwing node and graph onRetry handlers", async () => {
+	let attempts = 0;
+	const node = Graph.node({
+		id: "resilient",
+		retry: RetryPolicy.constant<string>({
+			attempts: 3,
+			delay: Duration.milliseconds(1),
+			onRetry: () => {
+				throw new Error("node_hook_failed");
+			},
+		}),
+		run: () =>
+			Task.Result.tryCatch(() => {
+				attempts++;
+				if (attempts < 2) {
+					throw new Error("transient");
+				}
+				return Promise.resolve("ok");
+			}, { onError: (e) => (e instanceof Error ? e.message : String(e)) }),
+	});
+
+	const graph = Graph.make(node);
+	const outcome = await Graph.run(graph, {
+		onRetry: () => {
+			throw new Error("graph_hook_failed");
+		},
+	})();
+
+	expect(outcome).toStrictEqual(Result.make.ok("ok"));
+	expect(attempts).toBe(2);
 });
 
 test("node: applies timeout policy when execution exceeds duration", async () => {

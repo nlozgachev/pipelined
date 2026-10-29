@@ -455,7 +455,7 @@ test("is.retrying: returns true only for Retrying state", async () => {
 	}, { onError: (e) => String(e) });
 	const manager = Op.interpret(op, {
 		strategy: "restartable",
-		retry: { attempts: 2, backoff: () => Duration.milliseconds(0) },
+		retry: RetryPolicy.constant({ attempts: 2, delay: Duration.milliseconds(0) }),
 	});
 	let sawRetrying = false;
 	manager.subscribe((s) => {
@@ -755,7 +755,10 @@ test("interpret: restartable with retry emits Retrying between attempts", async 
 		calls++;
 		return Promise.reject(new Error("fail"));
 	}, { onError: (e) => (e as Error).message });
-	const manager = Op.interpret(op, { strategy: "restartable", retry: { attempts: 3 } });
+	const manager = Op.interpret(op, {
+		strategy: "restartable",
+		retry: RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(0) }),
+	});
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(3);
 	expect(states[0]).toStrictEqual({ kind: "Pending" });
@@ -770,7 +773,10 @@ test("interpret: restartable with retry stops retrying on Ok", async () => {
 		calls++;
 		return calls < 2 ? Promise.reject(new Error("not yet")) : Promise.resolve(99);
 	}, { onError: (e) => (e as Error).message });
-	const manager = Op.interpret(op, { strategy: "restartable", retry: { attempts: 5 } });
+	const manager = Op.interpret(op, {
+		strategy: "restartable",
+		retry: RetryPolicy.constant({ attempts: 5, delay: Duration.milliseconds(0) }),
+	});
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(2);
 	expect(states.at(-1)).toStrictEqual({ kind: "OpOk", value: 99 });
@@ -784,7 +790,7 @@ test("interpret: restartable with retry respects when guard", async () => {
 	}, { onError: (e) => (e as Error).message });
 	const manager = Op.interpret(op, {
 		strategy: "restartable",
-		retry: { attempts: 5, when: (e) => e !== "non-retryable" },
+		retry: RetryPolicy.constant({ attempts: 5, delay: Duration.milliseconds(0), when: (e) => e !== "non-retryable" }),
 	});
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(1);
@@ -826,7 +832,7 @@ test("interpret: restartable retry and timeout wraps entire retry sequence with 
 		}), { onError: (e) => (e as Error).message });
 	const manager = Op.interpret(op, {
 		strategy: "restartable",
-		retry: { attempts: 10 },
+		retry: RetryPolicy.constant({ attempts: 10, delay: Duration.milliseconds(0) }),
 		timeout: { duration: Duration.milliseconds(35), onTimeout: () => "timed out" },
 	});
 	const states = await runAndCollect(manager, 1);
@@ -1099,7 +1105,10 @@ test("interpret: once with retry retries on Err then settles", async () => {
 		calls++;
 		return calls < 3 ? Promise.reject(new Error("not yet")) : Promise.resolve(99);
 	}, { onError: (e) => (e as Error).message });
-	const manager = Op.interpret(op, { strategy: "once", retry: { attempts: 5 } });
+	const manager = Op.interpret(op, {
+		strategy: "once",
+		retry: RetryPolicy.constant({ attempts: 5, delay: Duration.milliseconds(0) }),
+	});
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(3);
 	expect(states.at(-1)).toStrictEqual({ kind: "OpOk", value: 99 });
@@ -1785,7 +1794,10 @@ test("interpret: queue with retry emits Retrying states between attempts", async
 		calls++;
 		return Promise.reject(new Error("fail"));
 	}, { onError: (e) => (e as Error).message });
-	const manager = Op.interpret(op, { strategy: "queue", retry: { attempts: 3 } });
+	const manager = Op.interpret(op, {
+		strategy: "queue",
+		retry: RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(0) }),
+	});
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(3);
 	expect(states[0]).toStrictEqual({ kind: "Pending" });
@@ -1800,7 +1812,10 @@ test("interpret: buffered with retry emits Retrying states between attempts", as
 		calls++;
 		return Promise.reject(new Error("fail"));
 	}, { onError: (e) => (e as Error).message });
-	const manager = Op.interpret(op, { strategy: "buffered", retry: { attempts: 3 } });
+	const manager = Op.interpret(op, {
+		strategy: "buffered",
+		retry: RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(0) }),
+	});
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(3);
 	expect(states[0]).toStrictEqual({ kind: "Pending" });
@@ -1819,7 +1834,7 @@ test("interpret: debounced leading with retry emits Retrying states between atte
 		strategy: "debounced",
 		duration: Duration.milliseconds(0),
 		leading: true,
-		retry: { attempts: 3 },
+		retry: RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(0) }),
 	});
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(3);
@@ -1838,7 +1853,7 @@ test("interpret: debounced trailing with retry emits Retrying states between att
 	const manager = Op.interpret(op, {
 		strategy: "debounced",
 		duration: Duration.milliseconds(10),
-		retry: { attempts: 3 },
+		retry: RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(0) }),
 	});
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(3);
@@ -1857,7 +1872,7 @@ test("interpret: throttled with retry emits Retrying states between attempts", a
 	const manager = Op.interpret(op, {
 		strategy: "throttled",
 		duration: Duration.milliseconds(0),
-		retry: { attempts: 3 },
+		retry: RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(0) }),
 	});
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(3);
@@ -1873,7 +1888,12 @@ test("interpret: concurrent with retry emits Retrying states between attempts", 
 		calls++;
 		return Promise.reject(new Error("fail"));
 	}, { onError: (e) => (e as Error).message });
-	const manager = Op.interpret(op, { strategy: "concurrent", concurrency: 1, overflow: "drop", retry: { attempts: 3 } });
+	const manager = Op.interpret(op, {
+		strategy: "concurrent",
+		concurrency: 1,
+		overflow: "drop",
+		retry: RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(0) }),
+	});
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(3);
 	expect(states[0]).toStrictEqual({ kind: "Pending" });
@@ -1953,8 +1973,7 @@ test("interpret: keyed without key or perKey uses identity key and exclusive def
 
 // --- runWithRetry — numeric backoff (lines 56, 70-73) ---
 
-test("interpret: restartable with numeric backoff emits Retrying with nextRetryIn", async () => {
-	// Covers the `backoff` as a plain number branch (line 56) and the ms>0 nextRetryIn path (lines 70-73)
+test("interpret: restartable with retry policy emits Retrying with nextRetryIn", async () => {
 	let calls = 0;
 	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		calls++;
@@ -1962,7 +1981,7 @@ test("interpret: restartable with numeric backoff emits Retrying with nextRetryI
 	}, { onError: (e) => (e as Error).message });
 	const manager = Op.interpret(op, {
 		strategy: "restartable",
-		retry: { attempts: 3, backoff: Duration.milliseconds(50) },
+		retry: RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(50) }),
 	});
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(3);
@@ -1971,7 +1990,7 @@ test("interpret: restartable with numeric backoff emits Retrying with nextRetryI
 	expect(states.at(-1)).toStrictEqual({ kind: "OpErr", error: "fail" });
 });
 
-test("interpret: exclusive with numeric backoff emits Retrying with nextRetryIn", async () => {
+test("interpret: exclusive with retry policy emits Retrying with nextRetryIn", async () => {
 	let calls = 0;
 	const op = Op.make((_signal: AbortSignal) => (_: number) => {
 		calls++;
@@ -1979,7 +1998,7 @@ test("interpret: exclusive with numeric backoff emits Retrying with nextRetryIn"
 	}, { onError: (e) => (e as Error).message });
 	const manager = Op.interpret(op, {
 		strategy: "exclusive",
-		retry: { attempts: 3, backoff: Duration.milliseconds(50) },
+		retry: RetryPolicy.constant({ attempts: 3, delay: Duration.milliseconds(50) }),
 	});
 	const states = await runAndCollect(manager, 1);
 	expect(calls).toBe(3);
@@ -2442,7 +2461,7 @@ test("interpret: retry policy with Duration backoff", async () => {
 	}, { onError: (e) => String(e) });
 	const manager = Op.interpret(op, {
 		strategy: "restartable",
-		retry: { attempts: 2, backoff: Duration.milliseconds(5) },
+		retry: RetryPolicy.constant({ attempts: 2, delay: Duration.milliseconds(5) }),
 	});
 	const outcome = await manager.run(1);
 	expect(outcome).toStrictEqual(Op.Outcome.make.ok(42));
@@ -2457,7 +2476,7 @@ test("interpret: retry policy with Duration backoff function", async () => {
 	}, { onError: (e) => String(e) });
 	const manager = Op.interpret(op, {
 		strategy: "restartable",
-		retry: { attempts: 2, backoff: (n) => Duration.milliseconds(n * 2) },
+		retry: { attempts: 2, getDelay: (n) => Duration.milliseconds(n * 2) },
 	});
 	const outcome = await manager.run(1);
 	expect(outcome).toStrictEqual(Op.Outcome.make.ok(42));
@@ -2513,14 +2532,14 @@ test("pipe: composes outcome with mapError and to.Result", () => {
 // --- Op.RetryOptions & Op.TimeoutOptions type and runtime tests ---
 
 test("RetryOptions: supports default unknown error type and typed error predicate", () => {
-	const defaultRetry: Op.RetryOptions = { attempts: 3 };
+	const defaultRetry: Op.RetryOptions = RetryPolicy.constant({ attempts: 3, delay: Duration.seconds(1) });
 	expect(defaultRetry.attempts).toBe(3);
 
-	const typedRetry: Op.RetryOptions<string> = {
+	const typedRetry: Op.RetryOptions<string> = RetryPolicy.constant({
 		attempts: 2,
+		delay: Duration.milliseconds(50),
 		when: (e) => e.length > 0,
-		backoff: RetryPolicy.constant({ attempts: 2, delay: Duration.milliseconds(50) }),
-	};
+	});
 	expect(typedRetry.attempts).toBe(2);
 });
 
@@ -2640,7 +2659,7 @@ test("make: catches error thrown inside onError callback and returns Err outcome
 	expect((res as Op.Err<Error>).error.message).toBe("handler_failed");
 });
 
-test("interpret: retries with RetryPolicy backoff object", async () => {
+test("interpret: retries with RetryPolicy", async () => {
 	let attempts = 0;
 	const op = Op.make((_signal: AbortSignal) => (_input: number) => {
 		attempts++;
@@ -2649,7 +2668,7 @@ test("interpret: retries with RetryPolicy backoff object", async () => {
 	}, { onError: (e) => (e as Error).message });
 	const manager = Op.interpret(op, {
 		strategy: "restartable",
-		retry: { attempts: 2, backoff: RetryPolicy.constant({ attempts: 2, delay: Duration.milliseconds(5) }) },
+		retry: RetryPolicy.constant({ attempts: 2, delay: Duration.milliseconds(5) }),
 	});
 	const res = await manager.run(1);
 	expect(res).toStrictEqual(Op.Outcome.make.ok(42));
@@ -2795,12 +2814,13 @@ test("retry: when predicate throwing error converts to Err outcome", async () =>
 	});
 	const manager = Op.interpret(op, {
 		strategy: "restartable",
-		retry: {
+		retry: RetryPolicy.constant({
 			attempts: 3,
+			delay: Duration.milliseconds(0),
 			when: () => {
 				throw new Error("predicate_crashed");
 			},
-		},
+		}),
 	});
 	const res = await manager.run(1);
 	expect(Op.Outcome.is.err(res)).toBe(true);
@@ -2848,4 +2868,101 @@ test("interpret: queue dedupe predicate throwing error is treated as false", asy
 	expect(res1).toStrictEqual(Op.Outcome.make.ok(1));
 	expect(res2).toStrictEqual(Op.Outcome.make.ok(2));
 	expect(res3).toStrictEqual(Op.Outcome.make.ok(3));
+});
+
+test("retry: executes onRetry callback on each attempt before delay", async () => {
+	const events: Array<{ attempt: number; error: string; delay: Duration; }> = [];
+	let calls = 0;
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
+		calls++;
+		return calls < 3 ? Promise.reject(new Error(`err_${calls}`)) : Promise.resolve(99);
+	}, { onError: (e) => (e as Error).message });
+
+	const manager = Op.interpret(op, {
+		strategy: "once",
+		retry: RetryPolicy.constant({
+			attempts: 4,
+			delay: Duration.milliseconds(2),
+			onRetry: (event) => {
+				events.push(event);
+			},
+		}),
+	});
+
+	const res = await manager.run(1);
+	expect(res).toStrictEqual(Op.Outcome.make.ok(99));
+	expect(calls).toBe(3);
+	expect(events).toHaveLength(2);
+	expect(events[0]).toStrictEqual({ attempt: 1, error: "err_1", delay: Duration.milliseconds(2) });
+	expect(events[1]).toStrictEqual({ attempt: 2, error: "err_2", delay: Duration.milliseconds(2) });
+});
+
+test("retry: does not invoke onRetry when first attempt succeeds", async () => {
+	let onRetryCalled = false;
+	const op = Op.make((_signal: AbortSignal) => (_: number) => Promise.resolve("ok"), {
+		onError: (e) => (e as Error).message,
+	});
+
+	const manager = Op.interpret(op, {
+		strategy: "restartable",
+		retry: RetryPolicy.constant({
+			attempts: 3,
+			delay: Duration.milliseconds(0),
+			onRetry: () => {
+				onRetryCalled = true;
+			},
+		}),
+	});
+
+	const res = await manager.run(1);
+	expect(res).toStrictEqual(Op.Outcome.make.ok("ok"));
+	expect(onRetryCalled).toBe(false);
+});
+
+test("retry: safely isolates throwing onRetry callback", async () => {
+	let calls = 0;
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
+		calls++;
+		return calls < 2 ? Promise.reject(new Error("fail")) : Promise.resolve(42);
+	}, { onError: (e) => (e as Error).message });
+
+	const manager = Op.interpret(op, {
+		strategy: "once",
+		retry: RetryPolicy.constant({
+			attempts: 3,
+			delay: Duration.milliseconds(0),
+			onRetry: () => {
+				throw new Error("onRetry_crashed");
+			},
+		}),
+	});
+
+	const res = await manager.run(1);
+	expect(res).toStrictEqual(Op.Outcome.make.ok(42));
+	expect(calls).toBe(2);
+});
+
+test("retry: accepts RetryPolicy directly in Op.interpret", async () => {
+	let calls = 0;
+	const events: Array<{ attempt: number; error: string; delay: Duration; }> = [];
+	const op = Op.make((_signal: AbortSignal) => (_: number) => {
+		calls++;
+		return calls < 3 ? Promise.reject(new Error("retry_me")) : Promise.resolve("done");
+	}, { onError: (e) => (e as Error).message });
+
+	const policy = RetryPolicy.constant<string>({
+		attempts: 4,
+		delay: Duration.milliseconds(2),
+		when: (e) => e === "retry_me",
+		onRetry: (ev) => {
+			events.push(ev);
+		},
+	});
+
+	const manager = Op.interpret(op, { strategy: "restartable", retry: policy });
+
+	const res = await manager.run(1);
+	expect(res).toStrictEqual(Op.Outcome.make.ok("done"));
+	expect(calls).toBe(3);
+	expect(events).toHaveLength(2);
 });

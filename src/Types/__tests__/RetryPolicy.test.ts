@@ -63,3 +63,37 @@ test("exponential: clamps delays at maxDelay limit", () => {
 	expect(Duration.to.milliseconds(policy.getDelay(3))).toBe(300);
 	expect(Duration.to.milliseconds(policy.getDelay(4))).toBe(300);
 });
+
+test("exponential: preserves when and onRetry callbacks", () => {
+	let retryCalled = false;
+	const policy = RetryPolicy.exponential({
+		attempts: 3,
+		initial: Duration.milliseconds(50),
+		when: (e) => e === "retryable",
+		onRetry: () => {
+			retryCalled = true;
+		},
+	});
+
+	expect(policy.when?.("retryable")).toBe(true);
+	expect(policy.when?.("other")).toBe(false);
+	policy.onRetry?.({ attempt: 1, error: "retryable", delay: Duration.milliseconds(50) });
+	expect(retryCalled).toBe(true);
+});
+
+test("constant: preserves when and onRetry callbacks", () => {
+	let retryCalled = false;
+	const policy = RetryPolicy.constant({
+		attempts: 2,
+		delay: Duration.seconds(1),
+		when: (e) => e === "ok",
+		onRetry: () => {
+			retryCalled = true;
+		},
+	});
+
+	expect(policy.when?.("ok")).toBe(true);
+	expect(policy.when?.("no")).toBe(false);
+	policy.onRetry?.({ attempt: 1, error: "ok", delay: Duration.seconds(1) });
+	expect(retryCalled).toBe(true);
+});
