@@ -49,6 +49,7 @@ const GUIDE_MAP: Record<string, { module: string; subpath: string; }> = {
 	"duration.md": { module: "Duration", subpath: "@nlozgachev/pipelined/types" },
 	"equality.md": { module: "Equality", subpath: "@nlozgachev/pipelined/core" },
 	"event-bus.md": { module: "EventBus", subpath: "@nlozgachev/pipelined/core" },
+	"graph.md": { module: "Graph", subpath: "@nlozgachev/pipelined/core" },
 	"json.md": { module: "Json", subpath: "@nlozgachev/pipelined/data" },
 	"lens.md": { module: "Lens", subpath: "@nlozgachev/pipelined/core" },
 	"logged.md": { module: "Logged", subpath: "@nlozgachev/pipelined/core" },

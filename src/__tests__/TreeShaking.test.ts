@@ -42,6 +42,7 @@ test("core: excludes Op, EventBus, Machine, and Dict when importing only Maybe",
 	expect(output).not.toContain("Machine");
 	expect(output).not.toContain("Dict");
 	expect(output).not.toContain("TaskValidation");
+	expect(output).not.toContain("GraphNode");
 });
 
 test("core: excludes Op, EventBus, and Machine when importing only Result", async () => {
@@ -55,6 +56,7 @@ test("core: excludes Op, EventBus, and Machine when importing only Result", asyn
 	expect(output).not.toContain("Machine");
 	expect(output).not.toContain("OpErr");
 	expect(output).not.toContain("TaskValidation");
+	expect(output).not.toContain("GraphNode");
 });
 
 test("data: excludes Dict, Rec, Str, and Uniq when importing only Arr", async () => {

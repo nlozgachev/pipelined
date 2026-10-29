@@ -20,15 +20,16 @@ carry `unknown`, and retry or cancellation logic ends up tangled with the reques
 
 `pipelined` gives those cases plain discriminated-union types and curried functions that compose in
 a `pipe`: `Maybe` for missing values, `Result` for typed errors, `Validation` for collecting
-multiple errors at once, `Task.Result` for lazy async work with cancellation, `Op` for managed
-requests with retries and concurrency rules, `Resource` for safe lifecycle management of connections
-and locks, and `EventBus` for typed in-memory events.
+multiple errors at once, `Task.Result` for lazy async work with cancellation, `Graph` for
+declarative dependency DAG scheduling with sibling cancellation, `Machine` for type-safe finite
+state transitions, `Op` for managed requests with retries and concurrency rules, `Resource` for safe
+lifecycle management of connections and locks, and `EventBus` for typed in-memory events.
 
 <!-- BUNDLE_OVERVIEW:START -->
 
-It has zero dependencies, ships ESM and CommonJS builds, and tree-shakes down to ~142 B–1.89 kB
-gzipped for individual modules (with an upper ceiling of <12.78 kB gzipped for all of `core` and
-<19.61 kB for the entire package).
+It has zero dependencies, ships ESM and CommonJS builds, and tree-shakes down to ~142 B–1.90 kB
+gzipped for individual modules (with an upper ceiling of <14.12 kB gzipped for all of `core` and
+<20.98 kB for the entire package).
 
 <!-- BUNDLE_OVERVIEW:END -->
 
@@ -609,6 +610,8 @@ if (Result.is.ok(email)) {
 | Multi-field form and batch validation error accumulation           | `Validation`                    | `@nlozgachev/pipelined/core`        |
 | Lazy async workflows with automatic `AbortSignal`                  | `Task.Result`, `Task`           | `@nlozgachev/pipelined/core`        |
 | Infallible async return container for tasks                        | `Deferred`                      | `@nlozgachev/pipelined/core`        |
+| Declarative DAG task scheduling & cycle detection                  | `Graph`                         | `@nlozgachev/pipelined/core`        |
+| Type-safe finite state machines & validated transitions            | `Machine`                       | `@nlozgachev/pipelined/core`        |
 | Eliminating impossible UI loading/error/data states                | `RemoteData`                    | `@nlozgachev/pipelined/core`        |
 | Managing request race conditions, retries, and locks               | `Op`                            | `@nlozgachev/pipelined/core`        |
 | In-memory typed event dispatching, sequence funnels & queue safety | `EventBus`                      | `@nlozgachev/pipelined/core`        |
@@ -668,12 +671,13 @@ When imported individually, only the targeted module is bundled into your applic
 | `Maybe`        | `@nlozgachev/pipelined/core`        | **1.57 kB**        | 1,569 B   |
 | `Result`       | `@nlozgachev/pipelined/core`        | **1.57 kB**        | 1,569 B   |
 | `Validation`   | `@nlozgachev/pipelined/core`        | **1.57 kB**        | 1,569 B   |
-| `RemoteData`   | `@nlozgachev/pipelined/core`        | **1.87 kB**        | 1,870 B   |
-| `Machine`      | `@nlozgachev/pipelined/core`        | **1.89 kB**        | 1,894 B   |
+| `RemoteData`   | `@nlozgachev/pipelined/core`        | **1.87 kB**        | 1,868 B   |
+| `Machine`      | `@nlozgachev/pipelined/core`        | **1.90 kB**        | 1,895 B   |
 | `EventBus`     | `@nlozgachev/pipelined/core`        | **1.18 kB**        | 1,179 B   |
-| `Resource`     | `@nlozgachev/pipelined/core`        | **2.32 kB**        | 2,324 B   |
+| `Resource`     | `@nlozgachev/pipelined/core`        | **2.32 kB**        | 2,323 B   |
+| `Graph`        | `@nlozgachev/pipelined/core`        | **5.37 kB**        | 5,369 B   |
 | `Task`         | `@nlozgachev/pipelined/core`        | **4.01 kB**        | 4,011 B   |
-| `Op`           | `@nlozgachev/pipelined/core`        | **5.98 kB**        | 5,979 B   |
+| `Op`           | `@nlozgachev/pipelined/core`        | **5.98 kB**        | 5,981 B   |
 | `Lens`         | `@nlozgachev/pipelined/core`        | **233 B**          | 233 B     |
 | `Arr`          | `@nlozgachev/pipelined/data`        | **6.79 kB**        | 6,787 B   |
 | `Rec`          | `@nlozgachev/pipelined/data`        | **6.79 kB**        | 6,788 B   |
@@ -685,13 +689,13 @@ When imported individually, only the targeted module is bundled into your applic
 The upper bounds below apply only if your application imports every exported symbol from that
 subpath:
 
-| Subpath                             | Scope                                                  | Gzipped Size | Budget Limit |
-| :---------------------------------- | :----------------------------------------------------- | :----------- | :----------- |
-| `@nlozgachev/pipelined/types`       | Domain branded types and duration units                | **429 B**    | 450 B        |
-| `@nlozgachev/pipelined/composition` | Pipeline runners and composition combinators           | **1.54 kB**  | 2.00 kB      |
-| `@nlozgachev/pipelined/data`        | Bounds-safe array, record, and primitive helpers       | **9.60 kB**  | 10.00 kB     |
-| `@nlozgachev/pipelined/core`        | Monadic containers, async execution, state, and optics | **12.78 kB** | 13.00 kB     |
-| **All entry points combined**       | Monolithic import of entire library                    | **19.61 kB** | 20.00 kB     |
+| Subpath                             | Scope                                                             | Gzipped Size | Budget Limit |
+| :---------------------------------- | :---------------------------------------------------------------- | :----------- | :----------- |
+| `@nlozgachev/pipelined/types`       | Domain branded types and duration units                           | **429 B**    | 450 B        |
+| `@nlozgachev/pipelined/composition` | Pipeline runners and composition combinators                      | **1.54 kB**  | 2.00 kB      |
+| `@nlozgachev/pipelined/data`        | Bounds-safe array, record, and primitive helpers                  | **9.60 kB**  | 10.00 kB     |
+| `@nlozgachev/pipelined/core`        | Typed errors, optional values, async execution, state, and optics | **14.12 kB** | 15.00 kB     |
+| **All entry points combined**       | Monolithic import of entire library                               | **20.98 kB** | 22.00 kB     |
 
 <!-- BUNDLE_TABLE:END -->
 

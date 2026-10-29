@@ -5,7 +5,7 @@ description: Eliminate impossible states, enforce compile-time outbound transiti
 
 <!-- BUNDLE_SIZE:START -->
 
-> 1.89 kB minified + gzipped (1,894 B)
+> 1.90 kB minified + gzipped (1,895 B)
 
 <!-- BUNDLE_SIZE:END -->
 

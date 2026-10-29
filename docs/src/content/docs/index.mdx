@@ -20,16 +20,16 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
     Replace unchecked exceptions, silent null propagation, and trial-and-error form submissions with typed containers that either fail fast or accumulate errors across fields simultaneously.
   </Card>
   <Card title="Resilient Async & Concurrency">
-    Eliminate in-flight race conditions and unhandled rejections. Lazy tasks thread `AbortSignal` automatically, `Op` manages declarative concurrency (`restartable`, `exclusive`, retries, timeouts), and `EventBus` matches multi-step event funnels with stack-safe queues.
+    Eliminate in-flight race conditions and unhandled rejections. Lazy tasks thread `AbortSignal` automatically, `Graph` schedules dependency DAGs with sibling cancellation, `Op` manages retries and concurrency policies, and `EventBus` coordinates typed event streams.
   </Card>
   <Card title="Eliminate Impossible States">
-    Replace contradictory loading/error boolean combinations with 4-state `RemoteData` pattern matching. Model inclusive-OR sync states with `These`, and prevent parameter mixups with zero-runtime-cost `Brand` nominal IDs.
+    Replace contradictory boolean flags with mutually exclusive union states. `Machine` enforces compile-time state transitions, `RemoteData` tracks 4-stage request lifecycles, `These` captures partial success, and `Brand` prevents nominal ID mixups without runtime overhead.
   </Card>
   <Card title="Deep Optics & Clean State">
     Update deeply nested state trees in a single line without spread boilerplate (`Lens`). Inject runtime dependencies without prop drilling (`Reader`), and isolate modular sub-state transitions (`State.focus`).
   </Card>
   <Card title="Linear Composition First">
-    Logic reads top-to-bottom in the exact order it executes. Enriched with 13 higher-order combinators and high-performance collection utilities (`Arr`, `Rec`, `Dict`, `Uniq`, `Str`, `Num`, `BigNum`, `Json`) that compose point-free.
+    Logic reads top-to-bottom in the exact order it executes. Enriched with function combinators and high-performance collection utilities (`Arr`, `Rec`, `Dict`, `Uniq`, `Str`, `Num`, `BigNum`, `Json`) that compose cleanly in pipelines without intermediate variable boilerplate.
   </Card>
   <Card title="Zero Jargon, Zero Dependencies">
     Built for TypeScript developers. Plain discriminated unions, zero external dependencies, 100% tree-shakeable, and clear descriptive APIs without algebraic jargon.

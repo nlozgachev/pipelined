@@ -338,7 +338,7 @@ export const Bool = {
 	},
 
 	/**
-	 * Converters from boolean conditions into strings or monadic containers.
+	 * Converters from boolean conditions into strings, `Maybe`, or `Result`.
 	 */
 	to: {
 		/**

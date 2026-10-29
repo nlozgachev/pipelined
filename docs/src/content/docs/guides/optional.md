@@ -5,7 +5,7 @@ description: Focus on a property or index that may be absent to read, set, and m
 
 <!-- BUNDLE_SIZE:START -->
 
-> 1.88 kB minified + gzipped (1,876 B)
+> 1.88 kB minified + gzipped (1,875 B)
 
 <!-- BUNDLE_SIZE:END -->
 
