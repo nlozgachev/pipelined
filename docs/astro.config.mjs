@@ -44,7 +44,6 @@ export default defineConfig({
 		}),
 		starlight({
 			title: "pipelined",
-			logo: { replacesTitle: true, dark: "./public/logo_white.svg", light: "./public/logo_black.svg" },
 			favicon: "favicon.svg",
 			customCss: ["./src/styles/custom.css"],
 			components: { Footer: "./src/components/Footer.astro" },
