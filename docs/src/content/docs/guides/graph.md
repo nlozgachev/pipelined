@@ -5,7 +5,7 @@ description: Declarative dependency scheduling for asynchronous workflows with c
 
 <!-- BUNDLE_SIZE:START -->
 
-> 5.37 kB minified + gzipped (5,369 B)
+> 5.44 kB minified + gzipped (5,439 B)
 
 <!-- BUNDLE_SIZE:END -->
 
@@ -222,6 +222,10 @@ const paymentStep = Graph.node({
   retry: RetryPolicy.exponential({
     attempts: 3,
     initial: Duration.milliseconds(100),
+    when: (err) => err.kind === "TransientNetworkError",
+    onRetry: ({ attempt, error, delay }) => {
+      console.warn(`Payment attempt ${attempt} failed with ${error.kind}. Retrying in ${delay.millis}ms`);
+    },
   }),
   run: ({ order }) => processPayment(order.id, order.amount),
 });
@@ -231,7 +235,23 @@ const paymentStep = Graph.node({
   produced by `onTimeout()`. The timeout error type is unified automatically into the node's error
   channel.
 - **`retry`**: Automatically retries transient failures according to the supplied `RetryPolicy`
-  before reporting an error to the graph scheduler.
+  before reporting an error to the graph scheduler. The optional `when` predicate filters which
+  errors trigger retries, while `onRetry` intercepts individual retry events for logging or
+  instrumentation.
+
+### Graph-Level Retry Telemetry
+
+For centralized telemetry and tracing across all nodes in a graph, configure `onRetry` in
+`Graph.RunOptions`:
+
+```ts
+const outcome = await Graph.run(dashboardGraph, {
+  concurrency: 4,
+  onRetry: ({ nodeId, attempt, error, delay }) => {
+    metrics.increment("graph.node.retry", { nodeId, attempt });
+  },
+})();
+```
 
 ---
 

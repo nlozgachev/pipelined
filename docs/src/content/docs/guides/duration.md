@@ -157,20 +157,25 @@ multipliers across your services, `RetryPolicy` (from `@nlozgachev/pipelined/typ
 
 `RetryPolicy` offers two constructors:
 
-- `RetryPolicy.constant({ attempts, delay })`: Waits a fixed `Duration` between each retry attempt.
-- `RetryPolicy.exponential({ attempts, initial, factor?, jitter?, maxDelay? })`: Grows the wait
-  duration exponentially after each failure (defaulting to `factor: 2`), with optional `maxDelay`
-  capping and randomized `jitter` to prevent synchronized retry spikes ("thundering herds") across
-  clients.
+- `RetryPolicy.constant({ attempts, delay, when?, onRetry? })`: Waits a fixed `Duration` between
+  each retry attempt.
+- `RetryPolicy.exponential({ attempts, initial, factor?, jitter?, maxDelay?, when?, onRetry? })`:
+  Grows the wait duration exponentially after each failure (defaulting to `factor: 2`), with
+  optional `maxDelay` capping and randomized `jitter` to prevent synchronized retry spikes
+  ("thundering herds") across clients.
 
 ```ts
 import { Op, Task } from "@nlozgachev/pipelined/core";
 import { Duration, RetryPolicy } from "@nlozgachev/pipelined/types";
 
-// 1. Fixed delay between attempts
+// 1. Fixed delay between attempts with failure filter and retry telemetry
 const fixedRetry = RetryPolicy.constant({
   attempts: 3,
   delay: Duration.seconds(1),
+  when: (err: { status: number }) => err.status === 503 || err.status === 429,
+  onRetry: ({ attempt, error, delay }) => {
+    console.warn(`Retry attempt ${attempt} for status ${error.status} in ${delay.millis}ms`);
+  },
 });
 
 // 2. Exponential backoff with jitter and an upper ceiling
@@ -185,18 +190,13 @@ const backoffPolicy = RetryPolicy.exponential({
 // 3. Pairing RetryPolicy with Task.Result.retry
 const resilientFetch = pipe(
   fetchInvoiceTask,
-  Task.Result.retry(backoffPolicy, {
-    when: (err) => err.status === 503 || err.status === 429,
-  }),
+  Task.Result.retry(fixedRetry),
 );
 
 // 4. Pairing RetryPolicy with Op.interpret
 const syncInventoryRunner = Op.interpret(syncInventoryOp, {
   strategy: "exclusive",
-  retry: {
-    attempts: backoffPolicy.attempts,
-    backoff: backoffPolicy,
-  },
+  retry: backoffPolicy,
 });
 ```
 

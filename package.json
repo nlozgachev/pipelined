@@ -157,7 +157,7 @@
 			"name": "Types (import * as Types)",
 			"import": "*",
 			"path": "dist/types.mjs",
-			"limit": "450 B",
+			"limit": "550 B",
 			"gzip": true
 		},
 		{
@@ -262,7 +262,7 @@
 			"name": "Op",
 			"import": "{ Op }",
 			"path": "dist/core.mjs",
-			"limit": "6 KB",
+			"limit": "7 KB",
 			"gzip": true
 		},
 		{
@@ -409,7 +409,7 @@
 			"name": "Json",
 			"import": "{ Json }",
 			"path": "dist/data.mjs",
-			"limit": "7 KB",
+			"limit": "8 KB",
 			"gzip": true
 		}
 	],

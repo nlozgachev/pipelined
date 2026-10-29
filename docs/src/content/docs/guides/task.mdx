@@ -4,7 +4,7 @@ description: Model asynchronous operations as lazy, infallible functions that ex
 ---
 {/* BUNDLE_SIZE:START */}
 
-> 4.01 kB minified + gzipped (4,011 B)
+> 4.04 kB minified + gzipped (4,039 B)
 
 {/* BUNDLE_SIZE:END */}
 
@@ -487,12 +487,15 @@ const constantPolicy = RetryPolicy.constant({
   delay: Duration.milliseconds(500),
 });
 
-// Exponential backoff policy with randomized jitter
+// Exponential backoff policy with randomized jitter and retry telemetry
 const exponentialPolicy = RetryPolicy.exponential({
   attempts: 5,
   initial: Duration.milliseconds(100),
   factor: 2,
   jitter: true,
+  onRetry: ({ attempt, error, delay }) => {
+    console.warn(`Attempt ${attempt} failed with ${error}. Retrying in ${delay.millis}ms`);
+  },
 });
 
 const resilientFetch = pipe(
@@ -501,7 +504,7 @@ const resilientFetch = pipe(
 );
 ```
 
-To fail fast on permanent client errors while retrying transient server errors, pass a `when` predicate:
+To fail fast on permanent client errors while retrying transient server errors, pass a `when` predicate to the policy constructor:
 
 ```ts
 type HttpError = { status: number; message: string };
@@ -509,9 +512,15 @@ type HttpError = { status: number; message: string };
 const isTransient = (err: unknown): boolean =>
   typeof err === "object" && err !== null && "status" in err && (err as HttpError).status >= 500;
 
+const transientPolicy = RetryPolicy.exponential({
+  attempts: 5,
+  initial: Duration.milliseconds(100),
+  when: isTransient,
+});
+
 const transientFetch = pipe(
   fetchProfile("123"),
-  Task.Result.retry(exponentialPolicy, { when: isTransient }),
+  Task.Result.retry(transientPolicy),
 );
 ```
 

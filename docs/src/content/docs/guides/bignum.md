@@ -5,7 +5,7 @@ description: Pure, non-throwing utilities for safe BigInt parsing, type conversi
 
 <!-- BUNDLE_SIZE:START -->
 
-> 7.09 kB minified + gzipped (7,093 B)
+> 7.12 kB minified + gzipped (7,124 B)
 
 <!-- BUNDLE_SIZE:END -->
 

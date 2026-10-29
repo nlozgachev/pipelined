@@ -4,7 +4,7 @@ description: Decouple async task definitions from execution strategies like conc
 ---
 {/* BUNDLE_SIZE:START */}
 
-> 5.98 kB minified + gzipped (5,981 B)
+> 5.97 kB minified + gzipped (5,972 B)
 
 {/* BUNDLE_SIZE:END */}
 
@@ -389,15 +389,18 @@ const [profile, settings] = await Deferred.all([
 Retries and timeouts are configured declaratively at interpretation time, keeping operational concerns out of your core async definitions:
 
 ```ts
-import { Duration } from "@nlozgachev/pipelined/types";
+import { Duration, RetryPolicy } from "@nlozgachev/pipelined/types";
 
 const paymentManager = Op.interpret(submitPaymentOp, {
   strategy: "exclusive",
-  retry: {
+  retry: RetryPolicy.exponential({
     attempts: 3,
-    backoff: (attempt) => Duration.milliseconds(attempt * 500),
+    initial: Duration.milliseconds(500),
     when: (error) => error.message.includes("timeout"),
-  },
+    onRetry: ({ attempt, error, delay }) => {
+      console.warn(`Payment attempt ${attempt} failed: ${error.message}. Retrying in ${delay.millis}ms`);
+    },
+  }),
   timeout: {
     duration: Duration.seconds(10),
     onTimeout: (): ApiError => ({
