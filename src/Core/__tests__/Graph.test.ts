@@ -32,6 +32,13 @@ test("node: throws TypeError if deps is not an object or contains invalid nodes"
 	);
 });
 
+test("node: supports empty deps object", async () => {
+	const node = Graph.node({ id: "emptyDeps", deps: {}, run: () => Task.Result.make.ok(123) });
+	const graph = Graph.make(node);
+	const result = await Graph.run(graph)();
+	expect(result).toStrictEqual(Result.make.ok(123));
+});
+
 // -----------------------------------------------------------------------------
 // Graph.make validation
 // -----------------------------------------------------------------------------

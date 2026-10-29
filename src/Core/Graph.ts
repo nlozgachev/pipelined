@@ -147,6 +147,7 @@ type InternalNode<Id extends string, E, Out> = Graph.Node<Id, E, Out> & {
 type InternalGraphState = {
 	readonly target: Graph.AnyNode;
 	readonly nodes: readonly Graph.AnyNode[];
+	readonly rootNodes: readonly Graph.AnyNode[];
 	readonly dependentsMap: Map<Graph.AnyNode, Graph.AnyNode[]>;
 	readonly dependencyCountMap: Map<Graph.AnyNode, number>;
 	readonly depKeysMap: Map<Graph.AnyNode, readonly [string, Graph.AnyNode][]>;
@@ -266,7 +267,14 @@ const makeGraph = <Id extends string, E, Out>(target: Graph.Node<Id, E, Out>): G
 	const seenIds = new Map<string, Graph.AnyNode>();
 	const stack: Graph.AnyNode[] = [anyTarget];
 
-	// 1. Traverse all reachable dependencies iteratively and verify ID uniqueness:
+	const dependentsMap = new Map<Graph.AnyNode, Graph.AnyNode[]>();
+	const dependencyCountMap = new Map<Graph.AnyNode, number>();
+	const inDegrees = new Map<Graph.AnyNode, number>();
+	const depKeysMap = new Map<Graph.AnyNode, readonly [string, Graph.AnyNode][]>();
+	const readyQueue: Graph.AnyNode[] = [];
+
+	// 1. Single-pass discovery: DFS reachability traversal, ID uniqueness check,
+	// dependency count initialization, dependents adjacency building, and root node identification:
 	while (stack.length > 0) {
 		const current = stack.pop()!;
 		if (!reachableSet.has(current)) {
@@ -279,63 +287,47 @@ const makeGraph = <Id extends string, E, Out>(target: Graph.Node<Id, E, Out>): G
 			seenIds.set(current.id, current);
 			reachableSet.add(current);
 
+			if (!dependentsMap.has(current)) {
+				dependentsMap.set(current, []);
+			}
+
 			const internal = toInternalNode(current)[_internalNode];
 			if (internal.deps) {
-				for (const depNode of Object.values(internal.deps)) {
-					stack.push(depNode);
+				const entries = Object.entries(internal.deps) as readonly [string, Graph.AnyNode][];
+				depKeysMap.set(current, entries);
+				const count = entries.length;
+				dependencyCountMap.set(current, count);
+				inDegrees.set(current, count);
+
+				if (count === 0) {
+					readyQueue.push(current);
+				} else {
+					for (let i = 0; i < count; i++) {
+						const [, depNode] = entries[i];
+						let depList = dependentsMap.get(depNode);
+						if (depList === undefined) {
+							depList = [];
+							dependentsMap.set(depNode, depList);
+						}
+						depList.push(current);
+						stack.push(depNode);
+					}
 				}
+			} else {
+				depKeysMap.set(current, []);
+				dependencyCountMap.set(current, 0);
+				inDegrees.set(current, 0);
+				readyQueue.push(current);
 			}
 		}
 	}
 
-	const allNodes = Array.from(reachableSet);
-	const dependentsMap = new Map<Graph.AnyNode, Graph.AnyNode[]>();
-	const dependencyCountMap = new Map<Graph.AnyNode, number>();
-	const inDegrees = new Map<Graph.AnyNode, number>();
-	const depKeysMap = new Map<Graph.AnyNode, readonly [string, Graph.AnyNode][]>();
-
-	for (let i = 0; i < allNodes.length; i++) {
-		const node = allNodes[i];
-		dependentsMap.set(node, []);
-		const internal = toInternalNode(node)[_internalNode];
-		if (internal.deps) {
-			const entries = Object.entries(internal.deps);
-			depKeysMap.set(node, entries);
-			dependencyCountMap.set(node, entries.length);
-			inDegrees.set(node, entries.length);
-		} else {
-			depKeysMap.set(node, []);
-			dependencyCountMap.set(node, 0);
-			inDegrees.set(node, 0);
-		}
-	}
-
-	// Populate dependents:
-	for (let i = 0; i < allNodes.length; i++) {
-		const node = allNodes[i];
-		const internal = toInternalNode(node)[_internalNode];
-		if (internal.deps) {
-			for (const depNode of Object.values(internal.deps)) {
-				dependentsMap.get(depNode)!.push(node);
-			}
-		}
-	}
+	const rootNodes = Object.freeze(readyQueue.slice());
 
 	// 2. Kahn's Algorithm for cycle validation & topological sorting:
-	const readyQueue: Graph.AnyNode[] = [];
-	for (let i = 0; i < allNodes.length; i++) {
-		const node = allNodes[i];
-		if (inDegrees.get(node) === 0) {
-			readyQueue.push(node);
-		}
-	}
-
-	const sortedNodes: Graph.AnyNode[] = [];
 	let head = 0;
 	while (head < readyQueue.length) {
 		const current = readyQueue[head++];
-		sortedNodes.push(current);
-
 		const dependents = dependentsMap.get(current)!;
 		for (let i = 0; i < dependents.length; i++) {
 			const dep = dependents[i];
@@ -347,7 +339,7 @@ const makeGraph = <Id extends string, E, Out>(target: Graph.Node<Id, E, Out>): G
 		}
 	}
 
-	if (sortedNodes.length !== allNodes.length) {
+	if (readyQueue.length !== reachableSet.size) {
 		throw new Error(
 			`[Graph.make] Cycle detected in Graph targeting node '${target.id}'. Dependencies must form a Directed Acyclic Graph.`,
 		);
@@ -357,7 +349,8 @@ const makeGraph = <Id extends string, E, Out>(target: Graph.Node<Id, E, Out>): G
 		kind: "Graph" as const,
 		[_internalGraph]: {
 			target: anyTarget,
-			nodes: Object.freeze(sortedNodes),
+			nodes: Object.freeze(readyQueue),
+			rootNodes,
 			dependentsMap,
 			dependencyCountMap,
 			depKeysMap,
@@ -391,14 +384,14 @@ const runGraph = <E, Out>(graph: Graph<E, Out>, options?: Graph.RunOptions): Tas
 			}
 
 			const internal = toInternalGraph(graph)[_internalGraph];
-			const { target, nodes, dependentsMap, dependencyCountMap, depKeysMap } = internal;
+			const { target, rootNodes, dependentsMap, dependencyCountMap, depKeysMap } = internal;
 
 			const internalController = new AbortController();
 			const activeSignal = internalController.signal;
 
 			const results = new Map<Graph.AnyNode, unknown>();
 			const remainingDeps = new Map<Graph.AnyNode, number>(dependencyCountMap);
-			const queue: Graph.AnyNode[] = [];
+			const queue: Graph.AnyNode[] = rootNodes.slice();
 			let queueHead = 0;
 			let inFlight = 0;
 			let isSettled = false;
@@ -435,14 +428,6 @@ const runGraph = <E, Out>(graph: Graph<E, Out>, options?: Graph.RunOptions): Tas
 				options?.concurrency !== undefined && Number.isInteger(options.concurrency) && options.concurrency > 0
 					? options.concurrency
 					: Infinity;
-
-			// Initialize ready queue with root nodes (0 dependencies):
-			for (let i = 0; i < nodes.length; i++) {
-				const node = nodes[i];
-				if (dependencyCountMap.get(node) === 0) {
-					queue.push(node);
-				}
-			}
 
 			// oxlint-disable-next-line prefer-const
 			let drain: () => void;
