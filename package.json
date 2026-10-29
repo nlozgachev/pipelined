@@ -121,7 +121,7 @@
 			"name": "Index (Monolithic import *)",
 			"import": "*",
 			"path": "dist/index.mjs",
-			"limit": "20 KB",
+			"limit": "22 KB",
 			"gzip": true,
 			"ignore": [
 				"util",
@@ -132,7 +132,7 @@
 			"name": "Core (import * as Core)",
 			"import": "*",
 			"path": "dist/core.mjs",
-			"limit": "13 KB",
+			"limit": "15 KB",
 			"gzip": true
 		},
 		{
@@ -249,6 +249,13 @@
 			"import": "{ Resource }",
 			"path": "dist/core.mjs",
 			"limit": "3 KB",
+			"gzip": true
+		},
+		{
+			"name": "Graph",
+			"import": "{ Graph }",
+			"path": "dist/core.mjs",
+			"limit": "6 KB",
 			"gzip": true
 		},
 		{
