@@ -61,13 +61,11 @@
 		"size:check": "vitest run src/__tests__/BundleSize.test.ts",
 		"typecheck": "tsc --noEmit",
 		"typecheck:dev": "tsc --noEmit --watch",
-		"typecheck:min": "pnpm dlx --package typescript@5.5 tsc --noEmit --skipLibCheck",
-		"publish:npm": "pnpm build && npm publish --access public",
+		"typecheck:min": "node node_modules/typescript-5.5/bin/tsc --noEmit --skipLibCheck",
+		"stage:publish": "pnpm build && npm stage publish --access public",
 		"lint": "oxlint src/",
-		"format": "dprint fmt && dprint fmt --config dprint.md.json \"docs/**/*.md\" \"docs/**/*.mdx\" \"README.md\" \"CODE_OF_CONDUCT.md\" \"CONTRIBUTING.md\" \".github/**/*.md\"",
-		"format:check": "dprint check && dprint check --config dprint.md.json \"docs/**/*.md\" \"docs/**/*.mdx\" \"README.md\" \"CODE_OF_CONDUCT.md\" \"CONTRIBUTING.md\" \".github/**/*.md\"",
-		"format:imports": "node scripts/format-guide-imports.ts",
-		"format:imports:check": "node scripts/format-guide-imports.ts --check",
+		"format": "dprint fmt && dprint fmt --config dprint.md.json \"docs/**/*.md\" \"docs/**/*.mdx\" \"README.md\" \"CODE_OF_CONDUCT.md\" \"CONTRIBUTING.md\" \"SECURITY.md\" \".github/**/*.md\"",
+		"format:check": "dprint check && dprint check --config dprint.md.json \"docs/**/*.md\" \"docs/**/*.mdx\" \"README.md\" \"CODE_OF_CONDUCT.md\" \"CONTRIBUTING.md\" \"SECURITY.md\" \".github/**/*.md\"",
 		"docs:dev": "pnpm --filter pipelined-docs dev",
 		"docs:build": "pnpm --filter pipelined-docs build",
 		"check": "pnpm typecheck && pnpm test:types && pnpm lint && pnpm format:check"
@@ -86,6 +84,7 @@
 		"size-limit": "14.3.0",
 		"tsdown": "0.23.2",
 		"typescript": "6.0.3",
+		"typescript-5.5": "npm:typescript@5.5",
 		"vitest": "5.0.5"
 	},
 	"size-limit": [
