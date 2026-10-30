@@ -5,7 +5,7 @@ description: A branded, compile-time type-safe representation of time quantities
 
 <!-- BUNDLE_SIZE:START -->
 
-> 153 B minified + gzipped
+> 150 B minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 

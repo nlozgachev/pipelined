@@ -5,7 +5,7 @@ description: Data-last, curried string operations, safe parsers, and line/word s
 
 <!-- BUNDLE_SIZE:START -->
 
-> 7.42 kB minified + gzipped
+> 2.20 kB minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 

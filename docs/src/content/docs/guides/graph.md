@@ -5,7 +5,7 @@ description: Declarative dependency scheduling for asynchronous workflows with c
 
 <!-- BUNDLE_SIZE:START -->
 
-> 5.44 kB minified + gzipped
+> 5.43 kB minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 

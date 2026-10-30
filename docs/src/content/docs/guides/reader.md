@@ -5,7 +5,7 @@ description: Model computations that read from a shared environment, eliminating
 
 <!-- BUNDLE_SIZE:START -->
 
-> 155 B minified + gzipped
+> 153 B minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 

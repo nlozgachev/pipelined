@@ -5,7 +5,7 @@ description: Automated failure tracking, fast-failing open circuits, and trial-p
 
 <!-- BUNDLE_SIZE:START -->
 
-> 2.79 kB minified + gzipped
+> 2.80 kB minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 

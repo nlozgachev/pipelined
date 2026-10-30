@@ -5,7 +5,7 @@ description: Non-throwing JSON parsing and serialization returning typed Result 
 
 <!-- BUNDLE_SIZE:START -->
 
-> 6.99 kB minified + gzipped
+> 1.75 kB minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 

@@ -5,7 +5,7 @@ description: Model value equivalence structurally, replacing pointer-based refer
 
 <!-- BUNDLE_SIZE:START -->
 
-> 255 B minified + gzipped
+> 254 B minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 

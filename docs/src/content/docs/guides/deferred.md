@@ -5,7 +5,7 @@ description: Model asynchronous computations that are guaranteed to resolve succ
 
 <!-- BUNDLE_SIZE:START -->
 
-> 109 B minified + gzipped
+> 108 B minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 

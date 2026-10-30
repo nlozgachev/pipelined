@@ -5,7 +5,7 @@ description: Use compile-time phantom tags to distinguish between primitive valu
 
 <!-- BUNDLE_SIZE:START -->
 
-> 36 B minified + gzipped
+> 27 B minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 
