@@ -34,7 +34,7 @@ gzipped for individual modules and 22.00 kB for the entire package.
 
 ## Documentation
 
-Full guides and API reference at **[pipelined.lozgachev.dev](https://pipelined.lozgachev.dev)**.
+Full guides and API reference at **[pplnd.dev](https://pplnd.dev/)**.
 
 ---
 
@@ -674,8 +674,8 @@ When imported individually, only the targeted module is bundled into your applic
 
 Data helpers use pre-allocated arrays and index loops where built-in methods add callback or
 allocation overhead, and delegate to native C++ methods like `.slice()` where the engine is faster.
-See [Performance and benchmarks](https://pipelined.lozgachev.dev/appendix/benchmarks) for the
-benchmark suite and results.
+See [Performance and benchmarks](https://pplnd.dev/appendix/benchmarks) for the benchmark suite and
+results.
 
 ## License
 

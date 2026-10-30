@@ -21,8 +21,8 @@ All entry points are published with `"sideEffects": false` and structured as sta
 
 When imported individually, only the targeted module is bundled into your application:
 
-| Import Pattern | Subpath | Minified + Gzipped |
-| :--- | :--- | :--- |
+| Import Pattern | Minified + Gzipped |
+| :--- | :--- |
 | `pipe` | **142 B** |
 | `flow` | **173 B** |
 | `Brand` | **27 B** |
@@ -43,13 +43,6 @@ When imported individually, only the targeted module is bundled into your applic
 | `Dict` | **2.42 kB** |
 | `Str` | **2.20 kB** |
 
-### Subpath Ceilings (Worst-Case Monolithic Imports)
-
-The upper bounds below apply only if your application imports every exported symbol from that subpath:
-
-| Subpath | Scope | Gzipped Size | Budget Limit |
-| :--- | :--- | :--- | :--- |
-| **All entry points combined** | Monolithic import of entire library | **22.00 kB** | 23.00 kB |
 {/* BUNDLE_TABLE:END */}
 
 ## Requirements
