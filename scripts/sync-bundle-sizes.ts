@@ -116,34 +116,14 @@ export function buildBundleTables(sizeMap: Map<string, SizeItem>): string {
 		return `| \`${name}\` | **${formatBytes(item.size)}** |`;
 	}).filter(Boolean).join("\n");
 
-	const subpaths = [{
-		name: "Index (Monolithic import *)",
-		display: "**All entry points combined**",
-		scope: "Monolithic import of entire library",
-	}];
-
-	const subpathRows = subpaths.map(({ name, display, scope }) => {
-		const item = sizeMap.get(name);
-		if (!item) { return ""; }
-		const limitStr = item.sizeLimit ? formatBytes(item.sizeLimit) : "N/A";
-		return `| ${display} | ${scope} | **${formatBytes(item.size)}** | ${limitStr} |`;
-	}).filter(Boolean).join("\n");
-
 	return `### Standalone Module Footprint (Tree-Shaken)
 
 When imported individually, only the targeted module is bundled into your application:
 
-| Import Pattern | Subpath | Minified + Gzipped |
-| :--- | :--- | :--- |
+| Import Pattern | Minified + Gzipped |
+| :--- | :--- |
 ${standaloneRows}
-
-### Subpath Ceilings (Worst-Case Monolithic Imports)
-
-The upper bounds below apply only if your application imports every exported symbol from that subpath:
-
-| Subpath | Scope | Gzipped Size | Budget Limit |
-| :--- | :--- | :--- | :--- |
-${subpathRows}`;
+`;
 }
 
 export function updateReadme(sizeMap: Map<string, SizeItem>): void {

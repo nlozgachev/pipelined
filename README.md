@@ -1,4 +1,4 @@
-# pipelined @pplnd/core
+# pipelined (@pplnd/core)
 
 [![npm](https://img.shields.io/npm/v/@pplnd/core?style=for-the-badge&color=000&logo=npm&label&logoColor=fff)](https://www.npmjs.com/package/@pplnd/core)
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/pplnd/core/publish.yml?style=for-the-badge&color=000&logo=githubactions&label&logoColor=fff)](https://github.com/pplnd/core/actions/workflows/publish.yml)
@@ -648,36 +648,27 @@ imported by your application.
 
 When imported individually, only the targeted module is bundled into your application:
 
-| Import Pattern | Subpath     | Minified + Gzipped |
-| :------------- | :---------- | :----------------- |
-| `pipe`         | **142 B**   |                    |
-| `flow`         | **173 B**   |                    |
-| `Brand`        | **27 B**    |                    |
-| `Duration`     | **150 B**   |                    |
-| `Maybe`        | **1.56 kB** |                    |
-| `Result`       | **1.56 kB** |                    |
-| `Validation`   | **1.56 kB** |                    |
-| `RemoteData`   | **1.87 kB** |                    |
-| `Machine`      | **1.88 kB** |                    |
-| `EventBus`     | **1.17 kB** |                    |
-| `Resource`     | **2.32 kB** |                    |
-| `Graph`        | **5.43 kB** |                    |
-| `Task`         | **4.04 kB** |                    |
-| `Op`           | **5.96 kB** |                    |
-| `Lens`         | **233 B**   |                    |
-| `Arr`          | **5.94 kB** |                    |
-| `Rec`          | **2.54 kB** |                    |
-| `Dict`         | **2.42 kB** |                    |
-| `Str`          | **2.20 kB** |                    |
-
-### Subpath Ceilings (Worst-Case Monolithic Imports)
-
-The upper bounds below apply only if your application imports every exported symbol from that
-subpath:
-
-| Subpath                       | Scope                               | Gzipped Size | Budget Limit |
-| :---------------------------- | :---------------------------------- | :----------- | :----------- |
-| **All entry points combined** | Monolithic import of entire library | **22.00 kB** | 23.00 kB     |
+| Import Pattern | Minified + Gzipped |
+| :------------- | :----------------- |
+| `pipe`         | **142 B**          |
+| `flow`         | **173 B**          |
+| `Brand`        | **27 B**           |
+| `Duration`     | **150 B**          |
+| `Maybe`        | **1.56 kB**        |
+| `Result`       | **1.56 kB**        |
+| `Validation`   | **1.56 kB**        |
+| `RemoteData`   | **1.87 kB**        |
+| `Machine`      | **1.88 kB**        |
+| `EventBus`     | **1.17 kB**        |
+| `Resource`     | **2.32 kB**        |
+| `Graph`        | **5.43 kB**        |
+| `Task`         | **4.04 kB**        |
+| `Op`           | **5.96 kB**        |
+| `Lens`         | **233 B**          |
+| `Arr`          | **5.94 kB**        |
+| `Rec`          | **2.54 kB**        |
+| `Dict`         | **2.42 kB**        |
+| `Str`          | **2.20 kB**        |
 
 <!-- BUNDLE_TABLE:END -->
 
