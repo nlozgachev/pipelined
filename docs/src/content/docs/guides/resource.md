@@ -5,7 +5,7 @@ description: Guarantee that database connections, file handles, and locks are al
 
 <!-- BUNDLE_SIZE:START -->
 
-> 2.32 kB minified + gzipped (2,322 B)
+> 2.32 kB minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 

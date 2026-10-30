@@ -5,7 +5,7 @@ description: Decouple event emission from sequence matching, state reduction, an
 
 <!-- BUNDLE_SIZE:START -->
 
-> 1.18 kB minified + gzipped (1,179 B)
+> 1.18 kB minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 

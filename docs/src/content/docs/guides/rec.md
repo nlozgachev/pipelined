@@ -5,7 +5,7 @@ description: Work with plain JavaScript objects as key-value records immutably a
 
 <!-- BUNDLE_SIZE:START -->
 
-> 6.82 kB minified + gzipped (6,817 B)
+> 6.82 kB minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 

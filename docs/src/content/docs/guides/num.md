@@ -5,7 +5,7 @@ description: Curried arithmetic, safe parsing, rounding, formatting, clamping, r
 
 <!-- BUNDLE_SIZE:START -->
 
-> 7.24 kB minified + gzipped (7,241 B)
+> 7.24 kB minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 

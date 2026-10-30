@@ -5,7 +5,7 @@ description: Treat the absence of a value as first-class data rather than a cont
 
 <!-- BUNDLE_SIZE:START -->
 
-> 1.57 kB minified + gzipped (1,569 B)
+> 1.56 kB minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 

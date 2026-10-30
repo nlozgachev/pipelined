@@ -5,7 +5,7 @@ description: Collect all validation failures in one pass, ensuring a complete ov
 
 <!-- BUNDLE_SIZE:START -->
 
-> 1.57 kB minified + gzipped (1,569 B)
+> 1.56 kB minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 

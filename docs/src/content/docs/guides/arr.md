@@ -5,7 +5,7 @@ description: Work with collections linearly, replacing data-first array method c
 
 <!-- BUNDLE_SIZE:START -->
 
-> 6.82 kB minified + gzipped (6,817 B)
+> 6.82 kB minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 
