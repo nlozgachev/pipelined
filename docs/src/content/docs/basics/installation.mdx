@@ -10,17 +10,6 @@ import ExportsTable from '../../../components/ExportsTable.astro'
 
 <CodePackageManagers packages="@nlozgachev/pipelined"/>
 
-## Imports
-
-The library is split into four entry points. Import only what you need:
-
-```ts
-import { Maybe, Result, Task } from "@nlozgachev/pipelined/core";
-import { Arr, Str } from "@nlozgachev/pipelined/data";
-import { pipe, flow } from "@nlozgachev/pipelined/composition";
-import { Brand } from "@nlozgachev/pipelined/types";
-```
-
 <ExportsTable />
 
 ### Tree-Shaking & Bundle Impact

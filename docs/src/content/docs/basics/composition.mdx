@@ -18,7 +18,7 @@ These two functions sequence transformations top-to-bottom.
 `pipe` evaluates a starting value immediately through a sequence of steps. `flow` defers execution, returning a reusable function.
 
 ```ts
-import { flow, pipe } from "@nlozgachev/pipelined/composition";
+import { flow, pipe } from "@nlozgachev/pipelined";
 
 // pipe: immediate evaluation
 const slug = pipe(
@@ -66,7 +66,7 @@ Piping raw values through standard functions works well for clean, linear logic.
 `when` executes a transformation only when a predicate evaluates to `true`, whereas `unless` executes the transformation only when the predicate evaluates to `false`, returning the original input value unchanged otherwise:
 
 ```ts
-import { pipe, unless, when } from "@nlozgachev/pipelined/composition";
+import { pipe, unless, when } from "@nlozgachev/pipelined";
 
 const invoice = pipe(
   cart,
@@ -84,7 +84,7 @@ When deriving a structured record from a single input value, mapping wrapper fun
 `struct` compiles a record of field-level transformer functions into a single transformation that maps the input into a structured object:
 
 ```ts
-import { flow, pipe, struct } from "@nlozgachev/pipelined/composition";
+import { flow, pipe, struct } from "@nlozgachev/pipelined";
 
 const summary = pipe(
   userProfile,
@@ -114,7 +114,7 @@ When a pipeline includes asynchronous transitions, use the dedicated async runne
 - `flowAsync`: Compiles a sequence of steps into a reusable function that returns a `Promise`.
 
 ```ts
-import { flowAsync, pipeAsync } from "@nlozgachev/pipelined/composition";
+import { flowAsync, pipeAsync } from "@nlozgachev/pipelined";
 
 // pipeAsync: immediate execution
 const userConfig = await pipeAsync(
@@ -139,7 +139,7 @@ const loadConfig = flowAsync(
 A curried function accepts its arguments one at a time. `curry` converts a standard two-argument function into a sequence of single-argument functions:
 
 ```ts
-import { curry } from "@nlozgachev/pipelined/composition";
+import { curry } from "@nlozgachev/pipelined";
 
 const clamp = curry((min: number, n: number) => Math.max(min, n));
 const atLeastZero = clamp(0);
@@ -151,7 +151,7 @@ atLeastZero(3);  // 3
 This is highly useful for preparing multi-argument functions to slot as steps inside `pipe` or `flow`. `curry` is overloaded to support functions of 2, 3, or 4 arguments:
 
 ```ts
-import { curry } from "@nlozgachev/pipelined/composition";
+import { curry } from "@nlozgachev/pipelined";
 
 const between = curry(
   (min: number, max: number, n: number) => Math.min(max, Math.max(min, n)),
@@ -169,7 +169,7 @@ clamp0to100(-10); // 0
 `uncurry` is the inverse of `curry`. It converts a curried, single-argument function back into a standard multi-argument format (supporting 2, 3, or 4 arguments). This is useful when passing curried library helpers to external APIs that expect standard JavaScript functions:
 
 ```ts
-import { curry, uncurry } from "@nlozgachev/pipelined/composition";
+import { curry, uncurry } from "@nlozgachev/pipelined";
 
 const curriedAdd = curry((a: number, b: number) => a + b);
 const add = uncurry(curriedAdd);
@@ -184,7 +184,7 @@ add(3, 4); // 7
 `flip` reverses the argument order of a curried binary function. Its main purpose is to adapt data-last library functions to a data-first format for use outside of pipelines:
 
 ```ts
-import { flip } from "@nlozgachev/pipelined/composition";
+import { flip } from "@nlozgachev/pipelined";
 
 const prepend = (prefix: string) => (str: string) => prefix + str;
 const append = flip(prepend);
@@ -200,7 +200,7 @@ append("World")("Hello, ");  // "Hello, World"
 `tap` executes a function for its side effect (such as logging or performance auditing) and returns the original value unchanged, leaving the pipeline's behavior undisturbed:
 
 ```ts
-import { pipe, tap } from "@nlozgachev/pipelined/composition";
+import { pipe, tap } from "@nlozgachev/pipelined";
 
 const result = pipe(
   rawInput,
@@ -220,7 +220,7 @@ For debugging, performance auditing, and background tasks, the module provides s
 `tapLog` logs the piped value to the console. You can optionally supply a `label` to prefix the log output, a custom `logger` destination, or a custom string `formatter` (which defaults to `JSON.stringify` for objects):
 
 ```ts
-import { pipe, tapLog } from "@nlozgachev/pipelined/composition";
+import { pipe, tapLog } from "@nlozgachev/pipelined";
 
 pipe(
   42,
@@ -238,7 +238,7 @@ pipe(
 For deeply nested objects, `tapLog` might output truncated representations. `tapInspect` formats objects with infinite depth by default using Node's `util.inspect` engine:
 
 ```ts
-import { pipe, tapInspect } from "@nlozgachev/pipelined/composition";
+import { pipe, tapInspect } from "@nlozgachev/pipelined";
 
 pipe(
   { user: { name: "Alice", details: { age: 30, roles: ["admin"] } } },
@@ -252,7 +252,7 @@ pipe(
 To trigger asynchronous operations (like telemetry hits, audits, or database writes) without blocking the pipeline or turning it into an async promise chain, use `tapAsync`. It runs the promise in the background, intercepts any rejections, and routes them to `onError` (defaulting to `console.error`):
 
 ```ts
-import { pipe, tapAsync } from "@nlozgachev/pipelined/composition";
+import { pipe, tapAsync } from "@nlozgachev/pipelined";
 
 pipe(
   userId,
@@ -272,8 +272,7 @@ pipe(
 The configuration object requires either a `label` (to log to the console automatically) or an `onFinish` callback (to route the typed `Duration` elsewhere), which are mutually exclusive to avoid conflicts:
 
 ```ts
-import { pipe, tapTime } from "@nlozgachev/pipelined/composition";
-import { Duration } from "@nlozgachev/pipelined/types";
+import { Duration, pipe, tapTime } from "@nlozgachev/pipelined";
 
 // Scenario A: Auto-log to console
 pipe(
@@ -299,8 +298,7 @@ pipe(
 `identity` returns its input argument exactly as received. It is commonly used as a fallback callback where a no-op transformation is required:
 
 ```ts
-import { identity, pipe } from "@nlozgachev/pipelined/composition";
-import { Maybe } from "@nlozgachev/pipelined/core";
+import { identity, Maybe, pipe } from "@nlozgachev/pipelined";
 
 pipe(Maybe.make.some(42), Maybe.match({ some: identity, none: () => 0 })); // 42
 ```
@@ -308,7 +306,7 @@ pipe(Maybe.make.some(42), Maybe.match({ some: identity, none: () => 0 })); // 42
 `constant` returns a function that always yields the same fixed value, ignoring whatever input is supplied to it:
 
 ```ts
-import { constant } from "@nlozgachev/pipelined/composition";
+import { constant } from "@nlozgachev/pipelined";
 
 const alwaysFive = constant(5);
 alwaysFive(); // 5
@@ -319,7 +317,7 @@ alwaysFive(); // 5
 `once` ensures a function is only executed on its first invocation, caching and returning that original result for all subsequent calls:
 
 ```ts
-import { once } from "@nlozgachev/pipelined/composition";
+import { once } from "@nlozgachev/pipelined";
 
 const initConnection = once(() => {
   console.log("Initializing database connection...");
@@ -333,7 +331,7 @@ initConnection(); // Returns the cached connection (no second log or connection)
 `tuple` and `untuple` adapt functions between positional multi-argument signatures and single-tuple argument signatures. Use `tuple` when a pipeline step yields a `[A, B]` pair (such as `Arr.zip` or `juxt`) that you want to pass into a standard multi-argument function, and `untuple` when passing a tuple-accepting function to a callback API that supplies separate arguments:
 
 ```ts
-import { pipe, tuple, untuple } from "@nlozgachev/pipelined/composition";
+import { pipe, tuple, untuple } from "@nlozgachev/pipelined";
 
 const formatRange = (min: number, max: number) => `${min}px - ${max}px`;
 const formatRangeTuple = tuple(formatRange);
@@ -350,7 +348,7 @@ add(15, 25); // 40
 
 ## Predicate composition
 
-To negate, combine, or project boolean checks, use the `Predicate` module from `@nlozgachev/pipelined/core`. It provides `Predicate.not`, `Predicate.and`, `Predicate.or`, `Predicate.using`, `Predicate.all`, and `Predicate.any`. For full details, see the [Predicate guide](/guides/predicate).
+To negate, combine, or project boolean checks, use the `Predicate` module. It provides `Predicate.not`, `Predicate.and`, `Predicate.or`, `Predicate.using`, `Predicate.all`, and `Predicate.any`. For full details, see the [Predicate guide](/guides/predicate).
 
 ---
 
@@ -359,7 +357,7 @@ To negate, combine, or project boolean checks, use the `Predicate` module from `
 `memoize` wraps a function, caching the results of repeated calls using the input argument as the cache key:
 
 ```ts
-import { memoize } from "@nlozgachev/pipelined/composition";
+import { memoize } from "@nlozgachev/pipelined";
 
 const fibonacci = memoize((n: number): number =>
   n <= 1 ? n : fibonacci(n - 1) + fibonacci(n - 2)
@@ -381,7 +379,7 @@ const loadProfile = memoize(
 `memoizeWeak` performs the same caching behavior but stores entries using a `WeakMap`, ensuring that cache entries are automatically garbage-collected when the key object is no longer referenced in memory:
 
 ```ts
-import { memoizeWeak } from "@nlozgachev/pipelined/composition";
+import { memoizeWeak } from "@nlozgachev/pipelined";
 
 const cachedLayout = memoizeWeak((element: HTMLElement) => computeLayout(element));
 ```
@@ -397,7 +395,7 @@ const cachedLayout = memoizeWeak((element: HTMLElement) => computeLayout(element
 `converge` takes a combining function and an array of transformers. It applies a single input value to each transformer independently, passing the collected results to the combiner:
 
 ```ts
-import { converge } from "@nlozgachev/pipelined/composition";
+import { converge } from "@nlozgachev/pipelined";
 
 interface Item { price: number }
 
@@ -419,7 +417,7 @@ summarize([{ price: 10 }, { price: 20 }]); // { subtotal: 30, count: 2 }
 `juxt` is the simpler sibling of `converge`. It applies a single input to an array of transformer functions and returns all outcomes in a typed tuple:
 
 ```ts
-import { juxt } from "@nlozgachev/pipelined/composition";
+import { juxt } from "@nlozgachev/pipelined";
 
 const parseName = juxt([
   (name: string) => name.split(" ")[0],
@@ -436,7 +434,7 @@ const [first, last] = parseName("Alice Smith"); // ["Alice", "Smith"]
 `on` takes a binary comparator and a projection function. It projects both input arguments before comparing them, removing the need to repeat key lookups in sorting and equality functions:
 
 ```ts
-import { on } from "@nlozgachev/pipelined/composition";
+import { on } from "@nlozgachev/pipelined";
 
 interface Track { duration: number }
 

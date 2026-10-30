@@ -7,8 +7,7 @@
  *
  * @example
  * ```ts
- * import { Pair } from "@nlozgachev/pipelined/core";
- * import { pipe } from "@nlozgachev/pipelined/composition";
+ * import { Pair, pipe } from "@nlozgachev/pipelined";
  *
  * const entry = Pair.make("alice", 42);
  *

@@ -6,8 +6,7 @@ import { Maybe } from "../Core/Maybe.ts";
  *
  * @example
  * ```ts
- * import { BigNum } from "@nlozgachev/pipelined/data";
- * import { pipe } from "@nlozgachev/pipelined/composition";
+ * import { BigNum, pipe } from "@nlozgachev/pipelined";
  *
  * const result = pipe(
  *   BigNum.from.string("100"),

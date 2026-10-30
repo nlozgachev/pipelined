@@ -127,8 +127,8 @@ if (Result.is.ok(result)) {
 ### Transforming data collections
 
 Built-in array and object lookups return `undefined` when an index is out of bounds or a key is
-missing. The helpers in `@nlozgachev/pipelined/data` are curried for `pipe` and return `Maybe`
-whenever an element might not exist:
+missing. The helpers in the library are curried for `pipe` and return `Maybe` whenever an element
+might not exist:
 
 ```ts
 import { Arr, Maybe, Num, pipe, Rec, Str } from "@nlozgachev/pipelined";
@@ -589,49 +589,49 @@ if (Result.is.ok(email)) {
 
 ## Quick Reference
 
-| Problem to Solve                                                   | Module                          | Import Path                         |
-| ------------------------------------------------------------------ | ------------------------------- | ----------------------------------- |
-| Optional values without `null` / `undefined` checks                | `Maybe`                         | `@nlozgachev/pipelined/core`        |
-| Synchronous typed errors without `try`/`catch`                     | `Result`                        | `@nlozgachev/pipelined/core`        |
-| Multi-field form and batch validation error accumulation           | `Validation`                    | `@nlozgachev/pipelined/core`        |
-| Lazy async workflows with automatic `AbortSignal`                  | `Task.Result`, `Task`           | `@nlozgachev/pipelined/core`        |
-| Infallible async return container for tasks                        | `Deferred`                      | `@nlozgachev/pipelined/core`        |
-| Declarative DAG task scheduling & cycle detection                  | `Graph`                         | `@nlozgachev/pipelined/core`        |
-| Type-safe finite state machines & validated transitions            | `Machine`                       | `@nlozgachev/pipelined/core`        |
-| Eliminating impossible UI loading/error/data states                | `RemoteData`                    | `@nlozgachev/pipelined/core`        |
-| Managing request race conditions, retries, and locks               | `Op`                            | `@nlozgachev/pipelined/core`        |
-| In-memory typed event dispatching, sequence funnels & queue safety | `EventBus`                      | `@nlozgachev/pipelined/core`        |
-| Deep nested immutable updates without spread boilerplate           | `Lens`, `Optional`              | `@nlozgachev/pipelined/core`        |
-| Implicit dependency injection without prop drilling                | `Reader`                        | `@nlozgachev/pipelined/core`        |
-| Pure state transitions, tokenizers, and parsers                    | `State`                         | `@nlozgachev/pipelined/core`        |
-| Automatic setup and teardown of connections and locks              | `Resource`                      | `@nlozgachev/pipelined/core`        |
-| Pure calculation audit trails and decision logging                 | `Logged`                        | `@nlozgachev/pipelined/core`        |
-| Values that can hold one side, the other, or both at once          | `These`                         | `@nlozgachev/pipelined/core`        |
-| Deep value equality & custom comparison rules                      | `Equality`                      | `@nlozgachev/pipelined/core`        |
-| Multi-column sorting with fallback tiebreakers                     | `Ordering`                      | `@nlozgachev/pipelined/core`        |
-| Combining boolean checks and filter rules                          | `Predicate`                     | `@nlozgachev/pipelined/core`        |
-| Runtime type narrowing & custom type guard composition             | `Refinement`                    | `@nlozgachev/pipelined/core`        |
-| Merging configs, counters, and summary objects                     | `Combinable`                    | `@nlozgachev/pipelined/core`        |
-| Working with two-element `[first, second]` tuples                  | `Pair`                          | `@nlozgachev/pipelined/core`        |
-| Bounds-safe array transformations                                  | `Arr`, `Arr.NonEmpty`           | `@nlozgachev/pipelined/data`        |
-| Type-safe object manipulation & key migration                      | `Rec`, `Rec.NonEmpty`           | `@nlozgachev/pipelined/data`        |
-| Immutable `Map` operations with any key type                       | `Dict`, `Dict.NonEmpty`         | `@nlozgachev/pipelined/data`        |
-| Immutable `Set` operations (union, intersection, difference)       | `Uniq`, `Uniq.NonEmpty`         | `@nlozgachev/pipelined/data`        |
-| String sanitization, numeric conversion & slug parsing             | `Str`, `Str.NonEmpty`           | `@nlozgachev/pipelined/data`        |
-| Boundary clamping & division-by-zero protection                    | `Num`                           | `@nlozgachev/pipelined/data`        |
-| Exact `bigint` math without floating-point rounding errors         | `BigNum`                        | `@nlozgachev/pipelined/data`        |
-| Boolean checks and conditional branching in pipelines              | `Bool`                          | `@nlozgachev/pipelined/data`        |
-| Safe JSON parsing & circular reference protection                  | `Json`                          | `@nlozgachev/pipelined/data`        |
-| Distinct types for primitive IDs and validated strings             | `Brand`                         | `@nlozgachev/pipelined/types`       |
-| Explicit, unit-safe time spans & timeout policies                  | `Duration`, `RetryPolicy`       | `@nlozgachev/pipelined/types`       |
-| Left-to-right value pipeline execution                             | `pipe`                          | `@nlozgachev/pipelined/composition` |
-| Asynchronous value & function pipeline execution                   | `pipeAsync`, `flowAsync`        | `@nlozgachev/pipelined/composition` |
-| Left-to-right function composition                                 | `flow`                          | `@nlozgachev/pipelined/composition` |
-| Conditional branching and object shaping in pipelines              | `when`, `unless`, `struct`      | `@nlozgachev/pipelined/composition` |
-| Currying, uncurrying, tuple wrapping, and argument flipping        | `curry`, `uncurry`, `flip`      | `@nlozgachev/pipelined/composition` |
-| Feeding one input into multiple functions and combining results    | `converge`, `juxt`, `on`        | `@nlozgachev/pipelined/composition` |
-| Function result caching & pipeline side-effects                    | `memoize`, `tap`, `tapLog`      | `@nlozgachev/pipelined/composition` |
-| Small helper functions (`identity`, `constant`, `noop`, `tuple`)   | `identity`, `constant`, `tuple` | `@nlozgachev/pipelined/composition` |
+| Problem to Solve                                                   | Module                          |
+| ------------------------------------------------------------------ | ------------------------------- |
+| Optional values without `null` / `undefined` checks                | `Maybe`                         |
+| Synchronous typed errors without `try`/`catch`                     | `Result`                        |
+| Multi-field form and batch validation error accumulation           | `Validation`                    |
+| Lazy async workflows with automatic `AbortSignal`                  | `Task.Result`, `Task`           |
+| Infallible async return container for tasks                        | `Deferred`                      |
+| Declarative DAG task scheduling & cycle detection                  | `Graph`                         |
+| Type-safe finite state machines & validated transitions            | `Machine`                       |
+| Eliminating impossible UI loading/error/data states                | `RemoteData`                    |
+| Managing request race conditions, retries, and locks               | `Op`                            |
+| In-memory typed event dispatching, sequence funnels & queue safety | `EventBus`                      |
+| Deep nested immutable updates without spread boilerplate           | `Lens`, `Optional`              |
+| Implicit dependency injection without prop drilling                | `Reader`                        |
+| Pure state transitions, tokenizers, and parsers                    | `State`                         |
+| Automatic setup and teardown of connections and locks              | `Resource`                      |
+| Pure calculation audit trails and decision logging                 | `Logged`                        |
+| Values that can hold one side, the other, or both at once          | `These`                         |
+| Deep value equality & custom comparison rules                      | `Equality`                      |
+| Multi-column sorting with fallback tiebreakers                     | `Ordering`                      |
+| Combining boolean checks and filter rules                          | `Predicate`                     |
+| Runtime type narrowing & custom type guard composition             | `Refinement`                    |
+| Merging configs, counters, and summary objects                     | `Combinable`                    |
+| Working with two-element `[first, second]` tuples                  | `Pair`                          |
+| Bounds-safe array transformations                                  | `Arr`, `Arr.NonEmpty`           |
+| Type-safe object manipulation & key migration                      | `Rec`, `Rec.NonEmpty`           |
+| Immutable `Map` operations with any key type                       | `Dict`, `Dict.NonEmpty`         |
+| Immutable `Set` operations (union, intersection, difference)       | `Uniq`, `Uniq.NonEmpty`         |
+| String sanitization, numeric conversion & slug parsing             | `Str`, `Str.NonEmpty`           |
+| Boundary clamping & division-by-zero protection                    | `Num`                           |
+| Exact `bigint` math without floating-point rounding errors         | `BigNum`                        |
+| Boolean checks and conditional branching in pipelines              | `Bool`                          |
+| Safe JSON parsing & circular reference protection                  | `Json`                          |
+| Distinct types for primitive IDs and validated strings             | `Brand`                         |
+| Explicit, unit-safe time spans & timeout policies                  | `Duration`, `RetryPolicy`       |
+| Left-to-right value pipeline execution                             | `pipe`                          |
+| Asynchronous value & function pipeline execution                   | `pipeAsync`, `flowAsync`        |
+| Left-to-right function composition                                 | `flow`                          |
+| Conditional branching and object shaping in pipelines              | `when`, `unless`, `struct`      |
+| Currying, uncurrying, tuple wrapping, and argument flipping        | `curry`, `uncurry`, `flip`      |
+| Feeding one input into multiple functions and combining results    | `converge`, `juxt`, `on`        |
+| Function result caching & pipeline side-effects                    | `memoize`, `tap`, `tapLog`      |
+| Small helper functions (`identity`, `constant`, `noop`, `tuple`)   | `identity`, `constant`, `tuple` |
 
 ---
 

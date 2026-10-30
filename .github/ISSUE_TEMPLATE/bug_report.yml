@@ -26,8 +26,7 @@ body:
       label: Minimal Reproduction Code
       description: Provide a minimal, self-contained snippet reproducing the issue (using pipe and combinators).
       placeholder: |
-        import { pipe } from "@nlozgachev/pipelined/composition";
-        import { Result } from "@nlozgachev/pipelined/core";
+        import { pipe, Result } from "@nlozgachev/pipelined";
 
         // code reproducing the unexpected type or runtime behavior
       render: typescript

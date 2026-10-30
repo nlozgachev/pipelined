@@ -5,8 +5,6 @@ description: Model runtime states explicitly with typed data structures for abse
 
 Standard TypeScript models runtime conditions with untyped exceptions (`throw`), missing pointers (`null`/`undefined`), and raw promises (`Promise`). In multi-step pipelines, these primitives force defensive branching and obscure edge cases in type signatures.
 
-`@nlozgachev/pipelined/core` represents these runtime states as explicit discriminated unions.
-
 ---
 
 ## 1. Synchronous Data Containers
@@ -18,8 +16,7 @@ Accessing missing properties, dictionary keys, or query results yields `undefine
 `Maybe<A>` represents optionality as a discriminated union: `Some<A>` (value present) or `None` (empty). Subsequent mapping steps run only when a value exists:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Maybe } from "@nlozgachev/pipelined/core";
+import { Maybe, pipe } from "@nlozgachev/pipelined";
 
 const city = pipe(
   users.get(userId),                 // User | undefined
@@ -37,8 +34,7 @@ Functions can throw exceptions of type `unknown` at any statement without indica
 `Result<E, A>` brings failure into the return type: `Ok<A>` for success or `Err<E>` for typed errors.
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Result } from "@nlozgachev/pipelined/core";
+import { pipe, Result } from "@nlozgachev/pipelined";
 
 const parseId = (raw: string): Result<string, number> => {
   const n = Number(raw);
@@ -59,7 +55,7 @@ const route = pipe(
 `Validation<E, A>` evaluates independent checks and accumulates all failures into a non-empty array (`NonEmptyArr<E>`):
 
 ```ts
-import { Validation } from "@nlozgachev/pipelined/core";
+import { Validation } from "@nlozgachev/pipelined";
 
 const validateName = (s: string): Validation<string, string> =>
   s.trim() ? Validation.make.passed(s.trim()) : Validation.make.failed("Name is required");
@@ -79,8 +75,7 @@ Standard `Promise<T>` begins execution immediately upon instantiation and reject
 `Task.Result<E, A>` is a zero-argument function that executes only when called and resolves to a `Result<E, A>`, guaranteeing the outer promise never rejects:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Task } from "@nlozgachev/pipelined/core";
+import { pipe, Task } from "@nlozgachev/pipelined";
 
 const fetchUser = (id: string): Task.Result<string, User> =>
   Task.Result.tryCatch(
@@ -105,7 +100,7 @@ Modeling async request state with multiple boolean flags (`isLoading`, `error`, 
 `RemoteData<E, A>` defines the four mutually exclusive states of an asynchronous operation:
 
 ```ts
-import { RemoteData } from "@nlozgachev/pipelined/core";
+import { RemoteData } from "@nlozgachev/pipelined";
 
 const renderUI = RemoteData.match({
   notAsked: () => renderPlaceholder(),
@@ -126,7 +121,7 @@ Managing in-flight request cancellation, debouncing, and retries in UI component
 `Op<I, E, A>` separates the async task definition from its execution policy:
 
 ```ts
-import { Op } from "@nlozgachev/pipelined/core";
+import { Op } from "@nlozgachev/pipelined";
 
 // 1. Define the task once
 const searchApi = Op.make(
@@ -149,7 +144,7 @@ Standard event emitters leave message payloads untyped, while complex reactive s
 `EventBus<S>` provides a type-safe event pipeline for matching event sequences and accumulating state over time:
 
 ```ts
-import { EventBus } from "@nlozgachev/pipelined/core";
+import { EventBus } from "@nlozgachev/pipelined";
 
 type AppEvents = {
   login: { userId: string };
@@ -216,8 +211,7 @@ To keep root module objects clean and focused on pipeline combinators, instantia
 In a real-world feature, these modules compose across boundaries: validating user input, executing a cancellable network call, and updating UI state:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Op, RemoteData, Validation } from "@nlozgachev/pipelined/core";
+import { Op, pipe, RemoteData, Validation } from "@nlozgachev/pipelined";
 
 // 1. Validate form fields independently (Validation)
 const validateSignup = (name: string, email: string) =>

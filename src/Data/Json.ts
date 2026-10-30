@@ -12,8 +12,7 @@ const isTypeError = (err: unknown): err is TypeError =>
  *
  * @example
  * ```ts
- * import { Json } from "@nlozgachev/pipelined/data";
- * import { pipe } from "@nlozgachev/pipelined/composition";
+ * import { Json, pipe } from "@nlozgachev/pipelined";
  *
  * const result = pipe(
  *   Json.parse<{ readonly name: string }>('{"name":"Alice"}'),

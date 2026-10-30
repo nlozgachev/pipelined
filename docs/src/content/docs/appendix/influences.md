@@ -143,7 +143,7 @@ export const Maybe = {
 A single import gives you both:
 
 ```ts
-import { Maybe } from "@nlozgachev/pipelined/core";
+import { Maybe } from "@nlozgachev/pipelined";
 
 const x: Maybe<number> = Maybe.make.some(42); // type and constructor from the same import
 ```
