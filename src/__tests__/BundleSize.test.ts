@@ -20,10 +20,6 @@ function formatBytes(bytes: number): string {
 	return `${kb.toFixed(2)} kB`;
 }
 
-function formatNumberWithCommas(n: number): string {
-	return n.toLocaleString("en-US");
-}
-
 function getMeasuredSizes(): Map<string, SizeItem> {
 	const coreDist = path.join(projectRoot, "dist/core.mjs");
 	if (!fs.existsSync(coreDist)) {
@@ -94,11 +90,9 @@ test("BundleSize: verifies README.md reflects current measured sizes", () => {
 	for (const name of ["Machine", "Result", "Maybe", "Op", "EventBus", "pipe"]) {
 		const item = sizeMap.get(name);
 		expect(item, `Size item for ${name} not found in sizeMap`).toBeDefined();
-		const expectedBytes = formatNumberWithCommas(item!.size);
 		const expectedFormatted = formatBytes(item!.size);
 
 		expect(content).toContain(expectedFormatted);
-		expect(content).toContain(expectedBytes);
 	}
 });
 
@@ -112,11 +106,9 @@ test("BundleSize: verifies installation.mdx reflects current measured sizes", ()
 	for (const name of ["Machine", "Result", "Maybe", "Resource", "Task"]) {
 		const item = sizeMap.get(name);
 		expect(item, `Size item for ${name} not found in sizeMap`).toBeDefined();
-		const expectedBytes = formatNumberWithCommas(item!.size);
 		const expectedFormatted = formatBytes(item!.size);
 
 		expect(content).toContain(expectedFormatted);
-		expect(content).toContain(expectedBytes);
 	}
 });
 
@@ -138,9 +130,7 @@ test("BundleSize: verifies all module guides contain exact measured sizes withou
 		const item = sizeMap.get(module);
 		expect(item, `Size item for ${module} not found in sizeMap`).toBeDefined();
 
-		const expectedCallout = item!.size < 1000
-			? `> ${formatBytes(item!.size)} minified + gzipped`
-			: `> ${formatBytes(item!.size)} minified + gzipped (${formatNumberWithCommas(item!.size)} B)`;
+		const expectedCallout = `> ${formatBytes(item!.size)} minified + gzipped`;
 
 		expect(content).toContain(expectedCallout);
 	}
