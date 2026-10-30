@@ -67,8 +67,7 @@ transformations as if the value is always there. The data structure itself manag
 We decouple the *what* from the *if*.
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Maybe } from "@nlozgachev/pipelined/core";
+import { Maybe, pipe } from "@nlozgachev/pipelined";
 
 export type Maybe<A> = Maybe.Some<A> | Maybe.None;
 ```
@@ -399,7 +398,7 @@ We can transition from a `Maybe` to a `Result` using `to.Result`. We supply a ca
 an error value if the `Maybe` is a `None`:
 
 ```ts
-import { Result } from "@nlozgachev/pipelined/core";
+import { Result } from "@nlozgachev/pipelined";
 
 const parseEmail = (email: string): Maybe<string> =>
   pipe(
@@ -418,7 +417,7 @@ We can also convert a `Maybe` directly to a `Validation` using `to.Validation`, 
 generator for `None`:
 
 ```ts
-import { Validation } from "@nlozgachev/pipelined/core";
+import { Validation } from "@nlozgachev/pipelined";
 
 const validatedEmail = pipe(
   parseEmail("invalid"),

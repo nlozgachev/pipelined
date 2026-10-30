@@ -39,9 +39,7 @@ prototype pollution automatically.
 container, making missing keys explicit in the type system:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Maybe } from "@nlozgachev/pipelined/core";
-import { Rec } from "@nlozgachev/pipelined/data";
+import { Maybe, pipe, Rec } from "@nlozgachev/pipelined";
 
 const envConfig: Readonly<Record<string, string>> = {
   PORT: "8080",
@@ -279,7 +277,7 @@ record, short-circuiting on the first failure. `Rec.sequence` performs the same 
 whose values are already wrapped in `Maybe` or `Result`:
 
 ```ts
-import { Result } from "@nlozgachev/pipelined/core";
+import { Result } from "@nlozgachev/pipelined";
 
 const parsePort = (raw: string): Maybe<number> => {
   const n = Number(raw);
@@ -380,9 +378,7 @@ default service limits, normalizes keys to lowercase, parses numeric strings whi
 malformed values, and extracts the active worker limit:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Maybe } from "@nlozgachev/pipelined/core";
-import { Num, Rec } from "@nlozgachev/pipelined/data";
+import { Maybe, Num, pipe, Rec } from "@nlozgachev/pipelined";
 
 const defaultLimits: Readonly<Record<string, string>> = {
   MAX_CONNECTIONS: "100",

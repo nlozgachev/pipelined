@@ -17,7 +17,7 @@ warnings.
 type safety at zero runtime cost:
 
 ```ts
-import { Brand } from "@nlozgachev/pipelined/types";
+import { Brand } from "@nlozgachev/pipelined";
 
 type UserId     = Brand<"UserId",     string>;
 type CustomerId = Brand<"CustomerId", string>;
@@ -105,7 +105,7 @@ For branded types that must enforce invariants (such as a valid email address, a
 or a positive integer), we wrap the brand creator in a validation function:
 
 ```ts
-import { Maybe } from "@nlozgachev/pipelined/core";
+import { Maybe } from "@nlozgachev/pipelined";
 
 export type Email = Brand<"Email", string>;
 

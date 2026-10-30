@@ -93,7 +93,7 @@ Lift raw values into `Logged` using `Logged.make`, or record a standalone log ev
 `Logged.from.entry`:
 
 ```ts
-import { Logged } from "@nlozgachev/pipelined/core";
+import { Logged } from "@nlozgachev/pipelined";
 
 // Lifting a raw value with an empty initial log
 const start = Logged.make(0);
@@ -124,7 +124,7 @@ sequence dependent operations.
 `map` transforms the contained value while leaving the accumulated log completely untouched:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
+import { pipe } from "@nlozgachev/pipelined";
 
 const doubled = pipe(
   Logged.make(5, ["initial"]),
@@ -251,7 +251,7 @@ record, updating the focused field while accumulating any log entries produced d
 sub-computation:
 
 ```ts
-import { Lens } from "@nlozgachev/pipelined/core";
+import { Lens } from "@nlozgachev/pipelined";
 
 interface ShippingDetails {
   address: string;

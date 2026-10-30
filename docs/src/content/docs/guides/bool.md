@@ -49,8 +49,7 @@ and `Result`.
 The `Bool.is` namespace provides type guards for runtime checks and compile-time type narrowing:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Arr, Bool } from "@nlozgachev/pipelined/data";
+import { Arr, Bool, pipe } from "@nlozgachev/pipelined";
 
 // Type verification:
 Bool.is.boolean(true);   // true
@@ -153,7 +152,7 @@ To parse environment variables, query flags, or numeric bit flags without fallin
 JavaScript's truthiness coercion, `Bool.from.string` and `Bool.from.number` return `Maybe<boolean>`:
 
 ```ts
-import { Maybe } from "@nlozgachev/pipelined/core";
+import { Maybe } from "@nlozgachev/pipelined";
 
 // Case-insensitive, whitespace-trimmed string parsing:
 Bool.from.string("true");    // Some(true)
@@ -187,7 +186,7 @@ When a boolean check gates access to a value or decides whether a pipeline succe
 callbacks:
 
 ```ts
-import { Result } from "@nlozgachev/pipelined/core";
+import { Result } from "@nlozgachev/pipelined";
 
 // Convert to Maybe (Some on true, None on false):
 const activeDiscountCode = pipe(
@@ -213,9 +212,7 @@ Combining parsing, boolean algebra, and container lifting lets you express featu
 authorization checks as a linear pipeline:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Maybe, Result } from "@nlozgachev/pipelined/core";
-import { Bool } from "@nlozgachev/pipelined/data";
+import { Bool, Maybe, pipe, Result } from "@nlozgachev/pipelined";
 
 type RequestContext = {
   readonly rawMaintenanceHeader: string;

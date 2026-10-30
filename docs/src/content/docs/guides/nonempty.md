@@ -63,7 +63,7 @@ guards or lift them from known values:
 If you already have a value, you can construct a non-empty array, record, set, or map directly:
 
 ```ts
-import { Arr, Rec, Uniq, Dict } from "@nlozgachev/pipelined/data";
+import { Arr, Dict, Rec, Uniq } from "@nlozgachev/pipelined";
 
 const singleItem = Arr.NonEmpty.singleton("admin"); // Arr.NonEmpty<string>
 const singleValue = Rec.NonEmpty.singleton("admin", true); // Rec.NonEmpty<boolean, "admin">
@@ -77,7 +77,7 @@ You can refine standard collections or strings using module-level `is.nonEmpty` 
 the conditional blocks, TypeScript automatically narrows the types:
 
 ```ts
-import { Arr, Rec, Uniq, Dict, Str } from "@nlozgachev/pipelined/data";
+import { Arr, Dict, Rec, Str, Uniq } from "@nlozgachev/pipelined";
 
 const userList: string[] = getUsers();
 if (Arr.is.nonEmpty(userList)) {
@@ -112,7 +112,7 @@ module-specific `from.*` helpers. They return `Some` if the collection or string
 one item, and `None` if it is empty:
 
 ```ts
-import { Arr, Rec, Uniq, Dict, Str } from "@nlozgachev/pipelined/data";
+import { Arr, Dict, Rec, Str, Uniq } from "@nlozgachev/pipelined";
 
 const maybeRoles = Arr.NonEmpty.from.array<string>([]); // None
 const maybeQuotas = Rec.NonEmpty.from.record({ apiCalls: 1000, storageGb: 50 }); // Some(Rec.NonEmpty<number, "apiCalls" | "storageGb">)
@@ -132,8 +132,7 @@ Adding elements to standard arrays naturally guarantees a non-empty result. The 
 preserving the non-empty guarantee:
 
 ```ts
-import { Arr } from "@nlozgachev/pipelined/data";
-import { pipe } from "@nlozgachev/pipelined/composition";
+import { Arr, pipe } from "@nlozgachev/pipelined";
 
 const baseSteps = ["validate", "charge"];
 
@@ -164,8 +163,7 @@ use the dedicated mapping helpers under the `NonEmpty` drawer (`Arr.NonEmpty.map
 `Dict.NonEmpty.mapWithKey`, and `Uniq.NonEmpty.map`):
 
 ```ts
-import { Arr, Rec, Uniq, Dict } from "@nlozgachev/pipelined/data";
-import { pipe } from "@nlozgachev/pipelined/composition";
+import { Arr, Dict, pipe, Rec, Uniq } from "@nlozgachev/pipelined";
 
 const lineItemPrices: Arr.NonEmpty<number> = [120, 80, 50];
 
@@ -213,7 +211,7 @@ reductions, these do not require an initial accumulator seed value because the c
 guaranteed to contain at least one element:
 
 ```ts
-import { Arr, Rec, Uniq, Dict } from "@nlozgachev/pipelined/data";
+import { Arr, Dict, Rec, Uniq } from "@nlozgachev/pipelined";
 
 const totalOrderCents = Arr.NonEmpty.reduce((sum: number, price: number) => sum + price)(lineItemPrices);
 const totalTaxRate = Rec.NonEmpty.reduce((sum: number, rate: number) => sum + rate)(regionalTaxRates);
@@ -235,7 +233,7 @@ Operating on non-empty collections guarantees safe extraction of members:
   guaranteed `Arr.NonEmpty<A>`.
 
 ```ts
-import { Arr, Rec, Dict, Uniq } from "@nlozgachev/pipelined/data";
+import { Arr, Dict, Rec, Uniq } from "@nlozgachev/pipelined";
 
 const firstStep = Arr.NonEmpty.head(fullPipeline); // "authenticate" (string)
 const finalStep = Arr.NonEmpty.last(fullPipeline); // "archive" (string)

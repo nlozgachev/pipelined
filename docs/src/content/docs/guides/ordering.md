@@ -52,7 +52,7 @@ comparator signature, it is 100% compatible with native runtime APIs.
 The library provides optimized, built-in ordering instances for primitive types:
 
 ```ts
-import { Ordering } from "@nlozgachev/pipelined/core";
+import { Ordering } from "@nlozgachev/pipelined";
 
 Ordering.string("apple", "banana"); // Negative ("apple" comes first)
 Ordering.number(42, 10);            // Positive (42 comes after 10)
@@ -66,8 +66,7 @@ Ordering.date(new Date("2026-05-24"), new Date("2026-05-24")); // Zero (tie)
 `Ordering.reverse` flips the sorting direction of any existing comparator:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Arr } from "@nlozgachev/pipelined/data";
+import { Arr, pipe } from "@nlozgachev/pipelined";
 
 // Sorts integers in descending order:
 const descending = Ordering.reverse(Ordering.number);

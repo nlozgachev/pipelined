@@ -44,9 +44,7 @@ structure or supply an explicit domain interface before accessing fields. If the
 malformed, `Json.parse` catches the exception and returns `Err(SyntaxError)`:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Result } from "@nlozgachev/pipelined/core";
-import { Json } from "@nlozgachev/pipelined/data";
+import { Json, pipe, Result } from "@nlozgachev/pipelined";
 
 type WebhookEvent = {
   readonly eventId: string;
@@ -147,9 +145,7 @@ the required payload fields, computes a settlement summary, and serializes the r
 JSON string with a unified error channel:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Result } from "@nlozgachev/pipelined/core";
-import { Json } from "@nlozgachev/pipelined/data";
+import { Json, pipe, Result } from "@nlozgachev/pipelined";
 
 type ChargePayload = {
   readonly chargeId: string;

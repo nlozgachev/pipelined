@@ -90,7 +90,7 @@ An `Optional<S, A>` pairs a getter that returns `Maybe<A>` with a setter that re
 structure unchanged when the target is absent:
 
 ```ts
-import type { Maybe } from "@nlozgachev/pipelined/core";
+import type { Maybe } from "@nlozgachev/pipelined";
 
 type Optional<S, A> = {
   readonly get: (structure: S) => Maybe<A>;
@@ -129,7 +129,7 @@ return the input structure reference unchanged.
 `Optional.from.index` focuses on an element at an array index:
 
 ```ts
-import { Optional } from "@nlozgachev/pipelined/core";
+import { Optional } from "@nlozgachev/pipelined";
 
 // Focus on an optional object field:
 const notificationsOptional = Optional.from.property<UserSettings>()("notifications");
@@ -161,7 +161,7 @@ Optional.get(outOfBoundsOptional)(items);
 getter must return a `Maybe`:
 
 ```ts
-import { Maybe, Optional } from "@nlozgachev/pipelined/core";
+import { Maybe, Optional } from "@nlozgachev/pipelined";
 
 const firstCharOptional = Optional.from.accessors(
   (text: string) => text.length > 0 ? Maybe.make.some(text[0]) : Maybe.make.none(),
@@ -178,8 +178,7 @@ const firstCharOptional = Optional.from.accessors(
 with named cases:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Optional } from "@nlozgachev/pipelined/core";
+import { Optional, pipe } from "@nlozgachev/pipelined";
 
 type NotificationSettings = NonNullable<UserSettings["notifications"]>;
 const slackOptional = Optional.from.property<NotificationSettings>()("slack");
@@ -216,8 +215,7 @@ const isSlackConfigured = pipe(
 transformation function to the focused value:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Optional } from "@nlozgachev/pipelined/core";
+import { Optional, pipe } from "@nlozgachev/pipelined";
 
 type SlackConfig = { readonly webhookUrl?: string; readonly enabled?: boolean };
 const enabledOptional = Optional.from.property<SlackConfig>()("enabled");
@@ -262,8 +260,7 @@ missing, the entire traversal resolves to `None` on read, or returns the origina
 write:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Optional } from "@nlozgachev/pipelined/core";
+import { Optional, pipe } from "@nlozgachev/pipelined";
 
 type FullSettings = Required<UserSettings>;
 type SlackParent = Required<FullSettings["notifications"]>;
@@ -303,8 +300,7 @@ Domain structures frequently mix guaranteed structural containers with optional 
 - `Lens.to.Optional`: Widens any `Lens` into an `Optional`.
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Lens, Optional } from "@nlozgachev/pipelined/core";
+import { Lens, Optional, pipe } from "@nlozgachev/pipelined";
 
 type SslConfig = {
   readonly certPath: string;
@@ -344,8 +340,7 @@ manifest, adjusting the replica count of an optional background worker pool, mod
 container volume mount, and formatting an optional telemetry collector endpoint:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Lens, Optional } from "@nlozgachev/pipelined/core";
+import { Lens, Optional, pipe } from "@nlozgachev/pipelined";
 
 type VolumeMount = {
   readonly mountPath: string;

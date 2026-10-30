@@ -27,8 +27,7 @@ dedicated combinators to transform the first element, the second element, or bot
 independently without breaking your pipeline flow.
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Pair } from "@nlozgachev/pipelined/core";
+import { Pair, pipe } from "@nlozgachev/pipelined";
 
 const entry = Pair.make("alice", 980);
 
@@ -60,7 +59,7 @@ destructure or manage array indices manually.
 To wrap two distinct values into a typed pair, we use `Pair.make`:
 
 ```ts
-import { Pair } from "@nlozgachev/pipelined/core";
+import { Pair } from "@nlozgachev/pipelined";
 
 const entry = Pair.make("timeout_seconds", 30); // Pair<string, number>
 ```

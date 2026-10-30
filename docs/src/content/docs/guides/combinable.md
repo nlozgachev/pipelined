@@ -52,7 +52,7 @@ records, and accumulate optional values without repeating initial seeds at every
 The library provides optimized, built-in combiners for standard primitives:
 
 ```ts
-import { Combinable } from "@nlozgachev/pipelined/core";
+import { Combinable } from "@nlozgachev/pipelined";
 
 // 1. Strings (empty: "")
 Combinable.string.combine("/users")("https://api.example.com"); // "https://api.example.com/users"
@@ -85,7 +85,7 @@ code.
 neutral `empty` value as the starting point:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
+import { pipe } from "@nlozgachev/pipelined";
 
 // Concatenating path segments
 const pathSegments = ["/v1", "/organizations", "/billing"];
@@ -153,7 +153,7 @@ Often, the values we want to combine are optional, represented by `Maybe<A>`. `C
 lifts a `Combinable<A>` to operate safely over `Maybe<A>` values:
 
 ```ts
-import { Maybe } from "@nlozgachev/pipelined/core";
+import { Maybe } from "@nlozgachev/pipelined";
 
 const maybeSum = Combinable.maybe(Combinable.sum);
 

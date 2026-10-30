@@ -47,8 +47,7 @@ flowchart TB
 ```
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Task } from "@nlozgachev/pipelined/core";
+import { pipe, Task } from "@nlozgachev/pipelined";
 
 const getTimestamp = Task.from.sync(() => Date.now()); // Task<number>
 
@@ -239,7 +238,7 @@ const results = await Task.sequential([
 `Task.delay` introduces a timed pause before the Task executes:
 
 ```ts
-import { Duration } from "@nlozgachev/pipelined/types";
+import { Duration } from "@nlozgachev/pipelined";
 
 const delayedGreeting = pipe(
   Task.make("Hello"),
@@ -252,7 +251,7 @@ const delayedGreeting = pipe(
 `Task.timeout` converts an infallible `Task<A>` into a fallible `Task.Result<E, A>`, resolving to `Err(onTimeout())` if the task does not complete within the specified `Duration` and aborting the inner `AbortSignal`:
 
 ```ts
-import { Duration } from "@nlozgachev/pipelined/types";
+import { Duration } from "@nlozgachev/pipelined";
 
 const boundedComputation = pipe(
   runHeavyIndexRebuild,
@@ -318,7 +317,7 @@ Task provides combinators for repeating and polling operations:
 `repeat` executes a Task a fixed number of times, collecting all outcomes:
 
 ```ts
-import { Duration } from "@nlozgachev/pipelined/types";
+import { Duration } from "@nlozgachev/pipelined";
 
 const readings = await pipe(
   readSensorTask,
@@ -372,7 +371,7 @@ flowchart TB
 Construct a `Task.Result` directly with `make.ok` and `make.err`, wrap a throwing or rejecting promise factory with `tryCatch`, or lift existing values via `from.Result`, `from.Maybe`, and `from.nullable`:
 
 ```ts
-import { Maybe, Result, Task } from "@nlozgachev/pipelined/core";
+import { Maybe, Result, Task } from "@nlozgachev/pipelined";
 
 const okTask = Task.Result.make.ok(42);
 const errTask = Task.Result.make.err("UNAUTHORIZED");
@@ -453,7 +452,7 @@ const accountWithQuota = pipe(
 When sequencing multiple `Task.Result` steps, `Task.Result.chain` propagates the `AbortSignal` down the line automatically. You can also enforce a deadline on any `Task.Result` using `Task.Result.timeout`, and execute the pipeline using `Task.Result.run(signal)`:
 
 ```ts
-import { Duration } from "@nlozgachev/pipelined/types";
+import { Duration } from "@nlozgachev/pipelined";
 
 const fetchReport = (reportId: string): Task.Result<string, Report> =>
   pipe(
@@ -479,7 +478,7 @@ const result = await pipe(
 When network operations or database queries suffer transient failures, `Task.Result.retry` automatically re-evaluates the task according to a `RetryPolicy`:
 
 ```ts
-import { Duration, RetryPolicy } from "@nlozgachev/pipelined/types";
+import { Duration, RetryPolicy } from "@nlozgachev/pipelined";
 
 // Constant delay policy (3 attempts, 500ms apart)
 const constantPolicy = RetryPolicy.constant({
@@ -529,7 +528,7 @@ const transientFetch = pipe(
 When evaluating multiple independent fallible requests in parallel, `Task.Result.struct` short-circuits on the first error encountered. If you need all tasks to run to completion regardless of individual failures (such as health check probes or bulk batch processing), use `Task.Result.allSettled`:
 
 ```ts
-import { Result } from "@nlozgachev/pipelined/core";
+import { Result } from "@nlozgachev/pipelined";
 
 const healthChecks = [
   checkDatabase,
@@ -558,7 +557,7 @@ for (const outcome of outcomes) {
 You can construct a `Task.Maybe` with `Task.Maybe.make.some`, `Task.Maybe.make.none`, `Task.Maybe.tryCatch` (which turns rejections into `None`), or lift values via `Task.Maybe.from.Maybe`, `Task.Maybe.from.nullable`, `Task.Maybe.from.Result`, and `Task.Maybe.from.Task`:
 
 ```ts
-import { Task } from "@nlozgachev/pipelined/core";
+import { Task } from "@nlozgachev/pipelined";
 
 const lookupUser = (id: string): Task.Maybe<User> =>
   Task.Maybe.tryCatch((signal) =>
@@ -589,7 +588,7 @@ const resolveActiveUserEmail = (userId: string): Task.Result<string, string> =>
 Create a `Task.Validation` using `make.passed`, `make.failed`, `make.failedAll`, `tryCatch`, or lift existing containers via `from.Validation`, `from.Result`, `from.Maybe`, and `from.nullable`:
 
 ```ts
-import { Task } from "@nlozgachev/pipelined/core";
+import { Task } from "@nlozgachev/pipelined";
 
 const checkUsernameAvailable = (username: string): Task.Validation<string, string> =>
   Task.Validation.tryCatch(
@@ -722,7 +721,7 @@ const value = await fetchProfile("123")(); // Ok(user) or Err(error)
 If you are interfacing with external libraries or frameworks that strictly require a standard `Promise` instance, you can convert the `Deferred` value using `Deferred.to.Promise`:
 
 ```ts
-import { Deferred } from "@nlozgachev/pipelined/core";
+import { Deferred } from "@nlozgachev/pipelined";
 
 const profilePromise = Deferred.to.Promise(fetchProfile("123")()); // Promise<Result<string, User>>
 ```

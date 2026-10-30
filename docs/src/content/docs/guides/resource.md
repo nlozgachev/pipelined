@@ -59,8 +59,7 @@ succeeds.
 We define a resource by supplying the actions to open and close it using `Resource.make`:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Resource, Task } from "@nlozgachev/pipelined/core";
+import { pipe, Resource, Task } from "@nlozgachev/pipelined";
 
 type DbError = { readonly kind: "DbError"; readonly message: string };
 
@@ -244,8 +243,7 @@ resulting file to cloud storage. Whether queries fail, disk space runs out, or u
 scratch directory is cleaned up and the database connection is closed in reverse order:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Resource, Task } from "@nlozgachev/pipelined/core";
+import { pipe, Resource, Task } from "@nlozgachev/pipelined";
 
 type BackupError =
   | { readonly kind: "DbError"; readonly message: string }

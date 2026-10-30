@@ -35,8 +35,7 @@ flowchart TB
 implicit error connotations. Neither side is privileged.
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { These } from "@nlozgachev/pipelined/core";
+import { pipe, These } from "@nlozgachev/pipelined";
 
 export type These<A, B> = These.First<A> | These.Second<B> | These.Both<A, B>;
 ```
@@ -55,7 +54,7 @@ neither.
 With `These`, the type system enforces that at least one contact channel is present:
 
 ```ts
-import { These } from "@nlozgachev/pipelined/core";
+import { These } from "@nlozgachev/pipelined";
 
 type ContactDetails = These<EmailAddress, PhoneNumber>;
 
@@ -103,7 +102,7 @@ independently.
 untouched:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
+import { pipe } from "@nlozgachev/pipelined";
 
 const formatEmail = (email: EmailAddress) => email.toLowerCase();
 
@@ -262,7 +261,7 @@ Use `These.to.Pair` to convert a `These` into a `Maybe<Pair<A, B>>`. If the valu
 it resolves to `Some([a, b])`; if only `First` or only `Second` is present, it resolves to `None`:
 
 ```ts
-import { Pair } from "@nlozgachev/pipelined/core";
+import { Pair } from "@nlozgachev/pipelined";
 
 const maybePair = These.to.Pair(These.make.both("Paris", 2_161_000));
 // Some(["Paris", 2161000])

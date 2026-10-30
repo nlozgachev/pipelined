@@ -42,8 +42,7 @@ At the runtime level, a `Refinement` is simply a standard function returning a b
 To lift a standard boolean check into a typed `Refinement`, we use `Refinement.from.Predicate`:
 
 ```ts
-import { Brand } from "@nlozgachev/pipelined/types";
-import { Refinement } from "@nlozgachev/pipelined/core";
+import { Brand, Refinement } from "@nlozgachev/pipelined";
 
 type PositiveNumber = Brand<"PositiveNumber", number>;
 type EvenNumber     = Brand<"EvenNumber", number>;
@@ -73,7 +72,7 @@ Because refinements are first-class values, we can combine them using logical op
 When you have a pipeline of narrowing steps where the output of check A becomes the input of check B (e.g. `string` → `NonEmpty` → `Trimmed`), you can chain them using `compose`:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
+import { pipe } from "@nlozgachev/pipelined";
 
 type NonEmptyString = Brand<"NonEmpty", string>;
 type TrimmedString  = Brand<"Trimmed", NonEmptyString>;
@@ -141,7 +140,7 @@ Refinements convert into functions compatible with `pipe` and `Maybe`.
 `Refinement.to.Maybe` converts a `Refinement<A, B>` into a mapping function `(a: A) => Maybe<B>`. This is the standard gateway to validate inputs and lift them safely into an optional pipeline:
 
 ```ts
-import { Maybe } from "@nlozgachev/pipelined/core";
+import { Maybe } from "@nlozgachev/pipelined";
 
 type NonEmptyString = Brand<"NonEmpty", string>;
 const isNonEmpty: Refinement<string, NonEmptyString> = Refinement.from.Predicate((s) => s.length > 0);
@@ -158,7 +157,7 @@ const parseTitle = (raw: string): Maybe<NonEmptyString> =>
 `Refinement.to.Result` converts a refinement into a mapping function `(a: A) => Result<E, B>`. It allows you to assert a type and attach a typed error if the check fails:
 
 ```ts
-import { Result } from "@nlozgachev/pipelined/core";
+import { Result } from "@nlozgachev/pipelined";
 
 const parseQuantity = (raw: number): Result<string, PositiveNumber> =>
   pipe(
@@ -191,7 +190,7 @@ const validateEmailInput = (raw: string): Result<string, EmailString> =>
 When composing a narrowing check alongside standard boolean predicates (such as in `Predicate.and` or `Predicate.all`), `Refinement.to.Predicate` converts a `Refinement<A, B>` into a plain `Predicate<A>`, discarding the type narrowing at compile time at zero runtime cost:
 
 ```ts
-import { Predicate, Refinement } from "@nlozgachev/pipelined/core";
+import { Predicate, Refinement } from "@nlozgachev/pipelined";
 
 const isNonEmptyPredicate: Predicate<string> = Refinement.to.Predicate(isNonEmpty);
 

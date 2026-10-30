@@ -51,7 +51,7 @@ wrapper boilerplate.
 The library provides optimized, built-in instances for common primitive types:
 
 ```ts
-import { Equality } from "@nlozgachev/pipelined/core";
+import { Equality } from "@nlozgachev/pipelined";
 
 Equality.string("hello", "hello"); // true
 Equality.number(42, 42);           // true
@@ -78,7 +78,7 @@ eqNumberArray([1, 2], [1, 2, 3]);    // false
 extracting the target field to compare:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
+import { pipe } from "@nlozgachev/pipelined";
 
 interface Product {
   id: string;
@@ -189,7 +189,7 @@ eqWaypoint([37.7749, -122.4194, "HQ"], [37.7749, -122.4194, "Warehouse"]); // fa
 allowing you to deduplicate complex objects structurally:
 
 ```ts
-import { Arr } from "@nlozgachev/pipelined/data";
+import { Arr } from "@nlozgachev/pipelined";
 
 interface LogEvent {
   userId: string;

@@ -31,8 +31,7 @@ By packaging our loading state into a single, cohesive type, we ensure that our 
 ever represent valid states.
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { RemoteData } from "@nlozgachev/pipelined/core";
+import { pipe, RemoteData } from "@nlozgachev/pipelined";
 
 export type RemoteData<E, A> =
   | RemoteData.NotAsked
@@ -48,7 +47,7 @@ export type RemoteData<E, A> =
 To track a lifecycle, we transition our state through the explicit constructors of `RemoteData`:
 
 ```ts
-import { RemoteData } from "@nlozgachev/pipelined/core";
+import { RemoteData } from "@nlozgachev/pipelined";
 
 type UserState = RemoteData<string, User>;
 
@@ -99,7 +98,7 @@ you unpack the data, `match` requires you to handle all four branches explicitly
 the compiler will refuse to build your application:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
+import { pipe } from "@nlozgachev/pipelined";
 
 const uiMessage = pipe(
   userDataState,

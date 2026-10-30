@@ -62,7 +62,7 @@ We construct a `Duration` by calling the constructor that matches our mental mod
 quantity. The internal representation is normalized to milliseconds automatically:
 
 ```ts
-import { Duration } from "@nlozgachev/pipelined/types";
+import { Duration } from "@nlozgachev/pipelined";
 
 const halfSecond  = Duration.milliseconds(500);
 const threeSeconds = Duration.seconds(3);
@@ -105,7 +105,7 @@ We can perform arithmetic on durations. `Duration.add` and `Duration.subtract` a
 data-last operations that allow us to adjust time quantities cleanly inside a `pipe`:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
+import { pipe } from "@nlozgachev/pipelined";
 
 const requestTimeout = Duration.seconds(30);
 const networkLatency = Duration.milliseconds(200);
@@ -127,7 +127,7 @@ types rather than raw numbers. This guarantees that delays, repeating poll tasks
 safe by default:
 
 ```ts
-import { Task } from "@nlozgachev/pipelined/core";
+import { Task } from "@nlozgachev/pipelined";
 
 // 1. Delaying execution
 const delayedTask = pipe(
@@ -152,8 +152,8 @@ const pollingTask = pipe(
 
 Transient network errors, rate-limited endpoints, and brief database lock contentions often succeed
 when retried after a short pause. Rather than scattering ad-hoc retry loops and raw millisecond
-multipliers across your services, `RetryPolicy` (from `@nlozgachev/pipelined/types`) pairs with
-`Duration` to define reusable, declarative backoff schedules.
+multipliers across your services, `RetryPolicy` (from `@nlozgachev/pipelined`) pairs with `Duration`
+to define reusable, declarative backoff schedules.
 
 `RetryPolicy` offers two constructors:
 
@@ -165,8 +165,7 @@ multipliers across your services, `RetryPolicy` (from `@nlozgachev/pipelined/typ
   ("thundering herds") across clients.
 
 ```ts
-import { Op, Task } from "@nlozgachev/pipelined/core";
-import { Duration, RetryPolicy } from "@nlozgachev/pipelined/types";
+import { Duration, Op, RetryPolicy, Task } from "@nlozgachev/pipelined";
 
 // 1. Fixed delay between attempts with failure filter and retry telemetry
 const fixedRetry = RetryPolicy.constant({

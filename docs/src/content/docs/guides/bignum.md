@@ -58,7 +58,7 @@ integer strings and `None` for empty, whitespace-only, or malformed strings with
 `SyntaxError`:
 
 ```ts
-import { BigNum } from "@nlozgachev/pipelined/data";
+import { BigNum } from "@nlozgachev/pipelined";
 
 BigNum.from.string("9007199254740993"); // Some(9007199254740993n)
 BigNum.from.string("  -42  ");          // Some(-42n)
@@ -90,8 +90,7 @@ BigNum.to.number(9007199254740993n);          // None (exceeds MAX_SAFE_INTEGER)
 The `BigNum.is` namespace provides pure predicates for filtering and branching on `bigint` values:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Arr, BigNum } from "@nlozgachev/pipelined/data";
+import { Arr, BigNum, pipe } from "@nlozgachev/pipelined";
 
 BigNum.is.zero(0n);       // true
 BigNum.is.even(4n);       // true
@@ -190,9 +189,7 @@ filters for positive charges, applies a minimum charge floor of `100n` cents (`$
 batch total, and computes an equal split across `recipientCount` payout accounts:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Maybe } from "@nlozgachev/pipelined/core";
-import { Arr, BigNum } from "@nlozgachev/pipelined/data";
+import { Arr, BigNum, Maybe, pipe } from "@nlozgachev/pipelined";
 
 const rawLineItems = ["2500", "invalid", "-300", "80", "4120"];
 const recipientCount = 3n;

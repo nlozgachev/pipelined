@@ -79,7 +79,7 @@ flowchart TB
 An `Op<Args, E, A>` is an immutable blueprint for fallible asynchronous work. It accepts an `AbortSignal` and your domain arguments, returning a promise. It never runs on its own:
 
 ```ts
-import { Op } from "@nlozgachev/pipelined/core";
+import { Op } from "@nlozgachev/pipelined";
 
 // Op<[query: string], ApiError, readonly User[]>
 ```
@@ -147,7 +147,7 @@ type NilReason = "aborted" | "dropped" | "replaced" | "evicted";
 `Op.make` defines an operation by accepting an asynchronous runner function and an error options object:
 
 ```ts
-import { Op } from "@nlozgachev/pipelined/core";
+import { Op } from "@nlozgachev/pipelined";
 
 interface User {
   readonly id: string;
@@ -272,7 +272,7 @@ The execution strategy dictates what happens when `run()` is triggered while an 
 - **`debounced`**: Waits for a quiet period of `duration` before starting execution. Every new call resets the timer and evicts the previous pending call (`reason: "evicted"`). Supports optional `leading: true` and `maxWait`:
 
 ```ts
-import { Duration } from "@nlozgachev/pipelined/types";
+import { Duration } from "@nlozgachev/pipelined";
 
 const debouncedSearch = Op.interpret(quickSearchOp, {
   strategy: "debounced",
@@ -283,7 +283,7 @@ const debouncedSearch = Op.interpret(quickSearchOp, {
 - **`throttled`**: Fires immediately on the first call, then locks out subsequent calls for `duration`. By adding `trailing: true`, the most recent call made during the cooldown window fires once when the cooldown expires:
 
 ```ts
-import { Duration } from "@nlozgachev/pipelined/types";
+import { Duration } from "@nlozgachev/pipelined";
 
 const handleResize = Op.interpret(computeLayoutOp, {
   strategy: "throttled",
@@ -374,7 +374,7 @@ if (Op.Outcome.is.ok(outcome)) {
 Because `manager.run()` returns a `Deferred`, combining multiple in-flight invocations uses `Deferred.all` or `Deferred.race`:
 
 ```ts
-import { Deferred } from "@nlozgachev/pipelined/core";
+import { Deferred } from "@nlozgachev/pipelined";
 
 const [profile, settings] = await Deferred.all([
   fetchProfileManager.run(userId),
@@ -389,7 +389,7 @@ const [profile, settings] = await Deferred.all([
 Retries and timeouts are configured declaratively at interpretation time, keeping operational concerns out of your core async definitions:
 
 ```ts
-import { Duration, RetryPolicy } from "@nlozgachev/pipelined/types";
+import { Duration, RetryPolicy } from "@nlozgachev/pipelined";
 
 const paymentManager = Op.interpret(submitPaymentOp, {
   strategy: "exclusive",
@@ -427,8 +427,7 @@ The `Nil` variant carries a precise `reason` explaining why the invocation did n
 - `"evicted"` — the invocation was removed from a waiting queue or buffer before starting.
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Op } from "@nlozgachev/pipelined/core";
+import { Op, pipe } from "@nlozgachev/pipelined";
 
 const outcome = await userManager.run("user_123");
 
@@ -478,7 +477,7 @@ At system boundaries, convert between `Op.Outcome` and `Result` or `Maybe`:
 - **`Op.Outcome.from.Maybe(maybe, onNone?)`**: Maps `Maybe.Some` to `Op.Outcome.Ok` and `Maybe.None` to `Op.Outcome.Nil` (defaulting reason to `"dropped"`).
 
 ```ts
-import { Maybe, Result } from "@nlozgachev/pipelined/core";
+import { Maybe, Result } from "@nlozgachev/pipelined";
 
 const resultOutcome = pipe(
   outcome,
@@ -507,8 +506,7 @@ const stopWire = Op.wire(userManager, (user) => auditLogManager.run(user.id));
 Here is an end-to-end example processing an order checkout. It awaits an exclusive payment submission, verifies discount codes, recovers from non-fatal inventory alerts, logs auditing records, and extracts a customer confirmation banner:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Op } from "@nlozgachev/pipelined/core";
+import { Op, pipe } from "@nlozgachev/pipelined";
 
 interface OrderReceipt {
   readonly orderId: string;

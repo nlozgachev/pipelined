@@ -28,7 +28,7 @@ lifecycle management of connections and locks, and `EventBus` for typed in-memor
 <!-- BUNDLE_OVERVIEW:START -->
 
 It has zero dependencies, ships ESM and CommonJS builds, and tree-shakes down to ~27 B–5.97 kB
-gzipped for individual modules and 22.00 kB for the entire package.
+gzipped for individual modules and 21.98 kB for the entire package.
 
 <!-- BUNDLE_OVERVIEW:END -->
 
@@ -46,9 +46,7 @@ Full guides and API reference at **[pipelined.lozgachev.dev](https://pipelined.l
 value that might be missing so the steps after it only run when something is there:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Maybe } from "@nlozgachev/pipelined/core";
-import { Num, Str } from "@nlozgachev/pipelined/data";
+import { Maybe, Num, pipe, Str } from "@nlozgachev/pipelined";
 
 const parseDiscount = (raw: string): string =>
   pipe(
@@ -75,8 +73,7 @@ it can fail. `Task.Result<E, A>` is a lazy async function
 in the signature:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Result, Task } from "@nlozgachev/pipelined/core";
+import { pipe, Result, Task } from "@nlozgachev/pipelined";
 
 type User = { id: string; name: string };
 type Post = { id: string; title: string };
@@ -134,9 +131,7 @@ missing. The helpers in `@nlozgachev/pipelined/data` are curried for `pipe` and 
 whenever an element might not exist:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Maybe } from "@nlozgachev/pipelined/core";
-import { Arr, Num, Rec, Str } from "@nlozgachev/pipelined/data";
+import { Arr, Maybe, Num, pipe, Rec, Str } from "@nlozgachev/pipelined";
 
 type RawItem = { name: string; price: string; category: string };
 type Item = { name: string; price: number; category: string };
@@ -171,9 +166,7 @@ If a form validator stops at the first error, the user has to fix and resubmit o
 `Validation<E, A>` checks every field and collects all errors in one pass:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Validation } from "@nlozgachev/pipelined/core";
-import { Str } from "@nlozgachev/pipelined/data";
+import { pipe, Str, Validation } from "@nlozgachev/pipelined";
 
 type SignupForm = { username: string; email: string };
 
@@ -231,8 +224,7 @@ in states that shouldn't exist, like showing a spinner and an error message at t
 `RemoteData` represents the request as one of four mutually exclusive states:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { RemoteData } from "@nlozgachev/pipelined/core";
+import { pipe, RemoteData } from "@nlozgachev/pipelined";
 
 type UserProfile = { name: string };
 type FetchError = { message: string };
@@ -296,8 +288,7 @@ async function fetchUser(
 With **pipelined**:
 
 ```ts
-import { Op } from "@nlozgachev/pipelined/core";
-import { Duration } from "@nlozgachev/pipelined/types";
+import { Duration, Op } from "@nlozgachev/pipelined";
 
 type ApiError = { kind: "NetworkError"; cause: unknown } | { kind: "Timeout" };
 
@@ -344,8 +335,7 @@ overlapping calls behave:
 **Search (cancel the previous call when the user types):**
 
 ```ts
-import { Op } from "@nlozgachev/pipelined/core";
-import { Duration } from "@nlozgachev/pipelined/types";
+import { Duration, Op } from "@nlozgachev/pipelined";
 
 type SearchError = { kind: "SearchFailed"; cause: unknown };
 
@@ -410,7 +400,7 @@ Built-in strategies include `restartable`, `exclusive`, `debounced`, `throttled`
 single events or match ordered multi-step sequences with a reset event:
 
 ```ts
-import { EventBus } from "@nlozgachev/pipelined/core";
+import { EventBus } from "@nlozgachev/pipelined";
 
 type UserFlowMessages = {
   sessionStarted: { sessionId: string };
@@ -465,8 +455,7 @@ Updating a nested field immutably usually means copying each level with `{ ...ob
 `Optional` let you build a reusable path to a nested property and update it in one step:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Lens } from "@nlozgachev/pipelined/core";
+import { Lens, pipe } from "@nlozgachev/pipelined";
 
 type Address = { city: string; zip: string };
 type User = { name: string; address: Address };
@@ -500,8 +489,7 @@ with `Resource.chain` or `Resource.all`, resources are acquired sequentially and
 released in strict reverse (LIFO) order upon completion or error:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Resource, Task } from "@nlozgachev/pipelined/core";
+import { pipe, Resource, Task } from "@nlozgachev/pipelined";
 
 type AppError =
   | { kind: "DbError"; message: string }
@@ -569,8 +557,7 @@ interchangeable by default. `Brand` attaches a compile-time tag to a primitive t
 rejects mixed-up arguments without adding any wrapper at runtime:
 
 ```ts
-import { Result } from "@nlozgachev/pipelined/core";
-import { Brand } from "@nlozgachev/pipelined/types";
+import { Brand, Result } from "@nlozgachev/pipelined";
 
 type UserId = Brand<"UserId", string>;
 type OrderId = Brand<"OrderId", string>;
@@ -690,7 +677,7 @@ subpath:
 
 | Subpath                       | Scope                               | Gzipped Size | Budget Limit |
 | :---------------------------- | :---------------------------------- | :----------- | :----------- |
-| **All entry points combined** | Monolithic import of entire library | **22.00 kB** | 23.00 kB     |
+| **All entry points combined** | Monolithic import of entire library | **21.98 kB** | 23.00 kB     |
 
 <!-- BUNDLE_TABLE:END -->
 

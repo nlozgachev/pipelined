@@ -71,7 +71,7 @@ flowchart TB
 To construct state transitions, we use the core constructors of `State`:
 
 ```ts
-import { State } from "@nlozgachev/pipelined/core";
+import { State } from "@nlozgachev/pipelined";
 
 // Reads the current state
 const snapshot = State.get<number>();
@@ -101,7 +101,7 @@ manually between steps, allowing the state to flow through our transformations a
 completely unaffected:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
+import { pipe } from "@nlozgachev/pipelined";
 
 const stackSize: State<string[], number> = pipe(
   State.get<string[]>(),
@@ -181,7 +181,7 @@ shopping cart) while the root application state holds additional fields (such as
 against a wider parent state:
 
 ```ts
-import { Lens } from "@nlozgachev/pipelined/core";
+import { Lens } from "@nlozgachev/pipelined";
 
 interface StoreSession {
   userId: string;

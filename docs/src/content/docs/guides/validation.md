@@ -71,8 +71,7 @@ flowchart TB
 ```
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Validation } from "@nlozgachev/pipelined/core";
+import { pipe, Validation } from "@nlozgachev/pipelined";
 
 export type Validation<E, A> = Validation.Passed<A> | Validation.Failed<E>;
 ```
@@ -87,7 +86,7 @@ least one element). This prevents empty error states at compile time.
 Validation instances represent either a verified value or an initial failure.
 
 ```ts
-import { Validation } from "@nlozgachev/pipelined/core";
+import { Validation } from "@nlozgachev/pipelined";
 
 // Successful validation check
 const pass = Validation.make.passed("Alice"); // Validation<never, string>
@@ -199,7 +198,7 @@ When constructing objects from curried functions or assembling tuple arguments, 
 `Validation.apply`:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
+import { pipe } from "@nlozgachev/pipelined";
 
 const createProfile = (name: string) => (email: string) => (age: number) => ({
   name,
@@ -490,7 +489,7 @@ database or verifying an address against an external postal API — use `Task.Va
 concurrently and aggregates all failures into a single list:
 
 ```ts
-import { Task } from "@nlozgachev/pipelined/core";
+import { Task } from "@nlozgachev/pipelined";
 
 const validateUserAsync = Task.Validation.struct({
   username: checkUsernameUnique(username), // Task.Validation<string, string>
@@ -506,8 +505,7 @@ errors.
 Format or log asynchronous validation errors mid-pipeline using dedicated combinators:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Task } from "@nlozgachev/pipelined/core";
+import { pipe, Task } from "@nlozgachev/pipelined";
 
 const validatedProfile = pipe(
   validateUserAsync,
@@ -527,8 +525,7 @@ namespaces errors, hands off the verified record to a sequential `Result` pipeli
 persistence, and formats the final HTTP response:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Result, Validation } from "@nlozgachev/pipelined/core";
+import { pipe, Result, Validation } from "@nlozgachev/pipelined";
 
 interface RegistrationInput {
   username: string;

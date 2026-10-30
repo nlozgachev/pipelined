@@ -5,7 +5,7 @@ description: Automated failure tracking, fast-failing open circuits, and trial-p
 
 <!-- BUNDLE_SIZE:START -->
 
-> 2.80 kB minified + gzipped
+> 2.77 kB minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 
@@ -101,8 +101,7 @@ Initialize a circuit breaker with `CircuitBreaker.make`, providing the failure t
 cooldown timeout:
 
 ```ts
-import { CircuitBreaker } from "@nlozgachev/pipelined/core";
-import { Duration } from "@nlozgachev/pipelined/types";
+import { CircuitBreaker, Duration } from "@nlozgachev/pipelined";
 
 type StripeError = {
   readonly status: number;
@@ -138,8 +137,7 @@ The `breaker.protect` combinator wraps any `Task.Result<EIn, A>` computation. Be
 task as its sole argument, it integrates directly into `pipe`:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { Result, Task } from "@nlozgachev/pipelined/core";
+import { pipe, Result, Task } from "@nlozgachev/pipelined";
 
 type ChargeInput = {
   readonly customerId: string;
@@ -255,9 +253,7 @@ The following example demonstrates protecting an order fulfillment pipeline agai
 inventory service outages while isolating customer notifications:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined/composition";
-import { CircuitBreaker, Result, Task } from "@nlozgachev/pipelined/core";
-import { Duration } from "@nlozgachev/pipelined/types";
+import { CircuitBreaker, Duration, pipe, Result, Task } from "@nlozgachev/pipelined";
 
 type InventoryError = { readonly code: "OUT_OF_STOCK" | "SERVICE_UNAVAILABLE" };
 type EmailError = { readonly reason: string };
