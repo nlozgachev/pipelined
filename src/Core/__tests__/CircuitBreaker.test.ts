@@ -407,6 +407,45 @@ test("reset: forces circuit from Open to Closed and clears failures", async () =
 	expect(breaker.state()).toStrictEqual({ kind: "Closed", failures: 0 });
 });
 
+test("reset: invalidates in-flight probe and prevents late probe failure from reopening circuit", async () => {
+	const breaker = CircuitBreaker.make<string>({ failureThreshold: 1, resetTimeout: Duration.milliseconds(20) });
+
+	// Trip circuit
+	await breaker.protect(makeErrTask("err_1"))();
+	expect(CircuitBreaker.is.open(breaker.state())).toBe(true);
+	await sleep(30);
+
+	// Launch probe that will take 40ms and fail
+	const probePromise = breaker.protect(makeErrTask("late_probe_err", 40))();
+
+	// Wait 10ms for probe to start
+	await sleep(10);
+
+	// Operator manually resets breaker to Closed
+	breaker.reset();
+	expect(breaker.state()).toStrictEqual({ kind: "Closed", failures: 0 });
+
+	// Wait for the probe to settle
+	const res = await probePromise;
+	expect(res).toStrictEqual(Result.make.err("late_probe_err"));
+
+	// Circuit must still be Closed; late probe failure must not reopen the circuit
+	expect(breaker.state()).toStrictEqual({ kind: "Closed", failures: 0 });
+});
+
+test("reset: catches and isolates subscriber callback errors without throwing", async () => {
+	const breaker = CircuitBreaker.make<string>({ failureThreshold: 1, resetTimeout: Duration.milliseconds(50) });
+
+	breaker.subscribe(() => {
+		throw new Error("reset_subscriber_crash");
+	});
+
+	await breaker.protect(makeErrTask("err"))();
+
+	expect(() => breaker.reset()).not.toThrow();
+	expect(breaker.state()).toStrictEqual({ kind: "Closed", failures: 0 });
+});
+
 test("subscribe: notifies listeners of state transitions and allows unsubscribing", async () => {
 	const breaker = CircuitBreaker.make<string>({ failureThreshold: 1, resetTimeout: Duration.milliseconds(20) });
 

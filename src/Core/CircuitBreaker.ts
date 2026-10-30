@@ -258,7 +258,7 @@ const makeCircuitBreaker = <E = unknown>(config: CircuitBreaker.Config<E>): Circ
 	const notifySubscribers = (): void => {
 		if (subscribers.size === 0) { return; }
 		const snapshot = getState();
-		for (const listener of subscribers) {
+		for (const listener of Array.from(subscribers)) {
 			try {
 				listener(snapshot);
 			} catch {
@@ -370,6 +370,11 @@ const makeCircuitBreaker = <E = unknown>(config: CircuitBreaker.Config<E>): Circ
 				deferred.then((result) => {
 					if (signal) {
 						signal.removeEventListener("abort", onAbort);
+					}
+
+					if (currentKind !== "HalfOpen") {
+						resolve(result);
+						return;
 					}
 
 					if (signal?.aborted) {
