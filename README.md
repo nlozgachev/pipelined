@@ -27,9 +27,9 @@ lifecycle management of connections and locks, and `EventBus` for typed in-memor
 
 <!-- BUNDLE_OVERVIEW:START -->
 
-It has zero dependencies, ships ESM and CommonJS builds, and tree-shakes down to ~142 B–1.90 kB
-gzipped for individual modules (with an upper ceiling of <14.17 kB gzipped for all of `core` and
-<21.07 kB for the entire package).
+It has zero dependencies, ships ESM and CommonJS builds, and tree-shakes down to ~36 B–7.53 kB
+gzipped for individual modules (with an upper ceiling of <15.05 kB gzipped for all of `core` and
+<21.96 kB for the entire package).
 
 <!-- BUNDLE_OVERVIEW:END -->
 
@@ -662,40 +662,40 @@ imported by your application.
 
 When imported individually, only the targeted module is bundled into your application:
 
-| Import Pattern | Subpath                             | Minified + Gzipped | Raw Bytes |
-| :------------- | :---------------------------------- | :----------------- | :-------- |
-| `pipe`         | `@nlozgachev/pipelined/composition` | **142 B**          | 142 B     |
-| `flow`         | `@nlozgachev/pipelined/composition` | **173 B**          | 173 B     |
-| `Brand`        | `@nlozgachev/pipelined/types`       | **36 B**           | 36 B      |
-| `Duration`     | `@nlozgachev/pipelined/types`       | **153 B**          | 153 B     |
-| `Maybe`        | `@nlozgachev/pipelined/core`        | **1.57 kB**        | 1,569 B   |
-| `Result`       | `@nlozgachev/pipelined/core`        | **1.57 kB**        | 1,569 B   |
-| `Validation`   | `@nlozgachev/pipelined/core`        | **1.57 kB**        | 1,569 B   |
-| `RemoteData`   | `@nlozgachev/pipelined/core`        | **1.87 kB**        | 1,868 B   |
-| `Machine`      | `@nlozgachev/pipelined/core`        | **1.90 kB**        | 1,895 B   |
-| `EventBus`     | `@nlozgachev/pipelined/core`        | **1.18 kB**        | 1,179 B   |
-| `Resource`     | `@nlozgachev/pipelined/core`        | **2.32 kB**        | 2,322 B   |
-| `Graph`        | `@nlozgachev/pipelined/core`        | **5.44 kB**        | 5,439 B   |
-| `Task`         | `@nlozgachev/pipelined/core`        | **4.04 kB**        | 4,039 B   |
-| `Op`           | `@nlozgachev/pipelined/core`        | **5.97 kB**        | 5,972 B   |
-| `Lens`         | `@nlozgachev/pipelined/core`        | **233 B**          | 233 B     |
-| `Arr`          | `@nlozgachev/pipelined/data`        | **6.82 kB**        | 6,817 B   |
-| `Rec`          | `@nlozgachev/pipelined/data`        | **6.82 kB**        | 6,817 B   |
-| `Dict`         | `@nlozgachev/pipelined/data`        | **7.53 kB**        | 7,528 B   |
-| `Str`          | `@nlozgachev/pipelined/data`        | **7.42 kB**        | 7,419 B   |
+| Import Pattern | Subpath                             | Minified + Gzipped |
+| :------------- | :---------------------------------- | :----------------- |
+| `pipe`         | `@nlozgachev/pipelined/composition` | **142 B**          |
+| `flow`         | `@nlozgachev/pipelined/composition` | **173 B**          |
+| `Brand`        | `@nlozgachev/pipelined/types`       | **36 B**           |
+| `Duration`     | `@nlozgachev/pipelined/types`       | **153 B**          |
+| `Maybe`        | `@nlozgachev/pipelined/core`        | **1.56 kB**        |
+| `Result`       | `@nlozgachev/pipelined/core`        | **1.56 kB**        |
+| `Validation`   | `@nlozgachev/pipelined/core`        | **1.56 kB**        |
+| `RemoteData`   | `@nlozgachev/pipelined/core`        | **1.87 kB**        |
+| `Machine`      | `@nlozgachev/pipelined/core`        | **1.89 kB**        |
+| `EventBus`     | `@nlozgachev/pipelined/core`        | **1.18 kB**        |
+| `Resource`     | `@nlozgachev/pipelined/core`        | **2.32 kB**        |
+| `Graph`        | `@nlozgachev/pipelined/core`        | **5.44 kB**        |
+| `Task`         | `@nlozgachev/pipelined/core`        | **4.04 kB**        |
+| `Op`           | `@nlozgachev/pipelined/core`        | **5.97 kB**        |
+| `Lens`         | `@nlozgachev/pipelined/core`        | **233 B**          |
+| `Arr`          | `@nlozgachev/pipelined/data`        | **6.82 kB**        |
+| `Rec`          | `@nlozgachev/pipelined/data`        | **6.82 kB**        |
+| `Dict`         | `@nlozgachev/pipelined/data`        | **7.53 kB**        |
+| `Str`          | `@nlozgachev/pipelined/data`        | **7.42 kB**        |
 
 ### Subpath Ceilings (Worst-Case Monolithic Imports)
 
 The upper bounds below apply only if your application imports every exported symbol from that
 subpath:
 
-| Subpath                             | Scope                                                             | Gzipped Size | Budget Limit |
-| :---------------------------------- | :---------------------------------------------------------------- | :----------- | :----------- |
-| `@nlozgachev/pipelined/types`       | Domain branded types and duration units                           | **461 B**    | 550 B        |
-| `@nlozgachev/pipelined/composition` | Pipeline runners and composition combinators                      | **1.54 kB**  | 2.00 kB      |
-| `@nlozgachev/pipelined/data`        | Bounds-safe array, record, and primitive helpers                  | **9.63 kB**  | 10.00 kB     |
-| `@nlozgachev/pipelined/core`        | Typed errors, optional values, async execution, state, and optics | **14.17 kB** | 15.00 kB     |
-| **All entry points combined**       | Monolithic import of entire library                               | **21.07 kB** | 22.00 kB     |
+| Subpath                           | Scope                                                             | Gzipped Size | Budget Limit |
+| :-------------------------------- | :---------------------------------------------------------------- | :----------- | :----------- |
+| @nlozgachev/pipelined/types       | Domain branded types and duration units                           | **461 B**    | 550 B        |
+| @nlozgachev/pipelined/composition | Pipeline runners and composition combinators                      | **1.54 kB**  | 2.00 kB      |
+| @nlozgachev/pipelined/data        | Bounds-safe array, record, and primitive helpers                  | **9.64 kB**  | 10.00 kB     |
+| @nlozgachev/pipelined/core        | Typed errors, optional values, async execution, state, and optics | **15.05 kB** | 16.00 kB     |
+| **All entry points combined**     | Monolithic import of entire library                               | **21.96 kB** | 23.00 kB     |
 
 <!-- BUNDLE_TABLE:END -->
 

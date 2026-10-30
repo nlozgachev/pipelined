@@ -92,6 +92,7 @@ export default defineConfig({
 						{ slug: "guides/task" },
 						{ slug: "guides/deferred" },
 						{ slug: "guides/op" },
+						{ slug: "guides/circuit-breaker" },
 						{ slug: "guides/event-bus" },
 						{ slug: "guides/resource" },
 						{ slug: "guides/graph" },

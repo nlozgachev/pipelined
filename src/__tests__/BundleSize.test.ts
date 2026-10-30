@@ -43,6 +43,7 @@ const GUIDE_MAP: Record<string, { module: string; subpath: string; }> = {
 	"bignum.md": { module: "BigNum", subpath: "@nlozgachev/pipelined/data" },
 	"bool.md": { module: "Bool", subpath: "@nlozgachev/pipelined/data" },
 	"brand.md": { module: "Brand", subpath: "@nlozgachev/pipelined/types" },
+	"circuit-breaker.md": { module: "CircuitBreaker", subpath: "@nlozgachev/pipelined/core" },
 	"combinable.md": { module: "Combinable", subpath: "@nlozgachev/pipelined/core" },
 	"deferred.md": { module: "Deferred", subpath: "@nlozgachev/pipelined/core" },
 	"dict.md": { module: "Dict", subpath: "@nlozgachev/pipelined/data" },

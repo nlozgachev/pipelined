@@ -121,7 +121,7 @@
 			"name": "Index (Monolithic import *)",
 			"import": "*",
 			"path": "dist/index.mjs",
-			"limit": "22 KB",
+			"limit": "23 KB",
 			"gzip": true,
 			"ignore": [
 				"util",
@@ -132,7 +132,7 @@
 			"name": "Core (import * as Core)",
 			"import": "*",
 			"path": "dist/core.mjs",
-			"limit": "15 KB",
+			"limit": "16 KB",
 			"gzip": true
 		},
 		{
@@ -263,6 +263,13 @@
 			"import": "{ Op }",
 			"path": "dist/core.mjs",
 			"limit": "7 KB",
+			"gzip": true
+		},
+		{
+			"name": "CircuitBreaker",
+			"import": "{ CircuitBreaker }",
+			"path": "dist/core.mjs",
+			"limit": "3 KB",
 			"gzip": true
 		},
 		{

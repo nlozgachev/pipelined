@@ -1,3 +1,4 @@
+export * from "./CircuitBreaker";
 export * from "./Combinable";
 export * from "./Deferred";
 export * from "./Equality";
