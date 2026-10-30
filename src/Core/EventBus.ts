@@ -1,4 +1,4 @@
-import { EVENT_BUS_STATE, EventBusInternalState, toInternalEventBus } from "#internal";
+import { EVENT_BUS_STATE, type EventBusInternalState, toInternalEventBus } from "../internal/EventBus.util.ts";
 
 // ---------------------------------------------------------------------------
 // EventBus<S>

@@ -1,7 +1,7 @@
 // =============================================================================
 // Imports
 // =============================================================================
-import type { Thenable } from "#internal";
+import type { Thenable } from "../internal/InternalTypes";
 import { Duration } from "../Types/Duration.ts";
 import { Deferred } from "./Deferred.ts";
 import { Maybe as CoreMaybe } from "./Maybe.ts";

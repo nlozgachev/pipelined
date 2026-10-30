@@ -1,7 +1,7 @@
 // =============================================================================
 // Imports
 // =============================================================================
-import type { WithKind, WithValue } from "#internal";
+import type { WithKind, WithValue } from "../internal/InternalTypes";
 import { type Result, Result as CoreResult } from "./Result.ts";
 import { type Validation, Validation as CoreValidation } from "./Validation.ts";
 

@@ -1,4 +1,4 @@
-import type { Awaitable } from "#internal";
+import type { Awaitable } from "../internal/InternalTypes";
 
 /**
  * Pipes a value through a sequence of operations, supporting asynchronous transitions at any step.

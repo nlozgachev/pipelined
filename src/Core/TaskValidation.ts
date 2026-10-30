@@ -1,4 +1,4 @@
-import { isNonEmptyArr, type NonEmptyArr, type Thenable } from "#internal";
+import { isNonEmptyArr, type NonEmptyArr, type Thenable } from "../internal/InternalTypes";
 import { Deferred } from "./Deferred.ts";
 import { type Maybe, Maybe as CoreMaybe } from "./Maybe.ts";
 import { type Result } from "./Result.ts";

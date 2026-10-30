@@ -1,4 +1,4 @@
-import type { WithKind } from "#internal";
+import type { WithKind } from "../internal/InternalTypes";
 import type { Duration } from "../Types/Duration.ts";
 import type { RetryEvent, RetryPolicy } from "../Types/RetryPolicy.ts";
 import { Deferred } from "./Deferred.ts";

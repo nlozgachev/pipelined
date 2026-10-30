@@ -1,4 +1,4 @@
-import type { Awaitable } from "#internal";
+import type { Awaitable } from "../internal/InternalTypes";
 
 /**
  * Composes asynchronous or synchronous functions from left to right, returning a reusable async function.

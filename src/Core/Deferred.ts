@@ -1,4 +1,4 @@
-import type { Thenable } from "#internal";
+import type { Thenable } from "../internal/InternalTypes";
 
 declare const _deferred: unique symbol;
 

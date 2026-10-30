@@ -1,7 +1,7 @@
 // =============================================================================
 // Imports
 // =============================================================================
-import type { NonEmptyArr, WithError, WithKind, WithValue } from "#internal";
+import type { NonEmptyArr, WithError, WithKind, WithValue } from "../internal/InternalTypes";
 import { type Maybe, Maybe as CoreMaybe } from "./Maybe.ts";
 import { type Validation, Validation as CoreValidation } from "./Validation.ts";
 

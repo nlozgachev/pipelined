@@ -15,7 +15,7 @@ import { Brand } from "./Brand.ts";
  */
 export type Duration = Brand<"Duration", number>;
 
-const wrap = Brand.wrap<"Duration", number>();
+const wrap = (milliseconds: number): Duration => milliseconds as Duration;
 
 export const Duration = {
 	/**

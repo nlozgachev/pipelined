@@ -1,5 +1,5 @@
 import type { Deferred } from "../Core/Deferred";
-import { Duration } from "../Types/Duration.ts";
+import type { Duration } from "../Types/Duration.ts";
 import type { RetryPolicy } from "../Types/RetryPolicy.ts";
 
 /**

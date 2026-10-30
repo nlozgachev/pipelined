@@ -1,6 +1,6 @@
-import type { Awaitable } from "#internal";
 import { describe, expectTypeOf, it } from "vitest";
 import { Deferred } from "../../Core/Deferred.ts";
+import type { Awaitable } from "../../internal/InternalTypes";
 import { flow } from "../flow.ts";
 import { flowAsync } from "../flowAsync.ts";
 

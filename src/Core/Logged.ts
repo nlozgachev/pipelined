@@ -1,4 +1,4 @@
-import { WithLog, WithValue } from "#internal";
+import { WithLog, WithValue } from "../internal/InternalTypes";
 import type { Lens } from "./Lens.ts";
 import type { Pair } from "./Pair.ts";
 

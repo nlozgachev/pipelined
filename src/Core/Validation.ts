@@ -1,7 +1,13 @@
 // =============================================================================
 // Imports
 // =============================================================================
-import { isNonEmptyArr, type NonEmptyArr, type WithErrors, type WithKind, type WithValue } from "#internal";
+import {
+	isNonEmptyArr,
+	type NonEmptyArr,
+	type WithErrors,
+	type WithKind,
+	type WithValue,
+} from "../internal/InternalTypes";
 import { type Maybe, Maybe as CoreMaybe } from "./Maybe.ts";
 import { type Result, Result as CoreResult } from "./Result.ts";
 

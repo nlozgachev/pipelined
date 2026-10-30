@@ -1,9 +1,9 @@
 // =============================================================================
 // Imports
 // =============================================================================
-import { type NonEmpty as InternalNonEmpty, type NonEmptyArr } from "#internal";
 import { Maybe as CoreMaybe } from "../Core/Maybe.ts";
 import { Result as CoreResult } from "../Core/Result.ts";
+import { type NonEmpty as InternalNonEmpty, type NonEmptyArr } from "../internal/InternalTypes";
 import type { Brand } from "../Types/Brand.ts";
 
 // =============================================================================
@@ -28,102 +28,47 @@ const _setKey = <A>(record: Record<string, A>, key: string, value: A): void => {
 	}
 };
 
-const RecMaybe = {
-	/**
-	 * Map a function that returns a `Maybe` over each value of a record,
-	 * and combine the results into a single `Maybe` containing the updated record.
-	 * If any value results in `None`, the entire operation returns `None` (short-circuits).
-	 *
-	 * @see {@link sequence} for collecting an existing record of Maybe values.
-	 *
-	 * @example
-	 * ```ts
-	 * const parseNum = (s: string) => s === "NaN" ? Maybe.make.none() : Maybe.make.some(Number(s));
-	 * pipe({ a: "1", b: "2" }, Rec.traverse.Maybe(parseNum)); // Some({ a: 1, b: 2 })
-	 * pipe({ a: "1", b: "NaN" }, Rec.traverse.Maybe(parseNum)); // None
-	 * ```
-	 */
-	traverse:
-		<A, B>(transform: (value: A) => CoreMaybe<B>) =>
-		(record: Readonly<Record<string, A>>): CoreMaybe<Readonly<Record<string, B>>> => {
-			const recordKeys = Object.keys(record);
-			if (recordKeys.length === 0) {
-				return { kind: "Some", value: {} };
+const traverseMaybe =
+	<A, B>(transform: (value: A) => CoreMaybe<B>) =>
+	(record: Readonly<Record<string, A>>): CoreMaybe<Readonly<Record<string, B>>> => {
+		const recordKeys = Object.keys(record);
+		if (recordKeys.length === 0) {
+			return { kind: "Some", value: {} };
+		}
+		const result: Record<string, B> = {};
+		for (let i = 0; i < recordKeys.length; i++) {
+			const key = recordKeys[i];
+			const maybeVal = transform(record[key]);
+			if (maybeVal.kind === "None") {
+				return maybeVal;
 			}
-			const result: Record<string, B> = {};
-			for (let i = 0; i < recordKeys.length; i++) {
-				const key = recordKeys[i];
-				const maybeVal = transform(record[key]);
-				if (maybeVal.kind === "None") {
-					return maybeVal;
-				}
-				_setKey(result, key, maybeVal.value);
+			_setKey(result, key, maybeVal.value);
+		}
+		return { kind: "Some", value: result };
+	};
+
+const sequenceMaybe = <A>(record: Readonly<Record<string, CoreMaybe<A>>>): CoreMaybe<Readonly<Record<string, A>>> =>
+	traverseMaybe<CoreMaybe<A>, A>((value) => value)(record);
+
+const traverseResult =
+	<E, A, B>(transform: (value: A) => CoreResult<E, B>) =>
+	(record: Readonly<Record<string, A>>): CoreResult<E, Readonly<Record<string, B>>> => {
+		const recordKeys = Object.keys(record);
+		const result: Record<string, B> = {};
+		for (let i = 0; i < recordKeys.length; i++) {
+			const key = recordKeys[i];
+			const res = transform(record[key]);
+			if (res.kind === "Err") {
+				return res;
 			}
-			return { kind: "Some", value: result };
-		},
+			_setKey(result, key, res.value);
+		}
+		return { kind: "Ok", value: result };
+	};
 
-	/**
-	 * Sequence a record of `Maybe` values into a `Maybe` of a record.
-	 * If any key contains `None`, the entire operation returns `None`.
-	 *
-	 * @see {@link traverse} for mapping record values to Maybe instances and collecting them.
-	 *
-	 * @example
-	 * ```ts
-	 * Rec.sequence.Maybe({ a: Maybe.make.some(1), b: Maybe.make.some(2) }); // Some({ a: 1, b: 2 })
-	 * Rec.sequence.Maybe({ a: Maybe.make.some(1), b: Maybe.make.none() }); // None
-	 * ```
-	 */
-	sequence: <A>(record: Readonly<Record<string, CoreMaybe<A>>>): CoreMaybe<Readonly<Record<string, A>>> =>
-		RecMaybe.traverse<CoreMaybe<A>, A>((value) => value)(record),
-};
-
-const RecResult = {
-	/**
-	 * Map a function that returns a `Result` over each value of a record,
-	 * and combine the results into a single `Result` containing the updated record.
-	 * If any value results in an `Err`, the entire operation returns that `Err` (short-circuits).
-	 *
-	 * @see {@link sequence} for collecting an existing record of Result values.
-	 *
-	 * @example
-	 * ```ts
-	 * const checkPositive = (n: number) => n < 0 ? Result.make.err("negative") : Result.make.ok(n);
-	 * pipe({ a: 1, b: 2 }, Rec.traverse.Result(checkPositive)); // Ok({ a: 1, b: 2 })
-	 * pipe({ a: 1, b: -2 }, Rec.traverse.Result(checkPositive)); // Err("negative")
-	 * ```
-	 */
-	traverse:
-		<E, A, B>(transform: (value: A) => CoreResult<E, B>) =>
-		(record: Readonly<Record<string, A>>): CoreResult<E, Readonly<Record<string, B>>> => {
-			const recordKeys = Object.keys(record);
-			const result: Record<string, B> = {};
-			for (let i = 0; i < recordKeys.length; i++) {
-				const key = recordKeys[i];
-				const res = transform(record[key]);
-				if (res.kind === "Err") {
-					return res;
-				}
-				_setKey(result, key, res.value);
-			}
-			return { kind: "Ok", value: result };
-		},
-
-	/**
-	 * Sequence a record of `Result` values into a `Result` of a record.
-	 * If any key contains an `Err`, the entire operation returns that `Err`.
-	 *
-	 * @see {@link traverse} for mapping record values to Result instances and collecting them.
-	 *
-	 * @example
-	 * ```ts
-	 * Rec.sequence.Result({ a: Result.make.ok(1), b: Result.make.ok(2) }); // Ok({ a: 1, b: 2 })
-	 * Rec.sequence.Result({ a: Result.make.ok(1), b: Result.make.err("oops") }); // Err("oops")
-	 * ```
-	 */
-	sequence: <E, A>(record: Readonly<Record<string, CoreResult<E, A>>>): CoreResult<E, Readonly<Record<string, A>>> =>
-		RecResult.traverse<E, CoreResult<E, A>, A>((value) => value)(record),
-};
+const sequenceResult = <E, A>(
+	record: Readonly<Record<string, CoreResult<E, A>>>,
+): CoreResult<E, Readonly<Record<string, A>>> => traverseResult<E, CoreResult<E, A>, A>((value) => value)(record);
 
 /**
  * Functional record/object utilities that compose well with pipe.
@@ -782,11 +727,11 @@ export const Rec = {
 	/**
 	 * Maps record values to an effectful container and aggregates the results into a record.
 	 */
-	traverse: { Maybe: RecMaybe.traverse, Result: RecResult.traverse },
+	traverse: { Maybe: traverseMaybe, Result: traverseResult },
 	/**
 	 * Sequences a record of effectful containers into a container of record.
 	 */
-	sequence: { Maybe: RecMaybe.sequence, Result: RecResult.sequence },
+	sequence: { Maybe: sequenceMaybe, Result: sequenceResult },
 	/**
 	 * Utilities for working with guaranteed non-empty records (`NonEmptyRecord`).
 	 */

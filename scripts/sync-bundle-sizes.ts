@@ -17,42 +17,42 @@ interface SizeItem {
 
 const pkgName = "@nlozgachev/pipelined";
 
-const GUIDE_MAP: Record<string, { module: string; subpath: string; }> = {
-	"arr.md": { module: "Arr", subpath: `${pkgName}/data` },
-	"bignum.md": { module: "BigNum", subpath: `${pkgName}/data` },
-	"bool.md": { module: "Bool", subpath: `${pkgName}/data` },
-	"brand.md": { module: "Brand", subpath: `${pkgName}/types` },
-	"circuit-breaker.md": { module: "CircuitBreaker", subpath: `${pkgName}/core` },
-	"combinable.md": { module: "Combinable", subpath: `${pkgName}/core` },
-	"deferred.md": { module: "Deferred", subpath: `${pkgName}/core` },
-	"dict.md": { module: "Dict", subpath: `${pkgName}/data` },
-	"duration.md": { module: "Duration", subpath: `${pkgName}/types` },
-	"equality.md": { module: "Equality", subpath: `${pkgName}/core` },
-	"event-bus.md": { module: "EventBus", subpath: `${pkgName}/core` },
-	"graph.md": { module: "Graph", subpath: `${pkgName}/core` },
-	"json.md": { module: "Json", subpath: `${pkgName}/data` },
-	"lens.md": { module: "Lens", subpath: `${pkgName}/core` },
-	"logged.md": { module: "Logged", subpath: `${pkgName}/core` },
-	"machine.md": { module: "Machine", subpath: `${pkgName}/core` },
-	"maybe.md": { module: "Maybe", subpath: `${pkgName}/core` },
-	"num.md": { module: "Num", subpath: `${pkgName}/data` },
-	"op.mdx": { module: "Op", subpath: `${pkgName}/core` },
-	"optional.md": { module: "Optional", subpath: `${pkgName}/core` },
-	"ordering.md": { module: "Ordering", subpath: `${pkgName}/core` },
-	"pair.md": { module: "Pair", subpath: `${pkgName}/core` },
-	"predicate.md": { module: "Predicate", subpath: `${pkgName}/core` },
-	"reader.md": { module: "Reader", subpath: `${pkgName}/core` },
-	"rec.md": { module: "Rec", subpath: `${pkgName}/data` },
-	"refinement.mdx": { module: "Refinement", subpath: `${pkgName}/core` },
-	"remote-data.md": { module: "RemoteData", subpath: `${pkgName}/core` },
-	"resource.md": { module: "Resource", subpath: `${pkgName}/core` },
-	"result.md": { module: "Result", subpath: `${pkgName}/core` },
-	"state.md": { module: "State", subpath: `${pkgName}/core` },
-	"str.md": { module: "Str", subpath: `${pkgName}/data` },
-	"task.mdx": { module: "Task", subpath: `${pkgName}/core` },
-	"these.md": { module: "These", subpath: `${pkgName}/core` },
-	"uniq.mdx": { module: "Uniq", subpath: `${pkgName}/data` },
-	"validation.md": { module: "Validation", subpath: `${pkgName}/core` },
+const GUIDE_MAP: Record<string, { module: string; }> = {
+	"arr.md": { module: "Arr" },
+	"bignum.md": { module: "BigNum" },
+	"bool.md": { module: "Bool" },
+	"brand.md": { module: "Brand" },
+	"circuit-breaker.md": { module: "CircuitBreaker" },
+	"combinable.md": { module: "Combinable" },
+	"deferred.md": { module: "Deferred" },
+	"dict.md": { module: "Dict" },
+	"duration.md": { module: "Duration" },
+	"equality.md": { module: "Equality" },
+	"event-bus.md": { module: "EventBus" },
+	"graph.md": { module: "Graph" },
+	"json.md": { module: "Json" },
+	"lens.md": { module: "Lens" },
+	"logged.md": { module: "Logged" },
+	"machine.md": { module: "Machine" },
+	"maybe.md": { module: "Maybe" },
+	"num.md": { module: "Num" },
+	"op.mdx": { module: "Op" },
+	"optional.md": { module: "Optional" },
+	"ordering.md": { module: "Ordering" },
+	"pair.md": { module: "Pair" },
+	"predicate.md": { module: "Predicate" },
+	"reader.md": { module: "Reader" },
+	"rec.md": { module: "Rec" },
+	"refinement.mdx": { module: "Refinement" },
+	"remote-data.md": { module: "RemoteData" },
+	"resource.md": { module: "Resource" },
+	"result.md": { module: "Result" },
+	"state.md": { module: "State" },
+	"str.md": { module: "Str" },
+	"task.mdx": { module: "Task" },
+	"these.md": { module: "These" },
+	"uniq.mdx": { module: "Uniq" },
+	"validation.md": { module: "Validation" },
 };
 
 export function formatBytes(bytes: number): string {
@@ -90,51 +90,35 @@ export function requireSize(sizeMap: Map<string, SizeItem>, target: string): num
 }
 
 export const STANDALONE_MODULES = [
-	{ name: "pipe", subpath: `${pkgName}/composition` },
-	{ name: "flow", subpath: `${pkgName}/composition` },
-	{ name: "Brand", subpath: `${pkgName}/types` },
-	{ name: "Duration", subpath: `${pkgName}/types` },
-	{ name: "Maybe", subpath: `${pkgName}/core` },
-	{ name: "Result", subpath: `${pkgName}/core` },
-	{ name: "Validation", subpath: `${pkgName}/core` },
-	{ name: "RemoteData", subpath: `${pkgName}/core` },
-	{ name: "Machine", subpath: `${pkgName}/core` },
-	{ name: "EventBus", subpath: `${pkgName}/core` },
-	{ name: "Resource", subpath: `${pkgName}/core` },
-	{ name: "Graph", subpath: `${pkgName}/core` },
-	{ name: "Task", subpath: `${pkgName}/core` },
-	{ name: "Op", subpath: `${pkgName}/core` },
-	{ name: "Lens", subpath: `${pkgName}/core` },
-	{ name: "Arr", subpath: `${pkgName}/data` },
-	{ name: "Rec", subpath: `${pkgName}/data` },
-	{ name: "Dict", subpath: `${pkgName}/data` },
-	{ name: "Str", subpath: `${pkgName}/data` },
+	"pipe",
+	"flow",
+	"Brand",
+	"Duration",
+	"Maybe",
+	"Result",
+	"Validation",
+	"RemoteData",
+	"Machine",
+	"EventBus",
+	"Resource",
+	"Graph",
+	"Task",
+	"Op",
+	"Lens",
+	"Arr",
+	"Rec",
+	"Dict",
+	"Str",
 ] as const;
 
 export function buildBundleTables(sizeMap: Map<string, SizeItem>): string {
-	const standaloneRows = STANDALONE_MODULES.map(({ name, subpath }) => {
+	const standaloneRows = STANDALONE_MODULES.map((name) => {
 		const item = sizeMap.get(name);
 		if (!item) { return ""; }
-		return `| \`${name}\` | \`${subpath}\` | **${formatBytes(item.size)}** |`;
+		return `| \`${name}\` | **${formatBytes(item.size)}** |`;
 	}).filter(Boolean).join("\n");
 
 	const subpaths = [{
-		name: "Types (import * as Types)",
-		display: `${pkgName}/types`,
-		scope: "Domain branded types and duration units",
-	}, {
-		name: "Composition (import * as Composition)",
-		display: `${pkgName}/composition`,
-		scope: "Pipeline runners and composition combinators",
-	}, {
-		name: "Data (import * as Data)",
-		display: `${pkgName}/data`,
-		scope: "Bounds-safe array, record, and primitive helpers",
-	}, {
-		name: "Core (import * as Core)",
-		display: `${pkgName}/core`,
-		scope: "Typed errors, optional values, async execution, state, and optics",
-	}, {
 		name: "Index (Monolithic import *)",
 		display: "**All entry points combined**",
 		scope: "Monolithic import of entire library",
@@ -168,18 +152,17 @@ export function updateReadme(sizeMap: Map<string, SizeItem>): void {
 	const readmePath = path.join(projectRoot, "README.md");
 	let content = fs.readFileSync(readmePath, "utf8");
 
-	const standaloneSizes = STANDALONE_MODULES.map(({ name }) => requireSize(sizeMap, name));
+	const standaloneSizes = STANDALONE_MODULES.map((name) => requireSize(sizeMap, name));
 	const minIndividual = Math.min(...standaloneSizes);
 	const maxIndividual = Math.max(...standaloneSizes);
-	const coreSize = requireSize(sizeMap, "Core (import * as Core)");
 	const indexSize = requireSize(sizeMap, "Index (Monolithic import *)");
 
 	const overviewReplacement =
 		`<!-- BUNDLE_OVERVIEW:START -->\nIt has zero dependencies, ships ESM and CommonJS builds, and tree-shakes down to ~${
 			formatBytes(minIndividual)
-		}–${formatBytes(maxIndividual)} gzipped for individual modules (with an upper ceiling of <${
-			formatBytes(coreSize)
-		} gzipped for all of \`core\` and <${formatBytes(indexSize)} for the entire package).\n<!-- BUNDLE_OVERVIEW:END -->`;
+		}–${formatBytes(maxIndividual)} gzipped for individual modules and ${
+			formatBytes(indexSize)
+		} for the entire package.\n<!-- BUNDLE_OVERVIEW:END -->`;
 
 	if (content.includes("<!-- BUNDLE_OVERVIEW:START -->")) {
 		content = content.replace(/<!-- BUNDLE_OVERVIEW:START -->[\s\S]*?<!-- BUNDLE_OVERVIEW:END -->/, overviewReplacement);

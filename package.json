@@ -29,7 +29,6 @@
 	],
 	"type": "module",
 	"sideEffects": false,
-	"types": "./dist/index.d.ts",
 	"imports": {
 		"#core": "./src/Core/index.ts",
 		"#data": "./src/Data/index.ts",
@@ -38,45 +37,16 @@
 		"#internal": "./src/internal/index.ts",
 		"#test-utils": "./test-utils.ts"
 	},
+	"types": "./dist/index.d.ts",
 	"exports": {
-		"./composition": {
+		".": {
 			"import": {
-				"types": "./dist/composition.d.ts",
-				"default": "./dist/composition.mjs"
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.mjs"
 			},
 			"require": {
-				"types": "./dist/composition.d.cts",
-				"default": "./dist/composition.cjs"
-			}
-		},
-		"./core": {
-			"import": {
-				"types": "./dist/core.d.ts",
-				"default": "./dist/core.mjs"
-			},
-			"require": {
-				"types": "./dist/core.d.cts",
-				"default": "./dist/core.cjs"
-			}
-		},
-		"./data": {
-			"import": {
-				"types": "./dist/data.d.ts",
-				"default": "./dist/data.mjs"
-			},
-			"require": {
-				"types": "./dist/data.d.cts",
-				"default": "./dist/data.cjs"
-			}
-		},
-		"./types": {
-			"import": {
-				"types": "./dist/types.d.ts",
-				"default": "./dist/types.mjs"
-			},
-			"require": {
-				"types": "./dist/types.d.cts",
-				"default": "./dist/types.cjs"
+				"types": "./dist/index.d.cts",
+				"default": "./dist/index.cjs"
 			}
 		}
 	},
@@ -129,294 +99,262 @@
 			]
 		},
 		{
-			"name": "Core (import * as Core)",
-			"import": "*",
-			"path": "dist/core.mjs",
-			"limit": "16 KB",
-			"gzip": true
-		},
-		{
-			"name": "Data (import * as Data)",
-			"import": "*",
-			"path": "dist/data.mjs",
-			"limit": "10 KB",
-			"gzip": true
-		},
-		{
-			"name": "Composition (import * as Composition)",
-			"import": "*",
-			"path": "dist/composition.mjs",
-			"limit": "2 KB",
-			"gzip": true,
-			"ignore": [
-				"util",
-				"node:util"
-			]
-		},
-		{
-			"name": "Types (import * as Types)",
-			"import": "*",
-			"path": "dist/types.mjs",
-			"limit": "550 B",
-			"gzip": true
-		},
-		{
 			"name": "pipe",
 			"import": "{ pipe }",
-			"path": "dist/composition.mjs",
-			"limit": "300 B",
+			"path": "dist/index.mjs",
+			"limit": "200 B",
 			"gzip": true
 		},
 		{
 			"name": "flow",
 			"import": "{ flow }",
-			"path": "dist/composition.mjs",
-			"limit": "350 B",
+			"path": "dist/index.mjs",
+			"limit": "200 B",
 			"gzip": true
 		},
 		{
 			"name": "Brand",
 			"import": "{ Brand }",
-			"path": "dist/types.mjs",
-			"limit": "150 B",
+			"path": "dist/index.mjs",
+			"limit": "40 B",
 			"gzip": true
 		},
 		{
 			"name": "Duration",
 			"import": "{ Duration }",
-			"path": "dist/types.mjs",
-			"limit": "300 B",
+			"path": "dist/index.mjs",
+			"limit": "200 B",
 			"gzip": true
 		},
 		{
 			"name": "Maybe",
 			"import": "{ Maybe }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "2 KB",
 			"gzip": true
 		},
 		{
 			"name": "Result",
 			"import": "{ Result }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "2 KB",
 			"gzip": true
 		},
 		{
 			"name": "Validation",
 			"import": "{ Validation }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "2 KB",
 			"gzip": true
 		},
 		{
 			"name": "RemoteData",
 			"import": "{ RemoteData }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "2 KB",
 			"gzip": true
 		},
 		{
 			"name": "Task",
 			"import": "{ Task }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "5 KB",
 			"gzip": true
 		},
 		{
 			"name": "Deferred",
 			"import": "{ Deferred }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "200 B",
 			"gzip": true
 		},
 		{
 			"name": "Machine",
 			"import": "{ Machine }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "2 KB",
 			"gzip": true
 		},
 		{
 			"name": "EventBus",
 			"import": "{ EventBus }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "1.5 KB",
 			"gzip": true
 		},
 		{
 			"name": "Resource",
 			"import": "{ Resource }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "3 KB",
 			"gzip": true
 		},
 		{
 			"name": "Graph",
 			"import": "{ Graph }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "6 KB",
 			"gzip": true
 		},
 		{
 			"name": "Op",
 			"import": "{ Op }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "7 KB",
 			"gzip": true
 		},
 		{
 			"name": "CircuitBreaker",
 			"import": "{ CircuitBreaker }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "3 KB",
 			"gzip": true
 		},
 		{
 			"name": "Lens",
 			"import": "{ Lens }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "300 B",
 			"gzip": true
 		},
 		{
 			"name": "Optional",
 			"import": "{ Optional }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "2 KB",
 			"gzip": true
 		},
 		{
 			"name": "Reader",
 			"import": "{ Reader }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "200 B",
 			"gzip": true
 		},
 		{
 			"name": "State",
 			"import": "{ State }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "300 B",
 			"gzip": true
 		},
 		{
 			"name": "Logged",
 			"import": "{ Logged }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "300 B",
 			"gzip": true
 		},
 		{
 			"name": "These",
 			"import": "{ These }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "2 KB",
 			"gzip": true
 		},
 		{
 			"name": "Equality",
 			"import": "{ Equality }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "300 B",
 			"gzip": true
 		},
 		{
 			"name": "Ordering",
 			"import": "{ Ordering }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "300 B",
 			"gzip": true
 		},
 		{
 			"name": "Predicate",
 			"import": "{ Predicate }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "200 B",
 			"gzip": true
 		},
 		{
 			"name": "Refinement",
 			"import": "{ Refinement }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "2 KB",
 			"gzip": true
 		},
 		{
 			"name": "Combinable",
 			"import": "{ Combinable }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "2 KB",
 			"gzip": true
 		},
 		{
 			"name": "Pair",
 			"import": "{ Pair }",
-			"path": "dist/core.mjs",
+			"path": "dist/index.mjs",
 			"limit": "200 B",
 			"gzip": true
 		},
 		{
 			"name": "Arr",
 			"import": "{ Arr }",
-			"path": "dist/data.mjs",
+			"path": "dist/index.mjs",
 			"limit": "7 KB",
 			"gzip": true
 		},
 		{
 			"name": "Rec",
 			"import": "{ Rec }",
-			"path": "dist/data.mjs",
-			"limit": "7 KB",
+			"path": "dist/index.mjs",
+			"limit": "3 KB",
 			"gzip": true
 		},
 		{
 			"name": "Dict",
 			"import": "{ Dict }",
-			"path": "dist/data.mjs",
-			"limit": "9 KB",
+			"path": "dist/index.mjs",
+			"limit": "3 KB",
 			"gzip": true
 		},
 		{
 			"name": "Uniq",
 			"import": "{ Uniq }",
-			"path": "dist/data.mjs",
-			"limit": "8 KB",
+			"path": "dist/index.mjs",
+			"limit": "3 KB",
 			"gzip": true
 		},
 		{
 			"name": "Str",
 			"import": "{ Str }",
-			"path": "dist/data.mjs",
-			"limit": "8 KB",
+			"path": "dist/index.mjs",
+			"limit": "3 KB",
 			"gzip": true
 		},
 		{
 			"name": "Num",
 			"import": "{ Num }",
-			"path": "dist/data.mjs",
-			"limit": "8 KB",
+			"path": "dist/index.mjs",
+			"limit": "3 KB",
 			"gzip": true
 		},
 		{
 			"name": "BigNum",
 			"import": "{ BigNum }",
-			"path": "dist/data.mjs",
-			"limit": "8 KB",
+			"path": "dist/index.mjs",
+			"limit": "3 KB",
 			"gzip": true
 		},
 		{
 			"name": "Bool",
 			"import": "{ Bool }",
-			"path": "dist/data.mjs",
-			"limit": "8 KB",
+			"path": "dist/index.mjs",
+			"limit": "2 KB",
 			"gzip": true
 		},
 		{
 			"name": "Json",
 			"import": "{ Json }",
-			"path": "dist/data.mjs",
-			"limit": "8 KB",
+			"path": "dist/index.mjs",
+			"limit": "2 KB",
 			"gzip": true
 		}
 	],

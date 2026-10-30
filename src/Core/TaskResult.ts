@@ -1,4 +1,4 @@
-import type { Thenable } from "#internal";
+import type { Thenable } from "../internal/InternalTypes";
 import { Duration } from "../Types/Duration.ts";
 import type { RetryPolicy } from "../Types/RetryPolicy.ts";
 import { Deferred } from "./Deferred.ts";

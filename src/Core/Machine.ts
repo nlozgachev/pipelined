@@ -1,4 +1,4 @@
-import type { WithKind, WithValue } from "#internal";
+import type { WithKind, WithValue } from "../internal/InternalTypes";
 import { EventBus } from "./EventBus.ts";
 
 // =============================================================================

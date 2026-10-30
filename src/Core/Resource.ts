@@ -1,4 +1,4 @@
-import { WithKind } from "#internal";
+import { WithKind } from "../internal/InternalTypes";
 import { Deferred } from "./Deferred.ts";
 import { Result } from "./Result.ts";
 import { type Task } from "./Task.ts";

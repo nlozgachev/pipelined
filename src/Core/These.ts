@@ -1,4 +1,4 @@
-import type { WithFirst, WithKind, WithSecond } from "#internal";
+import type { WithFirst, WithKind, WithSecond } from "../internal/InternalTypes";
 import { type Maybe, Maybe as CoreMaybe } from "./Maybe.ts";
 import { type Pair, Pair as CorePair } from "./Pair.ts";
 

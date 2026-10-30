@@ -1,7 +1,7 @@
-import type { NonEmptyArr } from "#internal";
 import { constTruthyBool } from "#test-utils";
 import { expectTypeOf, test } from "vitest";
 import { pipe } from "../../Composition/pipe.ts";
+import type { NonEmptyArr } from "../../internal/InternalTypes";
 import { Maybe } from "../Maybe.ts";
 import { Result } from "../Result.ts";
 import { Validation } from "../Validation.ts";

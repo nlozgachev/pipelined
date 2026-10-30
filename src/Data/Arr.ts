@@ -1,36 +1,19 @@
 // =============================================================================
 // Imports
 // =============================================================================
-import { isNonEmptyArr, type NonEmptyArr } from "#internal";
 import { Equality } from "../Core/Equality.ts";
 import { Maybe as CoreMaybe } from "../Core/Maybe.ts";
 import { Ordering } from "../Core/Ordering.ts";
 import { Result as CoreResult } from "../Core/Result.ts";
 import { Task as CoreTask } from "../Core/Task.ts";
 import { Validation as CoreValidation } from "../Core/Validation.ts";
+import { isNonEmptyArr, type NonEmptyArr } from "../internal/InternalTypes";
 
 // =============================================================================
 // Private Helpers & Traverse/Sequence Implementations
 // =============================================================================
-const ArrMaybe = {
-	/**
-	 * Maps each element to a Maybe and collects the results.
-	 * Returns None if any mapping returns None.
-	 *
-	 * @see {@link sequence} for collecting an existing array of Maybe values.
-	 *
-	 * @example
-	 * ```ts
-	 * const parseNum = (s: string): Maybe<number> => {
-	 *   const n = Number(s);
-	 *   return isNaN(n) ? Maybe.make.none() : Maybe.make.some(n);
-	 * };
-	 *
-	 * pipe(["1", "2", "3"], Arr.traverse.Maybe(parseNum)); // Some([1, 2, 3])
-	 * pipe(["1", "x", "3"], Arr.traverse.Maybe(parseNum)); // None
-	 * ```
-	 */
-	traverse: <A, B>(transform: (item: A) => CoreMaybe<B>) => (items: readonly A[]): CoreMaybe<readonly B[]> => {
+const traverseMaybe =
+	<A, B>(transform: (item: A) => CoreMaybe<B>) => (items: readonly A[]): CoreMaybe<readonly B[]> => {
 		const n = items.length;
 		const result = new Array<B>(n);
 		for (let i = 0; i < n; i++) {
@@ -39,157 +22,58 @@ const ArrMaybe = {
 			result[i] = mapped.value;
 		}
 		return CoreMaybe.make.some(result);
-	},
+	};
 
-	/**
-	 * Collects an array of Maybe instances into a Maybe of array.
-	 * Returns None if any element is None.
-	 *
-	 * @see {@link traverse} for mapping elements to Maybe instances and collecting them.
-	 *
-	 * @example
-	 * ```ts
-	 * Arr.sequence.Maybe([Maybe.make.some(1), Maybe.make.some(2)]); // Some([1, 2])
-	 * Arr.sequence.Maybe([Maybe.make.some(1), Maybe.make.none()]); // None
-	 * ```
-	 */
-	sequence: <A>(items: readonly CoreMaybe<A>[]): CoreMaybe<readonly A[]> =>
-		ArrMaybe.traverse<CoreMaybe<A>, A>((item) => item)(items),
-};
+const sequenceMaybe = <A>(items: readonly CoreMaybe<A>[]): CoreMaybe<readonly A[]> =>
+	traverseMaybe<CoreMaybe<A>, A>((item) => item)(items);
 
-const ArrResult = {
-	/**
-	 * Maps each element to a Result and collects the results.
-	 * Returns the first Err if any mapping fails.
-	 *
-	 * @see {@link sequence} for collecting an existing array of Result values.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   [1, 2, 3],
-	 *   Arr.traverse.Result((n: number) => n > 0 ? Result.make.ok(n) : Result.make.err("negative"))
-	 * ); // Ok([1, 2, 3])
-	 * ```
-	 */
-	traverse:
-		<E, A, B>(transform: (item: A) => CoreResult<E, B>) => (items: readonly A[]): CoreResult<E, readonly B[]> => {
-			const n = items.length;
-			const result = new Array<B>(n);
-			for (let i = 0; i < n; i++) {
-				const mapped = transform(items[i]);
-				if (mapped.kind === "Err") { return mapped; }
+const traverseResult =
+	<E, A, B>(transform: (item: A) => CoreResult<E, B>) => (items: readonly A[]): CoreResult<E, readonly B[]> => {
+		const n = items.length;
+		const result = new Array<B>(n);
+		for (let i = 0; i < n; i++) {
+			const mapped = transform(items[i]);
+			if (mapped.kind === "Err") { return mapped; }
+			result[i] = mapped.value;
+		}
+		return CoreResult.make.ok(result);
+	};
+
+const sequenceResult = <E, A>(items: readonly CoreResult<E, A>[]): CoreResult<E, readonly A[]> =>
+	traverseResult<E, CoreResult<E, A>, A>((item) => item)(items);
+
+const traverseValidation =
+	<E, A, B>(transform: (item: A) => CoreValidation<E, B>) => (items: readonly A[]): CoreValidation<E, readonly B[]> => {
+		const n = items.length;
+		const result = new Array<B>(n);
+		const errors: E[] = [];
+		for (let i = 0; i < n; i++) {
+			const mapped = transform(items[i]);
+			if (CoreValidation.is.failed(mapped)) {
+				errors.push(...mapped.errors);
+			} else if (errors.length === 0) {
 				result[i] = mapped.value;
 			}
-			return CoreResult.make.ok(result);
-		},
+		}
+		return isNonEmptyArr(errors) ? CoreValidation.make.failedAll(errors) : CoreValidation.make.passed(result);
+	};
 
-	/**
-	 * Collects an array of Results into a Result of array.
-	 * Returns the first Err if any element is Err.
-	 *
-	 * @see {@link traverse} for mapping elements to Result instances and collecting them.
-	 *
-	 * @example
-	 * ```ts
-	 * Arr.sequence.Result([Result.make.ok(1), Result.make.ok(2)]); // Ok([1, 2])
-	 * Arr.sequence.Result([Result.make.ok(1), Result.make.err("bad")]); // Err("bad")
-	 * ```
-	 */
-	sequence: <E, A>(items: readonly CoreResult<E, A>[]): CoreResult<E, readonly A[]> =>
-		ArrResult.traverse<E, CoreResult<E, A>, A>((item) => item)(items),
-};
+const sequenceValidation = <E, A>(items: readonly CoreValidation<E, A>[]): CoreValidation<E, readonly A[]> =>
+	traverseValidation<E, CoreValidation<E, A>, A>((item) => item)(items);
 
-const ArrValidation = {
-	/**
-	 * Maps each element to a Validation and collects the results into Passed of array,
-	 * or accumulates all errors from all Failed items into Failed.
-	 *
-	 * @see {@link sequence} for collecting an existing array of Validation values.
-	 *
-	 * @example
-	 * ```ts
-	 * const checkPositive = (n: number) =>
-	 *   n > 0 ? Validation.make.passed(n) : Validation.make.failed(`Non-positive: ${n}`);
-	 *
-	 * pipe([1, 2, 3], Arr.traverse.Validation(checkPositive)); // Passed([1, 2, 3])
-	 * pipe([1, -2, -3], Arr.traverse.Validation(checkPositive)); // Failed(["Non-positive: -2", "Non-positive: -3"])
-	 * ```
-	 */
-	traverse:
-		<E, A, B>(transform: (item: A) => CoreValidation<E, B>) => (items: readonly A[]): CoreValidation<E, readonly B[]> => {
-			const n = items.length;
-			const result = new Array<B>(n);
-			const errors: E[] = [];
-			for (let i = 0; i < n; i++) {
-				const mapped = transform(items[i]);
-				if (CoreValidation.is.failed(mapped)) {
-					errors.push(...mapped.errors);
-				} else if (errors.length === 0) {
-					result[i] = mapped.value;
-				}
-			}
-			return isNonEmptyArr(errors) ? CoreValidation.make.failedAll(errors) : CoreValidation.make.passed(result);
-		},
+const traverseTask =
+	<A, B>(transform: (item: A) => CoreTask<B>, options?: { concurrency?: number; }) =>
+	(items: readonly A[]): CoreTask<readonly B[]> => {
+		const n = items.length;
+		const tasks = new Array<CoreTask<B>>(n);
+		for (let i = 0; i < n; i++) {
+			tasks[i] = transform(items[i]);
+		}
+		return CoreTask.all(tasks, options);
+	};
 
-	/**
-	 * Collects an array of Validation instances into a Validation of array.
-	 * Accumulates all errors from all Failed items into Failed.
-	 *
-	 * @see {@link traverse} for mapping elements to Validation instances and collecting them.
-	 *
-	 * @example
-	 * ```ts
-	 * Arr.sequence.Validation([Validation.make.passed(1), Validation.make.passed(2)]); // Passed([1, 2])
-	 * Arr.sequence.Validation([Validation.make.failed("err1"), Validation.make.failed("err2")]); // Failed(["err1", "err2"])
-	 * ```
-	 */
-	sequence: <E, A>(items: readonly CoreValidation<E, A>[]): CoreValidation<E, readonly A[]> =>
-		ArrValidation.traverse<E, CoreValidation<E, A>, A>((item) => item)(items),
-};
-
-const ArrTask = {
-	/**
-	 * Maps each element to a Task and collects their results into an array.
-	 * An optional `concurrency` option limits how many Tasks run concurrently.
-	 *
-	 * @see {@link sequence} for collecting an existing array of Task instances.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   [1, 2, 3],
-	 *   Arr.traverse.Task((n: number) => Task.make(n * 2))
-	 * )(); // Promise<[2, 4, 6]>
-	 * ```
-	 */
-	traverse:
-		<A, B>(transform: (item: A) => CoreTask<B>, options?: { concurrency?: number; }) =>
-		(items: readonly A[]): CoreTask<readonly B[]> => {
-			const n = items.length;
-			const tasks = new Array<CoreTask<B>>(n);
-			for (let i = 0; i < n; i++) {
-				tasks[i] = transform(items[i]);
-			}
-			return CoreTask.all(tasks, options);
-		},
-
-	/**
-	 * Collects an array of Tasks into a Task of array. Runs in parallel.
-	 *
-	 * @see {@link traverse} for mapping elements to Task instances and collecting them.
-	 *
-	 * @example
-	 * ```ts
-	 * pipe(
-	 *   [Task.make(1), Task.make(2)],
-	 *   Arr.sequence.Task
-	 * )(); // Deferred<[1, 2]>
-	 * ```
-	 */
-	sequence: <A>(items: readonly CoreTask<A>[]): CoreTask<readonly A[]> =>
-		ArrTask.traverse<CoreTask<A>, A>((item) => item)(items),
-};
+const sequenceTask = <A>(items: readonly CoreTask<A>[]): CoreTask<readonly A[]> =>
+	traverseTask<CoreTask<A>, A>((item) => item)(items);
 
 /**
  * Functional array utilities that compose well with pipe.
@@ -1460,21 +1344,11 @@ export const Arr = {
 	/**
 	 * Maps elements to an effectful container and aggregates the results.
 	 */
-	traverse: {
-		Maybe: ArrMaybe.traverse,
-		Result: ArrResult.traverse,
-		Task: ArrTask.traverse,
-		Validation: ArrValidation.traverse,
-	},
+	traverse: { Maybe: traverseMaybe, Result: traverseResult, Task: traverseTask, Validation: traverseValidation },
 	/**
 	 * Sequences an array of effectful containers into a container of array.
 	 */
-	sequence: {
-		Maybe: ArrMaybe.sequence,
-		Result: ArrResult.sequence,
-		Task: ArrTask.sequence,
-		Validation: ArrValidation.sequence,
-	},
+	sequence: { Maybe: sequenceMaybe, Result: sequenceResult, Task: sequenceTask, Validation: sequenceValidation },
 	/**
 	 * Utilities for working with guaranteed non-empty arrays (`NonEmptyArr`).
 	 */
