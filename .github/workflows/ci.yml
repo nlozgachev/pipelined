@@ -3,18 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - "docs/**"
-      - "*.md"
-      - "LICENCE"
-      - ".gitignore"
   pull_request:
     branches: [main]
-    paths-ignore:
-      - "docs/**"
-      - "*.md"
-      - "LICENCE"
-      - ".gitignore"
 
 permissions: {}
 
@@ -23,6 +13,110 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
-    name: Verify
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      docs: ${{ steps.filter.outputs.docs }}
+      deps: ${{ steps.filter.outputs.deps }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Inspect changed files
+        id: filter
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            DIFF=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} 2>/dev/null || git diff --name-only HEAD~1 HEAD)
+          else
+            git fetch origin ${{ github.base_ref }} --depth=1
+            DIFF=$(git diff --name-only origin/${{ github.base_ref }}...HEAD 2>/dev/null || git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})
+          fi
+          echo "Changed files:"
+          echo "$DIFF"
+
+          CODE=$(echo "$DIFF" | grep -qvE '^(docs/|.*\.md$|.*\.mdx$|LICENCE|\.gitignore|^$)' && echo 'true' || echo 'false')
+          DOCS=$(echo "$DIFF" | grep -qE '^(docs/|.*\.md$|.*\.mdx$|dprint)' && echo 'true' || echo 'false')
+          DEPS=$(echo "$DIFF" | grep -qE '^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml)' && echo 'true' || echo 'false')
+
+          echo "code=$CODE" >> $GITHUB_OUTPUT
+          echo "docs=$DOCS" >> $GITHUB_OUTPUT
+          echo "deps=$DEPS" >> $GITHUB_OUTPUT
+
+  verify-code:
+    name: Code Verification
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.code == 'true'
     uses: ./.github/workflows/verify.yml
+
+  verify-docs:
+    name: Documentation Verification
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build package (required for docs workspace resolution)
+        run: pnpm build
+
+      - name: Check formatting (dprint)
+        run: pnpm format:check
+
+      - name: Build documentation (Astro & Mermaid)
+        run: pnpm docs:build
+
+  dependency-review:
+    name: Dependency Review
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.deps == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+
+  ci-gate:
+    name: CI Status Gate
+    needs: [changes, verify-code, verify-docs, dependency-review]
+    if: always()
+    runs-on: ubuntu-24.04
+    permissions: {}
+    steps:
+      - name: Evaluate status
+        run: |
+          echo "Summary of dependent job states:"
+          echo "changes: ${{ needs.changes.result }}"
+          echo "verify-code: ${{ needs.verify-code.result }}"
+          echo "verify-docs: ${{ needs.verify-docs.result }}"
+          echo "dependency-review: ${{ needs.dependency-review.result }}"
+
+          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "CI Gate Failed: One or more jobs failed or were cancelled."
+            exit 1
+          fi
+
+          echo "CI Gate Passed: All executed checks succeeded and inactive checks were safely skipped."
