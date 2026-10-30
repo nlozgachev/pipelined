@@ -28,7 +28,7 @@ lifecycle management of connections and locks, and `EventBus` for typed in-memor
 <!-- BUNDLE_OVERVIEW:START -->
 
 It has zero dependencies, ships ESM and CommonJS builds, and tree-shakes down to ~27 B–5.97 kB
-gzipped for individual modules and 21.98 kB for the entire package.
+gzipped for individual modules and 22.01 kB for the entire package.
 
 <!-- BUNDLE_OVERVIEW:END -->
 
@@ -677,7 +677,7 @@ subpath:
 
 | Subpath                       | Scope                               | Gzipped Size | Budget Limit |
 | :---------------------------- | :---------------------------------- | :----------- | :----------- |
-| **All entry points combined** | Monolithic import of entire library | **21.98 kB** | 23.00 kB     |
+| **All entry points combined** | Monolithic import of entire library | **22.01 kB** | 23.00 kB     |
 
 <!-- BUNDLE_TABLE:END -->
 

@@ -199,8 +199,8 @@ const makeCircuitBreaker = <E = unknown>(config: CircuitBreaker.Config<E>): Circ
 		: 1;
 	const rawResetMs = Duration.to.milliseconds(config.resetTimeout);
 	const resetTimeoutMs = Number.isFinite(rawResetMs) ? Math.max(0, Math.floor(rawResetMs)) : 0;
-	const successThreshold = Number.isFinite(config.successThreshold)
-		? Math.max(1, Math.floor(config.successThreshold!))
+	const successThreshold = config.successThreshold !== undefined && Number.isFinite(config.successThreshold)
+		? Math.max(1, Math.floor(config.successThreshold))
 		: 1;
 	const rawWindowMs = config.failureWindow !== undefined ? Duration.to.milliseconds(config.failureWindow) : undefined;
 	const windowMs = rawWindowMs !== undefined && Number.isFinite(rawWindowMs)
@@ -220,13 +220,17 @@ const makeCircuitBreaker = <E = unknown>(config: CircuitBreaker.Config<E>): Circ
 
 	const subscribers = new Set<(state: CircuitBreaker.State<E>) => void>();
 
-	const pruneWindowFailures = (now: number): void => {
-		if (windowMs === undefined) { return; }
-		const cutoff = now - windowMs;
+	const pruneWindowFailures = (now: number, winMs: number): void => {
+		const cutoff = now - winMs;
 		let validIdx = 0;
 		const len = failureTimestamps.length;
-		while (validIdx < len && failureTimestamps[validIdx]! < cutoff) {
-			validIdx++;
+		while (validIdx < len) {
+			const ts = failureTimestamps[validIdx];
+			if (ts !== undefined && ts < cutoff) {
+				validIdx++;
+			} else {
+				break;
+			}
 		}
 		if (validIdx > 0) {
 			failureTimestamps.splice(0, validIdx);
@@ -238,7 +242,7 @@ const makeCircuitBreaker = <E = unknown>(config: CircuitBreaker.Config<E>): Circ
 
 		if (currentKind === "Closed") {
 			if (windowMs !== undefined) {
-				pruneWindowFailures(now);
+				pruneWindowFailures(now, windowMs);
 				return { kind: "Closed", failures: failureTimestamps.length };
 			}
 			return { kind: "Closed", failures: consecutiveFailures };
@@ -271,7 +275,7 @@ const makeCircuitBreaker = <E = unknown>(config: CircuitBreaker.Config<E>): Circ
 		const now = Date.now();
 		if (windowMs !== undefined) {
 			failureTimestamps.push(now);
-			pruneWindowFailures(now);
+			pruneWindowFailures(now, windowMs);
 			if (failureTimestamps.length >= failureThreshold) {
 				currentKind = "Open";
 				openedAt = now;
@@ -357,14 +361,16 @@ const makeCircuitBreaker = <E = unknown>(config: CircuitBreaker.Config<E>): Circ
 				}
 
 				const onAbort = () => {
-					if (currentKind === "HalfOpen" && probeInFlight) {
-						probeInFlight = false;
-						notifySubscribers();
-					}
+					probeInFlight = false;
+					notifySubscribers();
 				};
 
 				if (signal) {
-					signal.addEventListener("abort", onAbort, { once: true });
+					if (signal.aborted) {
+						onAbort();
+					} else {
+						signal.addEventListener("abort", onAbort, { once: true });
+					}
 				}
 
 				deferred.then((result) => {
@@ -378,8 +384,6 @@ const makeCircuitBreaker = <E = unknown>(config: CircuitBreaker.Config<E>): Circ
 					}
 
 					if (signal?.aborted) {
-						probeInFlight = false;
-						notifySubscribers();
 						resolve(result);
 						return;
 					}
@@ -455,15 +459,8 @@ const makeCircuitBreaker = <E = unknown>(config: CircuitBreaker.Config<E>): Circ
 					return Deferred.from.Promise(Promise.resolve(Result.make.err(openErr)));
 				}
 
-				if (signal?.aborted) {
-					return task(signal);
-				}
-
 				currentKind = "HalfOpen";
-				probeInFlight = true;
 				consecutiveSuccesses = 0;
-				notifySubscribers();
-				return executeProbe(task, signal);
 			}
 
 			// currentKind === "HalfOpen"

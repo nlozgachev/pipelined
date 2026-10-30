@@ -326,6 +326,60 @@ test("protect: caller abortion during HalfOpen probe releases probeInFlight lock
 	expect(state.probeInFlight).toBe(false);
 });
 
+test("protect: caller abortion during HalfOpen probe notifies subscribers exactly once", async () => {
+	const breaker = CircuitBreaker.make<string>({ failureThreshold: 1, resetTimeout: Duration.milliseconds(20) });
+
+	await breaker.protect(makeErrTask("err"))();
+	await sleep(30);
+
+	const transitions: CircuitBreaker.State<string>[] = [];
+	breaker.subscribe((s) => transitions.push(s));
+
+	const controller = new AbortController();
+	const probeTask = makeOkTask("probe_value", 50);
+
+	const probePromise = breaker.protect(probeTask)(controller.signal);
+
+	// Abort caller while probe is running
+	await sleep(10);
+	controller.abort();
+
+	await probePromise;
+
+	// Transitions should be:
+	// 1. HalfOpen with probeInFlight: true (when probe starts)
+	// 2. HalfOpen with probeInFlight: false (when probe is aborted)
+	expect(transitions).toHaveLength(2);
+	expect(transitions[0]).toStrictEqual({ kind: "HalfOpen", probeInFlight: true, consecutiveSuccesses: 0 });
+	expect(transitions[1]).toStrictEqual({ kind: "HalfOpen", probeInFlight: false, consecutiveSuccesses: 0 });
+});
+
+test("protect: probe aborting synchronously during task invocation notifies subscribers and settles cleanly", async () => {
+	const breaker = CircuitBreaker.make<string>({ failureThreshold: 1, resetTimeout: Duration.milliseconds(20) });
+
+	await breaker.protect(makeErrTask("err"))();
+	await sleep(30);
+
+	const transitions: CircuitBreaker.State<string>[] = [];
+	breaker.subscribe((s) => transitions.push(s));
+
+	const controller = new AbortController();
+	const syncAbortTask: Task.Result<string, number> = () => {
+		controller.abort();
+		return Deferred.from.Promise(Promise.resolve(Result.make.err("aborted_sync")));
+	};
+
+	const res = await breaker.protect(syncAbortTask)(controller.signal);
+	expect(res).toStrictEqual(Result.make.err("aborted_sync"));
+
+	// Transitions:
+	// 1. HalfOpen with probeInFlight: true (when probe starts)
+	// 2. HalfOpen with probeInFlight: false (when synchronous abort occurs)
+	expect(transitions).toHaveLength(2);
+	expect(transitions[0]).toStrictEqual({ kind: "HalfOpen", probeInFlight: true, consecutiveSuccesses: 0 });
+	expect(transitions[1]).toStrictEqual({ kind: "HalfOpen", probeInFlight: false, consecutiveSuccesses: 0 });
+});
+
 // -----------------------------------------------------------------------------
 // Sliding failure window
 // -----------------------------------------------------------------------------
