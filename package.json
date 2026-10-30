@@ -1,5 +1,5 @@
 {
-	"name": "@nlozgachev/pipelined",
+	"name": "@pplnd/core",
 	"version": "0.89.0",
 	"description": "Typed errors, explicit optional values, and composable pipelines for TypeScript",
 	"keywords": [
@@ -22,7 +22,7 @@
 	"license": "BSD-3-Clause",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/nlozgachev/pipelined.git"
+		"url": "git+https://github.com/pplnd/core.git"
 	},
 	"files": [
 		"dist"
@@ -66,6 +66,8 @@
 		"lint": "oxlint src/",
 		"format": "dprint fmt && dprint fmt --config dprint.md.json \"docs/**/*.md\" \"docs/**/*.mdx\" \"README.md\" \"CODE_OF_CONDUCT.md\" \"CONTRIBUTING.md\" \".github/**/*.md\"",
 		"format:check": "dprint check && dprint check --config dprint.md.json \"docs/**/*.md\" \"docs/**/*.mdx\" \"README.md\" \"CODE_OF_CONDUCT.md\" \"CONTRIBUTING.md\" \".github/**/*.md\"",
+		"format:imports": "node scripts/format-guide-imports.ts",
+		"format:imports:check": "node scripts/format-guide-imports.ts --check",
 		"docs:dev": "pnpm --filter pipelined-docs dev",
 		"docs:build": "pnpm --filter pipelined-docs build",
 		"check": "pnpm typecheck && pnpm test:types && pnpm lint && pnpm format:check"
