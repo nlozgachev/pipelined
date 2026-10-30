@@ -6,7 +6,8 @@ on:
   pull_request:
     branches: [main]
 
-permissions: {}
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -51,6 +52,8 @@ jobs:
     name: Code Verification
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.code == 'true'
+    permissions:
+      contents: read
     uses: ./.github/workflows/verify.yml
 
   verify-docs:

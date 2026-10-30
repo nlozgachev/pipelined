@@ -10,6 +10,8 @@ permissions: {}
 jobs:
   verify:
     name: Verify
+    permissions:
+      contents: read
     uses: ./.github/workflows/verify.yml
 
   stage-npm:

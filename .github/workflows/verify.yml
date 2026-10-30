@@ -3,7 +3,8 @@ name: Verify
 on:
   workflow_call:
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   all:
