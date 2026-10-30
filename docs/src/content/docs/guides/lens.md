@@ -128,7 +128,7 @@ double-parenthesis invocation (`Lens.from.property<Structure>()("key")`) allows 
 autocomplete valid property keys and infer the target value type:
 
 ```ts
-import { Lens } from "@nlozgachev/pipelined";
+import { Lens } from "@pplnd/core";
 
 type DatabaseConfig = AppConfig["database"];
 type PoolConfig = DatabaseConfig["pool"];
@@ -164,7 +164,7 @@ const updatedPosition = Lens.set(latitudeLens)(48.8566)(position);
 argument, allowing clean integration with `pipe`:
 
 ```ts
-import { Lens, pipe } from "@nlozgachev/pipelined";
+import { Lens, pipe } from "@pplnd/core";
 
 // 1. Read a value
 const currentMax = pipe(config.database.pool, Lens.get(maxPoolLens));
@@ -210,7 +210,7 @@ Individual lenses compose into deep paths using `Lens.andThen`. The resulting co
 like any standard lens, reading and updating through the entire chain in a single step:
 
 ```ts
-import { Lens, pipe } from "@nlozgachev/pipelined";
+import { Lens, pipe } from "@pplnd/core";
 
 // Compose shallow lenses into a deep path:
 const maxConnectionsLens = pipe(
@@ -247,7 +247,7 @@ Alternatively, `Lens.to.Optional` widens a `Lens` directly into an `Optional` wh
 returns `Some`:
 
 ```ts
-import { Lens, Optional, pipe } from "@nlozgachev/pipelined";
+import { Lens, Optional, pipe } from "@pplnd/core";
 
 type UserPreferences = {
   readonly theme?: string;
@@ -283,7 +283,7 @@ revision counter. Using lenses, each step operates directly on its focused sub-m
 coupling helper functions to the overall order schema:
 
 ```ts
-import { Lens, pipe } from "@nlozgachev/pipelined";
+import { Lens, pipe } from "@pplnd/core";
 
 type ShippingAddress = {
   readonly recipient: string;

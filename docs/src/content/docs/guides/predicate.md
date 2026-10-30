@@ -60,7 +60,7 @@ If you have an existing `Refinement<A, B>` and want to compose it alongside plai
 using `Predicate.and`, `Predicate.or`, or `Predicate.all`, lift it with `Predicate.from.Refinement`:
 
 ```ts
-import { pipe, Predicate, Refinement, Str } from "@nlozgachev/pipelined";
+import { pipe, Predicate, Refinement, Str } from "@pplnd/core";
 
 // Str.is.nonEmpty is a Refinement<string, Str.NonEmpty>
 const isValidUsername: Predicate<string> = pipe(
@@ -76,7 +76,7 @@ const isValidUsername: Predicate<string> = pipe(
 `not` inverts a predicate, returning a new `Predicate<A>` without any complex type-casting overhead:
 
 ```ts
-import { pipe, Predicate } from "@nlozgachev/pipelined";
+import { pipe, Predicate } from "@pplnd/core";
 
 const isExpired: Predicate<Date> = (d) => d < new Date();
 const isActive: Predicate<Date> = pipe(isExpired, Predicate.not);

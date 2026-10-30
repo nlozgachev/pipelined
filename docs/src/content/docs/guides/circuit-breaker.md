@@ -101,7 +101,7 @@ Initialize a circuit breaker with `CircuitBreaker.make`, providing the failure t
 cooldown timeout:
 
 ```ts
-import { CircuitBreaker, Duration } from "@nlozgachev/pipelined";
+import { CircuitBreaker, Duration } from "@pplnd/core";
 
 type StripeError = {
   readonly status: number;
@@ -137,7 +137,7 @@ The `breaker.protect` combinator wraps any `Task.Result<EIn, A>` computation. Be
 task as its sole argument, it integrates directly into `pipe`:
 
 ```ts
-import { pipe, Result, Task } from "@nlozgachev/pipelined";
+import { pipe, Result, Task } from "@pplnd/core";
 
 type ChargeInput = {
   readonly customerId: string;
@@ -253,7 +253,7 @@ The following example demonstrates protecting an order fulfillment pipeline agai
 inventory service outages while isolating customer notifications:
 
 ```ts
-import { CircuitBreaker, Duration, pipe, Result, Task } from "@nlozgachev/pipelined";
+import { CircuitBreaker, Duration, pipe, Result, Task } from "@pplnd/core";
 
 type InventoryError = { readonly code: "OUT_OF_STOCK" | "SERVICE_UNAVAILABLE" };
 type EmailError = { readonly reason: string };

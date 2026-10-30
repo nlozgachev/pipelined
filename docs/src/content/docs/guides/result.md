@@ -55,7 +55,7 @@ This model creates three distinct failure modes:
 With `Result`, the possibility of failure becomes part of the return type:
 
 ```ts
-import { pipe, Result } from "@nlozgachev/pipelined";
+import { pipe, Result } from "@pplnd/core";
 
 const loadConfig = (rawJson: string): Result<"INVALID_JSON" | "INVALID_PORT", UserConfig> =>
   pipe(
@@ -105,7 +105,7 @@ error flows through to the end of the pipeline automatically, while the happy pa
 decouple the logic of what we want to do from the logic of handling failures.
 
 ```ts
-import { pipe, Result } from "@nlozgachev/pipelined";
+import { pipe, Result } from "@pplnd/core";
 
 export type Result<E, A> = Result.Ok<A> | Result.Err<E>;
 ```
@@ -118,7 +118,7 @@ To work within a typed error pipeline, we wrap our synchronous operations in a `
 the boundaries of our system.
 
 ```ts
-import { Result } from "@nlozgachev/pipelined";
+import { Result } from "@pplnd/core";
 
 // Representing a successful outcome
 const success = Result.make.ok(42); // Result<never, number>
@@ -213,7 +213,7 @@ failure branches independently.
 `map` transforms the value inside an `Ok` container, leaving `Err` failures untouched:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined";
+import { pipe } from "@pplnd/core";
 
 const double = (n: number) => n * 2;
 
@@ -479,7 +479,7 @@ Conversely, if you want to convert a `Maybe` into a `Result`, supply an error th
 `Result.from.Maybe` (or `Maybe.to.Result`) to replace `None`:
 
 ```ts
-import { Maybe } from "@nlozgachev/pipelined";
+import { Maybe } from "@pplnd/core";
 
 const resultValue = pipe(
   Maybe.make.none(),
@@ -505,7 +505,7 @@ across independent fields. Convert between the two representations using `Result
 and `Result.to.Validation`:
 
 ```ts
-import { Validation } from "@nlozgachev/pipelined";
+import { Validation } from "@pplnd/core";
 
 // Convert error-accumulating Validation into a fail-fast Result with a combined error string:
 const failFastResult = pipe(

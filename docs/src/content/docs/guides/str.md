@@ -66,7 +66,7 @@ predicates:
   characters (`"   \t\n"`).
 
 ```ts
-import { Arr, Maybe, pipe, Str } from "@nlozgachev/pipelined";
+import { Arr, Maybe, pipe, Str } from "@pplnd/core";
 
 Str.is.empty("");     // true
 Str.is.empty("   ");  // false (contains whitespace characters)
@@ -298,7 +298,7 @@ By combining `Str` and `Arr`, you can express multi-stage text normalization and
 workflows as a single linear pipeline:
 
 ```ts
-import { Arr, pipe, Str } from "@nlozgachev/pipelined";
+import { Arr, pipe, Str } from "@pplnd/core";
 
 const rawCsvColumn = `
   SKU-1042: Active

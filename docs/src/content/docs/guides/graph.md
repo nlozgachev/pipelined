@@ -67,7 +67,7 @@ Individual workflow steps are defined using `Graph.node`. Each node declares its
 upstream `deps`, and an execution thunk `run`:
 
 ```ts
-import { Graph, Task } from "@nlozgachev/pipelined";
+import { Graph, Task } from "@pplnd/core";
 
 // 1. Independent root nodes:
 const user = Graph.node({
@@ -151,7 +151,7 @@ if (outcome.kind === "Ok") {
 Because `Graph.run` returns a `Task.Result`, it composes directly into standard pipelines:
 
 ```ts
-import { Graph, pipe, Task } from "@nlozgachev/pipelined";
+import { Graph, pipe, Task } from "@pplnd/core";
 
 const summaryTask = pipe(
   Graph.run(dashboardGraph),
@@ -209,7 +209,7 @@ const slowStep = Graph.node({
 Individual nodes can attach resilience policies directly in their configuration:
 
 ```ts
-import { Duration, RetryPolicy } from "@nlozgachev/pipelined";
+import { Duration, RetryPolicy } from "@pplnd/core";
 
 const paymentStep = Graph.node({
   id: "payment",

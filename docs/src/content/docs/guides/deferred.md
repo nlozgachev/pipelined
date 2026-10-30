@@ -47,7 +47,7 @@ stateDiagram-v2
 confident will never reject, lifting it into the infallible `Deferred` type:
 
 ```ts
-import { Deferred } from "@nlozgachev/pipelined";
+import { Deferred } from "@pplnd/core";
 
 // Wrapping a guaranteed cache lookup
 const themeState: Deferred<string> = Deferred.from.Promise(
@@ -107,7 +107,7 @@ can coordinate them directly without converting back to native promises:
 results once every handle resolves:
 
 ```ts
-import { Deferred } from "@nlozgachev/pipelined";
+import { Deferred } from "@pplnd/core";
 
 const cacheLookup: Deferred<string> = loadCachedToken();
 const timerCheck: Deferred<number> = measureElapsedMs();

@@ -1,15 +1,15 @@
-# pipelined
+# pipelined @pplnd/core
 
-[![npm](https://img.shields.io/npm/v/@nlozgachev/pipelined?style=for-the-badge&color=000&logo=npm&label&logoColor=fff)](https://www.npmjs.com/package/@nlozgachev/pipelined)
-[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/nlozgachev/pipelined/publish.yml?style=for-the-badge&color=000&logo=githubactions&label&logoColor=fff)](https://github.com/nlozgachev/pipelined/actions/workflows/publish.yml)
-[![Codecov](https://img.shields.io/codecov/c/github/nlozgachev/pipelined?style=for-the-badge&color=000&logo=codecov&label&logoColor=fff)](https://app.codecov.io/github/nlozgachev/pipelined)
+[![npm](https://img.shields.io/npm/v/@pplnd/core?style=for-the-badge&color=000&logo=npm&label&logoColor=fff)](https://www.npmjs.com/package/@pplnd/core)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/pplnd/core/publish.yml?style=for-the-badge&color=000&logo=githubactions&label&logoColor=fff)](https://github.com/pplnd/core/actions/workflows/publish.yml)
+[![Codecov](https://img.shields.io/codecov/c/github/pplnd/core?style=for-the-badge&color=000&logo=codecov&label&logoColor=fff)](https://app.codecov.io/github/pplnd/core)
 
 Typed errors, explicit optional values, and composable pipelines for TypeScript.
 
 > **Note:** pipelined is pre-1.0. The API may change between minor versions until the 1.0 release.
 
 ```sh
-npm add @nlozgachev/pipelined
+npm add @pplnd/core
 ```
 
 ## Overview
@@ -27,8 +27,8 @@ lifecycle management of connections and locks, and `EventBus` for typed in-memor
 
 <!-- BUNDLE_OVERVIEW:START -->
 
-It has zero dependencies, ships ESM and CommonJS builds, and tree-shakes down to ~27 B–5.97 kB
-gzipped for individual modules and 22.01 kB for the entire package.
+It has zero dependencies, ships ESM and CommonJS builds, and tree-shakes down to ~27 B–5.96 kB
+gzipped for individual modules and 22.00 kB for the entire package.
 
 <!-- BUNDLE_OVERVIEW:END -->
 
@@ -46,7 +46,7 @@ Full guides and API reference at **[pipelined.lozgachev.dev](https://pipelined.l
 value that might be missing so the steps after it only run when something is there:
 
 ```ts
-import { Maybe, Num, pipe, Str } from "@nlozgachev/pipelined";
+import { Maybe, Num, pipe, Str } from "@pplnd/core";
 
 const parseDiscount = (raw: string): string =>
   pipe(
@@ -73,7 +73,7 @@ it can fail. `Task.Result<E, A>` is a lazy async function
 in the signature:
 
 ```ts
-import { pipe, Result, Task } from "@nlozgachev/pipelined";
+import { pipe, Result, Task } from "@pplnd/core";
 
 type User = { id: string; name: string };
 type Post = { id: string; title: string };
@@ -131,7 +131,7 @@ missing. The helpers in the library are curried for `pipe` and return `Maybe` wh
 might not exist:
 
 ```ts
-import { Arr, Maybe, Num, pipe, Rec, Str } from "@nlozgachev/pipelined";
+import { Arr, Maybe, Num, pipe, Rec, Str } from "@pplnd/core";
 
 type RawItem = { name: string; price: string; category: string };
 type Item = { name: string; price: number; category: string };
@@ -166,7 +166,7 @@ If a form validator stops at the first error, the user has to fix and resubmit o
 `Validation<E, A>` checks every field and collects all errors in one pass:
 
 ```ts
-import { pipe, Str, Validation } from "@nlozgachev/pipelined";
+import { pipe, Str, Validation } from "@pplnd/core";
 
 type SignupForm = { username: string; email: string };
 
@@ -224,7 +224,7 @@ in states that shouldn't exist, like showing a spinner and an error message at t
 `RemoteData` represents the request as one of four mutually exclusive states:
 
 ```ts
-import { pipe, RemoteData } from "@nlozgachev/pipelined";
+import { pipe, RemoteData } from "@pplnd/core";
 
 type UserProfile = { name: string };
 type FetchError = { message: string };
@@ -288,7 +288,7 @@ async function fetchUser(
 With **pipelined**:
 
 ```ts
-import { Duration, Op } from "@nlozgachev/pipelined";
+import { Duration, Op } from "@pplnd/core";
 
 type ApiError = { kind: "NetworkError"; cause: unknown } | { kind: "Timeout" };
 
@@ -335,7 +335,7 @@ overlapping calls behave:
 **Search (cancel the previous call when the user types):**
 
 ```ts
-import { Duration, Op } from "@nlozgachev/pipelined";
+import { Duration, Op } from "@pplnd/core";
 
 type SearchError = { kind: "SearchFailed"; cause: unknown };
 
@@ -400,7 +400,7 @@ Built-in strategies include `restartable`, `exclusive`, `debounced`, `throttled`
 single events or match ordered multi-step sequences with a reset event:
 
 ```ts
-import { EventBus } from "@nlozgachev/pipelined";
+import { EventBus } from "@pplnd/core";
 
 type UserFlowMessages = {
   sessionStarted: { sessionId: string };
@@ -455,7 +455,7 @@ Updating a nested field immutably usually means copying each level with `{ ...ob
 `Optional` let you build a reusable path to a nested property and update it in one step:
 
 ```ts
-import { Lens, pipe } from "@nlozgachev/pipelined";
+import { Lens, pipe } from "@pplnd/core";
 
 type Address = { city: string; zip: string };
 type User = { name: string; address: Address };
@@ -489,7 +489,7 @@ with `Resource.chain` or `Resource.all`, resources are acquired sequentially and
 released in strict reverse (LIFO) order upon completion or error:
 
 ```ts
-import { pipe, Resource, Task } from "@nlozgachev/pipelined";
+import { pipe, Resource, Task } from "@pplnd/core";
 
 type AppError =
   | { kind: "DbError"; message: string }
@@ -557,7 +557,7 @@ interchangeable by default. `Brand` attaches a compile-time tag to a primitive t
 rejects mixed-up arguments without adding any wrapper at runtime:
 
 ```ts
-import { Brand, Result } from "@nlozgachev/pipelined";
+import { Brand, Result } from "@pplnd/core";
 
 type UserId = Brand<"UserId", string>;
 type OrderId = Brand<"OrderId", string>;
@@ -658,12 +658,12 @@ When imported individually, only the targeted module is bundled into your applic
 | `Result`       | **1.56 kB** |                    |
 | `Validation`   | **1.56 kB** |                    |
 | `RemoteData`   | **1.87 kB** |                    |
-| `Machine`      | **1.89 kB** |                    |
-| `EventBus`     | **1.18 kB** |                    |
+| `Machine`      | **1.88 kB** |                    |
+| `EventBus`     | **1.17 kB** |                    |
 | `Resource`     | **2.32 kB** |                    |
 | `Graph`        | **5.43 kB** |                    |
 | `Task`         | **4.04 kB** |                    |
-| `Op`           | **5.97 kB** |                    |
+| `Op`           | **5.96 kB** |                    |
 | `Lens`         | **233 B**   |                    |
 | `Arr`          | **5.94 kB** |                    |
 | `Rec`          | **2.54 kB** |                    |
@@ -677,7 +677,7 @@ subpath:
 
 | Subpath                       | Scope                               | Gzipped Size | Budget Limit |
 | :---------------------------- | :---------------------------------- | :----------- | :----------- |
-| **All entry points combined** | Monolithic import of entire library | **22.01 kB** | 23.00 kB     |
+| **All entry points combined** | Monolithic import of entire library | **22.00 kB** | 23.00 kB     |
 
 <!-- BUNDLE_TABLE:END -->
 

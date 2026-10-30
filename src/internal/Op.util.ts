@@ -38,7 +38,7 @@ const withManagerMeta = <T extends object>(manager: T, id?: string, opId?: strin
 // OP_FACTORY private symbol & internal type
 // ---------------------------------------------------------------------------
 
-export const OP_FACTORY: unique symbol = Symbol.for("@nlozgachev/pipelined/Op.factory") as typeof OP_FACTORY;
+export const OP_FACTORY: unique symbol = Symbol.for("@pplnd/core/Op.factory") as typeof OP_FACTORY;
 
 export type InternalOp<Args extends readonly unknown[] = readonly unknown[], E = unknown, A = unknown> =
 	& Op<Args, E, A>

@@ -8,7 +8,7 @@ import ExportsTable from '../../../components/ExportsTable.astro'
 
 ## Package managers
 
-<CodePackageManagers packages="@nlozgachev/pipelined"/>
+<CodePackageManagers packages="@pplnd/core"/>
 
 <ExportsTable />
 
@@ -31,12 +31,12 @@ When imported individually, only the targeted module is bundled into your applic
 | `Result` | **1.56 kB** |
 | `Validation` | **1.56 kB** |
 | `RemoteData` | **1.87 kB** |
-| `Machine` | **1.89 kB** |
-| `EventBus` | **1.18 kB** |
+| `Machine` | **1.88 kB** |
+| `EventBus` | **1.17 kB** |
 | `Resource` | **2.32 kB** |
 | `Graph` | **5.43 kB** |
 | `Task` | **4.04 kB** |
-| `Op` | **5.97 kB** |
+| `Op` | **5.96 kB** |
 | `Lens` | **233 B** |
 | `Arr` | **5.94 kB** |
 | `Rec` | **2.54 kB** |
@@ -49,7 +49,7 @@ The upper bounds below apply only if your application imports every exported sym
 
 | Subpath | Scope | Gzipped Size | Budget Limit |
 | :--- | :--- | :--- | :--- |
-| **All entry points combined** | Monolithic import of entire library | **22.01 kB** | 23.00 kB |
+| **All entry points combined** | Monolithic import of entire library | **22.00 kB** | 23.00 kB |
 {/* BUNDLE_TABLE:END */}
 
 ## Requirements
@@ -59,6 +59,6 @@ The upper bounds below apply only if your application imports every exported sym
 
 ### Compatibility Rationale
 
-- **Node.js Runtime Compatibility**: Built-in runtime feature detection provides zero-dependency fallbacks for newer ECMAScript features (such as `Set.prototype.union` and `Array.prototype.toSorted`), while `Intl.Segmenter` is loaded lazily for `Str.graphemeSize`, allowing `@nlozgachev/pipelined` to run on Node.js 18+ and all modern JS runtimes.
+- **Node.js Runtime Compatibility**: Built-in runtime feature detection provides zero-dependency fallbacks for newer ECMAScript features (such as `Set.prototype.union` and `Array.prototype.toSorted`), while `Intl.Segmenter` is loaded lazily for `Str.graphemeSize`, allowing `@pplnd/core` to run on Node.js 18+ and all modern JS runtimes.
 - **TypeScript 5.5+**: Required because standard ECMAScript 2023 Array methods (`.toSorted()`, `.toReversed()`) and ECMAScript 2024 Set methods (`.union()`, `.intersection()`, `.isSubsetOf()`) were introduced into TypeScript's standard library (`lib.es2023` / `lib.es2024`) in version 5.5.
 - **Strict Mode**: Required for type-level guarantees — specifically exhaustiveness checking in `match` pattern branches and narrowing in type guards.

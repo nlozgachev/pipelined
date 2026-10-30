@@ -37,7 +37,7 @@ Accessing array boundaries directly in JavaScript can crash your program or intr
 propagating `undefined` values. `Arr` provides explicit boundary accessors that return `Maybe`:
 
 ```ts
-import { Arr, Maybe, pipe } from "@nlozgachev/pipelined";
+import { Arr, Maybe, pipe } from "@pplnd/core";
 
 Arr.head(["ord_101", "ord_102", "ord_103"]); // Some("ord_101")
 Arr.head([]);                                // None
@@ -211,7 +211,7 @@ item, `Arr.partitionMap` maps each item and collects `[errors, successes]`. If y
 array of `Result<E, A>` values, `Arr.separate` splits them directly into `[errors, successes]`:
 
 ```ts
-import { Result } from "@nlozgachev/pipelined";
+import { Result } from "@pplnd/core";
 
 const validateQuantity = (qty: number): Result<string, number> =>
   qty > 0 ? Result.make.ok(qty) : Result.make.err(`Invalid quantity: ${qty}`);
@@ -262,7 +262,7 @@ objects by comparing a projected key such as an ID or email address. `Arr.uniqWi
 occurrence is preserved:
 
 ```ts
-import { Equality } from "@nlozgachev/pipelined";
+import { Equality } from "@pplnd/core";
 
 const uniqueTags = Arr.uniq(["urgent", "billing", "urgent", "support"]);
 // ["urgent", "billing", "support"]
@@ -295,11 +295,10 @@ const transitions = pipe(statusStream, Arr.dedupeAdjacent());
 ```
 
 For immutable sorting, `Arr.sortBy` accepts a standard comparator function `(a, b) => number`, while
-`Arr.sortWith` integrates directly with composable `Ordering<A>` instances from
-`@nlozgachev/pipelined`:
+`Arr.sortWith` integrates directly with composable `Ordering<A>` instances from `@pplnd/core`:
 
 ```ts
-import { Ordering } from "@nlozgachev/pipelined";
+import { Ordering } from "@pplnd/core";
 
 const sortedScores = pipe([88, 42, 95], Arr.sortBy((a, b) => a - b));
 // [42, 88, 95]
@@ -504,7 +503,7 @@ When validating forms or batch imports where you want to report *every* failure 
 stopping at the first error, use `Arr.traverse.Validation` and `Arr.sequence.Validation`:
 
 ```ts
-import { Validation } from "@nlozgachev/pipelined";
+import { Validation } from "@pplnd/core";
 
 const checkPositive = (amount: number): Validation<string, number> =>
   amount > 0
@@ -527,7 +526,7 @@ their resolved values into `Task<readonly B[]>`. By default, tasks run in parall
 `{ concurrency }` to `Arr.traverse.Task` to cap the number of in-flight workers:
 
 ```ts
-import { Task } from "@nlozgachev/pipelined";
+import { Task } from "@pplnd/core";
 
 const computeHash = (input: string): Task<string> =>
   Task.make(`hash_${input}`);
@@ -607,7 +606,7 @@ unparseable entries, deduplicates records, sorts from highest to lowest value, a
 three orders for priority fulfillment:
 
 ```ts
-import { Arr, Maybe, Ordering, pipe } from "@nlozgachev/pipelined";
+import { Arr, Maybe, Ordering, pipe } from "@pplnd/core";
 
 type RawOrder = { readonly id: string; readonly amountText: string };
 type ValidOrder = { readonly id: string; readonly amount: number };

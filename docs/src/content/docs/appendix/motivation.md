@@ -48,7 +48,7 @@ There are three steps in it, but you have to read past the null checks and the `
 Here is the same function as a pipeline:
 
 ```ts
-import { Maybe, pipe } from "@nlozgachev/pipelined";
+import { Maybe, pipe } from "@pplnd/core";
 
 const getClient = (userId: string) =>
   pipe(

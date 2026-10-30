@@ -71,7 +71,7 @@ flowchart TB
 ```
 
 ```ts
-import { pipe, Validation } from "@nlozgachev/pipelined";
+import { pipe, Validation } from "@pplnd/core";
 
 export type Validation<E, A> = Validation.Passed<A> | Validation.Failed<E>;
 ```
@@ -86,7 +86,7 @@ least one element). This prevents empty error states at compile time.
 Validation instances represent either a verified value or an initial failure.
 
 ```ts
-import { Validation } from "@nlozgachev/pipelined";
+import { Validation } from "@pplnd/core";
 
 // Successful validation check
 const pass = Validation.make.passed("Alice"); // Validation<never, string>
@@ -198,7 +198,7 @@ When constructing objects from curried functions or assembling tuple arguments, 
 `Validation.apply`:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined";
+import { pipe } from "@pplnd/core";
 
 const createProfile = (name: string) => (email: string) => (age: number) => ({
   name,
@@ -489,7 +489,7 @@ database or verifying an address against an external postal API — use `Task.Va
 concurrently and aggregates all failures into a single list:
 
 ```ts
-import { Task } from "@nlozgachev/pipelined";
+import { Task } from "@pplnd/core";
 
 const validateUserAsync = Task.Validation.struct({
   username: checkUsernameUnique(username), // Task.Validation<string, string>
@@ -505,7 +505,7 @@ errors.
 Format or log asynchronous validation errors mid-pipeline using dedicated combinators:
 
 ```ts
-import { pipe, Task } from "@nlozgachev/pipelined";
+import { pipe, Task } from "@pplnd/core";
 
 const validatedProfile = pipe(
   validateUserAsync,
@@ -525,7 +525,7 @@ namespaces errors, hands off the verified record to a sequential `Result` pipeli
 persistence, and formats the final HTTP response:
 
 ```ts
-import { pipe, Result, Validation } from "@nlozgachev/pipelined";
+import { pipe, Result, Validation } from "@pplnd/core";
 
 interface RegistrationInput {
   username: string;

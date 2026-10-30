@@ -5,7 +5,7 @@ description: Eliminate impossible states, enforce compile-time outbound transiti
 
 <!-- BUNDLE_SIZE:START -->
 
-> 1.89 kB minified + gzipped
+> 1.88 kB minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 
@@ -60,7 +60,7 @@ generic argument `AllowedTargets` constrains which state kinds can be returned b
 handlers for that state:
 
 ```ts
-import { Machine } from "@nlozgachev/pipelined";
+import { Machine } from "@pplnd/core";
 
 export type CheckoutState =
   | Machine.State<
@@ -169,7 +169,7 @@ In pipelines and functional compositions, use `Machine.transition`. It is a pure
 transition function `(machine, event) => (state) => nextState` with zero side effects:
 
 ```ts
-import { Machine, pipe } from "@nlozgachev/pipelined";
+import { Machine, pipe } from "@pplnd/core";
 
 const cartState = Machine.state("cart", {
   items: ["Mechanical Keyboard"],
@@ -226,7 +226,7 @@ Standard React reducers use the uncurried signature `(state, action) => nextStat
 `Machine.to.reducer` to obtain a reducer directly compatible with React's `useReducer`:
 
 ```tsx
-import { Machine, pipe } from "@nlozgachev/pipelined";
+import { Machine, pipe } from "@pplnd/core";
 import React, { useReducer } from "react";
 import { checkoutMachine, type CheckoutState } from "./checkoutMachine";
 
@@ -315,7 +315,7 @@ Redux stores initialize by dispatching an internal action with an `undefined` in
 `machine.initial`:
 
 ```ts
-import { Machine } from "@nlozgachev/pipelined";
+import { Machine } from "@pplnd/core";
 import { createStore } from "redux";
 import { checkoutMachine } from "./checkoutMachine";
 
@@ -471,7 +471,7 @@ Passing `bus` to `Machine.interpret` connects the broadcast highway directly to 
 gatekeeper:
 
 ```ts
-import { EventBus, Machine } from "@nlozgachev/pipelined";
+import { EventBus, Machine } from "@pplnd/core";
 
 // 1. Define shared message schema for network & collaboration events
 export type CollaborationEvents = {

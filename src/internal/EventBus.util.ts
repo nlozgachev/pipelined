@@ -5,9 +5,7 @@ import type { EventBus } from "../Core/EventBus.ts";
  *
  * @internal
  */
-export const EVENT_BUS_STATE: unique symbol = Symbol.for(
-	"@nlozgachev/pipelined/EventBus.state",
-) as typeof EVENT_BUS_STATE;
+export const EVENT_BUS_STATE: unique symbol = Symbol.for("@pplnd/core/EventBus.state") as typeof EVENT_BUS_STATE;
 
 /**
  * Configuration options stored in the internal state of an `EventBus`.

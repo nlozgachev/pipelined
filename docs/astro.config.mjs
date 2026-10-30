@@ -47,10 +47,10 @@ export default defineConfig({
 			favicon: "favicon.svg",
 			customCss: ["./src/styles/custom.css"],
 			components: { Footer: "./src/components/Footer.astro" },
-			social: [{ icon: "github", label: "GitHub", href: "https://github.com/nlozgachev/pipelined" }, {
+			social: [{ icon: "github", label: "GitHub", href: "https://github.com/pplnd/core" }, {
 				icon: "npm",
 				label: "npm",
-				href: "https://www.npmjs.com/package/@nlozgachev/pipelined",
+				href: "https://www.npmjs.com/package/@pplnd/core",
 			}],
 			plugins: [
 				starlightThemeNova({ nav: [{ label: "Docs", href: "/basics/installation" }] }),

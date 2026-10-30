@@ -15,8 +15,6 @@ interface SizeItem {
 	passed?: boolean;
 }
 
-const pkgName = "@nlozgachev/pipelined";
-
 const GUIDE_MAP: Record<string, { module: string; }> = {
 	"arr.md": { module: "Arr" },
 	"bignum.md": { module: "BigNum" },
@@ -179,12 +177,8 @@ export function updateReadme(sizeMap: Map<string, SizeItem>): void {
 	if (content.includes("<!-- BUNDLE_TABLE:START -->")) {
 		content = content.replace(/<!-- BUNDLE_TABLE:START -->[\s\S]*?<!-- BUNDLE_TABLE:END -->/, tableReplacement);
 	} else {
-		const archPattern =
-			/## Package Architecture and Performance\s*\n\s*`pipelined` is split into four tree-shakeable entry points:\s*\n\s*- \*\*`@nlozgachev\/pipelined\/core`[\s\S]*?(?=Data helpers use pre-allocated)/;
-		content = content.replace(
-			archPattern,
-			`## Package Architecture and Performance\n\nAll entry points are published with \`"sideEffects": false\` and structured as static constant objects without class prototypes or closure side-effects. Modern bundlers (Vite, Rollup, webpack, esbuild, Next.js) automatically tree-shake unused functions and modules, bundling only the specific symbols imported by your application.\n\n${tableReplacement}\n\n`,
-		);
+		content =
+			`## Package Architecture and Performance\n\nAll entry points are published with \`"sideEffects": false\` and structured as static constant objects without class prototypes or closure side-effects. Modern bundlers (Vite, Rollup, webpack, esbuild, Next.js) automatically tree-shake unused functions and modules, bundling only the specific symbols imported by your application.\n\n${tableReplacement}\n\n`;
 	}
 
 	fs.writeFileSync(readmePath, content, "utf8");

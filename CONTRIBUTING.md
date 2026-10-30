@@ -24,8 +24,8 @@ If the answer is no, simplify it. Names describe what functions do (`getOrElse`,
 
 ```sh
 # Clone and install
-git clone https://github.com/nlozgachev/pipelined.git
-cd pipelined
+git clone https://github.com/pplnd/core.git
+cd core
 pnpm install
 
 # Run the 4-in-1 quality gate (typecheck, type-tests, lint, format)

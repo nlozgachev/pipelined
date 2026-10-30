@@ -75,7 +75,7 @@ flowchart TB
 To describe how we want to read from our context, we use the constructors of `Reader`:
 
 ```ts
-import { pipe, Reader } from "@nlozgachev/pipelined";
+import { pipe, Reader } from "@pplnd/core";
 
 interface ApiConfig {
   baseUrl: string;
@@ -115,7 +115,7 @@ Consider locale-aware formatting, where rendering a price depends on a shared co
 property of the price value itself:
 
 ```ts
-import { pipe, Reader } from "@nlozgachev/pipelined";
+import { pipe, Reader } from "@pplnd/core";
 
 interface LocaleConfig {
   symbol: string;

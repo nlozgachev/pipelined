@@ -38,7 +38,7 @@ This reads inside-out. The execution starts in the middle, moves outward, and fo
 `pipe` solves this by taking a starting value and passing it through a sequence of functions. Each function receives the output of the previous step:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined";
+import { pipe } from "@pplnd/core";
 
 const slug = pipe(
   raw,
@@ -68,7 +68,7 @@ TypeScript infers the type of the value at each step. If one of your functions r
 Any unary function — a function that accepts a single argument — can be passed as a step in a pipeline. This includes inline lambda functions, named functions, or partially-applied library helpers:
 
 ```ts
-import { Maybe, pipe } from "@nlozgachev/pipelined";
+import { Maybe, pipe } from "@pplnd/core";
 
 const displayName = pipe(
   users.get(userId),             // User | undefined
@@ -89,7 +89,7 @@ const displayName = pipe(
 `pipe` evaluates immediately, producing a result. `flow` operates the same way but defers execution — it returns a new, reusable function:
 
 ```ts
-import { flow } from "@nlozgachev/pipelined";
+import { flow } from "@pplnd/core";
 
 const toSlug = flow(
   (s: string) => s.trim(),
@@ -147,7 +147,7 @@ This design allows library functions to slot directly into `pipe` and `flow` wit
 When you want to inspect a value mid-pipeline — such as logging it or updating an analytics tracker — without altering the data or breaking the chain, you can use `tap`:
 
 ```ts
-import { pipe, tap } from "@nlozgachev/pipelined";
+import { pipe, tap } from "@pplnd/core";
 
 const result = pipe(
   input,

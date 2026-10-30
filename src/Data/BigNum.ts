@@ -6,7 +6,7 @@ import { Maybe } from "../Core/Maybe.ts";
  *
  * @example
  * ```ts
- * import { BigNum, pipe } from "@nlozgachev/pipelined";
+ * import { BigNum, pipe } from "@pplnd/core";
  *
  * const result = pipe(
  *   BigNum.from.string("100"),

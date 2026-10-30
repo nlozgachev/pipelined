@@ -43,7 +43,7 @@ You can construct a `ReadonlyMap<K, V>` using `Dict.empty`, `Dict.singleton`, or
 `Dict.from`:
 
 ```ts
-import { Dict } from "@nlozgachev/pipelined";
+import { Dict } from "@pplnd/core";
 
 // An empty dictionary with explicit key and value types:
 const emptyCache = Dict.empty<number, string>();
@@ -68,7 +68,7 @@ You can also build a dictionary directly from an array of items using `Dict.grou
 elements by a key selector function into a `ReadonlyMap<K, Arr.NonEmpty<A>>`:
 
 ```ts
-import { pipe } from "@nlozgachev/pipelined";
+import { pipe } from "@pplnd/core";
 
 const events = [
   { tenantId: 10, type: "login" },
@@ -94,7 +94,7 @@ Instead of returning `undefined` when a key is absent, `Dict.lookup` returns `So
 key exists in the dictionary and `None` when it does not:
 
 ```ts
-import { Maybe } from "@nlozgachev/pipelined";
+import { Maybe } from "@pplnd/core";
 
 const timeouts = Dict.from.record({ api: 5000, webhook: 12000 });
 
@@ -348,7 +348,7 @@ Here is an end-to-end metrics aggregation pipeline that merges regional request 
 out idle endpoints, normalizes route keys, and exports a plain JSON-serializable summary record:
 
 ```ts
-import { Dict, pipe } from "@nlozgachev/pipelined";
+import { Dict, pipe } from "@pplnd/core";
 
 const usTraffic = Dict.from.record({
   "/V1/CHECKOUT": 450,

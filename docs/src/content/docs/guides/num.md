@@ -48,7 +48,7 @@ as `0` (which `Number("   ")` does in standard JavaScript), use `Num.from.string
 `Some(number)` for valid numeric strings and `None` for empty, whitespace-only, or malformed text:
 
 ```ts
-import { Num } from "@nlozgachev/pipelined";
+import { Num } from "@pplnd/core";
 
 Num.from.string("42");   // Some(42)
 Num.from.string("3.14"); // Some(3.14)
@@ -65,7 +65,7 @@ inside `pipe` and `Arr.map`. In particular, `Num.subtract(amount)(from)` compute
 reading naturally in a pipeline as "subtract `amount`":
 
 ```ts
-import { Arr, Num, pipe } from "@nlozgachev/pipelined";
+import { Arr, Num, pipe } from "@pplnd/core";
 
 // Add a flat shipping surcharge:
 const withShipping = pipe(
@@ -234,7 +234,7 @@ pipeline. Here, we process raw discount percentages from a configuration payload
 permitted `[0, 50]` range, compute the average discount, and format it for display:
 
 ```ts
-import { Arr, Maybe, Num, pipe } from "@nlozgachev/pipelined";
+import { Arr, Maybe, Num, pipe } from "@pplnd/core";
 
 const rawDiscounts = ["15", "invalid", "60", "25", "10"];
 

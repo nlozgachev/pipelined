@@ -5,7 +5,7 @@ description: Decouple event emission from sequence matching, state reduction, an
 
 <!-- BUNDLE_SIZE:START -->
 
-> 1.18 kB minified + gzipped
+> 1.17 kB minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 
@@ -77,7 +77,7 @@ An `EventBus<S>` represents a message pipeline constrained to a schema map `S`. 
 defines message kind string keys paired with payload types:
 
 ```ts
-import { EventBus } from "@nlozgachev/pipelined";
+import { EventBus } from "@pplnd/core";
 
 type CheckoutMessages = {
   addressValidated: { shippingAddress: string };
@@ -103,7 +103,7 @@ the bus for debugging or attaching an error boundary callback to isolate subscri
 halting sibling listeners:
 
 ```ts
-import { EventBus } from "@nlozgachev/pipelined";
+import { EventBus } from "@pplnd/core";
 
 // Create an isolated event bus with an error boundary
 const authBus = EventBus.make<CheckoutMessages>({
@@ -127,7 +127,7 @@ buses for broadcasting) and the message object. The compiler enforces that `valu
 payload type declared for that `kind`:
 
 ```ts
-import { EventBus } from "@nlozgachev/pipelined";
+import { EventBus } from "@pplnd/core";
 
 // Emit to a single event bus
 EventBus.emit(authBus, {
@@ -160,7 +160,7 @@ call `EventBus.subscribe(bus)` without specifying event keys. The callback recei
 union of all messages defined on the bus schema:
 
 ```ts
-import { EventBus } from "@nlozgachev/pipelined";
+import { EventBus } from "@pplnd/core";
 
 // Observe all events emitted on the bus
 const unsubscribe = EventBus.subscribe(authBus).tap((msg) => {
@@ -177,7 +177,7 @@ When targeting specific event keys, `EventBus.subscribe` narrows the message pay
 handler:
 
 ```ts
-import { EventBus } from "@nlozgachev/pipelined";
+import { EventBus } from "@pplnd/core";
 
 type TelemetryMessages = {
   pageViewed: { path: string };
@@ -208,7 +208,7 @@ side-effects, accumulated state, or aggregated sequence payloads.
 function to remove the subscriber:
 
 ```ts
-import { EventBus } from "@nlozgachev/pipelined";
+import { EventBus } from "@pplnd/core";
 
 const unsubscribe = EventBus.subscribe(analyticsBus, "pageViewed").tap((msg) => {
   trackPageView(msg.value.path);
@@ -224,7 +224,7 @@ unsubscribe();
 function. It returns a `Subscription<State>` handle with `.getState()` and `.unsubscribe()`:
 
 ```ts
-import { EventBus } from "@nlozgachev/pipelined";
+import { EventBus } from "@pplnd/core";
 
 type CartMessages = {
   itemAdded: { price: number; quantity: number };
@@ -275,7 +275,7 @@ into a single keyed record (`{ [Event]: Payload }`). The callback executes once 
 have arrived, recurring on every completion unless `{ once: true }` is configured:
 
 ```ts
-import { EventBus } from "@nlozgachev/pipelined";
+import { EventBus } from "@pplnd/core";
 
 const checkoutBus = EventBus.make<CheckoutMessages>();
 
@@ -304,7 +304,7 @@ When subscribing to multiple event keys, pass a `SequenceOptions` record to conf
 strictness, and reset conditions:
 
 ```ts
-import { EventBus } from "@nlozgachev/pipelined";
+import { EventBus } from "@pplnd/core";
 
 type UserOnboardingMessages = {
   accountCreated: { userId: string };
@@ -358,7 +358,7 @@ Matching behavior follows these rules:
 `only` filter permits forwarding shared event keys between buses with distinct domain schemas:
 
 ```ts
-import { EventBus } from "@nlozgachev/pipelined";
+import { EventBus } from "@pplnd/core";
 
 type OrderMessages = {
   cartUpdated: { count: number };
@@ -439,7 +439,7 @@ state. Passing an `EventBus` to [`Machine.interpret`](/guides/machine/) connects
 stateful gatekeeper:
 
 ```ts
-import { EventBus, Machine } from "@nlozgachev/pipelined";
+import { EventBus, Machine } from "@pplnd/core";
 
 // Shared event schema
 type AuthEvents = {
@@ -476,7 +476,7 @@ Bridging an event bus with a state machine prevents three failure modes:
 multi-stage event transformations:
 
 ```ts
-import { EventBus, pipe } from "@nlozgachev/pipelined";
+import { EventBus, pipe } from "@pplnd/core";
 
 type OrderStreamMessages = {
   orderPlaced: { orderId: string; amount: number };
