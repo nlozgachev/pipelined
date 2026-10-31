@@ -1,14 +1,26 @@
 ---
 title: Installation
-description: Add pipelined to your TypeScript project via package managers.
+description: Add @pplnd/core to your TypeScript project via package managers.
 ---
 
 import { CodePackageManagers } from 'starlight-theme-nova/components'
 import ExportsTable from '../../../components/ExportsTable.astro'
 
-## Package managers
+## Install
 
 <CodePackageManagers packages="@pplnd/core"/>
+
+## Importing from `@pplnd/core`
+
+`@pplnd/core` exposes a single entry point. Everything is imported directly from the root package:
+
+```ts
+import { Arr, Maybe, pipe, Result, Task } from "@pplnd/core";
+```
+
+## What's included
+
+All modules are grouped into four logical domains:
 
 <ExportsTable />
 
@@ -47,10 +59,10 @@ When imported individually, only the targeted module is bundled into your applic
 
 ## Requirements
 
-- **Node.js** 18.0.0 or later (also compatible with Bun, Deno, and modern browser environments)
+- **Node.js** 18.0.0 or later (compatible with Bun, Deno, and modern browser environments)
 - **TypeScript** 5.5 or later with `strict` mode enabled
 
-### Compatibility Rationale
+### Compatibility rationale
 
 - **Node.js Runtime Compatibility**: Built-in runtime feature detection provides zero-dependency fallbacks for newer ECMAScript features (such as `Set.prototype.union` and `Array.prototype.toSorted`), while `Intl.Segmenter` is loaded lazily for `Str.graphemeSize`, allowing `@pplnd/core` to run on Node.js 18+ and all modern JS runtimes.
 - **TypeScript 5.5+**: Required because standard ECMAScript 2023 Array methods (`.toSorted()`, `.toReversed()`) and ECMAScript 2024 Set methods (`.union()`, `.intersection()`, `.isSubsetOf()`) were introduced into TypeScript's standard library (`lib.es2023` / `lib.es2024`) in version 5.5.

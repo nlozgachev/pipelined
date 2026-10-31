@@ -23,38 +23,38 @@ const dataExports = getBarrelExports("../src/Data/index.ts");
 const compositionExports = getBarrelExports("../src/Composition/index.ts");
 const typesExports = getBarrelExports("../src/Types/index.ts");
 
-const entryPoints = [
+const domains = [
 	{
-		title: "/core",
-		description: "Sum types for error handling, optional values, async execution, event streams, state, and optics.",
+		title: "Errors, Async & State",
+		description: "Discriminated unions for error handling, optional values, async execution, event streams, state, and optics.",
 		exports: coreExports,
 	},
 	{
-		title: "/data",
+		title: "Data & Collections",
 		description: "Pure curried utilities for arrays, records, dictionaries, strings, numbers, and JSON.",
 		exports: dataExports,
 	},
 	{
-		title: "/composition",
+		title: "Pipelines & Composition",
 		description: "Pipeline runners, flow composition, and execution control combinators.",
 		exports: compositionExports,
 	},
 	{
-		title: "/types",
-		description: "Domain primitives, compile-time branded types, duration units, and retry policies.",
+		title: "Domain Types",
+		description: "Primitives, compile-time branded types, duration units, and retry policies.",
 		exports: typesExports,
 	},
 ];
 ---
 
 <CardGrid>
-	{entryPoints.map((entry) => (
-		<Card title={entry.title}>
-			<p>{entry.description}</p>
+	{domains.map((domain) => (
+		<Card title={domain.title}>
+			<p>{domain.description}</p>
 			<p>
 				<strong>Exports:</strong>{" "}
-				{entry.exports.map((name, i) => (
-					<><code>{name}</code>{i < entry.exports.length - 1 ? " " : ""}</>
+				{domain.exports.map((name, i) => (
+					<><code>{name}</code>{i < domain.exports.length - 1 ? " " : ""}</>
 				))}
 			</p>
 		</Card>
