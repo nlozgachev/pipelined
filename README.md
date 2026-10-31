@@ -14,16 +14,20 @@ npm add @pplnd/core
 
 ## Overview
 
-TypeScript's built-in tools leave a few common problems to discipline: a function signature doesn't
-say whether it throws, `null` checks have to be written by hand at every step, rejected promises
-carry `unknown`, and retry or cancellation logic ends up tangled with the request itself.
+TypeScript brings static types to JavaScript, but leaves several critical failure modes to developer
+discipline:
 
-`pipelined` gives those cases plain discriminated-union types and curried functions that compose in
-a `pipe`: `Maybe` for missing values, `Result` for typed errors, `Validation` for collecting
-multiple errors at once, `Task.Result` for lazy async work with cancellation, `Graph` for
-declarative dependency DAG scheduling with sibling cancellation, `Machine` for type-safe finite
-state transitions, `Op` for managed requests with retries and concurrency rules, `Resource` for safe
-lifecycle management of connections and locks, and `EventBus` for typed in-memory events.
+- Functions throw exceptions that never appear in their return types.
+- Missing values require defensive `null` and `undefined` checks scattered across every function
+  call.
+- Promises reject with `unknown`, forcing manual `try/catch` blocks and speculative casts.
+- Retrying requests, enforcing timeouts, and wiring cancellation requires juggling `AbortController`
+  instances, timers, and mutable boolean flags.
+
+`pipelined` provides pragmatic data structures and curried functions designed for everyday
+application code. Everything is a plain JavaScript object with a `kind` discriminator — no classes,
+no `instanceof` checks, no prototype modification, and no functional programming prerequisites.
+Functions accept their data last, so multi-step operations read top-to-bottom in a `pipe`.
 
 <!-- BUNDLE_OVERVIEW:START -->
 
@@ -40,10 +44,54 @@ Full guides and API reference at **[pplnd.dev](https://pplnd.dev/)**.
 
 ## Examples
 
-### Composing optional values
+### Handling errors without throw (Result)
 
-`null` checks pile up quickly, and every one interrupts the flow of a function. `Maybe<A>` wraps a
-value that might be missing so the steps after it only run when something is there:
+Functions that throw exceptions leave error handling to caller memory. TypeScript does not track
+thrown errors in return types, and `catch (err)` types errors as `unknown`. `Result<E, A>` makes
+failure a normal return value:
+
+```ts
+import { pipe, Result } from "@pplnd/core";
+
+type Config = { apiKey: string; port: number };
+type ConfigError =
+  | { kind: "InvalidJson"; message: string }
+  | { kind: "MissingField"; field: string };
+
+const parseConfig = (raw: string): Result<ConfigError, Config> =>
+  pipe(
+    Result.tryCatch(
+      () => JSON.parse(raw) as Record<string, unknown>,
+      { onError: (err): ConfigError => ({ kind: "InvalidJson", message: String(err) }) },
+    ),
+    Result.ensure(
+      (data): data is { apiKey: string; port?: number } => typeof data.apiKey === "string",
+      (): ConfigError => ({ kind: "MissingField", field: "apiKey" }),
+    ),
+    Result.map((data) => ({
+      apiKey: data.apiKey,
+      port: typeof data.port === "number" ? data.port : 8080,
+    })),
+  );
+
+const outcome = parseConfig('{"apiKey": "secret-123"}');
+
+if (Result.is.ok(outcome)) {
+  console.log(`Starting server on port ${outcome.value.port}`);
+} else {
+  console.error(`Config error: ${outcome.error.kind}`);
+}
+```
+
+The compiler enforces that `outcome.value` is only accessible after checking
+`Result.is.ok(outcome)`. If validation fails, the typed error is preserved without runtime
+exceptions.
+
+### Optional values without null checks (Maybe)
+
+Defensive `null` and `undefined` checks clutter business logic. When parsing optional inputs, each
+transformation step can fail or produce empty data. `Maybe<A>` wraps a value that might be missing
+so subsequent pipeline steps only run when a value exists:
 
 ```ts
 import { Maybe, Num, pipe, Str } from "@pplnd/core";
@@ -63,14 +111,15 @@ parseDiscount("150"); // "No discount"
 parseDiscount("abc"); // "No discount"
 ```
 
-Every step that sees `None` is skipped. The fallback runs once, at the end.
+Any step that evaluates to `None` skips the rest of the chain. The fallback executes once at the end
+of the pipeline.
 
-### Typed async errors and cancellation
+### Lazy async workflows and cancellation (Task.Result)
 
-A `Promise<T>` rejects with `unknown`, so the return type of an async function never tells you how
-it can fail. `Task.Result<E, A>` is a lazy async function
-`(signal?: AbortSignal) => Deferred<Result<E, A>>`. It never rejects, and the error type `E` stays
-in the signature:
+Standard promises start executing immediately upon creation and reject with `unknown`.
+`Task.Result<E, A>` is a lazy async function `(signal?: AbortSignal) => Promise<Result<E, A>>`.
+Nothing runs until you invoke it, errors remain typed in the signature, and cancellation propagates
+through every chained request automatically:
 
 ```ts
 import { pipe, Result, Task } from "@pplnd/core";
@@ -81,22 +130,25 @@ type ApiError = { status: number; message: string };
 
 const fetchUser = (id: string): Task.Result<ApiError, User> =>
   Task.Result.tryCatch(
-    (signal) =>
-      fetch(`/users/${id}`, { signal }).then((r) => {
-        if (!r.ok) throw { status: r.status, message: r.statusText };
-        return r.json() as Promise<User>;
-      }),
-    { onError: (e) => e as ApiError },
+    async (signal) => {
+      const res = await fetch(`/users/${id}`, { signal });
+      if (!res.ok) throw new Error(res.statusText);
+      return (await res.json()) as User;
+    },
+    { onError: (err): ApiError => ({ status: 500, message: String(err) }) },
   );
 
 const fetchPosts = (userId: string): Task.Result<ApiError, Post[]> =>
   Task.Result.tryCatch(
-    (signal) =>
-      fetch(`/users/${userId}/posts`, { signal }).then((r) => r.json()),
-    { onError: (e) => e as ApiError },
+    async (signal) => {
+      const res = await fetch(`/users/${userId}/posts`, { signal });
+      if (!res.ok) throw new Error(res.statusText);
+      return (await res.json()) as Post[];
+    },
+    { onError: (err): ApiError => ({ status: 500, message: String(err) }) },
   );
 
-// Chain two requests — the AbortSignal propagates to both automatically
+// Chain two requests — the AbortSignal propagates to both steps automatically
 const userWithPosts = (id: string) =>
   pipe(
     fetchUser(id),
@@ -109,61 +161,27 @@ const userWithPosts = (id: string) =>
   );
 ```
 
-`userWithPosts` is a function, so nothing runs until you call it. The `AbortSignal` you pass in is
-forwarded to both requests; aborting cancels whichever one is currently in flight.
+To run the pipeline with cancellation support:
 
 ```ts
 const controller = new AbortController();
-const fetchUserWithPosts = userWithPosts("42"); // build the lazy task
-const result = await fetchUserWithPosts(controller.signal); // run it with cancellation
+const run = userWithPosts("42");
 
-if (Result.is.ok(result)) {
-  render(result.value); // { ...User, posts: Post[] }
+// Execution starts here; aborting controller cancels the active fetch request
+const outcome = await run(controller.signal);
+
+if (Result.is.ok(outcome)) {
+  render(outcome.value); // { id: "42", name: "...", posts: [...] }
 } else {
-  showError(result.error); // ApiError, not unknown
+  showError(outcome.error.message); // ApiError, not unknown
 }
 ```
 
-### Transforming data collections
+### Multi-field form validation (Validation)
 
-Built-in array and object lookups return `undefined` when an index is out of bounds or a key is
-missing. The helpers in the library are curried for `pipe` and return `Maybe` whenever an element
-might not exist:
-
-```ts
-import { Arr, Maybe, Num, pipe, Rec, Str } from "@pplnd/core";
-
-type RawItem = { name: string; price: string; category: string };
-type Item = { name: string; price: number; category: string };
-
-const normalise = (raw: RawItem): Maybe<Item> =>
-  pipe(
-    Num.from.string(raw.price), // "9.99" → Some(9.99), "n/a" → None
-    Maybe.map((price) => ({
-      name: Str.trim(raw.name),
-      price,
-      category: raw.category,
-    })),
-  );
-
-const cheapestByCategory = (items: RawItem[]) =>
-  pipe(
-    items,
-    Arr.filterMap(normalise), // parse + drop unparseable prices in one pass
-    Arr.sortBy((a, b) => a.price - b.price), // ascending price
-    Arr.groupBy((item) => item.category), // Record<string, Arr.NonEmpty<Item>>
-    Rec.map((group) => Arr.head(group)), // cheapest per category — Maybe<Item>
-  );
-```
-
-`filterMap` runs a function that returns `Maybe` and keeps only the `Some` values, replacing a `map`
-followed by a `filter`. `Arr.head` returns `Maybe<Item>` instead of `Item | undefined`, so a missing
-value is handled the same way as the rest of the pipeline.
-
-### Multi-field form validation
-
-If a form validator stops at the first error, the user has to fix and resubmit one field at a time.
-`Validation<E, A>` checks every field and collects all errors in one pass:
+Validators that throw or fail fast on the first error force users into a frustrating cycle of fixing
+one form error at a time. `Validation<E, A>` runs all field checks and collects all validation
+errors in a single pass:
 
 ```ts
 import { pipe, Str, Validation } from "@pplnd/core";
@@ -190,6 +208,7 @@ const validateEmail = (email: string): Validation<string, string> =>
     ),
   );
 
+// Accumulate errors into a flat array:
 const validateSignup = (form: SignupForm) =>
   Validation.struct({
     username: validateUsername(form.username),
@@ -217,11 +236,11 @@ if (Validation.keyed.is.failed(formState)) {
 }
 ```
 
-### Eliminating impossible UI states
+### Eliminating impossible UI states (RemoteData)
 
-Tracking a request with separate `isLoading`, `isError`, and `data` fields makes it easy to end up
-in states that shouldn't exist, like showing a spinner and an error message at the same time.
-`RemoteData` represents the request as one of four mutually exclusive states:
+Tracking network requests with separate boolean flags (`isLoading`, `isError`, `data`) makes it easy
+to create contradictory states, like displaying an error message while a loading spinner is still
+spinning. `RemoteData` models a request as four mutually exclusive states:
 
 ```ts
 import { pipe, RemoteData } from "@pplnd/core";
@@ -246,158 +265,64 @@ renderUI(RemoteData.make.failure({ message: "Network down" })); // "Failed: Netw
 renderUI(RemoteData.make.success({ name: "Alice" })); // "Welcome, Alice!"
 ```
 
-### Managing request lifecycles, retries, and timeouts
+`RemoteData.match` requires handling all four variants at compile time, eliminating missing loading
+or failure views.
 
-Writing retries, backoff, a per-attempt timeout, and caller cancellation by hand means juggling
-timers, `AbortController` instances, and recursive attempt counters:
+### Managing request lifecycles, retries, and concurrency (Op)
 
-```ts
-type UserResult =
-  | { ok: true; user: User }
-  | { ok: false; error: "Timeout" | "NetworkError" };
+UI events often arrive faster than the network can settle: a search box fires on every keystroke, a
+user double-clicks a submit button, or a flaky connection needs exponential backoff. Writing this by
+hand requires managing `AbortController` instances, timers, and attempt counters.
 
-async function fetchUser(
-  id: string,
-  signal?: AbortSignal,
-): Promise<UserResult> {
-  async function attempt(n: number): Promise<UserResult> {
-    const controller = new AbortController();
-    const timerId = setTimeout(() => controller.abort(), 5000);
-    signal?.addEventListener("abort", () => controller.abort(), { once: true });
-
-    try {
-      const res = await fetch(`/users/${id}`, { signal: controller.signal });
-      clearTimeout(timerId);
-      return { ok: true, user: await res.json() };
-    } catch (e) {
-      clearTimeout(timerId);
-      if ((e as Error).name === "AbortError" && !signal?.aborted) {
-        return { ok: false, error: "Timeout" };
-      }
-      if (n < 3) {
-        await new Promise((r) => setTimeout(r, n * 1000));
-        return attempt(n + 1);
-      }
-      return { ok: false, error: "NetworkError" };
-    }
-  }
-  return attempt(1);
-}
-```
-
-With **pipelined**:
+`Op` separates what a request does from how overlapping calls and failures are handled:
 
 ```ts
-import { Duration, Op } from "@pplnd/core";
+import { Duration, Op, RetryPolicy } from "@pplnd/core";
 
-type ApiError = { kind: "NetworkError"; cause: unknown } | { kind: "Timeout" };
-
-const fetchUser = Op.interpret(
-  Op.make(
-    (signal) => (id: string) =>
-      fetch(`/users/${id}`, { signal }).then((r) => r.json() as Promise<User>),
-    { onError: (cause): ApiError => ({ kind: "NetworkError", cause }) },
-  ),
-  {
-    strategy: "restartable",
-    retry: { attempts: 3, backoff: (n) => Duration.seconds(n) },
-    timeout: {
-      duration: Duration.seconds(5),
-      onTimeout: (): ApiError => ({ kind: "Timeout" }),
-    },
-  },
-);
-```
-
-`fetchUser` doesn't run until you call `run`. Retries, signal forwarding, and timeout timers are
-handled by the interpreter, and every call resolves to an `Op.Outcome<ApiError, User>`: `Ok(user)`,
-`Err(apiError)`, or `Nil` when cancelled or superseded.
-
-```ts
-const outcome = await fetchUser.run("42");
-
-if (Op.Outcome.is.ok(outcome)) {
-  render(outcome.value); // User
-} else if (Op.Outcome.is.err(outcome)) {
-  showError(outcome.error); // ApiError, not unknown
-}
-
-// cancel an in-flight request immediately
-fetchUser.abort();
-```
-
-### Repeated UI interactions and concurrency strategies
-
-UI events often fire faster than the network can answer: a search box that runs on every keystroke,
-a submit button clicked twice, or a draft auto-save. `Op` separates what the request does from how
-overlapping calls behave:
-
-**Search (cancel the previous call when the user types):**
-
-```ts
-import { Duration, Op } from "@pplnd/core";
-
-type SearchError = { kind: "SearchFailed"; cause: unknown };
+type SearchResult = { id: string; title: string };
+type SearchError = { kind: "NetworkError"; cause: unknown } | { kind: "Timeout" };
 
 const searchOp = Op.make(
   (signal) => (query: string) =>
-    fetch(`/search?q=${query}`, { signal }).then((r) =>
+    fetch(`/search?q=${encodeURIComponent(query)}`, { signal }).then((r) =>
       r.json() as Promise<SearchResult[]>
     ),
-  { onError: (cause): SearchError => ({ kind: "SearchFailed", cause }) },
+  { onError: (cause): SearchError => ({ kind: "NetworkError", cause }) },
 );
 
 const search = Op.interpret(searchOp, {
-  strategy: "restartable", // new call cancels the previous in-flight request
-  retry: { attempts: 2, backoff: Duration.milliseconds(300) },
+  strategy: "restartable", // new keystroke cancels the previous in-flight request
+  retry: RetryPolicy.exponential({
+    attempts: 3,
+    initial: Duration.milliseconds(200),
+  }),
+  timeout: {
+    duration: Duration.seconds(5),
+    onTimeout: (): SearchError => ({ kind: "Timeout" }),
+  },
 });
 
 search.subscribe((state) => {
   if (Op.is.pending(state)) showSpinner();
-  if (Op.is.retrying(state)) showSpinner(`retrying… attempt ${state.attempt}`);
   if (Op.Outcome.is.ok(state)) showResults(state.value);
-  if (Op.Outcome.is.err(state)) showError(state.error);
+  if (Op.Outcome.is.err(state)) showError(state.error.kind);
 });
 
 input.addEventListener("input", (e) => search.run(e.currentTarget.value));
 ```
 
-**Form submit (ignore new clicks while a request is in flight):**
+For form submissions, swapping `strategy: "restartable"` to `strategy: "exclusive"` automatically
+drops duplicate clicks while a request is in flight. Built-in strategies include `restartable`,
+`exclusive`, `debounced`, `throttled`, `queue`, `buffered`, `concurrent`, `keyed`, and `once`.
 
-```ts
-type SubmitError = { kind: "SubmitFailed"; cause: unknown };
+### Typed in-memory events and sequence funnels (EventBus)
 
-const submitOp = Op.make(
-  (signal) => (data: FormData) =>
-    fetch("/orders", { method: "POST", body: data, signal }).then((r) =>
-      r.json()
-    ),
-  { onError: (cause): SubmitError => ({ kind: "SubmitFailed", cause }) },
-);
+Decoupling application components with untyped event emitters can cause runtime crashes if a
+listener throws, and emitting events inside listeners can overflow the call stack through
+uncontrolled recursion.
 
-const submit = Op.interpret(submitOp, {
-  strategy: "exclusive", // in-flight? new calls are dropped immediately
-});
-
-submit.subscribe((state) => {
-  submitButton.disabled = Op.is.pending(state);
-  if (Op.Outcome.is.ok(state)) showConfirmation(state.value);
-  if (Op.Outcome.is.err(state)) showError(state.error);
-});
-
-form.addEventListener("submit", (e) => {
-  e.preventDefault();
-  submit.run(new FormData(form)); // double-clicks and rage-clicks are ignored
-});
-```
-
-Built-in strategies include `restartable`, `exclusive`, `debounced`, `throttled`, `queue`,
-`buffered`, `concurrent`, `keyed`, and `once`.
-
-### Typed event dispatching, sequence funnels, and queue safety
-
-`EventBus` is an in-memory pub/sub broker with a typed message map. Listeners can subscribe to
-single events or match ordered multi-step sequences with a reset event:
+`EventBus` provides compile-time message types, listener error isolation, and FIFO queue drainage
+for re-entrant events:
 
 ```ts
 import { EventBus } from "@pplnd/core";
@@ -411,8 +336,8 @@ type UserFlowMessages = {
 
 const flowBus = EventBus.make<UserFlowMessages>();
 
-// Pattern-match the complete multi-step funnel
-const sub = EventBus.subscribe(
+// Match an ordered multi-step funnel with an explicit cancellation reset:
+const funnel = EventBus.subscribe(
   flowBus,
   ["sessionStarted", "stepCompleted", "flowFinished"],
   { ordered: true, reset: "flowCancelled" },
@@ -426,7 +351,7 @@ const sub = EventBus.subscribe(
   { completedFlows: 0 },
 );
 
-// Emit typed messages to the event bus
+// Emit typed messages to the bus
 EventBus.emit(flowBus, {
   kind: "sessionStarted",
   value: { sessionId: "sess-101" },
@@ -442,17 +367,17 @@ EventBus.emit(flowBus, {
   value: { totalTimeMs: 4200 },
 });
 
-sub.getState(); // { completedFlows: 1 }
+funnel.getState(); // { completedFlows: 1 }
 ```
 
-When a listener emits another event during handling, `EventBus` drains the new events through an
-internal FIFO queue instead of recursing on the call stack, so cascading events stay in order and
-cannot overflow the stack.
+When a subscriber emits a new event during dispatch, `EventBus` buffers it into an internal FIFO
+queue instead of recursing on the call stack, preserving event ordering without stack overflow.
 
-### Deep immutable updates without spread boilerplate
+### Deep immutable updates (Lens & Optional)
 
-Updating a nested field immutably usually means copying each level with `{ ...obj }`. `Lens` and
-`Optional` let you build a reusable path to a nested property and update it in one step:
+Updating nested properties immutably with object spreads
+(`{ ...state, user: { ...state.user, address: { ... } } }`) becomes difficult to read and maintain
+as schemas grow. `Lens` and `Optional` define reusable focus paths into nested data:
 
 ```ts
 import { Lens, pipe } from "@pplnd/core";
@@ -478,15 +403,15 @@ const updatedUser = pipe(
 updatedUser.address.city; // "BERLIN"
 ```
 
-### Safe lifecycle management for connections and locks
+### Safe lifecycle management for connections and locks (Resource)
 
-Acquiring database connections, sockets, or distributed locks usually requires nested `try/finally`
-blocks. If a second resource fails to open or an operation aborts midway, it is easy to leak an
-already-opened handle or release resources in the wrong order.
+Acquiring multiple handles — such as database connections, sockets, or distributed locks — requires
+nested `try/finally` blocks. If an intermediate setup step fails or an operation aborts midway,
+already-opened handles can leak.
 
-`Resource<E, A>` packages acquisition and guaranteed cleanup into an opaque bracket. When composed
-with `Resource.chain` or `Resource.all`, resources are acquired sequentially and automatically
-released in strict reverse (LIFO) order upon completion or error:
+`Resource<E, A>` packages acquisition and cleanup into a bracket. When multiple resources are
+grouped with `Resource.all`, they are acquired sequentially and automatically released in reverse
+(LIFO) order upon completion, error, or cancellation:
 
 ```ts
 import { pipe, Resource, Task } from "@pplnd/core";
@@ -529,7 +454,7 @@ const appInfra = Resource.all({
   cache: cacheResource,
 });
 
-// Run operations safely — both handles are closed in reverse order upon completion or failure
+// Run operations safely — both handles are closed in reverse order on exit
 const syncUserProfile = (userId: string) =>
   pipe(
     appInfra,
@@ -550,11 +475,11 @@ const result = await fetchAndCacheUser();
 // cache.quit() and db.close() are guaranteed to have run in reverse order
 ```
 
-### Nominal type safety and security boundaries
+### Nominal type safety for IDs and validated strings (Brand)
 
-Because TypeScript's type system is structural, two `string` IDs (`UserId` and `OrderId`) are
-interchangeable by default. `Brand` attaches a compile-time tag to a primitive type so the compiler
-rejects mixed-up arguments without adding any wrapper at runtime:
+TypeScript's structural type system treats all `string` types as interchangeable. Passing an
+`orderId` into a function expecting a `userId` compiles without warning. `Brand` attaches a
+compile-time tag to primitives without runtime wrapping or memory overhead:
 
 ```ts
 import { Brand, Result } from "@pplnd/core";
@@ -581,57 +506,111 @@ const email = parseEmail("alice@example.com");
 
 if (Result.is.ok(email)) {
   sendReceipt(user, order, email.value);
-  // Type error: sendReceipt(order, user, email.value)
+  // Compile error: sendReceipt(order, user, email.value)
 }
 ```
+
+### Transforming data collections (Arr & Rec)
+
+Chaining native array methods like `.map()`, `.filter()`, and `.sort()` allocates intermediate
+arrays at each step, and index lookups return `undefined` without type guidance. `Arr` and `Rec`
+provide curried helpers designed for `pipe`:
+
+```ts
+import { Arr, Maybe, Num, pipe, Rec, Str } from "@pplnd/core";
+
+type RawItem = { name: string; price: string; category: string };
+type Item = { name: string; price: number; category: string };
+
+const normalise = (raw: RawItem): Maybe<Item> =>
+  pipe(
+    Num.from.string(raw.price), // "9.99" → Some(9.99), "n/a" → None
+    Maybe.map((price) => ({
+      name: Str.trim(raw.name),
+      price,
+      category: raw.category,
+    })),
+  );
+
+const cheapestByCategory = (items: RawItem[]) =>
+  pipe(
+    items,
+    Arr.filterMap(normalise), // parse + drop unparseable rows in a single pass
+    Arr.sortBy((a, b) => a.price - b.price), // sort ascending by price
+    Arr.groupBy((item) => item.category), // Record<string, Arr.NonEmpty<Item>>
+    Rec.map((group) => Arr.NonEmpty.head(group)), // lowest price per category without Maybe wrapper
+  );
+```
+
+`Arr.filterMap` combines mapping and filtering into a single loop. `Arr.groupBy` returns guaranteed
+non-empty groups, allowing `Arr.NonEmpty.head` to extract the first element directly without an
+unnecessary `Maybe` wrapper.
 
 ---
 
 ## Quick Reference
 
-| Problem to Solve                                                   | Module                          |
-| ------------------------------------------------------------------ | ------------------------------- |
-| Optional values without `null` / `undefined` checks                | `Maybe`                         |
-| Synchronous typed errors without `try`/`catch`                     | `Result`                        |
-| Multi-field form and batch validation error accumulation           | `Validation`                    |
-| Lazy async workflows with automatic `AbortSignal`                  | `Task.Result`, `Task`           |
-| Infallible async return container for tasks                        | `Deferred`                      |
-| Declarative DAG task scheduling & cycle detection                  | `Graph`                         |
-| Type-safe finite state machines & validated transitions            | `Machine`                       |
-| Eliminating impossible UI loading/error/data states                | `RemoteData`                    |
-| Managing request race conditions, retries, and locks               | `Op`                            |
-| In-memory typed event dispatching, sequence funnels & queue safety | `EventBus`                      |
-| Deep nested immutable updates without spread boilerplate           | `Lens`, `Optional`              |
-| Implicit dependency injection without prop drilling                | `Reader`                        |
-| Pure state transitions, tokenizers, and parsers                    | `State`                         |
-| Automatic setup and teardown of connections and locks              | `Resource`                      |
-| Pure calculation audit trails and decision logging                 | `Logged`                        |
-| Values that can hold one side, the other, or both at once          | `These`                         |
-| Deep value equality & custom comparison rules                      | `Equality`                      |
-| Multi-column sorting with fallback tiebreakers                     | `Ordering`                      |
-| Combining boolean checks and filter rules                          | `Predicate`                     |
-| Runtime type narrowing & custom type guard composition             | `Refinement`                    |
-| Merging configs, counters, and summary objects                     | `Combinable`                    |
-| Working with two-element `[first, second]` tuples                  | `Pair`                          |
-| Bounds-safe array transformations                                  | `Arr`, `Arr.NonEmpty`           |
-| Type-safe object manipulation & key migration                      | `Rec`, `Rec.NonEmpty`           |
-| Immutable `Map` operations with any key type                       | `Dict`, `Dict.NonEmpty`         |
-| Immutable `Set` operations (union, intersection, difference)       | `Uniq`, `Uniq.NonEmpty`         |
-| String sanitization, numeric conversion & slug parsing             | `Str`, `Str.NonEmpty`           |
-| Boundary clamping & division-by-zero protection                    | `Num`                           |
-| Exact `bigint` math without floating-point rounding errors         | `BigNum`                        |
-| Boolean checks and conditional branching in pipelines              | `Bool`                          |
-| Safe JSON parsing & circular reference protection                  | `Json`                          |
-| Distinct types for primitive IDs and validated strings             | `Brand`                         |
-| Explicit, unit-safe time spans & timeout policies                  | `Duration`, `RetryPolicy`       |
-| Left-to-right value pipeline execution                             | `pipe`                          |
-| Asynchronous value & function pipeline execution                   | `pipeAsync`, `flowAsync`        |
-| Left-to-right function composition                                 | `flow`                          |
-| Conditional branching and object shaping in pipelines              | `when`, `unless`, `struct`      |
-| Currying, uncurrying, tuple wrapping, and argument flipping        | `curry`, `uncurry`, `flip`      |
-| Feeding one input into multiple functions and combining results    | `converge`, `juxt`, `on`        |
-| Function result caching & pipeline side-effects                    | `memoize`, `tap`, `tapLog`      |
-| Small helper functions (`identity`, `constant`, `noop`, `tuple`)   | `identity`, `constant`, `tuple` |
+### Error Handling and Optionality
+
+| Problem to Solve                                          | Module       |
+| --------------------------------------------------------- | ------------ |
+| Synchronous typed errors without `try`/`catch` or `throw` | `Result`     |
+| Optional values without `null` / `undefined` guards       | `Maybe`      |
+| Multi-field form and batch validation error accumulation  | `Validation` |
+| Eliminating impossible UI loading/error/data states       | `RemoteData` |
+| Values that can hold one side, the other, or both at once | `These`      |
+| Pure calculation audit trails and decision logging        | `Logged`     |
+
+### Async, Concurrency, and State
+
+| Problem to Solve                                                   | Module                |
+| ------------------------------------------------------------------ | --------------------- |
+| Lazy async workflows with automatic `AbortSignal` propagation      | `Task.Result`, `Task` |
+| Managing request race conditions, retries, timeouts, and locks     | `Op`                  |
+| In-memory typed event dispatching, sequence funnels & queue safety | `EventBus`            |
+| Automatic setup and guaranteed LIFO teardown of connections/locks  | `Resource`            |
+| Type-safe finite state machines & validated transitions            | `Machine`             |
+| Declarative DAG task scheduling & cycle detection                  | `Graph`               |
+| Infallible async synchronization latch for tasks                   | `Deferred`            |
+| Circuit breaker pattern for protecting failing upstream services   | `CircuitBreaker`      |
+| Pure state transitions, tokenizers, and parsers                    | `State`               |
+| Dependency injection and contextual configuration without drilling | `Reader`              |
+
+### Collections and Optics
+
+| Problem to Solve                                           | Module                  |
+| ---------------------------------------------------------- | ----------------------- |
+| Bounds-safe array transformations & single-pass filters    | `Arr`, `Arr.NonEmpty`   |
+| Type-safe object manipulation & key migration              | `Rec`, `Rec.NonEmpty`   |
+| Immutable `Map` operations with any key type               | `Dict`, `Dict.NonEmpty` |
+| Immutable `Set` operations (union, intersection, diff)     | `Uniq`, `Uniq.NonEmpty` |
+| Deep nested immutable updates without spread boilerplate   | `Lens`, `Optional`      |
+| String sanitization, numeric conversion & slug parsing     | `Str`, `Str.NonEmpty`   |
+| Boundary clamping & division-by-zero protection            | `Num`                   |
+| Exact `bigint` math without floating-point rounding errors | `BigNum`                |
+| Boolean checks and conditional branching in pipelines      | `Bool`                  |
+| Safe JSON parsing & circular reference protection          | `Json`                  |
+
+### Composition and Utilities
+
+| Problem to Solve                                                | Module                                  |
+| --------------------------------------------------------------- | --------------------------------------- |
+| Left-to-right value pipeline execution                          | `pipe`                                  |
+| Asynchronous value & function pipeline execution                | `pipeAsync`, `flowAsync`                |
+| Left-to-right function composition                              | `flow`                                  |
+| Distinct compile-time types for primitive IDs                   | `Brand`                                 |
+| Explicit, unit-safe time spans & timeout policies               | `Duration`, `RetryPolicy`               |
+| Deep value equality & custom comparison rules                   | `Equality`                              |
+| Multi-column sorting with fallback tiebreakers                  | `Ordering`                              |
+| Combining boolean checks and filter rules                       | `Predicate`                             |
+| Runtime type narrowing & custom type guard composition          | `Refinement`                            |
+| Merging configs, counters, and summary objects                  | `Combinable`                            |
+| Two-element `[first, second]` tuples                            | `Pair`                                  |
+| Conditional branching and object shaping in pipelines           | `when`, `unless`, `struct`              |
+| Currying, uncurrying, tuple wrapping, and argument flipping     | `curry`, `uncurry`, `flip`              |
+| Feeding one input into multiple functions and combining results | `converge`, `juxt`, `on`                |
+| Function result caching & pipeline side-effects                 | `memoize`, `tap`, `tapLog`              |
+| Small helper functions                                          | `identity`, `constant`, `noop`, `tuple` |
 
 ---
 
