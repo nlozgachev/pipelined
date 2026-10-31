@@ -36,6 +36,7 @@ function getMeasuredSizes(): Map<string, SizeItem> {
 
 const GUIDE_MAP: Record<string, { module: string; }> = {
 	"arr.md": { module: "Arr" },
+	"batcher.md": { module: "Batcher" },
 	"bignum.md": { module: "BigNum" },
 	"bool.md": { module: "Bool" },
 	"brand.md": { module: "Brand" },

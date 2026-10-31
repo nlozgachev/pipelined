@@ -5,7 +5,7 @@ description: Model key-value associations immutably, replacing mutation-based Ma
 
 <!-- BUNDLE_SIZE:START -->
 
-> 2.42 kB minified + gzipped
+> 2.43 kB minified + gzipped
 
 <!-- BUNDLE_SIZE:END -->
 

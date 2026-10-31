@@ -93,6 +93,7 @@ export default defineConfig({
 						{ slug: "guides/deferred" },
 						{ slug: "guides/op" },
 						{ slug: "guides/circuit-breaker" },
+						{ slug: "guides/batcher" },
 						{ slug: "guides/event-bus" },
 						{ slug: "guides/resource" },
 						{ slug: "guides/graph" },

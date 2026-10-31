@@ -212,6 +212,13 @@
 			"gzip": true
 		},
 		{
+			"name": "Batcher",
+			"import": "{ Batcher }",
+			"path": "dist/index.mjs",
+			"limit": "3 KB",
+			"gzip": true
+		},
+		{
 			"name": "Lens",
 			"import": "{ Lens }",
 			"path": "dist/index.mjs",
