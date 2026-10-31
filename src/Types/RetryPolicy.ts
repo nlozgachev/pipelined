@@ -1,23 +1,6 @@
 import { Duration } from "./Duration.ts";
 
 /**
- * Observational telemetry event emitted immediately before each retry delay.
- *
- * Provides context on the current attempt count, the error that triggered the retry,
- * and the calculated backoff delay before the next attempt executes.
- *
- * @see {@link RetryPolicy} for configuring retry attempts and backoff strategies.
- *
- * @example
- * ```ts
- * const onRetry = (event: RetryEvent<Error>) => {
- *   console.warn(`Attempt ${event.attempt} failed: ${event.error.message}. Retrying in ${Duration.to.milliseconds(event.delay)}ms.`);
- * };
- * ```
- */
-export type RetryEvent<E = unknown> = { readonly attempt: number; readonly error: E; readonly delay: Duration; };
-
-/**
  * An immutable policy describing retry limits, backoff delay strategies,
  * transient failure filters, and observational telemetry.
  *
@@ -27,7 +10,7 @@ export type RetryEvent<E = unknown> = { readonly attempt: number; readonly error
  *   attempts: 3,
  *   initial: Duration.milliseconds(100),
  *   when: (err) => err.name === "NetworkError",
- *   onRetry: (event) => console.warn(`Retrying attempt ${event.attempt}: ${event.error.message}`),
+ *   onRetry: (metadata) => console.warn(`Retrying attempt ${metadata.attempt}: ${metadata.error.message}`),
  * });
  * ```
  */
@@ -35,8 +18,29 @@ export type RetryPolicy<E = unknown> = {
 	readonly attempts: number;
 	readonly getDelay: (attempt: number) => Duration;
 	readonly when?: (error: E) => boolean;
-	readonly onRetry?: (event: RetryEvent<E>) => void;
+	readonly onRetry?: (metadata: RetryPolicy.Metadata<E>) => void;
 };
+
+export namespace RetryPolicy {
+	/**
+	 * Observational telemetry metadata provided to `onRetry` callbacks immediately before each retry delay.
+	 *
+	 * Provides context on the current attempt count, the error that triggered the retry,
+	 * and the calculated backoff delay before the next attempt executes.
+	 *
+	 * @see {@link RetryPolicy} for configuring retry attempts and backoff strategies.
+	 *
+	 * @example
+	 * ```ts
+	 * const onRetry = (metadata: RetryPolicy.Metadata<Error>) => {
+	 *   console.warn(
+	 *     `Attempt ${metadata.attempt} failed: ${metadata.error.message}. Retrying in ${Duration.to.milliseconds(metadata.delay)}ms.`
+	 *   );
+	 * };
+	 * ```
+	 */
+	export type Metadata<E = unknown> = { readonly attempt: number; readonly error: E; readonly delay: Duration; };
+}
 
 export const RetryPolicy = {
 	/**
@@ -55,7 +59,7 @@ export const RetryPolicy = {
 			readonly attempts: number;
 			readonly delay: Duration;
 			readonly when?: (error: E) => boolean;
-			readonly onRetry?: (event: RetryEvent<E>) => void;
+			readonly onRetry?: (metadata: RetryPolicy.Metadata<E>) => void;
 		},
 	): RetryPolicy<E> => ({
 		attempts: Math.max(1, options.attempts),
@@ -81,7 +85,7 @@ export const RetryPolicy = {
 	 *   jitter: true,
 	 *   maxDelay: Duration.seconds(5),
 	 *   when: (err: Error) => err.name === "NetworkError",
-	 *   onRetry: (event) => console.warn(`Retry attempt ${event.attempt}`),
+	 *   onRetry: (metadata) => console.warn(`Retry attempt ${metadata.attempt}`),
 	 * });
 	 * ```
 	 */
@@ -93,7 +97,7 @@ export const RetryPolicy = {
 			readonly jitter?: boolean;
 			readonly maxDelay?: Duration;
 			readonly when?: (error: E) => boolean;
-			readonly onRetry?: (event: RetryEvent<E>) => void;
+			readonly onRetry?: (metadata: RetryPolicy.Metadata<E>) => void;
 		},
 	): RetryPolicy<E> => {
 		const attempts = Math.max(1, options.attempts);

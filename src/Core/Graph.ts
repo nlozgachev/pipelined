@@ -1,6 +1,6 @@
 import type { WithKind } from "../internal/InternalTypes";
 import type { Duration } from "../Types/Duration.ts";
-import type { RetryEvent, RetryPolicy } from "../Types/RetryPolicy.ts";
+import type { RetryPolicy } from "../Types/RetryPolicy.ts";
 import { Deferred } from "./Deferred.ts";
 import { Result } from "./Result.ts";
 import { Task } from "./Task.ts";
@@ -98,9 +98,9 @@ export namespace Graph {
 		};
 
 	/**
-	 * Telemetry event emitted when any node in the graph initiates a retry attempt.
+	 * Telemetry metadata emitted when any node in the graph initiates a retry attempt.
 	 */
-	export type RunRetryEvent = RetryEvent<unknown> & { readonly nodeId: string; };
+	export type RunRetryMetadata = RetryPolicy.Metadata<unknown> & { readonly nodeId: string; };
 
 	/**
 	 * Options configuring DAG execution pacing and telemetry.
@@ -124,7 +124,7 @@ export namespace Graph {
 		 * })();
 		 * ```
 		 */
-		readonly onRetry?: (event: RunRetryEvent) => void;
+		readonly onRetry?: (metadata: RunRetryMetadata) => void;
 	};
 }
 

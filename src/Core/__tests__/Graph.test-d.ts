@@ -85,6 +85,7 @@ test("make & run: compiles and preserves error and output channels", () => {
 	const taskWithTelemetry = Graph.run(graph, {
 		concurrency: 2,
 		onRetry: (event) => {
+			expectTypeOf(event).toEqualTypeOf<Graph.RunRetryMetadata>();
 			expectTypeOf(event.nodeId).toEqualTypeOf<string>();
 			expectTypeOf(event.attempt).toEqualTypeOf<number>();
 			expectTypeOf(event.error).toEqualTypeOf<unknown>();
